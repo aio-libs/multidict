@@ -1,0 +1,14 @@
+include LICENSE.txt
+include CHANGES.txt
+include README.rst
+include CONTRIBUTORS.txt
+include Makefile
+graft multidict
+graft docs
+graft tests
+global-exclude *.pyc
+exclude aiohttp/_multidict.html
+exclude aiohttp/_multidict.*.so
+exclude aiohttp/_multidict.pyd
+exclude aiohttp/_multidict.*.pyd
+prune docs/_build
