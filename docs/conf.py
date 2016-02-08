@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# aiohttp documentation build configuration file, created by
+# multidict documentation build configuration file, created by
 # sphinx-quickstart on Wed Mar  5 12:35:35 2014.
 #
 # This file is execfile()d with the current directory set to its
@@ -20,7 +20,7 @@ import re
 
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(os.path.join(_docs_path,
-                                             '..', 'aiohttp', '__init__.py'))
+                                             '..', 'multidict', '__init__.py'))
 with codecs.open(_version_path, 'r', 'latin1') as fp:
     try:
         _version_info = re.search(r"^__version__ = '"
@@ -54,17 +54,11 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'alabaster',
-    'aiohttp_doctools',
     'sphinxcontrib.spelling',
-    'sphinxcontrib.newsfeed',
 ]
 
 intersphinx_mapping = {
-    'python': ('http://docs.python.org/3', None),
-    'aiohttpjinja2':
-        ('http://aiohttp-jinja2.readthedocs.org/en/stable/', None),
-    'aiohttpsession':
-        ('http://aiohttp-session.readthedocs.org/en/stable/', None)}
+    'python': ('http://docs.python.org/3', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -79,8 +73,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'aiohttp'
-copyright = '2013-2016, KeepSafe'
+project = 'multidict'
+copyright = '2016, Andrew Svetlov'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -144,9 +138,9 @@ html_theme = 'alabaster'
 # documentation.
 html_theme_options = {
     'logo': 'aiohttp-icon-128x128.png',
-    'description': 'http client/server for asyncio',
-    'github_user': 'KeepSafe',
-    'github_repo': 'aiohttp',
+    'description': 'multidict',
+    'github_user': 'aio-libs',
+    'github_repo': 'multidict',
     'github_button': True,
     'github_banner': True,
     'travis_button': True,
@@ -175,12 +169,12 @@ html_theme_path = [alabaster.get_path()]
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'aiohttp-icon.ico'
+# html_favicon = 'aiohttp-icon.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -233,7 +227,7 @@ html_sidebars = {
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'aiohttpdoc'
+htmlhelp_basename = 'multidictdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -253,8 +247,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ('index', 'aiohttp.tex', 'aiohttp Documentation',
-     'KeepSafe', 'manual'),
+    ('index', 'multidict.tex', 'multidict Documentation',
+     'Andrew Svetlov', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -283,8 +277,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'aiohttp', 'aiohttp Documentation',
-     ['KeepSafe'], 1)
+    ('index', 'multidict', 'multidict Documentation',
+     ['Andrew Svetlov'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -297,8 +291,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    ('index', 'aiohttp', 'aiohttp Documentation',
-     'KeepSafe', 'aiohttp', 'One line description of project.',
+    ('index', 'multidict', 'multidict Documentation',
+     'Andrew Svetlov', 'multidict', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -313,6 +307,3 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
-
-
-disqus_shortname = 'aiohttp'
