@@ -118,7 +118,7 @@ exclude_patterns = ['_build']
 pygments_style = 'sphinx'
 
 # The default language to highlight source code in.
-highlight_language = 'python3'
+highlight_language = 'python'
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
@@ -137,7 +137,7 @@ html_theme = 'alabaster'
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    'logo': 'aiohttp-icon-128x128.png',
+    # 'logo': 'aiohttp-icon-128x128.png',
     'description': 'multidict',
     'github_user': 'aio-libs',
     'github_repo': 'multidict',

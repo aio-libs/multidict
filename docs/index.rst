@@ -3,87 +3,57 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-aiohttp
-=======
+multidict
+=========
 
-HTTP client/server for :term:`asyncio` (:pep:`3156`).
+Multidicts are useful for working with HTTP headers, URL
+query args etc.
 
-.. _GitHub: https://github.com/KeepSafe/aiohttp
-.. _Freenode: http://freenode.net
+The code was extracted from aiohttp library.
+
+Introduction
+------------
+
+*HTTP Headers* and *URL query string* require specific data structure:
+*multidict*. It behaves mostly like a :class:`dict` but it can have
+several *values* for the same *key*.
+
+:mod:`multidict` has four multidict classes:
+:class:`MultiDict`, :class:`MultiDictProxy`, :class:`CIMultiDict`
+and :class:`CIMultiDictProxy`.
+
+Immutable proxies (:class:`MultiDictProxy` and
+:class:`CIMultiDictProxy`) provide a dynamic view on the
+proxied multidict, the view reflects underlying collection changes. They
+implement the :class:`~collections.abc.Mapping` interface.
+
+Regular mutable (:class:`MultiDict` and :class:`CIMultiDict`) classes
+implement :class:`~collections.abc.MutableMapping` and allows to change
+their own content.
 
 
-Features
---------
+*Case insensitive* (:class:`CIMultiDict` and
+:class:`CIMultiDictProxy`) ones assumes the *keys* are case
+insensitive, e.g.::
 
-- Supports both :ref:`aiohttp-client` and :ref:`HTTP Server <aiohttp-web>`.
-- Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and
-  :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box.
-- Web-server has :ref:`aiohttp-web-middlewares`,
-  :ref:`aiohttp-web-signals` and pluggable routing.
+   >>> dct = CIMultiDict(a='val')
+   >>> 'A' in dct
+   True
+   >>> dct['A']
+   'val'
+
+*Keys* should be a :class:`str`.
+
+The library has optional Cython optimization for sake of speed.
 
 Library Installation
 --------------------
 
 ::
 
-   $ pip install aiohttp
+   $ pip install multidict
 
-You may want to install *optional* :term:`cchardet` library as faster
-replacement for :term:`chardet`::
-
-   $ pip install cchardet
-
-Getting Started
----------------
-
-Client example::
-
-    import asyncio
-    import aiohttp
-
-    async def fetch_page(session, url):
-        with aiohttp.Timeout(10):
-            async with session.get(url) as response:
-                assert response.status == 200
-                return await response.read()
-
-    loop = asyncio.get_event_loop()
-    with aiohttp.ClientSession(loop=loop) as session:
-        content = loop.run_until_complete(
-            fetch_page(session, 'http://python.org'))
-        print(content)
-
-Server example::
-
-    from aiohttp import web
-
-    async def handle(request):
-        name = request.match_info.get('name', "Anonymous")
-        text = "Hello, " + name
-        return web.Response(body=text.encode('utf-8'))
-
-    app = web.Application()
-    app.router.add_route('GET', '/{name}', handle)
-
-    web.run_app(app)
-
-.. note::
-
-   Throughout this documentation, examples utilize the `async/await` syntax
-   introduced by :pep:`492` that is only valid for Python 3.5+.
-
-   If you are using Python 3.4, please replace ``await`` with
-   ``yield from`` and ``async def`` with a ``@coroutine`` decorator.
-   For example, this::
-
-       async def coro(...):
-           ret = await f()
-
-   should be replaced by::
-
-       @asyncio.coroutine
-       def coro(...):
-           ret = yield from f()
+The library is Python 3 only!
 
 
 Source code
@@ -92,25 +62,11 @@ Source code
 The project is hosted on GitHub_
 
 Please feel free to file an issue on the `bug tracker
-<https://github.com/KeepSafe/aiohttp/issues>`_ if you have found a bug
+<https://github.com/aio-libs/multidict/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
-The library uses `Travis <https://travis-ci.org/KeepSafe/aiohttp>`_ for
+The library uses `Travis <https://travis-ci.org/aio-libs/multidict>`_ for
 Continuous Integration.
-
-
-Dependencies
-------------
-
-- Python Python 3.4.1+
-- *chardet* library
-- *Optional* :term:`cchardet` library as faster replacement for
-  :term:`chardet`.
-
-  Install it explicitly via::
-
-     $ pip install cchardet
-
 
 Discussion list
 ---------------
@@ -119,17 +75,11 @@ Discussion list
 
 Feel free to post your questions and ideas here.
 
-Contributing
-------------
-
-Please read the :ref:`instructions for contributors<aiohttp-contributing>`
-before making a Pull Request.
-
 
 Authors and License
 -------------------
 
-The ``aiohttp`` package is written mostly by Nikolay Kim and Andrew Svetlov.
+The ``multidict`` package is written by Andrew Svetlov.
 
 It's *Apache 2* licensed and freely available.
 
@@ -140,22 +90,7 @@ Contents
 
 .. toctree::
 
-   client
-   client_reference
-   web
-   web_reference
-   web_abc
-   server
    multidict
-   multipart
-   api
-   logging
-   gunicorn
-   faq
-   new_router
-   contributing
-   changes
-   glossary
 
 Indices and tables
 ==================
@@ -163,3 +98,5 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+.. _GitHub: https://github.com/aio-libs/multidict
