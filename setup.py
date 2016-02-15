@@ -85,7 +85,7 @@ args = dict(
         'Programming Language :: Python :: 3.5'],
     author='Andrew Svetlov',
     author_email='andrew.svetlov@gmail.com',
-    url='https://github.com/KeepSafe/aiohttp/',
+    url='https://github.com/aio-libs/multidict/',
     license='Apache 2',
     packages=['multidict'],
     tests_require=tests_require,
