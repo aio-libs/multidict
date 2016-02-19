@@ -11,25 +11,25 @@ Introduction
 ------------
 
 *HTTP Headers* and *URL query string* require specific data structure:
-*multidict*. It behaves mostly like a :class:`dict` but it can have
+*multidict*. It behaves mostly like a ``dict`` but it can have
 several *values* for the same *key*.
 
-:mod:`multidict` has four multidict classes:
-:class:`MultiDict`, :class:`MultiDictProxy`, :class:`CIMultiDict`
-and :class:`CIMultiDictProxy`.
+``multidict`` has four multidict classes:
+``MultiDict``, ``MultiDictProxy``, ``CIMultiDict``
+and ``CIMultiDictProxy``.
 
-Immutable proxies (:class:`MultiDictProxy` and
-:class:`CIMultiDictProxy`) provide a dynamic view on the
+Immutable proxies (``MultiDictProxy`` and
+``CIMultiDictProxy``) provide a dynamic view on the
 proxied multidict, the view reflects underlying collection changes. They
-implement the :class:`~collections.abc.Mapping` interface.
+implement the ``collections.abc.Mapping`` interface.
 
-Regular mutable (:class:`MultiDict` and :class:`CIMultiDict`) classes
-implement :class:`~collections.abc.MutableMapping` and allows to change
+Regular mutable (``MultiDict`` and ``CIMultiDict``) classes
+implement ``collections.abc.MutableMapping`` and allows to change
 their own content.
 
 
-*Case insensitive* (:class:`CIMultiDict` and
-:class:`CIMultiDictProxy`) ones assumes the *keys* are case
+*Case insensitive* (``CIMultiDict`` and
+``CIMultiDictProxy``) ones assumes the *keys* are case
 insensitive, e.g.::
 
    >>> dct = CIMultiDict(a='val')
@@ -38,7 +38,7 @@ insensitive, e.g.::
    >>> dct['A']
    'val'
 
-*Keys* should be a :class:`str`.
+*Keys* should be ``str`` instances.
 
 The library has optional Cython optimization for sake of speed.
 
