@@ -1,7 +1,6 @@
 include LICENSE.txt
-include CHANGES.txt
+include CHANGES.rst
 include README.rst
-include CONTRIBUTORS.txt
 include Makefile
 graft multidict
 graft docs
