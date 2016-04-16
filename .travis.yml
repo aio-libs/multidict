@@ -44,9 +44,7 @@ env:
     - MULTIDICT_NO_EXTENSIONS=X
 
 before_deploy:
-  - if [ -z $MULTIDICT_NO_EXTENSIONS ]; then
-      ./run_docker.sh
-    fi
+  - run_docker.sh
 
 deploy:
   provider: pypi
