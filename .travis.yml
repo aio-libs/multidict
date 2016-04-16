@@ -1,4 +1,6 @@
-sudo: no
+sudo: required
+services:
+  - docker
 
 language: python
 
@@ -41,22 +43,12 @@ env:
     - MULTIDICT_NO_EXTENSIONS=
     - MULTIDICT_NO_EXTENSIONS=X
 
-matrix:
-  include:
-    - sudo: required
-      services:
-        - docker
-      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64
-    - sudo: required
-      services:
-        - docker
-      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_i686
-           PRE_CMD=linux32
-
 before_deploy:
-  - if [ -z $DOCKER_IMAGE ]; then
-        docker pull $DOCKER_IMAGE
-        docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/build-wheels.sh
+  - if [ -z $MULTIDICT_NO_EXTENSIONS ]; then
+        docker pull quay.io/pypa/manylinux1_x86_64
+        docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/build-wheels.sh
+        docker pull quay.io/pypa/manylinux1_i686
+        docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_i686 linux32 /io/build-wheels.sh
     fi
 
 deploy:
