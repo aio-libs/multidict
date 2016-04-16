@@ -73,6 +73,5 @@ install:
 wheel_x64:
 	docker pull quay.io/pypa/manylinux1_x86_64
 	docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/build-wheels.sh
-	ls wheelhouse/
 
 .PHONY: all build venv flake test vtest testloop cov clean doc

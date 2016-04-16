@@ -41,13 +41,29 @@ env:
     - MULTIDICT_NO_EXTENSIONS=
     - MULTIDICT_NO_EXTENSIONS=X
 
+matrix:
+  include:
+    - sudo: required
+      services:
+        - docker
+      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64
+    - sudo: required
+      services:
+        - docker
+      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_i686
+           PRE_CMD=linux32
+
+before_deploy:
+  - docker pull $DOCKER_IMAGE
+  - docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/build-wheels.sh
+
 deploy:
   provider: pypi
   user: andrew.svetlov
   password:
     secure: ZFCicrh4l5zraarOwAwLXzYyGLnrxMHAFEFxF6ZEpECamu4eDsbKAFM/ydYdHoL19ocLr5+Xg1fmgd5tjc29c2rHQh29iDFi7tWai2pDFw+WqeHaV6e7ZJEEnU29OpSRzkGIk+K27mn7ZsB97q3Rkg2JBYRBkeK6HNyZ5YgIaVssXXXuCi5LZ1Y0rg8Nbapes1RUqoHGWgBwlCjAVxp9U7RXqJ6jucHDGUHU+9AgnnlGI7Cqs3xLqp4/xt2VoIjL0XwG2y05WLLpEF3Jwtj2voiPsnSTpUwklXVr1rEwScPCMlImxmWmudvh7xcPtcK9IOHIvk6y/lmNHJeevRn+df50LtBdr+0Wrq/t3Tt5d05XKCgqaLtw2P4GYNfTsx1RmQjHzUlfHKke7UZ1P+GsZTKN9nLKVdFTi2YzQ0TVmr/JjAmVqldRBOvEMnVoDn1rj1gdHMIu4d/gRVTcSS3riey+L2o6NwKjoc7aV5Uz47Z7fjz09Q6xml9eBWAHx9O07Iq+BaCikhBzeHGo+AkIzGMQdCSyQ8tTjQtEq6zWGxolZQFJeW9glTGLSYMfiVaPDEyqxaDm/QKssnZiEIbq1YM018C6ojiA3xbPJrwSZ8l/mnCkxrIcbKcwwtaHFPyP/FicePT01oJAXx08wnwe5H2l6lqkSGgRnGendZNeEuQ=
-  distributions: "sdist"
+  distributions: "sdist bdist_wheel"
   on:
     tags: true
     all_branches: true
-    python: 3.5
+    condition: "-z $MULTIDICT_NO_EXTENSIONS"

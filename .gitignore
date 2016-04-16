@@ -63,4 +63,3 @@ target/
 
 .develop
 .install-deps
-wheelhouse
