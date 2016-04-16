@@ -1,13 +1,12 @@
+-r requirements-wheel.txt
 pip
 flake8
 pyflakes>=1.0.0
 coverage
 sphinx
 alabaster>=0.6.2
-cython
 tox
 sphinxcontrib-newsfeed
-pytest
 pytest-cov
 pygments
 -e .

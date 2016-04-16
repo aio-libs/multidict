@@ -60,5 +60,7 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
 .develop
 .install-deps
+wheelhouse

@@ -8,7 +8,7 @@ flake: .install-deps
 #	python setup.py check -rms
 	flake8 multidict
 	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
-            flake8 examples tests; \
+            flake8 tests; \
         fi
 
 
@@ -16,20 +16,24 @@ flake: .install-deps
 	pip install -e .
 	touch .develop
 
-test: flake .develop
+rmcache:
+	rm -rf tests/__pycache__
+
+
+test: flake .develop rmcache
 	py.test -q ./tests/
 
-vtest: flake .develop
+vtest: flake .develop rmcache
 	py.test -s -v ./tests/
 
 cov cover coverage:
 	tox
 
-cov-dev: .develop
+cov-dev: .develop rmcache
 	py.test --cov=multidict --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/coverage/index.html"
 
-cov-dev-full: .develop
+cov-dev-full: .develop rmcache
 	AIOHTTPMULTIDICT_NO_EXTENSIONS=1 py.test --cov=multidict --cov-append tests 
 	py.test --cov=multidict --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/coverage/index.html"
@@ -65,5 +69,10 @@ doc-spelling:
 install:
 	pip install -U pip
 	pip install -Ur requirements-dev.txt
+
+wheel_x64:
+	docker pull quay.io/pypa/manylinux1_x86_64
+	docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/build-wheels.sh
+	ls wheelhouse/
 
 .PHONY: all build venv flake test vtest testloop cov clean doc
