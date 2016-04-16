@@ -54,8 +54,10 @@ matrix:
            PRE_CMD=linux32
 
 before_deploy:
-  - docker pull $DOCKER_IMAGE
-  - docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/build-wheels.sh
+  - if [ -z $DOCKER_IMAGE ]; then
+        docker pull $DOCKER_IMAGE
+        docker run --rm -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/build-wheels.sh
+    fi
 
 deploy:
   provider: pypi
