@@ -44,7 +44,7 @@ env:
     - MULTIDICT_NO_EXTENSIONS=X
 
 before_deploy:
-  - run_docker.sh
+  - ./run_docker.sh
 
 deploy:
   provider: pypi
