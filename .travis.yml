@@ -47,6 +47,7 @@ before_deploy:
   - ./run_docker.sh
 
 deploy:
+  skip_cleanup: true
   provider: pypi
   user: andrew.svetlov
   password:
