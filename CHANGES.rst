@@ -1,4 +1,4 @@
-1.1.0 (XXXX-XX-XX)
+1.1.0 (2016-06-04)
 ------------------
 
 * Don't double-iterate during MultiDict initialization #3
