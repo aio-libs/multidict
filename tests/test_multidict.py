@@ -73,6 +73,15 @@ class _BaseTest(_Root):
         self.assertEqual(sorted(d.items()), [('key', 'value1'),
                                              ('key2', 'value2')])
 
+    def test_instantiate__from_generator(self):
+        d = self.make_dict((str(i), i) for i in range(2))
+
+        self.assertEqual(d, {'0': 0, '1': 1})
+        self.assertEqual(len(d), 2)
+        self.assertEqual(sorted(d.keys()), ['0', '1'])
+        self.assertEqual(sorted(d.values()), [0, 1])
+        self.assertEqual(sorted(d.items()), [('0', 0), ('1', 1)])
+
     def test_getone(self):
         d = self.make_dict([('key', 'value1')], key='value2')
         self.assertEqual(d.getone('key'), 'value1')

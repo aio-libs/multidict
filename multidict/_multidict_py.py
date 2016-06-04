@@ -185,12 +185,13 @@ class MultiDict(_Base, abc.MutableMapping):
             elif hasattr(arg, 'items'):
                 items = arg.items()
             else:
+                items = []
                 for item in arg:
                     if not len(item) == 2:
                         raise TypeError(
                             "{} takes either dict or list of (key, value) "
                             "tuples".format(name))
-                items = arg
+                    items.append(item)
 
             for key, value in items:
                 method(key, value)
