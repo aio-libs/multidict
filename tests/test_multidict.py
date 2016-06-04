@@ -697,6 +697,14 @@ class _CIMutableMultiDictTests(_Root):
         self.assertEqual('val1', d.pop('KEY'))
         self.assertFalse(d)
 
+    def test_pop_lowercase(self):
+        d = self.make_dict()
+        d.add('KEY', 'val1')
+        d.add('key', 'val2')
+
+        self.assertEqual('val1', d.pop('key'))
+        self.assertFalse(d)
+
     def test_pop_default(self):
         d = self.make_dict(OTHER='val')
 

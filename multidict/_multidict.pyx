@@ -376,7 +376,7 @@ cdef class MultiDict(_Base):
         found = False
         for i in range(len(self._items) - 1, -1, -1):
             item = <_Pair>self._items[i]
-            if item._key == key:
+            if item._key == skey:
                 value = item._value
                 del self._items[i]
                 found = True

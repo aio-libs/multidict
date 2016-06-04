@@ -280,6 +280,16 @@ class CIMultiDict(_CIBase, MultiDict):
     def _replace(self, key, value):
         super()._replace(key.upper(), value)
 
+    def pop(self, key, default=_marker):
+        """Remove specified key and return the corresponding value.
+
+        If key is not found, d is returned if given, otherwise
+        KeyError is raised.
+
+        """
+        key = key.upper()
+        return super().pop(key, default)
+
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
         key = key.upper()

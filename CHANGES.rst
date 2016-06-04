@@ -3,6 +3,7 @@
 
 * Don't double-iterate during MultiDict initialization #3
 
+* Fix CIMultiDict.pop: it is case insensitive now #1
 
 1.0.3 (2016-03-24)
 ------------------
