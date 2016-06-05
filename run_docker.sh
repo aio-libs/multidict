@@ -7,7 +7,7 @@ if [ -z $MULTIDICT_NO_EXTENSIONS ]; then
     ls dist
 fi
 
-if [ -n $TRAVIS_TAG ]; then
+if [ ! -z $TRAVIS_TAG ]; then
     echo "Upload dists to PyPI"
     ls
     python -m twine upload dist/* --username andrew.svetlov --password $PYPI_PASSWD
