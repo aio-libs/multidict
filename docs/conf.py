@@ -57,6 +57,13 @@ extensions = [
     'sphinxcontrib.spelling',
 ]
 
+
+try:
+    import sphinxcontrib.spelling
+    extensions.append('sphinxcontrib.spelling')
+except ImportError:
+    pass
+
 intersphinx_mapping = {
     'python': ('http://docs.python.org/3', None)}
 
