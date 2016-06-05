@@ -12,3 +12,8 @@ if [ ! -z $TRAVIS_TAG ]; then
     ls
     python -m twine upload dist/* --username andrew.svetlov --password $PYPI_PASSWD
 fi
+
+
+if [ -z $MULTIDICT_NO_EXTENSIONS ]; then
+    docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 rm -rf /io/dist
+fi
