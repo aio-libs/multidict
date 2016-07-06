@@ -54,7 +54,6 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'alabaster',
-    'sphinxcontrib.spelling',
 ]
 
 
