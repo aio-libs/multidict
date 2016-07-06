@@ -1,9 +1,11 @@
-1.1.0 (2016-06-04)
+1.1.0 (2016-07-06)
 ------------------
 
 * Don't double-iterate during MultiDict initialization #3
 
 * Fix CIMultiDict.pop: it is case insensitive now #1
+
+* Provide manylinux wheels as well as Windows ones
 
 1.0.3 (2016-03-24)
 ------------------

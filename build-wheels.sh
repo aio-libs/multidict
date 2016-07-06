@@ -8,9 +8,11 @@ for PYTHON in ${PYTHON_VERSIONS}; do
 done
 
 # Bundle external shared libraries into the wheels
-# for whl in wheelhouse/*.whl; do
-#     auditwheel repair $whl -w /io/dist/
-# done
+for whl in wheelhouse/*.whl; do
+    if [[ $whl == *"linux_"* ]]; then
+       auditwheel repair $whl -w /io/dist/
+    fi
+done
 
 # Install packages and test
 for PYTHON in ${PYTHON_VERSIONS}; do
