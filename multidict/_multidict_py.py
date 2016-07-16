@@ -8,8 +8,13 @@ class upstr(str):
 
     """Case insensitive str."""
 
+    __is_upstr__ = True
+
     def __new__(cls, val='',
                 encoding=sys.getdefaultencoding(), errors='strict'):
+        if getattr(val, '__is_upstr__', False):
+            # Faster than instance check
+            return val
         if isinstance(val, (bytes, bytearray, memoryview)):
             val = str(val, encoding, errors)
         elif isinstance(val, str):

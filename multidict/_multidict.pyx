@@ -11,16 +11,21 @@ class upstr(str):
 
     """Case insensitive str."""
 
+    __is_upstr__ = True
+
     def __new__(cls, val='',
                 encoding=sys.getdefaultencoding(), errors='strict'):
+        if getattr(val, '__is_upstr__', False):
+            # Faster than instance check
+            return val
         if isinstance(val, (bytes, bytearray, memoryview)):
             val = str(val, encoding, errors)
         elif isinstance(val, str):
             pass
         else:
             val = str(val)
-        val = val.upper()
-        return str.__new__(cls, val)
+        ret = str.__new__(cls, val.upper())
+        return ret
 
     def upper(self):
         return self

@@ -505,7 +505,7 @@ struct __pyx_defaults {
   PyObject *__pyx_arg_encoding;
 };
 
-/* "multidict/_multidict.pyx":47
+/* "multidict/_multidict.pyx":53
  * 
  * 
  * cdef class _Pair:             # <<<<<<<<<<<<<<
@@ -519,7 +519,7 @@ struct __pyx_obj_9multidict_10_multidict__Pair {
 };
 
 
-/* "multidict/_multidict.pyx":66
+/* "multidict/_multidict.pyx":72
  *             return left._key != right._key and left._value != right._value
  * 
  * cdef class _Base:             # <<<<<<<<<<<<<<
@@ -535,7 +535,7 @@ struct __pyx_obj_9multidict_10_multidict__Base {
 };
 
 
-/* "multidict/_multidict.pyx":194
+/* "multidict/_multidict.pyx":200
  * 
  * 
  * cdef class MultiDictProxy(_Base):             # <<<<<<<<<<<<<<
@@ -547,7 +547,7 @@ struct __pyx_obj_9multidict_10_multidict_MultiDictProxy {
 };
 
 
-/* "multidict/_multidict.pyx":213
+/* "multidict/_multidict.pyx":219
  * 
  * 
  * cdef class CIMultiDictProxy(MultiDictProxy):             # <<<<<<<<<<<<<<
@@ -559,7 +559,7 @@ struct __pyx_obj_9multidict_10_multidict_CIMultiDictProxy {
 };
 
 
-/* "multidict/_multidict.pyx":238
+/* "multidict/_multidict.pyx":244
  * 
  * 
  * cdef class MultiDict(_Base):             # <<<<<<<<<<<<<<
@@ -571,7 +571,7 @@ struct __pyx_obj_9multidict_10_multidict_MultiDict {
 };
 
 
-/* "multidict/_multidict.pyx":408
+/* "multidict/_multidict.pyx":414
  * 
  * 
  * cdef class CIMultiDict(MultiDict):             # <<<<<<<<<<<<<<
@@ -583,7 +583,7 @@ struct __pyx_obj_9multidict_10_multidict_CIMultiDict {
 };
 
 
-/* "multidict/_multidict.pyx":421
+/* "multidict/_multidict.pyx":427
  * 
  * 
  * cdef class _ViewBase:             # <<<<<<<<<<<<<<
@@ -596,7 +596,7 @@ struct __pyx_obj_9multidict_10_multidict__ViewBase {
 };
 
 
-/* "multidict/_multidict.pyx":432
+/* "multidict/_multidict.pyx":438
  * 
  * 
  * cdef class _ViewBaseSet(_ViewBase):             # <<<<<<<<<<<<<<
@@ -608,7 +608,7 @@ struct __pyx_obj_9multidict_10_multidict__ViewBaseSet {
 };
 
 
-/* "multidict/_multidict.pyx":497
+/* "multidict/_multidict.pyx":503
  * 
  * 
  * cdef class _ItemsIter:             # <<<<<<<<<<<<<<
@@ -623,7 +623,7 @@ struct __pyx_obj_9multidict_10_multidict__ItemsIter {
 };
 
 
-/* "multidict/_multidict.pyx":518
+/* "multidict/_multidict.pyx":524
  * 
  * 
  * cdef class _ItemsView(_ViewBaseSet):             # <<<<<<<<<<<<<<
@@ -635,7 +635,7 @@ struct __pyx_obj_9multidict_10_multidict__ItemsView {
 };
 
 
-/* "multidict/_multidict.pyx":553
+/* "multidict/_multidict.pyx":559
  * 
  * 
  * cdef class _ValuesIter:             # <<<<<<<<<<<<<<
@@ -650,7 +650,7 @@ struct __pyx_obj_9multidict_10_multidict__ValuesIter {
 };
 
 
-/* "multidict/_multidict.pyx":574
+/* "multidict/_multidict.pyx":580
  * 
  * 
  * cdef class _ValuesView(_ViewBase):             # <<<<<<<<<<<<<<
@@ -662,7 +662,7 @@ struct __pyx_obj_9multidict_10_multidict__ValuesView {
 };
 
 
-/* "multidict/_multidict.pyx":600
+/* "multidict/_multidict.pyx":606
  * 
  * 
  * cdef class _KeysIter:             # <<<<<<<<<<<<<<
@@ -677,7 +677,7 @@ struct __pyx_obj_9multidict_10_multidict__KeysIter {
 };
 
 
-/* "multidict/_multidict.pyx":621
+/* "multidict/_multidict.pyx":627
  * 
  * 
  * cdef class _KeysView(_ViewBaseSet):             # <<<<<<<<<<<<<<
@@ -690,7 +690,7 @@ struct __pyx_obj_9multidict_10_multidict__KeysView {
 
 
 
-/* "multidict/_multidict.pyx":66
+/* "multidict/_multidict.pyx":72
  *             return left._key != right._key and left._value != right._value
  * 
  * cdef class _Base:             # <<<<<<<<<<<<<<
@@ -709,7 +709,7 @@ struct __pyx_vtabstruct_9multidict_10_multidict__Base {
 static struct __pyx_vtabstruct_9multidict_10_multidict__Base *__pyx_vtabptr_9multidict_10_multidict__Base;
 
 
-/* "multidict/_multidict.pyx":194
+/* "multidict/_multidict.pyx":200
  * 
  * 
  * cdef class MultiDictProxy(_Base):             # <<<<<<<<<<<<<<
@@ -723,7 +723,7 @@ struct __pyx_vtabstruct_9multidict_10_multidict_MultiDictProxy {
 static struct __pyx_vtabstruct_9multidict_10_multidict_MultiDictProxy *__pyx_vtabptr_9multidict_10_multidict_MultiDictProxy;
 
 
-/* "multidict/_multidict.pyx":213
+/* "multidict/_multidict.pyx":219
  * 
  * 
  * cdef class CIMultiDictProxy(MultiDictProxy):             # <<<<<<<<<<<<<<
@@ -737,7 +737,7 @@ struct __pyx_vtabstruct_9multidict_10_multidict_CIMultiDictProxy {
 static struct __pyx_vtabstruct_9multidict_10_multidict_CIMultiDictProxy *__pyx_vtabptr_9multidict_10_multidict_CIMultiDictProxy;
 
 
-/* "multidict/_multidict.pyx":238
+/* "multidict/_multidict.pyx":244
  * 
  * 
  * cdef class MultiDict(_Base):             # <<<<<<<<<<<<<<
@@ -755,7 +755,7 @@ struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict {
 static struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *__pyx_vtabptr_9multidict_10_multidict_MultiDict;
 
 
-/* "multidict/_multidict.pyx":408
+/* "multidict/_multidict.pyx":414
  * 
  * 
  * cdef class CIMultiDict(MultiDict):             # <<<<<<<<<<<<<<
@@ -862,6 +862,12 @@ static int __Pyx_ParseOptionalKeywords(PyObject *kwds, PyObject **argnames[],\
 /* RaiseArgTupleInvalid.proto */
 static void __Pyx_RaiseArgtupleInvalid(const char* func_name, int exact,
     Py_ssize_t num_min, Py_ssize_t num_max, Py_ssize_t num_found);
+
+/* GetAttr.proto */
+static CYTHON_INLINE PyObject *__Pyx_GetAttr(PyObject *, PyObject *);
+
+/* GetAttr3.proto */
+static CYTHON_INLINE PyObject *__Pyx_GetAttr3(PyObject *, PyObject *, PyObject *);
 
 /* PyObjectCall.proto */
 #if CYTHON_COMPILING_IN_CPYTHON
@@ -1253,6 +1259,7 @@ static const char __pyx_k_new[] = "__new__";
 static const char __pyx_k_pop[] = "pop";
 static const char __pyx_k_r_2[] = "{!r}";
 static const char __pyx_k_r_r[] = "{!r}: {!r}";
+static const char __pyx_k_ret[] = "ret";
 static const char __pyx_k_sys[] = "sys";
 static const char __pyx_k_val[] = "val";
 static const char __pyx_k_join[] = "join";
@@ -1284,6 +1291,7 @@ static const char __pyx_k_Iterable[] = "Iterable";
 static const char __pyx_k_KeyError[] = "KeyError";
 static const char __pyx_k_KeysView[] = "KeysView";
 static const char __pyx_k_encoding[] = "encoding";
+static const char __pyx_k_is_upstr[] = "__is_upstr__";
 static const char __pyx_k_operator[] = "operator";
 static const char __pyx_k_qualname[] = "__qualname__";
 static const char __pyx_k_register[] = "register";
@@ -1348,6 +1356,7 @@ static PyObject *__pyx_n_s_get;
 static PyObject *__pyx_n_s_getdefaultencoding;
 static PyObject *__pyx_kp_s_home_andrew_projects_multidict;
 static PyObject *__pyx_n_s_import;
+static PyObject *__pyx_n_s_is_upstr;
 static PyObject *__pyx_n_s_itemgetter;
 static PyObject *__pyx_n_s_items;
 static PyObject *__pyx_n_s_join;
@@ -1372,6 +1381,7 @@ static PyObject *__pyx_kp_s_r_2;
 static PyObject *__pyx_kp_s_r_r;
 static PyObject *__pyx_n_s_range;
 static PyObject *__pyx_n_s_register;
+static PyObject *__pyx_n_s_ret;
 static PyObject *__pyx_n_s_self;
 static PyObject *__pyx_n_s_strict;
 static PyObject *__pyx_n_s_sys;
@@ -1475,12 +1485,12 @@ static PyObject *__pyx_tuple__11;
 static PyObject *__pyx_codeobj__10;
 static PyObject *__pyx_codeobj__12;
 
-/* "multidict/_multidict.pyx":14
- *     """Case insensitive str."""
+/* "multidict/_multidict.pyx":16
+ *     __is_upstr__ = True
  * 
  *     def __new__(cls, val='',             # <<<<<<<<<<<<<<
  *                 encoding=sys.getdefaultencoding(), errors='strict'):
- *         if isinstance(val, (bytes, bytearray, memoryview)):
+ *         if getattr(val, '__is_upstr__', False):
  */
 
 static PyObject *__pyx_pf_9multidict_10_multidict_5upstr_4__defaults__(CYTHON_UNUSED PyObject *__pyx_self) {
@@ -1490,7 +1500,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr_4__defaults__(CYTHON_UN
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("__defaults__", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyTuple_New(3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 14, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(((PyObject*)__pyx_kp_s_));
   __Pyx_GIVEREF(((PyObject*)__pyx_kp_s_));
@@ -1501,7 +1511,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr_4__defaults__(CYTHON_UN
   __Pyx_INCREF(((PyObject*)__pyx_n_s_strict));
   __Pyx_GIVEREF(((PyObject*)__pyx_n_s_strict));
   PyTuple_SET_ITEM(__pyx_t_1, 2, ((PyObject*)__pyx_n_s_strict));
-  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 14, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_1);
@@ -1576,7 +1586,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5upstr_1__new__(PyObject *__py
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__new__") < 0)) __PYX_ERR(0, 14, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__new__") < 0)) __PYX_ERR(0, 16, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -1595,7 +1605,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5upstr_1__new__(PyObject *__py
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__new__", 0, 1, 4, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 14, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__new__", 0, 1, 4, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 16, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict.upstr.__new__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -1609,6 +1619,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5upstr_1__new__(PyObject *__py
 }
 
 static PyObject *__pyx_pf_9multidict_10_multidict_5upstr___new__(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_cls, PyObject *__pyx_v_val, PyObject *__pyx_v_encoding, PyObject *__pyx_v_errors) {
+  PyObject *__pyx_v_ret = NULL;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -1617,14 +1628,49 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr___new__(CYTHON_UNUSED P
   int __pyx_t_4;
   PyObject *__pyx_t_5 = NULL;
   PyObject *__pyx_t_6 = NULL;
-  Py_ssize_t __pyx_t_7;
+  PyObject *__pyx_t_7 = NULL;
   PyObject *__pyx_t_8 = NULL;
+  Py_ssize_t __pyx_t_9;
   __Pyx_RefNannySetupContext("__new__", 0);
   __Pyx_INCREF(__pyx_v_val);
 
-  /* "multidict/_multidict.pyx":16
+  /* "multidict/_multidict.pyx":18
  *     def __new__(cls, val='',
  *                 encoding=sys.getdefaultencoding(), errors='strict'):
+ *         if getattr(val, '__is_upstr__', False):             # <<<<<<<<<<<<<<
+ *             # Faster than instance check
+ *             return val
+ */
+  __pyx_t_1 = __Pyx_GetAttr3(__pyx_v_val, __pyx_n_s_is_upstr, Py_False); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 18, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 18, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (__pyx_t_2) {
+
+    /* "multidict/_multidict.pyx":20
+ *         if getattr(val, '__is_upstr__', False):
+ *             # Faster than instance check
+ *             return val             # <<<<<<<<<<<<<<
+ *         if isinstance(val, (bytes, bytearray, memoryview)):
+ *             val = str(val, encoding, errors)
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_INCREF(__pyx_v_val);
+    __pyx_r = __pyx_v_val;
+    goto __pyx_L0;
+
+    /* "multidict/_multidict.pyx":18
+ *     def __new__(cls, val='',
+ *                 encoding=sys.getdefaultencoding(), errors='strict'):
+ *         if getattr(val, '__is_upstr__', False):             # <<<<<<<<<<<<<<
+ *             # Faster than instance check
+ *             return val
+ */
+  }
+
+  /* "multidict/_multidict.pyx":21
+ *             # Faster than instance check
+ *             return val
  *         if isinstance(val, (bytes, bytearray, memoryview)):             # <<<<<<<<<<<<<<
  *             val = str(val, encoding, errors)
  *         elif isinstance(val, str):
@@ -1636,31 +1682,31 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr___new__(CYTHON_UNUSED P
   if (!__pyx_t_4) {
   } else {
     __pyx_t_2 = __pyx_t_4;
-    goto __pyx_L4_bool_binop_done;
+    goto __pyx_L5_bool_binop_done;
   }
   __pyx_t_4 = PyByteArray_Check(__pyx_v_val); 
   __pyx_t_3 = (__pyx_t_4 != 0);
   if (!__pyx_t_3) {
   } else {
     __pyx_t_2 = __pyx_t_3;
-    goto __pyx_L4_bool_binop_done;
+    goto __pyx_L5_bool_binop_done;
   }
   __pyx_t_3 = PyObject_IsInstance(__pyx_v_val, __pyx_t_1); 
   __pyx_t_4 = (__pyx_t_3 != 0);
   __pyx_t_2 = __pyx_t_4;
-  __pyx_L4_bool_binop_done:;
+  __pyx_L5_bool_binop_done:;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_4 = (__pyx_t_2 != 0);
   if (__pyx_t_4) {
 
-    /* "multidict/_multidict.pyx":17
- *                 encoding=sys.getdefaultencoding(), errors='strict'):
+    /* "multidict/_multidict.pyx":22
+ *             return val
  *         if isinstance(val, (bytes, bytearray, memoryview)):
  *             val = str(val, encoding, errors)             # <<<<<<<<<<<<<<
  *         elif isinstance(val, str):
  *             pass
  */
-    __pyx_t_1 = PyTuple_New(3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 17, __pyx_L1_error)
+    __pyx_t_1 = PyTuple_New(3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 22, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_INCREF(__pyx_v_val);
     __Pyx_GIVEREF(__pyx_v_val);
@@ -1671,23 +1717,23 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr___new__(CYTHON_UNUSED P
     __Pyx_INCREF(__pyx_v_errors);
     __Pyx_GIVEREF(__pyx_v_errors);
     PyTuple_SET_ITEM(__pyx_t_1, 2, __pyx_v_errors);
-    __pyx_t_5 = __Pyx_PyObject_Call(((PyObject *)(&PyString_Type)), __pyx_t_1, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 17, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_PyObject_Call(((PyObject *)(&PyString_Type)), __pyx_t_1, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 22, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF_SET(__pyx_v_val, __pyx_t_5);
     __pyx_t_5 = 0;
 
-    /* "multidict/_multidict.pyx":16
- *     def __new__(cls, val='',
- *                 encoding=sys.getdefaultencoding(), errors='strict'):
+    /* "multidict/_multidict.pyx":21
+ *             # Faster than instance check
+ *             return val
  *         if isinstance(val, (bytes, bytearray, memoryview)):             # <<<<<<<<<<<<<<
  *             val = str(val, encoding, errors)
  *         elif isinstance(val, str):
  */
-    goto __pyx_L3;
+    goto __pyx_L4;
   }
 
-  /* "multidict/_multidict.pyx":18
+  /* "multidict/_multidict.pyx":23
  *         if isinstance(val, (bytes, bytearray, memoryview)):
  *             val = str(val, encoding, errors)
  *         elif isinstance(val, str):             # <<<<<<<<<<<<<<
@@ -1697,107 +1743,107 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr___new__(CYTHON_UNUSED P
   __pyx_t_4 = PyString_Check(__pyx_v_val); 
   __pyx_t_2 = (__pyx_t_4 != 0);
   if (__pyx_t_2) {
-    goto __pyx_L3;
+    goto __pyx_L4;
   }
 
-  /* "multidict/_multidict.pyx":21
+  /* "multidict/_multidict.pyx":26
  *             pass
  *         else:
  *             val = str(val)             # <<<<<<<<<<<<<<
- *         val = val.upper()
- *         return str.__new__(cls, val)
+ *         ret = str.__new__(cls, val.upper())
+ *         # ret.__is_upstr__ = True
  */
   /*else*/ {
-    __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 21, __pyx_L1_error)
+    __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 26, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_INCREF(__pyx_v_val);
     __Pyx_GIVEREF(__pyx_v_val);
     PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_v_val);
-    __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)(&PyString_Type)), __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 21, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)(&PyString_Type)), __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 26, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF_SET(__pyx_v_val, __pyx_t_1);
     __pyx_t_1 = 0;
   }
-  __pyx_L3:;
+  __pyx_L4:;
 
-  /* "multidict/_multidict.pyx":22
+  /* "multidict/_multidict.pyx":27
  *         else:
  *             val = str(val)
- *         val = val.upper()             # <<<<<<<<<<<<<<
- *         return str.__new__(cls, val)
- * 
+ *         ret = str.__new__(cls, val.upper())             # <<<<<<<<<<<<<<
+ *         # ret.__is_upstr__ = True
+ *         return ret
  */
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_val, __pyx_n_s_upper); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 22, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(((PyObject *)(&PyString_Type)), __pyx_n_s_new); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 27, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = NULL;
-  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_5))) {
-    __pyx_t_6 = PyMethod_GET_SELF(__pyx_t_5);
-    if (likely(__pyx_t_6)) {
-      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
-      __Pyx_INCREF(__pyx_t_6);
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_val, __pyx_n_s_upper); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 27, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_7);
+  __pyx_t_8 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_7))) {
+    __pyx_t_8 = PyMethod_GET_SELF(__pyx_t_7);
+    if (likely(__pyx_t_8)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_7);
+      __Pyx_INCREF(__pyx_t_8);
       __Pyx_INCREF(function);
-      __Pyx_DECREF_SET(__pyx_t_5, function);
+      __Pyx_DECREF_SET(__pyx_t_7, function);
     }
   }
-  if (__pyx_t_6) {
-    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_6); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 22, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  if (__pyx_t_8) {
+    __pyx_t_6 = __Pyx_PyObject_CallOneArg(__pyx_t_7, __pyx_t_8); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 27, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
   } else {
-    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_5); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 22, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyObject_CallNoArg(__pyx_t_7); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 27, __pyx_L1_error)
   }
+  __Pyx_GOTREF(__pyx_t_6);
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  __pyx_t_7 = NULL;
+  __pyx_t_9 = 0;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_5))) {
+    __pyx_t_7 = PyMethod_GET_SELF(__pyx_t_5);
+    if (likely(__pyx_t_7)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
+      __Pyx_INCREF(__pyx_t_7);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_5, function);
+      __pyx_t_9 = 1;
+    }
+  }
+  __pyx_t_8 = PyTuple_New(2+__pyx_t_9); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 27, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_8);
+  if (__pyx_t_7) {
+    __Pyx_GIVEREF(__pyx_t_7); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_7); __pyx_t_7 = NULL;
+  }
+  __Pyx_INCREF(__pyx_v_cls);
+  __Pyx_GIVEREF(__pyx_v_cls);
+  PyTuple_SET_ITEM(__pyx_t_8, 0+__pyx_t_9, __pyx_v_cls);
+  __Pyx_GIVEREF(__pyx_t_6);
+  PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_9, __pyx_t_6);
+  __pyx_t_6 = 0;
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 27, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __Pyx_DECREF_SET(__pyx_v_val, __pyx_t_1);
+  __pyx_v_ret = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":23
- *             val = str(val)
- *         val = val.upper()
- *         return str.__new__(cls, val)             # <<<<<<<<<<<<<<
+  /* "multidict/_multidict.pyx":29
+ *         ret = str.__new__(cls, val.upper())
+ *         # ret.__is_upstr__ = True
+ *         return ret             # <<<<<<<<<<<<<<
  * 
  *     def upper(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(((PyObject *)(&PyString_Type)), __pyx_n_s_new); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 23, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = NULL;
-  __pyx_t_7 = 0;
-  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_5))) {
-    __pyx_t_6 = PyMethod_GET_SELF(__pyx_t_5);
-    if (likely(__pyx_t_6)) {
-      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
-      __Pyx_INCREF(__pyx_t_6);
-      __Pyx_INCREF(function);
-      __Pyx_DECREF_SET(__pyx_t_5, function);
-      __pyx_t_7 = 1;
-    }
-  }
-  __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 23, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_8);
-  if (__pyx_t_6) {
-    __Pyx_GIVEREF(__pyx_t_6); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_6); __pyx_t_6 = NULL;
-  }
-  __Pyx_INCREF(__pyx_v_cls);
-  __Pyx_GIVEREF(__pyx_v_cls);
-  PyTuple_SET_ITEM(__pyx_t_8, 0+__pyx_t_7, __pyx_v_cls);
-  __Pyx_INCREF(__pyx_v_val);
-  __Pyx_GIVEREF(__pyx_v_val);
-  PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_7, __pyx_v_val);
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 23, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_r = __pyx_t_1;
-  __pyx_t_1 = 0;
+  __Pyx_INCREF(__pyx_v_ret);
+  __pyx_r = __pyx_v_ret;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":14
- *     """Case insensitive str."""
+  /* "multidict/_multidict.pyx":16
+ *     __is_upstr__ = True
  * 
  *     def __new__(cls, val='',             # <<<<<<<<<<<<<<
  *                 encoding=sys.getdefaultencoding(), errors='strict'):
- *         if isinstance(val, (bytes, bytearray, memoryview)):
+ *         if getattr(val, '__is_upstr__', False):
  */
 
   /* function exit code */
@@ -1805,18 +1851,20 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr___new__(CYTHON_UNUSED P
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_5);
   __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_8);
   __Pyx_AddTraceback("multidict._multidict.upstr.__new__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_ret);
   __Pyx_XDECREF(__pyx_v_val);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":25
- *         return str.__new__(cls, val)
+/* "multidict/_multidict.pyx":31
+ *         return ret
  * 
  *     def upper(self):             # <<<<<<<<<<<<<<
  *         return self
@@ -1842,7 +1890,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr_2upper(CYTHON_UNUSED Py
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("upper", 0);
 
-  /* "multidict/_multidict.pyx":26
+  /* "multidict/_multidict.pyx":32
  * 
  *     def upper(self):
  *         return self             # <<<<<<<<<<<<<<
@@ -1854,8 +1902,8 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr_2upper(CYTHON_UNUSED Py
   __pyx_r = __pyx_v_self;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":25
- *         return str.__new__(cls, val)
+  /* "multidict/_multidict.pyx":31
+ *         return ret
  * 
  *     def upper(self):             # <<<<<<<<<<<<<<
  *         return self
@@ -1869,7 +1917,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5upstr_2upper(CYTHON_UNUSED Py
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":29
+/* "multidict/_multidict.pyx":35
  * 
  * 
  * cdef _eq(self, other):             # <<<<<<<<<<<<<<
@@ -1889,7 +1937,7 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
   int __pyx_t_5;
   __Pyx_RefNannySetupContext("_eq", 0);
 
-  /* "multidict/_multidict.pyx":34
+  /* "multidict/_multidict.pyx":40
  *     cdef int is_left_base, is_right_base
  * 
  *     is_left_base = isinstance(self, _Base)             # <<<<<<<<<<<<<<
@@ -1899,7 +1947,7 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
   __pyx_t_1 = __Pyx_TypeCheck(__pyx_v_self, __pyx_ptype_9multidict_10_multidict__Base); 
   __pyx_v_is_left_base = __pyx_t_1;
 
-  /* "multidict/_multidict.pyx":35
+  /* "multidict/_multidict.pyx":41
  * 
  *     is_left_base = isinstance(self, _Base)
  *     is_right_base = isinstance(other, _Base)             # <<<<<<<<<<<<<<
@@ -1909,7 +1957,7 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
   __pyx_t_1 = __Pyx_TypeCheck(__pyx_v_other, __pyx_ptype_9multidict_10_multidict__Base); 
   __pyx_v_is_right_base = __pyx_t_1;
 
-  /* "multidict/_multidict.pyx":37
+  /* "multidict/_multidict.pyx":43
  *     is_right_base = isinstance(other, _Base)
  * 
  *     if is_left_base and is_right_base:             # <<<<<<<<<<<<<<
@@ -1927,7 +1975,7 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
   __pyx_L4_bool_binop_done:;
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":38
+    /* "multidict/_multidict.pyx":44
  * 
  *     if is_left_base and is_right_base:
  *         return (<_Base>self)._items == (<_Base>other)._items             # <<<<<<<<<<<<<<
@@ -1935,12 +1983,12 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
  *         return (<_Base>self)._eq_to_mapping(other)
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_3 = PyObject_RichCompare(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self)->_items, ((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_other)->_items, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 38, __pyx_L1_error)
+    __pyx_t_3 = PyObject_RichCompare(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self)->_items, ((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_other)->_items, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 44, __pyx_L1_error)
     __pyx_r = __pyx_t_3;
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":37
+    /* "multidict/_multidict.pyx":43
  *     is_right_base = isinstance(other, _Base)
  * 
  *     if is_left_base and is_right_base:             # <<<<<<<<<<<<<<
@@ -1949,7 +1997,7 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
  */
   }
 
-  /* "multidict/_multidict.pyx":39
+  /* "multidict/_multidict.pyx":45
  *     if is_left_base and is_right_base:
  *         return (<_Base>self)._items == (<_Base>other)._items
  *     elif is_left_base and isinstance(other, abc.Mapping):             # <<<<<<<<<<<<<<
@@ -1962,19 +2010,19 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
     __pyx_t_1 = __pyx_t_2;
     goto __pyx_L6_bool_binop_done;
   }
-  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 45, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Mapping); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Mapping); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 45, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_4); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 39, __pyx_L1_error)
+  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_4); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 45, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_5 = (__pyx_t_2 != 0);
   __pyx_t_1 = __pyx_t_5;
   __pyx_L6_bool_binop_done:;
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":40
+    /* "multidict/_multidict.pyx":46
  *         return (<_Base>self)._items == (<_Base>other)._items
  *     elif is_left_base and isinstance(other, abc.Mapping):
  *         return (<_Base>self)._eq_to_mapping(other)             # <<<<<<<<<<<<<<
@@ -1982,13 +2030,13 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
  *         return (<_Base>other)._eq_to_mapping(self)
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_4 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self)->__pyx_vtab)->_eq_to_mapping(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 40, __pyx_L1_error)
+    __pyx_t_4 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self)->__pyx_vtab)->_eq_to_mapping(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 46, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __pyx_r = __pyx_t_4;
     __pyx_t_4 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":39
+    /* "multidict/_multidict.pyx":45
  *     if is_left_base and is_right_base:
  *         return (<_Base>self)._items == (<_Base>other)._items
  *     elif is_left_base and isinstance(other, abc.Mapping):             # <<<<<<<<<<<<<<
@@ -1997,7 +2045,7 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
  */
   }
 
-  /* "multidict/_multidict.pyx":41
+  /* "multidict/_multidict.pyx":47
  *     elif is_left_base and isinstance(other, abc.Mapping):
  *         return (<_Base>self)._eq_to_mapping(other)
  *     elif is_right_base and isinstance(self, abc.Mapping):             # <<<<<<<<<<<<<<
@@ -2010,19 +2058,19 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
     __pyx_t_1 = __pyx_t_5;
     goto __pyx_L8_bool_binop_done;
   }
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 41, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_Mapping); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 41, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_Mapping); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_5 = PyObject_IsInstance(__pyx_v_self, __pyx_t_3); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 41, __pyx_L1_error)
+  __pyx_t_5 = PyObject_IsInstance(__pyx_v_self, __pyx_t_3); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 47, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_2 = (__pyx_t_5 != 0);
   __pyx_t_1 = __pyx_t_2;
   __pyx_L8_bool_binop_done:;
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":42
+    /* "multidict/_multidict.pyx":48
  *         return (<_Base>self)._eq_to_mapping(other)
  *     elif is_right_base and isinstance(self, abc.Mapping):
  *         return (<_Base>other)._eq_to_mapping(self)             # <<<<<<<<<<<<<<
@@ -2030,13 +2078,13 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
  *         return NotImplemented
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_other)->__pyx_vtab)->_eq_to_mapping(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_other), __pyx_v_self); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 42, __pyx_L1_error)
+    __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_other)->__pyx_vtab)->_eq_to_mapping(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_other), __pyx_v_self); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 48, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __pyx_r = __pyx_t_3;
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":41
+    /* "multidict/_multidict.pyx":47
  *     elif is_left_base and isinstance(other, abc.Mapping):
  *         return (<_Base>self)._eq_to_mapping(other)
  *     elif is_right_base and isinstance(self, abc.Mapping):             # <<<<<<<<<<<<<<
@@ -2045,7 +2093,7 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
  */
   }
 
-  /* "multidict/_multidict.pyx":44
+  /* "multidict/_multidict.pyx":50
  *         return (<_Base>other)._eq_to_mapping(self)
  *     else:
  *         return NotImplemented             # <<<<<<<<<<<<<<
@@ -2059,7 +2107,7 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
     goto __pyx_L0;
   }
 
-  /* "multidict/_multidict.pyx":29
+  /* "multidict/_multidict.pyx":35
  * 
  * 
  * cdef _eq(self, other):             # <<<<<<<<<<<<<<
@@ -2079,7 +2127,7 @@ static PyObject *__pyx_f_9multidict_10_multidict__eq(PyObject *__pyx_v_self, PyO
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":51
+/* "multidict/_multidict.pyx":57
  *     cdef object _value
  * 
  *     def __cinit__(self, key, value):             # <<<<<<<<<<<<<<
@@ -2115,11 +2163,11 @@ static int __pyx_pw_9multidict_10_multidict_5_Pair_1__cinit__(PyObject *__pyx_v_
         case  1:
         if (likely((values[1] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_value)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, 1); __PYX_ERR(0, 51, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, 1); __PYX_ERR(0, 57, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 51, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 57, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -2132,7 +2180,7 @@ static int __pyx_pw_9multidict_10_multidict_5_Pair_1__cinit__(PyObject *__pyx_v_
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 51, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 57, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict._Pair.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2150,7 +2198,7 @@ static int __pyx_pf_9multidict_10_multidict_5_Pair___cinit__(struct __pyx_obj_9m
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "multidict/_multidict.pyx":52
+  /* "multidict/_multidict.pyx":58
  * 
  *     def __cinit__(self, key, value):
  *         self._key = key             # <<<<<<<<<<<<<<
@@ -2163,7 +2211,7 @@ static int __pyx_pf_9multidict_10_multidict_5_Pair___cinit__(struct __pyx_obj_9m
   __Pyx_DECREF(__pyx_v_self->_key);
   __pyx_v_self->_key = __pyx_v_key;
 
-  /* "multidict/_multidict.pyx":53
+  /* "multidict/_multidict.pyx":59
  *     def __cinit__(self, key, value):
  *         self._key = key
  *         self._value = value             # <<<<<<<<<<<<<<
@@ -2176,7 +2224,7 @@ static int __pyx_pf_9multidict_10_multidict_5_Pair___cinit__(struct __pyx_obj_9m
   __Pyx_DECREF(__pyx_v_self->_value);
   __pyx_v_self->_value = __pyx_v_value;
 
-  /* "multidict/_multidict.pyx":51
+  /* "multidict/_multidict.pyx":57
  *     cdef object _value
  * 
  *     def __cinit__(self, key, value):             # <<<<<<<<<<<<<<
@@ -2190,7 +2238,7 @@ static int __pyx_pf_9multidict_10_multidict_5_Pair___cinit__(struct __pyx_obj_9m
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":55
+/* "multidict/_multidict.pyx":61
  *         self._value = value
  * 
  *     def __richcmp__(self, other, op):             # <<<<<<<<<<<<<<
@@ -2205,7 +2253,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5_Pair_3__richcmp__(PyObject *
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__richcmp__ (wrapper)", 0);
-  __pyx_v_op = __Pyx_PyInt_From_int(__pyx_arg_op); if (unlikely(!__pyx_v_op)) __PYX_ERR(0, 55, __pyx_L3_error)
+  __pyx_v_op = __Pyx_PyInt_From_int(__pyx_arg_op); if (unlikely(!__pyx_v_op)) __PYX_ERR(0, 61, __pyx_L3_error)
   __Pyx_GOTREF(__pyx_v_op);
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -2233,7 +2281,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
   PyObject *__pyx_t_5 = NULL;
   __Pyx_RefNannySetupContext("__richcmp__", 0);
 
-  /* "multidict/_multidict.pyx":57
+  /* "multidict/_multidict.pyx":63
  *     def __richcmp__(self, other, op):
  *         cdef _Pair left, right
  *         if not isinstance(self, _Pair) or not isinstance(other, _Pair):             # <<<<<<<<<<<<<<
@@ -2253,7 +2301,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
   __pyx_L4_bool_binop_done:;
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":58
+    /* "multidict/_multidict.pyx":64
  *         cdef _Pair left, right
  *         if not isinstance(self, _Pair) or not isinstance(other, _Pair):
  *             return NotImplemented             # <<<<<<<<<<<<<<
@@ -2265,7 +2313,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
     __pyx_r = __pyx_builtin_NotImplemented;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":57
+    /* "multidict/_multidict.pyx":63
  *     def __richcmp__(self, other, op):
  *         cdef _Pair left, right
  *         if not isinstance(self, _Pair) or not isinstance(other, _Pair):             # <<<<<<<<<<<<<<
@@ -2274,7 +2322,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
  */
   }
 
-  /* "multidict/_multidict.pyx":59
+  /* "multidict/_multidict.pyx":65
  *         if not isinstance(self, _Pair) or not isinstance(other, _Pair):
  *             return NotImplemented
  *         left = <_Pair>self             # <<<<<<<<<<<<<<
@@ -2286,7 +2334,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
   __pyx_v_left = ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_4);
   __pyx_t_4 = 0;
 
-  /* "multidict/_multidict.pyx":60
+  /* "multidict/_multidict.pyx":66
  *             return NotImplemented
  *         left = <_Pair>self
  *         right = <_Pair>other             # <<<<<<<<<<<<<<
@@ -2298,20 +2346,20 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
   __pyx_v_right = ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_4);
   __pyx_t_4 = 0;
 
-  /* "multidict/_multidict.pyx":61
+  /* "multidict/_multidict.pyx":67
  *         left = <_Pair>self
  *         right = <_Pair>other
  *         if op == 2:  # ==             # <<<<<<<<<<<<<<
  *             return left._key == right._key and left._value == right._value
  *         elif op == 3:  # !=
  */
-  __pyx_t_4 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_2, 2, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 61, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_2, 2, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 61, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 67, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":62
+    /* "multidict/_multidict.pyx":68
  *         right = <_Pair>other
  *         if op == 2:  # ==
  *             return left._key == right._key and left._value == right._value             # <<<<<<<<<<<<<<
@@ -2319,8 +2367,8 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
  *             return left._key != right._key and left._value != right._value
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_5 = PyObject_RichCompare(__pyx_v_left->_key, __pyx_v_right->_key, Py_EQ); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 62, __pyx_L1_error)
-    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 62, __pyx_L1_error)
+    __pyx_t_5 = PyObject_RichCompare(__pyx_v_left->_key, __pyx_v_right->_key, Py_EQ); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 68, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 68, __pyx_L1_error)
     if (__pyx_t_1) {
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     } else {
@@ -2329,7 +2377,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       goto __pyx_L7_bool_binop_done;
     }
-    __pyx_t_5 = PyObject_RichCompare(__pyx_v_left->_value, __pyx_v_right->_value, Py_EQ); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 62, __pyx_L1_error)
+    __pyx_t_5 = PyObject_RichCompare(__pyx_v_left->_value, __pyx_v_right->_value, Py_EQ); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 68, __pyx_L1_error)
     __Pyx_INCREF(__pyx_t_5);
     __pyx_t_4 = __pyx_t_5;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -2338,7 +2386,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
     __pyx_t_4 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":61
+    /* "multidict/_multidict.pyx":67
  *         left = <_Pair>self
  *         right = <_Pair>other
  *         if op == 2:  # ==             # <<<<<<<<<<<<<<
@@ -2347,20 +2395,20 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
  */
   }
 
-  /* "multidict/_multidict.pyx":63
+  /* "multidict/_multidict.pyx":69
  *         if op == 2:  # ==
  *             return left._key == right._key and left._value == right._value
  *         elif op == 3:  # !=             # <<<<<<<<<<<<<<
  *             return left._key != right._key and left._value != right._value
  * 
  */
-  __pyx_t_4 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_3, 3, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 63, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_3, 3, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 69, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 63, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 69, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":64
+    /* "multidict/_multidict.pyx":70
  *             return left._key == right._key and left._value == right._value
  *         elif op == 3:  # !=
  *             return left._key != right._key and left._value != right._value             # <<<<<<<<<<<<<<
@@ -2368,8 +2416,8 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
  * cdef class _Base:
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_5 = PyObject_RichCompare(__pyx_v_left->_key, __pyx_v_right->_key, Py_NE); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 64, __pyx_L1_error)
-    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 64, __pyx_L1_error)
+    __pyx_t_5 = PyObject_RichCompare(__pyx_v_left->_key, __pyx_v_right->_key, Py_NE); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 70, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 70, __pyx_L1_error)
     if (__pyx_t_1) {
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     } else {
@@ -2378,7 +2426,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       goto __pyx_L9_bool_binop_done;
     }
-    __pyx_t_5 = PyObject_RichCompare(__pyx_v_left->_value, __pyx_v_right->_value, Py_NE); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 64, __pyx_L1_error)
+    __pyx_t_5 = PyObject_RichCompare(__pyx_v_left->_value, __pyx_v_right->_value, Py_NE); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 70, __pyx_L1_error)
     __Pyx_INCREF(__pyx_t_5);
     __pyx_t_4 = __pyx_t_5;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -2387,7 +2435,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
     __pyx_t_4 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":63
+    /* "multidict/_multidict.pyx":69
  *         if op == 2:  # ==
  *             return left._key == right._key and left._value == right._value
  *         elif op == 3:  # !=             # <<<<<<<<<<<<<<
@@ -2396,7 +2444,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
  */
   }
 
-  /* "multidict/_multidict.pyx":55
+  /* "multidict/_multidict.pyx":61
  *         self._value = value
  * 
  *     def __richcmp__(self, other, op):             # <<<<<<<<<<<<<<
@@ -2420,7 +2468,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Pair_2__richcmp__(PyObject *
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":72
+/* "multidict/_multidict.pyx":78
  *     cdef object marker
  * 
  *     def __cinit__(self):             # <<<<<<<<<<<<<<
@@ -2450,14 +2498,14 @@ static int __pyx_pf_9multidict_10_multidict_5_Base___cinit__(struct __pyx_obj_9m
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "multidict/_multidict.pyx":73
+  /* "multidict/_multidict.pyx":79
  * 
  *     def __cinit__(self):
  *         self._upstr = upstr             # <<<<<<<<<<<<<<
  *         self.marker = _marker
  * 
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_upstr); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_upstr); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 79, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
   __Pyx_GOTREF(__pyx_v_self->_upstr);
@@ -2465,14 +2513,14 @@ static int __pyx_pf_9multidict_10_multidict_5_Base___cinit__(struct __pyx_obj_9m
   __pyx_v_self->_upstr = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":74
+  /* "multidict/_multidict.pyx":80
  *     def __cinit__(self):
  *         self._upstr = upstr
  *         self.marker = _marker             # <<<<<<<<<<<<<<
  * 
  *     cdef str _upper(self, s):
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_marker); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_marker); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 80, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
   __Pyx_GOTREF(__pyx_v_self->marker);
@@ -2480,7 +2528,7 @@ static int __pyx_pf_9multidict_10_multidict_5_Base___cinit__(struct __pyx_obj_9m
   __pyx_v_self->marker = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":72
+  /* "multidict/_multidict.pyx":78
  *     cdef object marker
  * 
  *     def __cinit__(self):             # <<<<<<<<<<<<<<
@@ -2500,7 +2548,7 @@ static int __pyx_pf_9multidict_10_multidict_5_Base___cinit__(struct __pyx_obj_9m
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":76
+/* "multidict/_multidict.pyx":82
  *         self.marker = _marker
  * 
  *     cdef str _upper(self, s):             # <<<<<<<<<<<<<<
@@ -2515,7 +2563,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__upper(struct __pyx_obj_
   int __pyx_t_2;
   __Pyx_RefNannySetupContext("_upper", 0);
 
-  /* "multidict/_multidict.pyx":77
+  /* "multidict/_multidict.pyx":83
  * 
  *     cdef str _upper(self, s):
  *         if type(s) is self._upstr:             # <<<<<<<<<<<<<<
@@ -2526,7 +2574,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__upper(struct __pyx_obj_
   __pyx_t_2 = (__pyx_t_1 != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":78
+    /* "multidict/_multidict.pyx":84
  *     cdef str _upper(self, s):
  *         if type(s) is self._upstr:
  *             return <str>s             # <<<<<<<<<<<<<<
@@ -2538,7 +2586,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__upper(struct __pyx_obj_
     __pyx_r = ((PyObject*)__pyx_v_s);
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":77
+    /* "multidict/_multidict.pyx":83
  * 
  *     cdef str _upper(self, s):
  *         if type(s) is self._upstr:             # <<<<<<<<<<<<<<
@@ -2547,7 +2595,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__upper(struct __pyx_obj_
  */
   }
 
-  /* "multidict/_multidict.pyx":79
+  /* "multidict/_multidict.pyx":85
  *         if type(s) is self._upstr:
  *             return <str>s
  *         return s             # <<<<<<<<<<<<<<
@@ -2555,12 +2603,12 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__upper(struct __pyx_obj_
  *     def getall(self, key, default=_marker):
  */
   __Pyx_XDECREF(__pyx_r);
-  if (!(likely(PyString_CheckExact(__pyx_v_s))||((__pyx_v_s) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_v_s)->tp_name), 0))) __PYX_ERR(0, 79, __pyx_L1_error)
+  if (!(likely(PyString_CheckExact(__pyx_v_s))||((__pyx_v_s) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_v_s)->tp_name), 0))) __PYX_ERR(0, 85, __pyx_L1_error)
   __Pyx_INCREF(__pyx_v_s);
   __pyx_r = ((PyObject*)__pyx_v_s);
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":76
+  /* "multidict/_multidict.pyx":82
  *         self.marker = _marker
  * 
  *     cdef str _upper(self, s):             # <<<<<<<<<<<<<<
@@ -2578,7 +2626,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__upper(struct __pyx_obj_
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":81
+/* "multidict/_multidict.pyx":87
  *         return s
  * 
  *     def getall(self, key, default=_marker):             # <<<<<<<<<<<<<<
@@ -2620,7 +2668,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5_Base_3getall(PyObject *__pyx
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "getall") < 0)) __PYX_ERR(0, 81, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "getall") < 0)) __PYX_ERR(0, 87, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -2635,7 +2683,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5_Base_3getall(PyObject *__pyx
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("getall", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 81, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("getall", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 87, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict._Base.getall", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2655,7 +2703,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_2getall(struct __pyx_ob
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("getall", 0);
 
-  /* "multidict/_multidict.pyx":83
+  /* "multidict/_multidict.pyx":89
  *     def getall(self, key, default=_marker):
  *         """Return a list of all values matching the key."""
  *         return self._getall(self._upper(key), default)             # <<<<<<<<<<<<<<
@@ -2663,16 +2711,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_2getall(struct __pyx_ob
  *     cdef _getall(self, str key, default):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 83, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_getall(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_default); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 83, __pyx_L1_error)
+  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_getall(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_default); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":81
+  /* "multidict/_multidict.pyx":87
  *         return s
  * 
  *     def getall(self, key, default=_marker):             # <<<<<<<<<<<<<<
@@ -2692,7 +2740,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_2getall(struct __pyx_ob
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":85
+/* "multidict/_multidict.pyx":91
  *         return self._getall(self._upper(key), default)
  * 
  *     cdef _getall(self, str key, default):             # <<<<<<<<<<<<<<
@@ -2716,31 +2764,31 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
   __Pyx_RefNannySetupContext("_getall", 0);
   __Pyx_INCREF(__pyx_v_key);
 
-  /* "multidict/_multidict.pyx":88
+  /* "multidict/_multidict.pyx":94
  *         cdef list res
  *         cdef _Pair item
  *         key = self._upper(key)             # <<<<<<<<<<<<<<
  *         res = []
  *         for i in self._items:
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 88, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 94, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_1));
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":89
+  /* "multidict/_multidict.pyx":95
  *         cdef _Pair item
  *         key = self._upper(key)
  *         res = []             # <<<<<<<<<<<<<<
  *         for i in self._items:
  *             item = <_Pair>i
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 89, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 95, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_res = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":90
+  /* "multidict/_multidict.pyx":96
  *         key = self._upper(key)
  *         res = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -2749,21 +2797,21 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
  */
   if (unlikely(__pyx_v_self->_items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 90, __pyx_L1_error)
+    __PYX_ERR(0, 96, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->_items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 90, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 96, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 90, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 96, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":91
+    /* "multidict/_multidict.pyx":97
  *         res = []
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -2775,17 +2823,17 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":92
+    /* "multidict/_multidict.pyx":98
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == key:             # <<<<<<<<<<<<<<
  *                 res.append(item._value)
  *         if res:
  */
-    __pyx_t_4 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_key, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 92, __pyx_L1_error)
+    __pyx_t_4 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_key, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 98, __pyx_L1_error)
     if (__pyx_t_4) {
 
-      /* "multidict/_multidict.pyx":93
+      /* "multidict/_multidict.pyx":99
  *             item = <_Pair>i
  *             if item._key == key:
  *                 res.append(item._value)             # <<<<<<<<<<<<<<
@@ -2794,10 +2842,10 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
  */
       __pyx_t_3 = __pyx_v_item->_value;
       __Pyx_INCREF(__pyx_t_3);
-      __pyx_t_5 = __Pyx_PyList_Append(__pyx_v_res, __pyx_t_3); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 93, __pyx_L1_error)
+      __pyx_t_5 = __Pyx_PyList_Append(__pyx_v_res, __pyx_t_3); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 99, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-      /* "multidict/_multidict.pyx":92
+      /* "multidict/_multidict.pyx":98
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == key:             # <<<<<<<<<<<<<<
@@ -2806,7 +2854,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
  */
     }
 
-    /* "multidict/_multidict.pyx":90
+    /* "multidict/_multidict.pyx":96
  *         key = self._upper(key)
  *         res = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -2816,7 +2864,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":94
+  /* "multidict/_multidict.pyx":100
  *             if item._key == key:
  *                 res.append(item._value)
  *         if res:             # <<<<<<<<<<<<<<
@@ -2826,7 +2874,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
   __pyx_t_4 = (__pyx_v_res != Py_None) && (PyList_GET_SIZE(__pyx_v_res) != 0);
   if (__pyx_t_4) {
 
-    /* "multidict/_multidict.pyx":95
+    /* "multidict/_multidict.pyx":101
  *                 res.append(item._value)
  *         if res:
  *             return res             # <<<<<<<<<<<<<<
@@ -2838,7 +2886,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
     __pyx_r = __pyx_v_res;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":94
+    /* "multidict/_multidict.pyx":100
  *             if item._key == key:
  *                 res.append(item._value)
  *         if res:             # <<<<<<<<<<<<<<
@@ -2847,7 +2895,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
  */
   }
 
-  /* "multidict/_multidict.pyx":96
+  /* "multidict/_multidict.pyx":102
  *         if res:
  *             return res
  *         if not res and default is not self.marker:             # <<<<<<<<<<<<<<
@@ -2867,7 +2915,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
   __pyx_L8_bool_binop_done:;
   if (__pyx_t_4) {
 
-    /* "multidict/_multidict.pyx":97
+    /* "multidict/_multidict.pyx":103
  *             return res
  *         if not res and default is not self.marker:
  *             return default             # <<<<<<<<<<<<<<
@@ -2879,7 +2927,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
     __pyx_r = __pyx_v_default;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":96
+    /* "multidict/_multidict.pyx":102
  *         if res:
  *             return res
  *         if not res and default is not self.marker:             # <<<<<<<<<<<<<<
@@ -2888,28 +2936,28 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
  */
   }
 
-  /* "multidict/_multidict.pyx":98
+  /* "multidict/_multidict.pyx":104
  *         if not res and default is not self.marker:
  *             return default
  *         raise KeyError('Key not found: %r' % key)             # <<<<<<<<<<<<<<
  * 
  *     def getone(self, key, default=_marker):
  */
-  __pyx_t_1 = __Pyx_PyString_Format(__pyx_kp_s_Key_not_found_r, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 98, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyString_Format(__pyx_kp_s_Key_not_found_r, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 104, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 98, __pyx_L1_error)
+  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 104, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_t_3, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 98, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_t_3, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 104, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_Raise(__pyx_t_1, 0, 0, 0);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __PYX_ERR(0, 98, __pyx_L1_error)
+  __PYX_ERR(0, 104, __pyx_L1_error)
 
-  /* "multidict/_multidict.pyx":85
+  /* "multidict/_multidict.pyx":91
  *         return self._getall(self._upper(key), default)
  * 
  *     cdef _getall(self, str key, default):             # <<<<<<<<<<<<<<
@@ -2933,7 +2981,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getall(struct __pyx_obj
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":100
+/* "multidict/_multidict.pyx":106
  *         raise KeyError('Key not found: %r' % key)
  * 
  *     def getone(self, key, default=_marker):             # <<<<<<<<<<<<<<
@@ -2975,7 +3023,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5_Base_5getone(PyObject *__pyx
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "getone") < 0)) __PYX_ERR(0, 100, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "getone") < 0)) __PYX_ERR(0, 106, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -2990,7 +3038,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5_Base_5getone(PyObject *__pyx
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("getone", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 100, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("getone", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 106, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict._Base.getone", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -3010,7 +3058,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_4getone(struct __pyx_ob
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("getone", 0);
 
-  /* "multidict/_multidict.pyx":102
+  /* "multidict/_multidict.pyx":108
  *     def getone(self, key, default=_marker):
  *         """Get first value matching the key."""
  *         return self._getone(self._upper(key), default)             # <<<<<<<<<<<<<<
@@ -3018,16 +3066,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_4getone(struct __pyx_ob
  *     cdef _getone(self, str key, default):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 102, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 108, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_getone(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_default); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 102, __pyx_L1_error)
+  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_getone(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_default); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 108, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":100
+  /* "multidict/_multidict.pyx":106
  *         raise KeyError('Key not found: %r' % key)
  * 
  *     def getone(self, key, default=_marker):             # <<<<<<<<<<<<<<
@@ -3047,7 +3095,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_4getone(struct __pyx_ob
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":104
+/* "multidict/_multidict.pyx":110
  *         return self._getone(self._upper(key), default)
  * 
  *     cdef _getone(self, str key, default):             # <<<<<<<<<<<<<<
@@ -3068,19 +3116,19 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
   __Pyx_RefNannySetupContext("_getone", 0);
   __Pyx_INCREF(__pyx_v_key);
 
-  /* "multidict/_multidict.pyx":106
+  /* "multidict/_multidict.pyx":112
  *     cdef _getone(self, str key, default):
  *         cdef _Pair item
  *         key = self._upper(key)             # <<<<<<<<<<<<<<
  *         for i in self._items:
  *             item = <_Pair>i
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 106, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 112, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_1));
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":107
+  /* "multidict/_multidict.pyx":113
  *         cdef _Pair item
  *         key = self._upper(key)
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -3089,21 +3137,21 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
  */
   if (unlikely(__pyx_v_self->_items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 107, __pyx_L1_error)
+    __PYX_ERR(0, 113, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->_items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 107, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 113, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 107, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 113, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":108
+    /* "multidict/_multidict.pyx":114
  *         key = self._upper(key)
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -3115,17 +3163,17 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":109
+    /* "multidict/_multidict.pyx":115
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == key:             # <<<<<<<<<<<<<<
  *                 return item._value
  *         if default is not self.marker:
  */
-    __pyx_t_4 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_key, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 109, __pyx_L1_error)
+    __pyx_t_4 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_key, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 115, __pyx_L1_error)
     if (__pyx_t_4) {
 
-      /* "multidict/_multidict.pyx":110
+      /* "multidict/_multidict.pyx":116
  *             item = <_Pair>i
  *             if item._key == key:
  *                 return item._value             # <<<<<<<<<<<<<<
@@ -3138,7 +3186,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":109
+      /* "multidict/_multidict.pyx":115
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == key:             # <<<<<<<<<<<<<<
@@ -3147,7 +3195,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
  */
     }
 
-    /* "multidict/_multidict.pyx":107
+    /* "multidict/_multidict.pyx":113
  *         cdef _Pair item
  *         key = self._upper(key)
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -3157,7 +3205,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":111
+  /* "multidict/_multidict.pyx":117
  *             if item._key == key:
  *                 return item._value
  *         if default is not self.marker:             # <<<<<<<<<<<<<<
@@ -3168,7 +3216,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
   __pyx_t_5 = (__pyx_t_4 != 0);
   if (__pyx_t_5) {
 
-    /* "multidict/_multidict.pyx":112
+    /* "multidict/_multidict.pyx":118
  *                 return item._value
  *         if default is not self.marker:
  *             return default             # <<<<<<<<<<<<<<
@@ -3180,7 +3228,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
     __pyx_r = __pyx_v_default;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":111
+    /* "multidict/_multidict.pyx":117
  *             if item._key == key:
  *                 return item._value
  *         if default is not self.marker:             # <<<<<<<<<<<<<<
@@ -3189,28 +3237,28 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
  */
   }
 
-  /* "multidict/_multidict.pyx":113
+  /* "multidict/_multidict.pyx":119
  *         if default is not self.marker:
  *             return default
  *         raise KeyError('Key not found: %r' % key)             # <<<<<<<<<<<<<<
  * 
  *     # Mapping interface #
  */
-  __pyx_t_1 = __Pyx_PyString_Format(__pyx_kp_s_Key_not_found_r, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 113, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyString_Format(__pyx_kp_s_Key_not_found_r, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 119, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 113, __pyx_L1_error)
+  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 119, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_t_3, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 113, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_t_3, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 119, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_Raise(__pyx_t_1, 0, 0, 0);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __PYX_ERR(0, 113, __pyx_L1_error)
+  __PYX_ERR(0, 119, __pyx_L1_error)
 
-  /* "multidict/_multidict.pyx":104
+  /* "multidict/_multidict.pyx":110
  *         return self._getone(self._upper(key), default)
  * 
  *     cdef _getone(self, str key, default):             # <<<<<<<<<<<<<<
@@ -3233,7 +3281,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__getone(struct __pyx_obj
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":117
+/* "multidict/_multidict.pyx":123
  *     # Mapping interface #
  * 
  *     def __getitem__(self, key):             # <<<<<<<<<<<<<<
@@ -3262,7 +3310,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_6__getitem__(struct __p
   PyObject *__pyx_t_3 = NULL;
   __Pyx_RefNannySetupContext("__getitem__", 0);
 
-  /* "multidict/_multidict.pyx":118
+  /* "multidict/_multidict.pyx":124
  * 
  *     def __getitem__(self, key):
  *         return self._getone(self._upper(key), self.marker)             # <<<<<<<<<<<<<<
@@ -3270,11 +3318,11 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_6__getitem__(struct __p
  *     def get(self, key, default=None):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 118, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 124, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = __pyx_v_self->marker;
   __Pyx_INCREF(__pyx_t_2);
-  __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_getone(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 118, __pyx_L1_error)
+  __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_getone(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 124, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
@@ -3282,7 +3330,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_6__getitem__(struct __p
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":117
+  /* "multidict/_multidict.pyx":123
  *     # Mapping interface #
  * 
  *     def __getitem__(self, key):             # <<<<<<<<<<<<<<
@@ -3303,7 +3351,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_6__getitem__(struct __p
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":120
+/* "multidict/_multidict.pyx":126
  *         return self._getone(self._upper(key), self.marker)
  * 
  *     def get(self, key, default=None):             # <<<<<<<<<<<<<<
@@ -3345,7 +3393,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5_Base_9get(PyObject *__pyx_v_
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "get") < 0)) __PYX_ERR(0, 120, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "get") < 0)) __PYX_ERR(0, 126, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -3360,7 +3408,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5_Base_9get(PyObject *__pyx_v_
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("get", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 120, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("get", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 126, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict._Base.get", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -3380,7 +3428,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_8get(struct __pyx_obj_9
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("get", 0);
 
-  /* "multidict/_multidict.pyx":125
+  /* "multidict/_multidict.pyx":131
  *         The method is alias for .getone().
  *         """
  *         return self._getone(self._upper(key), default)             # <<<<<<<<<<<<<<
@@ -3388,16 +3436,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_8get(struct __pyx_obj_9
  *     def __contains__(self, key):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 125, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_getone(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_default); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 125, __pyx_L1_error)
+  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_getone(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_default); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 131, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":120
+  /* "multidict/_multidict.pyx":126
  *         return self._getone(self._upper(key), self.marker)
  * 
  *     def get(self, key, default=None):             # <<<<<<<<<<<<<<
@@ -3417,7 +3465,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_8get(struct __pyx_obj_9
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":127
+/* "multidict/_multidict.pyx":133
  *         return self._getone(self._upper(key), default)
  * 
  *     def __contains__(self, key):             # <<<<<<<<<<<<<<
@@ -3446,24 +3494,24 @@ static int __pyx_pf_9multidict_10_multidict_5_Base_10__contains__(struct __pyx_o
   int __pyx_t_3;
   __Pyx_RefNannySetupContext("__contains__", 0);
 
-  /* "multidict/_multidict.pyx":128
+  /* "multidict/_multidict.pyx":134
  * 
  *     def __contains__(self, key):
  *         return self._contains(self._upper(key))             # <<<<<<<<<<<<<<
  * 
  *     cdef _contains(self, str key):
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 128, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 134, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_contains(__pyx_v_self, ((PyObject*)__pyx_t_1)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 128, __pyx_L1_error)
+  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_contains(__pyx_v_self, ((PyObject*)__pyx_t_1)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 134, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_3 = __Pyx_PyInt_As_int(__pyx_t_2); if (unlikely((__pyx_t_3 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 128, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyInt_As_int(__pyx_t_2); if (unlikely((__pyx_t_3 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 134, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_r = __pyx_t_3;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":127
+  /* "multidict/_multidict.pyx":133
  *         return self._getone(self._upper(key), default)
  * 
  *     def __contains__(self, key):             # <<<<<<<<<<<<<<
@@ -3482,7 +3530,7 @@ static int __pyx_pf_9multidict_10_multidict_5_Base_10__contains__(struct __pyx_o
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":130
+/* "multidict/_multidict.pyx":136
  *         return self._contains(self._upper(key))
  * 
  *     cdef _contains(self, str key):             # <<<<<<<<<<<<<<
@@ -3502,19 +3550,19 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__contains(struct __pyx_o
   __Pyx_RefNannySetupContext("_contains", 0);
   __Pyx_INCREF(__pyx_v_key);
 
-  /* "multidict/_multidict.pyx":132
+  /* "multidict/_multidict.pyx":138
  *     cdef _contains(self, str key):
  *         cdef _Pair item
  *         key = self._upper(key)             # <<<<<<<<<<<<<<
  *         for i in self._items:
  *             item = <_Pair>i
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 132, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->_upper(__pyx_v_self, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 138, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_1));
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":133
+  /* "multidict/_multidict.pyx":139
  *         cdef _Pair item
  *         key = self._upper(key)
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -3523,21 +3571,21 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__contains(struct __pyx_o
  */
   if (unlikely(__pyx_v_self->_items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 133, __pyx_L1_error)
+    __PYX_ERR(0, 139, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->_items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 133, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 139, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 133, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 139, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":134
+    /* "multidict/_multidict.pyx":140
  *         key = self._upper(key)
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -3549,17 +3597,17 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__contains(struct __pyx_o
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":135
+    /* "multidict/_multidict.pyx":141
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == key:             # <<<<<<<<<<<<<<
  *                 return True
  *         return False
  */
-    __pyx_t_4 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_key, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 135, __pyx_L1_error)
+    __pyx_t_4 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_key, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 141, __pyx_L1_error)
     if (__pyx_t_4) {
 
-      /* "multidict/_multidict.pyx":136
+      /* "multidict/_multidict.pyx":142
  *             item = <_Pair>i
  *             if item._key == key:
  *                 return True             # <<<<<<<<<<<<<<
@@ -3572,7 +3620,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__contains(struct __pyx_o
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":135
+      /* "multidict/_multidict.pyx":141
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == key:             # <<<<<<<<<<<<<<
@@ -3581,7 +3629,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__contains(struct __pyx_o
  */
     }
 
-    /* "multidict/_multidict.pyx":133
+    /* "multidict/_multidict.pyx":139
  *         cdef _Pair item
  *         key = self._upper(key)
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -3591,7 +3639,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__contains(struct __pyx_o
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":137
+  /* "multidict/_multidict.pyx":143
  *             if item._key == key:
  *                 return True
  *         return False             # <<<<<<<<<<<<<<
@@ -3603,7 +3651,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__contains(struct __pyx_o
   __pyx_r = Py_False;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":130
+  /* "multidict/_multidict.pyx":136
  *         return self._contains(self._upper(key))
  * 
  *     cdef _contains(self, str key):             # <<<<<<<<<<<<<<
@@ -3626,7 +3674,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__contains(struct __pyx_o
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":139
+/* "multidict/_multidict.pyx":145
  *         return False
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -3654,7 +3702,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_12__iter__(struct __pyx
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("__iter__", 0);
 
-  /* "multidict/_multidict.pyx":140
+  /* "multidict/_multidict.pyx":146
  * 
  *     def __iter__(self):
  *         return iter(self.keys())             # <<<<<<<<<<<<<<
@@ -3662,16 +3710,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_12__iter__(struct __pyx
  *     def __len__(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->keys(__pyx_v_self, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 140, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->keys(__pyx_v_self, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 146, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 140, __pyx_L1_error)
+  __pyx_t_2 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 146, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":139
+  /* "multidict/_multidict.pyx":145
  *         return False
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -3691,7 +3739,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_12__iter__(struct __pyx
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":142
+/* "multidict/_multidict.pyx":148
  *         return iter(self.keys())
  * 
  *     def __len__(self):             # <<<<<<<<<<<<<<
@@ -3719,7 +3767,7 @@ static Py_ssize_t __pyx_pf_9multidict_10_multidict_5_Base_14__len__(struct __pyx
   Py_ssize_t __pyx_t_2;
   __Pyx_RefNannySetupContext("__len__", 0);
 
-  /* "multidict/_multidict.pyx":143
+  /* "multidict/_multidict.pyx":149
  * 
  *     def __len__(self):
  *         return len(self._items)             # <<<<<<<<<<<<<<
@@ -3730,14 +3778,14 @@ static Py_ssize_t __pyx_pf_9multidict_10_multidict_5_Base_14__len__(struct __pyx
   __Pyx_INCREF(__pyx_t_1);
   if (unlikely(__pyx_t_1 == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 143, __pyx_L1_error)
+    __PYX_ERR(0, 149, __pyx_L1_error)
   }
-  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 143, __pyx_L1_error)
+  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 149, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":142
+  /* "multidict/_multidict.pyx":148
  *         return iter(self.keys())
  * 
  *     def __len__(self):             # <<<<<<<<<<<<<<
@@ -3755,7 +3803,7 @@ static Py_ssize_t __pyx_pf_9multidict_10_multidict_5_Base_14__len__(struct __pyx
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":145
+/* "multidict/_multidict.pyx":151
  *         return len(self._items)
  * 
  *     cpdef keys(self):             # <<<<<<<<<<<<<<
@@ -3776,7 +3824,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base_keys(struct __pyx_obj_9m
   if (unlikely(__pyx_skip_dispatch)) ;
   /* Check if overridden in Python */
   else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_keys); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 145, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_keys); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 151, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_9multidict_10_multidict_5_Base_17keys)) {
       __Pyx_XDECREF(__pyx_r);
@@ -3792,10 +3840,10 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base_keys(struct __pyx_obj_9m
         }
       }
       if (__pyx_t_4) {
-        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 151, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else {
-        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 151, __pyx_L1_error)
       }
       __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -3807,7 +3855,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base_keys(struct __pyx_obj_9m
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "multidict/_multidict.pyx":147
+  /* "multidict/_multidict.pyx":153
  *     cpdef keys(self):
  *         """Return a new view of the dictionary's keys."""
  *         return _KeysView.__new__(_KeysView, self._items)             # <<<<<<<<<<<<<<
@@ -3815,19 +3863,19 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base_keys(struct __pyx_obj_9m
  *     def items(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 147, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 153, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_self->_items);
   __Pyx_GIVEREF(__pyx_v_self->_items);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_self->_items);
-  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__KeysView(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__KeysView), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 147, __pyx_L1_error)
+  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__KeysView(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__KeysView), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 153, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":145
+  /* "multidict/_multidict.pyx":151
  *         return len(self._items)
  * 
  *     cpdef keys(self):             # <<<<<<<<<<<<<<
@@ -3869,7 +3917,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_16keys(struct __pyx_obj
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("keys", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_9multidict_10_multidict_5_Base_keys(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 145, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_9multidict_10_multidict_5_Base_keys(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 151, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -3886,7 +3934,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_16keys(struct __pyx_obj
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":149
+/* "multidict/_multidict.pyx":155
  *         return _KeysView.__new__(_KeysView, self._items)
  * 
  *     def items(self):             # <<<<<<<<<<<<<<
@@ -3915,7 +3963,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_18items(struct __pyx_ob
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("items", 0);
 
-  /* "multidict/_multidict.pyx":151
+  /* "multidict/_multidict.pyx":157
  *     def items(self):
  *         """Return a new view of the dictionary's items *(key, value) pairs)."""
  *         return _ItemsView.__new__(_ItemsView, self._items)             # <<<<<<<<<<<<<<
@@ -3923,19 +3971,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_18items(struct __pyx_ob
  *     def values(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 151, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 157, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_self->_items);
   __Pyx_GIVEREF(__pyx_v_self->_items);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_self->_items);
-  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__ItemsView(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__ItemsView), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 151, __pyx_L1_error)
+  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__ItemsView(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__ItemsView), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 157, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":149
+  /* "multidict/_multidict.pyx":155
  *         return _KeysView.__new__(_KeysView, self._items)
  * 
  *     def items(self):             # <<<<<<<<<<<<<<
@@ -3955,7 +4003,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_18items(struct __pyx_ob
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":153
+/* "multidict/_multidict.pyx":159
  *         return _ItemsView.__new__(_ItemsView, self._items)
  * 
  *     def values(self):             # <<<<<<<<<<<<<<
@@ -3984,7 +4032,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_20values(struct __pyx_o
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("values", 0);
 
-  /* "multidict/_multidict.pyx":155
+  /* "multidict/_multidict.pyx":161
  *     def values(self):
  *         """Return a new view of the dictionary's values."""
  *         return _ValuesView.__new__(_ValuesView, self._items)             # <<<<<<<<<<<<<<
@@ -3992,19 +4040,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_20values(struct __pyx_o
  *     def __repr__(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 155, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 161, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_self->_items);
   __Pyx_GIVEREF(__pyx_v_self->_items);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_self->_items);
-  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__ValuesView(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__ValuesView), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 155, __pyx_L1_error)
+  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__ValuesView(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__ValuesView), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 161, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":153
+  /* "multidict/_multidict.pyx":159
  *         return _ItemsView.__new__(_ItemsView, self._items)
  * 
  *     def values(self):             # <<<<<<<<<<<<<<
@@ -4024,7 +4072,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_20values(struct __pyx_o
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":157
+/* "multidict/_multidict.pyx":163
  *         return _ValuesView.__new__(_ValuesView, self._items)
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -4062,19 +4110,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
   int __pyx_t_8;
   __Pyx_RefNannySetupContext("__repr__", 0);
 
-  /* "multidict/_multidict.pyx":159
+  /* "multidict/_multidict.pyx":165
  *     def __repr__(self):
  *         cdef _Pair item
  *         lst = []             # <<<<<<<<<<<<<<
  *         for i in self._items:
  *             item = <_Pair>i
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 159, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 165, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_lst = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":160
+  /* "multidict/_multidict.pyx":166
  *         cdef _Pair item
  *         lst = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -4083,21 +4131,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
  */
   if (unlikely(__pyx_v_self->_items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 160, __pyx_L1_error)
+    __PYX_ERR(0, 166, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->_items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 160, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 166, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 160, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 166, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":161
+    /* "multidict/_multidict.pyx":167
  *         lst = []
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -4109,14 +4157,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":162
+    /* "multidict/_multidict.pyx":168
  *         for i in self._items:
  *             item = <_Pair>i
  *             lst.append("'{}': {!r}".format(item._key, item._value))             # <<<<<<<<<<<<<<
  *         body = ', '.join(lst)
  *         return '<{}({})>'.format(self.__class__.__name__, body)
  */
-    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_r, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 162, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_r, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 168, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __pyx_t_5 = NULL;
     __pyx_t_6 = 0;
@@ -4130,7 +4178,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
         __pyx_t_6 = 1;
       }
     }
-    __pyx_t_7 = PyTuple_New(2+__pyx_t_6); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 162, __pyx_L1_error)
+    __pyx_t_7 = PyTuple_New(2+__pyx_t_6); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 168, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     if (__pyx_t_5) {
       __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_5); __pyx_t_5 = NULL;
@@ -4141,14 +4189,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
     __Pyx_INCREF(__pyx_v_item->_value);
     __Pyx_GIVEREF(__pyx_v_item->_value);
     PyTuple_SET_ITEM(__pyx_t_7, 1+__pyx_t_6, __pyx_v_item->_value);
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 162, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 168, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_8 = __Pyx_PyList_Append(__pyx_v_lst, __pyx_t_3); if (unlikely(__pyx_t_8 == -1)) __PYX_ERR(0, 162, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyList_Append(__pyx_v_lst, __pyx_t_3); if (unlikely(__pyx_t_8 == -1)) __PYX_ERR(0, 168, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":160
+    /* "multidict/_multidict.pyx":166
  *         cdef _Pair item
  *         lst = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -4158,19 +4206,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":163
+  /* "multidict/_multidict.pyx":169
  *             item = <_Pair>i
  *             lst.append("'{}': {!r}".format(item._key, item._value))
  *         body = ', '.join(lst)             # <<<<<<<<<<<<<<
  *         return '<{}({})>'.format(self.__class__.__name__, body)
  * 
  */
-  __pyx_t_1 = __Pyx_PyString_Join(__pyx_kp_s__4, __pyx_v_lst); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 163, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyString_Join(__pyx_kp_s__4, __pyx_v_lst); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 169, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_body = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":164
+  /* "multidict/_multidict.pyx":170
  *             lst.append("'{}': {!r}".format(item._key, item._value))
  *         body = ', '.join(lst)
  *         return '<{}({})>'.format(self.__class__.__name__, body)             # <<<<<<<<<<<<<<
@@ -4178,11 +4226,11 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
  *     cdef _eq_to_mapping(self, other):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s__5, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 164, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s__5, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 170, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 164, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 170, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_name); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 164, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_name); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 170, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_4 = NULL;
@@ -4197,7 +4245,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
       __pyx_t_2 = 1;
     }
   }
-  __pyx_t_5 = PyTuple_New(2+__pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 164, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(2+__pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 170, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   if (__pyx_t_4) {
     __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -4208,7 +4256,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
   __Pyx_GIVEREF(__pyx_v_body);
   PyTuple_SET_ITEM(__pyx_t_5, 1+__pyx_t_2, __pyx_v_body);
   __pyx_t_7 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 164, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 170, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -4216,7 +4264,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":157
+  /* "multidict/_multidict.pyx":163
  *         return _ValuesView.__new__(_ValuesView, self._items)
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -4243,7 +4291,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_22__repr__(struct __pyx
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":166
+/* "multidict/_multidict.pyx":172
  *         return '<{}({})>'.format(self.__class__.__name__, body)
  * 
  *     cdef _eq_to_mapping(self, other):             # <<<<<<<<<<<<<<
@@ -4269,29 +4317,29 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
   PyObject *__pyx_t_8 = NULL;
   __Pyx_RefNannySetupContext("_eq_to_mapping", 0);
 
-  /* "multidict/_multidict.pyx":168
+  /* "multidict/_multidict.pyx":174
  *     cdef _eq_to_mapping(self, other):
  *         cdef _Pair item
  *         left_keys = set(self.keys())             # <<<<<<<<<<<<<<
  *         right_keys = set(other.keys())
  *         if left_keys != right_keys:
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->keys(__pyx_v_self, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 168, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict__Base *)__pyx_v_self->__pyx_vtab)->keys(__pyx_v_self, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 174, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 168, __pyx_L1_error)
+  __pyx_t_2 = PySet_New(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 174, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_left_keys = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":169
+  /* "multidict/_multidict.pyx":175
  *         cdef _Pair item
  *         left_keys = set(self.keys())
  *         right_keys = set(other.keys())             # <<<<<<<<<<<<<<
  *         if left_keys != right_keys:
  *             return False
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_keys); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 169, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_keys); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 175, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_3 = NULL;
   if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_1))) {
@@ -4304,32 +4352,32 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
     }
   }
   if (__pyx_t_3) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 169, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 175, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   } else {
-    __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 169, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 175, __pyx_L1_error)
   }
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PySet_New(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 169, __pyx_L1_error)
+  __pyx_t_1 = PySet_New(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 175, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_v_right_keys = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":170
+  /* "multidict/_multidict.pyx":176
  *         left_keys = set(self.keys())
  *         right_keys = set(other.keys())
  *         if left_keys != right_keys:             # <<<<<<<<<<<<<<
  *             return False
  *         if len(self._items) != len(right_keys):
  */
-  __pyx_t_1 = PyObject_RichCompare(__pyx_v_left_keys, __pyx_v_right_keys, Py_NE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 170, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 170, __pyx_L1_error)
+  __pyx_t_1 = PyObject_RichCompare(__pyx_v_left_keys, __pyx_v_right_keys, Py_NE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 176, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 176, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_4) {
 
-    /* "multidict/_multidict.pyx":171
+    /* "multidict/_multidict.pyx":177
  *         right_keys = set(other.keys())
  *         if left_keys != right_keys:
  *             return False             # <<<<<<<<<<<<<<
@@ -4341,7 +4389,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
     __pyx_r = Py_False;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":170
+    /* "multidict/_multidict.pyx":176
  *         left_keys = set(self.keys())
  *         right_keys = set(other.keys())
  *         if left_keys != right_keys:             # <<<<<<<<<<<<<<
@@ -4350,7 +4398,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
  */
   }
 
-  /* "multidict/_multidict.pyx":172
+  /* "multidict/_multidict.pyx":178
  *         if left_keys != right_keys:
  *             return False
  *         if len(self._items) != len(right_keys):             # <<<<<<<<<<<<<<
@@ -4361,15 +4409,15 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
   __Pyx_INCREF(__pyx_t_1);
   if (unlikely(__pyx_t_1 == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 172, __pyx_L1_error)
+    __PYX_ERR(0, 178, __pyx_L1_error)
   }
-  __pyx_t_5 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 172, __pyx_L1_error)
+  __pyx_t_5 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 178, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_6 = PySet_GET_SIZE(__pyx_v_right_keys); if (unlikely(__pyx_t_6 == -1)) __PYX_ERR(0, 172, __pyx_L1_error)
+  __pyx_t_6 = PySet_GET_SIZE(__pyx_v_right_keys); if (unlikely(__pyx_t_6 == -1)) __PYX_ERR(0, 178, __pyx_L1_error)
   __pyx_t_4 = ((__pyx_t_5 != __pyx_t_6) != 0);
   if (__pyx_t_4) {
 
-    /* "multidict/_multidict.pyx":173
+    /* "multidict/_multidict.pyx":179
  *             return False
  *         if len(self._items) != len(right_keys):
  *             return False             # <<<<<<<<<<<<<<
@@ -4381,7 +4429,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
     __pyx_r = Py_False;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":172
+    /* "multidict/_multidict.pyx":178
  *         if left_keys != right_keys:
  *             return False
  *         if len(self._items) != len(right_keys):             # <<<<<<<<<<<<<<
@@ -4390,7 +4438,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
  */
   }
 
-  /* "multidict/_multidict.pyx":174
+  /* "multidict/_multidict.pyx":180
  *         if len(self._items) != len(right_keys):
  *             return False
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -4399,21 +4447,21 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
  */
   if (unlikely(__pyx_v_self->_items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 174, __pyx_L1_error)
+    __PYX_ERR(0, 180, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->_items; __Pyx_INCREF(__pyx_t_1); __pyx_t_6 = 0;
   for (;;) {
     if (__pyx_t_6 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_2 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_6); __Pyx_INCREF(__pyx_t_2); __pyx_t_6++; if (unlikely(0 < 0)) __PYX_ERR(0, 174, __pyx_L1_error)
+    __pyx_t_2 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_6); __Pyx_INCREF(__pyx_t_2); __pyx_t_6++; if (unlikely(0 < 0)) __PYX_ERR(0, 180, __pyx_L1_error)
     #else
-    __pyx_t_2 = PySequence_ITEM(__pyx_t_1, __pyx_t_6); __pyx_t_6++; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 174, __pyx_L1_error)
+    __pyx_t_2 = PySequence_ITEM(__pyx_t_1, __pyx_t_6); __pyx_t_6++; if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 180, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_2);
     __pyx_t_2 = 0;
 
-    /* "multidict/_multidict.pyx":175
+    /* "multidict/_multidict.pyx":181
  *             return False
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -4425,14 +4473,14 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_2));
     __pyx_t_2 = 0;
 
-    /* "multidict/_multidict.pyx":176
+    /* "multidict/_multidict.pyx":182
  *         for i in self._items:
  *             item = <_Pair>i
  *             nv = other.get(item._key, self.marker)             # <<<<<<<<<<<<<<
  *             if item._value != nv:
  *                 return False
  */
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_get); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 176, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_other, __pyx_n_s_get); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 182, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __pyx_t_7 = NULL;
     __pyx_t_5 = 0;
@@ -4446,7 +4494,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
         __pyx_t_5 = 1;
       }
     }
-    __pyx_t_8 = PyTuple_New(2+__pyx_t_5); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 176, __pyx_L1_error)
+    __pyx_t_8 = PyTuple_New(2+__pyx_t_5); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 182, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
     if (__pyx_t_7) {
       __Pyx_GIVEREF(__pyx_t_7); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_7); __pyx_t_7 = NULL;
@@ -4457,26 +4505,26 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
     __Pyx_INCREF(__pyx_v_self->marker);
     __Pyx_GIVEREF(__pyx_v_self->marker);
     PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_5, __pyx_v_self->marker);
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_8, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 176, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_8, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 182, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_XDECREF_SET(__pyx_v_nv, __pyx_t_2);
     __pyx_t_2 = 0;
 
-    /* "multidict/_multidict.pyx":177
+    /* "multidict/_multidict.pyx":183
  *             item = <_Pair>i
  *             nv = other.get(item._key, self.marker)
  *             if item._value != nv:             # <<<<<<<<<<<<<<
  *                 return False
  *         return True
  */
-    __pyx_t_2 = PyObject_RichCompare(__pyx_v_item->_value, __pyx_v_nv, Py_NE); __Pyx_XGOTREF(__pyx_t_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 177, __pyx_L1_error)
-    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 177, __pyx_L1_error)
+    __pyx_t_2 = PyObject_RichCompare(__pyx_v_item->_value, __pyx_v_nv, Py_NE); __Pyx_XGOTREF(__pyx_t_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 183, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 183, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     if (__pyx_t_4) {
 
-      /* "multidict/_multidict.pyx":178
+      /* "multidict/_multidict.pyx":184
  *             nv = other.get(item._key, self.marker)
  *             if item._value != nv:
  *                 return False             # <<<<<<<<<<<<<<
@@ -4489,7 +4537,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":177
+      /* "multidict/_multidict.pyx":183
  *             item = <_Pair>i
  *             nv = other.get(item._key, self.marker)
  *             if item._value != nv:             # <<<<<<<<<<<<<<
@@ -4498,7 +4546,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
  */
     }
 
-    /* "multidict/_multidict.pyx":174
+    /* "multidict/_multidict.pyx":180
  *         if len(self._items) != len(right_keys):
  *             return False
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -4508,7 +4556,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":179
+  /* "multidict/_multidict.pyx":185
  *             if item._value != nv:
  *                 return False
  *         return True             # <<<<<<<<<<<<<<
@@ -4520,7 +4568,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
   __pyx_r = Py_True;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":166
+  /* "multidict/_multidict.pyx":172
  *         return '<{}({})>'.format(self.__class__.__name__, body)
  * 
  *     cdef _eq_to_mapping(self, other):             # <<<<<<<<<<<<<<
@@ -4548,7 +4596,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping(struct __
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":181
+/* "multidict/_multidict.pyx":187
  *         return True
  * 
  *     def __richcmp__(self, other, op):             # <<<<<<<<<<<<<<
@@ -4563,7 +4611,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_5_Base_25__richcmp__(PyObject 
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__richcmp__ (wrapper)", 0);
-  __pyx_v_op = __Pyx_PyInt_From_int(__pyx_arg_op); if (unlikely(!__pyx_v_op)) __PYX_ERR(0, 181, __pyx_L3_error)
+  __pyx_v_op = __Pyx_PyInt_From_int(__pyx_arg_op); if (unlikely(!__pyx_v_op)) __PYX_ERR(0, 187, __pyx_L3_error)
   __Pyx_GOTREF(__pyx_v_op);
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4588,20 +4636,20 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
   int __pyx_t_3;
   __Pyx_RefNannySetupContext("__richcmp__", 0);
 
-  /* "multidict/_multidict.pyx":182
+  /* "multidict/_multidict.pyx":188
  * 
  *     def __richcmp__(self, other, op):
  *         if op == 2:  # ==             # <<<<<<<<<<<<<<
  *             return _eq(self, other)
  *         elif op == 3:  # !=
  */
-  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_2, 2, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 182, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_2, 2, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 188, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 182, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 188, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":183
+    /* "multidict/_multidict.pyx":189
  *     def __richcmp__(self, other, op):
  *         if op == 2:  # ==
  *             return _eq(self, other)             # <<<<<<<<<<<<<<
@@ -4609,13 +4657,13 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
  *             ret = _eq(self, other)
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = __pyx_f_9multidict_10_multidict__eq(__pyx_v_self, __pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 183, __pyx_L1_error)
+    __pyx_t_1 = __pyx_f_9multidict_10_multidict__eq(__pyx_v_self, __pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 189, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":182
+    /* "multidict/_multidict.pyx":188
  * 
  *     def __richcmp__(self, other, op):
  *         if op == 2:  # ==             # <<<<<<<<<<<<<<
@@ -4624,32 +4672,32 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
  */
   }
 
-  /* "multidict/_multidict.pyx":184
+  /* "multidict/_multidict.pyx":190
  *         if op == 2:  # ==
  *             return _eq(self, other)
  *         elif op == 3:  # !=             # <<<<<<<<<<<<<<
  *             ret = _eq(self, other)
  *             if ret is NotImplemented:
  */
-  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_3, 3, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 184, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_3, 3, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 190, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 184, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 190, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":185
+    /* "multidict/_multidict.pyx":191
  *             return _eq(self, other)
  *         elif op == 3:  # !=
  *             ret = _eq(self, other)             # <<<<<<<<<<<<<<
  *             if ret is NotImplemented:
  *                 return ret
  */
-    __pyx_t_1 = __pyx_f_9multidict_10_multidict__eq(__pyx_v_self, __pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 185, __pyx_L1_error)
+    __pyx_t_1 = __pyx_f_9multidict_10_multidict__eq(__pyx_v_self, __pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 191, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_v_ret = __pyx_t_1;
     __pyx_t_1 = 0;
 
-    /* "multidict/_multidict.pyx":186
+    /* "multidict/_multidict.pyx":192
  *         elif op == 3:  # !=
  *             ret = _eq(self, other)
  *             if ret is NotImplemented:             # <<<<<<<<<<<<<<
@@ -4660,7 +4708,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
     __pyx_t_3 = (__pyx_t_2 != 0);
     if (__pyx_t_3) {
 
-      /* "multidict/_multidict.pyx":187
+      /* "multidict/_multidict.pyx":193
  *             ret = _eq(self, other)
  *             if ret is NotImplemented:
  *                 return ret             # <<<<<<<<<<<<<<
@@ -4672,7 +4720,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
       __pyx_r = __pyx_v_ret;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":186
+      /* "multidict/_multidict.pyx":192
  *         elif op == 3:  # !=
  *             ret = _eq(self, other)
  *             if ret is NotImplemented:             # <<<<<<<<<<<<<<
@@ -4681,7 +4729,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
  */
     }
 
-    /* "multidict/_multidict.pyx":189
+    /* "multidict/_multidict.pyx":195
  *                 return ret
  *             else:
  *                 return not ret             # <<<<<<<<<<<<<<
@@ -4690,15 +4738,15 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
  */
     /*else*/ {
       __Pyx_XDECREF(__pyx_r);
-      __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_v_ret); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 189, __pyx_L1_error)
-      __pyx_t_1 = __Pyx_PyBool_FromLong((!__pyx_t_3)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 189, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_v_ret); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 195, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyBool_FromLong((!__pyx_t_3)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 195, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __pyx_r = __pyx_t_1;
       __pyx_t_1 = 0;
       goto __pyx_L0;
     }
 
-    /* "multidict/_multidict.pyx":184
+    /* "multidict/_multidict.pyx":190
  *         if op == 2:  # ==
  *             return _eq(self, other)
  *         elif op == 3:  # !=             # <<<<<<<<<<<<<<
@@ -4707,7 +4755,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
  */
   }
 
-  /* "multidict/_multidict.pyx":191
+  /* "multidict/_multidict.pyx":197
  *                 return not ret
  *         else:
  *             return NotImplemented             # <<<<<<<<<<<<<<
@@ -4721,7 +4769,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
     goto __pyx_L0;
   }
 
-  /* "multidict/_multidict.pyx":181
+  /* "multidict/_multidict.pyx":187
  *         return True
  * 
  *     def __richcmp__(self, other, op):             # <<<<<<<<<<<<<<
@@ -4741,7 +4789,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_5_Base_24__richcmp__(PyObject 
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":196
+/* "multidict/_multidict.pyx":202
  * cdef class MultiDictProxy(_Base):
  * 
  *     def __init__(self, arg):             # <<<<<<<<<<<<<<
@@ -4774,7 +4822,7 @@ static int __pyx_pw_9multidict_10_multidict_14MultiDictProxy_1__init__(PyObject 
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) __PYX_ERR(0, 196, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) __PYX_ERR(0, 202, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -4785,7 +4833,7 @@ static int __pyx_pw_9multidict_10_multidict_14MultiDictProxy_1__init__(PyObject 
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__init__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 196, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__init__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 202, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict.MultiDictProxy.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -4810,7 +4858,7 @@ static int __pyx_pf_9multidict_10_multidict_14MultiDictProxy___init__(struct __p
   PyObject *__pyx_t_6 = NULL;
   __Pyx_RefNannySetupContext("__init__", 0);
 
-  /* "multidict/_multidict.pyx":198
+  /* "multidict/_multidict.pyx":204
  *     def __init__(self, arg):
  *         cdef MultiDict mdict
  *         if not isinstance(arg, MultiDict):             # <<<<<<<<<<<<<<
@@ -4821,17 +4869,17 @@ static int __pyx_pf_9multidict_10_multidict_14MultiDictProxy___init__(struct __p
   __pyx_t_2 = ((!(__pyx_t_1 != 0)) != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":200
+    /* "multidict/_multidict.pyx":206
  *         if not isinstance(arg, MultiDict):
  *             raise TypeError(
  *                 'MultiDictProxy requires MultiDict instance, not {}'.format(             # <<<<<<<<<<<<<<
  *                     type(arg)))
  * 
  */
-    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_MultiDictProxy_requires_MultiDic, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 200, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_MultiDictProxy_requires_MultiDic, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 206, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
 
-    /* "multidict/_multidict.pyx":201
+    /* "multidict/_multidict.pyx":207
  *             raise TypeError(
  *                 'MultiDictProxy requires MultiDict instance, not {}'.format(
  *                     type(arg)))             # <<<<<<<<<<<<<<
@@ -4849,41 +4897,41 @@ static int __pyx_pf_9multidict_10_multidict_14MultiDictProxy___init__(struct __p
       }
     }
     if (!__pyx_t_5) {
-      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, ((PyObject *)Py_TYPE(__pyx_v_arg))); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 200, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, ((PyObject *)Py_TYPE(__pyx_v_arg))); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 206, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
     } else {
-      __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 200, __pyx_L1_error)
+      __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 206, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __pyx_t_5 = NULL;
       __Pyx_INCREF(((PyObject *)Py_TYPE(__pyx_v_arg)));
       __Pyx_GIVEREF(((PyObject *)Py_TYPE(__pyx_v_arg)));
       PyTuple_SET_ITEM(__pyx_t_6, 0+1, ((PyObject *)Py_TYPE(__pyx_v_arg)));
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 200, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 206, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     }
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "multidict/_multidict.pyx":199
+    /* "multidict/_multidict.pyx":205
  *         cdef MultiDict mdict
  *         if not isinstance(arg, MultiDict):
  *             raise TypeError(             # <<<<<<<<<<<<<<
  *                 'MultiDictProxy requires MultiDict instance, not {}'.format(
  *                     type(arg)))
  */
-    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 199, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 205, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_3);
     PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_3);
     __pyx_t_3 = 0;
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_TypeError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 199, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_TypeError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 205, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 199, __pyx_L1_error)
+    __PYX_ERR(0, 205, __pyx_L1_error)
 
-    /* "multidict/_multidict.pyx":198
+    /* "multidict/_multidict.pyx":204
  *     def __init__(self, arg):
  *         cdef MultiDict mdict
  *         if not isinstance(arg, MultiDict):             # <<<<<<<<<<<<<<
@@ -4892,20 +4940,20 @@ static int __pyx_pf_9multidict_10_multidict_14MultiDictProxy___init__(struct __p
  */
   }
 
-  /* "multidict/_multidict.pyx":203
+  /* "multidict/_multidict.pyx":209
  *                     type(arg)))
  * 
  *         mdict = arg             # <<<<<<<<<<<<<<
  *         self._items = mdict._items
  * 
  */
-  if (!(likely(((__pyx_v_arg) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_arg, __pyx_ptype_9multidict_10_multidict_MultiDict))))) __PYX_ERR(0, 203, __pyx_L1_error)
+  if (!(likely(((__pyx_v_arg) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_arg, __pyx_ptype_9multidict_10_multidict_MultiDict))))) __PYX_ERR(0, 209, __pyx_L1_error)
   __pyx_t_3 = __pyx_v_arg;
   __Pyx_INCREF(__pyx_t_3);
   __pyx_v_mdict = ((struct __pyx_obj_9multidict_10_multidict_MultiDict *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "multidict/_multidict.pyx":204
+  /* "multidict/_multidict.pyx":210
  * 
  *         mdict = arg
  *         self._items = mdict._items             # <<<<<<<<<<<<<<
@@ -4920,7 +4968,7 @@ static int __pyx_pf_9multidict_10_multidict_14MultiDictProxy___init__(struct __p
   __pyx_v_self->__pyx_base._items = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "multidict/_multidict.pyx":196
+  /* "multidict/_multidict.pyx":202
  * cdef class MultiDictProxy(_Base):
  * 
  *     def __init__(self, arg):             # <<<<<<<<<<<<<<
@@ -4944,7 +4992,7 @@ static int __pyx_pf_9multidict_10_multidict_14MultiDictProxy___init__(struct __p
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":206
+/* "multidict/_multidict.pyx":212
  *         self._items = mdict._items
  * 
  *     def copy(self):             # <<<<<<<<<<<<<<
@@ -4973,7 +5021,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_14MultiDictProxy_2copy(struct 
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("copy", 0);
 
-  /* "multidict/_multidict.pyx":208
+  /* "multidict/_multidict.pyx":214
  *     def copy(self):
  *         """Return a copy of itself."""
  *         return MultiDict(self._items)             # <<<<<<<<<<<<<<
@@ -4981,19 +5029,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_14MultiDictProxy_2copy(struct 
  * abc.Mapping.register(MultiDictProxy)
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 208, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 214, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_self->__pyx_base._items);
   __Pyx_GIVEREF(__pyx_v_self->__pyx_base._items);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_self->__pyx_base._items);
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDict), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 208, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDict), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 214, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":206
+  /* "multidict/_multidict.pyx":212
  *         self._items = mdict._items
  * 
  *     def copy(self):             # <<<<<<<<<<<<<<
@@ -5013,7 +5061,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_14MultiDictProxy_2copy(struct 
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":215
+/* "multidict/_multidict.pyx":221
  * cdef class CIMultiDictProxy(MultiDictProxy):
  * 
  *     def __init__(self, arg):             # <<<<<<<<<<<<<<
@@ -5046,7 +5094,7 @@ static int __pyx_pw_9multidict_10_multidict_16CIMultiDictProxy_1__init__(PyObjec
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) __PYX_ERR(0, 215, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) __PYX_ERR(0, 221, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -5057,7 +5105,7 @@ static int __pyx_pw_9multidict_10_multidict_16CIMultiDictProxy_1__init__(PyObjec
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__init__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 215, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__init__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 221, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict.CIMultiDictProxy.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -5082,7 +5130,7 @@ static int __pyx_pf_9multidict_10_multidict_16CIMultiDictProxy___init__(struct _
   PyObject *__pyx_t_6 = NULL;
   __Pyx_RefNannySetupContext("__init__", 0);
 
-  /* "multidict/_multidict.pyx":217
+  /* "multidict/_multidict.pyx":223
  *     def __init__(self, arg):
  *         cdef CIMultiDict mdict
  *         if not isinstance(arg, CIMultiDict):             # <<<<<<<<<<<<<<
@@ -5093,17 +5141,17 @@ static int __pyx_pf_9multidict_10_multidict_16CIMultiDictProxy___init__(struct _
   __pyx_t_2 = ((!(__pyx_t_1 != 0)) != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":219
+    /* "multidict/_multidict.pyx":225
  *         if not isinstance(arg, CIMultiDict):
  *             raise TypeError(
  *                 'CIMultiDictProxy requires CIMultiDict instance, not {}'.format(             # <<<<<<<<<<<<<<
  *                     type(arg)))
  * 
  */
-    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_CIMultiDictProxy_requires_CIMult, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 219, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_CIMultiDictProxy_requires_CIMult, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 225, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
 
-    /* "multidict/_multidict.pyx":220
+    /* "multidict/_multidict.pyx":226
  *             raise TypeError(
  *                 'CIMultiDictProxy requires CIMultiDict instance, not {}'.format(
  *                     type(arg)))             # <<<<<<<<<<<<<<
@@ -5121,41 +5169,41 @@ static int __pyx_pf_9multidict_10_multidict_16CIMultiDictProxy___init__(struct _
       }
     }
     if (!__pyx_t_5) {
-      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, ((PyObject *)Py_TYPE(__pyx_v_arg))); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 219, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, ((PyObject *)Py_TYPE(__pyx_v_arg))); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 225, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
     } else {
-      __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 219, __pyx_L1_error)
+      __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 225, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __pyx_t_5 = NULL;
       __Pyx_INCREF(((PyObject *)Py_TYPE(__pyx_v_arg)));
       __Pyx_GIVEREF(((PyObject *)Py_TYPE(__pyx_v_arg)));
       PyTuple_SET_ITEM(__pyx_t_6, 0+1, ((PyObject *)Py_TYPE(__pyx_v_arg)));
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 219, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 225, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     }
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "multidict/_multidict.pyx":218
+    /* "multidict/_multidict.pyx":224
  *         cdef CIMultiDict mdict
  *         if not isinstance(arg, CIMultiDict):
  *             raise TypeError(             # <<<<<<<<<<<<<<
  *                 'CIMultiDictProxy requires CIMultiDict instance, not {}'.format(
  *                     type(arg)))
  */
-    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 218, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 224, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_3);
     PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_3);
     __pyx_t_3 = 0;
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_TypeError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 218, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_TypeError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 224, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 218, __pyx_L1_error)
+    __PYX_ERR(0, 224, __pyx_L1_error)
 
-    /* "multidict/_multidict.pyx":217
+    /* "multidict/_multidict.pyx":223
  *     def __init__(self, arg):
  *         cdef CIMultiDict mdict
  *         if not isinstance(arg, CIMultiDict):             # <<<<<<<<<<<<<<
@@ -5164,20 +5212,20 @@ static int __pyx_pf_9multidict_10_multidict_16CIMultiDictProxy___init__(struct _
  */
   }
 
-  /* "multidict/_multidict.pyx":222
+  /* "multidict/_multidict.pyx":228
  *                     type(arg)))
  * 
  *         mdict = arg             # <<<<<<<<<<<<<<
  *         self._items = mdict._items
  * 
  */
-  if (!(likely(((__pyx_v_arg) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_arg, __pyx_ptype_9multidict_10_multidict_CIMultiDict))))) __PYX_ERR(0, 222, __pyx_L1_error)
+  if (!(likely(((__pyx_v_arg) == Py_None) || likely(__Pyx_TypeTest(__pyx_v_arg, __pyx_ptype_9multidict_10_multidict_CIMultiDict))))) __PYX_ERR(0, 228, __pyx_L1_error)
   __pyx_t_3 = __pyx_v_arg;
   __Pyx_INCREF(__pyx_t_3);
   __pyx_v_mdict = ((struct __pyx_obj_9multidict_10_multidict_CIMultiDict *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "multidict/_multidict.pyx":223
+  /* "multidict/_multidict.pyx":229
  * 
  *         mdict = arg
  *         self._items = mdict._items             # <<<<<<<<<<<<<<
@@ -5192,7 +5240,7 @@ static int __pyx_pf_9multidict_10_multidict_16CIMultiDictProxy___init__(struct _
   __pyx_v_self->__pyx_base.__pyx_base._items = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "multidict/_multidict.pyx":215
+  /* "multidict/_multidict.pyx":221
  * cdef class CIMultiDictProxy(MultiDictProxy):
  * 
  *     def __init__(self, arg):             # <<<<<<<<<<<<<<
@@ -5216,7 +5264,7 @@ static int __pyx_pf_9multidict_10_multidict_16CIMultiDictProxy___init__(struct _
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":225
+/* "multidict/_multidict.pyx":231
  *         self._items = mdict._items
  * 
  *     cdef str _upper(self, s):             # <<<<<<<<<<<<<<
@@ -5234,7 +5282,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_16CIMultiDictProxy__upper(struc
   PyObject *__pyx_t_5 = NULL;
   __Pyx_RefNannySetupContext("_upper", 0);
 
-  /* "multidict/_multidict.pyx":226
+  /* "multidict/_multidict.pyx":232
  * 
  *     cdef str _upper(self, s):
  *         if type(s) is self._upstr:             # <<<<<<<<<<<<<<
@@ -5245,7 +5293,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_16CIMultiDictProxy__upper(struc
   __pyx_t_2 = (__pyx_t_1 != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":227
+    /* "multidict/_multidict.pyx":233
  *     cdef str _upper(self, s):
  *         if type(s) is self._upstr:
  *             return <str>s             # <<<<<<<<<<<<<<
@@ -5257,7 +5305,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_16CIMultiDictProxy__upper(struc
     __pyx_r = ((PyObject*)__pyx_v_s);
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":226
+    /* "multidict/_multidict.pyx":232
  * 
  *     cdef str _upper(self, s):
  *         if type(s) is self._upstr:             # <<<<<<<<<<<<<<
@@ -5266,7 +5314,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_16CIMultiDictProxy__upper(struc
  */
   }
 
-  /* "multidict/_multidict.pyx":228
+  /* "multidict/_multidict.pyx":234
  *         if type(s) is self._upstr:
  *             return <str>s
  *         return s.upper()             # <<<<<<<<<<<<<<
@@ -5274,7 +5322,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_16CIMultiDictProxy__upper(struc
  *     def copy(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_s, __pyx_n_s_upper); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 228, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_s, __pyx_n_s_upper); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 234, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __pyx_t_5 = NULL;
   if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_4))) {
@@ -5287,19 +5335,19 @@ static PyObject *__pyx_f_9multidict_10_multidict_16CIMultiDictProxy__upper(struc
     }
   }
   if (__pyx_t_5) {
-    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 228, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 234, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   } else {
-    __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 228, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 234, __pyx_L1_error)
   }
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (!(likely(PyString_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_3)->tp_name), 0))) __PYX_ERR(0, 228, __pyx_L1_error)
+  if (!(likely(PyString_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_3)->tp_name), 0))) __PYX_ERR(0, 234, __pyx_L1_error)
   __pyx_r = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":225
+  /* "multidict/_multidict.pyx":231
  *         self._items = mdict._items
  * 
  *     cdef str _upper(self, s):             # <<<<<<<<<<<<<<
@@ -5320,7 +5368,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_16CIMultiDictProxy__upper(struc
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":230
+/* "multidict/_multidict.pyx":236
  *         return s.upper()
  * 
  *     def copy(self):             # <<<<<<<<<<<<<<
@@ -5349,7 +5397,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_16CIMultiDictProxy_2copy(struc
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("copy", 0);
 
-  /* "multidict/_multidict.pyx":232
+  /* "multidict/_multidict.pyx":238
  *     def copy(self):
  *         """Return a copy of itself."""
  *         return CIMultiDict(self._items)             # <<<<<<<<<<<<<<
@@ -5357,19 +5405,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_16CIMultiDictProxy_2copy(struc
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 232, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 238, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_self->__pyx_base.__pyx_base._items);
   __Pyx_GIVEREF(__pyx_v_self->__pyx_base.__pyx_base._items);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_self->__pyx_base.__pyx_base._items);
-  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDict), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 232, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDict), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 238, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":230
+  /* "multidict/_multidict.pyx":236
  *         return s.upper()
  * 
  *     def copy(self):             # <<<<<<<<<<<<<<
@@ -5389,7 +5437,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_16CIMultiDictProxy_2copy(struc
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":241
+/* "multidict/_multidict.pyx":247
  *     """An ordered dictionary that can have multiple values for each key."""
  * 
  *     def __init__(self, *args, **kwargs):             # <<<<<<<<<<<<<<
@@ -5426,14 +5474,14 @@ static int __pyx_pf_9multidict_10_multidict_9MultiDict___init__(struct __pyx_obj
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("__init__", 0);
 
-  /* "multidict/_multidict.pyx":242
+  /* "multidict/_multidict.pyx":248
  * 
  *     def __init__(self, *args, **kwargs):
  *         self._items = []             # <<<<<<<<<<<<<<
  * 
  *         self._extend(args, kwargs, self.__class__.__name__, 1)
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 242, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 248, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
   __Pyx_GOTREF(__pyx_v_self->__pyx_base._items);
@@ -5441,24 +5489,24 @@ static int __pyx_pf_9multidict_10_multidict_9MultiDict___init__(struct __pyx_obj
   __pyx_v_self->__pyx_base._items = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":244
+  /* "multidict/_multidict.pyx":250
  *         self._items = []
  * 
  *         self._extend(args, kwargs, self.__class__.__name__, 1)             # <<<<<<<<<<<<<<
  * 
  *     cdef _extend(self, tuple args, dict kwargs, name, int do_add):
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 244, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 250, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_name); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 244, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_name); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 250, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_extend(__pyx_v_self, __pyx_v_args, __pyx_v_kwargs, __pyx_t_2, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 244, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_extend(__pyx_v_self, __pyx_v_args, __pyx_v_kwargs, __pyx_t_2, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 250, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":241
+  /* "multidict/_multidict.pyx":247
  *     """An ordered dictionary that can have multiple values for each key."""
  * 
  *     def __init__(self, *args, **kwargs):             # <<<<<<<<<<<<<<
@@ -5479,7 +5527,7 @@ static int __pyx_pf_9multidict_10_multidict_9MultiDict___init__(struct __pyx_obj
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":246
+/* "multidict/_multidict.pyx":252
  *         self._extend(args, kwargs, self.__class__.__name__, 1)
  * 
  *     cdef _extend(self, tuple args, dict kwargs, name, int do_add):             # <<<<<<<<<<<<<<
@@ -5508,7 +5556,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
   PyObject *(*__pyx_t_11)(PyObject *);
   __Pyx_RefNannySetupContext("_extend", 0);
 
-  /* "multidict/_multidict.pyx":250
+  /* "multidict/_multidict.pyx":256
  *         cdef str key
  * 
  *         if len(args) > 1:             # <<<<<<<<<<<<<<
@@ -5517,27 +5565,27 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  */
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 250, __pyx_L1_error)
+    __PYX_ERR(0, 256, __pyx_L1_error)
   }
-  __pyx_t_1 = PyTuple_GET_SIZE(__pyx_v_args); if (unlikely(__pyx_t_1 == -1)) __PYX_ERR(0, 250, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_GET_SIZE(__pyx_v_args); if (unlikely(__pyx_t_1 == -1)) __PYX_ERR(0, 256, __pyx_L1_error)
   __pyx_t_2 = ((__pyx_t_1 > 1) != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":252
+    /* "multidict/_multidict.pyx":258
  *         if len(args) > 1:
  *             raise TypeError("{} takes at most 1 positional argument"
  *                             " ({} given)".format(name, len(args)))             # <<<<<<<<<<<<<<
  * 
  *         if args:
  */
-    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_takes_at_most_1_positional_argu, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 252, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_takes_at_most_1_positional_argu, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 258, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     if (unlikely(__pyx_v_args == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-      __PYX_ERR(0, 252, __pyx_L1_error)
+      __PYX_ERR(0, 258, __pyx_L1_error)
     }
-    __pyx_t_1 = PyTuple_GET_SIZE(__pyx_v_args); if (unlikely(__pyx_t_1 == -1)) __PYX_ERR(0, 252, __pyx_L1_error)
-    __pyx_t_5 = PyInt_FromSsize_t(__pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 252, __pyx_L1_error)
+    __pyx_t_1 = PyTuple_GET_SIZE(__pyx_v_args); if (unlikely(__pyx_t_1 == -1)) __PYX_ERR(0, 258, __pyx_L1_error)
+    __pyx_t_5 = PyInt_FromSsize_t(__pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 258, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
     __pyx_t_6 = NULL;
     __pyx_t_1 = 0;
@@ -5551,7 +5599,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __pyx_t_1 = 1;
       }
     }
-    __pyx_t_7 = PyTuple_New(2+__pyx_t_1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 252, __pyx_L1_error)
+    __pyx_t_7 = PyTuple_New(2+__pyx_t_1); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 258, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     if (__pyx_t_6) {
       __Pyx_GIVEREF(__pyx_t_6); PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_6); __pyx_t_6 = NULL;
@@ -5562,31 +5610,31 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
     __Pyx_GIVEREF(__pyx_t_5);
     PyTuple_SET_ITEM(__pyx_t_7, 1+__pyx_t_1, __pyx_t_5);
     __pyx_t_5 = 0;
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 252, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 258, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "multidict/_multidict.pyx":251
+    /* "multidict/_multidict.pyx":257
  * 
  *         if len(args) > 1:
  *             raise TypeError("{} takes at most 1 positional argument"             # <<<<<<<<<<<<<<
  *                             " ({} given)".format(name, len(args)))
  * 
  */
-    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 251, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 257, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_3);
     PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_3);
     __pyx_t_3 = 0;
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_TypeError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 251, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_TypeError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 257, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 251, __pyx_L1_error)
+    __PYX_ERR(0, 257, __pyx_L1_error)
 
-    /* "multidict/_multidict.pyx":250
+    /* "multidict/_multidict.pyx":256
  *         cdef str key
  * 
  *         if len(args) > 1:             # <<<<<<<<<<<<<<
@@ -5595,7 +5643,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  */
   }
 
-  /* "multidict/_multidict.pyx":254
+  /* "multidict/_multidict.pyx":260
  *                             " ({} given)".format(name, len(args)))
  * 
  *         if args:             # <<<<<<<<<<<<<<
@@ -5605,7 +5653,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
   __pyx_t_2 = (__pyx_v_args != Py_None) && (PyTuple_GET_SIZE(__pyx_v_args) != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":255
+    /* "multidict/_multidict.pyx":261
  * 
  *         if args:
  *             arg = args[0]             # <<<<<<<<<<<<<<
@@ -5614,14 +5662,14 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  */
     if (unlikely(__pyx_v_args == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      __PYX_ERR(0, 255, __pyx_L1_error)
+      __PYX_ERR(0, 261, __pyx_L1_error)
     }
-    __pyx_t_3 = __Pyx_GetItemInt_Tuple(__pyx_v_args, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 255, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_GetItemInt_Tuple(__pyx_v_args, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 261, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __pyx_v_arg = __pyx_t_3;
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":256
+    /* "multidict/_multidict.pyx":262
  *         if args:
  *             arg = args[0]
  *             if isinstance(arg, _Base):             # <<<<<<<<<<<<<<
@@ -5632,7 +5680,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
     __pyx_t_8 = (__pyx_t_2 != 0);
     if (__pyx_t_8) {
 
-      /* "multidict/_multidict.pyx":257
+      /* "multidict/_multidict.pyx":263
  *             arg = args[0]
  *             if isinstance(arg, _Base):
  *                 for i in (<_Base>arg)._items:             # <<<<<<<<<<<<<<
@@ -5641,21 +5689,21 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  */
       if (unlikely(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_arg)->_items == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-        __PYX_ERR(0, 257, __pyx_L1_error)
+        __PYX_ERR(0, 263, __pyx_L1_error)
       }
       __pyx_t_3 = ((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_arg)->_items; __Pyx_INCREF(__pyx_t_3); __pyx_t_1 = 0;
       for (;;) {
         if (__pyx_t_1 >= PyList_GET_SIZE(__pyx_t_3)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_4 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_4); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 257, __pyx_L1_error)
+        __pyx_t_4 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_4); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 263, __pyx_L1_error)
         #else
-        __pyx_t_4 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 257, __pyx_L1_error)
+        __pyx_t_4 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 263, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
         #endif
         __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_4);
         __pyx_t_4 = 0;
 
-        /* "multidict/_multidict.pyx":258
+        /* "multidict/_multidict.pyx":264
  *             if isinstance(arg, _Base):
  *                 for i in (<_Base>arg)._items:
  *                     item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -5667,7 +5715,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_4));
         __pyx_t_4 = 0;
 
-        /* "multidict/_multidict.pyx":259
+        /* "multidict/_multidict.pyx":265
  *                 for i in (<_Base>arg)._items:
  *                     item = <_Pair>i
  *                     key = self._upper(item._key)             # <<<<<<<<<<<<<<
@@ -5676,13 +5724,13 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  */
         __pyx_t_4 = __pyx_v_item->_key;
         __Pyx_INCREF(__pyx_t_4);
-        __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_t_4); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 259, __pyx_L1_error)
+        __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_t_4); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 265, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_7);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         __Pyx_XDECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_7));
         __pyx_t_7 = 0;
 
-        /* "multidict/_multidict.pyx":260
+        /* "multidict/_multidict.pyx":266
  *                     item = <_Pair>i
  *                     key = self._upper(item._key)
  *                     value = item._value             # <<<<<<<<<<<<<<
@@ -5694,7 +5742,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_7);
         __pyx_t_7 = 0;
 
-        /* "multidict/_multidict.pyx":261
+        /* "multidict/_multidict.pyx":267
  *                     key = self._upper(item._key)
  *                     value = item._value
  *                     if do_add:             # <<<<<<<<<<<<<<
@@ -5704,18 +5752,18 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __pyx_t_8 = (__pyx_v_do_add != 0);
         if (__pyx_t_8) {
 
-          /* "multidict/_multidict.pyx":262
+          /* "multidict/_multidict.pyx":268
  *                     value = item._value
  *                     if do_add:
  *                         self._add(key, value)             # <<<<<<<<<<<<<<
  *                     else:
  *                         self._replace(key, value)
  */
-          __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 262, __pyx_L1_error)
+          __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 268, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_7);
           __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-          /* "multidict/_multidict.pyx":261
+          /* "multidict/_multidict.pyx":267
  *                     key = self._upper(item._key)
  *                     value = item._value
  *                     if do_add:             # <<<<<<<<<<<<<<
@@ -5725,7 +5773,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           goto __pyx_L8;
         }
 
-        /* "multidict/_multidict.pyx":264
+        /* "multidict/_multidict.pyx":270
  *                         self._add(key, value)
  *                     else:
  *                         self._replace(key, value)             # <<<<<<<<<<<<<<
@@ -5733,13 +5781,13 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  *                 for i in arg.items():
  */
         /*else*/ {
-          __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 264, __pyx_L1_error)
+          __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 270, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_7);
           __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
         }
         __pyx_L8:;
 
-        /* "multidict/_multidict.pyx":257
+        /* "multidict/_multidict.pyx":263
  *             arg = args[0]
  *             if isinstance(arg, _Base):
  *                 for i in (<_Base>arg)._items:             # <<<<<<<<<<<<<<
@@ -5749,7 +5797,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       }
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-      /* "multidict/_multidict.pyx":256
+      /* "multidict/_multidict.pyx":262
  *         if args:
  *             arg = args[0]
  *             if isinstance(arg, _Base):             # <<<<<<<<<<<<<<
@@ -5759,25 +5807,25 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       goto __pyx_L5;
     }
 
-    /* "multidict/_multidict.pyx":265
+    /* "multidict/_multidict.pyx":271
  *                     else:
  *                         self._replace(key, value)
  *             elif hasattr(arg, 'items'):             # <<<<<<<<<<<<<<
  *                 for i in arg.items():
  *                     if isinstance(i, _Pair):
  */
-    __pyx_t_8 = PyObject_HasAttr(__pyx_v_arg, __pyx_n_s_items); if (unlikely(__pyx_t_8 == -1)) __PYX_ERR(0, 265, __pyx_L1_error)
+    __pyx_t_8 = PyObject_HasAttr(__pyx_v_arg, __pyx_n_s_items); if (unlikely(__pyx_t_8 == -1)) __PYX_ERR(0, 271, __pyx_L1_error)
     __pyx_t_2 = (__pyx_t_8 != 0);
     if (__pyx_t_2) {
 
-      /* "multidict/_multidict.pyx":266
+      /* "multidict/_multidict.pyx":272
  *                         self._replace(key, value)
  *             elif hasattr(arg, 'items'):
  *                 for i in arg.items():             # <<<<<<<<<<<<<<
  *                     if isinstance(i, _Pair):
  *                         item = <_Pair>i
  */
-      __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_arg, __pyx_n_s_items); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 266, __pyx_L1_error)
+      __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_arg, __pyx_n_s_items); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 272, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_7);
       __pyx_t_4 = NULL;
       if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_7))) {
@@ -5790,10 +5838,10 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         }
       }
       if (__pyx_t_4) {
-        __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_7, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 266, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_7, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 272, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else {
-        __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_7); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 266, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_7); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 272, __pyx_L1_error)
       }
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
@@ -5801,9 +5849,9 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __pyx_t_7 = __pyx_t_3; __Pyx_INCREF(__pyx_t_7); __pyx_t_1 = 0;
         __pyx_t_9 = NULL;
       } else {
-        __pyx_t_1 = -1; __pyx_t_7 = PyObject_GetIter(__pyx_t_3); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 266, __pyx_L1_error)
+        __pyx_t_1 = -1; __pyx_t_7 = PyObject_GetIter(__pyx_t_3); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 272, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_7);
-        __pyx_t_9 = Py_TYPE(__pyx_t_7)->tp_iternext; if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 266, __pyx_L1_error)
+        __pyx_t_9 = Py_TYPE(__pyx_t_7)->tp_iternext; if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 272, __pyx_L1_error)
       }
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       for (;;) {
@@ -5811,17 +5859,17 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           if (likely(PyList_CheckExact(__pyx_t_7))) {
             if (__pyx_t_1 >= PyList_GET_SIZE(__pyx_t_7)) break;
             #if CYTHON_COMPILING_IN_CPYTHON
-            __pyx_t_3 = PyList_GET_ITEM(__pyx_t_7, __pyx_t_1); __Pyx_INCREF(__pyx_t_3); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 266, __pyx_L1_error)
+            __pyx_t_3 = PyList_GET_ITEM(__pyx_t_7, __pyx_t_1); __Pyx_INCREF(__pyx_t_3); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 272, __pyx_L1_error)
             #else
-            __pyx_t_3 = PySequence_ITEM(__pyx_t_7, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 266, __pyx_L1_error)
+            __pyx_t_3 = PySequence_ITEM(__pyx_t_7, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 272, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_3);
             #endif
           } else {
             if (__pyx_t_1 >= PyTuple_GET_SIZE(__pyx_t_7)) break;
             #if CYTHON_COMPILING_IN_CPYTHON
-            __pyx_t_3 = PyTuple_GET_ITEM(__pyx_t_7, __pyx_t_1); __Pyx_INCREF(__pyx_t_3); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 266, __pyx_L1_error)
+            __pyx_t_3 = PyTuple_GET_ITEM(__pyx_t_7, __pyx_t_1); __Pyx_INCREF(__pyx_t_3); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 272, __pyx_L1_error)
             #else
-            __pyx_t_3 = PySequence_ITEM(__pyx_t_7, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 266, __pyx_L1_error)
+            __pyx_t_3 = PySequence_ITEM(__pyx_t_7, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 272, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_3);
             #endif
           }
@@ -5831,7 +5879,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
             PyObject* exc_type = PyErr_Occurred();
             if (exc_type) {
               if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-              else __PYX_ERR(0, 266, __pyx_L1_error)
+              else __PYX_ERR(0, 272, __pyx_L1_error)
             }
             break;
           }
@@ -5840,7 +5888,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
         __pyx_t_3 = 0;
 
-        /* "multidict/_multidict.pyx":267
+        /* "multidict/_multidict.pyx":273
  *             elif hasattr(arg, 'items'):
  *                 for i in arg.items():
  *                     if isinstance(i, _Pair):             # <<<<<<<<<<<<<<
@@ -5851,7 +5899,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __pyx_t_8 = (__pyx_t_2 != 0);
         if (__pyx_t_8) {
 
-          /* "multidict/_multidict.pyx":268
+          /* "multidict/_multidict.pyx":274
  *                 for i in arg.items():
  *                     if isinstance(i, _Pair):
  *                         item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -5863,20 +5911,20 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
           __pyx_t_3 = 0;
 
-          /* "multidict/_multidict.pyx":269
+          /* "multidict/_multidict.pyx":275
  *                     if isinstance(i, _Pair):
  *                         item = <_Pair>i
  *                         key = item._key             # <<<<<<<<<<<<<<
  *                         value = item._value
  *                     else:
  */
-          if (!(likely(PyString_CheckExact(__pyx_v_item->_key))||((__pyx_v_item->_key) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_v_item->_key)->tp_name), 0))) __PYX_ERR(0, 269, __pyx_L1_error)
+          if (!(likely(PyString_CheckExact(__pyx_v_item->_key))||((__pyx_v_item->_key) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_v_item->_key)->tp_name), 0))) __PYX_ERR(0, 275, __pyx_L1_error)
           __pyx_t_3 = __pyx_v_item->_key;
           __Pyx_INCREF(__pyx_t_3);
           __Pyx_XDECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_3));
           __pyx_t_3 = 0;
 
-          /* "multidict/_multidict.pyx":270
+          /* "multidict/_multidict.pyx":276
  *                         item = <_Pair>i
  *                         key = item._key
  *                         value = item._value             # <<<<<<<<<<<<<<
@@ -5888,7 +5936,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_3);
           __pyx_t_3 = 0;
 
-          /* "multidict/_multidict.pyx":267
+          /* "multidict/_multidict.pyx":273
  *             elif hasattr(arg, 'items'):
  *                 for i in arg.items():
  *                     if isinstance(i, _Pair):             # <<<<<<<<<<<<<<
@@ -5898,7 +5946,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           goto __pyx_L11;
         }
 
-        /* "multidict/_multidict.pyx":272
+        /* "multidict/_multidict.pyx":278
  *                         value = item._value
  *                     else:
  *                         key = self._upper(i[0])             # <<<<<<<<<<<<<<
@@ -5906,29 +5954,29 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  *                     if do_add:
  */
         /*else*/ {
-          __pyx_t_3 = __Pyx_GetItemInt(__pyx_v_i, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 272, __pyx_L1_error)
+          __pyx_t_3 = __Pyx_GetItemInt(__pyx_v_i, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 278, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_3);
-          __pyx_t_4 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 272, __pyx_L1_error)
+          __pyx_t_4 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 278, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
           __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
           __Pyx_XDECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_4));
           __pyx_t_4 = 0;
 
-          /* "multidict/_multidict.pyx":273
+          /* "multidict/_multidict.pyx":279
  *                     else:
  *                         key = self._upper(i[0])
  *                         value = i[1]             # <<<<<<<<<<<<<<
  *                     if do_add:
  *                         self._add(key, value)
  */
-          __pyx_t_4 = __Pyx_GetItemInt(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 273, __pyx_L1_error)
+          __pyx_t_4 = __Pyx_GetItemInt(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 279, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
           __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_4);
           __pyx_t_4 = 0;
         }
         __pyx_L11:;
 
-        /* "multidict/_multidict.pyx":274
+        /* "multidict/_multidict.pyx":280
  *                         key = self._upper(i[0])
  *                         value = i[1]
  *                     if do_add:             # <<<<<<<<<<<<<<
@@ -5938,18 +5986,18 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __pyx_t_8 = (__pyx_v_do_add != 0);
         if (__pyx_t_8) {
 
-          /* "multidict/_multidict.pyx":275
+          /* "multidict/_multidict.pyx":281
  *                         value = i[1]
  *                     if do_add:
  *                         self._add(key, value)             # <<<<<<<<<<<<<<
  *                     else:
  *                         self._replace(key, value)
  */
-          __pyx_t_4 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 275, __pyx_L1_error)
+          __pyx_t_4 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 281, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-          /* "multidict/_multidict.pyx":274
+          /* "multidict/_multidict.pyx":280
  *                         key = self._upper(i[0])
  *                         value = i[1]
  *                     if do_add:             # <<<<<<<<<<<<<<
@@ -5959,7 +6007,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           goto __pyx_L12;
         }
 
-        /* "multidict/_multidict.pyx":277
+        /* "multidict/_multidict.pyx":283
  *                         self._add(key, value)
  *                     else:
  *                         self._replace(key, value)             # <<<<<<<<<<<<<<
@@ -5967,13 +6015,13 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  *                 for i in arg:
  */
         /*else*/ {
-          __pyx_t_4 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 277, __pyx_L1_error)
+          __pyx_t_4 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 283, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         }
         __pyx_L12:;
 
-        /* "multidict/_multidict.pyx":266
+        /* "multidict/_multidict.pyx":272
  *                         self._replace(key, value)
  *             elif hasattr(arg, 'items'):
  *                 for i in arg.items():             # <<<<<<<<<<<<<<
@@ -5983,7 +6031,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       }
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-      /* "multidict/_multidict.pyx":265
+      /* "multidict/_multidict.pyx":271
  *                     else:
  *                         self._replace(key, value)
  *             elif hasattr(arg, 'items'):             # <<<<<<<<<<<<<<
@@ -5993,7 +6041,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       goto __pyx_L5;
     }
 
-    /* "multidict/_multidict.pyx":279
+    /* "multidict/_multidict.pyx":285
  *                         self._replace(key, value)
  *             else:
  *                 for i in arg:             # <<<<<<<<<<<<<<
@@ -6005,26 +6053,26 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __pyx_t_7 = __pyx_v_arg; __Pyx_INCREF(__pyx_t_7); __pyx_t_1 = 0;
         __pyx_t_9 = NULL;
       } else {
-        __pyx_t_1 = -1; __pyx_t_7 = PyObject_GetIter(__pyx_v_arg); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 279, __pyx_L1_error)
+        __pyx_t_1 = -1; __pyx_t_7 = PyObject_GetIter(__pyx_v_arg); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 285, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_7);
-        __pyx_t_9 = Py_TYPE(__pyx_t_7)->tp_iternext; if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 279, __pyx_L1_error)
+        __pyx_t_9 = Py_TYPE(__pyx_t_7)->tp_iternext; if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 285, __pyx_L1_error)
       }
       for (;;) {
         if (likely(!__pyx_t_9)) {
           if (likely(PyList_CheckExact(__pyx_t_7))) {
             if (__pyx_t_1 >= PyList_GET_SIZE(__pyx_t_7)) break;
             #if CYTHON_COMPILING_IN_CPYTHON
-            __pyx_t_4 = PyList_GET_ITEM(__pyx_t_7, __pyx_t_1); __Pyx_INCREF(__pyx_t_4); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 279, __pyx_L1_error)
+            __pyx_t_4 = PyList_GET_ITEM(__pyx_t_7, __pyx_t_1); __Pyx_INCREF(__pyx_t_4); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 285, __pyx_L1_error)
             #else
-            __pyx_t_4 = PySequence_ITEM(__pyx_t_7, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 279, __pyx_L1_error)
+            __pyx_t_4 = PySequence_ITEM(__pyx_t_7, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 285, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_4);
             #endif
           } else {
             if (__pyx_t_1 >= PyTuple_GET_SIZE(__pyx_t_7)) break;
             #if CYTHON_COMPILING_IN_CPYTHON
-            __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_7, __pyx_t_1); __Pyx_INCREF(__pyx_t_4); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 279, __pyx_L1_error)
+            __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_7, __pyx_t_1); __Pyx_INCREF(__pyx_t_4); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 285, __pyx_L1_error)
             #else
-            __pyx_t_4 = PySequence_ITEM(__pyx_t_7, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 279, __pyx_L1_error)
+            __pyx_t_4 = PySequence_ITEM(__pyx_t_7, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 285, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_4);
             #endif
           }
@@ -6034,7 +6082,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
             PyObject* exc_type = PyErr_Occurred();
             if (exc_type) {
               if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-              else __PYX_ERR(0, 279, __pyx_L1_error)
+              else __PYX_ERR(0, 285, __pyx_L1_error)
             }
             break;
           }
@@ -6043,7 +6091,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_4);
         __pyx_t_4 = 0;
 
-        /* "multidict/_multidict.pyx":280
+        /* "multidict/_multidict.pyx":286
  *             else:
  *                 for i in arg:
  *                     if isinstance(i, _Pair):             # <<<<<<<<<<<<<<
@@ -6054,7 +6102,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __pyx_t_2 = (__pyx_t_8 != 0);
         if (__pyx_t_2) {
 
-          /* "multidict/_multidict.pyx":281
+          /* "multidict/_multidict.pyx":287
  *                 for i in arg:
  *                     if isinstance(i, _Pair):
  *                         item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -6066,20 +6114,20 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_4));
           __pyx_t_4 = 0;
 
-          /* "multidict/_multidict.pyx":282
+          /* "multidict/_multidict.pyx":288
  *                     if isinstance(i, _Pair):
  *                         item = <_Pair>i
  *                         key = item._key             # <<<<<<<<<<<<<<
  *                         value = item._value
  *                     else:
  */
-          if (!(likely(PyString_CheckExact(__pyx_v_item->_key))||((__pyx_v_item->_key) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_v_item->_key)->tp_name), 0))) __PYX_ERR(0, 282, __pyx_L1_error)
+          if (!(likely(PyString_CheckExact(__pyx_v_item->_key))||((__pyx_v_item->_key) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_v_item->_key)->tp_name), 0))) __PYX_ERR(0, 288, __pyx_L1_error)
           __pyx_t_4 = __pyx_v_item->_key;
           __Pyx_INCREF(__pyx_t_4);
           __Pyx_XDECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_4));
           __pyx_t_4 = 0;
 
-          /* "multidict/_multidict.pyx":283
+          /* "multidict/_multidict.pyx":289
  *                         item = <_Pair>i
  *                         key = item._key
  *                         value = item._value             # <<<<<<<<<<<<<<
@@ -6091,7 +6139,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_4);
           __pyx_t_4 = 0;
 
-          /* "multidict/_multidict.pyx":280
+          /* "multidict/_multidict.pyx":286
  *             else:
  *                 for i in arg:
  *                     if isinstance(i, _Pair):             # <<<<<<<<<<<<<<
@@ -6101,7 +6149,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           goto __pyx_L15;
         }
 
-        /* "multidict/_multidict.pyx":285
+        /* "multidict/_multidict.pyx":291
  *                         value = item._value
  *                     else:
  *                         if not len(i) == 2:             # <<<<<<<<<<<<<<
@@ -6109,18 +6157,18 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  *                                 "{} takes either dict or list of (key, value) "
  */
         /*else*/ {
-          __pyx_t_10 = PyObject_Length(__pyx_v_i); if (unlikely(__pyx_t_10 == -1)) __PYX_ERR(0, 285, __pyx_L1_error)
+          __pyx_t_10 = PyObject_Length(__pyx_v_i); if (unlikely(__pyx_t_10 == -1)) __PYX_ERR(0, 291, __pyx_L1_error)
           __pyx_t_2 = ((!((__pyx_t_10 == 2) != 0)) != 0);
           if (__pyx_t_2) {
 
-            /* "multidict/_multidict.pyx":288
+            /* "multidict/_multidict.pyx":294
  *                             raise TypeError(
  *                                 "{} takes either dict or list of (key, value) "
  *                                 "tuples".format(name))             # <<<<<<<<<<<<<<
  *                         key = self._upper(i[0])
  *                         value = i[1]
  */
-            __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_takes_either_dict_or_list_of_ke, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 288, __pyx_L1_error)
+            __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_takes_either_dict_or_list_of_ke, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 294, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_3);
             __pyx_t_5 = NULL;
             if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_3))) {
@@ -6133,41 +6181,41 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
               }
             }
             if (!__pyx_t_5) {
-              __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_v_name); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 288, __pyx_L1_error)
+              __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_v_name); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 294, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_4);
             } else {
-              __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 288, __pyx_L1_error)
+              __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 294, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_6);
               __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __pyx_t_5 = NULL;
               __Pyx_INCREF(__pyx_v_name);
               __Pyx_GIVEREF(__pyx_v_name);
               PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_v_name);
-              __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 288, __pyx_L1_error)
+              __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 294, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_4);
               __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
             }
             __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-            /* "multidict/_multidict.pyx":286
+            /* "multidict/_multidict.pyx":292
  *                     else:
  *                         if not len(i) == 2:
  *                             raise TypeError(             # <<<<<<<<<<<<<<
  *                                 "{} takes either dict or list of (key, value) "
  *                                 "tuples".format(name))
  */
-            __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 286, __pyx_L1_error)
+            __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 292, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_3);
             __Pyx_GIVEREF(__pyx_t_4);
             PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_4);
             __pyx_t_4 = 0;
-            __pyx_t_4 = __Pyx_PyObject_Call(__pyx_builtin_TypeError, __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 286, __pyx_L1_error)
+            __pyx_t_4 = __Pyx_PyObject_Call(__pyx_builtin_TypeError, __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 292, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_4);
             __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
             __Pyx_Raise(__pyx_t_4, 0, 0, 0);
             __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-            __PYX_ERR(0, 286, __pyx_L1_error)
+            __PYX_ERR(0, 292, __pyx_L1_error)
 
-            /* "multidict/_multidict.pyx":285
+            /* "multidict/_multidict.pyx":291
  *                         value = item._value
  *                     else:
  *                         if not len(i) == 2:             # <<<<<<<<<<<<<<
@@ -6176,36 +6224,36 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  */
           }
 
-          /* "multidict/_multidict.pyx":289
+          /* "multidict/_multidict.pyx":295
  *                                 "{} takes either dict or list of (key, value) "
  *                                 "tuples".format(name))
  *                         key = self._upper(i[0])             # <<<<<<<<<<<<<<
  *                         value = i[1]
  *                     if do_add:
  */
-          __pyx_t_4 = __Pyx_GetItemInt(__pyx_v_i, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 289, __pyx_L1_error)
+          __pyx_t_4 = __Pyx_GetItemInt(__pyx_v_i, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 295, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_4);
-          __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 289, __pyx_L1_error)
+          __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 295, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_3);
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
           __Pyx_XDECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_3));
           __pyx_t_3 = 0;
 
-          /* "multidict/_multidict.pyx":290
+          /* "multidict/_multidict.pyx":296
  *                                 "tuples".format(name))
  *                         key = self._upper(i[0])
  *                         value = i[1]             # <<<<<<<<<<<<<<
  *                     if do_add:
  *                         self._add(key, value)
  */
-          __pyx_t_3 = __Pyx_GetItemInt(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 290, __pyx_L1_error)
+          __pyx_t_3 = __Pyx_GetItemInt(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 296, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_3);
           __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_3);
           __pyx_t_3 = 0;
         }
         __pyx_L15:;
 
-        /* "multidict/_multidict.pyx":291
+        /* "multidict/_multidict.pyx":297
  *                         key = self._upper(i[0])
  *                         value = i[1]
  *                     if do_add:             # <<<<<<<<<<<<<<
@@ -6215,18 +6263,18 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         __pyx_t_2 = (__pyx_v_do_add != 0);
         if (__pyx_t_2) {
 
-          /* "multidict/_multidict.pyx":292
+          /* "multidict/_multidict.pyx":298
  *                         value = i[1]
  *                     if do_add:
  *                         self._add(key, value)             # <<<<<<<<<<<<<<
  *                     else:
  *                         self._replace(key, value)
  */
-          __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 292, __pyx_L1_error)
+          __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 298, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_3);
           __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-          /* "multidict/_multidict.pyx":291
+          /* "multidict/_multidict.pyx":297
  *                         key = self._upper(i[0])
  *                         value = i[1]
  *                     if do_add:             # <<<<<<<<<<<<<<
@@ -6236,7 +6284,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
           goto __pyx_L17;
         }
 
-        /* "multidict/_multidict.pyx":294
+        /* "multidict/_multidict.pyx":300
  *                         self._add(key, value)
  *                     else:
  *                         self._replace(key, value)             # <<<<<<<<<<<<<<
@@ -6244,13 +6292,13 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  * 
  */
         /*else*/ {
-          __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 294, __pyx_L1_error)
+          __pyx_t_3 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 300, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_3);
           __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
         }
         __pyx_L17:;
 
-        /* "multidict/_multidict.pyx":279
+        /* "multidict/_multidict.pyx":285
  *                         self._replace(key, value)
  *             else:
  *                 for i in arg:             # <<<<<<<<<<<<<<
@@ -6262,7 +6310,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
     }
     __pyx_L5:;
 
-    /* "multidict/_multidict.pyx":254
+    /* "multidict/_multidict.pyx":260
  *                             " ({} given)".format(name, len(args)))
  * 
  *         if args:             # <<<<<<<<<<<<<<
@@ -6271,7 +6319,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  */
   }
 
-  /* "multidict/_multidict.pyx":297
+  /* "multidict/_multidict.pyx":303
  * 
  * 
  *         for key, value in kwargs.items():             # <<<<<<<<<<<<<<
@@ -6280,17 +6328,17 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  */
   if (unlikely(__pyx_v_kwargs == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%s'", "items");
-    __PYX_ERR(0, 297, __pyx_L1_error)
+    __PYX_ERR(0, 303, __pyx_L1_error)
   }
-  __pyx_t_7 = __Pyx_PyDict_Items(__pyx_v_kwargs); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 297, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyDict_Items(__pyx_v_kwargs); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 303, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   if (likely(PyList_CheckExact(__pyx_t_7)) || PyTuple_CheckExact(__pyx_t_7)) {
     __pyx_t_3 = __pyx_t_7; __Pyx_INCREF(__pyx_t_3); __pyx_t_1 = 0;
     __pyx_t_9 = NULL;
   } else {
-    __pyx_t_1 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_t_7); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 297, __pyx_L1_error)
+    __pyx_t_1 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_t_7); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 303, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_9 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 297, __pyx_L1_error)
+    __pyx_t_9 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 303, __pyx_L1_error)
   }
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   for (;;) {
@@ -6298,17 +6346,17 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       if (likely(PyList_CheckExact(__pyx_t_3))) {
         if (__pyx_t_1 >= PyList_GET_SIZE(__pyx_t_3)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_7 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_7); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 297, __pyx_L1_error)
+        __pyx_t_7 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_7); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 303, __pyx_L1_error)
         #else
-        __pyx_t_7 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 297, __pyx_L1_error)
+        __pyx_t_7 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 303, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_7);
         #endif
       } else {
         if (__pyx_t_1 >= PyTuple_GET_SIZE(__pyx_t_3)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_7 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_7); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 297, __pyx_L1_error)
+        __pyx_t_7 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_7); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(0, 303, __pyx_L1_error)
         #else
-        __pyx_t_7 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 297, __pyx_L1_error)
+        __pyx_t_7 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 303, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_7);
         #endif
       }
@@ -6318,7 +6366,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
         PyObject* exc_type = PyErr_Occurred();
         if (exc_type) {
           if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else __PYX_ERR(0, 297, __pyx_L1_error)
+          else __PYX_ERR(0, 303, __pyx_L1_error)
         }
         break;
       }
@@ -6334,7 +6382,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       if (unlikely(size != 2)) {
         if (size > 2) __Pyx_RaiseTooManyValuesError(2);
         else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-        __PYX_ERR(0, 297, __pyx_L1_error)
+        __PYX_ERR(0, 303, __pyx_L1_error)
       }
       #if CYTHON_COMPILING_IN_CPYTHON
       if (likely(PyTuple_CheckExact(sequence))) {
@@ -6347,15 +6395,15 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       __Pyx_INCREF(__pyx_t_4);
       __Pyx_INCREF(__pyx_t_6);
       #else
-      __pyx_t_4 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 297, __pyx_L1_error)
+      __pyx_t_4 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 303, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      __pyx_t_6 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 297, __pyx_L1_error)
+      __pyx_t_6 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 303, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       #endif
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     } else {
       Py_ssize_t index = -1;
-      __pyx_t_5 = PyObject_GetIter(__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 297, __pyx_L1_error)
+      __pyx_t_5 = PyObject_GetIter(__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 303, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       __pyx_t_11 = Py_TYPE(__pyx_t_5)->tp_iternext;
@@ -6363,7 +6411,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       __Pyx_GOTREF(__pyx_t_4);
       index = 1; __pyx_t_6 = __pyx_t_11(__pyx_t_5); if (unlikely(!__pyx_t_6)) goto __pyx_L20_unpacking_failed;
       __Pyx_GOTREF(__pyx_t_6);
-      if (__Pyx_IternextUnpackEndCheck(__pyx_t_11(__pyx_t_5), 2) < 0) __PYX_ERR(0, 297, __pyx_L1_error)
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_11(__pyx_t_5), 2) < 0) __PYX_ERR(0, 303, __pyx_L1_error)
       __pyx_t_11 = NULL;
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       goto __pyx_L21_unpacking_done;
@@ -6371,28 +6419,28 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __pyx_t_11 = NULL;
       if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-      __PYX_ERR(0, 297, __pyx_L1_error)
+      __PYX_ERR(0, 303, __pyx_L1_error)
       __pyx_L21_unpacking_done:;
     }
-    if (!(likely(PyString_CheckExact(__pyx_t_4))||((__pyx_t_4) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_4)->tp_name), 0))) __PYX_ERR(0, 297, __pyx_L1_error)
+    if (!(likely(PyString_CheckExact(__pyx_t_4))||((__pyx_t_4) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_4)->tp_name), 0))) __PYX_ERR(0, 303, __pyx_L1_error)
     __Pyx_XDECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_4));
     __pyx_t_4 = 0;
     __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_6);
     __pyx_t_6 = 0;
 
-    /* "multidict/_multidict.pyx":298
+    /* "multidict/_multidict.pyx":304
  * 
  *         for key, value in kwargs.items():
  *             key = self._upper(key)             # <<<<<<<<<<<<<<
  *             if do_add:
  *                 self._add(key, value)
  */
-    __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 298, __pyx_L1_error)
+    __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 304, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF_SET(__pyx_v_key, ((PyObject*)__pyx_t_7));
     __pyx_t_7 = 0;
 
-    /* "multidict/_multidict.pyx":299
+    /* "multidict/_multidict.pyx":305
  *         for key, value in kwargs.items():
  *             key = self._upper(key)
  *             if do_add:             # <<<<<<<<<<<<<<
@@ -6402,18 +6450,18 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
     __pyx_t_2 = (__pyx_v_do_add != 0);
     if (__pyx_t_2) {
 
-      /* "multidict/_multidict.pyx":300
+      /* "multidict/_multidict.pyx":306
  *             key = self._upper(key)
  *             if do_add:
  *                 self._add(key, value)             # <<<<<<<<<<<<<<
  *             else:
  *                 self._replace(key, value)
  */
-      __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 300, __pyx_L1_error)
+      __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 306, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-      /* "multidict/_multidict.pyx":299
+      /* "multidict/_multidict.pyx":305
  *         for key, value in kwargs.items():
  *             key = self._upper(key)
  *             if do_add:             # <<<<<<<<<<<<<<
@@ -6423,7 +6471,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
       goto __pyx_L22;
     }
 
-    /* "multidict/_multidict.pyx":302
+    /* "multidict/_multidict.pyx":308
  *                 self._add(key, value)
  *             else:
  *                 self._replace(key, value)             # <<<<<<<<<<<<<<
@@ -6431,13 +6479,13 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
  *     cdef _add(self, str key, value):
  */
     /*else*/ {
-      __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 302, __pyx_L1_error)
+      __pyx_t_7 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, __pyx_v_key, __pyx_v_value); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 308, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     }
     __pyx_L22:;
 
-    /* "multidict/_multidict.pyx":297
+    /* "multidict/_multidict.pyx":303
  * 
  * 
  *         for key, value in kwargs.items():             # <<<<<<<<<<<<<<
@@ -6447,7 +6495,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "multidict/_multidict.pyx":246
+  /* "multidict/_multidict.pyx":252
  *         self._extend(args, kwargs, self.__class__.__name__, 1)
  * 
  *     cdef _extend(self, tuple args, dict kwargs, name, int do_add):             # <<<<<<<<<<<<<<
@@ -6477,7 +6525,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__extend(struct __pyx
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":304
+/* "multidict/_multidict.pyx":310
  *                 self._replace(key, value)
  * 
  *     cdef _add(self, str key, value):             # <<<<<<<<<<<<<<
@@ -6493,7 +6541,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__add(struct __pyx_ob
   int __pyx_t_3;
   __Pyx_RefNannySetupContext("_add", 0);
 
-  /* "multidict/_multidict.pyx":305
+  /* "multidict/_multidict.pyx":311
  * 
  *     cdef _add(self, str key, value):
  *         self._items.append(_Pair.__new__(_Pair, key, value))             # <<<<<<<<<<<<<<
@@ -6502,9 +6550,9 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__add(struct __pyx_ob
  */
   if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%s'", "append");
-    __PYX_ERR(0, 305, __pyx_L1_error)
+    __PYX_ERR(0, 311, __pyx_L1_error)
   }
-  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 305, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 311, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_key);
   __Pyx_GIVEREF(__pyx_v_key);
@@ -6512,13 +6560,13 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__add(struct __pyx_ob
   __Pyx_INCREF(__pyx_v_value);
   __Pyx_GIVEREF(__pyx_v_value);
   PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_v_value);
-  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__Pair(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__Pair), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 305, __pyx_L1_error)
+  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__Pair(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__Pair), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 311, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_3 = __Pyx_PyList_Append(__pyx_v_self->__pyx_base._items, __pyx_t_2); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 305, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyList_Append(__pyx_v_self->__pyx_base._items, __pyx_t_2); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 311, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":304
+  /* "multidict/_multidict.pyx":310
  *                 self._replace(key, value)
  * 
  *     cdef _add(self, str key, value):             # <<<<<<<<<<<<<<
@@ -6540,7 +6588,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__add(struct __pyx_ob
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":307
+/* "multidict/_multidict.pyx":313
  *         self._items.append(_Pair.__new__(_Pair, key, value))
  * 
  *     cdef _replace(self, str key, value):             # <<<<<<<<<<<<<<
@@ -6556,18 +6604,18 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__replace(struct __py
   int __pyx_t_3;
   __Pyx_RefNannySetupContext("_replace", 0);
 
-  /* "multidict/_multidict.pyx":308
+  /* "multidict/_multidict.pyx":314
  * 
  *     cdef _replace(self, str key, value):
  *         self._remove(key, 0)             # <<<<<<<<<<<<<<
  *         self._items.append(_Pair.__new__(_Pair, key, value))
  * 
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_remove(__pyx_v_self, __pyx_v_key, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 308, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_remove(__pyx_v_self, __pyx_v_key, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 314, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":309
+  /* "multidict/_multidict.pyx":315
  *     cdef _replace(self, str key, value):
  *         self._remove(key, 0)
  *         self._items.append(_Pair.__new__(_Pair, key, value))             # <<<<<<<<<<<<<<
@@ -6576,9 +6624,9 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__replace(struct __py
  */
   if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
     PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%s'", "append");
-    __PYX_ERR(0, 309, __pyx_L1_error)
+    __PYX_ERR(0, 315, __pyx_L1_error)
   }
-  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 309, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 315, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_key);
   __Pyx_GIVEREF(__pyx_v_key);
@@ -6586,13 +6634,13 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__replace(struct __py
   __Pyx_INCREF(__pyx_v_value);
   __Pyx_GIVEREF(__pyx_v_value);
   PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_v_value);
-  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__Pair(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__Pair), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 309, __pyx_L1_error)
+  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__Pair(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__Pair), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 315, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_3 = __Pyx_PyList_Append(__pyx_v_self->__pyx_base._items, __pyx_t_2); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 309, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyList_Append(__pyx_v_self->__pyx_base._items, __pyx_t_2); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 315, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":307
+  /* "multidict/_multidict.pyx":313
  *         self._items.append(_Pair.__new__(_Pair, key, value))
  * 
  *     cdef _replace(self, str key, value):             # <<<<<<<<<<<<<<
@@ -6614,7 +6662,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__replace(struct __py
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":311
+/* "multidict/_multidict.pyx":317
  *         self._items.append(_Pair.__new__(_Pair, key, value))
  * 
  *     def add(self, key, value):             # <<<<<<<<<<<<<<
@@ -6651,11 +6699,11 @@ static PyObject *__pyx_pw_9multidict_10_multidict_9MultiDict_3add(PyObject *__py
         case  1:
         if (likely((values[1] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_value)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("add", 1, 2, 2, 1); __PYX_ERR(0, 311, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("add", 1, 2, 2, 1); __PYX_ERR(0, 317, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "add") < 0)) __PYX_ERR(0, 311, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "add") < 0)) __PYX_ERR(0, 317, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -6668,7 +6716,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_9MultiDict_3add(PyObject *__py
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("add", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 311, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("add", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 317, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict.MultiDict.add", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -6688,21 +6736,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_2add(struct __pyx_o
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("add", 0);
 
-  /* "multidict/_multidict.pyx":313
+  /* "multidict/_multidict.pyx":319
  *     def add(self, key, value):
  *         """Add the key and value, not overwriting any previous value."""
  *         self._add(self._upper(key), value)             # <<<<<<<<<<<<<<
  * 
  *     def copy(self):
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 313, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 319, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_value); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 313, __pyx_L1_error)
+  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_value); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 319, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":311
+  /* "multidict/_multidict.pyx":317
  *         self._items.append(_Pair.__new__(_Pair, key, value))
  * 
  *     def add(self, key, value):             # <<<<<<<<<<<<<<
@@ -6724,7 +6772,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_2add(struct __pyx_o
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":315
+/* "multidict/_multidict.pyx":321
  *         self._add(self._upper(key), value)
  * 
  *     def copy(self):             # <<<<<<<<<<<<<<
@@ -6756,19 +6804,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_4copy(struct __pyx_
   PyObject *__pyx_t_4 = NULL;
   __Pyx_RefNannySetupContext("copy", 0);
 
-  /* "multidict/_multidict.pyx":317
+  /* "multidict/_multidict.pyx":323
  *     def copy(self):
  *         """Return a copy of itself."""
  *         cls = self.__class__             # <<<<<<<<<<<<<<
  *         return cls(self._items)
  * 
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 317, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 323, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_cls = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":318
+  /* "multidict/_multidict.pyx":324
  *         """Return a copy of itself."""
  *         cls = self.__class__
  *         return cls(self._items)             # <<<<<<<<<<<<<<
@@ -6788,16 +6836,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_4copy(struct __pyx_
     }
   }
   if (!__pyx_t_3) {
-    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_v_self->__pyx_base._items); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 318, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_v_self->__pyx_base._items); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 324, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
   } else {
-    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 318, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 324, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_3); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_3); __pyx_t_3 = NULL;
     __Pyx_INCREF(__pyx_v_self->__pyx_base._items);
     __Pyx_GIVEREF(__pyx_v_self->__pyx_base._items);
     PyTuple_SET_ITEM(__pyx_t_4, 0+1, __pyx_v_self->__pyx_base._items);
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 318, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 324, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   }
@@ -6806,7 +6854,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_4copy(struct __pyx_
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":315
+  /* "multidict/_multidict.pyx":321
  *         self._add(self._upper(key), value)
  * 
  *     def copy(self):             # <<<<<<<<<<<<<<
@@ -6829,7 +6877,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_4copy(struct __pyx_
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":320
+/* "multidict/_multidict.pyx":326
  *         return cls(self._items)
  * 
  *     def extend(self, *args, **kwargs):             # <<<<<<<<<<<<<<
@@ -6866,18 +6914,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_6extend(struct __py
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("extend", 0);
 
-  /* "multidict/_multidict.pyx":325
+  /* "multidict/_multidict.pyx":331
  *         This method must be used instead of update.
  *         """
  *         self._extend(args, kwargs, "extend", 1)             # <<<<<<<<<<<<<<
  * 
  *     def clear(self):
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_extend(__pyx_v_self, __pyx_v_args, __pyx_v_kwargs, __pyx_n_s_extend, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 325, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_extend(__pyx_v_self, __pyx_v_args, __pyx_v_kwargs, __pyx_n_s_extend, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 331, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":320
+  /* "multidict/_multidict.pyx":326
  *         return cls(self._items)
  * 
  *     def extend(self, *args, **kwargs):             # <<<<<<<<<<<<<<
@@ -6898,7 +6946,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_6extend(struct __py
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":327
+/* "multidict/_multidict.pyx":333
  *         self._extend(args, kwargs, "extend", 1)
  * 
  *     def clear(self):             # <<<<<<<<<<<<<<
@@ -6928,14 +6976,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_8clear(struct __pyx
   PyObject *__pyx_t_3 = NULL;
   __Pyx_RefNannySetupContext("clear", 0);
 
-  /* "multidict/_multidict.pyx":329
+  /* "multidict/_multidict.pyx":335
  *     def clear(self):
  *         """Remove all items from MultiDict"""
  *         self._items.clear()             # <<<<<<<<<<<<<<
  * 
  *     # MutableMapping interface #
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base._items, __pyx_n_s_clear); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 329, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->__pyx_base._items, __pyx_n_s_clear); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 335, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = NULL;
   if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_2))) {
@@ -6948,16 +6996,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_8clear(struct __pyx
     }
   }
   if (__pyx_t_3) {
-    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 329, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 335, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   } else {
-    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 329, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 335, __pyx_L1_error)
   }
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":327
+  /* "multidict/_multidict.pyx":333
  *         self._extend(args, kwargs, "extend", 1)
  * 
  *     def clear(self):             # <<<<<<<<<<<<<<
@@ -6980,7 +7028,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_8clear(struct __pyx
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":333
+/* "multidict/_multidict.pyx":339
  *     # MutableMapping interface #
  * 
  *     def __setitem__(self, key, value):             # <<<<<<<<<<<<<<
@@ -7008,21 +7056,21 @@ static int __pyx_pf_9multidict_10_multidict_9MultiDict_10__setitem__(struct __py
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("__setitem__", 0);
 
-  /* "multidict/_multidict.pyx":334
+  /* "multidict/_multidict.pyx":340
  * 
  *     def __setitem__(self, key, value):
  *         self._replace(self._upper(key), value)             # <<<<<<<<<<<<<<
  * 
  *     def __delitem__(self, key):
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 334, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 340, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_value); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 334, __pyx_L1_error)
+  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_replace(__pyx_v_self, ((PyObject*)__pyx_t_1), __pyx_v_value); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 340, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":333
+  /* "multidict/_multidict.pyx":339
  *     # MutableMapping interface #
  * 
  *     def __setitem__(self, key, value):             # <<<<<<<<<<<<<<
@@ -7043,7 +7091,7 @@ static int __pyx_pf_9multidict_10_multidict_9MultiDict_10__setitem__(struct __py
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":336
+/* "multidict/_multidict.pyx":342
  *         self._replace(self._upper(key), value)
  * 
  *     def __delitem__(self, key):             # <<<<<<<<<<<<<<
@@ -7071,21 +7119,21 @@ static int __pyx_pf_9multidict_10_multidict_9MultiDict_12__delitem__(struct __py
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("__delitem__", 0);
 
-  /* "multidict/_multidict.pyx":337
+  /* "multidict/_multidict.pyx":343
  * 
  *     def __delitem__(self, key):
  *         self._remove(self._upper(key), True)             # <<<<<<<<<<<<<<
  * 
  *     cdef _remove(self, str key, int raise_key_error):
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 337, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 343, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_remove(__pyx_v_self, ((PyObject*)__pyx_t_1), 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 337, __pyx_L1_error)
+  __pyx_t_2 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_remove(__pyx_v_self, ((PyObject*)__pyx_t_1), 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 343, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":336
+  /* "multidict/_multidict.pyx":342
  *         self._replace(self._upper(key), value)
  * 
  *     def __delitem__(self, key):             # <<<<<<<<<<<<<<
@@ -7106,7 +7154,7 @@ static int __pyx_pf_9multidict_10_multidict_9MultiDict_12__delitem__(struct __py
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":339
+/* "multidict/_multidict.pyx":345
  *         self._remove(self._upper(key), True)
  * 
  *     cdef _remove(self, str key, int raise_key_error):             # <<<<<<<<<<<<<<
@@ -7128,7 +7176,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
   int __pyx_t_6;
   __Pyx_RefNannySetupContext("_remove", 0);
 
-  /* "multidict/_multidict.pyx":342
+  /* "multidict/_multidict.pyx":348
  *         cdef _Pair item
  *         cdef int found
  *         found = False             # <<<<<<<<<<<<<<
@@ -7137,7 +7185,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
  */
   __pyx_v_found = 0;
 
-  /* "multidict/_multidict.pyx":343
+  /* "multidict/_multidict.pyx":349
  *         cdef int found
  *         found = False
  *         for i in range(len(self._items) - 1, -1, -1):             # <<<<<<<<<<<<<<
@@ -7148,14 +7196,14 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
   __Pyx_INCREF(__pyx_t_1);
   if (unlikely(__pyx_t_1 == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 343, __pyx_L1_error)
+    __PYX_ERR(0, 349, __pyx_L1_error)
   }
-  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 343, __pyx_L1_error)
+  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 349, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   for (__pyx_t_3 = (__pyx_t_2 - 1); __pyx_t_3 > -1L; __pyx_t_3-=1) {
     __pyx_v_i = __pyx_t_3;
 
-    /* "multidict/_multidict.pyx":344
+    /* "multidict/_multidict.pyx":350
  *         found = False
  *         for i in range(len(self._items) - 1, -1, -1):
  *             item = <_Pair>self._items[i]             # <<<<<<<<<<<<<<
@@ -7164,9 +7212,9 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
  */
     if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      __PYX_ERR(0, 344, __pyx_L1_error)
+      __PYX_ERR(0, 350, __pyx_L1_error)
     }
-    __pyx_t_1 = __Pyx_GetItemInt_List(__pyx_v_self->__pyx_base._items, __pyx_v_i, Py_ssize_t, 1, PyInt_FromSsize_t, 1, 1, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 344, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_GetItemInt_List(__pyx_v_self->__pyx_base._items, __pyx_v_i, Py_ssize_t, 1, PyInt_FromSsize_t, 1, 1, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 350, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_t_4 = __pyx_t_1;
     __Pyx_INCREF(__pyx_t_4);
@@ -7174,17 +7222,17 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_4));
     __pyx_t_4 = 0;
 
-    /* "multidict/_multidict.pyx":345
+    /* "multidict/_multidict.pyx":351
  *         for i in range(len(self._items) - 1, -1, -1):
  *             item = <_Pair>self._items[i]
  *             if item._key == key:             # <<<<<<<<<<<<<<
  *                 del self._items[i]
  *                 found = True
  */
-    __pyx_t_5 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_key, Py_EQ)); if (unlikely(__pyx_t_5 < 0)) __PYX_ERR(0, 345, __pyx_L1_error)
+    __pyx_t_5 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_key, Py_EQ)); if (unlikely(__pyx_t_5 < 0)) __PYX_ERR(0, 351, __pyx_L1_error)
     if (__pyx_t_5) {
 
-      /* "multidict/_multidict.pyx":346
+      /* "multidict/_multidict.pyx":352
  *             item = <_Pair>self._items[i]
  *             if item._key == key:
  *                 del self._items[i]             # <<<<<<<<<<<<<<
@@ -7193,11 +7241,11 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
  */
       if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-        __PYX_ERR(0, 346, __pyx_L1_error)
+        __PYX_ERR(0, 352, __pyx_L1_error)
       }
-      if (unlikely(__Pyx_DelItemInt(__pyx_v_self->__pyx_base._items, __pyx_v_i, Py_ssize_t, 1, PyInt_FromSsize_t, 1, 1, 1) < 0)) __PYX_ERR(0, 346, __pyx_L1_error)
+      if (unlikely(__Pyx_DelItemInt(__pyx_v_self->__pyx_base._items, __pyx_v_i, Py_ssize_t, 1, PyInt_FromSsize_t, 1, 1, 1) < 0)) __PYX_ERR(0, 352, __pyx_L1_error)
 
-      /* "multidict/_multidict.pyx":347
+      /* "multidict/_multidict.pyx":353
  *             if item._key == key:
  *                 del self._items[i]
  *                 found = True             # <<<<<<<<<<<<<<
@@ -7206,7 +7254,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
  */
       __pyx_v_found = 1;
 
-      /* "multidict/_multidict.pyx":345
+      /* "multidict/_multidict.pyx":351
  *         for i in range(len(self._items) - 1, -1, -1):
  *             item = <_Pair>self._items[i]
  *             if item._key == key:             # <<<<<<<<<<<<<<
@@ -7216,7 +7264,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
     }
   }
 
-  /* "multidict/_multidict.pyx":348
+  /* "multidict/_multidict.pyx":354
  *                 del self._items[i]
  *                 found = True
  *         if not found and raise_key_error:             # <<<<<<<<<<<<<<
@@ -7234,26 +7282,26 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
   __pyx_L7_bool_binop_done:;
   if (__pyx_t_5) {
 
-    /* "multidict/_multidict.pyx":349
+    /* "multidict/_multidict.pyx":355
  *                 found = True
  *         if not found and raise_key_error:
  *             raise KeyError(key)             # <<<<<<<<<<<<<<
  * 
  *     def setdefault(self, key, default=None):
  */
-    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 349, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 355, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_INCREF(__pyx_v_key);
     __Pyx_GIVEREF(__pyx_v_key);
     PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_v_key);
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 349, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 355, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_Raise(__pyx_t_1, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __PYX_ERR(0, 349, __pyx_L1_error)
+    __PYX_ERR(0, 355, __pyx_L1_error)
 
-    /* "multidict/_multidict.pyx":348
+    /* "multidict/_multidict.pyx":354
  *                 del self._items[i]
  *                 found = True
  *         if not found and raise_key_error:             # <<<<<<<<<<<<<<
@@ -7262,7 +7310,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
  */
   }
 
-  /* "multidict/_multidict.pyx":339
+  /* "multidict/_multidict.pyx":345
  *         self._remove(self._upper(key), True)
  * 
  *     cdef _remove(self, str key, int raise_key_error):             # <<<<<<<<<<<<<<
@@ -7285,7 +7333,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_9MultiDict__remove(struct __pyx
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":351
+/* "multidict/_multidict.pyx":357
  *             raise KeyError(key)
  * 
  *     def setdefault(self, key, default=None):             # <<<<<<<<<<<<<<
@@ -7327,7 +7375,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_9MultiDict_15setdefault(PyObje
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "setdefault") < 0)) __PYX_ERR(0, 351, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "setdefault") < 0)) __PYX_ERR(0, 357, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -7342,7 +7390,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_9MultiDict_15setdefault(PyObje
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("setdefault", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 351, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("setdefault", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 357, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict.MultiDict.setdefault", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -7367,19 +7415,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_14setdefault(struct
   int __pyx_t_4;
   __Pyx_RefNannySetupContext("setdefault", 0);
 
-  /* "multidict/_multidict.pyx":355
+  /* "multidict/_multidict.pyx":361
  *         cdef str skey
  *         cdef _Pair item
  *         skey = self._upper(key)             # <<<<<<<<<<<<<<
  *         for i in self._items:
  *             item = <_Pair>i
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 355, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 361, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_skey = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":356
+  /* "multidict/_multidict.pyx":362
  *         cdef _Pair item
  *         skey = self._upper(key)
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -7388,21 +7436,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_14setdefault(struct
  */
   if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 356, __pyx_L1_error)
+    __PYX_ERR(0, 362, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->__pyx_base._items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 356, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 362, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 356, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 362, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":357
+    /* "multidict/_multidict.pyx":363
  *         skey = self._upper(key)
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -7414,17 +7462,17 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_14setdefault(struct
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":358
+    /* "multidict/_multidict.pyx":364
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == skey:             # <<<<<<<<<<<<<<
  *                 return item._value
  *         self._add(skey, default)
  */
-    __pyx_t_4 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_skey, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 358, __pyx_L1_error)
+    __pyx_t_4 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_skey, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 364, __pyx_L1_error)
     if (__pyx_t_4) {
 
-      /* "multidict/_multidict.pyx":359
+      /* "multidict/_multidict.pyx":365
  *             item = <_Pair>i
  *             if item._key == skey:
  *                 return item._value             # <<<<<<<<<<<<<<
@@ -7437,7 +7485,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_14setdefault(struct
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":358
+      /* "multidict/_multidict.pyx":364
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == skey:             # <<<<<<<<<<<<<<
@@ -7446,7 +7494,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_14setdefault(struct
  */
     }
 
-    /* "multidict/_multidict.pyx":356
+    /* "multidict/_multidict.pyx":362
  *         cdef _Pair item
  *         skey = self._upper(key)
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -7456,18 +7504,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_14setdefault(struct
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":360
+  /* "multidict/_multidict.pyx":366
  *             if item._key == skey:
  *                 return item._value
  *         self._add(skey, default)             # <<<<<<<<<<<<<<
  *         return default
  * 
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_skey, __pyx_v_default); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 360, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_add(__pyx_v_self, __pyx_v_skey, __pyx_v_default); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 366, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":361
+  /* "multidict/_multidict.pyx":367
  *                 return item._value
  *         self._add(skey, default)
  *         return default             # <<<<<<<<<<<<<<
@@ -7479,7 +7527,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_14setdefault(struct
   __pyx_r = __pyx_v_default;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":351
+  /* "multidict/_multidict.pyx":357
  *             raise KeyError(key)
  * 
  *     def setdefault(self, key, default=None):             # <<<<<<<<<<<<<<
@@ -7502,7 +7550,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_14setdefault(struct
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":363
+/* "multidict/_multidict.pyx":369
  *         return default
  * 
  *     def pop(self, key, default=_marker):             # <<<<<<<<<<<<<<
@@ -7544,7 +7592,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_9MultiDict_17pop(PyObject *__p
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "pop") < 0)) __PYX_ERR(0, 363, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "pop") < 0)) __PYX_ERR(0, 369, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -7559,7 +7607,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_9MultiDict_17pop(PyObject *__p
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("pop", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 363, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("pop", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 369, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict.MultiDict.pop", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -7588,19 +7636,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
   int __pyx_t_6;
   __Pyx_RefNannySetupContext("pop", 0);
 
-  /* "multidict/_multidict.pyx":374
+  /* "multidict/_multidict.pyx":380
  *         cdef object value
  *         cdef _Pair item
  *         skey = self._upper(key)             # <<<<<<<<<<<<<<
  *         value = None
  *         found = False
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 374, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->__pyx_base._upper(((struct __pyx_obj_9multidict_10_multidict__Base *)__pyx_v_self), __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 380, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_skey = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":375
+  /* "multidict/_multidict.pyx":381
  *         cdef _Pair item
  *         skey = self._upper(key)
  *         value = None             # <<<<<<<<<<<<<<
@@ -7610,7 +7658,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
   __Pyx_INCREF(Py_None);
   __pyx_v_value = Py_None;
 
-  /* "multidict/_multidict.pyx":376
+  /* "multidict/_multidict.pyx":382
  *         skey = self._upper(key)
  *         value = None
  *         found = False             # <<<<<<<<<<<<<<
@@ -7619,7 +7667,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
  */
   __pyx_v_found = 0;
 
-  /* "multidict/_multidict.pyx":377
+  /* "multidict/_multidict.pyx":383
  *         value = None
  *         found = False
  *         for i in range(len(self._items) - 1, -1, -1):             # <<<<<<<<<<<<<<
@@ -7630,14 +7678,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
   __Pyx_INCREF(__pyx_t_1);
   if (unlikely(__pyx_t_1 == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 377, __pyx_L1_error)
+    __PYX_ERR(0, 383, __pyx_L1_error)
   }
-  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 377, __pyx_L1_error)
+  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 383, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   for (__pyx_t_3 = (__pyx_t_2 - 1); __pyx_t_3 > -1L; __pyx_t_3-=1) {
     __pyx_v_i = __pyx_t_3;
 
-    /* "multidict/_multidict.pyx":378
+    /* "multidict/_multidict.pyx":384
  *         found = False
  *         for i in range(len(self._items) - 1, -1, -1):
  *             item = <_Pair>self._items[i]             # <<<<<<<<<<<<<<
@@ -7646,9 +7694,9 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
  */
     if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      __PYX_ERR(0, 378, __pyx_L1_error)
+      __PYX_ERR(0, 384, __pyx_L1_error)
     }
-    __pyx_t_1 = __Pyx_GetItemInt_List(__pyx_v_self->__pyx_base._items, __pyx_v_i, Py_ssize_t, 1, PyInt_FromSsize_t, 1, 1, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 378, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_GetItemInt_List(__pyx_v_self->__pyx_base._items, __pyx_v_i, Py_ssize_t, 1, PyInt_FromSsize_t, 1, 1, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 384, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_t_4 = __pyx_t_1;
     __Pyx_INCREF(__pyx_t_4);
@@ -7656,17 +7704,17 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_4));
     __pyx_t_4 = 0;
 
-    /* "multidict/_multidict.pyx":379
+    /* "multidict/_multidict.pyx":385
  *         for i in range(len(self._items) - 1, -1, -1):
  *             item = <_Pair>self._items[i]
  *             if item._key == skey:             # <<<<<<<<<<<<<<
  *                 value = item._value
  *                 del self._items[i]
  */
-    __pyx_t_5 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_skey, Py_EQ)); if (unlikely(__pyx_t_5 < 0)) __PYX_ERR(0, 379, __pyx_L1_error)
+    __pyx_t_5 = (__Pyx_PyString_Equals(__pyx_v_item->_key, __pyx_v_skey, Py_EQ)); if (unlikely(__pyx_t_5 < 0)) __PYX_ERR(0, 385, __pyx_L1_error)
     if (__pyx_t_5) {
 
-      /* "multidict/_multidict.pyx":380
+      /* "multidict/_multidict.pyx":386
  *             item = <_Pair>self._items[i]
  *             if item._key == skey:
  *                 value = item._value             # <<<<<<<<<<<<<<
@@ -7678,7 +7726,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
       __Pyx_DECREF_SET(__pyx_v_value, __pyx_t_4);
       __pyx_t_4 = 0;
 
-      /* "multidict/_multidict.pyx":381
+      /* "multidict/_multidict.pyx":387
  *             if item._key == skey:
  *                 value = item._value
  *                 del self._items[i]             # <<<<<<<<<<<<<<
@@ -7687,11 +7735,11 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
  */
       if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-        __PYX_ERR(0, 381, __pyx_L1_error)
+        __PYX_ERR(0, 387, __pyx_L1_error)
       }
-      if (unlikely(__Pyx_DelItemInt(__pyx_v_self->__pyx_base._items, __pyx_v_i, Py_ssize_t, 1, PyInt_FromSsize_t, 1, 1, 1) < 0)) __PYX_ERR(0, 381, __pyx_L1_error)
+      if (unlikely(__Pyx_DelItemInt(__pyx_v_self->__pyx_base._items, __pyx_v_i, Py_ssize_t, 1, PyInt_FromSsize_t, 1, 1, 1) < 0)) __PYX_ERR(0, 387, __pyx_L1_error)
 
-      /* "multidict/_multidict.pyx":382
+      /* "multidict/_multidict.pyx":388
  *                 value = item._value
  *                 del self._items[i]
  *                 found = True             # <<<<<<<<<<<<<<
@@ -7700,7 +7748,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
  */
       __pyx_v_found = 1;
 
-      /* "multidict/_multidict.pyx":379
+      /* "multidict/_multidict.pyx":385
  *         for i in range(len(self._items) - 1, -1, -1):
  *             item = <_Pair>self._items[i]
  *             if item._key == skey:             # <<<<<<<<<<<<<<
@@ -7710,7 +7758,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
     }
   }
 
-  /* "multidict/_multidict.pyx":383
+  /* "multidict/_multidict.pyx":389
  *                 del self._items[i]
  *                 found = True
  *         if not found:             # <<<<<<<<<<<<<<
@@ -7720,7 +7768,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
   __pyx_t_5 = ((!(__pyx_v_found != 0)) != 0);
   if (__pyx_t_5) {
 
-    /* "multidict/_multidict.pyx":384
+    /* "multidict/_multidict.pyx":390
  *                 found = True
  *         if not found:
  *             if default is self.marker:             # <<<<<<<<<<<<<<
@@ -7731,26 +7779,26 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
     __pyx_t_6 = (__pyx_t_5 != 0);
     if (__pyx_t_6) {
 
-      /* "multidict/_multidict.pyx":385
+      /* "multidict/_multidict.pyx":391
  *         if not found:
  *             if default is self.marker:
  *                 raise KeyError(key)             # <<<<<<<<<<<<<<
  *             else:
  *                 return default
  */
-      __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 385, __pyx_L1_error)
+      __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 391, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_INCREF(__pyx_v_key);
       __Pyx_GIVEREF(__pyx_v_key);
       PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_v_key);
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 385, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 391, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_Raise(__pyx_t_1, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __PYX_ERR(0, 385, __pyx_L1_error)
+      __PYX_ERR(0, 391, __pyx_L1_error)
 
-      /* "multidict/_multidict.pyx":384
+      /* "multidict/_multidict.pyx":390
  *                 found = True
  *         if not found:
  *             if default is self.marker:             # <<<<<<<<<<<<<<
@@ -7759,7 +7807,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
  */
     }
 
-    /* "multidict/_multidict.pyx":387
+    /* "multidict/_multidict.pyx":393
  *                 raise KeyError(key)
  *             else:
  *                 return default             # <<<<<<<<<<<<<<
@@ -7773,7 +7821,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
       goto __pyx_L0;
     }
 
-    /* "multidict/_multidict.pyx":383
+    /* "multidict/_multidict.pyx":389
  *                 del self._items[i]
  *                 found = True
  *         if not found:             # <<<<<<<<<<<<<<
@@ -7782,7 +7830,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
  */
   }
 
-  /* "multidict/_multidict.pyx":389
+  /* "multidict/_multidict.pyx":395
  *                 return default
  *         else:
  *             return value             # <<<<<<<<<<<<<<
@@ -7796,7 +7844,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
     goto __pyx_L0;
   }
 
-  /* "multidict/_multidict.pyx":363
+  /* "multidict/_multidict.pyx":369
  *         return default
  * 
  *     def pop(self, key, default=_marker):             # <<<<<<<<<<<<<<
@@ -7819,7 +7867,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_16pop(struct __pyx_
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":391
+/* "multidict/_multidict.pyx":397
  *             return value
  * 
  *     def popitem(self):             # <<<<<<<<<<<<<<
@@ -7850,7 +7898,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_18popitem(struct __
   PyObject *__pyx_t_3 = NULL;
   __Pyx_RefNannySetupContext("popitem", 0);
 
-  /* "multidict/_multidict.pyx":394
+  /* "multidict/_multidict.pyx":400
  *         """Remove and return an arbitrary (key, value) pair."""
  *         cdef _Pair item
  *         if self._items:             # <<<<<<<<<<<<<<
@@ -7860,7 +7908,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_18popitem(struct __
   __pyx_t_1 = (__pyx_v_self->__pyx_base._items != Py_None) && (PyList_GET_SIZE(__pyx_v_self->__pyx_base._items) != 0);
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":395
+    /* "multidict/_multidict.pyx":401
  *         cdef _Pair item
  *         if self._items:
  *             item = <_Pair>self._items.pop(0)             # <<<<<<<<<<<<<<
@@ -7869,9 +7917,9 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_18popitem(struct __
  */
     if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
       PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%s'", "pop");
-      __PYX_ERR(0, 395, __pyx_L1_error)
+      __PYX_ERR(0, 401, __pyx_L1_error)
     }
-    __pyx_t_2 = __Pyx_PyList_PopIndex(__pyx_v_self->__pyx_base._items, __pyx_int_0, 0, 1, Py_ssize_t, PyInt_FromSsize_t); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 395, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyList_PopIndex(__pyx_v_self->__pyx_base._items, __pyx_int_0, 0, 1, Py_ssize_t, PyInt_FromSsize_t); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 401, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __pyx_t_3 = __pyx_t_2;
     __Pyx_INCREF(__pyx_t_3);
@@ -7879,7 +7927,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_18popitem(struct __
     __pyx_v_item = ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":396
+    /* "multidict/_multidict.pyx":402
  *         if self._items:
  *             item = <_Pair>self._items.pop(0)
  *             return (item._key, item._value)             # <<<<<<<<<<<<<<
@@ -7887,7 +7935,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_18popitem(struct __
  *             raise KeyError("empty multidict")
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 396, __pyx_L1_error)
+    __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 402, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_INCREF(__pyx_v_item->_key);
     __Pyx_GIVEREF(__pyx_v_item->_key);
@@ -7899,7 +7947,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_18popitem(struct __
     __pyx_t_3 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":394
+    /* "multidict/_multidict.pyx":400
  *         """Remove and return an arbitrary (key, value) pair."""
  *         cdef _Pair item
  *         if self._items:             # <<<<<<<<<<<<<<
@@ -7908,7 +7956,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_18popitem(struct __
  */
   }
 
-  /* "multidict/_multidict.pyx":398
+  /* "multidict/_multidict.pyx":404
  *             return (item._key, item._value)
  *         else:
  *             raise KeyError("empty multidict")             # <<<<<<<<<<<<<<
@@ -7916,14 +7964,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_18popitem(struct __
  *     def update(self, *args, **kwargs):
  */
   /*else*/ {
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_tuple__7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 398, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_KeyError, __pyx_tuple__7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 404, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 398, __pyx_L1_error)
+    __PYX_ERR(0, 404, __pyx_L1_error)
   }
 
-  /* "multidict/_multidict.pyx":391
+  /* "multidict/_multidict.pyx":397
  *             return value
  * 
  *     def popitem(self):             # <<<<<<<<<<<<<<
@@ -7944,7 +7992,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_18popitem(struct __
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":400
+/* "multidict/_multidict.pyx":406
  *             raise KeyError("empty multidict")
  * 
  *     def update(self, *args, **kwargs):             # <<<<<<<<<<<<<<
@@ -7981,18 +8029,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_20update(struct __p
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("update", 0);
 
-  /* "multidict/_multidict.pyx":402
+  /* "multidict/_multidict.pyx":408
  *     def update(self, *args, **kwargs):
  *         """Update the dictionary from *other*, overwriting existing keys."""
  *         self._extend(args, kwargs, "update", 0)             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_extend(__pyx_v_self, __pyx_v_args, __pyx_v_kwargs, __pyx_n_s_update, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 402, __pyx_L1_error)
+  __pyx_t_1 = ((struct __pyx_vtabstruct_9multidict_10_multidict_MultiDict *)__pyx_v_self->__pyx_base.__pyx_vtab)->_extend(__pyx_v_self, __pyx_v_args, __pyx_v_kwargs, __pyx_n_s_update, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 408, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":400
+  /* "multidict/_multidict.pyx":406
  *             raise KeyError("empty multidict")
  * 
  *     def update(self, *args, **kwargs):             # <<<<<<<<<<<<<<
@@ -8013,7 +8061,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9MultiDict_20update(struct __p
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":411
+/* "multidict/_multidict.pyx":417
  *     """An ordered dictionary that can have multiple values for each key."""
  * 
  *     cdef str _upper(self, s):             # <<<<<<<<<<<<<<
@@ -8031,7 +8079,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_11CIMultiDict__upper(struct __p
   PyObject *__pyx_t_5 = NULL;
   __Pyx_RefNannySetupContext("_upper", 0);
 
-  /* "multidict/_multidict.pyx":412
+  /* "multidict/_multidict.pyx":418
  * 
  *     cdef str _upper(self, s):
  *         if type(s) is self._upstr:             # <<<<<<<<<<<<<<
@@ -8042,7 +8090,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_11CIMultiDict__upper(struct __p
   __pyx_t_2 = (__pyx_t_1 != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":413
+    /* "multidict/_multidict.pyx":419
  *     cdef str _upper(self, s):
  *         if type(s) is self._upstr:
  *             return <str>s             # <<<<<<<<<<<<<<
@@ -8054,7 +8102,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_11CIMultiDict__upper(struct __p
     __pyx_r = ((PyObject*)__pyx_v_s);
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":412
+    /* "multidict/_multidict.pyx":418
  * 
  *     cdef str _upper(self, s):
  *         if type(s) is self._upstr:             # <<<<<<<<<<<<<<
@@ -8063,7 +8111,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_11CIMultiDict__upper(struct __p
  */
   }
 
-  /* "multidict/_multidict.pyx":414
+  /* "multidict/_multidict.pyx":420
  *         if type(s) is self._upstr:
  *             return <str>s
  *         return s.upper()             # <<<<<<<<<<<<<<
@@ -8071,7 +8119,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_11CIMultiDict__upper(struct __p
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_s, __pyx_n_s_upper); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 414, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_s, __pyx_n_s_upper); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 420, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __pyx_t_5 = NULL;
   if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_4))) {
@@ -8084,19 +8132,19 @@ static PyObject *__pyx_f_9multidict_10_multidict_11CIMultiDict__upper(struct __p
     }
   }
   if (__pyx_t_5) {
-    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 414, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 420, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   } else {
-    __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 414, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 420, __pyx_L1_error)
   }
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (!(likely(PyString_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_3)->tp_name), 0))) __PYX_ERR(0, 414, __pyx_L1_error)
+  if (!(likely(PyString_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_3)->tp_name), 0))) __PYX_ERR(0, 420, __pyx_L1_error)
   __pyx_r = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":411
+  /* "multidict/_multidict.pyx":417
  *     """An ordered dictionary that can have multiple values for each key."""
  * 
  *     cdef str _upper(self, s):             # <<<<<<<<<<<<<<
@@ -8117,7 +8165,7 @@ static PyObject *__pyx_f_9multidict_10_multidict_11CIMultiDict__upper(struct __p
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":425
+/* "multidict/_multidict.pyx":431
  *     cdef list _items
  * 
  *     def __cinit__(self, list items):             # <<<<<<<<<<<<<<
@@ -8150,7 +8198,7 @@ static int __pyx_pw_9multidict_10_multidict_9_ViewBase_1__cinit__(PyObject *__py
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 425, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 431, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -8161,13 +8209,13 @@ static int __pyx_pw_9multidict_10_multidict_9_ViewBase_1__cinit__(PyObject *__py
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 425, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 431, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict._ViewBase.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return -1;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_items), (&PyList_Type), 1, "items", 1))) __PYX_ERR(0, 425, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_items), (&PyList_Type), 1, "items", 1))) __PYX_ERR(0, 431, __pyx_L1_error)
   __pyx_r = __pyx_pf_9multidict_10_multidict_9_ViewBase___cinit__(((struct __pyx_obj_9multidict_10_multidict__ViewBase *)__pyx_v_self), __pyx_v_items);
 
   /* function exit code */
@@ -8184,7 +8232,7 @@ static int __pyx_pf_9multidict_10_multidict_9_ViewBase___cinit__(struct __pyx_ob
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "multidict/_multidict.pyx":426
+  /* "multidict/_multidict.pyx":432
  * 
  *     def __cinit__(self, list items):
  *         self._items = items             # <<<<<<<<<<<<<<
@@ -8197,7 +8245,7 @@ static int __pyx_pf_9multidict_10_multidict_9_ViewBase___cinit__(struct __pyx_ob
   __Pyx_DECREF(__pyx_v_self->_items);
   __pyx_v_self->_items = __pyx_v_items;
 
-  /* "multidict/_multidict.pyx":425
+  /* "multidict/_multidict.pyx":431
  *     cdef list _items
  * 
  *     def __cinit__(self, list items):             # <<<<<<<<<<<<<<
@@ -8211,7 +8259,7 @@ static int __pyx_pf_9multidict_10_multidict_9_ViewBase___cinit__(struct __pyx_ob
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":428
+/* "multidict/_multidict.pyx":434
  *         self._items = items
  * 
  *     def __len__(self):             # <<<<<<<<<<<<<<
@@ -8239,7 +8287,7 @@ static Py_ssize_t __pyx_pf_9multidict_10_multidict_9_ViewBase_2__len__(struct __
   Py_ssize_t __pyx_t_2;
   __Pyx_RefNannySetupContext("__len__", 0);
 
-  /* "multidict/_multidict.pyx":429
+  /* "multidict/_multidict.pyx":435
  * 
  *     def __len__(self):
  *         return len(self._items)             # <<<<<<<<<<<<<<
@@ -8250,14 +8298,14 @@ static Py_ssize_t __pyx_pf_9multidict_10_multidict_9_ViewBase_2__len__(struct __
   __Pyx_INCREF(__pyx_t_1);
   if (unlikely(__pyx_t_1 == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 429, __pyx_L1_error)
+    __PYX_ERR(0, 435, __pyx_L1_error)
   }
-  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 429, __pyx_L1_error)
+  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 435, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":428
+  /* "multidict/_multidict.pyx":434
  *         self._items = items
  * 
  *     def __len__(self):             # <<<<<<<<<<<<<<
@@ -8275,7 +8323,7 @@ static Py_ssize_t __pyx_pf_9multidict_10_multidict_9_ViewBase_2__len__(struct __
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":434
+/* "multidict/_multidict.pyx":440
  * cdef class _ViewBaseSet(_ViewBase):
  * 
  *     def __richcmp__(self, other, op):             # <<<<<<<<<<<<<<
@@ -8290,7 +8338,7 @@ static PyObject *__pyx_pw_9multidict_10_multidict_12_ViewBaseSet_1__richcmp__(Py
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__richcmp__ (wrapper)", 0);
-  __pyx_v_op = __Pyx_PyInt_From_int(__pyx_arg_op); if (unlikely(!__pyx_v_op)) __PYX_ERR(0, 434, __pyx_L3_error)
+  __pyx_v_op = __Pyx_PyInt_From_int(__pyx_arg_op); if (unlikely(!__pyx_v_op)) __PYX_ERR(0, 440, __pyx_L3_error)
   __Pyx_GOTREF(__pyx_v_op);
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -8319,34 +8367,34 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
   PyObject *(*__pyx_t_7)(PyObject *);
   __Pyx_RefNannySetupContext("__richcmp__", 0);
 
-  /* "multidict/_multidict.pyx":435
+  /* "multidict/_multidict.pyx":441
  * 
  *     def __richcmp__(self, other, op):
  *         if op == 0:  # <             # <<<<<<<<<<<<<<
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  */
-  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_0, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 435, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_0, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 441, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 435, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 441, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":436
+    /* "multidict/_multidict.pyx":442
  *     def __richcmp__(self, other, op):
  *         if op == 0:  # <
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
  *                 return NotImplemented
  *             return len(self) < len(other) and self <= other
  */
-    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 436, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 442, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 436, __pyx_L1_error)
+    __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 442, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_3 = ((!(__pyx_t_2 != 0)) != 0);
     if (__pyx_t_3) {
 
-      /* "multidict/_multidict.pyx":437
+      /* "multidict/_multidict.pyx":443
  *         if op == 0:  # <
  *             if not isinstance(other, Set):
  *                 return NotImplemented             # <<<<<<<<<<<<<<
@@ -8358,7 +8406,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __pyx_r = __pyx_builtin_NotImplemented;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":436
+      /* "multidict/_multidict.pyx":442
  *     def __richcmp__(self, other, op):
  *         if op == 0:  # <
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
@@ -8367,7 +8415,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
     }
 
-    /* "multidict/_multidict.pyx":438
+    /* "multidict/_multidict.pyx":444
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  *             return len(self) < len(other) and self <= other             # <<<<<<<<<<<<<<
@@ -8375,18 +8423,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  *             if not isinstance(other, Set):
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_4 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 438, __pyx_L1_error)
-    __pyx_t_5 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 438, __pyx_L1_error)
+    __pyx_t_4 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 444, __pyx_L1_error)
+    __pyx_t_5 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 444, __pyx_L1_error)
     __pyx_t_3 = (__pyx_t_4 < __pyx_t_5);
     if (__pyx_t_3) {
     } else {
-      __pyx_t_6 = __Pyx_PyBool_FromLong(__pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 438, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_PyBool_FromLong(__pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 444, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __pyx_t_1 = __pyx_t_6;
       __pyx_t_6 = 0;
       goto __pyx_L5_bool_binop_done;
     }
-    __pyx_t_6 = PyObject_RichCompare(__pyx_v_self, __pyx_v_other, Py_LE); __Pyx_XGOTREF(__pyx_t_6); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 438, __pyx_L1_error)
+    __pyx_t_6 = PyObject_RichCompare(__pyx_v_self, __pyx_v_other, Py_LE); __Pyx_XGOTREF(__pyx_t_6); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 444, __pyx_L1_error)
     __Pyx_INCREF(__pyx_t_6);
     __pyx_t_1 = __pyx_t_6;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -8395,7 +8443,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":435
+    /* "multidict/_multidict.pyx":441
  * 
  *     def __richcmp__(self, other, op):
  *         if op == 0:  # <             # <<<<<<<<<<<<<<
@@ -8404,34 +8452,34 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
   }
 
-  /* "multidict/_multidict.pyx":439
+  /* "multidict/_multidict.pyx":445
  *                 return NotImplemented
  *             return len(self) < len(other) and self <= other
  *         elif op == 1:  # <=             # <<<<<<<<<<<<<<
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  */
-  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_1, 1, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 439, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_1, 1, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 445, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 439, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 445, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_3) {
 
-    /* "multidict/_multidict.pyx":440
+    /* "multidict/_multidict.pyx":446
  *             return len(self) < len(other) and self <= other
  *         elif op == 1:  # <=
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
  *                 return NotImplemented
  *             if len(self) > len(other):
  */
-    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 440, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 446, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 440, __pyx_L1_error)
+    __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 446, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_2 = ((!(__pyx_t_3 != 0)) != 0);
     if (__pyx_t_2) {
 
-      /* "multidict/_multidict.pyx":441
+      /* "multidict/_multidict.pyx":447
  *         elif op == 1:  # <=
  *             if not isinstance(other, Set):
  *                 return NotImplemented             # <<<<<<<<<<<<<<
@@ -8443,7 +8491,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __pyx_r = __pyx_builtin_NotImplemented;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":440
+      /* "multidict/_multidict.pyx":446
  *             return len(self) < len(other) and self <= other
  *         elif op == 1:  # <=
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
@@ -8452,19 +8500,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
     }
 
-    /* "multidict/_multidict.pyx":442
+    /* "multidict/_multidict.pyx":448
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  *             if len(self) > len(other):             # <<<<<<<<<<<<<<
  *                 return False
  *             for elem in self:
  */
-    __pyx_t_5 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 442, __pyx_L1_error)
-    __pyx_t_4 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 442, __pyx_L1_error)
+    __pyx_t_5 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 448, __pyx_L1_error)
+    __pyx_t_4 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 448, __pyx_L1_error)
     __pyx_t_2 = ((__pyx_t_5 > __pyx_t_4) != 0);
     if (__pyx_t_2) {
 
-      /* "multidict/_multidict.pyx":443
+      /* "multidict/_multidict.pyx":449
  *                 return NotImplemented
  *             if len(self) > len(other):
  *                 return False             # <<<<<<<<<<<<<<
@@ -8476,7 +8524,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __pyx_r = Py_False;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":442
+      /* "multidict/_multidict.pyx":448
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  *             if len(self) > len(other):             # <<<<<<<<<<<<<<
@@ -8485,7 +8533,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
     }
 
-    /* "multidict/_multidict.pyx":444
+    /* "multidict/_multidict.pyx":450
  *             if len(self) > len(other):
  *                 return False
  *             for elem in self:             # <<<<<<<<<<<<<<
@@ -8496,26 +8544,26 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __pyx_t_1 = __pyx_v_self; __Pyx_INCREF(__pyx_t_1); __pyx_t_4 = 0;
       __pyx_t_7 = NULL;
     } else {
-      __pyx_t_4 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 444, __pyx_L1_error)
+      __pyx_t_4 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 450, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_7 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 444, __pyx_L1_error)
+      __pyx_t_7 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 450, __pyx_L1_error)
     }
     for (;;) {
       if (likely(!__pyx_t_7)) {
         if (likely(PyList_CheckExact(__pyx_t_1))) {
           if (__pyx_t_4 >= PyList_GET_SIZE(__pyx_t_1)) break;
           #if CYTHON_COMPILING_IN_CPYTHON
-          __pyx_t_6 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_4); __Pyx_INCREF(__pyx_t_6); __pyx_t_4++; if (unlikely(0 < 0)) __PYX_ERR(0, 444, __pyx_L1_error)
+          __pyx_t_6 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_4); __Pyx_INCREF(__pyx_t_6); __pyx_t_4++; if (unlikely(0 < 0)) __PYX_ERR(0, 450, __pyx_L1_error)
           #else
-          __pyx_t_6 = PySequence_ITEM(__pyx_t_1, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 444, __pyx_L1_error)
+          __pyx_t_6 = PySequence_ITEM(__pyx_t_1, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 450, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_6);
           #endif
         } else {
           if (__pyx_t_4 >= PyTuple_GET_SIZE(__pyx_t_1)) break;
           #if CYTHON_COMPILING_IN_CPYTHON
-          __pyx_t_6 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_4); __Pyx_INCREF(__pyx_t_6); __pyx_t_4++; if (unlikely(0 < 0)) __PYX_ERR(0, 444, __pyx_L1_error)
+          __pyx_t_6 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_4); __Pyx_INCREF(__pyx_t_6); __pyx_t_4++; if (unlikely(0 < 0)) __PYX_ERR(0, 450, __pyx_L1_error)
           #else
-          __pyx_t_6 = PySequence_ITEM(__pyx_t_1, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 444, __pyx_L1_error)
+          __pyx_t_6 = PySequence_ITEM(__pyx_t_1, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 450, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_6);
           #endif
         }
@@ -8525,7 +8573,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
           PyObject* exc_type = PyErr_Occurred();
           if (exc_type) {
             if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-            else __PYX_ERR(0, 444, __pyx_L1_error)
+            else __PYX_ERR(0, 450, __pyx_L1_error)
           }
           break;
         }
@@ -8534,18 +8582,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __Pyx_XDECREF_SET(__pyx_v_elem, __pyx_t_6);
       __pyx_t_6 = 0;
 
-      /* "multidict/_multidict.pyx":445
+      /* "multidict/_multidict.pyx":451
  *                 return False
  *             for elem in self:
  *                 if elem not in other:             # <<<<<<<<<<<<<<
  *                     return False
  *             return True
  */
-      __pyx_t_2 = (__Pyx_PySequence_ContainsTF(__pyx_v_elem, __pyx_v_other, Py_NE)); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 445, __pyx_L1_error)
+      __pyx_t_2 = (__Pyx_PySequence_ContainsTF(__pyx_v_elem, __pyx_v_other, Py_NE)); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 451, __pyx_L1_error)
       __pyx_t_3 = (__pyx_t_2 != 0);
       if (__pyx_t_3) {
 
-        /* "multidict/_multidict.pyx":446
+        /* "multidict/_multidict.pyx":452
  *             for elem in self:
  *                 if elem not in other:
  *                     return False             # <<<<<<<<<<<<<<
@@ -8558,7 +8606,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
         goto __pyx_L0;
 
-        /* "multidict/_multidict.pyx":445
+        /* "multidict/_multidict.pyx":451
  *                 return False
  *             for elem in self:
  *                 if elem not in other:             # <<<<<<<<<<<<<<
@@ -8567,7 +8615,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
       }
 
-      /* "multidict/_multidict.pyx":444
+      /* "multidict/_multidict.pyx":450
  *             if len(self) > len(other):
  *                 return False
  *             for elem in self:             # <<<<<<<<<<<<<<
@@ -8577,7 +8625,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
     }
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "multidict/_multidict.pyx":447
+    /* "multidict/_multidict.pyx":453
  *                 if elem not in other:
  *                     return False
  *             return True             # <<<<<<<<<<<<<<
@@ -8589,7 +8637,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
     __pyx_r = Py_True;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":439
+    /* "multidict/_multidict.pyx":445
  *                 return NotImplemented
  *             return len(self) < len(other) and self <= other
  *         elif op == 1:  # <=             # <<<<<<<<<<<<<<
@@ -8598,34 +8646,34 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
   }
 
-  /* "multidict/_multidict.pyx":448
+  /* "multidict/_multidict.pyx":454
  *                     return False
  *             return True
  *         elif op == 2:  # ==             # <<<<<<<<<<<<<<
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  */
-  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_2, 2, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 448, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_2, 2, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 454, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 448, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 454, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_3) {
 
-    /* "multidict/_multidict.pyx":449
+    /* "multidict/_multidict.pyx":455
  *             return True
  *         elif op == 2:  # ==
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
  *                 return NotImplemented
  *             return len(self) == len(other) and self <= other
  */
-    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 449, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 455, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 449, __pyx_L1_error)
+    __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 455, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_2 = ((!(__pyx_t_3 != 0)) != 0);
     if (__pyx_t_2) {
 
-      /* "multidict/_multidict.pyx":450
+      /* "multidict/_multidict.pyx":456
  *         elif op == 2:  # ==
  *             if not isinstance(other, Set):
  *                 return NotImplemented             # <<<<<<<<<<<<<<
@@ -8637,7 +8685,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __pyx_r = __pyx_builtin_NotImplemented;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":449
+      /* "multidict/_multidict.pyx":455
  *             return True
  *         elif op == 2:  # ==
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
@@ -8646,7 +8694,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
     }
 
-    /* "multidict/_multidict.pyx":451
+    /* "multidict/_multidict.pyx":457
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  *             return len(self) == len(other) and self <= other             # <<<<<<<<<<<<<<
@@ -8654,18 +8702,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  *             return not self == other
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_4 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 451, __pyx_L1_error)
-    __pyx_t_5 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 451, __pyx_L1_error)
+    __pyx_t_4 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 457, __pyx_L1_error)
+    __pyx_t_5 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 457, __pyx_L1_error)
     __pyx_t_2 = (__pyx_t_4 == __pyx_t_5);
     if (__pyx_t_2) {
     } else {
-      __pyx_t_6 = __Pyx_PyBool_FromLong(__pyx_t_2); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 451, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_PyBool_FromLong(__pyx_t_2); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 457, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __pyx_t_1 = __pyx_t_6;
       __pyx_t_6 = 0;
       goto __pyx_L13_bool_binop_done;
     }
-    __pyx_t_6 = PyObject_RichCompare(__pyx_v_self, __pyx_v_other, Py_LE); __Pyx_XGOTREF(__pyx_t_6); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 451, __pyx_L1_error)
+    __pyx_t_6 = PyObject_RichCompare(__pyx_v_self, __pyx_v_other, Py_LE); __Pyx_XGOTREF(__pyx_t_6); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 457, __pyx_L1_error)
     __Pyx_INCREF(__pyx_t_6);
     __pyx_t_1 = __pyx_t_6;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -8674,7 +8722,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":448
+    /* "multidict/_multidict.pyx":454
  *                     return False
  *             return True
  *         elif op == 2:  # ==             # <<<<<<<<<<<<<<
@@ -8683,20 +8731,20 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
   }
 
-  /* "multidict/_multidict.pyx":452
+  /* "multidict/_multidict.pyx":458
  *                 return NotImplemented
  *             return len(self) == len(other) and self <= other
  *         elif op == 3:  # !=             # <<<<<<<<<<<<<<
  *             return not self == other
  *         elif op == 4:  #  >
  */
-  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_3, 3, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 452, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_3, 3, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 458, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 452, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 458, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":453
+    /* "multidict/_multidict.pyx":459
  *             return len(self) == len(other) and self <= other
  *         elif op == 3:  # !=
  *             return not self == other             # <<<<<<<<<<<<<<
@@ -8704,16 +8752,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  *             if not isinstance(other, Set):
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_1 = PyObject_RichCompare(__pyx_v_self, __pyx_v_other, Py_EQ); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 453, __pyx_L1_error)
-    __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 453, __pyx_L1_error)
+    __pyx_t_1 = PyObject_RichCompare(__pyx_v_self, __pyx_v_other, Py_EQ); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 459, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 459, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_1 = __Pyx_PyBool_FromLong((!__pyx_t_2)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 453, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyBool_FromLong((!__pyx_t_2)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 459, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_r = __pyx_t_1;
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":452
+    /* "multidict/_multidict.pyx":458
  *                 return NotImplemented
  *             return len(self) == len(other) and self <= other
  *         elif op == 3:  # !=             # <<<<<<<<<<<<<<
@@ -8722,34 +8770,34 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
   }
 
-  /* "multidict/_multidict.pyx":454
+  /* "multidict/_multidict.pyx":460
  *         elif op == 3:  # !=
  *             return not self == other
  *         elif op == 4:  #  >             # <<<<<<<<<<<<<<
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  */
-  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_4, 4, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 454, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_4, 4, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 460, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 454, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 460, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":455
+    /* "multidict/_multidict.pyx":461
  *             return not self == other
  *         elif op == 4:  #  >
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
  *                 return NotImplemented
  *             return len(self) > len(other) and self >= other
  */
-    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 455, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 461, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 455, __pyx_L1_error)
+    __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 461, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_3 = ((!(__pyx_t_2 != 0)) != 0);
     if (__pyx_t_3) {
 
-      /* "multidict/_multidict.pyx":456
+      /* "multidict/_multidict.pyx":462
  *         elif op == 4:  #  >
  *             if not isinstance(other, Set):
  *                 return NotImplemented             # <<<<<<<<<<<<<<
@@ -8761,7 +8809,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __pyx_r = __pyx_builtin_NotImplemented;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":455
+      /* "multidict/_multidict.pyx":461
  *             return not self == other
  *         elif op == 4:  #  >
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
@@ -8770,7 +8818,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
     }
 
-    /* "multidict/_multidict.pyx":457
+    /* "multidict/_multidict.pyx":463
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  *             return len(self) > len(other) and self >= other             # <<<<<<<<<<<<<<
@@ -8778,18 +8826,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  *             if not isinstance(other, Set):
  */
     __Pyx_XDECREF(__pyx_r);
-    __pyx_t_5 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 457, __pyx_L1_error)
-    __pyx_t_4 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 457, __pyx_L1_error)
+    __pyx_t_5 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 463, __pyx_L1_error)
+    __pyx_t_4 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 463, __pyx_L1_error)
     __pyx_t_3 = (__pyx_t_5 > __pyx_t_4);
     if (__pyx_t_3) {
     } else {
-      __pyx_t_6 = __Pyx_PyBool_FromLong(__pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 457, __pyx_L1_error)
+      __pyx_t_6 = __Pyx_PyBool_FromLong(__pyx_t_3); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 463, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __pyx_t_1 = __pyx_t_6;
       __pyx_t_6 = 0;
       goto __pyx_L16_bool_binop_done;
     }
-    __pyx_t_6 = PyObject_RichCompare(__pyx_v_self, __pyx_v_other, Py_GE); __Pyx_XGOTREF(__pyx_t_6); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 457, __pyx_L1_error)
+    __pyx_t_6 = PyObject_RichCompare(__pyx_v_self, __pyx_v_other, Py_GE); __Pyx_XGOTREF(__pyx_t_6); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 463, __pyx_L1_error)
     __Pyx_INCREF(__pyx_t_6);
     __pyx_t_1 = __pyx_t_6;
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
@@ -8798,7 +8846,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":454
+    /* "multidict/_multidict.pyx":460
  *         elif op == 3:  # !=
  *             return not self == other
  *         elif op == 4:  #  >             # <<<<<<<<<<<<<<
@@ -8807,34 +8855,34 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
   }
 
-  /* "multidict/_multidict.pyx":458
+  /* "multidict/_multidict.pyx":464
  *                 return NotImplemented
  *             return len(self) > len(other) and self >= other
  *         elif op == 5:  # >=             # <<<<<<<<<<<<<<
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  */
-  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_5, 5, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 458, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_EqObjC(__pyx_v_op, __pyx_int_5, 5, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 464, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 458, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_3 < 0)) __PYX_ERR(0, 464, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (__pyx_t_3) {
 
-    /* "multidict/_multidict.pyx":459
+    /* "multidict/_multidict.pyx":465
  *             return len(self) > len(other) and self >= other
  *         elif op == 5:  # >=
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
  *                 return NotImplemented
  *             if len(self) < len(other):
  */
-    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 459, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 465, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 459, __pyx_L1_error)
+    __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 465, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_2 = ((!(__pyx_t_3 != 0)) != 0);
     if (__pyx_t_2) {
 
-      /* "multidict/_multidict.pyx":460
+      /* "multidict/_multidict.pyx":466
  *         elif op == 5:  # >=
  *             if not isinstance(other, Set):
  *                 return NotImplemented             # <<<<<<<<<<<<<<
@@ -8846,7 +8894,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __pyx_r = __pyx_builtin_NotImplemented;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":459
+      /* "multidict/_multidict.pyx":465
  *             return len(self) > len(other) and self >= other
  *         elif op == 5:  # >=
  *             if not isinstance(other, Set):             # <<<<<<<<<<<<<<
@@ -8855,19 +8903,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
     }
 
-    /* "multidict/_multidict.pyx":461
+    /* "multidict/_multidict.pyx":467
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  *             if len(self) < len(other):             # <<<<<<<<<<<<<<
  *                 return False
  *             for elem in other:
  */
-    __pyx_t_4 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 461, __pyx_L1_error)
-    __pyx_t_5 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 461, __pyx_L1_error)
+    __pyx_t_4 = PyObject_Length(__pyx_v_self); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 467, __pyx_L1_error)
+    __pyx_t_5 = PyObject_Length(__pyx_v_other); if (unlikely(__pyx_t_5 == -1)) __PYX_ERR(0, 467, __pyx_L1_error)
     __pyx_t_2 = ((__pyx_t_4 < __pyx_t_5) != 0);
     if (__pyx_t_2) {
 
-      /* "multidict/_multidict.pyx":462
+      /* "multidict/_multidict.pyx":468
  *                 return NotImplemented
  *             if len(self) < len(other):
  *                 return False             # <<<<<<<<<<<<<<
@@ -8879,7 +8927,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __pyx_r = Py_False;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":461
+      /* "multidict/_multidict.pyx":467
  *             if not isinstance(other, Set):
  *                 return NotImplemented
  *             if len(self) < len(other):             # <<<<<<<<<<<<<<
@@ -8888,7 +8936,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
     }
 
-    /* "multidict/_multidict.pyx":463
+    /* "multidict/_multidict.pyx":469
  *             if len(self) < len(other):
  *                 return False
  *             for elem in other:             # <<<<<<<<<<<<<<
@@ -8899,26 +8947,26 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __pyx_t_1 = __pyx_v_other; __Pyx_INCREF(__pyx_t_1); __pyx_t_5 = 0;
       __pyx_t_7 = NULL;
     } else {
-      __pyx_t_5 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 463, __pyx_L1_error)
+      __pyx_t_5 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 469, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_7 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 463, __pyx_L1_error)
+      __pyx_t_7 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 469, __pyx_L1_error)
     }
     for (;;) {
       if (likely(!__pyx_t_7)) {
         if (likely(PyList_CheckExact(__pyx_t_1))) {
           if (__pyx_t_5 >= PyList_GET_SIZE(__pyx_t_1)) break;
           #if CYTHON_COMPILING_IN_CPYTHON
-          __pyx_t_6 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_5); __Pyx_INCREF(__pyx_t_6); __pyx_t_5++; if (unlikely(0 < 0)) __PYX_ERR(0, 463, __pyx_L1_error)
+          __pyx_t_6 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_5); __Pyx_INCREF(__pyx_t_6); __pyx_t_5++; if (unlikely(0 < 0)) __PYX_ERR(0, 469, __pyx_L1_error)
           #else
-          __pyx_t_6 = PySequence_ITEM(__pyx_t_1, __pyx_t_5); __pyx_t_5++; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 463, __pyx_L1_error)
+          __pyx_t_6 = PySequence_ITEM(__pyx_t_1, __pyx_t_5); __pyx_t_5++; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 469, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_6);
           #endif
         } else {
           if (__pyx_t_5 >= PyTuple_GET_SIZE(__pyx_t_1)) break;
           #if CYTHON_COMPILING_IN_CPYTHON
-          __pyx_t_6 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_5); __Pyx_INCREF(__pyx_t_6); __pyx_t_5++; if (unlikely(0 < 0)) __PYX_ERR(0, 463, __pyx_L1_error)
+          __pyx_t_6 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_5); __Pyx_INCREF(__pyx_t_6); __pyx_t_5++; if (unlikely(0 < 0)) __PYX_ERR(0, 469, __pyx_L1_error)
           #else
-          __pyx_t_6 = PySequence_ITEM(__pyx_t_1, __pyx_t_5); __pyx_t_5++; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 463, __pyx_L1_error)
+          __pyx_t_6 = PySequence_ITEM(__pyx_t_1, __pyx_t_5); __pyx_t_5++; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 469, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_6);
           #endif
         }
@@ -8928,7 +8976,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
           PyObject* exc_type = PyErr_Occurred();
           if (exc_type) {
             if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-            else __PYX_ERR(0, 463, __pyx_L1_error)
+            else __PYX_ERR(0, 469, __pyx_L1_error)
           }
           break;
         }
@@ -8937,18 +8985,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
       __Pyx_XDECREF_SET(__pyx_v_elem, __pyx_t_6);
       __pyx_t_6 = 0;
 
-      /* "multidict/_multidict.pyx":464
+      /* "multidict/_multidict.pyx":470
  *                 return False
  *             for elem in other:
  *                 if elem not in self:             # <<<<<<<<<<<<<<
  *                     return False
  *             return True
  */
-      __pyx_t_2 = (__Pyx_PySequence_ContainsTF(__pyx_v_elem, __pyx_v_self, Py_NE)); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 464, __pyx_L1_error)
+      __pyx_t_2 = (__Pyx_PySequence_ContainsTF(__pyx_v_elem, __pyx_v_self, Py_NE)); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 470, __pyx_L1_error)
       __pyx_t_3 = (__pyx_t_2 != 0);
       if (__pyx_t_3) {
 
-        /* "multidict/_multidict.pyx":465
+        /* "multidict/_multidict.pyx":471
  *             for elem in other:
  *                 if elem not in self:
  *                     return False             # <<<<<<<<<<<<<<
@@ -8961,7 +9009,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
         goto __pyx_L0;
 
-        /* "multidict/_multidict.pyx":464
+        /* "multidict/_multidict.pyx":470
  *                 return False
  *             for elem in other:
  *                 if elem not in self:             # <<<<<<<<<<<<<<
@@ -8970,7 +9018,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
       }
 
-      /* "multidict/_multidict.pyx":463
+      /* "multidict/_multidict.pyx":469
  *             if len(self) < len(other):
  *                 return False
  *             for elem in other:             # <<<<<<<<<<<<<<
@@ -8980,7 +9028,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
     }
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-    /* "multidict/_multidict.pyx":466
+    /* "multidict/_multidict.pyx":472
  *                 if elem not in self:
  *                     return False
  *             return True             # <<<<<<<<<<<<<<
@@ -8992,7 +9040,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
     __pyx_r = Py_True;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":458
+    /* "multidict/_multidict.pyx":464
  *                 return NotImplemented
  *             return len(self) > len(other) and self >= other
  *         elif op == 5:  # >=             # <<<<<<<<<<<<<<
@@ -9001,7 +9049,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
  */
   }
 
-  /* "multidict/_multidict.pyx":434
+  /* "multidict/_multidict.pyx":440
  * cdef class _ViewBaseSet(_ViewBase):
  * 
  *     def __richcmp__(self, other, op):             # <<<<<<<<<<<<<<
@@ -9024,7 +9072,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet___richcmp__(PyO
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":468
+/* "multidict/_multidict.pyx":474
  *             return True
  * 
  *     def __and__(self, other):             # <<<<<<<<<<<<<<
@@ -9055,21 +9103,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_2__and__(PyObje
   __Pyx_RefNannySetupContext("__and__", 0);
   __Pyx_INCREF(__pyx_v_other);
 
-  /* "multidict/_multidict.pyx":469
+  /* "multidict/_multidict.pyx":475
  * 
  *     def __and__(self, other):
  *         if not isinstance(other, Iterable):             # <<<<<<<<<<<<<<
  *             return NotImplemented
  *         if not isinstance(other, Set):
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Iterable); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 469, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Iterable); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 475, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 469, __pyx_L1_error)
+  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 475, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_3 = ((!(__pyx_t_2 != 0)) != 0);
   if (__pyx_t_3) {
 
-    /* "multidict/_multidict.pyx":470
+    /* "multidict/_multidict.pyx":476
  *     def __and__(self, other):
  *         if not isinstance(other, Iterable):
  *             return NotImplemented             # <<<<<<<<<<<<<<
@@ -9081,7 +9129,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_2__and__(PyObje
     __pyx_r = __pyx_builtin_NotImplemented;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":469
+    /* "multidict/_multidict.pyx":475
  * 
  *     def __and__(self, other):
  *         if not isinstance(other, Iterable):             # <<<<<<<<<<<<<<
@@ -9090,33 +9138,33 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_2__and__(PyObje
  */
   }
 
-  /* "multidict/_multidict.pyx":471
+  /* "multidict/_multidict.pyx":477
  *         if not isinstance(other, Iterable):
  *             return NotImplemented
  *         if not isinstance(other, Set):             # <<<<<<<<<<<<<<
  *             other = set(other)
  *         return set(self) & other
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 471, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 477, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 471, __pyx_L1_error)
+  __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 477, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_2 = ((!(__pyx_t_3 != 0)) != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":472
+    /* "multidict/_multidict.pyx":478
  *             return NotImplemented
  *         if not isinstance(other, Set):
  *             other = set(other)             # <<<<<<<<<<<<<<
  *         return set(self) & other
  * 
  */
-    __pyx_t_1 = PySet_New(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 472, __pyx_L1_error)
+    __pyx_t_1 = PySet_New(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 478, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF_SET(__pyx_v_other, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "multidict/_multidict.pyx":471
+    /* "multidict/_multidict.pyx":477
  *         if not isinstance(other, Iterable):
  *             return NotImplemented
  *         if not isinstance(other, Set):             # <<<<<<<<<<<<<<
@@ -9125,7 +9173,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_2__and__(PyObje
  */
   }
 
-  /* "multidict/_multidict.pyx":473
+  /* "multidict/_multidict.pyx":479
  *         if not isinstance(other, Set):
  *             other = set(other)
  *         return set(self) & other             # <<<<<<<<<<<<<<
@@ -9133,16 +9181,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_2__and__(PyObje
  *     def __or__(self, other):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PySet_New(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 473, __pyx_L1_error)
+  __pyx_t_1 = PySet_New(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 479, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = PyNumber_And(__pyx_t_1, __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 473, __pyx_L1_error)
+  __pyx_t_4 = PyNumber_And(__pyx_t_1, __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 479, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_4;
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":468
+  /* "multidict/_multidict.pyx":474
  *             return True
  * 
  *     def __and__(self, other):             # <<<<<<<<<<<<<<
@@ -9163,7 +9211,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_2__and__(PyObje
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":475
+/* "multidict/_multidict.pyx":481
  *         return set(self) & other
  * 
  *     def __or__(self, other):             # <<<<<<<<<<<<<<
@@ -9194,21 +9242,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_4__or__(PyObjec
   __Pyx_RefNannySetupContext("__or__", 0);
   __Pyx_INCREF(__pyx_v_other);
 
-  /* "multidict/_multidict.pyx":476
+  /* "multidict/_multidict.pyx":482
  * 
  *     def __or__(self, other):
  *         if not isinstance(other, Iterable):             # <<<<<<<<<<<<<<
  *             return NotImplemented
  *         if not isinstance(other, Set):
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Iterable); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 476, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Iterable); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 482, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 476, __pyx_L1_error)
+  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 482, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_3 = ((!(__pyx_t_2 != 0)) != 0);
   if (__pyx_t_3) {
 
-    /* "multidict/_multidict.pyx":477
+    /* "multidict/_multidict.pyx":483
  *     def __or__(self, other):
  *         if not isinstance(other, Iterable):
  *             return NotImplemented             # <<<<<<<<<<<<<<
@@ -9220,7 +9268,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_4__or__(PyObjec
     __pyx_r = __pyx_builtin_NotImplemented;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":476
+    /* "multidict/_multidict.pyx":482
  * 
  *     def __or__(self, other):
  *         if not isinstance(other, Iterable):             # <<<<<<<<<<<<<<
@@ -9229,33 +9277,33 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_4__or__(PyObjec
  */
   }
 
-  /* "multidict/_multidict.pyx":478
+  /* "multidict/_multidict.pyx":484
  *         if not isinstance(other, Iterable):
  *             return NotImplemented
  *         if not isinstance(other, Set):             # <<<<<<<<<<<<<<
  *             other = set(other)
  *         return set(self) | other
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 478, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 484, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 478, __pyx_L1_error)
+  __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 484, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_2 = ((!(__pyx_t_3 != 0)) != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":479
+    /* "multidict/_multidict.pyx":485
  *             return NotImplemented
  *         if not isinstance(other, Set):
  *             other = set(other)             # <<<<<<<<<<<<<<
  *         return set(self) | other
  * 
  */
-    __pyx_t_1 = PySet_New(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 479, __pyx_L1_error)
+    __pyx_t_1 = PySet_New(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 485, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF_SET(__pyx_v_other, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "multidict/_multidict.pyx":478
+    /* "multidict/_multidict.pyx":484
  *         if not isinstance(other, Iterable):
  *             return NotImplemented
  *         if not isinstance(other, Set):             # <<<<<<<<<<<<<<
@@ -9264,7 +9312,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_4__or__(PyObjec
  */
   }
 
-  /* "multidict/_multidict.pyx":480
+  /* "multidict/_multidict.pyx":486
  *         if not isinstance(other, Set):
  *             other = set(other)
  *         return set(self) | other             # <<<<<<<<<<<<<<
@@ -9272,16 +9320,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_4__or__(PyObjec
  *     def __sub__(self, other):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PySet_New(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 480, __pyx_L1_error)
+  __pyx_t_1 = PySet_New(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 486, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = PyNumber_Or(__pyx_t_1, __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 480, __pyx_L1_error)
+  __pyx_t_4 = PyNumber_Or(__pyx_t_1, __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 486, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_4;
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":475
+  /* "multidict/_multidict.pyx":481
  *         return set(self) & other
  * 
  *     def __or__(self, other):             # <<<<<<<<<<<<<<
@@ -9302,7 +9350,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_4__or__(PyObjec
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":482
+/* "multidict/_multidict.pyx":488
  *         return set(self) | other
  * 
  *     def __sub__(self, other):             # <<<<<<<<<<<<<<
@@ -9333,21 +9381,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_6__sub__(PyObje
   __Pyx_RefNannySetupContext("__sub__", 0);
   __Pyx_INCREF(__pyx_v_other);
 
-  /* "multidict/_multidict.pyx":483
+  /* "multidict/_multidict.pyx":489
  * 
  *     def __sub__(self, other):
  *         if not isinstance(other, Iterable):             # <<<<<<<<<<<<<<
  *             return NotImplemented
  *         if not isinstance(other, Set):
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Iterable); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 483, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Iterable); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 489, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 483, __pyx_L1_error)
+  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 489, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_3 = ((!(__pyx_t_2 != 0)) != 0);
   if (__pyx_t_3) {
 
-    /* "multidict/_multidict.pyx":484
+    /* "multidict/_multidict.pyx":490
  *     def __sub__(self, other):
  *         if not isinstance(other, Iterable):
  *             return NotImplemented             # <<<<<<<<<<<<<<
@@ -9359,7 +9407,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_6__sub__(PyObje
     __pyx_r = __pyx_builtin_NotImplemented;
     goto __pyx_L0;
 
-    /* "multidict/_multidict.pyx":483
+    /* "multidict/_multidict.pyx":489
  * 
  *     def __sub__(self, other):
  *         if not isinstance(other, Iterable):             # <<<<<<<<<<<<<<
@@ -9368,33 +9416,33 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_6__sub__(PyObje
  */
   }
 
-  /* "multidict/_multidict.pyx":485
+  /* "multidict/_multidict.pyx":491
  *         if not isinstance(other, Iterable):
  *             return NotImplemented
  *         if not isinstance(other, Set):             # <<<<<<<<<<<<<<
  *             other = set(other)
  *         return set(self) - other
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 485, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 491, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 485, __pyx_L1_error)
+  __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 491, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_2 = ((!(__pyx_t_3 != 0)) != 0);
   if (__pyx_t_2) {
 
-    /* "multidict/_multidict.pyx":486
+    /* "multidict/_multidict.pyx":492
  *             return NotImplemented
  *         if not isinstance(other, Set):
  *             other = set(other)             # <<<<<<<<<<<<<<
  *         return set(self) - other
  * 
  */
-    __pyx_t_1 = PySet_New(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 486, __pyx_L1_error)
+    __pyx_t_1 = PySet_New(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 492, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF_SET(__pyx_v_other, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "multidict/_multidict.pyx":485
+    /* "multidict/_multidict.pyx":491
  *         if not isinstance(other, Iterable):
  *             return NotImplemented
  *         if not isinstance(other, Set):             # <<<<<<<<<<<<<<
@@ -9403,7 +9451,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_6__sub__(PyObje
  */
   }
 
-  /* "multidict/_multidict.pyx":487
+  /* "multidict/_multidict.pyx":493
  *         if not isinstance(other, Set):
  *             other = set(other)
  *         return set(self) - other             # <<<<<<<<<<<<<<
@@ -9411,16 +9459,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_6__sub__(PyObje
  *     def __xor__(self, other):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PySet_New(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 487, __pyx_L1_error)
+  __pyx_t_1 = PySet_New(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 493, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = PyNumber_Subtract(__pyx_t_1, __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 487, __pyx_L1_error)
+  __pyx_t_4 = PyNumber_Subtract(__pyx_t_1, __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 493, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_4;
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":482
+  /* "multidict/_multidict.pyx":488
  *         return set(self) | other
  * 
  *     def __sub__(self, other):             # <<<<<<<<<<<<<<
@@ -9441,7 +9489,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_6__sub__(PyObje
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":489
+/* "multidict/_multidict.pyx":495
  *         return set(self) - other
  * 
  *     def __xor__(self, other):             # <<<<<<<<<<<<<<
@@ -9472,35 +9520,35 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_8__xor__(PyObje
   __Pyx_RefNannySetupContext("__xor__", 0);
   __Pyx_INCREF(__pyx_v_other);
 
-  /* "multidict/_multidict.pyx":490
+  /* "multidict/_multidict.pyx":496
  * 
  *     def __xor__(self, other):
  *         if not isinstance(other, Set):             # <<<<<<<<<<<<<<
  *             if not isinstance(other, Iterable):
  *                 return NotImplemented
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 490, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Set); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 496, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 490, __pyx_L1_error)
+  __pyx_t_2 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 496, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_3 = ((!(__pyx_t_2 != 0)) != 0);
   if (__pyx_t_3) {
 
-    /* "multidict/_multidict.pyx":491
+    /* "multidict/_multidict.pyx":497
  *     def __xor__(self, other):
  *         if not isinstance(other, Set):
  *             if not isinstance(other, Iterable):             # <<<<<<<<<<<<<<
  *                 return NotImplemented
  *             other = set(other)
  */
-    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Iterable); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 491, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_Iterable); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 497, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 491, __pyx_L1_error)
+    __pyx_t_3 = PyObject_IsInstance(__pyx_v_other, __pyx_t_1); if (unlikely(__pyx_t_3 == -1)) __PYX_ERR(0, 497, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_2 = ((!(__pyx_t_3 != 0)) != 0);
     if (__pyx_t_2) {
 
-      /* "multidict/_multidict.pyx":492
+      /* "multidict/_multidict.pyx":498
  *         if not isinstance(other, Set):
  *             if not isinstance(other, Iterable):
  *                 return NotImplemented             # <<<<<<<<<<<<<<
@@ -9512,7 +9560,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_8__xor__(PyObje
       __pyx_r = __pyx_builtin_NotImplemented;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":491
+      /* "multidict/_multidict.pyx":497
  *     def __xor__(self, other):
  *         if not isinstance(other, Set):
  *             if not isinstance(other, Iterable):             # <<<<<<<<<<<<<<
@@ -9521,19 +9569,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_8__xor__(PyObje
  */
     }
 
-    /* "multidict/_multidict.pyx":493
+    /* "multidict/_multidict.pyx":499
  *             if not isinstance(other, Iterable):
  *                 return NotImplemented
  *             other = set(other)             # <<<<<<<<<<<<<<
  *         return set(self) ^ other
  * 
  */
-    __pyx_t_1 = PySet_New(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 493, __pyx_L1_error)
+    __pyx_t_1 = PySet_New(__pyx_v_other); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 499, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF_SET(__pyx_v_other, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "multidict/_multidict.pyx":490
+    /* "multidict/_multidict.pyx":496
  * 
  *     def __xor__(self, other):
  *         if not isinstance(other, Set):             # <<<<<<<<<<<<<<
@@ -9542,7 +9590,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_8__xor__(PyObje
  */
   }
 
-  /* "multidict/_multidict.pyx":494
+  /* "multidict/_multidict.pyx":500
  *                 return NotImplemented
  *             other = set(other)
  *         return set(self) ^ other             # <<<<<<<<<<<<<<
@@ -9550,16 +9598,16 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_8__xor__(PyObje
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PySet_New(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 494, __pyx_L1_error)
+  __pyx_t_1 = PySet_New(__pyx_v_self); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 500, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = PyNumber_Xor(__pyx_t_1, __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 494, __pyx_L1_error)
+  __pyx_t_4 = PyNumber_Xor(__pyx_t_1, __pyx_v_other); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 500, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_4;
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":489
+  /* "multidict/_multidict.pyx":495
  *         return set(self) - other
  * 
  *     def __xor__(self, other):             # <<<<<<<<<<<<<<
@@ -9580,7 +9628,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_12_ViewBaseSet_8__xor__(PyObje
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":502
+/* "multidict/_multidict.pyx":508
  *     cdef int _len
  * 
  *     def __cinit__(self, items):             # <<<<<<<<<<<<<<
@@ -9613,7 +9661,7 @@ static int __pyx_pw_9multidict_10_multidict_10_ItemsIter_1__cinit__(PyObject *__
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 502, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 508, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -9624,7 +9672,7 @@ static int __pyx_pw_9multidict_10_multidict_10_ItemsIter_1__cinit__(PyObject *__
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 502, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 508, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict._ItemsIter.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -9644,14 +9692,14 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsIter___cinit__(struct __pyx_
   Py_ssize_t __pyx_t_2;
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "multidict/_multidict.pyx":503
+  /* "multidict/_multidict.pyx":509
  * 
  *     def __cinit__(self, items):
  *         self._items = items             # <<<<<<<<<<<<<<
  *         self._current = 0
  *         self._len = len(self._items)
  */
-  if (!(likely(PyList_CheckExact(__pyx_v_items))||((__pyx_v_items) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_v_items)->tp_name), 0))) __PYX_ERR(0, 503, __pyx_L1_error)
+  if (!(likely(PyList_CheckExact(__pyx_v_items))||((__pyx_v_items) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_v_items)->tp_name), 0))) __PYX_ERR(0, 509, __pyx_L1_error)
   __pyx_t_1 = __pyx_v_items;
   __Pyx_INCREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
@@ -9660,7 +9708,7 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsIter___cinit__(struct __pyx_
   __pyx_v_self->_items = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":504
+  /* "multidict/_multidict.pyx":510
  *     def __cinit__(self, items):
  *         self._items = items
  *         self._current = 0             # <<<<<<<<<<<<<<
@@ -9669,7 +9717,7 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsIter___cinit__(struct __pyx_
  */
   __pyx_v_self->_current = 0;
 
-  /* "multidict/_multidict.pyx":505
+  /* "multidict/_multidict.pyx":511
  *         self._items = items
  *         self._current = 0
  *         self._len = len(self._items)             # <<<<<<<<<<<<<<
@@ -9680,13 +9728,13 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsIter___cinit__(struct __pyx_
   __Pyx_INCREF(__pyx_t_1);
   if (unlikely(__pyx_t_1 == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 505, __pyx_L1_error)
+    __PYX_ERR(0, 511, __pyx_L1_error)
   }
-  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 505, __pyx_L1_error)
+  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 511, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->_len = __pyx_t_2;
 
-  /* "multidict/_multidict.pyx":502
+  /* "multidict/_multidict.pyx":508
  *     cdef int _len
  * 
  *     def __cinit__(self, items):             # <<<<<<<<<<<<<<
@@ -9706,7 +9754,7 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsIter___cinit__(struct __pyx_
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":507
+/* "multidict/_multidict.pyx":513
  *         self._len = len(self._items)
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -9732,7 +9780,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_2__iter__(struct 
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__iter__", 0);
 
-  /* "multidict/_multidict.pyx":508
+  /* "multidict/_multidict.pyx":514
  * 
  *     def __iter__(self):
  *         return self             # <<<<<<<<<<<<<<
@@ -9744,7 +9792,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_2__iter__(struct 
   __pyx_r = ((PyObject *)__pyx_v_self);
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":507
+  /* "multidict/_multidict.pyx":513
  *         self._len = len(self._items)
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -9759,7 +9807,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_2__iter__(struct 
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":510
+/* "multidict/_multidict.pyx":516
  *         return self
  * 
  *     def __next__(self):             # <<<<<<<<<<<<<<
@@ -9789,7 +9837,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
   PyObject *__pyx_t_3 = NULL;
   __Pyx_RefNannySetupContext("__next__", 0);
 
-  /* "multidict/_multidict.pyx":511
+  /* "multidict/_multidict.pyx":517
  * 
  *     def __next__(self):
  *         if self._current == self._len:             # <<<<<<<<<<<<<<
@@ -9799,7 +9847,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
   __pyx_t_1 = ((__pyx_v_self->_current == __pyx_v_self->_len) != 0);
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":512
+    /* "multidict/_multidict.pyx":518
  *     def __next__(self):
  *         if self._current == self._len:
  *             raise StopIteration             # <<<<<<<<<<<<<<
@@ -9807,9 +9855,9 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
  *         self._current += 1
  */
     __Pyx_Raise(__pyx_builtin_StopIteration, 0, 0, 0);
-    __PYX_ERR(0, 512, __pyx_L1_error)
+    __PYX_ERR(0, 518, __pyx_L1_error)
 
-    /* "multidict/_multidict.pyx":511
+    /* "multidict/_multidict.pyx":517
  * 
  *     def __next__(self):
  *         if self._current == self._len:             # <<<<<<<<<<<<<<
@@ -9818,7 +9866,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
  */
   }
 
-  /* "multidict/_multidict.pyx":513
+  /* "multidict/_multidict.pyx":519
  *         if self._current == self._len:
  *             raise StopIteration
  *         item = <_Pair>self._items[self._current]             # <<<<<<<<<<<<<<
@@ -9827,9 +9875,9 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
  */
   if (unlikely(__pyx_v_self->_items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    __PYX_ERR(0, 513, __pyx_L1_error)
+    __PYX_ERR(0, 519, __pyx_L1_error)
   }
-  __pyx_t_2 = __Pyx_GetItemInt_List(__pyx_v_self->_items, __pyx_v_self->_current, int, 1, __Pyx_PyInt_From_int, 1, 1, 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 513, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetItemInt_List(__pyx_v_self->_items, __pyx_v_self->_current, int, 1, __Pyx_PyInt_From_int, 1, 1, 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 519, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = __pyx_t_2;
   __Pyx_INCREF(__pyx_t_3);
@@ -9837,7 +9885,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
   __pyx_v_item = ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "multidict/_multidict.pyx":514
+  /* "multidict/_multidict.pyx":520
  *             raise StopIteration
  *         item = <_Pair>self._items[self._current]
  *         self._current += 1             # <<<<<<<<<<<<<<
@@ -9846,7 +9894,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
  */
   __pyx_v_self->_current = (__pyx_v_self->_current + 1);
 
-  /* "multidict/_multidict.pyx":515
+  /* "multidict/_multidict.pyx":521
  *         item = <_Pair>self._items[self._current]
  *         self._current += 1
  *         return (item._key, item._value)             # <<<<<<<<<<<<<<
@@ -9854,7 +9902,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 515, __pyx_L1_error)
+  __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 521, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_INCREF(__pyx_v_item->_key);
   __Pyx_GIVEREF(__pyx_v_item->_key);
@@ -9866,7 +9914,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":510
+  /* "multidict/_multidict.pyx":516
  *         return self
  * 
  *     def __next__(self):             # <<<<<<<<<<<<<<
@@ -9887,7 +9935,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsIter_4__next__(struct 
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":520
+/* "multidict/_multidict.pyx":526
  * cdef class _ItemsView(_ViewBaseSet):
  * 
  *     def isdisjoint(self, other):             # <<<<<<<<<<<<<<
@@ -9922,7 +9970,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_isdisjoint(struct
   int __pyx_t_5;
   __Pyx_RefNannySetupContext("isdisjoint", 0);
 
-  /* "multidict/_multidict.pyx":523
+  /* "multidict/_multidict.pyx":529
  *         'Return True if two sets have a null intersection.'
  *         cdef _Pair item
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -9931,21 +9979,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_isdisjoint(struct
  */
   if (unlikely(__pyx_v_self->__pyx_base.__pyx_base._items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 523, __pyx_L1_error)
+    __PYX_ERR(0, 529, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->__pyx_base.__pyx_base._items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 523, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 529, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 523, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 529, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":524
+    /* "multidict/_multidict.pyx":530
  *         cdef _Pair item
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -9957,14 +10005,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_isdisjoint(struct
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":525
+    /* "multidict/_multidict.pyx":531
  *         for i in self._items:
  *             item = <_Pair>i
  *             t = (item._key, item._value)             # <<<<<<<<<<<<<<
  *             if t in other:
  *                 return False
  */
-    __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 525, __pyx_L1_error)
+    __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 531, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_INCREF(__pyx_v_item->_key);
     __Pyx_GIVEREF(__pyx_v_item->_key);
@@ -9975,18 +10023,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_isdisjoint(struct
     __Pyx_XDECREF_SET(__pyx_v_t, ((PyObject*)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":526
+    /* "multidict/_multidict.pyx":532
  *             item = <_Pair>i
  *             t = (item._key, item._value)
  *             if t in other:             # <<<<<<<<<<<<<<
  *                 return False
  *         return True
  */
-    __pyx_t_4 = (__Pyx_PySequence_ContainsTF(__pyx_v_t, __pyx_v_other, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 526, __pyx_L1_error)
+    __pyx_t_4 = (__Pyx_PySequence_ContainsTF(__pyx_v_t, __pyx_v_other, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 532, __pyx_L1_error)
     __pyx_t_5 = (__pyx_t_4 != 0);
     if (__pyx_t_5) {
 
-      /* "multidict/_multidict.pyx":527
+      /* "multidict/_multidict.pyx":533
  *             t = (item._key, item._value)
  *             if t in other:
  *                 return False             # <<<<<<<<<<<<<<
@@ -9999,7 +10047,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_isdisjoint(struct
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":526
+      /* "multidict/_multidict.pyx":532
  *             item = <_Pair>i
  *             t = (item._key, item._value)
  *             if t in other:             # <<<<<<<<<<<<<<
@@ -10008,7 +10056,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_isdisjoint(struct
  */
     }
 
-    /* "multidict/_multidict.pyx":523
+    /* "multidict/_multidict.pyx":529
  *         'Return True if two sets have a null intersection.'
  *         cdef _Pair item
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -10018,7 +10066,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_isdisjoint(struct
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":528
+  /* "multidict/_multidict.pyx":534
  *             if t in other:
  *                 return False
  *         return True             # <<<<<<<<<<<<<<
@@ -10030,7 +10078,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_isdisjoint(struct
   __pyx_r = Py_True;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":520
+  /* "multidict/_multidict.pyx":526
  * cdef class _ItemsView(_ViewBaseSet):
  * 
  *     def isdisjoint(self, other):             # <<<<<<<<<<<<<<
@@ -10053,7 +10101,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_isdisjoint(struct
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":530
+/* "multidict/_multidict.pyx":536
  *         return True
  * 
  *     def __contains__(self, i):             # <<<<<<<<<<<<<<
@@ -10087,7 +10135,7 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsView_2__contains__(struct __
   PyObject *__pyx_t_7 = NULL;
   __Pyx_RefNannySetupContext("__contains__", 0);
 
-  /* "multidict/_multidict.pyx":532
+  /* "multidict/_multidict.pyx":538
  *     def __contains__(self, i):
  *         cdef _Pair item
  *         assert isinstance(i, tuple) or isinstance(i, list)             # <<<<<<<<<<<<<<
@@ -10109,12 +10157,12 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsView_2__contains__(struct __
     __pyx_L3_bool_binop_done:;
     if (unlikely(!__pyx_t_1)) {
       PyErr_SetNone(PyExc_AssertionError);
-      __PYX_ERR(0, 532, __pyx_L1_error)
+      __PYX_ERR(0, 538, __pyx_L1_error)
     }
   }
   #endif
 
-  /* "multidict/_multidict.pyx":533
+  /* "multidict/_multidict.pyx":539
  *         cdef _Pair item
  *         assert isinstance(i, tuple) or isinstance(i, list)
  *         assert len(i) == 2             # <<<<<<<<<<<<<<
@@ -10123,26 +10171,26 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsView_2__contains__(struct __
  */
   #ifndef CYTHON_WITHOUT_ASSERTIONS
   if (unlikely(!Py_OptimizeFlag)) {
-    __pyx_t_4 = PyObject_Length(__pyx_v_i); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 533, __pyx_L1_error)
+    __pyx_t_4 = PyObject_Length(__pyx_v_i); if (unlikely(__pyx_t_4 == -1)) __PYX_ERR(0, 539, __pyx_L1_error)
     if (unlikely(!((__pyx_t_4 == 2) != 0))) {
       PyErr_SetNone(PyExc_AssertionError);
-      __PYX_ERR(0, 533, __pyx_L1_error)
+      __PYX_ERR(0, 539, __pyx_L1_error)
     }
   }
   #endif
 
-  /* "multidict/_multidict.pyx":534
+  /* "multidict/_multidict.pyx":540
  *         assert isinstance(i, tuple) or isinstance(i, list)
  *         assert len(i) == 2
  *         item = _Pair.__new__(_Pair, i[0], i[1])             # <<<<<<<<<<<<<<
  *         return item in self._items
  * 
  */
-  __pyx_t_5 = __Pyx_GetItemInt(__pyx_v_i, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 534, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_GetItemInt(__pyx_v_i, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 540, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = __Pyx_GetItemInt(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 534, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_GetItemInt(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 540, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_7 = PyTuple_New(2); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 534, __pyx_L1_error)
+  __pyx_t_7 = PyTuple_New(2); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 540, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_GIVEREF(__pyx_t_5);
   PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_5);
@@ -10150,25 +10198,25 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsView_2__contains__(struct __
   PyTuple_SET_ITEM(__pyx_t_7, 1, __pyx_t_6);
   __pyx_t_5 = 0;
   __pyx_t_6 = 0;
-  __pyx_t_6 = __pyx_tp_new_9multidict_10_multidict__Pair(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__Pair), __pyx_t_7, NULL); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 534, __pyx_L1_error)
+  __pyx_t_6 = __pyx_tp_new_9multidict_10_multidict__Pair(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__Pair), __pyx_t_7, NULL); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 540, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  if (!(likely(__Pyx_TypeTest(__pyx_t_6, __pyx_ptype_9multidict_10_multidict__Pair)))) __PYX_ERR(0, 534, __pyx_L1_error)
+  if (!(likely(__Pyx_TypeTest(__pyx_t_6, __pyx_ptype_9multidict_10_multidict__Pair)))) __PYX_ERR(0, 540, __pyx_L1_error)
   __pyx_v_item = ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_6);
   __pyx_t_6 = 0;
 
-  /* "multidict/_multidict.pyx":535
+  /* "multidict/_multidict.pyx":541
  *         assert len(i) == 2
  *         item = _Pair.__new__(_Pair, i[0], i[1])
  *         return item in self._items             # <<<<<<<<<<<<<<
  * 
  *     def __iter__(self):
  */
-  __pyx_t_1 = (__Pyx_PySequence_ContainsTF(((PyObject *)__pyx_v_item), __pyx_v_self->__pyx_base.__pyx_base._items, Py_EQ)); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 535, __pyx_L1_error)
+  __pyx_t_1 = (__Pyx_PySequence_ContainsTF(((PyObject *)__pyx_v_item), __pyx_v_self->__pyx_base.__pyx_base._items, Py_EQ)); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(0, 541, __pyx_L1_error)
   __pyx_r = __pyx_t_1;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":530
+  /* "multidict/_multidict.pyx":536
  *         return True
  * 
  *     def __contains__(self, i):             # <<<<<<<<<<<<<<
@@ -10189,7 +10237,7 @@ static int __pyx_pf_9multidict_10_multidict_10_ItemsView_2__contains__(struct __
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":537
+/* "multidict/_multidict.pyx":543
  *         return item in self._items
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -10217,7 +10265,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_4__iter__(struct 
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("__iter__", 0);
 
-  /* "multidict/_multidict.pyx":538
+  /* "multidict/_multidict.pyx":544
  * 
  *     def __iter__(self):
  *         return _ItemsIter.__new__(_ItemsIter, self._items)             # <<<<<<<<<<<<<<
@@ -10225,19 +10273,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_4__iter__(struct 
  *     def __repr__(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 538, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 544, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_self->__pyx_base.__pyx_base._items);
   __Pyx_GIVEREF(__pyx_v_self->__pyx_base.__pyx_base._items);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_self->__pyx_base.__pyx_base._items);
-  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__ItemsIter(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__ItemsIter), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 538, __pyx_L1_error)
+  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__ItemsIter(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__ItemsIter), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 544, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":537
+  /* "multidict/_multidict.pyx":543
  *         return item in self._items
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -10257,7 +10305,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_4__iter__(struct 
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":540
+/* "multidict/_multidict.pyx":546
  *         return _ItemsIter.__new__(_ItemsIter, self._items)
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -10295,19 +10343,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
   int __pyx_t_8;
   __Pyx_RefNannySetupContext("__repr__", 0);
 
-  /* "multidict/_multidict.pyx":542
+  /* "multidict/_multidict.pyx":548
  *     def __repr__(self):
  *         cdef _Pair item
  *         lst = []             # <<<<<<<<<<<<<<
  *         for i in self._items:
  *             item = <_Pair>i
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 542, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 548, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_lst = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":543
+  /* "multidict/_multidict.pyx":549
  *         cdef _Pair item
  *         lst = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -10316,21 +10364,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
  */
   if (unlikely(__pyx_v_self->__pyx_base.__pyx_base._items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 543, __pyx_L1_error)
+    __PYX_ERR(0, 549, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->__pyx_base.__pyx_base._items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 543, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 549, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 543, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 549, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":544
+    /* "multidict/_multidict.pyx":550
  *         lst = []
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -10342,14 +10390,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":545
+    /* "multidict/_multidict.pyx":551
  *         for i in self._items:
  *             item = <_Pair>i
  *             lst.append("{!r}: {!r}".format(item._key, item._value))             # <<<<<<<<<<<<<<
  *         body = ', '.join(lst)
  *         return '{}({})'.format(self.__class__.__name__, body)
  */
-    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_r_r, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 545, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_r_r, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 551, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __pyx_t_5 = NULL;
     __pyx_t_6 = 0;
@@ -10363,7 +10411,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
         __pyx_t_6 = 1;
       }
     }
-    __pyx_t_7 = PyTuple_New(2+__pyx_t_6); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 545, __pyx_L1_error)
+    __pyx_t_7 = PyTuple_New(2+__pyx_t_6); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 551, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_7);
     if (__pyx_t_5) {
       __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_5); __pyx_t_5 = NULL;
@@ -10374,14 +10422,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
     __Pyx_INCREF(__pyx_v_item->_value);
     __Pyx_GIVEREF(__pyx_v_item->_value);
     PyTuple_SET_ITEM(__pyx_t_7, 1+__pyx_t_6, __pyx_v_item->_value);
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 545, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 551, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_8 = __Pyx_PyList_Append(__pyx_v_lst, __pyx_t_3); if (unlikely(__pyx_t_8 == -1)) __PYX_ERR(0, 545, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyList_Append(__pyx_v_lst, __pyx_t_3); if (unlikely(__pyx_t_8 == -1)) __PYX_ERR(0, 551, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":543
+    /* "multidict/_multidict.pyx":549
  *         cdef _Pair item
  *         lst = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -10391,19 +10439,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":546
+  /* "multidict/_multidict.pyx":552
  *             item = <_Pair>i
  *             lst.append("{!r}: {!r}".format(item._key, item._value))
  *         body = ', '.join(lst)             # <<<<<<<<<<<<<<
  *         return '{}({})'.format(self.__class__.__name__, body)
  * 
  */
-  __pyx_t_1 = __Pyx_PyString_Join(__pyx_kp_s__4, __pyx_v_lst); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 546, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyString_Join(__pyx_kp_s__4, __pyx_v_lst); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 552, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_body = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":547
+  /* "multidict/_multidict.pyx":553
  *             lst.append("{!r}: {!r}".format(item._key, item._value))
  *         body = ', '.join(lst)
  *         return '{}({})'.format(self.__class__.__name__, body)             # <<<<<<<<<<<<<<
@@ -10411,11 +10459,11 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s__8, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 547, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s__8, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 553, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 547, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 553, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_name); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 547, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_name); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 553, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_4 = NULL;
@@ -10430,7 +10478,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
       __pyx_t_2 = 1;
     }
   }
-  __pyx_t_5 = PyTuple_New(2+__pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 547, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(2+__pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 553, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   if (__pyx_t_4) {
     __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -10441,7 +10489,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
   __Pyx_GIVEREF(__pyx_v_body);
   PyTuple_SET_ITEM(__pyx_t_5, 1+__pyx_t_2, __pyx_v_body);
   __pyx_t_7 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 547, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 553, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -10449,7 +10497,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":540
+  /* "multidict/_multidict.pyx":546
  *         return _ItemsIter.__new__(_ItemsIter, self._items)
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -10476,7 +10524,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_10_ItemsView_6__repr__(struct 
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":558
+/* "multidict/_multidict.pyx":564
  *     cdef int _len
  * 
  *     def __cinit__(self, items):             # <<<<<<<<<<<<<<
@@ -10509,7 +10557,7 @@ static int __pyx_pw_9multidict_10_multidict_11_ValuesIter_1__cinit__(PyObject *_
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 558, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 564, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -10520,7 +10568,7 @@ static int __pyx_pw_9multidict_10_multidict_11_ValuesIter_1__cinit__(PyObject *_
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 558, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 564, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict._ValuesIter.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -10540,14 +10588,14 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesIter___cinit__(struct __pyx
   Py_ssize_t __pyx_t_2;
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "multidict/_multidict.pyx":559
+  /* "multidict/_multidict.pyx":565
  * 
  *     def __cinit__(self, items):
  *         self._items = items             # <<<<<<<<<<<<<<
  *         self._current = 0
  *         self._len = len(self._items)
  */
-  if (!(likely(PyList_CheckExact(__pyx_v_items))||((__pyx_v_items) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_v_items)->tp_name), 0))) __PYX_ERR(0, 559, __pyx_L1_error)
+  if (!(likely(PyList_CheckExact(__pyx_v_items))||((__pyx_v_items) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_v_items)->tp_name), 0))) __PYX_ERR(0, 565, __pyx_L1_error)
   __pyx_t_1 = __pyx_v_items;
   __Pyx_INCREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
@@ -10556,7 +10604,7 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesIter___cinit__(struct __pyx
   __pyx_v_self->_items = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":560
+  /* "multidict/_multidict.pyx":566
  *     def __cinit__(self, items):
  *         self._items = items
  *         self._current = 0             # <<<<<<<<<<<<<<
@@ -10565,7 +10613,7 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesIter___cinit__(struct __pyx
  */
   __pyx_v_self->_current = 0;
 
-  /* "multidict/_multidict.pyx":561
+  /* "multidict/_multidict.pyx":567
  *         self._items = items
  *         self._current = 0
  *         self._len = len(self._items)             # <<<<<<<<<<<<<<
@@ -10576,13 +10624,13 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesIter___cinit__(struct __pyx
   __Pyx_INCREF(__pyx_t_1);
   if (unlikely(__pyx_t_1 == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 561, __pyx_L1_error)
+    __PYX_ERR(0, 567, __pyx_L1_error)
   }
-  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 561, __pyx_L1_error)
+  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 567, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->_len = __pyx_t_2;
 
-  /* "multidict/_multidict.pyx":558
+  /* "multidict/_multidict.pyx":564
  *     cdef int _len
  * 
  *     def __cinit__(self, items):             # <<<<<<<<<<<<<<
@@ -10602,7 +10650,7 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesIter___cinit__(struct __pyx
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":563
+/* "multidict/_multidict.pyx":569
  *         self._len = len(self._items)
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -10628,7 +10676,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_2__iter__(struct
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__iter__", 0);
 
-  /* "multidict/_multidict.pyx":564
+  /* "multidict/_multidict.pyx":570
  * 
  *     def __iter__(self):
  *         return self             # <<<<<<<<<<<<<<
@@ -10640,7 +10688,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_2__iter__(struct
   __pyx_r = ((PyObject *)__pyx_v_self);
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":563
+  /* "multidict/_multidict.pyx":569
  *         self._len = len(self._items)
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -10655,7 +10703,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_2__iter__(struct
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":566
+/* "multidict/_multidict.pyx":572
  *         return self
  * 
  *     def __next__(self):             # <<<<<<<<<<<<<<
@@ -10685,7 +10733,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_4__next__(struct
   PyObject *__pyx_t_3 = NULL;
   __Pyx_RefNannySetupContext("__next__", 0);
 
-  /* "multidict/_multidict.pyx":567
+  /* "multidict/_multidict.pyx":573
  * 
  *     def __next__(self):
  *         if self._current == self._len:             # <<<<<<<<<<<<<<
@@ -10695,7 +10743,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_4__next__(struct
   __pyx_t_1 = ((__pyx_v_self->_current == __pyx_v_self->_len) != 0);
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":568
+    /* "multidict/_multidict.pyx":574
  *     def __next__(self):
  *         if self._current == self._len:
  *             raise StopIteration             # <<<<<<<<<<<<<<
@@ -10703,9 +10751,9 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_4__next__(struct
  *         self._current += 1
  */
     __Pyx_Raise(__pyx_builtin_StopIteration, 0, 0, 0);
-    __PYX_ERR(0, 568, __pyx_L1_error)
+    __PYX_ERR(0, 574, __pyx_L1_error)
 
-    /* "multidict/_multidict.pyx":567
+    /* "multidict/_multidict.pyx":573
  * 
  *     def __next__(self):
  *         if self._current == self._len:             # <<<<<<<<<<<<<<
@@ -10714,7 +10762,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_4__next__(struct
  */
   }
 
-  /* "multidict/_multidict.pyx":569
+  /* "multidict/_multidict.pyx":575
  *         if self._current == self._len:
  *             raise StopIteration
  *         item = <_Pair>self._items[self._current]             # <<<<<<<<<<<<<<
@@ -10723,9 +10771,9 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_4__next__(struct
  */
   if (unlikely(__pyx_v_self->_items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    __PYX_ERR(0, 569, __pyx_L1_error)
+    __PYX_ERR(0, 575, __pyx_L1_error)
   }
-  __pyx_t_2 = __Pyx_GetItemInt_List(__pyx_v_self->_items, __pyx_v_self->_current, int, 1, __Pyx_PyInt_From_int, 1, 1, 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 569, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetItemInt_List(__pyx_v_self->_items, __pyx_v_self->_current, int, 1, __Pyx_PyInt_From_int, 1, 1, 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 575, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = __pyx_t_2;
   __Pyx_INCREF(__pyx_t_3);
@@ -10733,7 +10781,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_4__next__(struct
   __pyx_v_item = ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "multidict/_multidict.pyx":570
+  /* "multidict/_multidict.pyx":576
  *             raise StopIteration
  *         item = <_Pair>self._items[self._current]
  *         self._current += 1             # <<<<<<<<<<<<<<
@@ -10742,7 +10790,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_4__next__(struct
  */
   __pyx_v_self->_current = (__pyx_v_self->_current + 1);
 
-  /* "multidict/_multidict.pyx":571
+  /* "multidict/_multidict.pyx":577
  *         item = <_Pair>self._items[self._current]
  *         self._current += 1
  *         return item._value             # <<<<<<<<<<<<<<
@@ -10754,7 +10802,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_4__next__(struct
   __pyx_r = __pyx_v_item->_value;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":566
+  /* "multidict/_multidict.pyx":572
  *         return self
  * 
  *     def __next__(self):             # <<<<<<<<<<<<<<
@@ -10775,7 +10823,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesIter_4__next__(struct
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":576
+/* "multidict/_multidict.pyx":582
  * cdef class _ValuesView(_ViewBase):
  * 
  *     def __contains__(self, value):             # <<<<<<<<<<<<<<
@@ -10807,7 +10855,7 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesView___contains__(struct __
   int __pyx_t_4;
   __Pyx_RefNannySetupContext("__contains__", 0);
 
-  /* "multidict/_multidict.pyx":578
+  /* "multidict/_multidict.pyx":584
  *     def __contains__(self, value):
  *         cdef _Pair item
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -10816,21 +10864,21 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesView___contains__(struct __
  */
   if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 578, __pyx_L1_error)
+    __PYX_ERR(0, 584, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->__pyx_base._items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 578, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 584, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 578, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 584, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":579
+    /* "multidict/_multidict.pyx":585
  *         cdef _Pair item
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -10842,19 +10890,19 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesView___contains__(struct __
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":580
+    /* "multidict/_multidict.pyx":586
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._value == value:             # <<<<<<<<<<<<<<
  *                 return True
  *         return False
  */
-    __pyx_t_3 = PyObject_RichCompare(__pyx_v_item->_value, __pyx_v_value, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 580, __pyx_L1_error)
-    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 580, __pyx_L1_error)
+    __pyx_t_3 = PyObject_RichCompare(__pyx_v_item->_value, __pyx_v_value, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 586, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 586, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     if (__pyx_t_4) {
 
-      /* "multidict/_multidict.pyx":581
+      /* "multidict/_multidict.pyx":587
  *             item = <_Pair>i
  *             if item._value == value:
  *                 return True             # <<<<<<<<<<<<<<
@@ -10865,7 +10913,7 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesView___contains__(struct __
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":580
+      /* "multidict/_multidict.pyx":586
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._value == value:             # <<<<<<<<<<<<<<
@@ -10874,7 +10922,7 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesView___contains__(struct __
  */
     }
 
-    /* "multidict/_multidict.pyx":578
+    /* "multidict/_multidict.pyx":584
  *     def __contains__(self, value):
  *         cdef _Pair item
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -10884,7 +10932,7 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesView___contains__(struct __
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":582
+  /* "multidict/_multidict.pyx":588
  *             if item._value == value:
  *                 return True
  *         return False             # <<<<<<<<<<<<<<
@@ -10894,7 +10942,7 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesView___contains__(struct __
   __pyx_r = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":576
+  /* "multidict/_multidict.pyx":582
  * cdef class _ValuesView(_ViewBase):
  * 
  *     def __contains__(self, value):             # <<<<<<<<<<<<<<
@@ -10915,7 +10963,7 @@ static int __pyx_pf_9multidict_10_multidict_11_ValuesView___contains__(struct __
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":584
+/* "multidict/_multidict.pyx":590
  *         return False
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -10943,7 +10991,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_2__iter__(struct
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("__iter__", 0);
 
-  /* "multidict/_multidict.pyx":585
+  /* "multidict/_multidict.pyx":591
  * 
  *     def __iter__(self):
  *         return _ValuesIter.__new__(_ValuesIter, self._items)             # <<<<<<<<<<<<<<
@@ -10951,19 +10999,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_2__iter__(struct
  *     def __repr__(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 585, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 591, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_self->__pyx_base._items);
   __Pyx_GIVEREF(__pyx_v_self->__pyx_base._items);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_self->__pyx_base._items);
-  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__ValuesIter(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__ValuesIter), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 585, __pyx_L1_error)
+  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__ValuesIter(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__ValuesIter), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 591, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":584
+  /* "multidict/_multidict.pyx":590
  *         return False
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -10983,7 +11031,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_2__iter__(struct
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":587
+/* "multidict/_multidict.pyx":593
  *         return _ValuesIter.__new__(_ValuesIter, self._items)
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -11020,19 +11068,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
   int __pyx_t_7;
   __Pyx_RefNannySetupContext("__repr__", 0);
 
-  /* "multidict/_multidict.pyx":589
+  /* "multidict/_multidict.pyx":595
  *     def __repr__(self):
  *         cdef _Pair item
  *         lst = []             # <<<<<<<<<<<<<<
  *         for i in self._items:
  *             item = <_Pair>i
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 589, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 595, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_lst = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":590
+  /* "multidict/_multidict.pyx":596
  *         cdef _Pair item
  *         lst = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -11041,21 +11089,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
  */
   if (unlikely(__pyx_v_self->__pyx_base._items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 590, __pyx_L1_error)
+    __PYX_ERR(0, 596, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->__pyx_base._items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 590, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 596, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 590, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 596, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":591
+    /* "multidict/_multidict.pyx":597
  *         lst = []
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -11067,14 +11115,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":592
+    /* "multidict/_multidict.pyx":598
  *         for i in self._items:
  *             item = <_Pair>i
  *             lst.append("{!r}".format(item._value))             # <<<<<<<<<<<<<<
  *         body = ', '.join(lst)
  *         return '{}({})'.format(self.__class__.__name__, body)
  */
-    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_r_2, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 592, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_r_2, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 598, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __pyx_t_5 = NULL;
     if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_4))) {
@@ -11087,24 +11135,24 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
       }
     }
     if (!__pyx_t_5) {
-      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_v_item->_value); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 592, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_v_item->_value); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 598, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
     } else {
-      __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 592, __pyx_L1_error)
+      __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 598, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __pyx_t_5 = NULL;
       __Pyx_INCREF(__pyx_v_item->_value);
       __Pyx_GIVEREF(__pyx_v_item->_value);
       PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_v_item->_value);
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 592, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 598, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     }
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_lst, __pyx_t_3); if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 592, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_lst, __pyx_t_3); if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 598, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":590
+    /* "multidict/_multidict.pyx":596
  *         cdef _Pair item
  *         lst = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -11114,19 +11162,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":593
+  /* "multidict/_multidict.pyx":599
  *             item = <_Pair>i
  *             lst.append("{!r}".format(item._value))
  *         body = ', '.join(lst)             # <<<<<<<<<<<<<<
  *         return '{}({})'.format(self.__class__.__name__, body)
  * 
  */
-  __pyx_t_1 = __Pyx_PyString_Join(__pyx_kp_s__4, __pyx_v_lst); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 593, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyString_Join(__pyx_kp_s__4, __pyx_v_lst); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 599, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_body = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":594
+  /* "multidict/_multidict.pyx":600
  *             lst.append("{!r}".format(item._value))
  *         body = ', '.join(lst)
  *         return '{}({})'.format(self.__class__.__name__, body)             # <<<<<<<<<<<<<<
@@ -11134,11 +11182,11 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s__8, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 594, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s__8, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 600, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 594, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 600, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_name); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 594, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_name); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 600, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_4 = NULL;
@@ -11153,7 +11201,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
       __pyx_t_2 = 1;
     }
   }
-  __pyx_t_5 = PyTuple_New(2+__pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 594, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(2+__pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 600, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   if (__pyx_t_4) {
     __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -11164,7 +11212,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
   __Pyx_GIVEREF(__pyx_v_body);
   PyTuple_SET_ITEM(__pyx_t_5, 1+__pyx_t_2, __pyx_v_body);
   __pyx_t_6 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 594, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 600, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -11172,7 +11220,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":587
+  /* "multidict/_multidict.pyx":593
  *         return _ValuesIter.__new__(_ValuesIter, self._items)
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -11199,7 +11247,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_11_ValuesView_4__repr__(struct
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":605
+/* "multidict/_multidict.pyx":611
  *     cdef int _len
  * 
  *     def __cinit__(self, items):             # <<<<<<<<<<<<<<
@@ -11232,7 +11280,7 @@ static int __pyx_pw_9multidict_10_multidict_9_KeysIter_1__cinit__(PyObject *__py
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 605, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 611, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -11243,7 +11291,7 @@ static int __pyx_pw_9multidict_10_multidict_9_KeysIter_1__cinit__(PyObject *__py
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 605, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 611, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("multidict._multidict._KeysIter.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -11263,14 +11311,14 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysIter___cinit__(struct __pyx_ob
   Py_ssize_t __pyx_t_2;
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "multidict/_multidict.pyx":606
+  /* "multidict/_multidict.pyx":612
  * 
  *     def __cinit__(self, items):
  *         self._items = items             # <<<<<<<<<<<<<<
  *         self._current = 0
  *         self._len = len(self._items)
  */
-  if (!(likely(PyList_CheckExact(__pyx_v_items))||((__pyx_v_items) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_v_items)->tp_name), 0))) __PYX_ERR(0, 606, __pyx_L1_error)
+  if (!(likely(PyList_CheckExact(__pyx_v_items))||((__pyx_v_items) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "list", Py_TYPE(__pyx_v_items)->tp_name), 0))) __PYX_ERR(0, 612, __pyx_L1_error)
   __pyx_t_1 = __pyx_v_items;
   __Pyx_INCREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
@@ -11279,7 +11327,7 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysIter___cinit__(struct __pyx_ob
   __pyx_v_self->_items = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":607
+  /* "multidict/_multidict.pyx":613
  *     def __cinit__(self, items):
  *         self._items = items
  *         self._current = 0             # <<<<<<<<<<<<<<
@@ -11288,7 +11336,7 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysIter___cinit__(struct __pyx_ob
  */
   __pyx_v_self->_current = 0;
 
-  /* "multidict/_multidict.pyx":608
+  /* "multidict/_multidict.pyx":614
  *         self._items = items
  *         self._current = 0
  *         self._len = len(self._items)             # <<<<<<<<<<<<<<
@@ -11299,13 +11347,13 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysIter___cinit__(struct __pyx_ob
   __Pyx_INCREF(__pyx_t_1);
   if (unlikely(__pyx_t_1 == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 608, __pyx_L1_error)
+    __PYX_ERR(0, 614, __pyx_L1_error)
   }
-  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 608, __pyx_L1_error)
+  __pyx_t_2 = PyList_GET_SIZE(__pyx_t_1); if (unlikely(__pyx_t_2 == -1)) __PYX_ERR(0, 614, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->_len = __pyx_t_2;
 
-  /* "multidict/_multidict.pyx":605
+  /* "multidict/_multidict.pyx":611
  *     cdef int _len
  * 
  *     def __cinit__(self, items):             # <<<<<<<<<<<<<<
@@ -11325,7 +11373,7 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysIter___cinit__(struct __pyx_ob
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":610
+/* "multidict/_multidict.pyx":616
  *         self._len = len(self._items)
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -11351,7 +11399,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_2__iter__(struct __
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__iter__", 0);
 
-  /* "multidict/_multidict.pyx":611
+  /* "multidict/_multidict.pyx":617
  * 
  *     def __iter__(self):
  *         return self             # <<<<<<<<<<<<<<
@@ -11363,7 +11411,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_2__iter__(struct __
   __pyx_r = ((PyObject *)__pyx_v_self);
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":610
+  /* "multidict/_multidict.pyx":616
  *         self._len = len(self._items)
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -11378,7 +11426,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_2__iter__(struct __
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":613
+/* "multidict/_multidict.pyx":619
  *         return self
  * 
  *     def __next__(self):             # <<<<<<<<<<<<<<
@@ -11408,7 +11456,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_4__next__(struct __
   PyObject *__pyx_t_3 = NULL;
   __Pyx_RefNannySetupContext("__next__", 0);
 
-  /* "multidict/_multidict.pyx":614
+  /* "multidict/_multidict.pyx":620
  * 
  *     def __next__(self):
  *         if self._current == self._len:             # <<<<<<<<<<<<<<
@@ -11418,7 +11466,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_4__next__(struct __
   __pyx_t_1 = ((__pyx_v_self->_current == __pyx_v_self->_len) != 0);
   if (__pyx_t_1) {
 
-    /* "multidict/_multidict.pyx":615
+    /* "multidict/_multidict.pyx":621
  *     def __next__(self):
  *         if self._current == self._len:
  *             raise StopIteration             # <<<<<<<<<<<<<<
@@ -11426,9 +11474,9 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_4__next__(struct __
  *         self._current += 1
  */
     __Pyx_Raise(__pyx_builtin_StopIteration, 0, 0, 0);
-    __PYX_ERR(0, 615, __pyx_L1_error)
+    __PYX_ERR(0, 621, __pyx_L1_error)
 
-    /* "multidict/_multidict.pyx":614
+    /* "multidict/_multidict.pyx":620
  * 
  *     def __next__(self):
  *         if self._current == self._len:             # <<<<<<<<<<<<<<
@@ -11437,7 +11485,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_4__next__(struct __
  */
   }
 
-  /* "multidict/_multidict.pyx":616
+  /* "multidict/_multidict.pyx":622
  *         if self._current == self._len:
  *             raise StopIteration
  *         item = <_Pair>self._items[self._current]             # <<<<<<<<<<<<<<
@@ -11446,9 +11494,9 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_4__next__(struct __
  */
   if (unlikely(__pyx_v_self->_items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    __PYX_ERR(0, 616, __pyx_L1_error)
+    __PYX_ERR(0, 622, __pyx_L1_error)
   }
-  __pyx_t_2 = __Pyx_GetItemInt_List(__pyx_v_self->_items, __pyx_v_self->_current, int, 1, __Pyx_PyInt_From_int, 1, 1, 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 616, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetItemInt_List(__pyx_v_self->_items, __pyx_v_self->_current, int, 1, __Pyx_PyInt_From_int, 1, 1, 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 622, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_t_3 = __pyx_t_2;
   __Pyx_INCREF(__pyx_t_3);
@@ -11456,7 +11504,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_4__next__(struct __
   __pyx_v_item = ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "multidict/_multidict.pyx":617
+  /* "multidict/_multidict.pyx":623
  *             raise StopIteration
  *         item = <_Pair>self._items[self._current]
  *         self._current += 1             # <<<<<<<<<<<<<<
@@ -11465,7 +11513,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_4__next__(struct __
  */
   __pyx_v_self->_current = (__pyx_v_self->_current + 1);
 
-  /* "multidict/_multidict.pyx":618
+  /* "multidict/_multidict.pyx":624
  *         item = <_Pair>self._items[self._current]
  *         self._current += 1
  *         return item._key             # <<<<<<<<<<<<<<
@@ -11477,7 +11525,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_4__next__(struct __
   __pyx_r = __pyx_v_item->_key;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":613
+  /* "multidict/_multidict.pyx":619
  *         return self
  * 
  *     def __next__(self):             # <<<<<<<<<<<<<<
@@ -11498,7 +11546,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysIter_4__next__(struct __
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":623
+/* "multidict/_multidict.pyx":629
  * cdef class _KeysView(_ViewBaseSet):
  * 
  *     def isdisjoint(self, other):             # <<<<<<<<<<<<<<
@@ -11532,7 +11580,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_isdisjoint(struct _
   int __pyx_t_5;
   __Pyx_RefNannySetupContext("isdisjoint", 0);
 
-  /* "multidict/_multidict.pyx":626
+  /* "multidict/_multidict.pyx":632
  *         'Return True if two sets have a null intersection.'
  *         cdef _Pair item
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -11541,21 +11589,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_isdisjoint(struct _
  */
   if (unlikely(__pyx_v_self->__pyx_base.__pyx_base._items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 626, __pyx_L1_error)
+    __PYX_ERR(0, 632, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->__pyx_base.__pyx_base._items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 626, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 632, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 626, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 632, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":627
+    /* "multidict/_multidict.pyx":633
  *         cdef _Pair item
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -11567,18 +11615,18 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_isdisjoint(struct _
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":628
+    /* "multidict/_multidict.pyx":634
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key in other:             # <<<<<<<<<<<<<<
  *                 return False
  *         return True
  */
-    __pyx_t_4 = (__Pyx_PySequence_ContainsTF(__pyx_v_item->_key, __pyx_v_other, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 628, __pyx_L1_error)
+    __pyx_t_4 = (__Pyx_PySequence_ContainsTF(__pyx_v_item->_key, __pyx_v_other, Py_EQ)); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 634, __pyx_L1_error)
     __pyx_t_5 = (__pyx_t_4 != 0);
     if (__pyx_t_5) {
 
-      /* "multidict/_multidict.pyx":629
+      /* "multidict/_multidict.pyx":635
  *             item = <_Pair>i
  *             if item._key in other:
  *                 return False             # <<<<<<<<<<<<<<
@@ -11591,7 +11639,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_isdisjoint(struct _
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":628
+      /* "multidict/_multidict.pyx":634
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key in other:             # <<<<<<<<<<<<<<
@@ -11600,7 +11648,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_isdisjoint(struct _
  */
     }
 
-    /* "multidict/_multidict.pyx":626
+    /* "multidict/_multidict.pyx":632
  *         'Return True if two sets have a null intersection.'
  *         cdef _Pair item
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -11610,7 +11658,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_isdisjoint(struct _
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":630
+  /* "multidict/_multidict.pyx":636
  *             if item._key in other:
  *                 return False
  *         return True             # <<<<<<<<<<<<<<
@@ -11622,7 +11670,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_isdisjoint(struct _
   __pyx_r = Py_True;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":623
+  /* "multidict/_multidict.pyx":629
  * cdef class _KeysView(_ViewBaseSet):
  * 
  *     def isdisjoint(self, other):             # <<<<<<<<<<<<<<
@@ -11644,7 +11692,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_isdisjoint(struct _
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":632
+/* "multidict/_multidict.pyx":638
  *         return True
  * 
  *     def __contains__(self, value):             # <<<<<<<<<<<<<<
@@ -11676,7 +11724,7 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysView_2__contains__(struct __py
   int __pyx_t_4;
   __Pyx_RefNannySetupContext("__contains__", 0);
 
-  /* "multidict/_multidict.pyx":634
+  /* "multidict/_multidict.pyx":640
  *     def __contains__(self, value):
  *         cdef _Pair item
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -11685,21 +11733,21 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysView_2__contains__(struct __py
  */
   if (unlikely(__pyx_v_self->__pyx_base.__pyx_base._items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 634, __pyx_L1_error)
+    __PYX_ERR(0, 640, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->__pyx_base.__pyx_base._items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 634, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 640, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 634, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 640, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":635
+    /* "multidict/_multidict.pyx":641
  *         cdef _Pair item
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -11711,19 +11759,19 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysView_2__contains__(struct __py
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":636
+    /* "multidict/_multidict.pyx":642
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == value:             # <<<<<<<<<<<<<<
  *                 return True
  *         return False
  */
-    __pyx_t_3 = PyObject_RichCompare(__pyx_v_item->_key, __pyx_v_value, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 636, __pyx_L1_error)
-    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 636, __pyx_L1_error)
+    __pyx_t_3 = PyObject_RichCompare(__pyx_v_item->_key, __pyx_v_value, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 642, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 642, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     if (__pyx_t_4) {
 
-      /* "multidict/_multidict.pyx":637
+      /* "multidict/_multidict.pyx":643
  *             item = <_Pair>i
  *             if item._key == value:
  *                 return True             # <<<<<<<<<<<<<<
@@ -11734,7 +11782,7 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysView_2__contains__(struct __py
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       goto __pyx_L0;
 
-      /* "multidict/_multidict.pyx":636
+      /* "multidict/_multidict.pyx":642
  *         for i in self._items:
  *             item = <_Pair>i
  *             if item._key == value:             # <<<<<<<<<<<<<<
@@ -11743,7 +11791,7 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysView_2__contains__(struct __py
  */
     }
 
-    /* "multidict/_multidict.pyx":634
+    /* "multidict/_multidict.pyx":640
  *     def __contains__(self, value):
  *         cdef _Pair item
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -11753,7 +11801,7 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysView_2__contains__(struct __py
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":638
+  /* "multidict/_multidict.pyx":644
  *             if item._key == value:
  *                 return True
  *         return False             # <<<<<<<<<<<<<<
@@ -11763,7 +11811,7 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysView_2__contains__(struct __py
   __pyx_r = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":632
+  /* "multidict/_multidict.pyx":638
  *         return True
  * 
  *     def __contains__(self, value):             # <<<<<<<<<<<<<<
@@ -11784,7 +11832,7 @@ static int __pyx_pf_9multidict_10_multidict_9_KeysView_2__contains__(struct __py
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":640
+/* "multidict/_multidict.pyx":646
  *         return False
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -11812,7 +11860,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_4__iter__(struct __
   PyObject *__pyx_t_2 = NULL;
   __Pyx_RefNannySetupContext("__iter__", 0);
 
-  /* "multidict/_multidict.pyx":641
+  /* "multidict/_multidict.pyx":647
  * 
  *     def __iter__(self):
  *         return _KeysIter.__new__(_KeysIter, self._items)             # <<<<<<<<<<<<<<
@@ -11820,19 +11868,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_4__iter__(struct __
  *     def __repr__(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 641, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 647, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_v_self->__pyx_base.__pyx_base._items);
   __Pyx_GIVEREF(__pyx_v_self->__pyx_base.__pyx_base._items);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_v_self->__pyx_base.__pyx_base._items);
-  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__KeysIter(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__KeysIter), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 641, __pyx_L1_error)
+  __pyx_t_2 = __pyx_tp_new_9multidict_10_multidict__KeysIter(((PyTypeObject *)__pyx_ptype_9multidict_10_multidict__KeysIter), __pyx_t_1, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 647, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":640
+  /* "multidict/_multidict.pyx":646
  *         return False
  * 
  *     def __iter__(self):             # <<<<<<<<<<<<<<
@@ -11852,7 +11900,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_4__iter__(struct __
   return __pyx_r;
 }
 
-/* "multidict/_multidict.pyx":643
+/* "multidict/_multidict.pyx":649
  *         return _KeysIter.__new__(_KeysIter, self._items)
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -11889,19 +11937,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_6__repr__(struct __
   int __pyx_t_7;
   __Pyx_RefNannySetupContext("__repr__", 0);
 
-  /* "multidict/_multidict.pyx":645
+  /* "multidict/_multidict.pyx":651
  *     def __repr__(self):
  *         cdef _Pair item
  *         lst = []             # <<<<<<<<<<<<<<
  *         for i in self._items:
  *             item = <_Pair>i
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 645, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 651, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_lst = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":646
+  /* "multidict/_multidict.pyx":652
  *         cdef _Pair item
  *         lst = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -11910,21 +11958,21 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_6__repr__(struct __
  */
   if (unlikely(__pyx_v_self->__pyx_base.__pyx_base._items == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 646, __pyx_L1_error)
+    __PYX_ERR(0, 652, __pyx_L1_error)
   }
   __pyx_t_1 = __pyx_v_self->__pyx_base.__pyx_base._items; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
   for (;;) {
     if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 646, __pyx_L1_error)
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_3); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 652, __pyx_L1_error)
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 646, __pyx_L1_error)
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 652, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     #endif
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":647
+    /* "multidict/_multidict.pyx":653
  *         lst = []
  *         for i in self._items:
  *             item = <_Pair>i             # <<<<<<<<<<<<<<
@@ -11936,14 +11984,14 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_6__repr__(struct __
     __Pyx_XDECREF_SET(__pyx_v_item, ((struct __pyx_obj_9multidict_10_multidict__Pair *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":648
+    /* "multidict/_multidict.pyx":654
  *         for i in self._items:
  *             item = <_Pair>i
  *             lst.append("{!r}".format(item._key))             # <<<<<<<<<<<<<<
  *         body = ', '.join(lst)
  *         return '{}({})'.format(self.__class__.__name__, body)
  */
-    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_r_2, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 648, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s_r_2, __pyx_n_s_format); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 654, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __pyx_t_5 = NULL;
     if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_4))) {
@@ -11956,24 +12004,24 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_6__repr__(struct __
       }
     }
     if (!__pyx_t_5) {
-      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_v_item->_key); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 648, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_v_item->_key); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 654, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
     } else {
-      __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 648, __pyx_L1_error)
+      __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 654, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_GIVEREF(__pyx_t_5); PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __pyx_t_5 = NULL;
       __Pyx_INCREF(__pyx_v_item->_key);
       __Pyx_GIVEREF(__pyx_v_item->_key);
       PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_v_item->_key);
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 648, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 654, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     }
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_lst, __pyx_t_3); if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 648, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyList_Append(__pyx_v_lst, __pyx_t_3); if (unlikely(__pyx_t_7 == -1)) __PYX_ERR(0, 654, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "multidict/_multidict.pyx":646
+    /* "multidict/_multidict.pyx":652
  *         cdef _Pair item
  *         lst = []
  *         for i in self._items:             # <<<<<<<<<<<<<<
@@ -11983,19 +12031,19 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_6__repr__(struct __
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":649
+  /* "multidict/_multidict.pyx":655
  *             item = <_Pair>i
  *             lst.append("{!r}".format(item._key))
  *         body = ', '.join(lst)             # <<<<<<<<<<<<<<
  *         return '{}({})'.format(self.__class__.__name__, body)
  * 
  */
-  __pyx_t_1 = __Pyx_PyString_Join(__pyx_kp_s__4, __pyx_v_lst); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 649, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyString_Join(__pyx_kp_s__4, __pyx_v_lst); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 655, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_body = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "multidict/_multidict.pyx":650
+  /* "multidict/_multidict.pyx":656
  *             lst.append("{!r}".format(item._key))
  *         body = ', '.join(lst)
  *         return '{}({})'.format(self.__class__.__name__, body)             # <<<<<<<<<<<<<<
@@ -12003,11 +12051,11 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_6__repr__(struct __
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s__8, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 650, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_kp_s__8, __pyx_n_s_format); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 656, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 650, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_class); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 656, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_name); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 650, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_name); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 656, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_4 = NULL;
@@ -12022,7 +12070,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_6__repr__(struct __
       __pyx_t_2 = 1;
     }
   }
-  __pyx_t_5 = PyTuple_New(2+__pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 650, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(2+__pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 656, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   if (__pyx_t_4) {
     __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __pyx_t_4 = NULL;
@@ -12033,7 +12081,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_6__repr__(struct __
   __Pyx_GIVEREF(__pyx_v_body);
   PyTuple_SET_ITEM(__pyx_t_5, 1+__pyx_t_2, __pyx_v_body);
   __pyx_t_6 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 650, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 656, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -12041,7 +12089,7 @@ static PyObject *__pyx_pf_9multidict_10_multidict_9_KeysView_6__repr__(struct __
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "multidict/_multidict.pyx":643
+  /* "multidict/_multidict.pyx":649
  *         return _KeysIter.__new__(_KeysIter, self._items)
  * 
  *     def __repr__(self):             # <<<<<<<<<<<<<<
@@ -13602,6 +13650,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_getdefaultencoding, __pyx_k_getdefaultencoding, sizeof(__pyx_k_getdefaultencoding), 0, 0, 1, 1},
   {&__pyx_kp_s_home_andrew_projects_multidict, __pyx_k_home_andrew_projects_multidict, sizeof(__pyx_k_home_andrew_projects_multidict), 0, 0, 1, 0},
   {&__pyx_n_s_import, __pyx_k_import, sizeof(__pyx_k_import), 0, 0, 1, 1},
+  {&__pyx_n_s_is_upstr, __pyx_k_is_upstr, sizeof(__pyx_k_is_upstr), 0, 0, 1, 1},
   {&__pyx_n_s_itemgetter, __pyx_k_itemgetter, sizeof(__pyx_k_itemgetter), 0, 0, 1, 1},
   {&__pyx_n_s_items, __pyx_k_items, sizeof(__pyx_k_items), 0, 0, 1, 1},
   {&__pyx_n_s_join, __pyx_k_join, sizeof(__pyx_k_join), 0, 0, 1, 1},
@@ -13626,6 +13675,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_s_r_r, __pyx_k_r_r, sizeof(__pyx_k_r_r), 0, 0, 1, 0},
   {&__pyx_n_s_range, __pyx_k_range, sizeof(__pyx_k_range), 0, 0, 1, 1},
   {&__pyx_n_s_register, __pyx_k_register, sizeof(__pyx_k_register), 0, 0, 1, 1},
+  {&__pyx_n_s_ret, __pyx_k_ret, sizeof(__pyx_k_ret), 0, 0, 1, 1},
   {&__pyx_n_s_self, __pyx_k_self, sizeof(__pyx_k_self), 0, 0, 1, 1},
   {&__pyx_n_s_strict, __pyx_k_strict, sizeof(__pyx_k_strict), 0, 0, 1, 1},
   {&__pyx_n_s_sys, __pyx_k_sys, sizeof(__pyx_k_sys), 0, 0, 1, 1},
@@ -13643,12 +13693,12 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
 };
 static int __Pyx_InitCachedBuiltins(void) {
   __pyx_builtin_object = __Pyx_GetBuiltinName(__pyx_n_s_object); if (!__pyx_builtin_object) __PYX_ERR(0, 7, __pyx_L1_error)
-  __pyx_builtin_memoryview = __Pyx_GetBuiltinName(__pyx_n_s_memoryview); if (!__pyx_builtin_memoryview) __PYX_ERR(0, 16, __pyx_L1_error)
-  __pyx_builtin_NotImplemented = __Pyx_GetBuiltinName(__pyx_n_s_NotImplemented); if (!__pyx_builtin_NotImplemented) __PYX_ERR(0, 44, __pyx_L1_error)
-  __pyx_builtin_KeyError = __Pyx_GetBuiltinName(__pyx_n_s_KeyError); if (!__pyx_builtin_KeyError) __PYX_ERR(0, 98, __pyx_L1_error)
-  __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_n_s_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(0, 199, __pyx_L1_error)
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 343, __pyx_L1_error)
-  __pyx_builtin_StopIteration = __Pyx_GetBuiltinName(__pyx_n_s_StopIteration); if (!__pyx_builtin_StopIteration) __PYX_ERR(0, 512, __pyx_L1_error)
+  __pyx_builtin_memoryview = __Pyx_GetBuiltinName(__pyx_n_s_memoryview); if (!__pyx_builtin_memoryview) __PYX_ERR(0, 21, __pyx_L1_error)
+  __pyx_builtin_NotImplemented = __Pyx_GetBuiltinName(__pyx_n_s_NotImplemented); if (!__pyx_builtin_NotImplemented) __PYX_ERR(0, 50, __pyx_L1_error)
+  __pyx_builtin_KeyError = __Pyx_GetBuiltinName(__pyx_n_s_KeyError); if (!__pyx_builtin_KeyError) __PYX_ERR(0, 104, __pyx_L1_error)
+  __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_n_s_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(0, 205, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 349, __pyx_L1_error)
+  __pyx_builtin_StopIteration = __Pyx_GetBuiltinName(__pyx_n_s_StopIteration); if (!__pyx_builtin_StopIteration) __PYX_ERR(0, 518, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -13658,40 +13708,40 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "multidict/_multidict.pyx":398
+  /* "multidict/_multidict.pyx":404
  *             return (item._key, item._value)
  *         else:
  *             raise KeyError("empty multidict")             # <<<<<<<<<<<<<<
  * 
  *     def update(self, *args, **kwargs):
  */
-  __pyx_tuple__7 = PyTuple_Pack(1, __pyx_kp_s_empty_multidict); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(0, 398, __pyx_L1_error)
+  __pyx_tuple__7 = PyTuple_Pack(1, __pyx_kp_s_empty_multidict); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(0, 404, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__7);
   __Pyx_GIVEREF(__pyx_tuple__7);
 
-  /* "multidict/_multidict.pyx":14
- *     """Case insensitive str."""
+  /* "multidict/_multidict.pyx":16
+ *     __is_upstr__ = True
  * 
  *     def __new__(cls, val='',             # <<<<<<<<<<<<<<
  *                 encoding=sys.getdefaultencoding(), errors='strict'):
- *         if isinstance(val, (bytes, bytearray, memoryview)):
+ *         if getattr(val, '__is_upstr__', False):
  */
-  __pyx_tuple__9 = PyTuple_Pack(4, __pyx_n_s_cls, __pyx_n_s_val, __pyx_n_s_encoding, __pyx_n_s_errors); if (unlikely(!__pyx_tuple__9)) __PYX_ERR(0, 14, __pyx_L1_error)
+  __pyx_tuple__9 = PyTuple_Pack(5, __pyx_n_s_cls, __pyx_n_s_val, __pyx_n_s_encoding, __pyx_n_s_errors, __pyx_n_s_ret); if (unlikely(!__pyx_tuple__9)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__9);
   __Pyx_GIVEREF(__pyx_tuple__9);
-  __pyx_codeobj__10 = (PyObject*)__Pyx_PyCode_New(4, 0, 4, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__9, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_home_andrew_projects_multidict, __pyx_n_s_new, 14, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__10)) __PYX_ERR(0, 14, __pyx_L1_error)
+  __pyx_codeobj__10 = (PyObject*)__Pyx_PyCode_New(4, 0, 5, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__9, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_home_andrew_projects_multidict, __pyx_n_s_new, 16, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__10)) __PYX_ERR(0, 16, __pyx_L1_error)
 
-  /* "multidict/_multidict.pyx":25
- *         return str.__new__(cls, val)
+  /* "multidict/_multidict.pyx":31
+ *         return ret
  * 
  *     def upper(self):             # <<<<<<<<<<<<<<
  *         return self
  * 
  */
-  __pyx_tuple__11 = PyTuple_Pack(1, __pyx_n_s_self); if (unlikely(!__pyx_tuple__11)) __PYX_ERR(0, 25, __pyx_L1_error)
+  __pyx_tuple__11 = PyTuple_Pack(1, __pyx_n_s_self); if (unlikely(!__pyx_tuple__11)) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__11);
   __Pyx_GIVEREF(__pyx_tuple__11);
-  __pyx_codeobj__12 = (PyObject*)__Pyx_PyCode_New(1, 0, 1, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__11, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_home_andrew_projects_multidict, __pyx_n_s_upper, 25, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__12)) __PYX_ERR(0, 25, __pyx_L1_error)
+  __pyx_codeobj__12 = (PyObject*)__Pyx_PyCode_New(1, 0, 1, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__11, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_home_andrew_projects_multidict, __pyx_n_s_upper, 31, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__12)) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -13803,9 +13853,9 @@ PyMODINIT_FUNC PyInit__multidict(void)
   /*--- Variable export code ---*/
   /*--- Function export code ---*/
   /*--- Type init code ---*/
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__Pair) < 0) __PYX_ERR(0, 47, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__Pair) < 0) __PYX_ERR(0, 53, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__Pair.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "_Pair", (PyObject *)&__pyx_type_9multidict_10_multidict__Pair) < 0) __PYX_ERR(0, 47, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_Pair", (PyObject *)&__pyx_type_9multidict_10_multidict__Pair) < 0) __PYX_ERR(0, 53, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__Pair = &__pyx_type_9multidict_10_multidict__Pair;
   __pyx_vtabptr_9multidict_10_multidict__Base = &__pyx_vtable_9multidict_10_multidict__Base;
   __pyx_vtable_9multidict_10_multidict__Base._upper = (PyObject *(*)(struct __pyx_obj_9multidict_10_multidict__Base *, PyObject *))__pyx_f_9multidict_10_multidict_5_Base__upper;
@@ -13814,27 +13864,27 @@ PyMODINIT_FUNC PyInit__multidict(void)
   __pyx_vtable_9multidict_10_multidict__Base._contains = (PyObject *(*)(struct __pyx_obj_9multidict_10_multidict__Base *, PyObject *))__pyx_f_9multidict_10_multidict_5_Base__contains;
   __pyx_vtable_9multidict_10_multidict__Base.keys = (PyObject *(*)(struct __pyx_obj_9multidict_10_multidict__Base *, int __pyx_skip_dispatch))__pyx_f_9multidict_10_multidict_5_Base_keys;
   __pyx_vtable_9multidict_10_multidict__Base._eq_to_mapping = (PyObject *(*)(struct __pyx_obj_9multidict_10_multidict__Base *, PyObject *))__pyx_f_9multidict_10_multidict_5_Base__eq_to_mapping;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__Base) < 0) __PYX_ERR(0, 66, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__Base) < 0) __PYX_ERR(0, 72, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__Base.tp_print = 0;
-  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict__Base.tp_dict, __pyx_vtabptr_9multidict_10_multidict__Base) < 0) __PYX_ERR(0, 66, __pyx_L1_error)
-  if (PyObject_SetAttrString(__pyx_m, "_Base", (PyObject *)&__pyx_type_9multidict_10_multidict__Base) < 0) __PYX_ERR(0, 66, __pyx_L1_error)
+  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict__Base.tp_dict, __pyx_vtabptr_9multidict_10_multidict__Base) < 0) __PYX_ERR(0, 72, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_Base", (PyObject *)&__pyx_type_9multidict_10_multidict__Base) < 0) __PYX_ERR(0, 72, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__Base = &__pyx_type_9multidict_10_multidict__Base;
   __pyx_vtabptr_9multidict_10_multidict_MultiDictProxy = &__pyx_vtable_9multidict_10_multidict_MultiDictProxy;
   __pyx_vtable_9multidict_10_multidict_MultiDictProxy.__pyx_base = *__pyx_vtabptr_9multidict_10_multidict__Base;
   __pyx_type_9multidict_10_multidict_MultiDictProxy.tp_base = __pyx_ptype_9multidict_10_multidict__Base;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict_MultiDictProxy) < 0) __PYX_ERR(0, 194, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict_MultiDictProxy) < 0) __PYX_ERR(0, 200, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict_MultiDictProxy.tp_print = 0;
-  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict_MultiDictProxy.tp_dict, __pyx_vtabptr_9multidict_10_multidict_MultiDictProxy) < 0) __PYX_ERR(0, 194, __pyx_L1_error)
-  if (PyObject_SetAttrString(__pyx_m, "MultiDictProxy", (PyObject *)&__pyx_type_9multidict_10_multidict_MultiDictProxy) < 0) __PYX_ERR(0, 194, __pyx_L1_error)
+  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict_MultiDictProxy.tp_dict, __pyx_vtabptr_9multidict_10_multidict_MultiDictProxy) < 0) __PYX_ERR(0, 200, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "MultiDictProxy", (PyObject *)&__pyx_type_9multidict_10_multidict_MultiDictProxy) < 0) __PYX_ERR(0, 200, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict_MultiDictProxy = &__pyx_type_9multidict_10_multidict_MultiDictProxy;
   __pyx_vtabptr_9multidict_10_multidict_CIMultiDictProxy = &__pyx_vtable_9multidict_10_multidict_CIMultiDictProxy;
   __pyx_vtable_9multidict_10_multidict_CIMultiDictProxy.__pyx_base = *__pyx_vtabptr_9multidict_10_multidict_MultiDictProxy;
   __pyx_vtable_9multidict_10_multidict_CIMultiDictProxy.__pyx_base.__pyx_base._upper = (PyObject *(*)(struct __pyx_obj_9multidict_10_multidict__Base *, PyObject *))__pyx_f_9multidict_10_multidict_16CIMultiDictProxy__upper;
   __pyx_type_9multidict_10_multidict_CIMultiDictProxy.tp_base = __pyx_ptype_9multidict_10_multidict_MultiDictProxy;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict_CIMultiDictProxy) < 0) __PYX_ERR(0, 213, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict_CIMultiDictProxy) < 0) __PYX_ERR(0, 219, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict_CIMultiDictProxy.tp_print = 0;
-  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict_CIMultiDictProxy.tp_dict, __pyx_vtabptr_9multidict_10_multidict_CIMultiDictProxy) < 0) __PYX_ERR(0, 213, __pyx_L1_error)
-  if (PyObject_SetAttrString(__pyx_m, "CIMultiDictProxy", (PyObject *)&__pyx_type_9multidict_10_multidict_CIMultiDictProxy) < 0) __PYX_ERR(0, 213, __pyx_L1_error)
+  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict_CIMultiDictProxy.tp_dict, __pyx_vtabptr_9multidict_10_multidict_CIMultiDictProxy) < 0) __PYX_ERR(0, 219, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "CIMultiDictProxy", (PyObject *)&__pyx_type_9multidict_10_multidict_CIMultiDictProxy) < 0) __PYX_ERR(0, 219, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict_CIMultiDictProxy = &__pyx_type_9multidict_10_multidict_CIMultiDictProxy;
   __pyx_vtabptr_9multidict_10_multidict_MultiDict = &__pyx_vtable_9multidict_10_multidict_MultiDict;
   __pyx_vtable_9multidict_10_multidict_MultiDict.__pyx_base = *__pyx_vtabptr_9multidict_10_multidict__Base;
@@ -13843,55 +13893,55 @@ PyMODINIT_FUNC PyInit__multidict(void)
   __pyx_vtable_9multidict_10_multidict_MultiDict._replace = (PyObject *(*)(struct __pyx_obj_9multidict_10_multidict_MultiDict *, PyObject *, PyObject *))__pyx_f_9multidict_10_multidict_9MultiDict__replace;
   __pyx_vtable_9multidict_10_multidict_MultiDict._remove = (PyObject *(*)(struct __pyx_obj_9multidict_10_multidict_MultiDict *, PyObject *, int))__pyx_f_9multidict_10_multidict_9MultiDict__remove;
   __pyx_type_9multidict_10_multidict_MultiDict.tp_base = __pyx_ptype_9multidict_10_multidict__Base;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict_MultiDict) < 0) __PYX_ERR(0, 238, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict_MultiDict) < 0) __PYX_ERR(0, 244, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict_MultiDict.tp_print = 0;
-  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict_MultiDict.tp_dict, __pyx_vtabptr_9multidict_10_multidict_MultiDict) < 0) __PYX_ERR(0, 238, __pyx_L1_error)
-  if (PyObject_SetAttrString(__pyx_m, "MultiDict", (PyObject *)&__pyx_type_9multidict_10_multidict_MultiDict) < 0) __PYX_ERR(0, 238, __pyx_L1_error)
+  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict_MultiDict.tp_dict, __pyx_vtabptr_9multidict_10_multidict_MultiDict) < 0) __PYX_ERR(0, 244, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "MultiDict", (PyObject *)&__pyx_type_9multidict_10_multidict_MultiDict) < 0) __PYX_ERR(0, 244, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict_MultiDict = &__pyx_type_9multidict_10_multidict_MultiDict;
   __pyx_vtabptr_9multidict_10_multidict_CIMultiDict = &__pyx_vtable_9multidict_10_multidict_CIMultiDict;
   __pyx_vtable_9multidict_10_multidict_CIMultiDict.__pyx_base = *__pyx_vtabptr_9multidict_10_multidict_MultiDict;
   __pyx_vtable_9multidict_10_multidict_CIMultiDict.__pyx_base.__pyx_base._upper = (PyObject *(*)(struct __pyx_obj_9multidict_10_multidict__Base *, PyObject *))__pyx_f_9multidict_10_multidict_11CIMultiDict__upper;
   __pyx_type_9multidict_10_multidict_CIMultiDict.tp_base = __pyx_ptype_9multidict_10_multidict_MultiDict;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict_CIMultiDict) < 0) __PYX_ERR(0, 408, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict_CIMultiDict) < 0) __PYX_ERR(0, 414, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict_CIMultiDict.tp_print = 0;
-  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict_CIMultiDict.tp_dict, __pyx_vtabptr_9multidict_10_multidict_CIMultiDict) < 0) __PYX_ERR(0, 408, __pyx_L1_error)
-  if (PyObject_SetAttrString(__pyx_m, "CIMultiDict", (PyObject *)&__pyx_type_9multidict_10_multidict_CIMultiDict) < 0) __PYX_ERR(0, 408, __pyx_L1_error)
+  if (__Pyx_SetVtable(__pyx_type_9multidict_10_multidict_CIMultiDict.tp_dict, __pyx_vtabptr_9multidict_10_multidict_CIMultiDict) < 0) __PYX_ERR(0, 414, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "CIMultiDict", (PyObject *)&__pyx_type_9multidict_10_multidict_CIMultiDict) < 0) __PYX_ERR(0, 414, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict_CIMultiDict = &__pyx_type_9multidict_10_multidict_CIMultiDict;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ViewBase) < 0) __PYX_ERR(0, 421, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ViewBase) < 0) __PYX_ERR(0, 427, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__ViewBase.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "_ViewBase", (PyObject *)&__pyx_type_9multidict_10_multidict__ViewBase) < 0) __PYX_ERR(0, 421, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_ViewBase", (PyObject *)&__pyx_type_9multidict_10_multidict__ViewBase) < 0) __PYX_ERR(0, 427, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__ViewBase = &__pyx_type_9multidict_10_multidict__ViewBase;
   __pyx_type_9multidict_10_multidict__ViewBaseSet.tp_base = __pyx_ptype_9multidict_10_multidict__ViewBase;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ViewBaseSet) < 0) __PYX_ERR(0, 432, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ViewBaseSet) < 0) __PYX_ERR(0, 438, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__ViewBaseSet.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "_ViewBaseSet", (PyObject *)&__pyx_type_9multidict_10_multidict__ViewBaseSet) < 0) __PYX_ERR(0, 432, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_ViewBaseSet", (PyObject *)&__pyx_type_9multidict_10_multidict__ViewBaseSet) < 0) __PYX_ERR(0, 438, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__ViewBaseSet = &__pyx_type_9multidict_10_multidict__ViewBaseSet;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ItemsIter) < 0) __PYX_ERR(0, 497, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ItemsIter) < 0) __PYX_ERR(0, 503, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__ItemsIter.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "_ItemsIter", (PyObject *)&__pyx_type_9multidict_10_multidict__ItemsIter) < 0) __PYX_ERR(0, 497, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_ItemsIter", (PyObject *)&__pyx_type_9multidict_10_multidict__ItemsIter) < 0) __PYX_ERR(0, 503, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__ItemsIter = &__pyx_type_9multidict_10_multidict__ItemsIter;
   __pyx_type_9multidict_10_multidict__ItemsView.tp_base = __pyx_ptype_9multidict_10_multidict__ViewBaseSet;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ItemsView) < 0) __PYX_ERR(0, 518, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ItemsView) < 0) __PYX_ERR(0, 524, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__ItemsView.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "_ItemsView", (PyObject *)&__pyx_type_9multidict_10_multidict__ItemsView) < 0) __PYX_ERR(0, 518, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_ItemsView", (PyObject *)&__pyx_type_9multidict_10_multidict__ItemsView) < 0) __PYX_ERR(0, 524, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__ItemsView = &__pyx_type_9multidict_10_multidict__ItemsView;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ValuesIter) < 0) __PYX_ERR(0, 553, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ValuesIter) < 0) __PYX_ERR(0, 559, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__ValuesIter.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "_ValuesIter", (PyObject *)&__pyx_type_9multidict_10_multidict__ValuesIter) < 0) __PYX_ERR(0, 553, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_ValuesIter", (PyObject *)&__pyx_type_9multidict_10_multidict__ValuesIter) < 0) __PYX_ERR(0, 559, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__ValuesIter = &__pyx_type_9multidict_10_multidict__ValuesIter;
   __pyx_type_9multidict_10_multidict__ValuesView.tp_base = __pyx_ptype_9multidict_10_multidict__ViewBase;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ValuesView) < 0) __PYX_ERR(0, 574, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__ValuesView) < 0) __PYX_ERR(0, 580, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__ValuesView.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "_ValuesView", (PyObject *)&__pyx_type_9multidict_10_multidict__ValuesView) < 0) __PYX_ERR(0, 574, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_ValuesView", (PyObject *)&__pyx_type_9multidict_10_multidict__ValuesView) < 0) __PYX_ERR(0, 580, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__ValuesView = &__pyx_type_9multidict_10_multidict__ValuesView;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__KeysIter) < 0) __PYX_ERR(0, 600, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__KeysIter) < 0) __PYX_ERR(0, 606, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__KeysIter.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "_KeysIter", (PyObject *)&__pyx_type_9multidict_10_multidict__KeysIter) < 0) __PYX_ERR(0, 600, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_KeysIter", (PyObject *)&__pyx_type_9multidict_10_multidict__KeysIter) < 0) __PYX_ERR(0, 606, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__KeysIter = &__pyx_type_9multidict_10_multidict__KeysIter;
   __pyx_type_9multidict_10_multidict__KeysView.tp_base = __pyx_ptype_9multidict_10_multidict__ViewBaseSet;
-  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__KeysView) < 0) __PYX_ERR(0, 621, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_9multidict_10_multidict__KeysView) < 0) __PYX_ERR(0, 627, __pyx_L1_error)
   __pyx_type_9multidict_10_multidict__KeysView.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "_KeysView", (PyObject *)&__pyx_type_9multidict_10_multidict__KeysView) < 0) __PYX_ERR(0, 621, __pyx_L1_error)
+  if (PyObject_SetAttrString(__pyx_m, "_KeysView", (PyObject *)&__pyx_type_9multidict_10_multidict__KeysView) < 0) __PYX_ERR(0, 627, __pyx_L1_error)
   __pyx_ptype_9multidict_10_multidict__KeysView = &__pyx_type_9multidict_10_multidict__KeysView;
   /*--- Type import code ---*/
   /*--- Variable import code ---*/
@@ -14012,24 +14062,33 @@ PyMODINIT_FUNC PyInit__multidict(void)
   /* "multidict/_multidict.pyx":14
  *     """Case insensitive str."""
  * 
+ *     __is_upstr__ = True             # <<<<<<<<<<<<<<
+ * 
+ *     def __new__(cls, val='',
+ */
+  if (PyObject_SetItem(__pyx_t_3, __pyx_n_s_is_upstr, Py_True) < 0) __PYX_ERR(0, 14, __pyx_L1_error)
+
+  /* "multidict/_multidict.pyx":16
+ *     __is_upstr__ = True
+ * 
  *     def __new__(cls, val='',             # <<<<<<<<<<<<<<
  *                 encoding=sys.getdefaultencoding(), errors='strict'):
- *         if isinstance(val, (bytes, bytearray, memoryview)):
+ *         if getattr(val, '__is_upstr__', False):
  */
-  __pyx_t_4 = __Pyx_CyFunction_NewEx(&__pyx_mdef_9multidict_10_multidict_5upstr_1__new__, __Pyx_CYFUNCTION_STATICMETHOD, __pyx_n_s_upstr___new, NULL, __pyx_n_s_multidict__multidict, __pyx_d, ((PyObject *)__pyx_codeobj__10)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 14, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_CyFunction_NewEx(&__pyx_mdef_9multidict_10_multidict_5upstr_1__new__, __Pyx_CYFUNCTION_STATICMETHOD, __pyx_n_s_upstr___new, NULL, __pyx_n_s_multidict__multidict, __pyx_d, ((PyObject *)__pyx_codeobj__10)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (!__Pyx_CyFunction_InitDefaults(__pyx_t_4, sizeof(__pyx_defaults), 1)) __PYX_ERR(0, 14, __pyx_L1_error)
+  if (!__Pyx_CyFunction_InitDefaults(__pyx_t_4, sizeof(__pyx_defaults), 1)) __PYX_ERR(0, 16, __pyx_L1_error)
 
-  /* "multidict/_multidict.pyx":15
+  /* "multidict/_multidict.pyx":17
  * 
  *     def __new__(cls, val='',
  *                 encoding=sys.getdefaultencoding(), errors='strict'):             # <<<<<<<<<<<<<<
- *         if isinstance(val, (bytes, bytearray, memoryview)):
- *             val = str(val, encoding, errors)
+ *         if getattr(val, '__is_upstr__', False):
+ *             # Faster than instance check
  */
-  __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_sys); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 15, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_sys); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_getdefaultencoding); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 15, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_getdefaultencoding); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 17, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __pyx_t_6 = NULL;
@@ -14043,10 +14102,10 @@ PyMODINIT_FUNC PyInit__multidict(void)
     }
   }
   if (__pyx_t_6) {
-    __pyx_t_5 = __Pyx_PyObject_CallOneArg(__pyx_t_7, __pyx_t_6); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 15, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_PyObject_CallOneArg(__pyx_t_7, __pyx_t_6); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 17, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   } else {
-    __pyx_t_5 = __Pyx_PyObject_CallNoArg(__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 15, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_PyObject_CallNoArg(__pyx_t_7); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 17, __pyx_L1_error)
   }
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
@@ -14054,19 +14113,19 @@ PyMODINIT_FUNC PyInit__multidict(void)
   __Pyx_GIVEREF(__pyx_t_5);
   __pyx_t_5 = 0;
   __Pyx_CyFunction_SetDefaultsGetter(__pyx_t_4, __pyx_pf_9multidict_10_multidict_5upstr_4__defaults__);
-  if (PyObject_SetItem(__pyx_t_3, __pyx_n_s_new, __pyx_t_4) < 0) __PYX_ERR(0, 14, __pyx_L1_error)
+  if (PyObject_SetItem(__pyx_t_3, __pyx_n_s_new, __pyx_t_4) < 0) __PYX_ERR(0, 16, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "multidict/_multidict.pyx":25
- *         return str.__new__(cls, val)
+  /* "multidict/_multidict.pyx":31
+ *         return ret
  * 
  *     def upper(self):             # <<<<<<<<<<<<<<
  *         return self
  * 
  */
-  __pyx_t_4 = __Pyx_CyFunction_NewEx(&__pyx_mdef_9multidict_10_multidict_5upstr_3upper, 0, __pyx_n_s_upstr_upper, NULL, __pyx_n_s_multidict__multidict, __pyx_d, ((PyObject *)__pyx_codeobj__12)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 25, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_CyFunction_NewEx(&__pyx_mdef_9multidict_10_multidict_5upstr_3upper, 0, __pyx_n_s_upstr_upper, NULL, __pyx_n_s_multidict__multidict, __pyx_d, ((PyObject *)__pyx_codeobj__12)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyObject_SetItem(__pyx_t_3, __pyx_n_s_upper, __pyx_t_4) < 0) __PYX_ERR(0, 25, __pyx_L1_error)
+  if (PyObject_SetItem(__pyx_t_3, __pyx_n_s_upper, __pyx_t_4) < 0) __PYX_ERR(0, 31, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
   /* "multidict/_multidict.pyx":10
@@ -14084,45 +14143,45 @@ PyMODINIT_FUNC PyInit__multidict(void)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":81
+  /* "multidict/_multidict.pyx":87
  *         return s
  * 
  *     def getall(self, key, default=_marker):             # <<<<<<<<<<<<<<
  *         """Return a list of all values matching the key."""
  *         return self._getall(self._upper(key), default)
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_marker); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_marker); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 87, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_k__2 = __pyx_t_2;
   __Pyx_GIVEREF(__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":100
+  /* "multidict/_multidict.pyx":106
  *         raise KeyError('Key not found: %r' % key)
  * 
  *     def getone(self, key, default=_marker):             # <<<<<<<<<<<<<<
  *         """Get first value matching the key."""
  *         return self._getone(self._upper(key), default)
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_marker); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 100, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_marker); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 106, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_k__3 = __pyx_t_2;
   __Pyx_GIVEREF(__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":210
+  /* "multidict/_multidict.pyx":216
  *         return MultiDict(self._items)
  * 
  * abc.Mapping.register(MultiDictProxy)             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 210, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 216, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_Mapping); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 210, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_Mapping); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 216, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 210, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 216, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_3 = NULL;
@@ -14136,35 +14195,35 @@ PyMODINIT_FUNC PyInit__multidict(void)
     }
   }
   if (!__pyx_t_3) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDictProxy)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 210, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDictProxy)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 216, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   } else {
-    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 210, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 216, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_3); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_3); __pyx_t_3 = NULL;
     __Pyx_INCREF(((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDictProxy));
     __Pyx_GIVEREF(((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDictProxy));
     PyTuple_SET_ITEM(__pyx_t_4, 0+1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDictProxy));
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 210, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 216, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":235
+  /* "multidict/_multidict.pyx":241
  * 
  * 
  * abc.Mapping.register(CIMultiDictProxy)             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 235, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 241, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_Mapping); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 235, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_Mapping); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 241, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 235, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 241, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_4 = NULL;
@@ -14178,48 +14237,48 @@ PyMODINIT_FUNC PyInit__multidict(void)
     }
   }
   if (!__pyx_t_4) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDictProxy)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 235, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDictProxy)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 241, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   } else {
-    __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 235, __pyx_L1_error)
+    __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 241, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_4); __pyx_t_4 = NULL;
     __Pyx_INCREF(((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDictProxy));
     __Pyx_GIVEREF(((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDictProxy));
     PyTuple_SET_ITEM(__pyx_t_3, 0+1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDictProxy));
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 235, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 241, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":363
+  /* "multidict/_multidict.pyx":369
  *         return default
  * 
  *     def pop(self, key, default=_marker):             # <<<<<<<<<<<<<<
  *         """Remove specified key and return the corresponding value.
  * 
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_marker); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 363, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_marker); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 369, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_k__6 = __pyx_t_2;
   __Pyx_GIVEREF(__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":405
+  /* "multidict/_multidict.pyx":411
  * 
  * 
  * abc.MutableMapping.register(MultiDict)             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 405, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 411, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_MutableMapping); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 405, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_MutableMapping); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 411, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 405, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 411, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_3 = NULL;
@@ -14233,35 +14292,35 @@ PyMODINIT_FUNC PyInit__multidict(void)
     }
   }
   if (!__pyx_t_3) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDict)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 405, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDict)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 411, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   } else {
-    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 405, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 411, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_3); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_3); __pyx_t_3 = NULL;
     __Pyx_INCREF(((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDict));
     __Pyx_GIVEREF(((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDict));
     PyTuple_SET_ITEM(__pyx_t_4, 0+1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_MultiDict));
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 405, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 411, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":418
+  /* "multidict/_multidict.pyx":424
  * 
  * 
  * abc.MutableMapping.register(CIMultiDict)             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 418, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 424, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_MutableMapping); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 418, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_MutableMapping); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 424, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 418, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 424, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_4 = NULL;
@@ -14275,35 +14334,35 @@ PyMODINIT_FUNC PyInit__multidict(void)
     }
   }
   if (!__pyx_t_4) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDict)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 418, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDict)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 424, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   } else {
-    __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 418, __pyx_L1_error)
+    __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 424, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_4); __pyx_t_4 = NULL;
     __Pyx_INCREF(((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDict));
     __Pyx_GIVEREF(((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDict));
     PyTuple_SET_ITEM(__pyx_t_3, 0+1, ((PyObject *)__pyx_ptype_9multidict_10_multidict_CIMultiDict));
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 418, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 424, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":550
+  /* "multidict/_multidict.pyx":556
  * 
  * 
  * abc.ItemsView.register(_ItemsView)             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 550, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 556, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_ItemsView); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 550, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_ItemsView); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 556, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 550, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 556, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_3 = NULL;
@@ -14317,35 +14376,35 @@ PyMODINIT_FUNC PyInit__multidict(void)
     }
   }
   if (!__pyx_t_3) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict__ItemsView)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 550, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict__ItemsView)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 556, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   } else {
-    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 550, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 556, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_3); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_3); __pyx_t_3 = NULL;
     __Pyx_INCREF(((PyObject *)__pyx_ptype_9multidict_10_multidict__ItemsView));
     __Pyx_GIVEREF(((PyObject *)__pyx_ptype_9multidict_10_multidict__ItemsView));
     PyTuple_SET_ITEM(__pyx_t_4, 0+1, ((PyObject *)__pyx_ptype_9multidict_10_multidict__ItemsView));
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 550, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 556, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":597
+  /* "multidict/_multidict.pyx":603
  * 
  * 
  * abc.ValuesView.register(_ValuesView)             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 597, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 603, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_ValuesView); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 597, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_ValuesView); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 603, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 597, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 603, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_4 = NULL;
@@ -14359,33 +14418,33 @@ PyMODINIT_FUNC PyInit__multidict(void)
     }
   }
   if (!__pyx_t_4) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict__ValuesView)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 597, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict__ValuesView)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 603, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   } else {
-    __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 597, __pyx_L1_error)
+    __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 603, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_4); __pyx_t_4 = NULL;
     __Pyx_INCREF(((PyObject *)__pyx_ptype_9multidict_10_multidict__ValuesView));
     __Pyx_GIVEREF(((PyObject *)__pyx_ptype_9multidict_10_multidict__ValuesView));
     PyTuple_SET_ITEM(__pyx_t_3, 0+1, ((PyObject *)__pyx_ptype_9multidict_10_multidict__ValuesView));
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 597, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 603, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "multidict/_multidict.pyx":653
+  /* "multidict/_multidict.pyx":659
  * 
  * 
  * abc.KeysView.register(_KeysView)             # <<<<<<<<<<<<<<
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 653, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_abc); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 659, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_KeysView); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 653, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_KeysView); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 659, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 653, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_register); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 659, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_t_3 = NULL;
@@ -14399,16 +14458,16 @@ PyMODINIT_FUNC PyInit__multidict(void)
     }
   }
   if (!__pyx_t_3) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict__KeysView)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 653, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)__pyx_ptype_9multidict_10_multidict__KeysView)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 659, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
   } else {
-    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 653, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 659, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_3); PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_3); __pyx_t_3 = NULL;
     __Pyx_INCREF(((PyObject *)__pyx_ptype_9multidict_10_multidict__KeysView));
     __Pyx_GIVEREF(((PyObject *)__pyx_ptype_9multidict_10_multidict__KeysView));
     PyTuple_SET_ITEM(__pyx_t_4, 0+1, ((PyObject *)__pyx_ptype_9multidict_10_multidict__KeysView));
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 653, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 659, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   }
@@ -14625,6 +14684,34 @@ static void __Pyx_RaiseArgtupleInvalid(
                  "%.200s() takes %.8s %" CYTHON_FORMAT_SSIZE_T "d positional argument%.1s (%" CYTHON_FORMAT_SSIZE_T "d given)",
                  func_name, more_or_less, num_expected,
                  (num_expected == 1) ? "" : "s", num_found);
+}
+
+/* GetAttr */
+static CYTHON_INLINE PyObject *__Pyx_GetAttr(PyObject *o, PyObject *n) {
+#if CYTHON_COMPILING_IN_CPYTHON
+#if PY_MAJOR_VERSION >= 3
+    if (likely(PyUnicode_Check(n)))
+#else
+    if (likely(PyString_Check(n)))
+#endif
+        return __Pyx_PyObject_GetAttrStr(o, n);
+#endif
+    return PyObject_GetAttr(o, n);
+}
+
+/* GetAttr3 */
+static CYTHON_INLINE PyObject *__Pyx_GetAttr3(PyObject *o, PyObject *n, PyObject *d) {
+    PyObject *r = __Pyx_GetAttr(o, n);
+    if (unlikely(!r)) {
+        if (!PyErr_ExceptionMatches(PyExc_AttributeError))
+            goto bad;
+        PyErr_Clear();
+        r = d;
+        Py_INCREF(d);
+    }
+    return r;
+bad:
+    return NULL;
 }
 
 /* PyObjectCall */

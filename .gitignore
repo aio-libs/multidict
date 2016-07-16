@@ -63,3 +63,5 @@ target/
 
 .develop
 .install-deps
+
+multidict/_multidict.html
