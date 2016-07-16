@@ -798,6 +798,12 @@ class _UpStrMixin:
         s = self.cls('A')
         self.assertEqual('A', s)
 
+    def test_ctor_upstr(self):
+        s = self.cls('A')
+        s2 = self.cls(s)
+        self.assertEqual('A', s)
+        self.assertIs(s, s2)
+
     def test_ctor_buffer(self):
         s = self.cls(b'a')
         self.assertEqual('A', s)
