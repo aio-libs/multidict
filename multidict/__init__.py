@@ -8,9 +8,9 @@ several values for the same key.
 import os
 
 __all__ = ('MultiDictProxy', 'CIMultiDictProxy',
-           'MultiDict', 'CIMultiDict', 'upstr', '__version__')
+           'MultiDict', 'CIMultiDict', 'upstr')
 
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 
 
 if bool(os.environ.get('MULTIDICT_NO_EXTENSIONS')):
