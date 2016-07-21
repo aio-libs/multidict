@@ -10,7 +10,7 @@ python:
 
 os:
   - linux
-#  - osx
+  - osx
 
 cache:
   directories:
