@@ -10,7 +10,7 @@ python:
 
 os:
   - linux
-  - osx
+#  - osx
 
 cache:
   directories:
@@ -49,4 +49,4 @@ env:
 matrix:
   include:
     - python: 3.5
-      ./upload_sdist.sh
+      script: ./upload_sdist.sh
