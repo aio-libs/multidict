@@ -8,7 +8,7 @@ several values for the same key.
 import os
 
 __all__ = ('MultiDictProxy', 'CIMultiDictProxy',
-           'MultiDict', 'CIMultiDict', 'upstr')
+           'MultiDict', 'CIMultiDict', 'upstr', 'istr')
 
 __version__ = '1.2.1'
 
@@ -18,17 +18,17 @@ if bool(os.environ.get('MULTIDICT_NO_EXTENSIONS')):
                                 CIMultiDictProxy,
                                 MultiDict,
                                 CIMultiDict,
-                                upstr)
+                                upstr, istr)
 else:
     try:
         from ._multidict import (MultiDictProxy,
                                  CIMultiDictProxy,
                                  MultiDict,
                                  CIMultiDict,
-                                 upstr)
+                                 upstr, istr)
     except ImportError:  # pragma: no cover
         from ._multidict_py import (MultiDictProxy,
                                     CIMultiDictProxy,
                                     MultiDict,
                                     CIMultiDict,
-                                    upstr)
+                                    upstr, istr)
