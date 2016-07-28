@@ -300,33 +300,38 @@ CIMultiDictProxy
    The class is inherited from :class:`MultiDict`.
 
 
-upstr
-=====
+istr
+====
 
 :class:`CIMultiDict` accepts :class:`str` as *key* argument for dict
-lookups but converts it to upper case internally.
+lookups but converts it to title case internally.
 
-For more effective processing it should know if the *key* is already upper cased.
+Title case means every word in key will be capitalized,
+e.g. ``istr('content-length')`` internally will be converted to
+``'Content-Length'``.
 
-To skip the :meth:`~str.upper()` call you may want to create upper cased strings by
-hand, e.g::
+For more effective processing it should know if the *key* is already
+title cased.
 
-   >>> key = upstr('Key')
+To skip the :meth:`~str.title()` call you may want to create title
+cased strings by hands, e.g::
+
+   >>> key = istr('Key')
    >>> key
-   'KEY'
+   'Key'
    >>> mdict = CIMultiDict(key='value')
    >>> key in mdict
    True
    >>> mdict[key]
    'value'
 
-For performance you should create :class:`upstr` strings once and
+For performance you should create :class:`istr` strings once and
 store them globally, like :mod:`aiohttp.hdrs` does.
 
-.. class:: upstr(object='')
-           upstr(bytes_or_buffer[, encoding[, errors]])
+.. class:: istr(object='')
+           istr(bytes_or_buffer[, encoding[, errors]])
 
-      Create a new **upper cased** string object from the given
+      Create a new **title cased** string object from the given
       *object*. If *encoding* or *errors* are specified, then the
       object must expose a data buffer that will be decoded using the
       given encoding and error handler.
@@ -340,3 +345,11 @@ store them globally, like :mod:`aiohttp.hdrs` does.
 
       The class is inherited from :class:`str` and has all regular
       string methods.
+
+.. versionchanged:: 2.0
+
+   ``upstr`` has renamed to ``istr`` with keeping ``upstr`` alias.
+
+   The behavior remains the same with the only exception:
+   ``repr('Content-Length')`` and ``str('Content-Length')`` now
+   returns ``'Content-Length'`` instead of ``'CONTENT-LENGTH'``.
