@@ -32,13 +32,13 @@ their own content.
 ``CIMultiDictProxy``) ones assumes the *keys* are case
 insensitive, e.g.::
 
-   >>> dct = CIMultiDict(a='val')
-   >>> 'A' in dct
+   >>> dct = CIMultiDict(key='val')
+   >>> 'Key' in dct
    True
-   >>> dct['A']
+   >>> dct['Key']
    'val'
 
-*Keys* should be ``str`` instances.
+*Keys* should be ``str`` or ``istr`` instances.
 
 The library has optional Cython optimization for sake of speed.
 

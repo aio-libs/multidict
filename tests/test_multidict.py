@@ -6,12 +6,12 @@ from multidict._multidict import (MultiDictProxy,
                                   MultiDict,
                                   CIMultiDictProxy,
                                   CIMultiDict,
-                                  upstr)
+                                  istr)
 from multidict._multidict_py import (MultiDictProxy as _MultiDictProxy,
                                      MultiDict as _MultiDict,
                                      CIMultiDictProxy as _CIMultiDictProxy,
                                      CIMultiDict as _CIMultiDict,
-                                     upstr as _upstr)
+                                     istr as _istr)
 
 
 class _Root:
@@ -20,7 +20,7 @@ class _Root:
 
     proxy_cls = None
 
-    upstr_cls = None
+    istr_cls = None
 
     def test_exposed_names(self):
         name = self.cls.__name__
@@ -318,7 +318,7 @@ class _CIMultiDictTests(_Root):
 
         self.assertEqual(d.getall('key'), ['value1', 'value2'])
 
-        with self.assertRaisesRegex(KeyError, "SOME_KEY"):
+        with self.assertRaisesRegex(KeyError, "Some_Key"):
             d.getall('some_key')
 
     def test_get(self):
@@ -328,12 +328,12 @@ class _CIMultiDictTests(_Root):
     def test_items__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         self.assertEqual(repr(d.items()),
-                         "_ItemsView('KEY': 'value1', 'KEY': 'value2')")
+                         "_ItemsView('Key': 'value1', 'Key': 'value2')")
 
     def test_keys__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         self.assertEqual(repr(d.keys()),
-                         "_KeysView('KEY', 'KEY')")
+                         "_KeysView('Key', 'Key')")
 
     def test_values__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
@@ -343,8 +343,8 @@ class _CIMultiDictTests(_Root):
 
 class _NonProxyCIMultiDict(_CIMultiDictTests):
 
-    def test_extend_with_upstr(self):
-        us = self.upstr_cls('a')
+    def test_extend_with_istr(self):
+        us = self.istr_cls('a')
         d = self.make_dict()
 
         d.extend([(us, 'val')])
@@ -557,7 +557,7 @@ class _CIMutableMultiDictTests(_Root):
 
         self.assertEqual(d.getall('key'), ['value1', 'value2'])
 
-        with self.assertRaisesRegex(KeyError, "SOME_KEY"):
+        with self.assertRaisesRegex(KeyError, "Some_Key"):
             d.getall('some_key')
 
     def test_ctor(self):
@@ -591,18 +591,18 @@ class _CIMutableMultiDictTests(_Root):
 
         self.assertEqual(
             str(d),
-            "<%s('KEY': 'one', 'KEY': 'two')>" % self.cls.__name__)
+            "<%s('Key': 'one', 'Key': 'two')>" % self.cls.__name__)
 
     def test_add(self):
         d = self.make_dict()
 
         self.assertEqual(d, {})
         d['KEY'] = 'one'
-        self.assertEqual(d, {'KEY': 'one'})
+        self.assertEqual(d, {'Key': 'one'})
         self.assertEqual(d.getall('key'), ['one'])
 
         d['KEY'] = 'two'
-        self.assertEqual(d, {'KEY': 'two'})
+        self.assertEqual(d, {'Key': 'two'})
         self.assertEqual(d.getall('key'), ['two'])
 
         d.add('KEY', 'one')
@@ -622,19 +622,19 @@ class _CIMutableMultiDictTests(_Root):
         self.assertEqual(4, len(d))
         itms = d.items()
         # we can't guarantee order of kwargs
-        self.assertTrue(('KEY', 'one') in itms)
-        self.assertTrue(('KEY', 'two') in itms)
-        self.assertTrue(('KEY', 3) in itms)
-        self.assertTrue(('FOO', 'bar') in itms)
+        self.assertTrue(('Key', 'one') in itms)
+        self.assertTrue(('Key', 'two') in itms)
+        self.assertTrue(('Key', 3) in itms)
+        self.assertTrue(('Foo', 'bar') in itms)
 
         other = self.make_dict(bar='baz')
-        self.assertEqual(other, {'BAR': 'baz'})
+        self.assertEqual(other, {'Bar': 'baz'})
 
         d.extend(other)
-        self.assertIn(('BAR', 'baz'), d.items())
+        self.assertIn(('Bar', 'baz'), d.items())
 
-        d.extend({'FOO': 'moo'})
-        self.assertIn(('FOO', 'moo'), d.items())
+        d.extend({'Foo': 'moo'})
+        self.assertIn(('Foo', 'moo'), d.items())
 
         d.extend()
         self.assertEqual(6, len(d))
@@ -662,8 +662,8 @@ class _CIMutableMultiDictTests(_Root):
         d = self.make_dict([('KEY', 'one'), ('key', 'two')], foo='bar')
 
         del d['key']
-        self.assertEqual(d, {'FOO': 'bar'})
-        self.assertEqual(list(d.items()), [('FOO', 'bar')])
+        self.assertEqual(d, {'Foo': 'bar'})
+        self.assertEqual(list(d.items()), [('Foo', 'bar')])
 
         with self.assertRaises(KeyError):
             del d['key']
@@ -680,8 +680,8 @@ class _CIMutableMultiDictTests(_Root):
         d.add('KEY', 'val1')
         d.add('key', 'val2')
 
-        self.assertEqual(('KEY', 'val1'), d.popitem())
-        self.assertEqual([('KEY', 'val2')], list(d.items()))
+        self.assertEqual(('Key', 'val1'), d.popitem())
+        self.assertEqual([('Key', 'val2')], list(d.items()))
 
     def test_popitem_empty_multidict(self):
         d = self.make_dict()
@@ -727,7 +727,7 @@ class _CIMutableMultiDictTests(_Root):
 
         d.update(key='val')
 
-        self.assertEqual([('KEY2', 'val3'), ('KEY', 'val')], list(d.items()))
+        self.assertEqual([('Key2', 'val3'), ('Key', 'val')], list(d.items()))
 
 
 class TestPyMultiDictProxy(_TestProxy, unittest.TestCase):
@@ -752,7 +752,7 @@ class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
                                 unittest.TestCase):
 
     cls = _CIMultiDict
-    upstr_cls = _upstr
+    istr_cls = _istr
     proxy_cls = _CIMultiDictProxy
 
 
@@ -778,11 +778,11 @@ class CIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
                               unittest.TestCase):
 
     cls = CIMultiDict
-    upstr_cls = upstr
+    istr_cls = istr
     proxy_cls = CIMultiDictProxy
 
 
-class _UpStrMixin:
+class _IStrMixin:
 
     cls = None
 
@@ -798,7 +798,7 @@ class _UpStrMixin:
         s = self.cls('A')
         self.assertEqual('A', s)
 
-    def test_ctor_upstr(self):
+    def test_ctor_istr(self):
         s = self.cls('A')
         s2 = self.cls(s)
         self.assertEqual('A', s)
@@ -810,21 +810,21 @@ class _UpStrMixin:
 
     def test_ctor_repr(self):
         s = self.cls(None)
-        self.assertEqual('NONE', s)
+        self.assertEqual('None', s)
 
-    def test_upper(self):
+    def test_title(self):
         s = self.cls('a')
-        self.assertIs(s, s.upper())
+        self.assertIs(s, s.title())
 
 
-class TestPyUpStr(_UpStrMixin, unittest.TestCase):
+class TestPyIStr(_IStrMixin, unittest.TestCase):
 
-    cls = _upstr
+    cls = _istr
 
 
-class TestUpStr(_UpStrMixin, unittest.TestCase):
+class TestIStr(_IStrMixin, unittest.TestCase):
 
-    cls = upstr
+    cls = istr
 
 
 class TypesMixin:

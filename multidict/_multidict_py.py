@@ -4,15 +4,15 @@ import sys
 _marker = object()
 
 
-class upstr(str):
+class istr(str):
 
     """Case insensitive str."""
 
-    __is_upstr__ = True
+    __is_istr__ = True
 
     def __new__(cls, val='',
                 encoding=sys.getdefaultencoding(), errors='strict'):
-        if getattr(val, '__is_upstr__', False):
+        if getattr(val, '__is_istr__', False):
             # Faster than instance check
             return val
         if isinstance(val, (bytes, bytearray, memoryview)):
@@ -21,11 +21,14 @@ class upstr(str):
             pass
         else:
             val = str(val)
-        val = val.upper()
+        val = val.title()
         return str.__new__(cls, val)
 
-    def upper(self):
+    def title(self):
         return self
+
+
+upstr = istr  # for relaxing backward compatibility problems
 
 
 class _Base:
@@ -104,24 +107,24 @@ class _CIBase(_Base):
 
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
-        return super().getall(key.upper(), default)
+        return super().getall(key.title(), default)
 
     def getone(self, key, default=_marker):
         """Get first value matching the key."""
-        return super().getone(key.upper(), default)
+        return super().getone(key.title(), default)
 
     def get(self, key, default=None):
         """Get first value matching the key.
 
         The method is alias for .getone().
         """
-        return super().get(key.upper(), default)
+        return super().get(key.title(), default)
 
     def __getitem__(self, key):
-        return super().__getitem__(key.upper())
+        return super().__getitem__(key.title())
 
     def __contains__(self, key):
-        return super().__contains__(key.upper())
+        return super().__contains__(key.title())
 
 
 class MultiDictProxy(_Base, abc.Mapping):
@@ -274,16 +277,16 @@ class CIMultiDict(_CIBase, MultiDict):
 
     def add(self, key, value):
         """Add the key and value, not overwriting any previous value."""
-        super().add(key.upper(), value)
+        super().add(key.title(), value)
 
     def __setitem__(self, key, value):
-        super().__setitem__(key.upper(), value)
+        super().__setitem__(key.title(), value)
 
     def __delitem__(self, key):
-        super().__delitem__(key.upper())
+        super().__delitem__(key.title())
 
     def _replace(self, key, value):
-        super()._replace(key.upper(), value)
+        super()._replace(key.title(), value)
 
     def pop(self, key, default=_marker):
         """Remove specified key and return the corresponding value.
@@ -292,12 +295,12 @@ class CIMultiDict(_CIBase, MultiDict):
         KeyError is raised.
 
         """
-        key = key.upper()
+        key = key.title()
         return super().pop(key, default)
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
-        key = key.upper()
+        key = key.title()
         return super().setdefault(key, default)
 
 
