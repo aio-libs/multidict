@@ -177,17 +177,33 @@ class _BaseTest(_Root):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key'}, d.keys() & {'key', 'key2'})
 
+    def test_and2(self):
+        d = self.make_dict([('key', 'value1')])
+        self.assertEqual({'key'}, {'key', 'key2'} & d.keys())
+
     def test_or(self):
         d = self.make_dict([('key', 'value1')])
         self.assertEqual({'key', 'key2'}, d.keys() | {'key2'})
+
+    def test_or2(self):
+        d = self.make_dict([('key', 'value1')])
+        self.assertEqual({'key', 'key2'}, {'key2'} | d.keys())
 
     def test_sub(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
         self.assertEqual({'key'}, d.keys() - {'key2'})
 
+    def test_sub2(self):
+        d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
+        self.assertEqual({'key3'}, {'key', 'key2', 'key3'} - d.keys())
+
     def test_xor(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
         self.assertEqual({'key', 'key3'}, d.keys() ^ {'key2', 'key3'})
+
+    def test_xor2(self):
+        d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
+        self.assertEqual({'key', 'key3'}, {'key2', 'key3'} ^ d.keys())
 
     def test_isdisjoint(self):
         d = self.make_dict([('key', 'value1')])
