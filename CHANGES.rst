@@ -1,3 +1,8 @@
+1.2.2 (2016-08-02)
+------------------
+
+* Don't crash on `{} - MultiDict().keys()` and similar operations #6
+
 1.2.1 (2016-07-21)
 ------------------
 

@@ -65,3 +65,4 @@ target/
 .install-deps
 
 multidict/_multidict.html
+multidict/_multidict.c
