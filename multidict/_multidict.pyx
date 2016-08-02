@@ -473,30 +473,46 @@ cdef class _ViewBaseSet(_ViewBase):
     def __and__(self, other):
         if not isinstance(other, Iterable):
             return NotImplemented
+        if isinstance(self, _ViewBaseSet):
+            self = set(iter(self))
+        if isinstance(other, _ViewBaseSet):
+            other = set(iter(other))
         if not isinstance(other, Set):
-            other = set(other)
-        return set(self) & other
+            other = set(iter(other))
+        return self & other
 
     def __or__(self, other):
         if not isinstance(other, Iterable):
             return NotImplemented
+        if isinstance(self, _ViewBaseSet):
+            self = set(iter(self))
+        if isinstance(other, _ViewBaseSet):
+            other = set(iter(other))
         if not isinstance(other, Set):
-            other = set(other)
-        return set(self) | other
+            other = set(iter(other))
+        return self | other
 
     def __sub__(self, other):
         if not isinstance(other, Iterable):
             return NotImplemented
+        if isinstance(self, _ViewBaseSet):
+            self = set(iter(self))
+        if isinstance(other, _ViewBaseSet):
+            other = set(iter(other))
         if not isinstance(other, Set):
-            other = set(other)
-        return set(self) - other
+            other = set(iter(other))
+        return self - other
 
     def __xor__(self, other):
+        if not isinstance(other, Iterable):
+            return NotImplemented
+        if isinstance(self, _ViewBaseSet):
+            self = set(iter(self))
+        if isinstance(other, _ViewBaseSet):
+            other = set(iter(other))
         if not isinstance(other, Set):
-            if not isinstance(other, Iterable):
-                return NotImplemented
-            other = set(other)
-        return set(self) ^ other
+            other = set(iter(other))
+        return self ^ other
 
 
 cdef class _ItemsIter:
