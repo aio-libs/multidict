@@ -1,3 +1,9 @@
+2.0.1 (2016-08-02)
+------------------
+
+* Don't crash on `{} - MultiDict().keys()` and similar operations #6
+
+
 2.0.0 (2016-07-28)
 ------------------
 
@@ -5,6 +11,11 @@
   `str.title()` #5
 
 * Deprecase `upstr` class in favor of `istr` alias.
+
+1.2.2 (2016-08-02)
+------------------
+
+* Don't crash on `{} - MultiDict().keys()` and similar operations #6
 
 1.2.1 (2016-07-21)
 ------------------
