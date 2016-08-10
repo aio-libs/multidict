@@ -74,15 +74,15 @@ cdef class _Pair:
 cdef class _Base:
 
     cdef list _items
-    cdef object _upstr
+    cdef object _istr
     cdef object marker
 
     def __cinit__(self):
-        self._upstr = upstr
+        self._istr = upstr
         self.marker = _marker
 
     cdef str _title(self, s):
-        if type(s) is self._upstr:
+        if type(s) is self._istr:
             return <str>s
         return s
 
@@ -231,7 +231,7 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         self._items = mdict._items
 
     cdef str _title(self, s):
-        if type(s) is self._upstr:
+        if type(s) is self._istr:
             return <str>s
         return s.title()
 
@@ -417,7 +417,7 @@ cdef class CIMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
     cdef str _title(self, s):
-        if type(s) is self._upstr:
+        if type(s) is self._istr:
             return <str>s
         return s.title()
 
