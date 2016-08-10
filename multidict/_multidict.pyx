@@ -93,7 +93,6 @@ cdef class _Base:
     cdef _getall(self, str key, default):
         cdef list res
         cdef _Pair item
-        key = self._title(key)
         res = []
         for i in self._items:
             item = <_Pair>i
@@ -111,7 +110,6 @@ cdef class _Base:
 
     cdef _getone(self, str key, default):
         cdef _Pair item
-        key = self._title(key)
         for i in self._items:
             item = <_Pair>i
             if item._key == key:
@@ -137,7 +135,6 @@ cdef class _Base:
 
     cdef _contains(self, str key):
         cdef _Pair item
-        key = self._title(key)
         for i in self._items:
             item = <_Pair>i
             if item._key == key:
