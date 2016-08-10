@@ -78,7 +78,7 @@ cdef class _Base:
     cdef object marker
 
     def __cinit__(self):
-        self._istr = upstr
+        self._istr = istr
         self.marker = _marker
 
     cdef str _title(self, s):
