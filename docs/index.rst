@@ -61,7 +61,7 @@ Source code
 
 The project is hosted on GitHub_
 
-Please feel free to file an issue on the `bug tracker
+Please file an issue on the `bug tracker
 <https://github.com/aio-libs/multidict/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
@@ -83,7 +83,6 @@ The ``multidict`` package is written by Andrew Svetlov.
 
 It's *Apache 2* licensed and freely available.
 
-Feel free to improve this package and send a pull request to GitHub_.
 
 Contents
 --------
