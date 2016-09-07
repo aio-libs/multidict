@@ -5,13 +5,13 @@ multidict
 Multidicts are useful for working with HTTP headers, URL
 query args etc.
 
-The code was extracted from aiohttp library.
+The code was extracted from aiohttp_ library.
 
 Introduction
 ------------
 
 *HTTP Headers* and *URL query string* require specific data structure:
-*multidict*. It behaves mostly like a ``dict`` but it can have
+*multidict*. It behaves mostly like a regular ``dict`` but it may have
 several *values* for the same *key*.
 
 ``multidict`` has four multidict classes:
@@ -19,7 +19,7 @@ several *values* for the same *key*.
 and ``CIMultiDictProxy``.
 
 Immutable proxies (``MultiDictProxy`` and
-``CIMultiDictProxy``) provide a dynamic view on the
+``CIMultiDictProxy``) provide a dynamic view for the
 proxied multidict, the view reflects underlying collection changes. They
 implement the ``collections.abc.Mapping`` interface.
 
@@ -29,7 +29,7 @@ their own content.
 
 
 *Case insensitive* (``CIMultiDict`` and
-``CIMultiDictProxy``) ones assumes the *keys* are case
+``CIMultiDictProxy``) ones assume the *keys* are case
 insensitive, e.g.::
 
    >>> dct = CIMultiDict(key='val')
@@ -40,10 +40,14 @@ insensitive, e.g.::
 
 *Keys* should be ``str`` or ``istr`` instances.
 
-The library has optional Cython optimization for sake of speed.
+The library has optional Cython_ optimization for sake of speed.
 
 
 License
 -------
 
 Apache 2
+
+
+.. _aiohttp: https://github.com/KeepSafe/aiohttp
+.. _Cython: http://cython.org/

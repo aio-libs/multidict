@@ -15,7 +15,7 @@ Introduction
 ------------
 
 *HTTP Headers* and *URL query string* require specific data structure:
-*multidict*. It behaves mostly like a :class:`dict` but it can have
+*multidict*. It behaves mostly like a regular :class:`dict` but it may have
 several *values* for the same *key*.
 
 :mod:`multidict` has four multidict classes:
@@ -23,7 +23,7 @@ several *values* for the same *key*.
 and :class:`CIMultiDictProxy`.
 
 Immutable proxies (:class:`MultiDictProxy` and
-:class:`CIMultiDictProxy`) provide a dynamic view on the
+:class:`CIMultiDictProxy`) provide a dynamic view for the
 proxied multidict, the view reflects underlying collection changes. They
 implement the :class:`~collections.abc.Mapping` interface.
 
@@ -33,7 +33,7 @@ their own content.
 
 
 *Case insensitive* (:class:`CIMultiDict` and
-:class:`CIMultiDictProxy`) ones assumes the *keys* are case
+:class:`CIMultiDictProxy`) ones assume the *keys* are case
 insensitive, e.g.::
 
    >>> dct = CIMultiDict(key='val')
@@ -44,7 +44,7 @@ insensitive, e.g.::
 
 *Keys* should be either :class:`str` or :class:`istr` instance.
 
-The library has optional Cython optimization for sake of speed.
+The library has optional Cython_ optimization for sake of speed.
 
 Library Installation
 --------------------
@@ -99,3 +99,4 @@ Indices and tables
 * :ref:`search`
 
 .. _GitHub: https://github.com/aio-libs/multidict
+.. _Cython: http://cython.org/
