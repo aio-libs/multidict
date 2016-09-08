@@ -868,6 +868,20 @@ class TypesMixin:
         p = self.proxy(d)
         self.assertEqual(p, d)
 
+    def test_create_multidict_proxy_from_multidict_proxy_from_mdict(self):
+        d = self.mdict(key='val')
+        p = self.proxy(d)
+        self.assertEqual(p, d)
+        p2 = self.proxy(p)
+        self.assertEqual(p2, p)
+
+    def test_create_cimultidict_proxy_from_cimultidict_proxy_from_ci(self):
+        d = self.cimdict(key='val')
+        p = self.ciproxy(d)
+        self.assertEqual(p, d)
+        p2 = self.ciproxy(p)
+        self.assertEqual(p2, p)
+
     def test_create_cimultidict_proxy_from_nonmultidict(self):
         with self.assertRaises(TypeError):
             self.ciproxy({})

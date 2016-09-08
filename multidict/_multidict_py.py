@@ -130,9 +130,10 @@ class _CIBase(_Base):
 class MultiDictProxy(_Base, abc.Mapping):
 
     def __init__(self, arg):
-        if not isinstance(arg, MultiDict):
+        if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
-                'MultiDictProxy requires MultiDict instance, not {}'.format(
+                'ctor requires MultiDict or MultiDictProxy instance'
+                ', not {}'.format(
                     type(arg)))
 
         self._items = arg._items
@@ -145,10 +146,11 @@ class MultiDictProxy(_Base, abc.Mapping):
 class CIMultiDictProxy(_CIBase, MultiDictProxy):
 
     def __init__(self, arg):
-        if not isinstance(arg, CIMultiDict):
+        if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
             raise TypeError(
-                'CIMultiDictProxy requires CIMultiDict instance, not {}'
-                .format(type(arg)))
+                'ctor requires CIMultiDict or CIMultiDictProxy instance'
+                ', not {}'.format(
+                    type(arg)))
 
         self._items = arg._items
 

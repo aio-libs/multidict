@@ -199,14 +199,15 @@ cdef class _Base:
 cdef class MultiDictProxy(_Base):
 
     def __init__(self, arg):
-        cdef MultiDict mdict
-        if not isinstance(arg, MultiDict):
+        cdef _Base base
+        if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
-                'MultiDictProxy requires MultiDict instance, not {}'.format(
+                'ctor requires MultiDict or MultiDictProxy instance'
+                ', not {}'.format(
                     type(arg)))
 
-        mdict = arg
-        self._items = mdict._items
+        base = arg
+        self._items = base._items
 
     def copy(self):
         """Return a copy of itself."""
@@ -218,14 +219,15 @@ abc.Mapping.register(MultiDictProxy)
 cdef class CIMultiDictProxy(MultiDictProxy):
 
     def __init__(self, arg):
-        cdef CIMultiDict mdict
-        if not isinstance(arg, CIMultiDict):
+        cdef _Base base
+        if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
             raise TypeError(
-                'CIMultiDictProxy requires CIMultiDict instance, not {}'.format(
+                'ctor requires CIMultiDict or CIMultiDictProxy instance'
+                ', not {}'.format(
                     type(arg)))
 
-        mdict = arg
-        self._items = mdict._items
+        base = arg
+        self._items = base._items
 
     cdef str _title(self, s):
         if type(s) is self._istr:
