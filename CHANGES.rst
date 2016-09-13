@@ -1,7 +1,9 @@
-2.0.2 (XXXX-XX-XX)
+2.1.0 (XXXX-XX-XX)
 ------------------
 
 * Allow to create proxy from proxy
+
+* Add type hints (PEP-484)
 
 
 2.0.1 (2016-08-02)
