@@ -1,2 +1,4 @@
 [run]
+branch = True
 plugins = Cython.Coverage
+omit = site-packages
