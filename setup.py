@@ -17,15 +17,25 @@ except ImportError:
 
 ext = '.pyx' if USE_CYTHON else '.c'
 
+if bool(os.environ.get('PROFILE_BUILD')):
+    macros = [('CYTHON_TRACE', '1')]
+else:
+    macros = []
+
 extensions = [Extension('multidict._multidict',
                         ['multidict/_multidict' + ext],
-                        # extra_compile_args=["-g"],
-                        # extra_link_args=["-g"],
-)]
+                        define_macros=macros)]
+
+#  extra_compile_args=["-g"],
+#  extra_link_args=["-g"],
 
 
 if USE_CYTHON:
-    extensions = cythonize(extensions)
+    if bool(os.environ.get('PROFILE_BUILD')):
+        directives = {"linetrace": True}
+    else:
+        directives = {}
+    extensions = cythonize(extensions, compiler_directives=directives)
 
 
 class BuildFailed(Exception):

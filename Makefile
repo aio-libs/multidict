@@ -13,6 +13,8 @@ flake: .install-deps
 
 
 .develop: .install-deps $(shell find multidict -type f)
+	rm -f multidict/*.so
+	rm -f multidict/*.c
 	pip install -e .
 	touch .develop
 
@@ -29,14 +31,20 @@ vtest: flake .develop rmcache
 cov cover coverage:
 	tox
 
-cov-dev: .develop rmcache
-	py.test --cov=multidict --cov-report=term --cov-report=html tests 
-	@echo "open file://`pwd`/coverage/index.html"
+profile-dev-base: .install-deps
+	rm -f .develop
+	rm -f multidict/*.so
+	rm -f multidict/*.c
+	PROFILE_BUILD=x python setup.py develop
 
-cov-dev-full: .develop rmcache
+cov-dev: profile-dev-base rmcache
+	py.test --cov=multidict --cov-report=term --cov-report=html tests 
+	@echo "open file://`pwd`/htmlcov/index.html"
+
+cov-dev-full: profile-dev-base rmcache
 	AIOHTTPMULTIDICT_NO_EXTENSIONS=1 py.test --cov=multidict --cov-append tests 
 	py.test --cov=multidict --cov-report=term --cov-report=html tests 
-	@echo "open file://`pwd`/coverage/index.html"
+	@echo "open file://`pwd`/htmlcov/index.html"
 
 clean:
 	rm -rf `find . -name __pycache__`
@@ -49,6 +57,7 @@ clean:
 	rm -f `find . -type f -name '*.rej' `
 	rm -f .coverage
 	rm -rf coverage
+	rm -rf htmlcov
 	rm -rf build
 	rm -rf cover
 	make -C docs clean
