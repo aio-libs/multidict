@@ -25,11 +25,11 @@ install:
   - pip install -r requirements-ci.txt
   - pip install codecov
   - pip install twine
-  - PROFILE_BUILD=x python setup.py develop
 
 script:
   - flake8 multidict tests
-  - py.test --cov=multidict tests
+  - make cov-dev-full
+  # - py.test --cov=multidict tests
   - python setup.py check -rm
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
         python setup.py check -s;

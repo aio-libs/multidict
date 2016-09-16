@@ -42,7 +42,7 @@ cov-dev: profile-dev-base rmcache
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-dev-full: profile-dev-base rmcache
-	AIOHTTPMULTIDICT_NO_EXTENSIONS=1 py.test --cov=multidict --cov-append tests 
+	MULTIDICT_NO_EXTENSIONS=1 py.test --cov=multidict --cov-append tests 
 	py.test --cov=multidict --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/htmlcov/index.html"
 
