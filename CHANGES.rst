@@ -1,4 +1,4 @@
-2.1.0 (XXXX-XX-XX)
+2.1.0 (2016-09-18)
 ------------------
 
 * Allow to create proxy from proxy
