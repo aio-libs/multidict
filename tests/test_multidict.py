@@ -745,6 +745,11 @@ class _CIMutableMultiDictTests(_Root):
 
         self.assertEqual([('Key2', 'val3'), ('Key', 'val')], list(d.items()))
 
+    def test_copy_istr(self):
+        d = self.make_dict({istr('Foo'): 'bar'})
+        d2 = d.copy()
+        self.assertEqual(d, d2)
+
 
 class TestPyMultiDictProxy(_TestProxy, unittest.TestCase):
 

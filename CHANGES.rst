@@ -1,3 +1,9 @@
+2.1.1 (2016-09-22)
+------------------
+
+* Fix `CIMultiDict` constructor for case of accepting `istr` #11
+
+
 2.1.0 (2016-09-18)
 ------------------
 

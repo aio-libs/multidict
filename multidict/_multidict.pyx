@@ -252,7 +252,7 @@ cdef class MultiDict(_Base):
 
     cdef _extend(self, tuple args, dict kwargs, name, int do_add):
         cdef _Pair item
-        cdef str key
+        cdef object key
 
         if len(args) > 1:
             raise TypeError("{} takes at most 1 positional argument"
@@ -308,7 +308,7 @@ cdef class MultiDict(_Base):
             else:
                 self._replace(key, value)
 
-    cdef _add(self, str key, value):
+    cdef _add(self, key, value):
         self._items.append(_Pair.__new__(_Pair, key, value))
 
     cdef _replace(self, str key, value):
