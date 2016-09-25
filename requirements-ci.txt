@@ -6,7 +6,7 @@ coverage==4.2
 sphinx
 alabaster>=0.6.2
 tox==2.3.1
-sphinxcontrib-newsfeed
+sphinxcontrib-newsfeed==0.1.4
 pytest-cov==2.3.1
 pygments==2.1.3
 -e .
