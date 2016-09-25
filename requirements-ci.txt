@@ -1,6 +1,6 @@
 -r requirements-wheel.txt
 pip
-flake8
+flake8==3.0.4
 pyflakes>=1.0.0
 coverage
 sphinx
