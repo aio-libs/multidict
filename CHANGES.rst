@@ -1,3 +1,9 @@
+2.1.2 (2016-09-25)
+------------------
+
+* Fix `CIMultiDict.update()` for case of accepting `istr`
+
+
 2.1.1 (2016-09-22)
 ------------------
 
