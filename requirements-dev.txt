@@ -1,6 +1,6 @@
 -r requirements-ci.txt
 ipdb
 pytest-sugar==0.7.1
-ipython
+ipython==5.1.0
 pyenchant==1.6.8
 sphinxcontrib-spelling
