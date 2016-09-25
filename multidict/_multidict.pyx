@@ -90,7 +90,7 @@ cdef class _Base:
         """Return a list of all values matching the key."""
         return self._getall(self._title(key), default)
 
-    cdef _getall(self, str key, default):
+    cdef _getall(self, key, default):
         cdef list res
         cdef _Pair item
         res = []
@@ -108,7 +108,7 @@ cdef class _Base:
         """Get first value matching the key."""
         return self._getone(self._title(key), default)
 
-    cdef _getone(self, str key, default):
+    cdef _getone(self, key, default):
         cdef _Pair item
         for i in self._items:
             item = <_Pair>i
@@ -133,7 +133,7 @@ cdef class _Base:
     def __contains__(self, key):
         return self._contains(self._title(key))
 
-    cdef _contains(self, str key):
+    cdef _contains(self, key):
         cdef _Pair item
         for i in self._items:
             item = <_Pair>i
@@ -311,7 +311,7 @@ cdef class MultiDict(_Base):
     cdef _add(self, key, value):
         self._items.append(_Pair.__new__(_Pair, key, value))
 
-    cdef _replace(self, str key, value):
+    cdef _replace(self, key, value):
         self._remove(key, 0)
         self._items.append(_Pair.__new__(_Pair, key, value))
 
@@ -343,7 +343,7 @@ cdef class MultiDict(_Base):
     def __delitem__(self, key):
         self._remove(self._title(key), True)
 
-    cdef _remove(self, str key, int raise_key_error):
+    cdef _remove(self, key, int raise_key_error):
         cdef _Pair item
         cdef int found
         found = False
@@ -357,14 +357,13 @@ cdef class MultiDict(_Base):
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
-        cdef str skey
         cdef _Pair item
-        skey = self._title(key)
+        key = self._title(key)
         for i in self._items:
             item = <_Pair>i
-            if item._key == skey:
+            if item._key == key:
                 return item._value
-        self._add(skey, default)
+        self._add(key, default)
         return default
 
     def pop(self, key, default=_marker):
@@ -375,15 +374,14 @@ cdef class MultiDict(_Base):
 
         """
         cdef int found
-        cdef str skey
         cdef object value
         cdef _Pair item
-        skey = self._title(key)
+        key = self._title(key)
         value = None
         found = False
         for i in range(len(self._items) - 1, -1, -1):
             item = <_Pair>self._items[i]
-            if item._key == skey:
+            if item._key == key:
                 value = item._value
                 del self._items[i]
                 found = True

@@ -745,6 +745,16 @@ class _CIMutableMultiDictTests(_Root):
 
         self.assertEqual([('Key2', 'val3'), ('Key', 'val')], list(d.items()))
 
+    def test_update_istr(self):
+        d = self.make_dict()
+        d.add(istr('KEY'), 'val1')
+        d.add('key', 'val2')
+        d.add('key2', 'val3')
+
+        d.update({istr('key'): 'val'})
+
+        self.assertEqual([('Key2', 'val3'), ('Key', 'val')], list(d.items()))
+
     def test_copy_istr(self):
         d = self.make_dict({istr('Foo'): 'bar'})
         d2 = d.copy()
