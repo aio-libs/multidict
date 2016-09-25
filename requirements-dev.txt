@@ -2,5 +2,5 @@
 ipdb
 pytest-sugar
 ipython
-pyenchant
+pyenchant==1.6.8
 sphinxcontrib-spelling
