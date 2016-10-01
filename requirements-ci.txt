@@ -3,7 +3,7 @@ pip==8.1.2
 flake8==3.0.4
 pyflakes>=1.0.0
 coverage==4.2
-sphinx==1.4.6
+sphinx==1.4.8
 alabaster>=0.6.2
 tox==2.3.1
 sphinxcontrib-newsfeed==0.1.4
