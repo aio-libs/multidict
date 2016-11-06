@@ -1,5 +1,5 @@
 -r requirements-wheel.txt
-pip==9.0.0
+pip==9.0.1
 flake8==3.0.4
 pyflakes>=1.0.0
 coverage==4.2
