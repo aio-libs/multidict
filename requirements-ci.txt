@@ -1,6 +1,6 @@
 -r requirements-wheel.txt
 pip==9.0.1
-flake8==3.2.0
+flake8==3.2.1
 pyflakes>=1.0.0
 coverage==4.2
 sphinx==1.4.8
