@@ -312,7 +312,7 @@ cdef class MultiDict(_Base):
         self._items.append(_Pair.__new__(_Pair, key, value))
 
     cdef _replace(self, key, value):
-        self._remove(key, 0)
+        self._remove(key, False)
         self._items.append(_Pair.__new__(_Pair, key, value))
 
     def add(self, key, value):
@@ -343,7 +343,7 @@ cdef class MultiDict(_Base):
     def __delitem__(self, key):
         self._remove(self._title(key), True)
 
-    cdef _remove(self, key, int raise_key_error):
+    cdef _remove(self, key, bint raise_key_error):
         cdef _Pair item
         cdef int found
         found = False
