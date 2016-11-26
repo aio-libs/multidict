@@ -248,9 +248,9 @@ cdef class MultiDict(_Base):
     def __init__(self, *args, **kwargs):
         self._items = []
 
-        self._extend(args, kwargs, self.__class__.__name__, 1)
+        self._extend(args, kwargs, 'MultiDict', True)
 
-    cdef _extend(self, tuple args, dict kwargs, name, int do_add):
+    cdef _extend(self, tuple args, dict kwargs, name, bint do_add):
         cdef _Pair item
         cdef object key
 
@@ -329,7 +329,7 @@ cdef class MultiDict(_Base):
 
         This method must be used instead of update.
         """
-        self._extend(args, kwargs, "extend", 1)
+        self._extend(args, kwargs, "extend", True)
 
     def clear(self):
         """Remove all items from MultiDict"""
@@ -404,7 +404,7 @@ cdef class MultiDict(_Base):
 
     def update(self, *args, **kwargs):
         """Update the dictionary from *other*, overwriting existing keys."""
-        self._extend(args, kwargs, "update", 0)
+        self._extend(args, kwargs, "update", False)
 
 
 abc.MutableMapping.register(MultiDict)
@@ -412,6 +412,11 @@ abc.MutableMapping.register(MultiDict)
 
 cdef class CIMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
+
+    def __init__(self, *args, **kwargs):
+        self._items = []
+
+        self._extend(args, kwargs, 'CIMultiDict', True)
 
     cdef str _title(self, s):
         if type(s) is self._istr:
