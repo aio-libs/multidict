@@ -1,3 +1,9 @@
+2.1.3 (2016-11-26)
+------------------
+
+* Add a fastpath for multidict extending by multidict
+
+
 2.1.2 (2016-09-25)
 ------------------
 

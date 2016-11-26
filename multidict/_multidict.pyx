@@ -260,7 +260,9 @@ cdef class MultiDict(_Base):
 
         if args:
             arg = args[0]
-            if isinstance(arg, _Base):
+            if isinstance(arg, CIMultiDict):
+                self._items.extend((<_Base>arg)._items)
+            elif isinstance(arg, _Base):
                 for i in (<_Base>arg)._items:
                     item = <_Pair>i
                     key = self._title(item._key)
