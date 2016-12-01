@@ -1,3 +1,8 @@
+2.1.4 (2016-12-1)
+------------------
+
+* Remove LICENSE filename extension @ MANIFEST.in file #31
+
 2.1.3 (2016-11-26)
 ------------------
 

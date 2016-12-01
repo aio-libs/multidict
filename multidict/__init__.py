@@ -10,7 +10,7 @@ import os
 __all__ = ('MultiDictProxy', 'CIMultiDictProxy',
            'MultiDict', 'CIMultiDict', 'upstr', 'istr')
 
-__version__ = '2.1.3'
+__version__ = '2.1.4'
 
 
 if bool(os.environ.get('MULTIDICT_NO_EXTENSIONS')):
