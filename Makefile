@@ -52,7 +52,7 @@ clean:
 	rm -rf build
 	rm -rf cover
 	make -C docs clean SPHINXBUILD=false
-	python setup.py clean
+	python3 setup.py clean
 	rm -f multidict/_multidict.html
 	rm -f multidict/_multidict.c
 	rm -f multidict/_multidict.*.so
