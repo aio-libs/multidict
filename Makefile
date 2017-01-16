@@ -51,7 +51,7 @@ clean:
 	rm -rf coverage
 	rm -rf build
 	rm -rf cover
-	make -C docs clean
+	make -C docs clean SPHINXBUILD=false
 	python setup.py clean
 	rm -f multidict/_multidict.html
 	rm -f multidict/_multidict.c
