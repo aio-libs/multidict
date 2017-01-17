@@ -2,7 +2,7 @@
 pip==9.0.1
 flake8==3.2.1
 pyflakes>=1.0.0
-coverage==4.3.1
+coverage==4.3.3
 sphinx==1.5
 alabaster>=0.6.2
 tox==2.5.0
