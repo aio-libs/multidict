@@ -5,7 +5,7 @@ pyflakes>=1.0.0
 coverage==4.3.1
 sphinx==1.5
 alabaster>=0.6.2
-tox==2.5.0
+tox==2.6.0
 sphinxcontrib-newsfeed==0.1.4
 pytest-cov==2.4.0
 pygments==2.1.3
