@@ -12,7 +12,9 @@ Introduction
 
 *HTTP Headers* and *URL query string* require specific data structure:
 *multidict*. It behaves mostly like a regular ``dict`` but it may have
-several *values* for the same *key*.
+several *values* for the same *key* and *preserves insertion ordering*.
+
+The *key* is ``str`` (or ``istr`` for case-insensitive dictionaries).
 
 ``multidict`` has four multidict classes:
 ``MultiDict``, ``MultiDictProxy``, ``CIMultiDict``
