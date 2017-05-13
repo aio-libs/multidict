@@ -7,6 +7,6 @@ sphinx==1.5.5
 alabaster>=0.6.2
 tox==2.7.0
 sphinxcontrib-newsfeed==0.1.4
-pytest-cov==2.4.0
+pytest-cov==2.5.1
 pygments==2.2.0
 -e .
