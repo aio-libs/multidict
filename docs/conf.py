@@ -80,7 +80,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'multidict'
-copyright = '2016, Andrew Svetlov'
+copyright = '2016-2017, Andrew Svetlov'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

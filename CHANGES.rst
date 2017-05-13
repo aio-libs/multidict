@@ -1,4 +1,32 @@
-2.1.0 (XXXX-XX-XX)
+2.1.5 (2017-05-13)
+------------------
+
+* Build Python 3.6 binary wheels
+
+2.1.4 (2016-12-1)
+------------------
+
+* Remove LICENSE filename extension @ MANIFEST.in file #31
+
+2.1.3 (2016-11-26)
+------------------
+
+* Add a fastpath for multidict extending by multidict
+
+
+2.1.2 (2016-09-25)
+------------------
+
+* Fix `CIMultiDict.update()` for case of accepting `istr`
+
+
+2.1.1 (2016-09-22)
+------------------
+
+* Fix `CIMultiDict` constructor for case of accepting `istr` #11
+
+
+2.1.0 (2016-09-18)
 ------------------
 
 * Allow to create proxy from proxy

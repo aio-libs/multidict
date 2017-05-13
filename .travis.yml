@@ -7,7 +7,7 @@ language: python
 python:
   - 3.4
   - 3.5
-  # - dev
+  - 3.6
 
 addons:
   apt:
@@ -37,7 +37,7 @@ script:
   - make cov-dev-full
   # - py.test --cov=multidict tests
   - python setup.py check -rm
-  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
+  - if python -c "import sys; sys.exit(sys.version_info < (3,6))"; then
         python setup.py check -s;
     fi
 

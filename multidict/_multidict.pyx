@@ -90,7 +90,7 @@ cdef class _Base:
         """Return a list of all values matching the key."""
         return self._getall(self._title(key), default)
 
-    cdef _getall(self, str key, default):
+    cdef _getall(self, key, default):
         cdef list res
         cdef _Pair item
         res = []
@@ -108,7 +108,7 @@ cdef class _Base:
         """Get first value matching the key."""
         return self._getone(self._title(key), default)
 
-    cdef _getone(self, str key, default):
+    cdef _getone(self, key, default):
         cdef _Pair item
         for i in self._items:
             item = <_Pair>i
@@ -133,7 +133,7 @@ cdef class _Base:
     def __contains__(self, key):
         return self._contains(self._title(key))
 
-    cdef _contains(self, str key):
+    cdef _contains(self, key):
         cdef _Pair item
         for i in self._items:
             item = <_Pair>i
@@ -248,11 +248,11 @@ cdef class MultiDict(_Base):
     def __init__(self, *args, **kwargs):
         self._items = []
 
-        self._extend(args, kwargs, self.__class__.__name__, 1)
+        self._extend(args, kwargs, 'MultiDict', True)
 
-    cdef _extend(self, tuple args, dict kwargs, name, int do_add):
+    cdef _extend(self, tuple args, dict kwargs, name, bint do_add):
         cdef _Pair item
-        cdef str key
+        cdef object key
 
         if len(args) > 1:
             raise TypeError("{} takes at most 1 positional argument"
@@ -260,7 +260,9 @@ cdef class MultiDict(_Base):
 
         if args:
             arg = args[0]
-            if isinstance(arg, _Base):
+            if isinstance(arg, CIMultiDict):
+                self._items.extend((<_Base>arg)._items)
+            elif isinstance(arg, _Base):
                 for i in (<_Base>arg)._items:
                     item = <_Pair>i
                     key = self._title(item._key)
@@ -308,11 +310,11 @@ cdef class MultiDict(_Base):
             else:
                 self._replace(key, value)
 
-    cdef _add(self, str key, value):
+    cdef _add(self, key, value):
         self._items.append(_Pair.__new__(_Pair, key, value))
 
-    cdef _replace(self, str key, value):
-        self._remove(key, 0)
+    cdef _replace(self, key, value):
+        self._remove(key, False)
         self._items.append(_Pair.__new__(_Pair, key, value))
 
     def add(self, key, value):
@@ -329,7 +331,7 @@ cdef class MultiDict(_Base):
 
         This method must be used instead of update.
         """
-        self._extend(args, kwargs, "extend", 1)
+        self._extend(args, kwargs, "extend", True)
 
     def clear(self):
         """Remove all items from MultiDict"""
@@ -343,7 +345,7 @@ cdef class MultiDict(_Base):
     def __delitem__(self, key):
         self._remove(self._title(key), True)
 
-    cdef _remove(self, str key, int raise_key_error):
+    cdef _remove(self, key, bint raise_key_error):
         cdef _Pair item
         cdef int found
         found = False
@@ -357,14 +359,13 @@ cdef class MultiDict(_Base):
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
-        cdef str skey
         cdef _Pair item
-        skey = self._title(key)
+        key = self._title(key)
         for i in self._items:
             item = <_Pair>i
-            if item._key == skey:
+            if item._key == key:
                 return item._value
-        self._add(skey, default)
+        self._add(key, default)
         return default
 
     def pop(self, key, default=_marker):
@@ -375,15 +376,14 @@ cdef class MultiDict(_Base):
 
         """
         cdef int found
-        cdef str skey
         cdef object value
         cdef _Pair item
-        skey = self._title(key)
+        key = self._title(key)
         value = None
         found = False
         for i in range(len(self._items) - 1, -1, -1):
             item = <_Pair>self._items[i]
-            if item._key == skey:
+            if item._key == key:
                 value = item._value
                 del self._items[i]
                 found = True
@@ -406,7 +406,7 @@ cdef class MultiDict(_Base):
 
     def update(self, *args, **kwargs):
         """Update the dictionary from *other*, overwriting existing keys."""
-        self._extend(args, kwargs, "update", 0)
+        self._extend(args, kwargs, "update", False)
 
 
 abc.MutableMapping.register(MultiDict)
@@ -414,6 +414,11 @@ abc.MutableMapping.register(MultiDict)
 
 cdef class CIMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
+
+    def __init__(self, *args, **kwargs):
+        self._items = []
+
+        self._extend(args, kwargs, 'CIMultiDict', True)
 
     cdef str _title(self, s):
         if type(s) is self._istr:

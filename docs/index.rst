@@ -16,7 +16,10 @@ Introduction
 
 *HTTP Headers* and *URL query string* require specific data structure:
 *multidict*. It behaves mostly like a regular :class:`dict` but it may have
-several *values* for the same *key*.
+several *values* for the same *key* and *preserves insertion ordering*.
+
+The *key* is :class:`str` (or :class:`istr` for case-insensitive
+dictionaries).
 
 :mod:`multidict` has four multidict classes:
 :class:`MultiDict`, :class:`MultiDictProxy`, :class:`CIMultiDict`
@@ -49,7 +52,7 @@ The library has optional Cython_ optimization for sake of speed.
 Library Installation
 --------------------
 
-::
+.. code-block:: bash
 
    $ pip install multidict
 

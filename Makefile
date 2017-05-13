@@ -60,8 +60,8 @@ clean:
 	rm -rf htmlcov
 	rm -rf build
 	rm -rf cover
-	make -C docs clean
-	python setup.py clean
+	make -C docs clean SPHINXBUILD=false
+	python3 setup.py clean
 	rm -f multidict/_multidict.html
 	rm -f multidict/_multidict.c
 	rm -f multidict/_multidict.*.so
