@@ -247,8 +247,13 @@ cdef class MultiDict(_Base):
 
     def __init__(self, *args, **kwargs):
         self._items = []
-
         self._extend(args, kwargs, 'MultiDict', True)
+
+    def __reduce__(self):
+        return (
+            self.__class__,
+            tuple(self.items()),
+        )
 
     cdef _extend(self, tuple args, dict kwargs, name, bint do_add):
         cdef _Pair item
