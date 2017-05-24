@@ -315,8 +315,7 @@ class _MultiDictTests(_BaseTest):
         d = self.make_dict([('a', 1), ('a', 2)])
         pbytes = pickle.dumps(d)
         obj = pickle.loads(pbytes)
-
-        self.assertEqual(d, obj)
+        self.assertEqual(dict(d), dict(obj))
 
 
 class _CIMultiDictTests(_Root):

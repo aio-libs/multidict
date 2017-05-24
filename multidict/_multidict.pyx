@@ -1,7 +1,7 @@
+import cython
 import sys
 from collections import abc
 from collections.abc import Iterable, Set
-from operator import itemgetter
 
 
 _marker = object()
@@ -197,46 +197,42 @@ cdef class _Base:
 
 
 cdef class MultiDictProxy(_Base):
+    _proxy_classes = (MultiDict, MultiDictProxy)
+    _base_class = MultiDict
 
     def __init__(self, arg):
         cdef _Base base
-        if not isinstance(arg, (MultiDict, MultiDictProxy)):
+        if not isinstance(arg, self._proxy_classes):
             raise TypeError(
-                'ctor requires MultiDict or MultiDictProxy instance'
+                'ctor requires {} instance'
                 ', not {}'.format(
+                    ' or '.join(self._proxy_classes),
                     type(arg)))
 
         base = arg
         self._items = base._items
 
+    def __reduce__(self):
+        return (
+            self._base_class,
+            tuple([list(self.items())])
+        )
+
     def copy(self):
         """Return a copy of itself."""
-        return MultiDict(self._items)
+        return self._base_class(self._items)
 
 abc.Mapping.register(MultiDictProxy)
 
 
 cdef class CIMultiDictProxy(MultiDictProxy):
-
-    def __init__(self, arg):
-        cdef _Base base
-        if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
-            raise TypeError(
-                'ctor requires CIMultiDict or CIMultiDictProxy instance'
-                ', not {}'.format(
-                    type(arg)))
-
-        base = arg
-        self._items = base._items
+    _proxy_classes = (CIMultiDict, CIMultiDictProxy)
+    _base_class = CIMultiDict
 
     cdef str _title(self, s):
         if type(s) is self._istr:
             return <str>s
         return s.title()
-
-    def copy(self):
-        """Return a copy of itself."""
-        return CIMultiDict(self._items)
 
 
 abc.Mapping.register(CIMultiDictProxy)
