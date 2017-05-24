@@ -1,5 +1,6 @@
 import sys
 import unittest
+import pickle
 
 import multidict
 from multidict._multidict import (MultiDictProxy,
@@ -309,6 +310,13 @@ class _MultiDictTests(_BaseTest):
         d = self.make_dict([('key', 'value1')], key='value2')
         self.assertEqual(repr(d.values()),
                          "_ValuesView('value1', 'value2')")
+
+    def test_pickle(self):
+        d = self.make_dict([('a', 1), ('a', 2)])
+        pbytes = pickle.dumps(d)
+        obj = pickle.loads(pbytes)
+
+        self.assertEqual(d, obj)
 
 
 class _CIMultiDictTests(_Root):
