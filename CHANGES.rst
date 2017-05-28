@@ -1,3 +1,8 @@
+2.1.6 (2017-05-27)
+------------------
+
+* Rebuild the library for fixning missing `__spec__` attribute #79
+
 2.1.5 (2017-05-13)
 ------------------
 
