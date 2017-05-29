@@ -22,6 +22,8 @@ class _Root:
 
     istr_cls = None
 
+    key_cls = None
+
     def test_exposed_names(self):
         name = self.cls.__name__
         while name.startswith('_'):
@@ -98,6 +100,11 @@ class _BaseTest(_Root):
     def test__iter__(self):
         d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
         self.assertEqual(['key', 'key2', 'key'], list(d))
+
+    def test__iter__types(self):
+        d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
+        for i in d:
+            self.assertTrue(type(i) is self.key_cls, (type(i), self.key_cls))
 
     def test_keys__contains(self):
         d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
@@ -767,18 +774,21 @@ class TestPyMultiDictProxy(_TestProxy, unittest.TestCase):
 
     cls = _MultiDict
     proxy_cls = _MultiDictProxy
+    key_cls = str
 
 
 class TestPyCIMultiDictProxy(_TestCIProxy, unittest.TestCase):
 
     cls = _CIMultiDict
     proxy_cls = _CIMultiDictProxy
+    key_cls = istr_cls = _istr
 
 
 class PyMutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
     cls = _MultiDict
     proxy_cls = _MultiDictProxy
+    key_cls = str
 
 
 class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
@@ -787,24 +797,28 @@ class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
     cls = _CIMultiDict
     istr_cls = _istr
     proxy_cls = _CIMultiDictProxy
+    key_cls = istr_cls
 
 
 class TestMultiDictProxy(_TestProxy, unittest.TestCase):
 
     cls = MultiDict
     proxy_cls = MultiDictProxy
+    key_cls = str
 
 
 class TestCIMultiDictProxy(_TestCIProxy, unittest.TestCase):
 
     cls = CIMultiDict
     proxy_cls = CIMultiDictProxy
+    key_cls = istr
 
 
 class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
     cls = MultiDict
     proxy_cls = MultiDictProxy
+    key_cls = str
 
 
 class CIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
@@ -813,6 +827,7 @@ class CIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
     cls = CIMultiDict
     istr_cls = istr
     proxy_cls = CIMultiDictProxy
+    key_cls = istr_cls
 
 
 class _IStrMixin:
