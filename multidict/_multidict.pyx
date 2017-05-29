@@ -90,7 +90,7 @@ cdef class _Base:
         """Return a list of all values matching the key."""
         return self._getall(self._title(key), default)
 
-    cdef _getall(self, key, default):
+    cdef _getall(self, str key, default):
         cdef list res
         cdef _Pair item
         res = []
@@ -100,15 +100,16 @@ cdef class _Base:
                 res.append(item._value)
         if res:
             return res
-        if not res and default is not self.marker:
+        elif default is not self.marker:
             return default
-        raise KeyError('Key not found: %r' % key)
+        else:
+            raise KeyError('Key not found: %r' % key)
 
     def getone(self, key, default=_marker):
         """Get first value matching the key."""
         return self._getone(self._title(key), default)
 
-    cdef _getone(self, key, default):
+    cdef _getone(self, str key, default):
         cdef _Pair item
         for i in self._items:
             item = <_Pair>i
@@ -133,7 +134,7 @@ cdef class _Base:
     def __contains__(self, key):
         return self._contains(self._title(key))
 
-    cdef _contains(self, key):
+    cdef _contains(self, str key):
         cdef _Pair item
         for i in self._items:
             item = <_Pair>i
