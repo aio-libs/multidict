@@ -312,11 +312,11 @@ cdef class MultiDict(_Base):
                 self._replace(key, value)
 
     cdef _add(self, key, value):
-        self._items.append(_Pair.__new__(_Pair, key, value))
+        self._items.append(_Pair.__new__(_Pair, self._title(key), value))
 
     cdef _replace(self, key, value):
-        self._remove(key, False)
-        self._items.append(_Pair.__new__(_Pair, key, value))
+        self._remove(self._title(key), False)
+        self._items.append(_Pair.__new__(_Pair, self._title(key), value))
 
     def add(self, key, value):
         """Add the key and value, not overwriting any previous value."""
@@ -346,7 +346,7 @@ cdef class MultiDict(_Base):
     def __delitem__(self, key):
         self._remove(self._title(key), True)
 
-    cdef _remove(self, key, bint raise_key_error):
+    cdef _remove(self, str key, bint raise_key_error):
         cdef _Pair item
         cdef bint found = False
         for i in range(len(self._items) - 1, -1, -1):
@@ -423,6 +423,14 @@ cdef class CIMultiDict(MultiDict):
             return <str>s
         return s.title()
 
+    def popitem(self):
+        """Remove and return an arbitrary (key, value) pair."""
+        cdef _Pair item
+        if self._items:
+            item = <_Pair>self._items.pop(0)
+            return (self._istr(item._key), item._value)
+        else:
+            raise KeyError("empty multidict")
 
 
 abc.MutableMapping.register(CIMultiDict)

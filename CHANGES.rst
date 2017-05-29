@@ -1,3 +1,9 @@
+2.2.0 (xxxx-xx-xx)
+------------------
+
+* Fix `CIMultiDict.popitem()` consistency: returned value is always
+  `istr` instance.
+
 2.1.6 (2017-05-27)
 ------------------
 

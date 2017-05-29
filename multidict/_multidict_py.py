@@ -305,6 +305,14 @@ class CIMultiDict(_CIBase, MultiDict):
         key = key.title()
         return super().setdefault(key, default)
 
+    def popitem(self):
+        """Remove and return an arbitrary (key, value) pair."""
+        if self._items:
+            key, value = self._items.pop(0)
+            return istr(key), value
+        else:
+            raise KeyError("empty multidict")
+
 
 class _ViewBase:
 

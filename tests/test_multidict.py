@@ -696,7 +696,9 @@ class _CIMutableMultiDictTests(_Root):
         d.add('KEY', 'val1')
         d.add('key', 'val2')
 
-        self.assertEqual(('Key', 'val1'), d.popitem())
+        pair = d.popitem()
+        self.assertEqual(('Key', 'val1'), pair)
+        self.assertIsInstance(pair[0], self.istr_cls)
         self.assertEqual([('Key', 'val2')], list(d.items()))
 
     def test_popitem_empty_multidict(self):
