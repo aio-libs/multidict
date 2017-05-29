@@ -58,6 +58,8 @@ clean:
 	rm -f multidict/_multidict.*.so
 	rm -f multidict/_multidict.*.pyd
 	rm -rf .tox
+	rm .install-deps
+	rm .develop
 
 doc:
 	make -C docs html
