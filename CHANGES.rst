@@ -4,6 +4,12 @@
 * Fix `CIMultiDict.popitem()` consistency: returned value is always
   `istr` instance.
 
+
+2.1.7 (2017-05-29)
+------------------
+
+* Fix import warning on Python 3.6 #79
+
 2.1.6 (2017-05-27)
 ------------------
 
