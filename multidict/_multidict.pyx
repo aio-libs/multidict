@@ -348,8 +348,7 @@ cdef class MultiDict(_Base):
 
     cdef _remove(self, key, bint raise_key_error):
         cdef _Pair item
-        cdef int found
-        found = False
+        cdef bint found = False
         for i in range(len(self._items) - 1, -1, -1):
             item = <_Pair>self._items[i]
             if item._key == key:
@@ -376,12 +375,10 @@ cdef class MultiDict(_Base):
         KeyError is raised.
 
         """
-        cdef int found
-        cdef object value
+        cdef bint found = False
+        cdef object value = None
         cdef _Pair item
         key = self._title(key)
-        value = None
-        found = False
         for i in range(len(self._items) - 1, -1, -1):
             item = <_Pair>self._items[i]
             if item._key == key:
