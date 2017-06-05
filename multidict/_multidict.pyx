@@ -97,9 +97,9 @@ cdef class _Base:
 
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
-        return self._getall(self._title(key), default)
+        return self._getall(self._title(key), key, default)
 
-    cdef _getall(self, str identity, default):
+    cdef _getall(self, str identity, key, default):
         cdef list res
         cdef _Pair item
         cdef Py_hash_t h
@@ -120,9 +120,9 @@ cdef class _Base:
 
     def getone(self, key, default=_marker):
         """Get first value matching the key."""
-        return self._getone(self._title(key), default)
+        return self._getone(self._title(key), key, default)
 
-    cdef _getone(self, str identity, default):
+    cdef _getone(self, str identity, key, default):
         cdef _Pair item
         cdef Py_hash_t h
         h = hash(identity)
@@ -139,14 +139,14 @@ cdef class _Base:
     # Mapping interface #
 
     def __getitem__(self, key):
-        return self._getone(self._title(key), self.marker)
+        return self._getone(self._title(key), key, self.marker)
 
     def get(self, key, default=None):
         """Get first value matching the key.
 
         The method is alias for .getone().
         """
-        return self._getone(self._title(key), default)
+        return self._getone(self._title(key), key, default)
 
     def __contains__(self, key):
         return self._contains(self._title(key))

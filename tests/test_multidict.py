@@ -90,9 +90,9 @@ class _BaseTest(_Root):
         self.assertEqual(d.get('key'), 'value1')
         self.assertEqual(d['key'], 'value1')
 
-        with self.assertRaises(KeyError):
+        with self.assertRaisesRegex(KeyError, 'key2'):
             d['key2']
-        with self.assertRaises(KeyError):
+        with self.assertRaisesRegex(KeyError, 'key2'):
             d.getone('key2')
 
         self.assertEqual('default', d.getone('key2', 'default'))
@@ -341,7 +341,7 @@ class _CIMultiDictTests(_Root):
 
         self.assertEqual(d.getall('key'), ['value1', 'value2'])
 
-        with self.assertRaisesRegex(KeyError, "Some_Key"):
+        with self.assertRaisesRegex(KeyError, "some_key"):
             d.getall('some_key')
 
     def test_get(self):
@@ -580,7 +580,7 @@ class _CIMutableMultiDictTests(_Root):
 
         self.assertEqual(d.getall('key'), ['value1', 'value2'])
 
-        with self.assertRaisesRegex(KeyError, "Some_Key"):
+        with self.assertRaisesRegex(KeyError, "some_key"):
             d.getall('some_key')
 
     def test_ctor(self):

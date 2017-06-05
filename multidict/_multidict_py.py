@@ -35,7 +35,10 @@ class _Base:
 
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
-        res = [v for k, v in self._items if k == key]
+        return self._getall(key, key, default)
+
+    def _getall(self, identity, key, default):
+        res = [v for k, v in self._items if k == identity]
         if res:
             return res
         if not res and default is not _marker:
@@ -44,8 +47,11 @@ class _Base:
 
     def getone(self, key, default=_marker):
         """Get first value matching the key."""
+        return self._getone(key, key, default)
+
+    def _getone(self, identity, key, default):
         for k, v in self._items:
-            if k == key:
+            if k == identity:
                 return v
         if default is not _marker:
             return default
@@ -54,14 +60,14 @@ class _Base:
     # Mapping interface #
 
     def __getitem__(self, key):
-        return self.getone(key, _marker)
+        return self._getone(key, key, _marker)
 
     def get(self, key, default=None):
         """Get first value matching the key.
 
         The method is alias for .getone().
         """
-        return self.getone(key, default)
+        return self._getone(key, key, default)
 
     def __iter__(self):
         return iter(self.keys())
@@ -107,21 +113,21 @@ class _CIBase(_Base):
 
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
-        return super().getall(key.title(), default)
+        return self._getall(key.title(), key, default)
 
     def getone(self, key, default=_marker):
         """Get first value matching the key."""
-        return super().getone(key.title(), default)
+        return self._getone(key.title(), key, default)
 
     def get(self, key, default=None):
         """Get first value matching the key.
 
         The method is alias for .getone().
         """
-        return super().get(key.title(), default)
+        return self._getone(key.title(), key, default)
 
     def __getitem__(self, key):
-        return super().__getitem__(key.title())
+        return self._getone(key.title(), key, _marker)
 
     def __contains__(self, key):
         return super().__contains__(key.title())
