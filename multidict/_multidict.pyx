@@ -99,17 +99,17 @@ cdef class _Base:
         """Return a list of all values matching the key."""
         return self._getall(self._title(key), default)
 
-    cdef _getall(self, str key, default):
+    cdef _getall(self, str identity, default):
         cdef list res
         cdef _Pair item
         cdef Py_hash_t h
         res = []
-        h = hash(key)
+        h = hash(identity)
         for i in self._items:
             item = <_Pair>i
             if item._hash != h:
                 continue
-            if item._identity == key:
+            if item._identity == identity:
                 res.append(item._value)
         if res:
             return res
@@ -122,15 +122,15 @@ cdef class _Base:
         """Get first value matching the key."""
         return self._getone(self._title(key), default)
 
-    cdef _getone(self, str key, default):
+    cdef _getone(self, str identity, default):
         cdef _Pair item
         cdef Py_hash_t h
-        h = hash(key)
+        h = hash(identity)
         for i in self._items:
             item = <_Pair>i
             if item._hash != h:
                 continue
-            if item._identity == key:
+            if item._identity == identity:
                 return item._value
         if default is not self.marker:
             return default
@@ -151,15 +151,15 @@ cdef class _Base:
     def __contains__(self, key):
         return self._contains(self._title(key))
 
-    cdef _contains(self, str key):
+    cdef _contains(self, str identity):
         cdef _Pair item
         cdef Py_hash_t h
-        h = hash(key)
+        h = hash(identity)
         for i in self._items:
             item = <_Pair>i
             if item._hash != h:
                 continue
-            if item._identity == key:
+            if item._identity == identity:
                 return True
         return False
 
