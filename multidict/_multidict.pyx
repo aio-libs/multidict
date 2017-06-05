@@ -55,10 +55,17 @@ cdef _eq(self, other):
 
 
 cdef class _Pair:
+    cdef str _identity
+    cdef Py_hash_t _hash
     cdef object _key
     cdef object _value
 
-    def __cinit__(self, key, value):
+    def __cinit__(self, identity, key, value):
+        self._hash = hash(identity)
+        if type(identity) is istr:
+            self._identity = <str>identity
+        else:
+            self._identity = identity
         self._key = key
         self._value = value
 
@@ -95,10 +102,14 @@ cdef class _Base:
     cdef _getall(self, str key, default):
         cdef list res
         cdef _Pair item
+        cdef Py_hash_t h
         res = []
+        h = hash(key)
         for i in self._items:
             item = <_Pair>i
-            if item._key == key:
+            if item._hash != h:
+                continue
+            if item._identity == key:
                 res.append(item._value)
         if res:
             return res
@@ -113,9 +124,13 @@ cdef class _Base:
 
     cdef _getone(self, str key, default):
         cdef _Pair item
+        cdef Py_hash_t h
+        h = hash(key)
         for i in self._items:
             item = <_Pair>i
-            if item._key == key:
+            if item._hash != h:
+                continue
+            if item._identity == key:
                 return item._value
         if default is not self.marker:
             return default
@@ -138,9 +153,13 @@ cdef class _Base:
 
     cdef _contains(self, str key):
         cdef _Pair item
+        cdef Py_hash_t h
+        h = hash(key)
         for i in self._items:
             item = <_Pair>i
-            if item._key == key:
+            if item._hash != h:
+                continue
+            if item._identity == key:
                 return True
         return False
 
@@ -181,7 +200,7 @@ cdef class _Base:
             return False
         for i in self._items:
             item = <_Pair>i
-            nv = other.get(item._key, self.marker)
+            nv = other.get(item._identity, self.marker)
             if item._value != nv:
                 return False
         return True
@@ -314,11 +333,11 @@ cdef class MultiDict(_Base):
                 self._replace(key, value)
 
     cdef _add(self, key, value):
-        self._items.append(_Pair.__new__(_Pair, self._title(key), value))
+        self._items.append(_Pair.__new__(_Pair, self._title(key), key, value))
 
     cdef _replace(self, key, value):
         self._remove(self._title(key), False)
-        self._items.append(_Pair.__new__(_Pair, self._title(key), value))
+        self._items.append(_Pair.__new__(_Pair, self._title(key), key, value))
 
     def add(self, key, value):
         """Add the key and value, not overwriting any previous value."""
@@ -565,10 +584,16 @@ cdef class _ItemsView(_ViewBaseSet):
 
     def __contains__(self, i):
         cdef _Pair item
+        cdef str key
+        cdef object value
         assert isinstance(i, tuple) or isinstance(i, list)
         assert len(i) == 2
-        item = _Pair.__new__(_Pair, i[0], i[1])
-        return item in self._items
+        key = i[0]
+        value = i[1]
+        for item in self._items:
+            if key == item._key and value == item._value:
+                return True
+        return False
 
     def __iter__(self):
         return _ItemsIter.__new__(_ItemsIter, self._items)
