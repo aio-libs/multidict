@@ -53,30 +53,38 @@ make_upstr = """\
 val = upstr('VaLuE')
 """
 
-print("Cython setitem str: {:.3f} sec".format(
+print("Cython MD.setitem str: {:.3f} sec".format(
     timeit.timeit(setitem, cython_multidict+fill)))
 gc.collect()
 
-print("Python setitem str: {:.3f} sec".format(
+print("Python MD.setitem str: {:.3f} sec".format(
     timeit.timeit(setitem, python_multidict+fill)))
 gc.collect()
 
 
-print("Cython getitem str: {:.3f} sec".format(
+print("Cython MD.getitem str: {:.3f} sec".format(
     timeit.timeit(getitem, cython_multidict+fill)))
 gc.collect()
 
-print("Python getitem str: {:.3f} sec".format(
+print("Python MD.getitem str: {:.3f} sec".format(
     timeit.timeit(getitem, python_multidict+fill)))
 gc.collect()
 
 
-print("Cython getitem upstr: {:.3f} sec".format(
+print("Cython CI.getitem: {:.3f} sec".format(
     timeit.timeit(getitem, cython_cimultidict+fill)))
 gc.collect()
 
-print("Python getitem upstr: {:.3f} sec".format(
+print("Python CI.getitem: {:.3f} sec".format(
     timeit.timeit(getitem, python_cimultidict+fill)))
+gc.collect()
+
+print("Cython CI.getitem upstr: {:.3f} sec".format(
+    timeit.timeit(getitem, cython_cimultidict+fill_upstr)))
+gc.collect()
+
+print("Python CI.getitem upstr: {:.3f} sec".format(
+    timeit.timeit(getitem, python_cimultidict+fill_upstr)))
 gc.collect()
 
 print("Cython upstr from upstr: {:.3f} sec".format(
