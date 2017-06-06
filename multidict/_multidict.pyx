@@ -87,16 +87,6 @@ cdef class _Pair:
         self._key = key
         self._value = value
 
-    def __richcmp__(self, other, op):
-        cdef _Pair left, right
-        if not isinstance(self, _Pair) or not isinstance(other, _Pair):
-            return NotImplemented
-        left = <_Pair>self
-        right = <_Pair>other
-        if op == 2:  # ==
-            return left._key == right._key and left._value == right._value
-        elif op == 3:  # !=
-            return left._key != right._key and left._value != right._value
 
 cdef class _Base:
 
