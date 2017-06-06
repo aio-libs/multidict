@@ -37,15 +37,30 @@ upstr = istr  # for relaxing backward compatibility problems
 
 
 cdef _eq(self, other):
-    cdef _Base typed_self
-    cdef _Base typed_other
     cdef int is_left_base, is_right_base
+    cdef Py_ssize_t i, l
+    cdef list lft_items, rgt_items
+    cdef _Pair lft, rgt
 
     is_left_base = isinstance(self, _Base)
     is_right_base = isinstance(other, _Base)
 
     if is_left_base and is_right_base:
-        return (<_Base>self)._items == (<_Base>other)._items
+        lft_items = (<_Base>self)._items
+        rgt_items = (<_Base>other)._items
+        l = len(lft_items)
+        if l != len(rgt_items):
+            return False
+        for i in range(l):
+            lft = <_Pair>(lft_items[i])
+            rgt = <_Pair>(rgt_items[i])
+            if lft._hash != rgt._hash:
+                return False
+            if lft._identity != rgt._identity:
+                return False
+            if lft._value != rgt._value:
+                return False
+        return True
     elif is_left_base and isinstance(other, abc.Mapping):
         return (<_Base>self)._eq_to_mapping(other)
     elif is_right_base and isinstance(self, abc.Mapping):
@@ -102,9 +117,8 @@ cdef class _Base:
     cdef _getall(self, str identity, key, default):
         cdef list res
         cdef _Pair item
-        cdef Py_hash_t h
+        cdef Py_hash_t h = hash(identity)
         res = []
-        h = hash(identity)
         for i in self._items:
             item = <_Pair>i
             if item._hash != h:
@@ -124,8 +138,7 @@ cdef class _Base:
 
     cdef _getone(self, str identity, key, default):
         cdef _Pair item
-        cdef Py_hash_t h
-        h = hash(identity)
+        cdef Py_hash_t h = hash(identity)
         for i in self._items:
             item = <_Pair>i
             if item._hash != h:
@@ -153,8 +166,7 @@ cdef class _Base:
 
     cdef _contains(self, str identity):
         cdef _Pair item
-        cdef Py_hash_t h
-        h = hash(identity)
+        cdef Py_hash_t h = hash(identity)
         for i in self._items:
             item = <_Pair>i
             if item._hash != h:
@@ -192,16 +204,16 @@ cdef class _Base:
 
     cdef _eq_to_mapping(self, other):
         cdef _Pair item
-        left_keys = set(self.keys())
-        right_keys = set(other.keys())
-        if left_keys != right_keys:
-            return False
-        if len(self._items) != len(right_keys):
+        if len(self._items) != len(other):
             return False
         for i in self._items:
             item = <_Pair>i
-            nv = other.get(item._identity, self.marker)
-            if item._value != nv:
+            for k, v in other.items():
+                if self._title(k) != item._identity:
+                    continue
+                if v == item._value:
+                    break
+            else:
                 return False
         return True
 
@@ -287,7 +299,7 @@ cdef class MultiDict(_Base):
             elif isinstance(arg, _Base):
                 for i in (<_Base>arg)._items:
                     item = <_Pair>i
-                    key = self._title(item._key)
+                    key = item._key
                     value = item._value
                     if do_add:
                         self._add(key, value)
@@ -300,7 +312,7 @@ cdef class MultiDict(_Base):
                         key = item._key
                         value = item._value
                     else:
-                        key = self._title(i[0])
+                        key = i[0]
                         value = i[1]
                     if do_add:
                         self._add(key, value)
@@ -317,7 +329,7 @@ cdef class MultiDict(_Base):
                             raise TypeError(
                                 "{} takes either dict or list of (key, value) "
                                 "tuples".format(name))
-                        key = self._title(i[0])
+                        key = i[0]
                         value = i[1]
                     if do_add:
                         self._add(key, value)
@@ -326,7 +338,6 @@ cdef class MultiDict(_Base):
 
 
         for key, value in kwargs.items():
-            key = self._title(key)
             if do_add:
                 self._add(key, value)
             else:
@@ -336,12 +347,13 @@ cdef class MultiDict(_Base):
         self._items.append(_Pair.__new__(_Pair, self._title(key), key, value))
 
     cdef _replace(self, key, value):
-        self._remove(self._title(key), False)
-        self._items.append(_Pair.__new__(_Pair, self._title(key), key, value))
+        cdef str identity = self._title(key)
+        self._remove(identity, False)
+        self._items.append(_Pair.__new__(_Pair, identity, key, value))
 
     def add(self, key, value):
         """Add the key and value, not overwriting any previous value."""
-        self._add(self._title(key), value)
+        self._add(key, value)
 
     def copy(self):
         """Return a copy of itself."""
@@ -362,17 +374,21 @@ cdef class MultiDict(_Base):
     # MutableMapping interface #
 
     def __setitem__(self, key, value):
-        self._replace(self._title(key), value)
+        self._replace(key, value)
 
     def __delitem__(self, key):
-        self._remove(self._title(key), True)
+        self._remove(key, True)
 
-    cdef _remove(self, str key, bint raise_key_error):
+    cdef _remove(self, key, bint raise_key_error):
         cdef _Pair item
         cdef bint found = False
+        cdef str identity = self._title(key)
+        cdef Py_hash_t h = hash(identity)
         for i in range(len(self._items) - 1, -1, -1):
             item = <_Pair>self._items[i]
-            if item._key == key:
+            if item._hash != h:
+                continue
+            if item._identity == identity:
                 del self._items[i]
                 found = True
         if not found and raise_key_error:
@@ -381,10 +397,13 @@ cdef class MultiDict(_Base):
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
         cdef _Pair item
-        key = self._title(key)
+        cdef str identity = self._title(key)
+        cdef Py_hash_t h = hash(identity)
         for i in self._items:
             item = <_Pair>i
-            if item._key == key:
+            if item._hash != h:
+                continue
+            if item._identity == identity:
                 return item._value
         self._add(key, default)
         return default
@@ -398,11 +417,14 @@ cdef class MultiDict(_Base):
         """
         cdef bint found = False
         cdef object value = None
+        cdef str identity = self._title(key)
+        cdef Py_hash_t h = hash(identity)
         cdef _Pair item
-        key = self._title(key)
         for i in range(len(self._items) - 1, -1, -1):
             item = <_Pair>self._items[i]
-            if item._key == key:
+            if item._hash != h:
+                continue
+            if item._identity == identity:
                 value = item._value
                 del self._items[i]
                 found = True
@@ -449,7 +471,7 @@ cdef class CIMultiDict(MultiDict):
         cdef _Pair item
         if self._items:
             item = <_Pair>self._items.pop(0)
-            return (self._istr(item._key), item._value)
+            return (item._key, item._value)
         else:
             raise KeyError("empty multidict")
 
