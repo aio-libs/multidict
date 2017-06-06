@@ -77,7 +77,10 @@ cdef class _Pair:
 
     def __cinit__(self, identity, key, value):
         self._hash = hash(identity)
-        if type(identity) is istr:
+        typ = type(identity)
+        if typ is str:
+            self._identity = <str>identity
+        elif typ is istr:
             self._identity = <str>identity
         else:
             self._identity = identity
@@ -106,9 +109,13 @@ cdef class _Base:
         self.marker = _marker
 
     cdef str _title(self, s):
-        if type(s) is self._istr:
+        typ = type(s)
+        if typ is str:
             return <str>s
-        return s
+        elif typ is self._istr:
+            return <str>s
+        else:
+            return s
 
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
@@ -264,7 +271,10 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         self._items = base._items
 
     cdef str _title(self, s):
-        if type(s) is self._istr:
+        typ = type(s)
+        if typ is str:
+            return <str>(s.title())
+        elif type(s) is self._istr:
             return <str>s
         return s.title()
 
@@ -462,7 +472,10 @@ cdef class CIMultiDict(MultiDict):
         self._extend(args, kwargs, 'CIMultiDict', True)
 
     cdef str _title(self, s):
-        if type(s) is self._istr:
+        typ = type(s)
+        if typ is str:
+            return <str>(s.title())
+        elif type(s) is self._istr:
             return <str>s
         return s.title()
 

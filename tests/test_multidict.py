@@ -879,6 +879,12 @@ class _IStrMixin:
         s = self.cls('a')
         self.assertIs(s, s.title())
 
+    def xtest_eq(self):
+        s1 = 'Abc'
+        s2 = self.cls(s1)
+        self.assertEqual(s1, s2)
+        self.assertEqual(s1.lower(), s2)
+
 
 class TestPyIStr(_IStrMixin, unittest.TestCase):
 
