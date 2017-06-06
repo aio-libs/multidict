@@ -53,36 +53,38 @@ make_upstr = """\
 val = upstr('VaLuE')
 """
 
-print("Cython setitem str: {:.3f} sec".format(
-    timeit.timeit(setitem, cython_multidict+fill)))
+print("Cython / Python / x")
+
+t1 = timeit.timeit(setitem, cython_multidict+fill)
+gc.collect()
+t2 = timeit.timeit(setitem, python_multidict+fill)
 gc.collect()
 
-print("Python setitem str: {:.3f} sec".format(
-    timeit.timeit(setitem, python_multidict+fill)))
+print("MD.setitem str: {:.3f}s {:3f}s {:1f}x".format(t1, t2, t2/t1))
+
+
+t1 = timeit.timeit(getitem, cython_multidict+fill)
+gc.collect()
+t2 = timeit.timeit(getitem, python_multidict+fill)
 gc.collect()
 
+print("MD.getitem str: {:.3f}s {:3f}s {:1f}x".format(t1, t2, t2/t1))
 
-print("Cython getitem str: {:.3f} sec".format(
-    timeit.timeit(getitem, cython_multidict+fill)))
+
+t1 = timeit.timeit(getitem, cython_cimultidict+fill)
 gc.collect()
-
-print("Python getitem str: {:.3f} sec".format(
-    timeit.timeit(getitem, python_multidict+fill)))
+t2 = timeit.timeit(getitem, python_cimultidict+fill)
 gc.collect()
+print("CI.getitem str: {:.3f}s {:3f}s {:1f}x".format(t1, t2, t2/t1))
 
-
-print("Cython getitem upstr: {:.3f} sec".format(
-    timeit.timeit(getitem, cython_cimultidict+fill)))
+t1 = timeit.timeit(getitem, cython_cimultidict+fill_upstr)
 gc.collect()
-
-print("Python getitem upstr: {:.3f} sec".format(
-    timeit.timeit(getitem, python_cimultidict+fill)))
+t2 = timeit.timeit(getitem, python_cimultidict+fill_upstr)
 gc.collect()
+print("CI.getitem istr: {:.3f}s {:3f}s {:1f}x".format(t1, t2, t2/t1))
 
-print("Cython upstr from upstr: {:.3f} sec".format(
-    timeit.timeit(upstr_from_upstr, cython_cimultidict+make_upstr)))
+t1 = timeit.timeit(upstr_from_upstr, cython_cimultidict+make_upstr)
 gc.collect()
-
-print("Python upstr from upstr: {:.3f} sec".format(
-    timeit.timeit(upstr_from_upstr, python_cimultidict+make_upstr)))
+t2 = timeit.timeit(upstr_from_upstr, python_cimultidict+make_upstr)
 gc.collect()
+print("istr from istr: {:.3f}s {:3f}s {:1f}x".format(t1, t2, t2/t1))
