@@ -6,7 +6,7 @@ from collections.abc import Iterable, Set
 from operator import itemgetter
 
 
-_marker = object()
+cdef object _marker = object()
 
 
 class istr(str):
@@ -34,6 +34,8 @@ class istr(str):
 
 
 upstr = istr  # for relaxing backward compatibility problems
+
+cdef object _istr = istr
 
 
 cdef _eq(self, other):
@@ -80,7 +82,7 @@ cdef class _Pair:
         typ = type(identity)
         if typ is str:
             self._identity = <str>identity
-        elif typ is istr:
+        elif typ is _istr:
             self._identity = <str>identity
         else:
             self._identity = identity
@@ -91,18 +93,12 @@ cdef class _Pair:
 cdef class _Base:
 
     cdef list _items
-    cdef object _istr
-    cdef object marker
-
-    def __cinit__(self):
-        self._istr = istr
-        self.marker = _marker
 
     cdef str _title(self, s):
         typ = type(s)
         if typ is str:
             return <str>s
-        elif typ is self._istr:
+        elif typ is _istr:
             return <str>s
         else:
             return s
@@ -124,7 +120,7 @@ cdef class _Base:
                 res.append(item._value)
         if res:
             return res
-        elif default is not self.marker:
+        elif default is not _marker:
             return default
         else:
             raise KeyError('Key not found: %r' % key)
@@ -142,14 +138,14 @@ cdef class _Base:
                 continue
             if item._identity == identity:
                 return item._value
-        if default is not self.marker:
+        if default is not _marker:
             return default
         raise KeyError('Key not found: %r' % key)
 
     # Mapping interface #
 
     def __getitem__(self, key):
-        return self._getone(self._title(key), key, self.marker)
+        return self._getone(self._title(key), key, _marker)
 
     def get(self, key, default=None):
         """Get first value matching the key.
@@ -264,7 +260,7 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         typ = type(s)
         if typ is str:
             return <str>(s.title())
-        elif type(s) is self._istr:
+        elif type(s) is _istr:
             return <str>s
         return s.title()
 
@@ -429,7 +425,7 @@ cdef class MultiDict(_Base):
                 del self._items[i]
                 found = True
         if not found:
-            if default is self.marker:
+            if default is _marker:
                 raise KeyError(key)
             else:
                 return default
@@ -465,7 +461,7 @@ cdef class CIMultiDict(MultiDict):
         typ = type(s)
         if typ is str:
             return <str>(s.title())
-        elif type(s) is self._istr:
+        elif type(s) is _istr:
             return <str>s
         return s.title()
 
