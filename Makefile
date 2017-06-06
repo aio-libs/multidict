@@ -31,12 +31,12 @@ cov cover coverage:
 
 cov-dev: .develop rmcache
 	pytest --cov=multidict --cov-report=term --cov-report=html tests 
-	@echo "open file://`pwd`/coverage/index.html"
+	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-dev-full: .develop rmcache
 	AIOHTTPMULTIDICT_NO_EXTENSIONS=1 pytest --cov=multidict --cov-append tests 
 	pytest --cov=multidict --cov-report=term --cov-report=html tests 
-	@echo "open file://`pwd`/coverage/index.html"
+	@echo "open file://`pwd`/htmlcov/index.html"
 
 clean:
 	rm -rf `find . -name __pycache__`

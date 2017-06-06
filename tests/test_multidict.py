@@ -177,8 +177,14 @@ class _BaseTest(_Root):
         self.assertEqual({'key': 'value1'}, d)
 
     def test_eq2(self):
-        d = self.make_dict([('key', 'value1')])
-        self.assertNotEqual({'key2': 'value1'}, d)
+        d1 = self.make_dict([('key', 'value1')])
+        d2 = self.make_dict([('key2', 'value1')])
+        self.assertNotEqual(d1, d2)
+
+    def test_eq3(self):
+        d1 = self.make_dict([('key', 'value1')])
+        d2 = self.make_dict()
+        self.assertNotEqual(d1, d2)
 
     def test_ne(self):
         d = self.make_dict([('key', 'value1')])
