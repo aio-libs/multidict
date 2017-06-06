@@ -1,8 +1,8 @@
-2.2.0 (xxxx-xx-xx)
+3.0.0 (xxxx-xx-xx)
 ------------------
 
-* Fix `CIMultiDict.popitem()` consistency: returned value is always
-  `istr` instance.
+* Refactor internal data structures: main dict operations are about
+  100% faster now.
 
 
 2.1.7 (2017-05-29)
