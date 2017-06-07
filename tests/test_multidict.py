@@ -334,7 +334,7 @@ class _MultiDictTests(_BaseTest):
         if isinstance(d, (MultiDictProxy, _MultiDictProxy)):
             with self.assertRaises(pickle.PickleError):
                 pbytes = pickle.dumps(d)
-                
+
             return
         else:
             pbytes = pickle.dumps(d)
