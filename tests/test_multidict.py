@@ -582,7 +582,20 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
         d.update(key='val')
 
-        self.assertEqual([('key2', 'val3'), ('key', 'val')], list(d.items()))
+        self.assertEqual([('key', 'val'), ('key2', 'val3')], list(d.items()))
+
+    def test_replacement_order(self):
+        d = self.make_dict()
+        d.add('key1', 'val1')
+        d.add('key2', 'val2')
+        d.add('key1', 'val3')
+        d.add('key2', 'val4')
+
+        d['key1'] = 'val5'
+
+        self.assertEqual([('key2', 'val2'),
+                          ('key1', 'val5'),
+                          ('key2', 'val4')], list(d.items()))
 
 
 class _CIMutableMultiDictTests(_Root):
@@ -771,7 +784,7 @@ class _CIMutableMultiDictTests(_Root):
 
         d.update(Key='val')
 
-        self.assertEqual([('key2', 'val3'), ('Key', 'val')], list(d.items()))
+        self.assertEqual([('Key', 'val'), ('key2', 'val3')], list(d.items()))
 
     def test_update_istr(self):
         d = self.make_dict()
@@ -781,7 +794,7 @@ class _CIMutableMultiDictTests(_Root):
 
         d.update({istr('key'): 'val'})
 
-        self.assertEqual([('key2', 'val3'), ('Key', 'val')], list(d.items()))
+        self.assertEqual([('Key', 'val'), ('key2', 'val3')], list(d.items()))
 
     def test_copy_istr(self):
         d = self.make_dict({istr('Foo'): 'bar'})
