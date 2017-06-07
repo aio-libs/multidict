@@ -1,4 +1,5 @@
 from collections import abc
+import pickle
 import sys
 
 _marker = object()
@@ -137,6 +138,9 @@ class MultiDictProxy(_Base, abc.Mapping):
                     type(arg)))
 
         self._items = arg._items
+
+    def __reduce__(self):
+        raise pickle.PicklingError("Unsupported")
 
     def copy(self):
         """Return a copy of itself."""

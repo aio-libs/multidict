@@ -1,4 +1,4 @@
-import cython
+import pickle
 import sys
 from collections import abc
 from collections.abc import Iterable, Set
@@ -213,10 +213,7 @@ cdef class MultiDictProxy(_Base):
         self._items = base._items
 
     def __reduce__(self):
-        return (
-            self._base_class,
-            tuple([list(self.items())])
-        )
+        raise pickle.PicklingError("Unsupported")
 
     def copy(self):
         """Return a copy of itself."""

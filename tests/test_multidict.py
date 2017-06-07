@@ -313,7 +313,15 @@ class _MultiDictTests(_BaseTest):
 
     def test_pickle(self):
         d = self.make_dict([('a', 1), ('a', 2)])
-        pbytes = pickle.dumps(d)
+
+        if isinstance(d, (MultiDictProxy, _MultiDictProxy)):
+            with self.assertRaises(pickle.PickleError):
+                pbytes = pickle.dumps(d)
+                
+            return
+        else:
+            pbytes = pickle.dumps(d)
+
         obj = pickle.loads(pbytes)
         self.assertEqual(dict(d), dict(obj))
 
