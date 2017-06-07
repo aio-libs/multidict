@@ -1,3 +1,20 @@
+3.0.0 (xxxx-xx-xx)
+------------------
+
+* Refactor internal data structures: main dict operations are about
+  100% faster now.
+
+
+2.1.7 (2017-05-29)
+------------------
+
+* Fix import warning on Python 3.6 #79
+
+2.1.6 (2017-05-27)
+------------------
+
+* Rebuild the library for fixning missing `__spec__` attribute #79
+
 2.1.5 (2017-05-13)
 ------------------
 

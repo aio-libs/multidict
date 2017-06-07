@@ -21,22 +21,22 @@ rmcache:
 
 
 test: flake .develop rmcache
-	py.test -q ./tests/
+	pytest -q ./tests/
 
 vtest: flake .develop rmcache
-	py.test -s -v ./tests/
+	pytest -s -v ./tests/
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop rmcache
-	py.test --cov=multidict --cov-report=term --cov-report=html tests 
-	@echo "open file://`pwd`/coverage/index.html"
+	pytest --cov=multidict --cov-report=term --cov-report=html tests 
+	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-dev-full: .develop rmcache
-	AIOHTTPMULTIDICT_NO_EXTENSIONS=1 py.test --cov=multidict --cov-append tests 
-	py.test --cov=multidict --cov-report=term --cov-report=html tests 
-	@echo "open file://`pwd`/coverage/index.html"
+	AIOHTTPMULTIDICT_NO_EXTENSIONS=1 pytest --cov=multidict --cov-append tests 
+	pytest --cov=multidict --cov-report=term --cov-report=html tests 
+	@echo "open file://`pwd`/htmlcov/index.html"
 
 clean:
 	rm -rf `find . -name __pycache__`
@@ -58,6 +58,8 @@ clean:
 	rm -f multidict/_multidict.*.so
 	rm -f multidict/_multidict.*.pyd
 	rm -rf .tox
+	rm .install-deps
+	rm .develop
 
 doc:
 	make -C docs html

@@ -29,7 +29,7 @@ install:
 
 script:
   - flake8 multidict tests
-  - py.test --cov=multidict tests
+  - pytest --cov=multidict tests
   - python setup.py check -rm
   - if python -c "import sys; sys.exit(sys.version_info < (3,6))"; then
         python setup.py check -s;
