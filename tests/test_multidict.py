@@ -591,10 +591,10 @@ class _BaseMutableMultiDictTests(_BaseTest):
         d.add('key1', 'val3')
         d.add('key2', 'val4')
 
-        d['key1'] = 'val5'
+        d['key1'] = 'val'
 
         self.assertEqual([('key2', 'val2'),
-                          ('key1', 'val5'),
+                          ('key1', 'val'),
                           ('key2', 'val4')], list(d.items()))
 
 
