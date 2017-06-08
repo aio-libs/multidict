@@ -597,6 +597,23 @@ class _BaseMutableMultiDictTests(_BaseTest):
                           ('key1', 'val'),
                           ('key2', 'val4')], list(d.items()))
 
+    def test_nonstr_key(self):
+        d = self.make_dict()
+        with self.assertRaises(TypeError):
+            d[1] = 'val'
+
+    def test_istr_key(self):
+        d = self.make_dict()
+        d[istr('1')] = 'val'
+        self.assertIs(type(list(d.keys())[0]), str)
+
+    def test_str_derived_key(self):
+        class A(str):
+            pass
+        d = self.make_dict()
+        d[A('1')] = 'val'
+        self.assertIs(type(list(d.keys())[0]), str)
+
 
 class _CIMutableMultiDictTests(_Root):
 

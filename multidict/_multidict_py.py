@@ -167,9 +167,16 @@ class MultiDict(_Base, abc.MutableMapping):
     def _title(self, key):
         return key
 
+    def _key(self, key):
+        if isinstance(key, str):
+            return str(key)
+        else:
+            raise TypeError("MultiDict keys should be either str "
+                            "or subclasses of str")
+
     def add(self, key, value):
         identity = self._title(key)
-        self._items.append((identity, key, value))
+        self._items.append((identity, self._key(key), value))
 
     def copy(self):
         """Return a copy of itself."""
@@ -272,6 +279,7 @@ class MultiDict(_Base, abc.MutableMapping):
         self._extend(args, kwargs, 'update', self._replace)
 
     def _replace(self, key, value):
+        key = self._key(key)
         identity = self._title(key)
         items = self._items
 
