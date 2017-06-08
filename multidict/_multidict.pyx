@@ -26,7 +26,9 @@ class istr(str):
             pass
         else:
             val = str(val)
-        ret = str.__new__(cls, val.title())
+        val = val.title()
+        ret = str.__new__(cls, val)
+        ret._canonical = val
         return ret
 
     def title(self):
@@ -74,19 +76,13 @@ cdef _eq(self, other):
 cdef class _Pair:
     cdef str _identity
     cdef Py_hash_t _hash
-    cdef object _key
+    cdef str _key
     cdef object _value
 
     def __cinit__(self, identity, key, value):
         self._hash = hash(identity)
-        typ = type(identity)
-        if typ is str:
-            self._identity = <str>identity
-        elif typ is _istr:
-            self._identity = <str>identity
-        else:
-            self._identity = identity
-        self._key = key
+        self._identity = <str>identity
+        self._key = <str>key
         self._value = value
 
 
@@ -99,9 +95,9 @@ cdef class _Base:
         if typ is str:
             return <str>s
         elif typ is _istr:
-            return <str>s
+            return <str>(s._canonical)
         else:
-            return s
+            return str(s)
 
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
@@ -261,7 +257,7 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         if typ is str:
             return <str>(s.title())
         elif type(s) is _istr:
-            return <str>s
+            return <str>(s._canonical)
         return s.title()
 
     def copy(self):
@@ -270,6 +266,19 @@ cdef class CIMultiDictProxy(MultiDictProxy):
 
 
 abc.Mapping.register(CIMultiDictProxy)
+
+
+cdef str _str(key):
+    typ = type(key)
+    if typ is str:
+        return <str>key
+    if typ is _istr:
+        return <str>(key._canonical)
+    elif issubclass(typ, str):
+        return str(key)
+    else:
+        raise TypeError("MultiDict keys should be either str "
+                        "or subclasses of str")
 
 
 cdef class MultiDict(_Base):
@@ -340,10 +349,12 @@ cdef class MultiDict(_Base):
                 self._replace(key, value)
 
     cdef _add(self, key, value):
-        self._items.append(_Pair.__new__(_Pair, self._title(key), key, value))
+        self._items.append(_Pair.__new__(
+            _Pair, self._title(key), _str(key), value))
 
     cdef _replace(self, key, value):
         cdef str identity = self._title(key)
+        cdef str k = _str(key)
         cdef Py_hash_t h = hash(identity)
         cdef Py_ssize_t i, rgt
         cdef _Pair item
@@ -355,13 +366,13 @@ cdef class MultiDict(_Base):
             if h != item._hash:
                 continue
             if item._identity == identity:
-                item._key = key
+                item._key = k
                 item._value = value
                 # i points to last found item
                 rgt = i
                 break
         else:
-            self._items.append(_Pair.__new__(_Pair, identity, key, value))
+            self._items.append(_Pair.__new__(_Pair, identity, k, value))
             return
 
         # remove all precending items
@@ -489,7 +500,7 @@ cdef class CIMultiDict(MultiDict):
         if typ is str:
             return <str>(s.title())
         elif type(s) is _istr:
-            return <str>s
+            return <str>(s._canonical)
         return s.title()
 
     def popitem(self):

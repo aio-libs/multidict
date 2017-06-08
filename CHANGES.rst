@@ -13,6 +13,8 @@
 
   If key is not present in dictionary the pair is added to the end
 
+* Force keys to `str` instances #88
+
 2.1.7 (2017-05-29)
 ------------------
 
