@@ -344,8 +344,35 @@ cdef class MultiDict(_Base):
 
     cdef _replace(self, key, value):
         cdef str identity = self._title(key)
-        self._remove(identity, False)
-        self._items.append(_Pair.__new__(_Pair, identity, key, value))
+        cdef Py_hash_t h = hash(identity)
+        cdef Py_ssize_t i, rgt
+        cdef _Pair item
+        cdef list items
+        items = self._items
+
+        for i in range(len(items)-1, -1, -1):
+            item = <_Pair>items[i]
+            if h != item._hash:
+                continue
+            if item._identity == identity:
+                item._key = key
+                item._value = value
+                # i points to last found item
+                rgt = i
+                break
+        else:
+            self._items.append(_Pair.__new__(_Pair, identity, key, value))
+            return
+
+        # remove all precending items
+        i = 0
+        while i < rgt:
+            item = <_Pair>items[i]
+            if h == item._hash and item._identity == identity:
+                del items[i]
+                rgt -= 1
+            else:
+                i += 1
 
     def add(self, key, value):
         """Add the key and value, not overwriting any previous value."""

@@ -272,9 +272,29 @@ class MultiDict(_Base, abc.MutableMapping):
         self._extend(args, kwargs, 'update', self._replace)
 
     def _replace(self, key, value):
-        if key in self:
-            del self[key]
-        self.add(key, value)
+        identity = self._title(key)
+        items = self._items
+
+        for i in range(len(items)-1, -1, -1):
+            item = items[i]
+            if item[0] == identity:
+                items[i] = (identity, key, value)
+                # i points to last found item
+                rgt = i
+                break
+        else:
+            self._items.append((identity, key, value))
+            return
+
+        # remove all precending items
+        i = 0
+        while i < rgt:
+            item = items[i]
+            if item[0] == identity:
+                del items[i]
+                rgt -= 1
+            else:
+                i += 1
 
 
 class CIMultiDict(_CIBase, MultiDict):
