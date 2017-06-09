@@ -443,9 +443,39 @@ cdef class MultiDict(_Base):
         return default
 
     def pop(self, key, default=_marker):
-        """Remove specified key and return the corresponding value.
+        """Remove the last occurrence of key and return the corresponding
+        value.
 
-        If key is not found, d is returned if given, otherwise
+        If key is not found, default is returned if given, otherwise
+        KeyError is raised.
+
+        """
+        cdef bint found = False
+        cdef object value = None
+        cdef str identity = self._title(key)
+        cdef Py_hash_t h = hash(identity)
+        cdef _Pair item
+        for i in range(len(self._items) - 1, -1, -1):
+            item = <_Pair>self._items[i]
+            if item._hash != h:
+                continue
+            if item._identity == identity:
+                value = item._value
+                del self._items[i]
+                found = True
+        if not found:
+            if default is _marker:
+                raise KeyError(key)
+            else:
+                return default
+        else:
+            return value
+
+    def popall(self, key, default=_marker):
+        """Remove all occurrences of key and return the list of corresponding
+        values.
+
+        If key is not found, default is returned if given, otherwise
         KeyError is raised.
 
         """
