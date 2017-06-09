@@ -480,16 +480,16 @@ cdef class MultiDict(_Base):
 
         """
         cdef bint found = False
-        cdef object value = None
         cdef str identity = self._title(key)
         cdef Py_hash_t h = hash(identity)
         cdef _Pair item
+        cdef list ret = []
         for i in range(len(self._items) - 1, -1, -1):
             item = <_Pair>self._items[i]
             if item._hash != h:
                 continue
             if item._identity == identity:
-                value = item._value
+                ret.append(item._value)
                 del self._items[i]
                 found = True
         if not found:
@@ -498,7 +498,8 @@ cdef class MultiDict(_Base):
             else:
                 return default
         else:
-            return value
+            ret.reverse()
+            return ret
 
     def popitem(self):
         """Remove and return an arbitrary (key, value) pair."""
