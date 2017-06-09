@@ -15,6 +15,8 @@
 
 * Force keys to `str` instances #88
 
+* Implement `.popall(key[, default])` #84
+
 2.1.7 (2017-05-29)
 ------------------
 
