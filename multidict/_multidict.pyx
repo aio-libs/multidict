@@ -484,7 +484,7 @@ cdef class MultiDict(_Base):
         cdef Py_hash_t h = hash(identity)
         cdef _Pair item
         cdef list ret = []
-        for i in range(len(self._items) - 1, -1, -1):
+        for i in range(len(self._items)-1, -1, -1):
             item = <_Pair>self._items[i]
             if item._hash != h:
                 continue

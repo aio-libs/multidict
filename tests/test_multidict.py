@@ -623,6 +623,15 @@ class _BaseMutableMultiDictTests(_BaseTest):
         self.assertEqual(['val1', 'val3'], ret)
         self.assertEqual({'key2': 'val2'}, d)
 
+    def test_popall_default(self):
+        d = self.make_dict()
+        self.assertEqual('val', d.popall('key', 'val'))
+
+    def test_popall_key_error(self):
+        d = self.make_dict()
+        with self.assertRaises(KeyError):
+            d.popall('key')
+
 
 class _CIMutableMultiDictTests(_Root):
 

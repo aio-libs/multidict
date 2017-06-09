@@ -277,7 +277,7 @@ class MultiDict(_Base, abc.MutableMapping):
         found = False
         identity = self._title(key)
         ret = []
-        for i in range(len(self._items) - 1, -1, -1):
+        for i in range(len(self._items)-1, -1, -1):
             item = self._items[i]
             if item[0] == identity:
                 ret.append(item[2])
