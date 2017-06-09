@@ -18,7 +18,6 @@ MultiDict
    Creates a mutable multidict instance.
 
    Accepted parameters are the same as for :class:`dict`.
-
    If the same key appears several times it will be added, e.g.::
 
       >>> d = MultiDict([('a', 1), ('b', 2), ('a', 3)])
@@ -132,6 +131,18 @@ MultiDict
 
       If *key* is in the dictionary, remove it and return its the
       **first** value, else return *default*.
+
+      If *default* is not given and *key* is not in the dictionary, a
+      :exc:`KeyError` is raised.
+
+
+   .. method:: popall(key[, default])
+
+      If *key* is in the dictionary, remove all occurrences and return
+      a :class:`list` of all values in corresponding order (as
+      :meth:`getall` does).
+
+      If *key* is not found and *default* is provided return *default*.
 
       If *default* is not given and *key* is not in the dictionary, a
       :exc:`KeyError` is raised.

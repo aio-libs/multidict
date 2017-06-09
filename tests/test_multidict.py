@@ -614,6 +614,24 @@ class _BaseMutableMultiDictTests(_BaseTest):
         d[A('1')] = 'val'
         self.assertIs(type(list(d.keys())[0]), str)
 
+    def test_popall(self):
+        d = self.make_dict()
+        d.add('key1', 'val1')
+        d.add('key2', 'val2')
+        d.add('key1', 'val3')
+        ret = d.popall('key1')
+        self.assertEqual(['val1', 'val3'], ret)
+        self.assertEqual({'key2': 'val2'}, d)
+
+    def test_popall_default(self):
+        d = self.make_dict()
+        self.assertEqual('val', d.popall('key', 'val'))
+
+    def test_popall_key_error(self):
+        d = self.make_dict()
+        with self.assertRaises(KeyError):
+            d.popall('key')
+
 
 class _CIMutableMultiDictTests(_Root):
 
