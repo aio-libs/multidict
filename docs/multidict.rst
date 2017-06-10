@@ -127,7 +127,7 @@ MultiDict
 
       View contains all values.
 
-   .. method:: pop(key[, default])
+   .. method:: popone(key[, default])
 
       If *key* is in the dictionary, remove it and return its the
       **first** value, else return *default*.
@@ -135,6 +135,15 @@ MultiDict
       If *default* is not given and *key* is not in the dictionary, a
       :exc:`KeyError` is raised.
 
+      .. versionadded:: 3.0
+
+   .. method:: pop(key[, default])
+
+      An alias to :meth:`pop`
+
+      .. versionchanged:: 3.0
+
+         Now only *first* occurrence is removed (was all).
 
    .. method:: popall(key[, default])
 
@@ -147,6 +156,7 @@ MultiDict
       If *default* is not given and *key* is not in the dictionary, a
       :exc:`KeyError` is raised.
 
+      .. versionadded:: 3.0
 
    .. method:: popitem()
 

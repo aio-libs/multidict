@@ -244,27 +244,24 @@ class MultiDict(_Base, abc.MutableMapping):
         self.add(key, default)
         return default
 
-    def pop(self, key, default=_marker):
+    def popone(self, key, default=_marker):
         """Remove specified key and return the corresponding value.
 
         If key is not found, d is returned if given, otherwise
         KeyError is raised.
 
         """
-        value = None
-        found = False
-        for i in range(len(self._items) - 1, -1, -1):
+        for i in range(len(self._items)):
             if self._items[i][0] == key:
                 value = self._items[i][2]
                 del self._items[i]
-                found = True
-        if not found:
-            if default is _marker:
-                raise KeyError(key)
-            else:
-                return default
+                return value
+        if default is _marker:
+            raise KeyError(key)
         else:
-            return value
+            return default
+
+    pop = popone
 
     def popall(self, key, default=_marker):
         """Remove all occurrences of key and return the list of corresponding
