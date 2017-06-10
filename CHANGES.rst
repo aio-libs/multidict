@@ -19,6 +19,8 @@
 
 * `.pop()` removes only first occurence, `.popone()` added #92
 
+* Implement dict's version #86
+
 2.1.7 (2017-05-29)
 ------------------
 

@@ -321,6 +321,26 @@ CIMultiDictProxy
    The class is inherited from :class:`MultiDict`.
 
 
+Version
+=======
+
+All multidicts have an internal version flag. It's changed on every
+dict update, thus the flag could be used for checks like cache
+expiring etc.
+
+.. function:: getversion(mdict)
+
+   Return a version of given *mdict* object (works for proxies also).
+
+   The type of returned value is opaque and should be used for
+   equality tests only (``==`` and ``!=``), ordering is not allowed
+   while not prohibited explicitly.
+
+  .. versionadded:: 3.0
+
+  .. seealso:: :pep:`509`
+
+
 istr
 ====
 
