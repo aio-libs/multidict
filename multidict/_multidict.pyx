@@ -37,6 +37,11 @@ class istr(str):
 
 upstr = istr  # for relaxing backward compatibility problems
 
+
+def getversion(_Base md):
+    return md._impl._version
+
+
 cdef object _istr = istr
 
 
@@ -422,9 +427,9 @@ cdef class MultiDict(_Base):
         self._replace(key, value)
 
     def __delitem__(self, key):
-        self._remove(key, True)
+        self._remove(key)
 
-    cdef _remove(self, key, bint raise_key_error):
+    cdef _remove(self, key):
         cdef _Pair item
         cdef bint found = False
         cdef str identity = self._title(key)
@@ -436,10 +441,11 @@ cdef class MultiDict(_Base):
                 continue
             if item._identity == identity:
                 del items[i]
-                self._impl._version += 1
                 found = True
-        if not found and raise_key_error:
+        if not found:
             raise KeyError(key)
+        else:
+            self._impl._version += 1
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""

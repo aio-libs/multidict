@@ -31,12 +31,21 @@ class istr(str):
 upstr = istr  # for relaxing backward compatibility problems
 
 
+def getversion(md):
+    if not isinstance(md, _Base):
+        raise TypeError("Pramaeter should be multidict or proxy")
+    return md._impl._version
+
+
 class _Impl:
     __slots__ = ('_items', '_version')
 
     def __init__(self):
         self._items = []
         self._version = 0
+
+    def incr_version(self):
+        self._version = (self._version + 1) & ((1 << 64) - 1)
 
 
 class _Base:
@@ -185,6 +194,7 @@ class MultiDict(_Base, abc.MutableMapping):
     def add(self, key, value):
         identity = self._title(key)
         self._impl._items.append((identity, self._key(key), value))
+        self._impl.incr_version()
 
     def copy(self):
         """Return a copy of itself."""
@@ -228,13 +238,16 @@ class MultiDict(_Base, abc.MutableMapping):
     def clear(self):
         """Remove all items from MultiDict."""
         self._impl._items.clear()
+        self._impl.incr_version()
 
     # Mapping interface #
 
     def __setitem__(self, key, value):
+        key = self._title(key)
         self._replace(key, value)
 
     def __delitem__(self, key):
+        key = self._title(key)
         items = self._impl._items
         found = False
         for i in range(len(items) - 1, -1, -1):
@@ -243,9 +256,12 @@ class MultiDict(_Base, abc.MutableMapping):
                 found = True
         if not found:
             raise KeyError(key)
+        else:
+            self._impl.incr_version()
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
+        key = self._title(key)
         for i, k, v in self._impl._items:
             if i == key:
                 return v
@@ -259,10 +275,12 @@ class MultiDict(_Base, abc.MutableMapping):
         KeyError is raised.
 
         """
+        key = self._title(key)
         for i in range(len(self._impl._items)):
             if self._impl._items[i][0] == key:
                 value = self._impl._items[i][2]
                 del self._impl._items[i]
+                self._impl.incr_version()
                 return value
         if default is _marker:
             raise KeyError(key)
@@ -287,6 +305,7 @@ class MultiDict(_Base, abc.MutableMapping):
             if item[0] == identity:
                 ret.append(item[2])
                 del self._impl._items[i]
+                self._impl.incr_version()
                 found = True
         if not found:
             if default is _marker:
@@ -301,6 +320,7 @@ class MultiDict(_Base, abc.MutableMapping):
         """Remove and return an arbitrary (key, value) pair."""
         if self._impl._items:
             i = self._impl._items.pop(0)
+            self._impl.incr_version()
             return i[1], i[2]
         else:
             raise KeyError("empty multidict")
@@ -320,9 +340,11 @@ class MultiDict(_Base, abc.MutableMapping):
                 items[i] = (identity, key, value)
                 # i points to last found item
                 rgt = i
+                self._impl.incr_version()
                 break
         else:
             self._impl._items.append((identity, key, value))
+            self._impl.incr_version()
             return
 
         # remove all precending items
@@ -337,38 +359,7 @@ class MultiDict(_Base, abc.MutableMapping):
 
 
 class CIMultiDict(_CIBase, MultiDict):
-
-    def __setitem__(self, key, value):
-        super().__setitem__(key.title(), value)
-
-    def __delitem__(self, key):
-        super().__delitem__(key.title())
-
-    def _replace(self, key, value):
-        super()._replace(key.title(), value)
-
-    def pop(self, key, default=_marker):
-        """Remove specified key and return the corresponding value.
-
-        If key is not found, d is returned if given, otherwise
-        KeyError is raised.
-
-        """
-        key = key.title()
-        return super().pop(key, default)
-
-    def setdefault(self, key, default=None):
-        """Return value for key, set value to default if key is not present."""
-        key = key.title()
-        return super().setdefault(key, default)
-
-    def popitem(self):
-        """Remove and return an arbitrary (key, value) pair."""
-        if self._impl._items:
-            identity, key, value = self._impl._items.pop(0)
-            return key, value
-        else:
-            raise KeyError("empty multidict")
+    pass
 
 
 class _ViewBase:
