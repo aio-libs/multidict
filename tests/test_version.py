@@ -12,6 +12,10 @@ class VersionMixin:
     def getver(self, md):
         raise NotImplementedError
 
+    def test_getversion_bad_param(self):
+        with self.assertRaises(TypeError):
+            self.getver(1)
+
     def test_ctor(self):
         m1 = self.cls()
         v1 = self.getver(m1)
