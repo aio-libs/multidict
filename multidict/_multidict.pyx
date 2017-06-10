@@ -90,13 +90,22 @@ cdef class _Pair:
         self._key = <str>key
         self._value = value
 
+
+cdef unsigned long long _version
+
+
 cdef class _Impl:
     cdef list _items
     cdef unsigned long long _version
 
     def __cinit__(self):
         self._items = []
-        self._version = 0
+        self.incr_version()
+
+    cdef void incr_version(self):
+        global _version
+        _version += 1
+        self._version = _version
 
 
 cdef class _Base:
@@ -364,7 +373,7 @@ cdef class MultiDict(_Base):
     cdef _add(self, key, value):
         self._impl._items.append(_Pair.__new__(
             _Pair, self._title(key), _str(key), value))
-        self._impl._version += 1
+        self._impl.incr_version()
 
     cdef _replace(self, key, value):
         cdef str identity = self._title(key)
@@ -383,11 +392,11 @@ cdef class MultiDict(_Base):
                 item._value = value
                 # i points to last found item
                 rgt = i
-                self._impl._version += 1
+                self._impl.incr_version()
                 break
         else:
             self._impl._items.append(_Pair.__new__(_Pair, identity, k, value))
-            self._impl._version += 1
+            self._impl.incr_version()
             return
 
         # remove all precending items
@@ -419,7 +428,7 @@ cdef class MultiDict(_Base):
     def clear(self):
         """Remove all items from MultiDict"""
         self._impl._items.clear()
-        self._impl._version += 1
+        self._impl.incr_version()
 
     # MutableMapping interface #
 
@@ -445,7 +454,7 @@ cdef class MultiDict(_Base):
         if not found:
             raise KeyError(key)
         else:
-            self._impl._version += 1
+            self._impl.incr_version()
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
@@ -482,7 +491,7 @@ cdef class MultiDict(_Base):
             if item._identity == identity:
                 value = item._value
                 del items[i]
-                self._impl._version += 1
+                self._impl.incr_version()
                 return value
         if default is _marker:
             raise KeyError(key)
@@ -512,7 +521,7 @@ cdef class MultiDict(_Base):
             if item._identity == identity:
                 ret.append(item._value)
                 del items[i]
-                self._impl._version += 1
+                self._impl.incr_version()
                 found = True
         if not found:
             if default is _marker:
@@ -529,7 +538,7 @@ cdef class MultiDict(_Base):
         cdef list items = self._impl._items
         if items:
             item = <_Pair>items.pop(0)
-            self._impl._version += 1
+            self._impl.incr_version()
             return (item._key, item._value)
         else:
             raise KeyError("empty multidict")

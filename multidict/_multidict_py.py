@@ -1,3 +1,4 @@
+from array import array
 from collections import abc
 import sys
 
@@ -33,8 +34,11 @@ upstr = istr  # for relaxing backward compatibility problems
 
 def getversion(md):
     if not isinstance(md, _Base):
-        raise TypeError("Pramaeter should be multidict or proxy")
+        raise TypeError("Parameter should be multidict or proxy")
     return md._impl._version
+
+
+_version = array('Q', [0])
 
 
 class _Impl:
@@ -42,10 +46,13 @@ class _Impl:
 
     def __init__(self):
         self._items = []
-        self._version = 0
+        self.incr_version()
 
     def incr_version(self):
-        self._version = (self._version + 1) & ((1 << 64) - 1)
+        global _version
+        v = _version
+        v[0] += 1
+        self._version = v[0]
 
 
 class _Base:

@@ -12,11 +12,18 @@ class VersionMixin:
     def getver(self, md):
         raise NotImplementedError
 
+    def test_ctor(self):
+        m1 = self.cls()
+        v1 = self.getver(m1)
+        m2 = self.cls()
+        v2 = self.getver(m2)
+        self.assertNotEqual(v1, v2)
+
     def test_add(self):
         m = self.cls()
-        self.assertEqual(self.getver(m), 0)
+        v = self.getver(m)
         m.add('key', 'val')
-        self.assertGreater(self.getver(m), 0)
+        self.assertGreater(self.getver(m), v)
 
     def test_delitem(self):
         m = self.cls()
