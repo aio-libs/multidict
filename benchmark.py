@@ -10,6 +10,10 @@ getitem = """\
 dct[key]
 """
 
+python_dict = """\
+dct = {}
+"""
+
 cython_multidict = """\
 from multidict import MultiDict, istr
 dct = MultiDict()
@@ -52,6 +56,14 @@ istr(val)
 make_istr = """\
 val = istr('VaLuE')
 """
+
+print("Python setitem/getitem")
+t1 = timeit.timeit(setitem, python_dict+fill)
+gc.collect()
+t2 = timeit.timeit(getitem, python_dict+fill)
+gc.collect()
+
+print("{:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
 
 print("Cython / Python / x")
 
