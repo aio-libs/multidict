@@ -2,6 +2,10 @@ import gc
 import timeit
 
 
+add = """\
+dct.add(key, 'new value')
+"""
+
 setitem = """\
 dct[key] = 'new value'
 """
@@ -66,6 +70,20 @@ gc.collect()
 print("{:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
 
 print("Cython / Python / x")
+
+t1 = timeit.timeit(add, cython_multidict+fill)
+gc.collect()
+t2 = timeit.timeit(add, python_multidict+fill)
+gc.collect()
+
+print("MD.add: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
+
+t1 = timeit.timeit(add, cython_cimultidict+fill)
+gc.collect()
+t2 = timeit.timeit(add, python_cimultidict+fill)
+gc.collect()
+
+print("CI.add str: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
 
 t1 = timeit.timeit(setitem, cython_multidict+fill)
 gc.collect()
