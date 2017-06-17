@@ -4,6 +4,22 @@
 * Refactor internal data structures: main dict operations are about
   100% faster now.
 
+* Preserve order on multidict updates #68
+
+  Updates are `md[key] = val` and `md.update(...)` calls.
+
+  Now **the last** entry is replaced with new key/value pair, all
+  previous occurrences are removed.
+
+  If key is not present in dictionary the pair is added to the end
+
+* Force keys to `str` instances #88
+
+* Implement `.popall(key[, default])` #84
+
+* `.pop()` removes only first occurence, `.popone()` added #92
+
+* Implement dict's version #86
 
 2.1.7 (2017-05-29)
 ------------------

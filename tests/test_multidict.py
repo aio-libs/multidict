@@ -573,7 +573,16 @@ class _BaseMutableMultiDictTests(_BaseTest):
         d.add('key', 'val2')
 
         self.assertEqual('val1', d.pop('key'))
-        self.assertFalse(d)
+        self.assertEqual({'key': 'val2'}, d)
+
+    def test_pop2(self):
+        d = self.make_dict()
+        d.add('key', 'val1')
+        d.add('key2', 'val2')
+        d.add('key', 'val3')
+
+        self.assertEqual('val1', d.pop('key'))
+        self.assertEqual([('key2', 'val2'), ('key', 'val3')], list(d.items()))
 
     def test_pop_default(self):
         d = self.make_dict(other='val')
@@ -597,7 +606,55 @@ class _BaseMutableMultiDictTests(_BaseTest):
 
         d.update(key='val')
 
-        self.assertEqual([('key2', 'val3'), ('key', 'val')], list(d.items()))
+        self.assertEqual([('key', 'val'), ('key2', 'val3')], list(d.items()))
+
+    def test_replacement_order(self):
+        d = self.make_dict()
+        d.add('key1', 'val1')
+        d.add('key2', 'val2')
+        d.add('key1', 'val3')
+        d.add('key2', 'val4')
+
+        d['key1'] = 'val'
+
+        self.assertEqual([('key2', 'val2'),
+                          ('key1', 'val'),
+                          ('key2', 'val4')], list(d.items()))
+
+    def test_nonstr_key(self):
+        d = self.make_dict()
+        with self.assertRaises(TypeError):
+            d[1] = 'val'
+
+    def test_istr_key(self):
+        d = self.make_dict()
+        d[istr('1')] = 'val'
+        self.assertIs(type(list(d.keys())[0]), str)
+
+    def test_str_derived_key(self):
+        class A(str):
+            pass
+        d = self.make_dict()
+        d[A('1')] = 'val'
+        self.assertIs(type(list(d.keys())[0]), str)
+
+    def test_popall(self):
+        d = self.make_dict()
+        d.add('key1', 'val1')
+        d.add('key2', 'val2')
+        d.add('key1', 'val3')
+        ret = d.popall('key1')
+        self.assertEqual(['val1', 'val3'], ret)
+        self.assertEqual({'key2': 'val2'}, d)
+
+    def test_popall_default(self):
+        d = self.make_dict()
+        self.assertEqual('val', d.popall('key', 'val'))
+
+    def test_popall_key_error(self):
+        d = self.make_dict()
+        with self.assertRaises(KeyError):
+            d.popall('key')
 
 
 class _CIMutableMultiDictTests(_Root):
@@ -754,7 +811,7 @@ class _CIMutableMultiDictTests(_Root):
         d.add('key', 'val2')
 
         self.assertEqual('val1', d.pop('KEY'))
-        self.assertFalse(d)
+        self.assertEqual({'key': 'val2'}, d)
 
     def test_pop_lowercase(self):
         d = self.make_dict()
@@ -762,7 +819,7 @@ class _CIMutableMultiDictTests(_Root):
         d.add('key', 'val2')
 
         self.assertEqual('val1', d.pop('key'))
-        self.assertFalse(d)
+        self.assertEqual({'key': 'val2'}, d)
 
     def test_pop_default(self):
         d = self.make_dict(OTHER='val')
@@ -786,7 +843,7 @@ class _CIMutableMultiDictTests(_Root):
 
         d.update(Key='val')
 
-        self.assertEqual([('key2', 'val3'), ('Key', 'val')], list(d.items()))
+        self.assertEqual([('Key', 'val'), ('key2', 'val3')], list(d.items()))
 
     def test_update_istr(self):
         d = self.make_dict()
@@ -796,7 +853,7 @@ class _CIMutableMultiDictTests(_Root):
 
         d.update({istr('key'): 'val'})
 
-        self.assertEqual([('key2', 'val3'), ('Key', 'val')], list(d.items()))
+        self.assertEqual([('Key', 'val'), ('key2', 'val3')], list(d.items()))
 
     def test_copy_istr(self):
         d = self.make_dict({istr('Foo'): 'bar'})

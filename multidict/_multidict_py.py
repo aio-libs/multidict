@@ -1,3 +1,4 @@
+from array import array
 from collections import abc
 import pickle
 import sys
@@ -32,6 +33,29 @@ class istr(str):
 upstr = istr  # for relaxing backward compatibility problems
 
 
+def getversion(md):
+    if not isinstance(md, _Base):
+        raise TypeError("Parameter should be multidict or proxy")
+    return md._impl._version
+
+
+_version = array('Q', [0])
+
+
+class _Impl:
+    __slots__ = ('_items', '_version')
+
+    def __init__(self):
+        self._items = []
+        self.incr_version()
+
+    def incr_version(self):
+        global _version
+        v = _version
+        v[0] += 1
+        self._version = v[0]
+
+
 class _Base:
 
     def _title(self, key):
@@ -40,7 +64,7 @@ class _Base:
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
         identity = self._title(key)
-        res = [v for i, k, v in self._items if i == identity]
+        res = [v for i, k, v in self._impl._items if i == identity]
         if res:
             return res
         if not res and default is not _marker:
@@ -50,7 +74,7 @@ class _Base:
     def getone(self, key, default=_marker):
         """Get first value matching the key."""
         identity = self._title(key)
-        for i, k, v in self._items:
+        for i, k, v in self._impl._items:
             if i == identity:
                 return v
         if default is not _marker:
@@ -73,26 +97,26 @@ class _Base:
         return iter(self.keys())
 
     def __len__(self):
-        return len(self._items)
+        return len(self._impl._items)
 
     def keys(self):
         """Return a new view of the dictionary's keys."""
-        return _KeysView(self._items)
+        return _KeysView(self._impl)
 
     def items(self):
         """Return a new view of the dictionary's items *(key, value) pairs)."""
-        return _ItemsView(self._items)
+        return _ItemsView(self._impl)
 
     def values(self):
         """Return a new view of the dictionary's values."""
-        return _ValuesView(self._items)
+        return _ValuesView(self._impl)
 
     def __eq__(self, other):
         if not isinstance(other, abc.Mapping):
             return NotImplemented
         if isinstance(other, _Base):
-            lft = self._items
-            rht = other._items
+            lft = self._impl._items
+            rht = other._impl._items
             if len(lft) != len(rht):
                 return False
             for (i1, k2, v1), (i2, k2, v2) in zip(lft, rht):
@@ -107,7 +131,7 @@ class _Base:
 
     def __contains__(self, key):
         identity = self._title(key)
-        for i, k, v in self._items:
+        for i, k, v in self._impl._items:
             if i == identity:
                 return True
         return False
@@ -132,7 +156,7 @@ class MultiDictProxy(_Base, abc.Mapping):
                 ', not {}'.format(
                     type(arg)))
 
-        self._items = arg._items
+        self._impl = arg._impl
 
     def __reduce__(self):
         raise pickle.PicklingError("Unsupported")
@@ -151,7 +175,7 @@ class CIMultiDictProxy(_CIBase, MultiDictProxy):
                 ', not {}'.format(
                     type(arg)))
 
-        self._items = arg._items
+        self._impl = arg._impl
 
     def _title(self, key):
         return key.title()
@@ -164,16 +188,24 @@ class CIMultiDictProxy(_CIBase, MultiDictProxy):
 class MultiDict(_Base, abc.MutableMapping):
 
     def __init__(self, *args, **kwargs):
-        self._items = []
+        self._impl = _Impl()
 
         self._extend(args, kwargs, self.__class__.__name__, self.add)
 
     def _title(self, key):
         return key
 
+    def _key(self, key):
+        if isinstance(key, str):
+            return str(key)
+        else:
+            raise TypeError("MultiDict keys should be either str "
+                            "or subclasses of str")
+
     def add(self, key, value):
         identity = self._title(key)
-        self._items.append((identity, key, value))
+        self._impl._items.append((identity, self._key(key), value))
+        self._impl.incr_version()
 
     def copy(self):
         """Return a copy of itself."""
@@ -194,9 +226,9 @@ class MultiDict(_Base, abc.MutableMapping):
         if args:
             arg = args[0]
             if isinstance(args[0], MultiDictProxy):
-                items = arg._items
+                items = arg._impl._items
             elif isinstance(args[0], MultiDict):
-                items = arg._items
+                items = arg._impl._items
             elif hasattr(arg, 'items'):
                 items = [(k, k, v) for k, v in arg.items()]
             else:
@@ -216,15 +248,18 @@ class MultiDict(_Base, abc.MutableMapping):
 
     def clear(self):
         """Remove all items from MultiDict."""
-        self._items.clear()
+        self._impl._items.clear()
+        self._impl.incr_version()
 
     # Mapping interface #
 
     def __setitem__(self, key, value):
+        key = self._title(key)
         self._replace(key, value)
 
     def __delitem__(self, key):
-        items = self._items
+        key = self._title(key)
+        items = self._impl._items
         found = False
         for i in range(len(items) - 1, -1, -1):
             if items[i][0] == key:
@@ -232,28 +267,56 @@ class MultiDict(_Base, abc.MutableMapping):
                 found = True
         if not found:
             raise KeyError(key)
+        else:
+            self._impl.incr_version()
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
-        for i, k, v in self._items:
+        key = self._title(key)
+        for i, k, v in self._impl._items:
             if i == key:
                 return v
         self.add(key, default)
         return default
 
-    def pop(self, key, default=_marker):
+    def popone(self, key, default=_marker):
         """Remove specified key and return the corresponding value.
 
         If key is not found, d is returned if given, otherwise
         KeyError is raised.
 
         """
-        value = None
+        key = self._title(key)
+        for i in range(len(self._impl._items)):
+            if self._impl._items[i][0] == key:
+                value = self._impl._items[i][2]
+                del self._impl._items[i]
+                self._impl.incr_version()
+                return value
+        if default is _marker:
+            raise KeyError(key)
+        else:
+            return default
+
+    pop = popone
+
+    def popall(self, key, default=_marker):
+        """Remove all occurrences of key and return the list of corresponding
+        values.
+
+        If key is not found, default is returned if given, otherwise
+        KeyError is raised.
+
+        """
         found = False
-        for i in range(len(self._items) - 1, -1, -1):
-            if self._items[i][0] == key:
-                value = self._items[i][2]
-                del self._items[i]
+        identity = self._title(key)
+        ret = []
+        for i in range(len(self._impl._items)-1, -1, -1):
+            item = self._impl._items[i]
+            if item[0] == identity:
+                ret.append(item[2])
+                del self._impl._items[i]
+                self._impl.incr_version()
                 found = True
         if not found:
             if default is _marker:
@@ -261,12 +324,14 @@ class MultiDict(_Base, abc.MutableMapping):
             else:
                 return default
         else:
-            return value
+            ret.reverse()
+            return ret
 
     def popitem(self):
         """Remove and return an arbitrary (key, value) pair."""
-        if self._items:
-            i = self._items.pop(0)
+        if self._impl._items:
+            i = self._impl._items.pop(0)
+            self._impl.incr_version()
             return i[1], i[2]
         else:
             raise KeyError("empty multidict")
@@ -276,53 +341,45 @@ class MultiDict(_Base, abc.MutableMapping):
         self._extend(args, kwargs, 'update', self._replace)
 
     def _replace(self, key, value):
-        if key in self:
-            del self[key]
-        self.add(key, value)
+        key = self._key(key)
+        identity = self._title(key)
+        items = self._impl._items
+
+        for i in range(len(items)-1, -1, -1):
+            item = items[i]
+            if item[0] == identity:
+                items[i] = (identity, key, value)
+                # i points to last found item
+                rgt = i
+                self._impl.incr_version()
+                break
+        else:
+            self._impl._items.append((identity, key, value))
+            self._impl.incr_version()
+            return
+
+        # remove all precending items
+        i = 0
+        while i < rgt:
+            item = items[i]
+            if item[0] == identity:
+                del items[i]
+                rgt -= 1
+            else:
+                i += 1
 
 
 class CIMultiDict(_CIBase, MultiDict):
-
-    def __setitem__(self, key, value):
-        super().__setitem__(key.title(), value)
-
-    def __delitem__(self, key):
-        super().__delitem__(key.title())
-
-    def _replace(self, key, value):
-        super()._replace(key.title(), value)
-
-    def pop(self, key, default=_marker):
-        """Remove specified key and return the corresponding value.
-
-        If key is not found, d is returned if given, otherwise
-        KeyError is raised.
-
-        """
-        key = key.title()
-        return super().pop(key, default)
-
-    def setdefault(self, key, default=None):
-        """Return value for key, set value to default if key is not present."""
-        key = key.title()
-        return super().setdefault(key, default)
-
-    def popitem(self):
-        """Remove and return an arbitrary (key, value) pair."""
-        if self._items:
-            identity, key, value = self._items.pop(0)
-            return key, value
-        else:
-            raise KeyError("empty multidict")
+    pass
 
 
 class _ViewBase:
 
-    def __init__(self, items):
-        self._items = items
+    def __init__(self, impl):
+        self._impl = impl
 
     def __len__(self):
-        return len(self._items)
+        return len(self._impl._items)
 
 
 class _ItemsView(_ViewBase, abc.ItemsView):
@@ -330,18 +387,18 @@ class _ItemsView(_ViewBase, abc.ItemsView):
     def __contains__(self, item):
         assert isinstance(item, tuple) or isinstance(item, list)
         assert len(item) == 2
-        for i, k, v in self._items:
+        for i, k, v in self._impl._items:
             if item[0] == k and item[1] == v:
                 return True
         return False
 
     def __iter__(self):
-        for i, k, v in self._items:
+        for i, k, v in self._impl._items:
             yield k, v
 
     def __repr__(self):
         lst = []
-        for item in self._items:
+        for item in self._impl._items:
             lst.append("{!r}: {!r}".format(item[1], item[2]))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)
@@ -350,18 +407,18 @@ class _ItemsView(_ViewBase, abc.ItemsView):
 class _ValuesView(_ViewBase, abc.ValuesView):
 
     def __contains__(self, value):
-        for item in self._items:
+        for item in self._impl._items:
             if item[2] == value:
                 return True
         return False
 
     def __iter__(self):
-        for item in self._items:
+        for item in self._impl._items:
             yield item[2]
 
     def __repr__(self):
         lst = []
-        for item in self._items:
+        for item in self._impl._items:
             lst.append("{!r}".format(item[2]))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)
@@ -370,18 +427,18 @@ class _ValuesView(_ViewBase, abc.ValuesView):
 class _KeysView(_ViewBase, abc.KeysView):
 
     def __contains__(self, key):
-        for item in self._items:
+        for item in self._impl._items:
             if item[1] == key:
                 return True
         return False
 
     def __iter__(self):
-        for item in self._items:
+        for item in self._impl._items:
             yield item[1]
 
     def __repr__(self):
         lst = []
-        for item in self._items:
+        for item in self._impl._items:
             lst.append("{!r}".format(item[1]))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)
