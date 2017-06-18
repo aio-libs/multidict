@@ -912,57 +912,6 @@ class CIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
     key_cls = istr_cls
 
 
-class _IStrMixin:
-
-    cls = None
-
-    def test_ctor(self):
-        s = self.cls()
-        self.assertEqual('', s)
-
-    def test_ctor_str(self):
-        s = self.cls('a')
-        self.assertEqual('A', s)
-
-    def test_ctor_str_uppercase(self):
-        s = self.cls('A')
-        self.assertEqual('A', s)
-
-    def test_ctor_istr(self):
-        s = self.cls('A')
-        s2 = self.cls(s)
-        self.assertEqual('A', s)
-        self.assertIs(s, s2)
-
-    def test_ctor_buffer(self):
-        s = self.cls(b'a')
-        self.assertEqual('A', s)
-
-    def test_ctor_repr(self):
-        s = self.cls(None)
-        self.assertEqual('None', s)
-
-    def test_title(self):
-        s = self.cls('a')
-        self.assertIs(s, s.title())
-
-    def xtest_eq(self):
-        s1 = 'Abc'
-        s2 = self.cls(s1)
-        self.assertEqual(s1, s2)
-        self.assertEqual(s1.lower(), s2)
-
-
-class TestPyIStr(_IStrMixin, unittest.TestCase):
-
-    cls = _istr
-
-
-class TestIStr(_IStrMixin, unittest.TestCase):
-
-    cls = istr
-
-
 class TypesMixin:
 
     proxy = ciproxy = mdict = cimdict = None

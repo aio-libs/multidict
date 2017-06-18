@@ -5,44 +5,18 @@ from collections import abc
 from collections.abc import Iterable, Set
 from operator import itemgetter
 
+from cpython.object cimport PyObject_Str
+
+from ._istr import istr
 
 cdef object _marker = object()
 
-
-class istr(str):
-
-    """Case insensitive str."""
-
-    __is_istr__ = True
-
-    def __new__(cls, val='',
-                encoding=sys.getdefaultencoding(), errors='strict'):
-        if getattr(val, '__is_istr__', False):
-            # Faster than instance check
-            return val
-        if isinstance(val, (bytes, bytearray, memoryview)):
-            val = str(val, encoding, errors)
-        elif isinstance(val, str):
-            pass
-        else:
-            val = str(val)
-        val = val.title()
-        ret = str.__new__(cls, val)
-        ret._canonical = val
-        return ret
-
-    def title(self):
-        return self
-
-
 upstr = istr  # for relaxing backward compatibility problems
+cdef object _istr = istr
 
 
 def getversion(_Base md):
     return md._impl._version
-
-
-cdef object _istr = istr
 
 
 cdef _eq(self, other):
@@ -117,7 +91,7 @@ cdef class _Base:
         if typ is str:
             return <str>s
         elif typ is _istr:
-            return <str>(s._canonical)
+            return PyObject_Str(s)
         else:
             return str(s)
 
@@ -279,7 +253,7 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         if typ is str:
             return <str>(s.title())
         elif type(s) is _istr:
-            return <str>(s._canonical)
+            return PyObject_Str(s)
         return s.title()
 
     def copy(self):
@@ -295,7 +269,7 @@ cdef str _str(key):
     if typ is str:
         return <str>key
     if typ is _istr:
-        return <str>(key._canonical)
+        return PyObject_Str(key)
     elif issubclass(typ, str):
         return str(key)
     else:
@@ -564,7 +538,7 @@ cdef class CIMultiDict(MultiDict):
         if typ is str:
             return <str>(s.title())
         elif type(s) is _istr:
-            return <str>(s._canonical)
+            return PyObject_Str(s)
         return s.title()
 
 
