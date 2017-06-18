@@ -16,9 +16,7 @@ class istr(str):
         if getattr(val, '__is_istr__', False):
             # Faster than instance check
             return val
-        if isinstance(val, (bytes, bytearray, memoryview)):
-            val = str(val, encoding, errors)
-        elif isinstance(val, str):
+        if type(val) is str:
             pass
         else:
             val = str(val)

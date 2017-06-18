@@ -27,6 +27,9 @@ extensions = [Extension('multidict._multidict',
 if USE_CYTHON:
     extensions = cythonize(extensions)
 
+extensions.append(Extension('multidict._istr',
+                            ['multidict/_istr.c']))
+
 
 class BuildFailed(Exception):
     pass
