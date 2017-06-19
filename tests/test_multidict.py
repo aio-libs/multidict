@@ -332,7 +332,7 @@ class _MultiDictTests(_BaseTest):
         d = self.make_dict([('a', 1), ('a', 2)])
 
         if isinstance(d, (MultiDictProxy, _MultiDictProxy)):
-            with self.assertRaises(pickle.PickleError):
+            with self.assertRaises(TypeError):
                 pbytes = pickle.dumps(d)
 
             return
