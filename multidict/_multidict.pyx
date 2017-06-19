@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-import pickle
 import sys
 from collections import abc
 from collections.abc import Iterable, Set
@@ -258,7 +257,7 @@ cdef class MultiDictProxy(_Base):
         self._impl = base._impl
 
     def __reduce__(self):
-        raise pickle.PicklingError("Unsupported")
+        raise TypeError("can't pickle {} objects".format(self.__class__.__name__))
 
     def copy(self):
         """Return a copy of itself."""
