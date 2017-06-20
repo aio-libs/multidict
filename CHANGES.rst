@@ -21,6 +21,8 @@
 
 * Implement dict's version #86
 
+* Proxies are not pickable anymore #77
+
 2.1.7 (2017-05-29)
 ------------------
 
