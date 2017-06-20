@@ -1,6 +1,5 @@
 from array import array
 from collections import abc
-import pickle
 import sys
 
 _marker = object()
