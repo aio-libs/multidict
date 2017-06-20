@@ -3,7 +3,6 @@ from __future__ import absolute_import
 import sys
 from collections import abc
 from collections.abc import Iterable, Set
-from operator import itemgetter
 
 from cpython.object cimport PyObject_Str
 
@@ -216,37 +215,34 @@ cdef class _Base:
 
 
 cdef class MultiDictProxy(_Base):
+    _proxy_classes = (MultiDict, MultiDictProxy)
+    _base_class = MultiDict
 
     def __init__(self, arg):
         cdef _Base base
-        if not isinstance(arg, (MultiDict, MultiDictProxy)):
+        if not isinstance(arg, self._proxy_classes):
             raise TypeError(
-                'ctor requires MultiDict or MultiDictProxy instance'
+                'ctor requires {} instance'
                 ', not {}'.format(
+                    ' or '.join(self._proxy_classes),
                     type(arg)))
 
         base = arg
         self._impl = base._impl
 
+    def __reduce__(self):
+        raise TypeError("can't pickle {} objects".format(self.__class__.__name__))
+
     def copy(self):
         """Return a copy of itself."""
-        return MultiDict(self)
+        return self._base_class(self)
 
 abc.Mapping.register(MultiDictProxy)
 
 
 cdef class CIMultiDictProxy(MultiDictProxy):
-
-    def __init__(self, arg):
-        cdef _Base base
-        if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
-            raise TypeError(
-                'ctor requires CIMultiDict or CIMultiDictProxy instance'
-                ', not {}'.format(
-                    type(arg)))
-
-        base = arg
-        self._impl = base._impl
+    _proxy_classes = (CIMultiDict, CIMultiDictProxy)
+    _base_class = CIMultiDict
 
     cdef str _title(self, s):
         typ = type(s)
@@ -255,10 +251,6 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         elif type(s) is _istr:
             return PyObject_Str(s)
         return s.title()
-
-    def copy(self):
-        """Return a copy of itself."""
-        return CIMultiDict(self)
 
 
 abc.Mapping.register(CIMultiDictProxy)
@@ -282,8 +274,13 @@ cdef class MultiDict(_Base):
 
     def __init__(self, *args, **kwargs):
         self._impl = _Impl()
-
         self._extend(args, kwargs, 'MultiDict', True)
+
+    def __reduce__(self):
+        return (
+            self.__class__,
+            tuple(self.items()),
+        )
 
     cdef _extend(self, tuple args, dict kwargs, name, bint do_add):
         cdef _Pair item
