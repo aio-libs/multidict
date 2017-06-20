@@ -158,7 +158,8 @@ class MultiDictProxy(_Base, abc.Mapping):
         self._impl = arg._impl
 
     def __reduce__(self):
-        raise TypeError("can't pickle {} objects".format(self.__class__.__name__))
+        raise TypeError("can't pickle {} objects".format(
+            self.__class__.__name__))
 
     def copy(self):
         """Return a copy of itself."""
