@@ -1,4 +1,4 @@
-3.0.0 (xxxx-xx-xx)
+3.0.0 (2017-06-21)
 ------------------
 
 * Refactor internal data structures: main dict operations are about
