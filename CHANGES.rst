@@ -1,3 +1,9 @@
+3.1.0 (2017-xx-xx)
+------------------
+
+* Fix #99: raise `RuntimeError` on dict iterations if the dict was changed
+
+
 3.0.0 (2017-06-21)
 ------------------
 
