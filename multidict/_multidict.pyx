@@ -638,16 +638,20 @@ cdef class _ItemsIter:
     cdef _Impl _impl
     cdef int _current
     cdef int _len
+    cdef unsigned long long _version
 
     def __cinit__(self, _Impl impl):
         self._impl = impl
         self._current = 0
-        self._len = len(self._impl._items)
+        self._version = impl._version
+        self._len = len(impl._items)
 
     def __iter__(self):
         return self
 
     def __next__(self):
+        if self._version != self._impl._version:
+            raise RuntimeError("Dictionary changed during iteration")
         if self._current == self._len:
             raise StopIteration
         item = <_Pair>self._impl._items[self._current]
@@ -700,16 +704,20 @@ cdef class _ValuesIter:
     cdef _Impl _impl
     cdef int _current
     cdef int _len
+    cdef unsigned long long _version
 
     def __cinit__(self, _Impl impl):
         self._impl = impl
         self._current = 0
-        self._len = len(self._impl._items)
+        self._len = len(impl._items)
+        self._version = impl._version
 
     def __iter__(self):
         return self
 
     def __next__(self):
+        if self._version != self._impl._version:
+            raise RuntimeError("Dictionary changed during iteration")
         if self._current == self._len:
             raise StopIteration
         item = <_Pair>self._impl._items[self._current]
@@ -747,16 +755,20 @@ cdef class _KeysIter:
     cdef _Impl _impl
     cdef int _current
     cdef int _len
+    cdef unsigned long long _version
 
     def __cinit__(self, _Impl impl):
         self._impl = impl
         self._current = 0
         self._len = len(self._impl._items)
+        self._version = impl._version
 
     def __iter__(self):
         return self
 
     def __next__(self):
+        if self._version != self._impl._version:
+            raise RuntimeError("Dictionary changed during iteration")
         if self._current == self._len:
             raise StopIteration
         item = <_Pair>self._impl._items[self._current]
