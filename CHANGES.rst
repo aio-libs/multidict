@@ -1,8 +1,9 @@
-3.1.0 (2017-xx-xx)
+3.1.0 (2017-06-25)
 ------------------
 
 * Fix #99: raise `RuntimeError` on dict iterations if the dict was changed
 
+* Update `__init__.pyi` signatures
 
 3.0.0 (2017-06-21)
 ------------------
