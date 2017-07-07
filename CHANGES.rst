@@ -1,3 +1,45 @@
+3.1.0 (2017-06-25)
+------------------
+
+* Fix #99: raise `RuntimeError` on dict iterations if the dict was changed
+
+* Update `__init__.pyi` signatures
+
+3.0.0 (2017-06-21)
+------------------
+
+* Refactor internal data structures: main dict operations are about
+  100% faster now.
+
+* Preserve order on multidict updates #68
+
+  Updates are `md[key] = val` and `md.update(...)` calls.
+
+  Now **the last** entry is replaced with new key/value pair, all
+  previous occurrences are removed.
+
+  If key is not present in dictionary the pair is added to the end
+
+* Force keys to `str` instances #88
+
+* Implement `.popall(key[, default])` #84
+
+* `.pop()` removes only first occurence, `.popone()` added #92
+
+* Implement dict's version #86
+
+* Proxies are not pickable anymore #77
+
+2.1.7 (2017-05-29)
+------------------
+
+* Fix import warning on Python 3.6 #79
+
+2.1.6 (2017-05-27)
+------------------
+
+* Rebuild the library for fixning missing `__spec__` attribute #79
+
 2.1.5 (2017-05-13)
 ------------------
 

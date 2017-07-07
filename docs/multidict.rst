@@ -18,7 +18,6 @@ MultiDict
    Creates a mutable multidict instance.
 
    Accepted parameters are the same as for :class:`dict`.
-
    If the same key appears several times it will be added, e.g.::
 
       >>> d = MultiDict([('a', 1), ('b', 2), ('a', 3)])
@@ -128,7 +127,7 @@ MultiDict
 
       View contains all values.
 
-   .. method:: pop(key[, default])
+   .. method:: popone(key[, default])
 
       If *key* is in the dictionary, remove it and return its the
       **first** value, else return *default*.
@@ -136,6 +135,28 @@ MultiDict
       If *default* is not given and *key* is not in the dictionary, a
       :exc:`KeyError` is raised.
 
+      .. versionadded:: 3.0
+
+   .. method:: pop(key[, default])
+
+      An alias to :meth:`pop`
+
+      .. versionchanged:: 3.0
+
+         Now only *first* occurrence is removed (was all).
+
+   .. method:: popall(key[, default])
+
+      If *key* is in the dictionary, remove all occurrences and return
+      a :class:`list` of all values in corresponding order (as
+      :meth:`getall` does).
+
+      If *key* is not found and *default* is provided return *default*.
+
+      If *default* is not given and *key* is not in the dictionary, a
+      :exc:`KeyError` is raised.
+
+      .. versionadded:: 3.0
 
    .. method:: popitem()
 
@@ -298,6 +319,26 @@ CIMultiDictProxy
    Raises :exc:`TypeError` is *multidict* is not :class:`CIMultiDict` instance.
 
    The class is inherited from :class:`MultiDict`.
+
+
+Version
+=======
+
+All multidicts have an internal version flag. It's changed on every
+dict update, thus the flag could be used for checks like cache
+expiring etc.
+
+.. function:: getversion(mdict)
+
+   Return a version of given *mdict* object (works for proxies also).
+
+   The type of returned value is opaque and should be used for
+   equality tests only (``==`` and ``!=``), ordering is not allowed
+   while not prohibited explicitly.
+
+  .. versionadded:: 3.0
+
+  .. seealso:: :pep:`509`
 
 
 istr

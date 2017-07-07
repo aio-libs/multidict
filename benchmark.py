@@ -2,6 +2,10 @@ import gc
 import timeit
 
 
+add = """\
+dct.add(key, 'new value')
+"""
+
 setitem = """\
 dct[key] = 'new value'
 """
@@ -10,23 +14,27 @@ getitem = """\
 dct[key]
 """
 
+python_dict = """\
+dct = {}
+"""
+
 cython_multidict = """\
-from multidict import MultiDict
+from multidict import MultiDict, istr
 dct = MultiDict()
 """
 
 python_multidict = """\
-from multidict._multidict_py import MultiDict
+from multidict._multidict_py import MultiDict, istr
 dct = MultiDict()
 """
 
 cython_cimultidict = """\
-from multidict import CIMultiDict, upstr
+from multidict import CIMultiDict, istr
 dct = CIMultiDict()
 """
 
 python_cimultidict = """\
-from multidict._multidict_py import CIMultiDict, upstr
+from multidict._multidict_py import CIMultiDict, istr
 dct = CIMultiDict()
 """
 
@@ -37,52 +45,83 @@ for i in range(20):
 key = 'key10'
 """
 
-fill_upstr = """\
+fill_istr = """\
 for i in range(20):
-    key = upstr('key'+str(i))
+    key = istr('key'+str(i))
     dct[key] = str(i)
 
-key = upstr('key10')
+key = istr('key10')
 """
 
-upstr_from_upstr = """\
-upstr(val)
+istr_from_istr = """\
+istr(val)
 """
 
-make_upstr = """\
-val = upstr('VaLuE')
+make_istr = """\
+val = istr('VaLuE')
 """
 
-print("Cython setitem str: {:.3f} sec".format(
-    timeit.timeit(setitem, cython_multidict+fill)))
+print("Python setitem/getitem")
+t1 = timeit.timeit(setitem, python_dict+fill)
+gc.collect()
+t2 = timeit.timeit(getitem, python_dict+fill)
 gc.collect()
 
-print("Python setitem str: {:.3f} sec".format(
-    timeit.timeit(setitem, python_multidict+fill)))
+print("{:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
+
+print("Cython / Python / x")
+
+t1 = timeit.timeit(add, cython_multidict+fill)
+gc.collect()
+t2 = timeit.timeit(add, python_multidict+fill)
 gc.collect()
 
+print("MD.add: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
 
-print("Cython getitem str: {:.3f} sec".format(
-    timeit.timeit(getitem, cython_multidict+fill)))
+t1 = timeit.timeit(add, cython_cimultidict+fill)
+gc.collect()
+t2 = timeit.timeit(add, python_cimultidict+fill)
 gc.collect()
 
-print("Python getitem str: {:.3f} sec".format(
-    timeit.timeit(getitem, python_multidict+fill)))
+print("CI.add str: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
+
+t1 = timeit.timeit(setitem, cython_multidict+fill)
+gc.collect()
+t2 = timeit.timeit(setitem, python_multidict+fill)
 gc.collect()
 
+print("MD.setitem str: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
 
-print("Cython getitem upstr: {:.3f} sec".format(
-    timeit.timeit(getitem, cython_cimultidict+fill)))
+t1 = timeit.timeit(setitem, cython_multidict+fill_istr)
+gc.collect()
+t2 = timeit.timeit(setitem, python_multidict+fill_istr)
 gc.collect()
 
-print("Python getitem upstr: {:.3f} sec".format(
-    timeit.timeit(getitem, python_cimultidict+fill)))
+print("MD.setitem istr: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
+
+
+t1 = timeit.timeit(getitem, cython_multidict+fill)
+gc.collect()
+t2 = timeit.timeit(getitem, python_multidict+fill)
 gc.collect()
 
-print("Cython upstr from upstr: {:.3f} sec".format(
-    timeit.timeit(upstr_from_upstr, cython_cimultidict+make_upstr)))
-gc.collect()
+print("MD.getitem str: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
 
-print("Python upstr from upstr: {:.3f} sec".format(
-    timeit.timeit(upstr_from_upstr, python_cimultidict+make_upstr)))
+
+t1 = timeit.timeit(getitem, cython_cimultidict+fill)
 gc.collect()
+t2 = timeit.timeit(getitem, python_cimultidict+fill)
+gc.collect()
+print("CI.getitem str: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
+
+t1 = timeit.timeit(getitem, cython_cimultidict+fill_istr)
+gc.collect()
+t2 = timeit.timeit(getitem, python_cimultidict+fill_istr)
+gc.collect()
+print("CI.getitem istr: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
+
+t1 = timeit.timeit(istr_from_istr, cython_cimultidict+make_istr)
+gc.collect()
+t2 = timeit.timeit(istr_from_istr, python_cimultidict+make_istr)
+gc.collect()
+print("istr from istr: {:.3f}s {:.3f}s {:.1f}x".format(t1, t2, t2/t1))
