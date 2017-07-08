@@ -1,5 +1,7 @@
 from multidict._multidict import istr
 from multidict._multidict_py import istr as _istr
+import gc
+import psutil
 
 
 class IStrMixin:
@@ -51,6 +53,24 @@ class IStrMixin:
 
 class TestPyIStr(IStrMixin):
     cls = _istr
+
+    @staticmethod
+    def _create_strs():
+        _istr('foobarbaz')
+        istr2 = _istr()
+        _istr(istr2)
+
+    def test_leak(self):
+        gc.collect()
+        p = psutil.Process()
+        info = p.memory_info()
+        for _ in range(10000):
+            self._create_strs()
+
+        gc.collect()
+        info2 = p.memory_info()
+        rss_diff = info2.rss - info.rss
+        assert rss_diff == 0
 
 
 class TestIStr(IStrMixin):
