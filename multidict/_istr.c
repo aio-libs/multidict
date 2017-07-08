@@ -67,6 +67,7 @@ static PyMethodDef istr_methods[] = {
 void istr_dealloc(istrobject *self)
 {
     Py_XDECREF(self->canonical);
+    PyUnicode_Type.tp_dealloc((PyObject*)self);
 }
 
 static PyObject *
