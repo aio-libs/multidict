@@ -2,6 +2,14 @@
 multidict
 =========
 
+.. image:: https://travis-ci.org/aio-libs/multidict.svg?branch=master
+    :target:  https://travis-ci.org/aio-libs/multidict
+    :align: right
+.. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/aio-libs/multidict
+.. image:: https://badges.gitter.im/Join%20Chat.svg
+    :target: https://gitter.im/aio-libs/Lobby
+    :alt: Chat on Gitter
 Multidicts are useful for working with HTTP headers, URL
 query args etc.
 
