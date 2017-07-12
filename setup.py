@@ -37,6 +37,9 @@ if USE_CYTHON:
         directives = {}
     extensions = cythonize(extensions, compiler_directives=directives)
 
+extensions.append(Extension('multidict._istr',
+                            ['multidict/_istr.c']))
+
 
 class BuildFailed(Exception):
     pass
@@ -95,7 +98,9 @@ args = dict(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5'],
+        'Programming Language :: Python :: 3.5',
+        'Development Status :: 5 - Production/Stable',
+    ],
     author='Andrew Svetlov',
     author_email='andrew.svetlov@gmail.com',
     url='https://github.com/aio-libs/multidict/',

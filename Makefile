@@ -23,10 +23,10 @@ rmcache:
 
 
 test: flake .develop rmcache
-	py.test -q ./tests/
+	pytest -q ./tests/
 
 vtest: flake .develop rmcache
-	py.test -s -v ./tests/
+	pytest -s -v ./tests/
 
 cov cover coverage:
 	tox
@@ -38,12 +38,12 @@ profile-dev-base: .install-deps
 	PROFILE_BUILD=x python setup.py develop
 
 cov-dev: profile-dev-base rmcache
-	py.test --cov=multidict --cov-report=term --cov-report=html tests 
+	pytest --cov=multidict --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-dev-full: profile-dev-base rmcache
-	MULTIDICT_NO_EXTENSIONS=1 py.test --cov=multidict --cov-append tests 
-	py.test --cov=multidict --cov-report=term --cov-report=html tests 
+	MULTIDICT_NO_EXTENSIONS=1 pytest --cov=multidict --cov-append tests 
+	pytest --cov=multidict --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 clean:
@@ -60,13 +60,15 @@ clean:
 	rm -rf htmlcov
 	rm -rf build
 	rm -rf cover
-	make -C docs clean
-	python setup.py clean
+	make -C docs clean SPHINXBUILD=false
+	python3 setup.py clean
 	rm -f multidict/_multidict.html
 	rm -f multidict/_multidict.c
 	rm -f multidict/_multidict.*.so
 	rm -f multidict/_multidict.*.pyd
 	rm -rf .tox
+	rm .install-deps
+	rm .develop
 
 doc:
 	make -C docs html
