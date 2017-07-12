@@ -9,6 +9,11 @@ python:
   - 3.5
   - 3.6
 
+addons:
+  apt:
+    packages:
+      - libenchant-dev
+
 os:
   - linux
 #  - osx

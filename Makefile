@@ -14,7 +14,7 @@ flake: .install-deps
 
 .develop: .install-deps $(shell find multidict -type f)
 	rm -f multidict/*.so
-	rm -f multidict/*.c
+	rm -f multidict/_multidict.c
 	pip install -e .
 	touch .develop
 
@@ -34,7 +34,7 @@ cov cover coverage:
 profile-dev-base: .install-deps
 	rm -f .develop
 	rm -f multidict/*.so
-	rm -f multidict/*.c
+	rm -f multidict/_multidict.c
 	PROFILE_BUILD=x python setup.py develop
 
 cov-dev: profile-dev-base rmcache
