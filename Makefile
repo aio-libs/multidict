@@ -20,20 +20,24 @@ rmcache:
 	rm -rf tests/__pycache__
 
 
-test: flake .develop rmcache
+mypy: .develop
+	mypy multidict
+
+
+test: flake .develop rmcache mypy
 	pytest -q ./tests/
 
-vtest: flake .develop rmcache
+vtest: flake .develop rmcache mypy
 	pytest -s -v ./tests/
 
 cov cover coverage:
 	tox
 
-cov-dev: .develop rmcache
+cov-dev: .develop rmcache mypy
 	pytest --cov=multidict --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/htmlcov/index.html"
 
-cov-dev-full: .develop rmcache
+cov-dev-full: .develop rmcache mypy
 	AIOHTTPMULTIDICT_NO_EXTENSIONS=1 pytest --cov=multidict --cov-append tests 
 	pytest --cov=multidict --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/htmlcov/index.html"

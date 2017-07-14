@@ -61,3 +61,9 @@ class MultiDictProxy(Mapping[_S, _T]):
 
 class CIMultiDictProxy(MultiDictProxy[_T]):
     def copy(self) -> CIMultiDictProxy[_T]: ...
+
+
+def getversion(md: Union[MultiDict[_T],
+                         CIMultiDict[_T],
+                         MultiDictProxy[_T],
+                         CIMultiDictProxy[_T]]) -> int: ...
