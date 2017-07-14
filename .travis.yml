@@ -21,6 +21,7 @@ before_cache:
   - rm -f $HOME/.cache/pip/log/debug.log
 
 install:
+  - apt-get install libenchant-dev
   - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
   - pip install -r requirements-ci.txt
