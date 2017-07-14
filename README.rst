@@ -10,6 +10,7 @@ multidict
 .. image:: https://badges.gitter.im/Join%20Chat.svg
     :target: https://gitter.im/aio-libs/Lobby
     :alt: Chat on Gitter
+
 Multidicts are useful for working with HTTP headers, URL
 query args etc.
 
