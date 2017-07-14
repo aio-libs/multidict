@@ -11,10 +11,8 @@ multidict
     :target: https://gitter.im/aio-libs/Lobby
     :alt: Chat on Gitter
 
-Multidicts are useful for working with HTTP headers, URL
-query args etc.
-
-The code was extracted from aiohttp_ library.
+Multidict is dict-like collection of *key-value pairs* where key
+might be occurred more than once in the container.
 
 Introduction
 ------------
