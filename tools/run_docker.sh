@@ -17,7 +17,9 @@ done
 
 for arch in x86_64 i686
 do
-    wait '$docker_pull_pid_'${arch}  # await for docker image for current arch to be pulled from hub
+    arch_pull_pid=$(eval echo \$docker_pull_pid_${arch})
+    echo Waiting for docker pull PID $arch_pull_pid to complete downloading container for $arch arch...
+    wait $arch_pull_pid  # await for docker image for current arch to be pulled from hub
     [ $arch == "i686" ] && dock_ext_args="linux32"
 
     echo Building wheel for $arch arch
