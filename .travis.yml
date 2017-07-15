@@ -42,12 +42,22 @@ env:
     - MULTIDICT_NO_EXTENSIONS=X
 
 deploy:
-  skip_cleanup: true
   provider: pypi
+  # `skip_cleanup: true` is required to preserve binary wheels, built
+  # inside of manylinux1 docker container during `script` step above.
+  skip_cleanup: true
   user: andrew.svetlov
   password:
     secure: ZFCicrh4l5zraarOwAwLXzYyGLnrxMHAFEFxF6ZEpECamu4eDsbKAFM/ydYdHoL19ocLr5+Xg1fmgd5tjc29c2rHQh29iDFi7tWai2pDFw+WqeHaV6e7ZJEEnU29OpSRzkGIk+K27mn7ZsB97q3Rkg2JBYRBkeK6HNyZ5YgIaVssXXXuCi5LZ1Y0rg8Nbapes1RUqoHGWgBwlCjAVxp9U7RXqJ6jucHDGUHU+9AgnnlGI7Cqs3xLqp4/xt2VoIjL0XwG2y05WLLpEF3Jwtj2voiPsnSTpUwklXVr1rEwScPCMlImxmWmudvh7xcPtcK9IOHIvk6y/lmNHJeevRn+df50LtBdr+0Wrq/t3Tt5d05XKCgqaLtw2P4GYNfTsx1RmQjHzUlfHKke7UZ1P+GsZTKN9nLKVdFTi2YzQ0TVmr/JjAmVqldRBOvEMnVoDn1rj1gdHMIu4d/gRVTcSS3riey+L2o6NwKjoc7aV5Uz47Z7fjz09Q6xml9eBWAHx9O07Iq+BaCikhBzeHGo+AkIzGMQdCSyQ8tTjQtEq6zWGxolZQFJeW9glTGLSYMfiVaPDEyqxaDm/QKssnZiEIbq1YM018C6ojiA3xbPJrwSZ8l/mnCkxrIcbKcwwtaHFPyP/FicePT01oJAXx08wnwe5H2l6lqkSGgRnGendZNeEuQ=
-  distributions: "sdist"
+  # Although Travis CI instructs `setup.py` to build source distribution, which
+  # is default value for distribution option (`distribution: sdist`), it will
+  # also upload all wheels we've previously built in manylinux1 docker
+  # container using `twine upload -r pypi dist/*` command.
+  # Also since commit https://github.com/travis-ci/dpl/commit/90b5e39
+  # it is default that Travis PYPI provider has `skip_upload_docs: true`
+  # set by default.
+  # Besides above, we don't do cleanup of `dist/*`, because it's being done by
+  # Travis CI PYPI deployment provider after upload, unconditionally.
   on:
     tags: true
     all_branches: true
