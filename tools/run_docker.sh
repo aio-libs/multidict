@@ -12,7 +12,7 @@ for arch in x86_64 i686
 do
     [ $arch == "i686" ] && dock_ext_args="linux32"
 
-    echo "${arch}"
+    echo Building wheel for $arch arch
     docker pull "quay.io/pypa/manylinux1_${arch}"
     docker run --rm -v `pwd`:/io "quay.io/pypa/manylinux1_${arch}" $dock_ext_args /io/tools/build-wheels.sh "$package_name"
 
