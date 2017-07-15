@@ -1,25 +1,15 @@
-sudo: required
-services:
-  - docker
+sudo: false
 
 language: python
 
 python:
-  - 3.4
-  - 3.5
-  - 3.6
-
-os:
-  - linux
-#  - osx
+- 3.4
+- 3.5
+- &mainstream_python 3.6
 
 install:
-  - sudo apt-get install libenchant-dev
-  - pip install --upgrade pip wheel
-  - pip install --upgrade setuptools
+  - &upgrade_python_toolset pip install --upgrade pip wheel setuptools
   - pip install -r requirements/ci.txt
-  - pip install codecov
-  - pip install twine
 
 script:
   - flake8 multidict tests
@@ -31,37 +21,96 @@ script:
     fi
 
 after_success:
-  - codecov
-  - ./tools/run_docker.sh "multidict"
+- codecov
 
 env:
   matrix:
-    # MULTIDICT_NO_EXTENSIONS environment variables
-    # are considered as enabled if they are any non empty strings.
-    - MULTIDICT_NO_EXTENSIONS=
-    - MULTIDICT_NO_EXTENSIONS=X
+  # MULTIDICT_NO_EXTENSIONS environment variables
+  # are considered as enabled if they are any non-empty strings.
+  - MULTIDICT_NO_EXTENSIONS=
+  - MULTIDICT_NO_EXTENSIONS=X
 
-deploy:
-  provider: pypi
-  # `skip_cleanup: true` is required to preserve binary wheels, built
-  # inside of manylinux1 docker container during `script` step above.
-  skip_cleanup: true
-  user: andrew.svetlov
-  password:
-    secure: ZFCicrh4l5zraarOwAwLXzYyGLnrxMHAFEFxF6ZEpECamu4eDsbKAFM/ydYdHoL19ocLr5+Xg1fmgd5tjc29c2rHQh29iDFi7tWai2pDFw+WqeHaV6e7ZJEEnU29OpSRzkGIk+K27mn7ZsB97q3Rkg2JBYRBkeK6HNyZ5YgIaVssXXXuCi5LZ1Y0rg8Nbapes1RUqoHGWgBwlCjAVxp9U7RXqJ6jucHDGUHU+9AgnnlGI7Cqs3xLqp4/xt2VoIjL0XwG2y05WLLpEF3Jwtj2voiPsnSTpUwklXVr1rEwScPCMlImxmWmudvh7xcPtcK9IOHIvk6y/lmNHJeevRn+df50LtBdr+0Wrq/t3Tt5d05XKCgqaLtw2P4GYNfTsx1RmQjHzUlfHKke7UZ1P+GsZTKN9nLKVdFTi2YzQ0TVmr/JjAmVqldRBOvEMnVoDn1rj1gdHMIu4d/gRVTcSS3riey+L2o6NwKjoc7aV5Uz47Z7fjz09Q6xml9eBWAHx9O07Iq+BaCikhBzeHGo+AkIzGMQdCSyQ8tTjQtEq6zWGxolZQFJeW9glTGLSYMfiVaPDEyqxaDm/QKssnZiEIbq1YM018C6ojiA3xbPJrwSZ8l/mnCkxrIcbKcwwtaHFPyP/FicePT01oJAXx08wnwe5H2l6lqkSGgRnGendZNeEuQ=
-  # Although Travis CI instructs `setup.py` to build source distribution, which
-  # is default value for distribution option (`distribution: sdist`), it will
-  # also upload all wheels we've previously built in manylinux1 docker
-  # container using `twine upload -r pypi dist/*` command.
-  # Also since commit https://github.com/travis-ci/dpl/commit/90b5e39
-  # it is default that Travis PYPI provider has `skip_upload_docs: true`
-  # set by default.
-  # Besides above, we don't do cleanup of `dist/*`, because it's being done by
-  # Travis CI PYPI deployment provider after upload, unconditionally.
-  on:
-    tags: true
-    all_branches: true
-    condition: "-z $MULTIDICT_NO_EXTENSIONS"
+_helpers:
+- &_mainstream_python_base
+  python: *mainstream_python
+- &_reset_steps
+  before_install: skip
+  install: skip
+  script: skip
+  after_success: skip
+- &_doc_base
+  stage: doc
+  <<: *_mainstream_python_base
+  <<: *_reset_steps
+  install:
+  - *upgrade_python_toolset
+  - pip install -U -r requirements/dev.txt
+  after_failure: cat docs/_build/spelling/output.txt
+  addons:
+    apt:
+      packages:
+      - libenchant-dev
+
+# doesn't work on MacOSX out of the box -- the system has no Python installed
+# there's a workaround to use `language: generic` and install it, but it's slow
+os: linux
+
+jobs:
+  fast_finish: true
+  allow_failures:
+  - python: 3.6-dev
+  - python: nightly
+
+  include:
+  - python: 3.6-dev
+  - python: nightly
+
+  - <<: *_doc_base
+    script:
+    - make doc
+  - <<: *_doc_base
+    script:
+    - make doc-spelling
+
+  - stage: deploy (PYPI upload itself runs only for tagged commits)
+    <<: *_mainstream_python_base
+    <<: *_reset_steps
+    dist: trusty
+    group: edge
+    services:
+    - docker
+    env:
+    - MULTIDICT_NO_EXTENSIONS=
+    before_install:
+    # This must prevent further job progress
+    - |
+      if [ -z "$TRAVIS_TAG" ]
+      then
+        echo Not building wheels
+        exit 0
+      fi
+    script:
+    - ./tools/run_docker.sh "multidict"
+    deploy:
+      provider: pypi
+      # `skip_cleanup: true` is required to preserve binary wheels, built
+      # inside of manylinux1 docker container during `script` step above.
+      skip_cleanup: true
+      user: andrew.svetlov
+      password:
+        secure: ZFCicrh4l5zraarOwAwLXzYyGLnrxMHAFEFxF6ZEpECamu4eDsbKAFM/ydYdHoL19ocLr5+Xg1fmgd5tjc29c2rHQh29iDFi7tWai2pDFw+WqeHaV6e7ZJEEnU29OpSRzkGIk+K27mn7ZsB97q3Rkg2JBYRBkeK6HNyZ5YgIaVssXXXuCi5LZ1Y0rg8Nbapes1RUqoHGWgBwlCjAVxp9U7RXqJ6jucHDGUHU+9AgnnlGI7Cqs3xLqp4/xt2VoIjL0XwG2y05WLLpEF3Jwtj2voiPsnSTpUwklXVr1rEwScPCMlImxmWmudvh7xcPtcK9IOHIvk6y/lmNHJeevRn+df50LtBdr+0Wrq/t3Tt5d05XKCgqaLtw2P4GYNfTsx1RmQjHzUlfHKke7UZ1P+GsZTKN9nLKVdFTi2YzQ0TVmr/JjAmVqldRBOvEMnVoDn1rj1gdHMIu4d/gRVTcSS3riey+L2o6NwKjoc7aV5Uz47Z7fjz09Q6xml9eBWAHx9O07Iq+BaCikhBzeHGo+AkIzGMQdCSyQ8tTjQtEq6zWGxolZQFJeW9glTGLSYMfiVaPDEyqxaDm/QKssnZiEIbq1YM018C6ojiA3xbPJrwSZ8l/mnCkxrIcbKcwwtaHFPyP/FicePT01oJAXx08wnwe5H2l6lqkSGgRnGendZNeEuQ=
+      # Although Travis CI instructs `setup.py` to build source distribution,
+      # which is default value for distribution option (`distribution: sdist`),
+      # it will also upload all wheels we've previously built in manylinux1
+      # docker container using `twine upload -r pypi dist/*` command.
+      # Also since commit https://github.com/travis-ci/dpl/commit/90b5e39
+      # it is default that Travis PYPI provider has `skip_upload_docs: true`
+      # set by default.
+      # Besides above, we don't do cleanup of `dist/*`, because it's being done
+      # by Travis CI PYPI deployment provider after upload, unconditionally.
+      on:
+        tags: true
+        all_branches: true
 
 cache: pip
 
