@@ -20,10 +20,13 @@ install:
 build: false
 
 test_script:
-  - "build.cmd %PYTHON%\\python.exe setup.py test"
+  - "build.cmd %PYTHON%\\python.exe -m pytest --junitxml=junit-test-results.xml tests"
 
 after_test:
   - "build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
+  - ps: |
+      $wc = New-Object 'System.Net.WebClient'
+      $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\junit-test-results.xml))
 
 artifacts:
   - path: dist\*

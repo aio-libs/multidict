@@ -68,3 +68,6 @@ multidict/_multidict.html
 multidict/_multidict.c
 
 .mypy_cache
+
+# test results in junit format for Appveyor
+/junit-test-results.xml
