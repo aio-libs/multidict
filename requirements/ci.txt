@@ -1,4 +1,4 @@
--r requirements/wheel.txt
+-r wheel.txt
 pip==9.0.1
 flake8==3.3.0
 pyflakes>=1.0.0
