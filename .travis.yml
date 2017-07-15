@@ -37,7 +37,7 @@ script:
 
 after_success:
   - codecov
-  - ./run_docker.sh
+  - ./tools/run_docker.sh
 
 env:
   matrix:
