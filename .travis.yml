@@ -13,9 +13,7 @@ os:
   - linux
 #  - osx
 
-cache:
-  directories:
-  - $HOME/.cache/pip
+cache: pip
 
 before_cache:
   - rm -f $HOME/.cache/pip/log/debug.log
