@@ -19,7 +19,7 @@ done
 
 echo "Bundle external shared libraries into the wheels"
 for whl in /io/dist/${package_name}*.whl; do
-    auditwheel repair $whl -w /io/dist/
+    auditwheel repair "$whl" -w /io/dist/
 done
 
 echo "Install packages and test"
