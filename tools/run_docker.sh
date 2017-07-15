@@ -16,13 +16,5 @@ do
     docker pull "quay.io/pypa/manylinux1_${arch}"
     docker run --rm -v `pwd`:/io "quay.io/pypa/manylinux1_${arch}" $dock_ext_args /io/tools/build-wheels.sh "$package_name"
 
-    echo "Dist folder content is:"
-    for f in dist/${package_name}*manylinux1_${arch}.whl
-    do
-        echo "Upload $f"
-        python -m twine upload "$f" --username andrew.svetlov --password "$PYPI_PASSWD"
-    done
-
-    echo "Cleanup"
-    rm -rf ./dist
+    dock_ext_args=""  # Reset docker args, just in case
 done
