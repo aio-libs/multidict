@@ -1,7 +1,7 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-.install-deps: requirements-dev.txt
-	pip install -U -r requirements-dev.txt
+.install-deps: requirements/dev.txt
+	pip install -U -r requirements/dev.txt
 	touch .install-deps
 
 flake: .install-deps
@@ -74,7 +74,7 @@ doc-spelling:
 
 install:
 	pip install -U pip
-	pip install -Ur requirements-dev.txt
+	pip install -Ur requirements/dev.txt
 
 wheel_x64:
 	docker pull quay.io/pypa/manylinux1_x86_64
