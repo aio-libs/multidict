@@ -5,8 +5,14 @@ multidict
 .. image:: https://travis-ci.org/aio-libs/multidict.svg?branch=master
     :target:  https://travis-ci.org/aio-libs/multidict
     :align: right
+    :alt: Linux build @ Travis CI
+.. image:: https://img.shields.io/appveyor/ci/asvetlov/multidict/master.svg?label=Windows%20build%20%40%20Appveyor
+    :target: https://ci.appveyor.com/project/asvetlov/multidict/branch/master
+    :align: right
+    :alt: Windows build @ Appveyor
 .. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/aio-libs/multidict
+    :alt: Coverage metrics
 .. image:: https://badges.gitter.im/Join%20Chat.svg
     :target: https://gitter.im/aio-libs/Lobby
     :alt: Chat on Gitter
