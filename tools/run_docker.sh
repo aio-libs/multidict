@@ -8,16 +8,17 @@ fi
 
 manylinux1_image_prefix="quay.io/pypa/manylinux1_"
 dock_ext_args=""
+declare -A docker_pull_pids=()  # This syntax requires at least bash v4
 
 for arch in x86_64 i686
 do
     docker pull "${manylinux1_image_prefix}${arch}" &
-    export docker_pull_pid_${arch}=$!
+    docker_pull_pids[$arch]=$!
 done
 
 for arch in x86_64 i686
 do
-    arch_pull_pid=$(eval echo \$docker_pull_pid_${arch})
+    arch_pull_pid=${docker_pull_pids[$arch]}
     echo Waiting for docker pull PID $arch_pull_pid to complete downloading container for $arch arch...
     wait $arch_pull_pid  # await for docker image for current arch to be pulled from hub
     [ $arch == "i686" ] && dock_ext_args="linux32"
