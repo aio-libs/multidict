@@ -13,11 +13,6 @@ os:
   - linux
 #  - osx
 
-cache: pip
-
-before_cache:
-  - rm -f $HOME/.cache/pip/log/debug.log
-
 install:
   - sudo apt-get install libenchant-dev
   - pip install --upgrade pip wheel
@@ -57,3 +52,8 @@ deploy:
     tags: true
     all_branches: true
     condition: "-z $MULTIDICT_NO_EXTENSIONS"
+
+cache: pip
+
+before_cache:
+  - rm -f $HOME/.cache/pip/log/debug.log
