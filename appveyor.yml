@@ -13,23 +13,27 @@ environment:
     - PYTHON: "C:\\Python36-x64"
 
 install:
-  - "build.cmd %PYTHON%\\python.exe -m pip install wheel"
-  - "build.cmd %PYTHON%\\python.exe -m pip install twine"
   - "build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
-build: false
+before_build:
+  - "build.cmd %PYTHON%\\python.exe -m pip install wheel"
+
+build_script:
+  - "build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
 
 test_script:
   - "build.cmd %PYTHON%\\python.exe -m pytest --junitxml=junit-test-results.xml tests"
 
 after_test:
-  - "build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
   - ps: |
       $wc = New-Object 'System.Net.WebClient'
       $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\junit-test-results.xml))
 
 artifacts:
   - path: dist\*
+
+before_deploy:
+  - "build.cmd %PYTHON%\\python.exe -m pip install twine"
 
 deploy_script:
   - ps: >-
