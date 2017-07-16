@@ -18,6 +18,8 @@ done
 
 for arch in x86_64 i686
 do
+    echo
+    echo
     arch_pull_pid=${docker_pull_pids[$arch]}
     echo Waiting for docker pull PID $arch_pull_pid to complete downloading container for $arch arch...
     wait $arch_pull_pid  # await for docker image for current arch to be pulled from hub

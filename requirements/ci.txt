@@ -8,7 +8,6 @@ alabaster>=0.6.2
 tox==2.7.0
 pytest-cov==2.5.1
 pygments==2.2.0
-psutil==5.2.2
 mypy==0.520; python_version>="3.5" or platform_system!="Windows"  # It's does not support Python<3.5 under Windows 
 -e .
 
