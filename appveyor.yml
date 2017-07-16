@@ -13,16 +13,16 @@ environment:
     - PYTHON: "C:\\Python36-x64"
 
 install:
-  - "build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
 before_build:
-  - "build.cmd %PYTHON%\\python.exe -m pip install wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install wheel"
 
 build_script:
-  - "build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
 
 test_script:
-  - "build.cmd %PYTHON%\\python.exe -m pytest --junitxml=junit-test-results.xml tests"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pytest --junitxml=junit-test-results.xml tests"
 
 after_test:
   - ps: |
@@ -33,7 +33,7 @@ artifacts:
   - path: dist\*
 
 before_deploy:
-  - "build.cmd %PYTHON%\\python.exe -m pip install twine"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install twine"
 
 deploy_script:
   - ps: >-
