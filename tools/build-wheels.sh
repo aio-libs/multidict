@@ -25,5 +25,6 @@ done
 echo "Install packages and test"
 for PYTHON in ${PYTHON_VERSIONS}; do
     /opt/python/${PYTHON}/bin/pip install "$package_name" --no-index -f file:///io/dist
+    find /io/tests -name __pycache__ | xargs rm -rf
     /opt/python/${PYTHON}/bin/py.test /io/tests
 done
