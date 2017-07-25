@@ -6,6 +6,7 @@ graft multidict
 graft docs
 graft tests
 global-exclude *.pyc
+include multidict/*.c
 exclude multidict/_multidict.html
 exclude multidict/_multidict.*.so
 exclude multidict/_multidict.pyd
