@@ -86,6 +86,7 @@ jobs:
         exit 0
       fi
     script:
+    - mkdir dist  # so that it whould have priviliges of the current Travis user
     - ./tools/run_docker.sh "multidict"
     deploy:
       provider: pypi
