@@ -1,4 +1,4 @@
 cython==0.26
-pytest==3.1.3
+pytest==3.2.0
 psutil==5.2.2
 
