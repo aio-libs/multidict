@@ -21,7 +21,7 @@ rmcache:
 
 
 mypy: .develop
-	mypy multidict
+	mypy multidict tests/test_mypy.py
 
 
 test: flake .develop rmcache mypy
