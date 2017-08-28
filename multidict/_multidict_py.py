@@ -120,7 +120,7 @@ class _Base:
                 if i1 != i2 or v1 != v2:
                     return False
             return True
-        if len(self) != len(other):
+        if len(self._impl._items) != len(other):
             return False
         for k, v in self.items():
             nv = other.get(k, _marker)
