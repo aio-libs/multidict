@@ -187,6 +187,11 @@ class _BaseTest(_Root):
         d2 = self.make_dict()
         self.assertNotEqual(d1, d2)
 
+    def test_eq_other_mapping_contains_more_keys(self):
+        d1 = self.make_dict(foo='bar')
+        d2 = dict(foo='bar', bar='baz')
+        self.assertNotEqual(d1, d2)
+
     def test_ne(self):
         d = self.make_dict([('key', 'value1')])
         self.assertNotEqual(d, {'key': 'another_value'})
