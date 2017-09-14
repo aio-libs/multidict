@@ -231,7 +231,8 @@ cdef class MultiDictProxy(_Base):
         self._impl = base._impl
 
     def __reduce__(self):
-        raise TypeError("can't pickle {} objects".format(self.__class__.__name__))
+        raise TypeError("can't pickle {} objects"
+                        .format(self.__class__.__name__))
 
     def copy(self):
         """Return a copy of itself."""
@@ -279,7 +280,7 @@ cdef class MultiDict(_Base):
     def __reduce__(self):
         return (
             self.__class__,
-            tuple(self.items()),
+            (list(self.items()),)
         )
 
     cdef _extend(self, tuple args, dict kwargs, name, bint do_add):
@@ -529,6 +530,12 @@ cdef class CIMultiDict(MultiDict):
         self._impl = _Impl()
 
         self._extend(args, kwargs, 'CIMultiDict', True)
+
+    def __reduce__(self):
+        return (
+            self.__class__,
+            (list(self.items()),),
+        )
 
     cdef str _title(self, s):
         typ = type(s)
