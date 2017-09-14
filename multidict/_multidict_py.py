@@ -192,6 +192,9 @@ class MultiDict(_Base, abc.MutableMapping):
 
         self._extend(args, kwargs, self.__class__.__name__, self.add)
 
+    def __reduce__(self):
+        return (self.__class__, (list(self.items()),))
+
     def _title(self, key):
         return key
 
