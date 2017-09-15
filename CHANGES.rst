@@ -1,10 +1,7 @@
-3.3.0 (2017-09-14)
+3.2.0 (2017-09-xx)
 ------------------
 
 * Fix pickling (#134)
-
-3.2.0 (2017-08-28)
-------------------
 
 * Fix equality check when other contains more keys (#124)
 
