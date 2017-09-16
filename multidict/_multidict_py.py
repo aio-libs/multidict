@@ -140,12 +140,6 @@ class _Base:
         return '<{}({})>'.format(self.__class__.__name__, body)
 
 
-class _CIBase(_Base):
-
-    def _title(self, key):
-        return key.title()
-
-
 class MultiDictProxy(_Base, abc.Mapping):
 
     def __init__(self, arg):
@@ -166,7 +160,7 @@ class MultiDictProxy(_Base, abc.Mapping):
         return MultiDict(self.items())
 
 
-class CIMultiDictProxy(_CIBase, MultiDictProxy):
+class CIMultiDictProxy(MultiDictProxy):
 
     def __init__(self, arg):
         if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
@@ -372,8 +366,10 @@ class MultiDict(_Base, abc.MutableMapping):
                 i += 1
 
 
-class CIMultiDict(_CIBase, MultiDict):
-    pass
+class CIMultiDict(MultiDict):
+
+    def _title(self, key):
+        return key.title()
 
 
 class _ViewBase:
