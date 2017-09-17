@@ -5,6 +5,8 @@
 
 * Fix equality check when other contains more keys (#124)
 
+* Fix `CIMultiDict` copy (#107)
+
 3.1.3 (2017-07-14)
 ------------------
 
@@ -18,12 +20,12 @@
 3.1.1 (2017-07-09)
 ------------------
 
-* Fix #105: Remove memory leak in `istr` implementation
+* Remove memory leak in `istr` implementation (#105)
 
 3.1.0 (2017-06-25)
 ------------------
 
-* Fix #99: raise `RuntimeError` on dict iterations if the dict was changed
+* Raise `RuntimeError` on dict iterations if the dict was changed (#99)
 
 * Update `__init__.pyi` signatures
 
@@ -33,7 +35,7 @@
 * Refactor internal data structures: main dict operations are about
   100% faster now.
 
-* Preserve order on multidict updates #68
+* Preserve order on multidict updates (#68)
 
   Updates are `md[key] = val` and `md.update(...)` calls.
 
