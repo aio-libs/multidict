@@ -2,20 +2,30 @@
 multidict
 =========
 
-.. image:: https://travis-ci.org/aio-libs/multidict.svg?branch=master
-    :target:  https://travis-ci.org/aio-libs/multidict
-    :align: right
-    :alt: Linux build @ Travis CI
+.. image:: https://img.shields.io/pypi/v/multidict.svg
+   :target: https://pypi.org/project/multidict
+
+.. image:: https://readthedocs.org/projects/multidict/badge/?version=latest
+   :target: http://multidict.readthedocs.org/en/latest/?badge=latest
+
+.. image:: https://img.shields.io/travis/aio-libs/multidict/master.svg?label=Linux%20build%20%40%20Travis%20CI
+   :align: right
+   :target: http://travis-ci.org/aio-libs/multidict
+
 .. image:: https://img.shields.io/appveyor/ci/asvetlov/multidict/master.svg?label=Windows%20build%20%40%20Appveyor
-    :target: https://ci.appveyor.com/project/asvetlov/multidict/branch/master
-    :align: right
-    :alt: Windows build @ Appveyor
+   :align: right
+   :target: https://ci.appveyor.com/project/asvetlov/multidict/branch/master
+
+.. image:: https://img.shields.io/pypi/pyversions/multidict.svg
+   :target: https://pypi.org/project/multidict
+
 .. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg
-    :target: https://codecov.io/gh/aio-libs/multidict
-    :alt: Coverage metrics
+   :target: https://codecov.io/gh/aio-libs/multidict
+   :alt: Coverage metrics
+
 .. image:: https://badges.gitter.im/Join%20Chat.svg
-    :target: https://gitter.im/aio-libs/Lobby
-    :alt: Chat on Gitter
+   :target: https://gitter.im/aio-libs/Lobby
+   :alt: Chat on Gitter
 
 Multidict is dict-like collection of *key-value pairs* where key
 might be occurred more than once in the container.
