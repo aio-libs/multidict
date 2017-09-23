@@ -1,6 +1,7 @@
 from multidict._multidict import istr
 from multidict._multidict_py import istr as _istr
 import gc
+import sys
 import psutil
 
 
@@ -70,7 +71,12 @@ class TestPyIStr(IStrMixin):
         gc.collect()
         info2 = p.memory_info()
         rss_diff = info2.rss - info.rss
-        assert rss_diff == 0
+        if sys.platform == 'win32':
+            # on windows one page could be not returned
+            # to OS
+            assert rss_diff <= 4096
+        else:
+            assert rss_diff == 0
 
 
 class TestIStr(IStrMixin):
