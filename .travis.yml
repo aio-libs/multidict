@@ -40,7 +40,7 @@ _helpers:
   script: skip
   after_success: []
 - &_doc_base
-  stage: doc
+  stage: &doc_stage_name doc
   <<: *_mainstream_python_base
   <<: *_reset_steps
   install:
@@ -70,9 +70,7 @@ jobs:
     script:
     - make doc-spelling
 
-  - stage: deploy (PYPI upload itself runs only for tagged commits)
-    # This must prevent job from starting up if it's not a tagged commit:
-    if: tag IS present
+  - stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
     <<: *_mainstream_python_base
     <<: *_reset_steps
     dist: trusty
@@ -102,6 +100,14 @@ jobs:
       on:
         tags: true
         all_branches: true
+
+stages:
+- *doc_stage_name
+- test
+- name: *deploy_stage_name
+  # This will prevent deploy unless it's a tagged commit:
+  if: tag IS present
+
 
 cache: pip
 
