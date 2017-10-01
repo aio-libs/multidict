@@ -1,11 +1,17 @@
+import platform
+
 import pytest
 
-from multidict._multidict import MultiDict
+USE_CYTHON = platform.python_implementation() != 'PyPy'
+
+if USE_CYTHON:
+    from multidict._multidict import MultiDict
+
 from multidict._multidict_py import MultiDict as PyMultiDict
 
 
-@pytest.fixture(params=[MultiDict, PyMultiDict],
-                ids=['MultiDict', 'PyMultiDict'])
+@pytest.fixture(params=([MultiDict] if USE_CYTHON else []) + [PyMultiDict],
+                ids=(['MultiDict'] if USE_CYTHON else []) + ['PyMultiDict'])
 def cls(request):
     return request.param
 
