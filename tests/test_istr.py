@@ -1,10 +1,9 @@
 import gc
-import platform
 import sys
 
 import psutil
 
-USE_CYTHON = platform.python_implementation() != 'PyPy'
+from multidict._compat import USE_CYTHON
 
 if USE_CYTHON:
     from multidict._multidict import istr
