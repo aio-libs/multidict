@@ -1,13 +1,13 @@
 import gc
+import platform
 import sys
 
 import psutil
 
-try:
+USE_CYTHON = platform.python_implementation() != 'PyPy'
+
+if USE_CYTHON:
     from multidict._multidict import istr
-    USE_CYTHON = True
-except ImportError:
-    USE_CYTHON = False
 
 from multidict._multidict_py import istr as _istr
 

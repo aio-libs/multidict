@@ -1,9 +1,12 @@
+import platform
 import sys
 import unittest
 
 import multidict
 
-try:
+USE_CYTHON = platform.python_implementation() != 'PyPy'
+
+if USE_CYTHON:
     from multidict._multidict import (
         MultiDictProxy,
         MultiDict,
@@ -11,9 +14,6 @@ try:
         CIMultiDict,
         istr
     )
-    USE_CYTHON = True
-except ImportError:
-    USE_CYTHON = False
 
 from multidict._multidict_py import (MultiDictProxy as _MultiDictProxy,
                                      MultiDict as _MultiDict,

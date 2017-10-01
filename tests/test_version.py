@@ -1,10 +1,10 @@
+import platform
 import unittest
 
-try:
+USE_CYTHON = platform.python_implementation() != 'PyPy'
+
+if USE_CYTHON:
     from multidict._multidict import MultiDict, CIMultiDict, getversion
-    USE_CYTHON = True
-except ImportError:
-    USE_CYTHON = False
 
 from multidict._multidict_py import (MultiDict as _MultiDict,
                                      CIMultiDict as _CIMultiDict,
