@@ -1,12 +1,16 @@
-import pickle
-
 from pathlib import Path
+import pickle
+import platform
 
 import pytest
 
-from multidict._multidict import (MultiDict, CIMultiDict,
-                                  MultiDictProxy, CIMultiDictProxy)
-from multidict._multidict_py import (MultiDict as PyMultiDict,
+USE_CYTHON = platform.python_implementation() != 'PyPy'
+
+if USE_CYTHON:
+    from multidict._multidict import (MultiDict, CIMultiDict,
+                                      MultiDictProxy, CIMultiDictProxy)
+
+from multidict._multidict_py import (MultiDict as PyMultiDict,  # noqa: E402
                                      CIMultiDict as PyCIMultiDict,
                                      MultiDictProxy as PyMultiDictProxy,
                                      CIMultiDictProxy as PyCIMultiDictProxy)
@@ -14,26 +18,74 @@ from multidict._multidict_py import (MultiDict as PyMultiDict,
 here = Path(__file__).resolve().parent
 
 
-@pytest.fixture(params=['MultiDict', 'PyMultiDict',
-                        'CIMultiDict', 'PyCIMultiDict'])
+@pytest.fixture(
+    params=(
+        ['MultiDict', 'CIMultiDict']
+        if USE_CYTHON else
+        []
+    ) +
+    ['PyMultiDict', 'PyCIMultiDict']
+)
 def cls_name(request):
     return request.param
 
 
-@pytest.fixture(params=[MultiDict, PyMultiDict,
-                        CIMultiDict, PyCIMultiDict],
-                ids=['MultiDict', 'PyMultiDict',
-                     'CIMultiDict', 'PyCIMultiDict'])
+@pytest.fixture(
+    params=(
+        [
+            MultiDict,
+            CIMultiDict,
+        ]
+        if USE_CYTHON else
+        []
+    ) +
+    [
+        PyMultiDict,
+        PyCIMultiDict
+    ],
+    ids=(
+        [
+            'MultiDict',
+            'CIMultiDict',
+        ]
+        if USE_CYTHON else
+        []
+    ) +
+    [
+        'PyMultiDict',
+        'PyCIMultiDict'
+    ]
+)
 def cls(request):
     return request.param
 
 
-@pytest.fixture(params=[(MultiDictProxy, MultiDict),
-                        (PyMultiDictProxy, PyMultiDict),
-                        (CIMultiDictProxy, CIMultiDict),
-                        (PyCIMultiDictProxy, PyCIMultiDict)],
-                ids=['MultiDictProxy', 'PyMultiDictProxy',
-                     'CIMultiDictProxy', 'PyCIMultiDictProxy'])
+@pytest.fixture(
+    params=(
+        [
+            (MultiDictProxy, MultiDict),
+            (CIMultiDictProxy, CIMultiDict),
+        ]
+        if USE_CYTHON else
+        []
+    ) +
+    [
+        (PyMultiDictProxy, PyMultiDict),
+        (PyCIMultiDictProxy, PyCIMultiDict),
+    ],
+    ids=(
+        [
+            'MultiDictProxy',
+            'CIMultiDictProxy',
+        ]
+        if USE_CYTHON else
+        []
+    ) +
+    [
+        'PyMultiDictProxy',
+        'PyCIMultiDictProxy'
+    ]
+)
 def proxy_classes(request):
     return request.param
 
