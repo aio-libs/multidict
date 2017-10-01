@@ -15,7 +15,7 @@ if USE_CYTHON:
         istr
     )
 
-from multidict._multidict_py import (MultiDictProxy as _MultiDictProxy,
+from multidict._multidict_py import (MultiDictProxy as _MultiDictProxy,  # noqa: E402
                                      MultiDict as _MultiDict,
                                      CIMultiDictProxy as _CIMultiDictProxy,
                                      CIMultiDict as _CIMultiDict,

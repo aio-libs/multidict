@@ -9,7 +9,7 @@ if USE_CYTHON:
     from multidict._multidict import (MultiDict, CIMultiDict,
                                       MultiDictProxy, CIMultiDictProxy)
 
-from multidict._multidict_py import (MultiDict as PyMultiDict,
+from multidict._multidict_py import (MultiDict as PyMultiDict,  # noqa: E402
                                      CIMultiDict as PyCIMultiDict,
                                      MultiDictProxy as PyMultiDictProxy,
                                      CIMultiDictProxy as PyCIMultiDictProxy)

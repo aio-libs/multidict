@@ -9,7 +9,7 @@ USE_CYTHON = platform.python_implementation() != 'PyPy'
 if USE_CYTHON:
     from multidict._multidict import istr
 
-from multidict._multidict_py import istr as _istr
+from multidict._multidict_py import istr as _istr  # noqa: E402
 
 
 class IStrMixin:

@@ -6,7 +6,7 @@ USE_CYTHON = platform.python_implementation() != 'PyPy'
 if USE_CYTHON:
     from multidict._multidict import MultiDict, CIMultiDict, getversion
 
-from multidict._multidict_py import (MultiDict as _MultiDict,
+from multidict._multidict_py import (MultiDict as _MultiDict,  # noqa: E402
                                      CIMultiDict as _CIMultiDict,
                                      getversion as _getversion)
 
