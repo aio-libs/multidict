@@ -1,8 +1,15 @@
-from multidict._multidict import istr
-from multidict._multidict_py import istr as _istr
 import gc
 import sys
+
 import psutil
+
+try:
+    from multidict._multidict import istr
+    USE_CYTHON = True
+except ImportError:
+    USE_CYTHON = False
+
+from multidict._multidict_py import istr as _istr
 
 
 class IStrMixin:
@@ -79,5 +86,6 @@ class TestPyIStr(IStrMixin):
             assert rss_diff == 0
 
 
-class TestIStr(IStrMixin):
-    cls = istr
+if USE_CYTHON:
+    class TestIStr(IStrMixin):
+        cls = istr

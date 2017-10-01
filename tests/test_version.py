@@ -1,9 +1,14 @@
-from multidict._multidict import (MultiDict, CIMultiDict, getversion)
+import unittest
+
+try:
+    from multidict._multidict import MultiDict, CIMultiDict, getversion
+    USE_CYTHON = True
+except ImportError:
+    USE_CYTHON = False
+
 from multidict._multidict_py import (MultiDict as _MultiDict,
                                      CIMultiDict as _CIMultiDict,
                                      getversion as _getversion)
-
-import unittest
 
 
 class VersionMixin:
@@ -153,20 +158,22 @@ class VersionMixin:
         self.assertEqual(self.getver(m), v)
 
 
-class TestMultiDict(unittest.TestCase, VersionMixin):
+if USE_CYTHON:
+    class TestMultiDict(unittest.TestCase, VersionMixin):
 
-    cls = MultiDict
+        cls = MultiDict
 
-    def getver(self, md):
-        return getversion(md)
+        def getver(self, md):
+            return getversion(md)
 
 
-class TestCIMultiDict(unittest.TestCase, VersionMixin):
+if USE_CYTHON:
+    class TestCIMultiDict(unittest.TestCase, VersionMixin):
 
-    cls = CIMultiDict
+        cls = CIMultiDict
 
-    def getver(self, md):
-        return getversion(md)
+        def getver(self, md):
+            return getversion(md)
 
 
 class TestPyMultiDict(unittest.TestCase, VersionMixin):
