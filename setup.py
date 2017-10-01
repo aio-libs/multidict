@@ -65,7 +65,7 @@ def read(f):
 
 
 NEEDS_PYTEST = {'pytest', 'test'}.intersection(sys.argv)
-pytest_runner = ['pytest-runner']
+pytest_runner = ['pytest-runner'] if NEEDS_PYTEST else []
 
 tests_require = ['pytest']
 
