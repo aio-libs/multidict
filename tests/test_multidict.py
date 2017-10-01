@@ -14,11 +14,13 @@ if USE_CYTHON:
         istr
     )
 
-from multidict._multidict_py import (MultiDictProxy as _MultiDictProxy,  # noqa: E402
-                                     MultiDict as _MultiDict,
-                                     CIMultiDictProxy as _CIMultiDictProxy,
-                                     CIMultiDict as _CIMultiDict,
-                                     istr as _istr)
+from multidict._multidict_py import (  # noqa: E402
+    MultiDictProxy as _MultiDictProxy,
+    MultiDict as _MultiDict,
+    CIMultiDictProxy as _CIMultiDictProxy,
+    CIMultiDict as _CIMultiDict,
+    istr as _istr
+)
 
 
 class _Root:
