@@ -6,7 +6,6 @@ from setuptools import setup, Extension
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 from distutils.command.build_ext import build_ext
-from setuptools.command.test import test as TestCommand
 
 
 try:
@@ -65,14 +64,8 @@ def read(f):
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
 
-class PyTest(TestCommand):
-    user_options = []
-
-    def run(self):
-        import subprocess
-        errno = subprocess.call([sys.executable, '-m', 'pytest', 'tests'])
-        raise SystemExit(errno)
-
+NEEDS_PYTEST = {'pytest', 'test'}.intersection(sys.argv)
+pytest_runner = ['pytest-runner'] if NEEDS_PYTEST else []
 
 tests_require = ['pytest']
 
@@ -98,10 +91,10 @@ args = dict(
     license='Apache 2',
     packages=['multidict'],
     tests_require=tests_require,
+    setup_requires=pytest_runner,
     include_package_data=True,
     ext_modules=extensions,
-    cmdclass=dict(build_ext=ve_build_ext,
-                  test=PyTest))
+    cmdclass=dict(build_ext=ve_build_ext))
 
 try:
     setup(**args)
