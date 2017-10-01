@@ -7,7 +7,7 @@ USE_CYTHON = platform.python_implementation() != 'PyPy'
 if USE_CYTHON:
     from multidict._multidict import MultiDict
 
-from multidict._multidict_py import MultiDict as PyMultiDict
+from multidict._multidict_py import MultiDict as PyMultiDict  # noqa: E402
 
 
 @pytest.fixture(params=([MultiDict] if USE_CYTHON else []) + [PyMultiDict],
