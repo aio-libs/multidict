@@ -5,7 +5,8 @@ multidict. It behaves mostly like a dict but it can have
 several values for the same key.
 """
 
-import os
+from ._compat import USE_CYTHON_EXTENSIONS
+
 
 __all__ = ('MultiDictProxy', 'CIMultiDictProxy',
            'MultiDict', 'CIMultiDict', 'upstr', 'istr')
@@ -13,22 +14,17 @@ __all__ = ('MultiDictProxy', 'CIMultiDictProxy',
 __version__ = '3.2.0'
 
 
-if bool(os.environ.get('MULTIDICT_NO_EXTENSIONS')):
+try:
+    if not USE_CYTHON_EXTENSIONS:
+        raise ImportError
+    from ._multidict import (MultiDictProxy,
+                             CIMultiDictProxy,
+                             MultiDict,
+                             CIMultiDict,
+                             upstr, istr)
+except ImportError:  # pragma: no cover
     from ._multidict_py import (MultiDictProxy,
                                 CIMultiDictProxy,
                                 MultiDict,
                                 CIMultiDict,
                                 upstr, istr)
-else:
-    try:
-        from ._multidict import (MultiDictProxy,
-                                 CIMultiDictProxy,
-                                 MultiDict,
-                                 CIMultiDict,
-                                 upstr, istr)
-    except ImportError:  # pragma: no cover
-        from ._multidict_py import (MultiDictProxy,
-                                    CIMultiDictProxy,
-                                    MultiDict,
-                                    CIMultiDict,
-                                    upstr, istr)
