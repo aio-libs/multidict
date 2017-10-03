@@ -2,16 +2,25 @@ import sys
 import unittest
 
 import multidict
-from multidict._multidict import (MultiDictProxy,
-                                  MultiDict,
-                                  CIMultiDictProxy,
-                                  CIMultiDict,
-                                  istr)
-from multidict._multidict_py import (MultiDictProxy as _MultiDictProxy,
-                                     MultiDict as _MultiDict,
-                                     CIMultiDictProxy as _CIMultiDictProxy,
-                                     CIMultiDict as _CIMultiDict,
-                                     istr as _istr)
+
+from multidict._compat import USE_CYTHON
+
+if USE_CYTHON:
+    from multidict._multidict import (
+        MultiDictProxy,
+        MultiDict,
+        CIMultiDictProxy,
+        CIMultiDict,
+        istr
+    )
+
+from multidict._multidict_py import (  # noqa: E402
+    MultiDictProxy as _MultiDictProxy,
+    MultiDict as _MultiDict,
+    CIMultiDictProxy as _CIMultiDictProxy,
+    CIMultiDict as _CIMultiDict,
+    istr as _istr
+)
 
 
 class _Root:
@@ -616,10 +625,11 @@ class _BaseMutableMultiDictTests(_BaseTest):
         with self.assertRaises(TypeError):
             d[1] = 'val'
 
-    def test_istr_key(self):
-        d = self.make_dict()
-        d[istr('1')] = 'val'
-        self.assertIs(type(list(d.keys())[0]), str)
+    if USE_CYTHON:
+        def test_istr_key(self):
+            d = self.make_dict()
+            d[istr('1')] = 'val'
+            self.assertIs(type(list(d.keys())[0]), str)
 
     def test_str_derived_key(self):
         class A(str):
@@ -835,20 +845,22 @@ class _CIMutableMultiDictTests(_Root):
 
         self.assertEqual([('Key', 'val'), ('key2', 'val3')], list(d.items()))
 
-    def test_update_istr(self):
-        d = self.make_dict()
-        d.add(istr('KEY'), 'val1')
-        d.add('key', 'val2')
-        d.add('key2', 'val3')
+    if USE_CYTHON:
+        def test_update_istr(self):
+            d = self.make_dict()
+            d.add(istr('KEY'), 'val1')
+            d.add('key', 'val2')
+            d.add('key2', 'val3')
 
-        d.update({istr('key'): 'val'})
+            d.update({istr('key'): 'val'})
 
-        self.assertEqual([('Key', 'val'), ('key2', 'val3')], list(d.items()))
+            self.assertEqual([('Key', 'val'), ('key2', 'val3')],
+                             list(d.items()))
 
-    def test_copy_istr(self):
-        d = self.make_dict({istr('Foo'): 'bar'})
-        d2 = d.copy()
-        self.assertEqual(d, d2)
+        def test_copy_istr(self):
+            d = self.make_dict({istr('Foo'): 'bar'})
+            d2 = d.copy()
+            self.assertEqual(d, d2)
 
     def test_eq(self):
         d1 = self.make_dict(Key='val')
@@ -887,34 +899,39 @@ class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
     key_cls = istr_cls
 
 
-class TestMultiDictProxy(_TestProxy, unittest.TestCase):
+if USE_CYTHON:
+    class TestMultiDictProxy(_TestProxy, unittest.TestCase):
 
-    cls = MultiDict
-    proxy_cls = MultiDictProxy
-    key_cls = str
-
-
-class TestCIMultiDictProxy(_TestCIProxy, unittest.TestCase):
-
-    cls = CIMultiDict
-    proxy_cls = CIMultiDictProxy
-    key_cls = istr
+        cls = MultiDict
+        proxy_cls = MultiDictProxy
+        key_cls = str
 
 
-class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
+if USE_CYTHON:
+    class TestCIMultiDictProxy(_TestCIProxy, unittest.TestCase):
 
-    cls = MultiDict
-    proxy_cls = MultiDictProxy
-    key_cls = str
+        cls = CIMultiDict
+        proxy_cls = CIMultiDictProxy
+        key_cls = istr
 
 
-class CIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
-                              unittest.TestCase):
+if USE_CYTHON:
+    class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
 
-    cls = CIMultiDict
-    istr_cls = istr
-    proxy_cls = CIMultiDictProxy
-    key_cls = istr_cls
+        cls = MultiDict
+        proxy_cls = MultiDictProxy
+        key_cls = str
+
+
+if USE_CYTHON:
+    class CIMutableMultiDictTests(_CIMutableMultiDictTests,
+                                  _NonProxyCIMultiDict,
+                                  unittest.TestCase):
+
+        cls = CIMultiDict
+        istr_cls = istr
+        proxy_cls = CIMultiDictProxy
+        key_cls = istr_cls
 
 
 class TypesMixin:
@@ -974,9 +991,10 @@ class TestPyTypes(TypesMixin, unittest.TestCase):
     cimdict = _CIMultiDict
 
 
-class TestTypes(TypesMixin, unittest.TestCase):
+if USE_CYTHON:
+    class TestTypes(TypesMixin, unittest.TestCase):
 
-    proxy = MultiDictProxy
-    ciproxy = CIMultiDictProxy
-    mdict = MultiDict
-    cimdict = CIMultiDict
+        proxy = MultiDictProxy
+        ciproxy = CIMultiDictProxy
+        mdict = MultiDict
+        cimdict = CIMultiDict
