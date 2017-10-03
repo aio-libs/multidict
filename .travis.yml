@@ -136,7 +136,7 @@ jobs:
   - <<: *osx_python_base
     python: *mainstream_python
     env:
-    - PYTHON_VERSION=3.6.1
+    - &env_py36 PYTHON_VERSION=3.6.1
     - *env_pyenv
     - *env_path
   - <<: *osx_python_base
@@ -157,7 +157,7 @@ jobs:
     script:
     - mkdir dist  # so that it whould have priviliges of the current Travis user
     - ./tools/run_docker.sh "multidict"
-    deploy:
+    deploy: &deploy_step
       provider: pypi
       # `skip_cleanup: true` is required to preserve binary wheels, built
       # inside of manylinux1 docker container during `script` step above.
@@ -177,6 +177,17 @@ jobs:
       on:
         tags: true
         all_branches: true
+  - <<: *osx_python_base
+    <<: *_reset_steps
+    python: *mainstream_python
+    env:
+    - *env_py36
+    - *env_pyenv
+    - *env_path
+    deploy:
+      <<: *deploy_step
+      skip_cleanup: false
+      distributions: bdist_wheel
 
 stages:
 - *doc_stage_name
