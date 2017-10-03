@@ -1,7 +1,4 @@
 import gc
-import sys
-
-import psutil
 
 from multidict._compat import USE_CYTHON
 
@@ -69,20 +66,13 @@ class TestPyIStr(IStrMixin):
 
     def test_leak(self):
         gc.collect()
-        p = psutil.Process()
-        info = p.memory_info()
+        cnt = len(gc.get_objects())
         for _ in range(10000):
             self._create_strs()
 
         gc.collect()
-        info2 = p.memory_info()
-        rss_diff = info2.rss - info.rss
-        if sys.platform == 'win32':
-            # on windows one page could be not returned
-            # to OS
-            assert rss_diff <= 4096
-        else:
-            assert rss_diff == 0
+        cnt2 = len(gc.get_objects())
+        assert abs(cnt - cnt2) < 10  # on PyPy these numbers are not equal
 
 
 if USE_CYTHON:
