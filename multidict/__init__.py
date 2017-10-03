@@ -11,7 +11,7 @@ from ._compat import USE_CYTHON_EXTENSIONS
 __all__ = ('MultiDictProxy', 'CIMultiDictProxy',
            'MultiDict', 'CIMultiDict', 'upstr', 'istr')
 
-__version__ = '3.2.0'
+__version__ = '3.2.1a0'
 
 
 try:
