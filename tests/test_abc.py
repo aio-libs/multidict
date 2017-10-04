@@ -44,10 +44,10 @@ class B(A, MutableMultiMapping):
         super().extend(*args, **kwargs)
 
     def popall(self, key, default=None):
-        super().getall(key, default)
+        super().popall(key, default)
 
     def popone(self, key, default=None):
-        super().getone(key, default)
+        super().popone(key, default)
 
 
 def test_abc_add():
