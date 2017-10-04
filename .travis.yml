@@ -179,6 +179,7 @@ jobs:
         all_branches: true
   - <<: *osx_python_base
     <<: *_reset_steps
+    stage: *deploy_stage_name
     python: *mainstream_python
     env:
     - *env_py36
