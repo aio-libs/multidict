@@ -394,3 +394,14 @@ store them globally, like :mod:`aiohttp.hdrs` does.
    The behavior remains the same with the only exception:
    ``repr('Content-Length')`` and ``str('Content-Length')`` now
    returns ``'Content-Length'`` instead of ``'CONTENT-LENGTH'``.
+
+
+Abstract Base Classes
+=====================
+
+The module provides two ABCs: ``MutliMapping`` and
+``MutableMultiMapping``.  They are similar to
+:class:`collections.abc.Mapping` and
+:class:`collections.abc.MultiMapping` and inherited from them.
+
+.. versionadded:: 3.3
