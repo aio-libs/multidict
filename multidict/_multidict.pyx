@@ -6,6 +6,7 @@ from collections.abc import Iterable, Set
 
 from cpython.object cimport PyObject_Str
 
+from ._abc import MultiMapping, MutableMultiMapping
 from ._istr import istr
 
 cdef object _marker = object()
@@ -238,7 +239,7 @@ cdef class MultiDictProxy(_Base):
         """Return a copy of itself."""
         return self._base_class(self)
 
-abc.Mapping.register(MultiDictProxy)
+MultiMapping.register(MultiDictProxy)
 
 
 cdef class CIMultiDictProxy(MultiDictProxy):
@@ -254,7 +255,7 @@ cdef class CIMultiDictProxy(MultiDictProxy):
         return s.title()
 
 
-abc.Mapping.register(CIMultiDictProxy)
+MultiMapping.register(CIMultiDictProxy)
 
 
 cdef str _str(key):
@@ -519,7 +520,7 @@ cdef class MultiDict(_Base):
         self._extend(args, kwargs, "update", False)
 
 
-abc.MutableMapping.register(MultiDict)
+MutableMultiMapping.register(MultiDict)
 
 
 cdef class CIMultiDict(MultiDict):
@@ -551,7 +552,7 @@ cdef class CIMultiDict(MultiDict):
 
 
 
-abc.MutableMapping.register(CIMultiDict)
+MutableMultiMapping.register(CIMultiDict)
 
 
 cdef class _ViewBase:
