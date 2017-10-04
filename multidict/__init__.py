@@ -8,11 +8,14 @@ several values for the same key.
 from ._compat import USE_CYTHON_EXTENSIONS
 
 
-__all__ = ('MultiDictProxy', 'CIMultiDictProxy',
+__all__ = ('MultiMapping', 'MutableMultiMapping',
+           'MultiDictProxy', 'CIMultiDictProxy',
            'MultiDict', 'CIMultiDict', 'upstr', 'istr')
 
 __version__ = '3.2.0'
 
+
+from ._abc import MultiMapping, MutableMultiMapping
 
 try:
     if not USE_CYTHON_EXTENSIONS:
