@@ -2,6 +2,9 @@ from array import array
 from collections import abc
 import sys
 
+from ._abc import MultiMapping, MutableMultiMapping
+
+
 _marker = object()
 
 
@@ -140,7 +143,7 @@ class _Base:
         return '<{}({})>'.format(self.__class__.__name__, body)
 
 
-class MultiDictProxy(_Base, abc.Mapping):
+class MultiDictProxy(_Base, MultiMapping):
 
     def __init__(self, arg):
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
@@ -179,7 +182,7 @@ class CIMultiDictProxy(MultiDictProxy):
         return CIMultiDict(self.items())
 
 
-class MultiDict(_Base, abc.MutableMapping):
+class MultiDict(_Base, MutableMultiMapping):
 
     def __init__(self, *args, **kwargs):
         self._impl = _Impl()
