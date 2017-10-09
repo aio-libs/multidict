@@ -1,4 +1,5 @@
 import sys
+import pytest
 import unittest
 
 import multidict
@@ -37,212 +38,215 @@ class _Root:
         name = self.cls.__name__
         while name.startswith('_'):
             name = name[1:]
-        self.assertIn(name, multidict.__all__)
+        assert name in multidict.__all__
 
 
 class _BaseTest(_Root):
 
     def test_instantiate__empty(self):
         d = self.make_dict()
-        self.assertEqual(d, {})
-        self.assertEqual(len(d), 0)
-        self.assertEqual(list(d.keys()), [])
-        self.assertEqual(list(d.values()), [])
-        self.assertEqual(list(d.values()), [])
-        self.assertEqual(list(d.items()), [])
-        self.assertEqual(list(d.items()), [])
+        assert d == {}
+        assert len(d) == 0
+        assert list(d.keys()) == []
+        assert list(d.values()) == []
+        assert list(d.values()) == []
+        assert list(d.items()) == []
+        assert list(d.items()) == []
 
-        self.assertNotEqual(self.make_dict(), list())
-        with self.assertRaisesRegex(TypeError, "\(2 given\)"):
+        assert self.make_dict() != list()
+        with pytest.raises(TypeError) as excinfo:
             self.make_dict(('key1', 'value1'), ('key2', 'value2'))
+        assert '(2 given)' in str(excinfo.value)
 
     def test_instantiate__from_arg0(self):
         d = self.make_dict([('key', 'value1')])
 
-        self.assertEqual(d, {'key': 'value1'})
-        self.assertEqual(len(d), 1)
-        self.assertEqual(list(d.keys()), ['key'])
-        self.assertEqual(list(d.values()), ['value1'])
-        self.assertEqual(list(d.items()), [('key', 'value1')])
+        assert d == {'key': 'value1'}
+        assert len(d) == 1
+        assert list(d.keys()) == ['key']
+        assert list(d.values()) == ['value1']
+        assert list(d.items()) == [('key', 'value1')]
 
     def test_instantiate__from_arg0_dict(self):
         d = self.make_dict({'key': 'value1'})
 
-        self.assertEqual(d, {'key': 'value1'})
-        self.assertEqual(len(d), 1)
-        self.assertEqual(list(d.keys()), ['key'])
-        self.assertEqual(list(d.values()), ['value1'])
-        self.assertEqual(list(d.items()), [('key', 'value1')])
+        assert d == {'key': 'value1'}
+        assert len(d) == 1
+        assert list(d.keys()) == ['key']
+        assert list(d.values()) == ['value1']
+        assert list(d.items()) == [('key', 'value1')]
 
     def test_instantiate__with_kwargs(self):
         d = self.make_dict([('key', 'value1')], key2='value2')
 
-        self.assertEqual(d, {'key': 'value1', 'key2': 'value2'})
-        self.assertEqual(len(d), 2)
-        self.assertEqual(sorted(d.keys()), ['key', 'key2'])
-        self.assertEqual(sorted(d.values()), ['value1', 'value2'])
-        self.assertEqual(sorted(d.items()), [('key', 'value1'),
-                                             ('key2', 'value2')])
+        assert d == {'key': 'value1', 'key2': 'value2'}
+        assert len(d) == 2
+        assert sorted(d.keys()) == ['key', 'key2']
+        assert sorted(d.values()) == ['value1', 'value2']
+        assert sorted(d.items()) == [('key', 'value1'),
+                                     ('key2', 'value2')]
 
     def test_instantiate__from_generator(self):
         d = self.make_dict((str(i), i) for i in range(2))
 
-        self.assertEqual(d, {'0': 0, '1': 1})
-        self.assertEqual(len(d), 2)
-        self.assertEqual(sorted(d.keys()), ['0', '1'])
-        self.assertEqual(sorted(d.values()), [0, 1])
-        self.assertEqual(sorted(d.items()), [('0', 0), ('1', 1)])
+        assert d == {'0': 0, '1': 1}
+        assert len(d) == 2
+        assert sorted(d.keys()) == ['0', '1']
+        assert sorted(d.values()) == [0, 1]
+        assert sorted(d.items()) == [('0', 0), ('1', 1)]
 
     def test_getone(self):
         d = self.make_dict([('key', 'value1')], key='value2')
-        self.assertEqual(d.getone('key'), 'value1')
-        self.assertEqual(d.get('key'), 'value1')
-        self.assertEqual(d['key'], 'value1')
+        assert d.getone('key') == 'value1'
+        assert d.get('key') == 'value1'
+        assert d['key'] == 'value1'
 
-        with self.assertRaisesRegex(KeyError, 'key2'):
+        with pytest.raises(KeyError) as excinfo:
             d['key2']
-        with self.assertRaisesRegex(KeyError, 'key2'):
+        assert 'key2' in str(excinfo.value)
+        with pytest.raises(KeyError) as exc2info:
             d.getone('key2')
+        assert 'key2' in str(exc2info.value)
 
-        self.assertEqual('default', d.getone('key2', 'default'))
+        assert 'default' == d.getone('key2', 'default')
 
     def test__iter__(self):
         d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
-        self.assertEqual(['key', 'key2', 'key'], list(d))
+        assert ['key', 'key2', 'key'] == list(d)
 
     def test__iter__types(self):
         d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
         for i in d:
-            self.assertTrue(type(i) is self.key_cls, (type(i), self.key_cls))
+            assert type(i) is self.key_cls, (type(i), self.key_cls)
 
     def test_keys__contains(self):
         d = self.make_dict([('key', 'one'), ('key2', 'two'), ('key', 3)])
-        self.assertEqual(list(d.keys()), ['key', 'key2', 'key'])
+        assert list(d.keys()) == ['key', 'key2', 'key']
 
-        self.assertIn('key', d.keys())
-        self.assertIn('key2', d.keys())
+        assert 'key' in d.keys()
+        assert 'key2' in d.keys()
 
-        self.assertNotIn('foo', d.keys())
+        assert 'foo' not in d.keys()
 
     def test_values__contains(self):
         d = self.make_dict([('key', 'one'), ('key', 'two'), ('key', 3)])
-        self.assertEqual(list(d.values()), ['one', 'two', 3])
+        assert list(d.values()) == ['one', 'two', 3]
 
-        self.assertIn('one', d.values())
-        self.assertIn('two', d.values())
-        self.assertIn(3, d.values())
+        assert 'one' in d.values()
+        assert 'two' in d.values()
+        assert 3 in d.values()
 
-        self.assertNotIn('foo', d.values())
+        assert 'foo' not in d.values()
 
     def test_items__contains(self):
         d = self.make_dict([('key', 'one'), ('key', 'two'), ('key', 3)])
-        self.assertEqual(list(d.items()),
+        assert(list(d.items()) ==
                          [('key', 'one'), ('key', 'two'), ('key', 3)])
-        self.assertEqual(list(d.items()),
+        assert(list(d.items()) ==
                          [('key', 'one'), ('key', 'two'), ('key', 3)])
 
-        self.assertIn(('key', 'one'), d.items())
-        self.assertIn(('key', 'two'), d.items())
-        self.assertIn(('key', 3), d.items())
+        assert ('key', 'one') in d.items()
+        assert ('key', 'two') in d.items()
+        assert ('key', 3) in d.items()
 
-        self.assertNotIn(('foo', 'bar'), d.items())
+        assert ('foo', 'bar') not in d.items()
 
     def test_cannot_create_from_unaccepted(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             self.make_dict([(1, 2, 3)])
 
     def test_keys_is_set_less(self):
         d = self.make_dict([('key', 'value1')])
 
-        self.assertLess(d.keys(), {'key', 'key2'})
+        assert d.keys() < {'key', 'key2'}
 
     def test_keys_is_set_less_equal(self):
         d = self.make_dict([('key', 'value1')])
 
-        self.assertLessEqual(d.keys(), {'key'})
+        assert d.keys() <= {'key'}
 
     def test_keys_is_set_equal(self):
         d = self.make_dict([('key', 'value1')])
 
-        self.assertEqual(d.keys(), {'key'})
+        assert d.keys() == {'key'}
 
     def test_keys_is_set_greater(self):
         d = self.make_dict([('key', 'value1')])
 
-        self.assertGreater({'key', 'key2'}, d.keys())
+        assert {'key', 'key2'} > d.keys()
 
     def test_keys_is_set_greater_equal(self):
         d = self.make_dict([('key', 'value1')])
 
-        self.assertGreaterEqual({'key'}, d.keys())
+        assert {'key'} >= d.keys()
 
     def test_keys_is_set_not_equal(self):
         d = self.make_dict([('key', 'value1')])
 
-        self.assertNotEqual(d.keys(), {'key2'})
+        assert d.keys() != {'key2'}
 
     def test_eq(self):
         d = self.make_dict([('key', 'value1')])
-        self.assertEqual({'key': 'value1'}, d)
+        assert {'key': 'value1'} == d
 
     def test_eq2(self):
         d1 = self.make_dict([('key', 'value1')])
         d2 = self.make_dict([('key2', 'value1')])
-        self.assertNotEqual(d1, d2)
+        assert d1 != d2
 
     def test_eq3(self):
         d1 = self.make_dict([('key', 'value1')])
         d2 = self.make_dict()
-        self.assertNotEqual(d1, d2)
+        assert d1 != d2
 
     def test_eq_other_mapping_contains_more_keys(self):
         d1 = self.make_dict(foo='bar')
         d2 = dict(foo='bar', bar='baz')
-        self.assertNotEqual(d1, d2)
+        assert d1 != d2
 
     def test_ne(self):
         d = self.make_dict([('key', 'value1')])
-        self.assertNotEqual(d, {'key': 'another_value'})
+        assert d != {'key': 'another_value'}
 
     def test_and(self):
         d = self.make_dict([('key', 'value1')])
-        self.assertEqual({'key'}, d.keys() & {'key', 'key2'})
+        assert {'key'} == d.keys() & {'key', 'key2'}
 
     def test_and2(self):
         d = self.make_dict([('key', 'value1')])
-        self.assertEqual({'key'}, {'key', 'key2'} & d.keys())
+        assert {'key'} == {'key', 'key2'} & d.keys()
 
     def test_or(self):
         d = self.make_dict([('key', 'value1')])
-        self.assertEqual({'key', 'key2'}, d.keys() | {'key2'})
+        assert {'key', 'key2'} == d.keys() | {'key2'}
 
     def test_or2(self):
         d = self.make_dict([('key', 'value1')])
-        self.assertEqual({'key', 'key2'}, {'key2'} | d.keys())
+        assert {'key', 'key2'} == {'key2'} | d.keys()
 
     def test_sub(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
-        self.assertEqual({'key'}, d.keys() - {'key2'})
+        assert {'key'} == d.keys() - {'key2'}
 
     def test_sub2(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
-        self.assertEqual({'key3'}, {'key', 'key2', 'key3'} - d.keys())
+        assert {'key3'} == {'key', 'key2', 'key3'} - d.keys()
 
     def test_xor(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
-        self.assertEqual({'key', 'key3'}, d.keys() ^ {'key2', 'key3'})
+        assert {'key', 'key3'} == d.keys() ^ {'key2', 'key3'}
 
     def test_xor2(self):
         d = self.make_dict([('key', 'value1'), ('key2', 'value2')])
-        self.assertEqual({'key', 'key3'}, {'key2', 'key3'} ^ d.keys())
+        assert {'key', 'key3'} == {'key2', 'key3'} ^ d.keys()
 
     def test_isdisjoint(self):
         d = self.make_dict([('key', 'value1')])
-        self.assertTrue(d.keys().isdisjoint({'key2'}))
+        assert d.keys().isdisjoint({'key2'})
 
     def test_isdisjoint2(self):
         d = self.make_dict([('key', 'value1')])
-        self.assertFalse(d.keys().isdisjoint({'key'}))
+        assert not d.keys().isdisjoint({'key'})
 
     def test_repr_issue_410(self):
         d = self.make_dict()
@@ -251,7 +255,7 @@ class _BaseTest(_Root):
             self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             repr(d)
-            self.assertIs(sys.exc_info()[1], e)
+            assert sys.exc_info()[1] is e
 
     def test_or_issue_410(self):
         d = self.make_dict([('key', 'value')])
@@ -260,7 +264,7 @@ class _BaseTest(_Root):
             self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             d.keys() | {'other'}
-            self.assertIs(sys.exc_info()[1], e)
+            assert sys.exc_info()[1] is e
 
     def test_and_issue_410(self):
         d = self.make_dict([('key', 'value')])
@@ -269,7 +273,7 @@ class _BaseTest(_Root):
             self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             d.keys() & {'other'}
-            self.assertIs(sys.exc_info()[1], e)
+            assert sys.exc_info()[1] is e
 
     def test_sub_issue_410(self):
         d = self.make_dict([('key', 'value')])
@@ -278,7 +282,7 @@ class _BaseTest(_Root):
             self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             d.keys() - {'other'}
-            self.assertIs(sys.exc_info()[1], e)
+            assert sys.exc_info()[1] is e
 
     def test_xor_issue_410(self):
         d = self.make_dict([('key', 'value')])
@@ -287,7 +291,7 @@ class _BaseTest(_Root):
             self.fail("Sould never happen")  # pragma: no cover
         except Exception as e:
             d.keys() ^ {'other'}
-            self.assertIs(sys.exc_info()[1], e)
+            assert sys.exc_info()[1] is e
 
 
 class _MultiDictTests(_BaseTest):
@@ -296,104 +300,105 @@ class _MultiDictTests(_BaseTest):
         d = self.make_dict()
         cls = self.proxy_cls if self.proxy_cls is not None else self.cls
 
-        self.assertEqual(str(d), "<%s()>" % cls.__name__)
+        assert str(d) == "<%s()>" % cls.__name__
         d = self.make_dict([('key', 'one'), ('key', 'two')])
-        self.assertEqual(
-            str(d),
+        assert(
+            str(d) ==
             "<%s('key': 'one', 'key': 'two')>" % cls.__name__)
 
     def test_getall(self):
         d = self.make_dict([('key', 'value1')], key='value2')
 
-        self.assertNotEqual(d, {'key': 'value1'})
-        self.assertEqual(len(d), 2)
+        assert d != {'key': 'value1'}
+        assert len(d) == 2
 
-        self.assertEqual(d.getall('key'), ['value1', 'value2'])
+        assert d.getall('key') == ['value1', 'value2']
 
-        with self.assertRaisesRegex(KeyError, "some_key"):
+        with pytest.raises(KeyError) as excinfo:
             d.getall('some_key')
+        assert 'some_key' in str(excinfo.value)
 
         default = object()
-        self.assertIs(d.getall('some_key', default), default)
+        assert d.getall('some_key', default) is default
 
     def test_preserve_stable_ordering(self):
         d = self.make_dict([('a', 1), ('b', '2'), ('a', 3)])
         s = '&'.join('{}={}'.format(k, v) for k, v in d.items())
 
-        self.assertEqual('a=1&b=2&a=3', s)
+        assert 'a=1&b=2&a=3' == s
 
     def test_get(self):
         d = self.make_dict([('a', 1), ('a', 2)])
-        self.assertEqual(1, d['a'])
+        assert 1 == d['a']
 
     def test_items__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
-        self.assertEqual(repr(d.items()),
-                         "_ItemsView('key': 'value1', 'key': 'value2')")
+        assert(repr(d.items()) ==
+               "_ItemsView('key': 'value1', 'key': 'value2')")
 
     def test_keys__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
-        self.assertEqual(repr(d.keys()),
-                         "_KeysView('key', 'key')")
+        assert(repr(d.keys()) ==
+               "_KeysView('key', 'key')")
 
     def test_values__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
-        self.assertEqual(repr(d.values()),
-                         "_ValuesView('value1', 'value2')")
+        assert(repr(d.values()) ==
+               "_ValuesView('value1', 'value2')")
 
 
 class _CIMultiDictTests(_Root):
 
     def test_basics(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
-        self.assertEqual(d.getone('key'), 'value1')
-        self.assertEqual(d.get('key'), 'value1')
-        self.assertEqual(d.get('key2', 'val'), 'val')
-        self.assertEqual(d['key'], 'value1')
-        self.assertIn('key', d)
+        assert d.getone('key') == 'value1'
+        assert d.get('key') == 'value1'
+        assert d.get('key2', 'val') == 'val'
+        assert d['key'] == 'value1'
+        assert 'key' in d
 
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             d['key2']
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             d.getone('key2')
 
     def test_getall(self):
         d = self.make_dict([('KEY', 'value1')], KEY='value2')
 
-        self.assertNotEqual(d, {'KEY': 'value1'})
-        self.assertEqual(len(d), 2)
+        assert not d == {'KEY': 'value1'}
+        assert len(d) == 2
 
-        self.assertEqual(d.getall('key'), ['value1', 'value2'])
+        assert d.getall('key') == ['value1', 'value2']
 
-        with self.assertRaisesRegex(KeyError, "some_key"):
+        with pytest.raises(KeyError) as excinfo:
             d.getall('some_key')
+        assert "some_key" in str(excinfo.value)
 
     def test_get(self):
         d = self.make_dict([('A', 1), ('a', 2)])
-        self.assertEqual(1, d['a'])
+        assert 1 == d['a']
 
     def test__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         cls = type(d)
 
-        self.assertEqual(
-            str(d),
+        assert(str(d) ==
             "<%s('KEY': 'value1', 'key': 'value2')>" % cls.__name__)
 
     def test_items__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
-        self.assertEqual(repr(d.items()),
-                         "_ItemsView('KEY': 'value1', 'key': 'value2')")
+        assert(repr(d.items()) ==
+               "_ItemsView('KEY': 'value1', 'key': 'value2')")
 
     def test_keys__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
-        self.assertEqual(repr(d.keys()),
-                         "_KeysView('KEY', 'key')")
+        assert(repr(d.keys()) ==
+               "_KeysView('KEY', 'key')")
 
     def test_values__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
-        self.assertEqual(repr(d.values()),
-                         "_ValuesView('value1', 'value2')")
+        assert(repr(d.values()) ==
+               "_ValuesView('value1', 'value2')")
 
 
 class _NonProxyCIMultiDict(_CIMultiDictTests):
@@ -417,8 +422,8 @@ class _TestProxy(_MultiDictTests):
         p1 = self.proxy_cls(d1)
 
         d2 = p1.copy()
-        self.assertEqual(d1, d2)
-        self.assertIsNot(d1, d2)
+        assert d1 == d2
+        assert d1 is not d2
 
 
 class _TestCIProxy(_CIMultiDictTests):
@@ -432,8 +437,8 @@ class _TestCIProxy(_CIMultiDictTests):
         p1 = self.proxy_cls(d1)
 
         d2 = p1.copy()
-        self.assertEqual(d1, d2)
-        self.assertIsNot(d1, d2)
+        assert d1 == d2
+        assert d1 is not d2
 
 
 class _BaseMutableMultiDictTests(_BaseTest):
@@ -763,31 +768,31 @@ class _CIMutableMultiDictTests(_Root):
         d2 = self.make_dict()
         d2.extend(proxy)
 
-        self.assertEqual([('a', 'a'), ('b', 'b')], list(d2.items()))
+        assert [('a', 'a'), ('b', 'b')] == list(d2.items())
 
     def test_clear(self):
         d = self.make_dict([('KEY', 'one')], key='two', foo='bar')
 
         d.clear()
-        self.assertEqual(d, {})
-        self.assertEqual(list(d.items()), [])
+        assert d == {}
+        assert list(d.items()) == []
 
     def test_del(self):
         d = self.make_dict([('KEY', 'one'), ('key', 'two')], foo='bar')
 
         del d['key']
-        self.assertEqual(d, {'foo': 'bar'})
-        self.assertEqual(list(d.items()), [('foo', 'bar')])
+        assert d == {'foo': 'bar'}
+        assert list(d.items()) == [('foo', 'bar')]
 
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             del d['key']
 
     def test_set_default(self):
         d = self.make_dict([('KEY', 'one'), ('key', 'two')], foo='bar')
-        self.assertEqual('one', d.setdefault('key', 'three'))
-        self.assertEqual('three', d.setdefault('otherkey', 'three'))
-        self.assertIn('otherkey', d)
-        self.assertEqual('three', d['OTHERKEY'])
+        assert 'one' == d.setdefault('key', 'three')
+        assert 'three' == d.setdefault('otherkey', 'three')
+        assert 'otherkey' in d
+        assert 'three' == d['OTHERKEY']
 
     def test_popitem(self):
         d = self.make_dict()
@@ -795,14 +800,14 @@ class _CIMutableMultiDictTests(_Root):
         d.add('key', 'val2')
 
         pair = d.popitem()
-        self.assertEqual(('KEY', 'val1'), pair)
-        self.assertIsInstance(pair[0], str)
-        self.assertEqual([('key', 'val2')], list(d.items()))
+        assert ('KEY', 'val1') == pair
+        assert isinstance(pair[0], str)
+        assert [('key', 'val2')] == list(d.items())
 
     def test_popitem_empty_multidict(self):
         d = self.make_dict()
 
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             d.popitem()
 
     def test_pop(self):
@@ -810,30 +815,30 @@ class _CIMutableMultiDictTests(_Root):
         d.add('KEY', 'val1')
         d.add('key', 'val2')
 
-        self.assertEqual('val1', d.pop('KEY'))
-        self.assertEqual({'key': 'val2'}, d)
+        assert 'val1' == d.pop('KEY')
+        assert {'key': 'val2'} == d
 
     def test_pop_lowercase(self):
         d = self.make_dict()
         d.add('KEY', 'val1')
         d.add('key', 'val2')
 
-        self.assertEqual('val1', d.pop('key'))
-        self.assertEqual({'key': 'val2'}, d)
+        assert 'val1' == d.pop('key')
+        assert {'key': 'val2'} == d
 
     def test_pop_default(self):
         d = self.make_dict(OTHER='val')
 
-        self.assertEqual('default', d.pop('key', 'default'))
-        self.assertIn('other', d)
+        assert 'default' == d.pop('key', 'default')
+        assert 'other' in d
 
     def test_pop_raises(self):
         d = self.make_dict(OTHER='val')
 
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             d.pop('KEY')
 
-        self.assertIn('other', d)
+        assert 'other' in d
 
     def test_update(self):
         d = self.make_dict()
@@ -843,7 +848,7 @@ class _CIMutableMultiDictTests(_Root):
 
         d.update(Key='val')
 
-        self.assertEqual([('Key', 'val'), ('key2', 'val3')], list(d.items()))
+        assert [('Key', 'val'), ('key2', 'val3')] == list(d.items())
 
     if USE_CYTHON:
         def test_update_istr(self):
@@ -854,19 +859,18 @@ class _CIMutableMultiDictTests(_Root):
 
             d.update({istr('key'): 'val'})
 
-            self.assertEqual([('Key', 'val'), ('key2', 'val3')],
-                             list(d.items()))
+            assert [('Key', 'val'), ('key2', 'val3')] == list(d.items())
 
         def test_copy_istr(self):
             d = self.make_dict({istr('Foo'): 'bar'})
             d2 = d.copy()
-            self.assertEqual(d, d2)
+            assert d == d2
 
     def test_eq(self):
         d1 = self.make_dict(Key='val')
         d2 = self.make_dict(KEY='val')
 
-        self.assertEqual(d1, d2)
+        assert d1 == d2
 
 
 class TestPyMultiDictProxy(_TestProxy, unittest.TestCase):
@@ -900,7 +904,7 @@ class PyCIMutableMultiDictTests(_CIMutableMultiDictTests, _NonProxyCIMultiDict,
 
 
 if USE_CYTHON:
-    class TestMultiDictProxy(_TestProxy, unittest.TestCase):
+    class TestMultiDictProxy(_TestProxy):
 
         cls = MultiDict
         proxy_cls = MultiDictProxy
@@ -908,7 +912,7 @@ if USE_CYTHON:
 
 
 if USE_CYTHON:
-    class TestCIMultiDictProxy(_TestCIProxy, unittest.TestCase):
+    class TestCIMultiDictProxy(_TestCIProxy):
 
         cls = CIMultiDict
         proxy_cls = CIMultiDictProxy
@@ -916,7 +920,7 @@ if USE_CYTHON:
 
 
 if USE_CYTHON:
-    class MutableMultiDictTests(_BaseMutableMultiDictTests, unittest.TestCase):
+    class TestMutableMultiDict(_BaseMutableMultiDictTests):
 
         cls = MultiDict
         proxy_cls = MultiDictProxy
@@ -924,9 +928,8 @@ if USE_CYTHON:
 
 
 if USE_CYTHON:
-    class CIMutableMultiDictTests(_CIMutableMultiDictTests,
-                                  _NonProxyCIMultiDict,
-                                  unittest.TestCase):
+    class TestCIMutableMultiDict(_CIMutableMultiDictTests,
+                                 _NonProxyCIMultiDict):
 
         cls = CIMultiDict
         istr_cls = istr
@@ -939,51 +942,51 @@ class TypesMixin:
     proxy = ciproxy = mdict = cimdict = None
 
     def test_proxies(self):
-        self.assertTrue(issubclass(self.ciproxy, self.proxy))
+        assert issubclass(self.ciproxy, self.proxy)
 
     def test_dicts(self):
-        self.assertTrue(issubclass(self.cimdict, self.mdict))
+        assert issubclass(self.cimdict, self.mdict)
 
     def test_proxy_not_inherited_from_dict(self):
-        self.assertFalse(issubclass(self.proxy, self.mdict))
+        assert not issubclass(self.proxy, self.mdict)
 
     def test_dict_not_inherited_from_proxy(self):
-        self.assertFalse(issubclass(self.mdict, self.proxy))
+        assert not issubclass(self.mdict, self.proxy)
 
     def test_create_multidict_proxy_from_nonmultidict(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             self.proxy({})
 
     def test_create_multidict_proxy_from_cimultidict(self):
         d = self.cimdict(key='val')
         p = self.proxy(d)
-        self.assertEqual(p, d)
+        assert p == d
 
     def test_create_multidict_proxy_from_multidict_proxy_from_mdict(self):
         d = self.mdict(key='val')
         p = self.proxy(d)
-        self.assertEqual(p, d)
+        assert p == d
         p2 = self.proxy(p)
-        self.assertEqual(p2, p)
+        assert p2 == p
 
     def test_create_cimultidict_proxy_from_cimultidict_proxy_from_ci(self):
         d = self.cimdict(key='val')
         p = self.ciproxy(d)
-        self.assertEqual(p, d)
+        assert p == d
         p2 = self.ciproxy(p)
-        self.assertEqual(p2, p)
+        assert p2 == p
 
     def test_create_cimultidict_proxy_from_nonmultidict(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             self.ciproxy({})
 
     def test_create_ci_multidict_proxy_from_multidict(self):
         d = self.mdict(key='val')
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             self.ciproxy(d)
 
 
-class TestPyTypes(TypesMixin, unittest.TestCase):
+class TestPyTypes(TypesMixin):
 
     proxy = _MultiDictProxy
     ciproxy = _CIMultiDictProxy
@@ -992,7 +995,7 @@ class TestPyTypes(TypesMixin, unittest.TestCase):
 
 
 if USE_CYTHON:
-    class TestTypes(TypesMixin, unittest.TestCase):
+    class TestTypes(TypesMixin):
 
         proxy = MultiDictProxy
         ciproxy = CIMultiDictProxy
