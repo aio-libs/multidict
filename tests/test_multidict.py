@@ -139,10 +139,9 @@ class _BaseTest(_Root):
 
     def test_items__contains(self):
         d = self.make_dict([('key', 'one'), ('key', 'two'), ('key', 3)])
-        assert(list(d.items()) ==
-                         [('key', 'one'), ('key', 'two'), ('key', 3)])
-        assert(list(d.items()) ==
-                         [('key', 'one'), ('key', 'two'), ('key', 3)])
+        expected = [('key', 'one'), ('key', 'two'), ('key', 3)]
+        assert list(d.items()) == expected
+        assert list(d.items()) == expected # was the repetition intentional?
 
         assert ('key', 'one') in d.items()
         assert ('key', 'two') in d.items()
@@ -331,18 +330,16 @@ class _MultiDictTests(_BaseTest):
 
     def test_items__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
-        assert(repr(d.items()) ==
-               "_ItemsView('key': 'value1', 'key': 'value2')")
+        expected = "_ItemsView('key': 'value1', 'key': 'value2')"
+        assert repr(d.items()) == expected
 
     def test_keys__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
-        assert(repr(d.keys()) ==
-               "_KeysView('key', 'key')")
+        assert repr(d.keys()) == "_KeysView('key', 'key')"
 
     def test_values__repr__(self):
         d = self.make_dict([('key', 'value1')], key='value2')
-        assert(repr(d.values()) ==
-               "_ValuesView('value1', 'value2')")
+        assert repr(d.values()) == "_ValuesView('value1', 'value2')"
 
 
 class _CIMultiDictTests(_Root):
@@ -380,23 +377,21 @@ class _CIMultiDictTests(_Root):
         d = self.make_dict([('KEY', 'value1')], key='value2')
         cls = type(d)
 
-        assert(str(d) ==
-            "<%s('KEY': 'value1', 'key': 'value2')>" % cls.__name__)
+        expected = "<%s('KEY': 'value1', 'key': 'value2')>" % cls.__name__
+        assert str(d) == expected
 
     def test_items__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
-        assert(repr(d.items()) ==
-               "_ItemsView('KEY': 'value1', 'key': 'value2')")
+        expected = "_ItemsView('KEY': 'value1', 'key': 'value2')"
+        assert repr(d.items()) == expected
 
     def test_keys__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
-        assert(repr(d.keys()) ==
-               "_KeysView('KEY', 'key')")
+        assert repr(d.keys()) == "_KeysView('KEY', 'key')"
 
     def test_values__repr__(self):
         d = self.make_dict([('KEY', 'value1')], key='value2')
-        assert(repr(d.values()) ==
-               "_ValuesView('value1', 'value2')")
+        assert repr(d.values()) == "_ValuesView('value1', 'value2')"
 
 
 class _NonProxyCIMultiDict(_CIMultiDictTests):
