@@ -141,7 +141,7 @@ class _BaseTest(_Root):
         d = self.make_dict([('key', 'one'), ('key', 'two'), ('key', 3)])
         expected = [('key', 'one'), ('key', 'two'), ('key', 3)]
         assert list(d.items()) == expected
-        assert list(d.items()) == expected # was the repetition intentional?
+        assert list(d.items()) == expected  # was the repetition intentional?
 
         assert ('key', 'one') in d.items()
         assert ('key', 'two') in d.items()
