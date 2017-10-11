@@ -114,7 +114,7 @@ jobs:
 
   - <<: *_lint_base
     env:
-    - TESTING_MARKER=dist setup check
+    - dist setup check
     install:
     - *upgrade_python_toolset
     - pip install docutils
