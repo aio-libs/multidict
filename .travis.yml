@@ -41,9 +41,12 @@ _helpers:
   <<: *_reset_steps
   install:
   - *upgrade_python_toolset
-  - pip install -U -r requirements/doc.txt -r requirements/dev.txt
+  - pip install -U -r requirements/dev.txt
 - &_doc_base
   <<: *_lint_base
+  install:
+  - *upgrade_python_toolset
+  - pip install -U -r requirements/doc.txt -r requirements/dev.txt
   after_failure: cat docs/_build/spelling/output.txt
   addons:
     apt:
