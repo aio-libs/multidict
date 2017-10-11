@@ -1,4 +1,4 @@
-import unittest
+import pytest
 
 from multidict._compat import USE_CYTHON
 
@@ -17,7 +17,7 @@ class VersionMixin:
         raise NotImplementedError
 
     def test_getversion_bad_param(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             self.getver(1)
 
     def test_ctor(self):
@@ -25,140 +25,140 @@ class VersionMixin:
         v1 = self.getver(m1)
         m2 = self.cls()
         v2 = self.getver(m2)
-        self.assertNotEqual(v1, v2)
+        assert v1 != v2
 
     def test_add(self):
         m = self.cls()
         v = self.getver(m)
         m.add('key', 'val')
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_delitem(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         del m['key']
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_delitem_not_found(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             del m['notfound']
-        self.assertEqual(self.getver(m), v)
+        assert self.getver(m) == v
 
     def test_setitem(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m['key'] = 'val2'
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_setitem_not_found(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m['notfound'] = 'val2'
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_clear(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m.clear()
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_setdefault(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m.setdefault('key2', 'val2')
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_popone(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m.popone('key')
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_popone_default(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m.popone('key2', 'default')
-        self.assertEqual(self.getver(m), v)
+        assert self.getver(m) == v
 
     def test_popone_key_error(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             m.popone('key2')
-        self.assertEqual(self.getver(m), v)
+        assert self.getver(m) == v
 
     def test_pop(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m.pop('key')
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_pop_default(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m.pop('key2', 'default')
-        self.assertEqual(self.getver(m), v)
+        assert self.getver(m) == v
 
     def test_pop_key_error(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             m.pop('key2')
-        self.assertEqual(self.getver(m), v)
+        assert self.getver(m) == v
 
     def test_popall(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m.popall('key')
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_popall_default(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m.popall('key2', 'default')
-        self.assertEqual(self.getver(m), v)
+        assert self.getver(m) == v
 
     def test_popall_key_error(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             m.popall('key2')
-        self.assertEqual(self.getver(m), v)
+        assert self.getver(m) == v
 
     def test_popitem(self):
         m = self.cls()
         m.add('key', 'val')
         v = self.getver(m)
         m.popitem()
-        self.assertGreater(self.getver(m), v)
+        assert self.getver(m) > v
 
     def test_popitem_key_error(self):
         m = self.cls()
         v = self.getver(m)
-        with self.assertRaises(KeyError):
+        with pytest.raises(KeyError):
             m.popitem()
-        self.assertEqual(self.getver(m), v)
+        assert self.getver(m) == v
 
 
 if USE_CYTHON:
-    class TestMultiDict(unittest.TestCase, VersionMixin):
+    class TestMultiDict(VersionMixin):
 
         cls = MultiDict
 
@@ -167,7 +167,7 @@ if USE_CYTHON:
 
 
 if USE_CYTHON:
-    class TestCIMultiDict(unittest.TestCase, VersionMixin):
+    class TestCIMultiDict(VersionMixin):
 
         cls = CIMultiDict
 
@@ -175,7 +175,7 @@ if USE_CYTHON:
             return getversion(md)
 
 
-class TestPyMultiDict(unittest.TestCase, VersionMixin):
+class TestPyMultiDict(VersionMixin):
 
     cls = _MultiDict
 
@@ -183,7 +183,7 @@ class TestPyMultiDict(unittest.TestCase, VersionMixin):
         return _getversion(md)
 
 
-class TestPyCIMultiDict(unittest.TestCase, VersionMixin):
+class TestPyCIMultiDict(VersionMixin):
 
     cls = _CIMultiDict
 
