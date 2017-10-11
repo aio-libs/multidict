@@ -23,7 +23,7 @@ env:
   matrix:
   # MULTIDICT_NO_EXTENSIONS environment variables
   # are considered as enabled if they are any non-empty strings.
-  - ""
+  - tests with extensions enabled
   - MULTIDICT_NO_EXTENSIONS=X
 
 _helpers:
@@ -96,19 +96,19 @@ jobs:
 
   - <<: *_doc_base
     env:
-    - TESTING_MARKER=docs
+    - docs
     script:
     - make doc-spelling
 
   - <<: *_lint_base
     env:
-    - TESTING_MARKER=flake8
+    - flake8
     script:
     - flake8 multidict tests
 
   - <<: *_lint_base
     env:
-    - TESTING_MARKER=mypy
+    - mypy
     script:
     - make mypy
 
