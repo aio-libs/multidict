@@ -114,9 +114,10 @@ jobs:
 
   - <<: *_lint_base
     env:
-    - TESTING_MARKER="dist setup check"
+    - TESTING_MARKER=dist setup check
     install:
     - *upgrade_python_toolset
+    - pip install docutils
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
 
