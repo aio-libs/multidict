@@ -14,17 +14,7 @@ install:
 - pip install -r requirements/ci.txt
 
 script:
-- flake8 multidict tests
-- |
-    if python -c "import platform, sys; sys.exit(platform.python_implementation() == 'PyPy')"
-    then
-        make mypy
-    fi
 - pytest --cov=multidict tests
-- python setup.py check -rm
-- if python -c "import sys; sys.exit(sys.version_info < (3,6))"; then
-      python setup.py check -s;
-  fi
 
 after_success:
 - codecov
@@ -33,7 +23,7 @@ env:
   matrix:
   # MULTIDICT_NO_EXTENSIONS environment variables
   # are considered as enabled if they are any non-empty strings.
-  - MULTIDICT_NO_EXTENSIONS=
+  - tests with extensions enabled
   - MULTIDICT_NO_EXTENSIONS=X
 
 _helpers:
@@ -45,10 +35,15 @@ _helpers:
   install: skip
   script: skip
   after_success: []
-- &_doc_base
-  stage: &doc_stage_name doc
+- &_lint_base
+  stage: &doc_stage_name docs, linting and pre-test checks
   <<: *_mainstream_python_base
   <<: *_reset_steps
+  install:
+  - *upgrade_python_toolset
+  - pip install -U -r requirements/dev.txt
+- &_doc_base
+  <<: *_lint_base
   install:
   - *upgrade_python_toolset
   - pip install -U -r requirements/doc.txt -r requirements/dev.txt
@@ -100,8 +95,31 @@ jobs:
     - MULTIDICT_NO_EXTENSIONS=X
 
   - <<: *_doc_base
+    env:
+    - docs
     script:
     - make doc-spelling
+
+  - <<: *_lint_base
+    env:
+    - flake8
+    script:
+    - flake8 multidict tests
+
+  - <<: *_lint_base
+    env:
+    - mypy
+    script:
+    - make mypy
+
+  - <<: *_lint_base
+    env:
+    - dist setup check
+    install:
+    - *upgrade_python_toolset
+    - pip install docutils
+    script:
+    - python setup.py check --metadata --restructuredtext --strict --verbose
 
   - <<: *osx_python_base
     python: 3.4
