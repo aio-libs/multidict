@@ -21,7 +21,7 @@ build_script:
   - "tools/build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
 
 test_script:
-  - "tools/build.cmd %PYTHON%\\python.exe -m pytest --junitxml=junit-test-results.xml tests"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pytest --junitxml=junit-test-results.xml"
 
 after_test:
   - ps: |
