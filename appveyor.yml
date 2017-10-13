@@ -21,7 +21,7 @@ build_script:
   - "tools/build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
 
 test_script:
-  - "tools/build.cmd %PYTHON%\\python.exe -m pytest --junitxml=junit-test-results.xml"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pytest"
 
 after_test:
   - tools/build.cmd %PYTHON%\\python.exe -c "import codecov, os, sys; os.environ['APPVEYOR'] = os.getenv('APPVEYOR', '').replace('true', 'True'); sys.argv += ['-f', 'coverage.xml', '-X', 'gcov']; codecov.main()"
