@@ -87,6 +87,7 @@ _helpers:
   stage: &test_dpl test deploy
   python: *mainstream_python
   env:
+  - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
   - *env_py36
   - *env_pyenv
   - *env_path
@@ -105,9 +106,19 @@ _helpers:
 - &osx_pypi_deploy_base_1012
   <<: *osx_pypi_deploy_base_1011
   osx_image: xcode8.1
+  env:
+  - &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel
+  - *env_py36
+  - *env_pyenv
+  - *env_path
 - &osx_pypi_deploy_base_1010
   <<: *osx_pypi_deploy_base_1011
   osx_image: xcode6.4
+  env:
+  - &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel
+  - *env_py36
+  - *env_pyenv
+  - *env_path
 
 os: linux
 
@@ -217,45 +228,67 @@ jobs:
       <<: *deploy_step
       skip_cleanup: false
       distributions: bdist_wheel
+
   - <<: *osx_pypi_deploy_base_1010
     python: 3.4
     env:
+    - *env_os1010_msg
     - *env_py34
     - *env_pyenv
     - *env_path
   - <<: *osx_pypi_deploy_base_1010
     python: 3.5
     env:
+    - *env_os1010_msg
     - *env_py35
     - *env_pyenv
     - *env_path
   - <<: *osx_pypi_deploy_base_1010
+    env:
+    - *env_os1010_msg
+    - *env_py36
+    - *env_pyenv
+    - *env_path
   - <<: *osx_pypi_deploy_base_1011
     python: 3.4
     env:
+    - *env_os1011_msg
     - *env_py34
     - *env_pyenv
     - *env_path
   - <<: *osx_pypi_deploy_base_1011
     python: 3.5
     env:
+    - *env_os1011_msg
     - *env_py35
     - *env_pyenv
     - *env_path
   - <<: *osx_pypi_deploy_base_1011
+    env:
+    - *env_os1011_msg
+    - *env_py36
+    - *env_pyenv
+    - *env_path
   - <<: *osx_pypi_deploy_base_1012
     python: 3.4
     env:
+    - *env_os1012_msg
     - *env_py34
     - *env_pyenv
     - *env_path
   - <<: *osx_pypi_deploy_base_1012
     python: 3.5
     env:
+    - *env_os1012_msg
     - *env_py35
     - *env_pyenv
     - *env_path
   - <<: *osx_pypi_deploy_base_1012
+    env:
+    - *env_os1012_msg
+    - *env_py36
+    - *env_pyenv
+    - *env_path
 
 stages:
 - *test_dpl
