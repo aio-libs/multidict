@@ -78,6 +78,29 @@ _helpers:
   - &python_version python --version
   before_cache:
   - brew --cache
+######################
+- &osx_pypi_deploy_base
+  <<: *osx_python_base
+  script: skip
+  after_success: []
+  stage: &test_dpl test deploy
+  python: *mainstream_python
+  env:
+  - *env_py36
+  - *env_pyenv
+  - *env_path
+  deploy:
+    provider: pypi
+    # `skip_cleanup: true` is required to preserve binary wheels, built
+    # inside of manylinux1 docker container during `script` step above.
+    user: andrew.svetlov
+    password:
+      secure: ZFCicrh4l5zraarOwAwLXzYyGLnrxMHAFEFxF6ZEpECamu4eDsbKAFM/ydYdHoL19ocLr5+Xg1fmgd5tjc29c2rHQh29iDFi7tWai2pDFw+WqeHaV6e7ZJEEnU29OpSRzkGIk+K27mn7ZsB97q3Rkg2JBYRBkeK6HNyZ5YgIaVssXXXuCi5LZ1Y0rg8Nbapes1RUqoHGWgBwlCjAVxp9U7RXqJ6jucHDGUHU+9AgnnlGI7Cqs3xLqp4/xt2VoIjL0XwG2y05WLLpEF3Jwtj2voiPsnSTpUwklXVr1rEwScPCMlImxmWmudvh7xcPtcK9IOHIvk6y/lmNHJeevRn+df50LtBdr+0Wrq/t3Tt5d05XKCgqaLtw2P4GYNfTsx1RmQjHzUlfHKke7UZ1P+GsZTKN9nLKVdFTi2YzQ0TVmr/JjAmVqldRBOvEMnVoDn1rj1gdHMIu4d/gRVTcSS3riey+L2o6NwKjoc7aV5Uz47Z7fjz09Q6xml9eBWAHx9O07Iq+BaCikhBzeHGo+AkIzGMQdCSyQ8tTjQtEq6zWGxolZQFJeW9glTGLSYMfiVaPDEyqxaDm/QKssnZiEIbq1YM018C6ojiA3xbPJrwSZ8l/mnCkxrIcbKcwwtaHFPyP/FicePT01oJAXx08wnwe5H2l6lqkSGgRnGendZNeEuQ=
+    skip_cleanup: false
+    distributions: bdist_wheel
+    on:
+      all_branches: true
+######################
 
 os: linux
 
@@ -187,26 +210,7 @@ jobs:
       <<: *deploy_step
       skip_cleanup: false
       distributions: bdist_wheel
-  - <<: *osx_python_base
-    script: skip
-    after_success: []
-    stage: &test_dpl test deploy
-    python: *mainstream_python
-    env:
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-    deploy:
-      provider: pypi
-      # `skip_cleanup: true` is required to preserve binary wheels, built
-      # inside of manylinux1 docker container during `script` step above.
-      user: andrew.svetlov
-      password:
-        secure: ZFCicrh4l5zraarOwAwLXzYyGLnrxMHAFEFxF6ZEpECamu4eDsbKAFM/ydYdHoL19ocLr5+Xg1fmgd5tjc29c2rHQh29iDFi7tWai2pDFw+WqeHaV6e7ZJEEnU29OpSRzkGIk+K27mn7ZsB97q3Rkg2JBYRBkeK6HNyZ5YgIaVssXXXuCi5LZ1Y0rg8Nbapes1RUqoHGWgBwlCjAVxp9U7RXqJ6jucHDGUHU+9AgnnlGI7Cqs3xLqp4/xt2VoIjL0XwG2y05WLLpEF3Jwtj2voiPsnSTpUwklXVr1rEwScPCMlImxmWmudvh7xcPtcK9IOHIvk6y/lmNHJeevRn+df50LtBdr+0Wrq/t3Tt5d05XKCgqaLtw2P4GYNfTsx1RmQjHzUlfHKke7UZ1P+GsZTKN9nLKVdFTi2YzQ0TVmr/JjAmVqldRBOvEMnVoDn1rj1gdHMIu4d/gRVTcSS3riey+L2o6NwKjoc7aV5Uz47Z7fjz09Q6xml9eBWAHx9O07Iq+BaCikhBzeHGo+AkIzGMQdCSyQ8tTjQtEq6zWGxolZQFJeW9glTGLSYMfiVaPDEyqxaDm/QKssnZiEIbq1YM018C6ojiA3xbPJrwSZ8l/mnCkxrIcbKcwwtaHFPyP/FicePT01oJAXx08wnwe5H2l6lqkSGgRnGendZNeEuQ=
-      skip_cleanup: false
-      distributions: bdist_wheel
-      on:
-        all_branches: true
+  - <<: *osx_pypi_deploy_base
 
 stages:
 - *test_dpl
