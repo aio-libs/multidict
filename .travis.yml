@@ -79,8 +79,9 @@ _helpers:
   before_cache:
   - brew --cache
 ######################
-- &osx_pypi_deploy_base
+- &osx_pypi_deploy_base_1011
   <<: *osx_python_base
+  osx_image: xcode7.3
   script: skip
   after_success: []
   stage: &test_dpl test deploy
@@ -101,6 +102,12 @@ _helpers:
     on:
       all_branches: true
 ######################
+- &osx_pypi_deploy_base_1012
+  <<: *osx_pypi_deploy_base_1011
+  osx_image: xcode8.1
+- &osx_pypi_deploy_base_1010
+  <<: *osx_pypi_deploy_base_1011
+  osx_image: xcode6.4
 
 os: linux
 
@@ -145,13 +152,13 @@ jobs:
   - <<: *osx_python_base
     python: 3.4
     env:
-    - PYTHON_VERSION=3.4.6
+    - &env_py34 PYTHON_VERSION=3.4.6
     - *env_pyenv
     - *env_path
   - <<: *osx_python_base
     python: 3.5
     env:
-    - PYTHON_VERSION=3.5.3
+    - &env_py35 PYTHON_VERSION=3.5.3
     - *env_pyenv
     - *env_path
   - <<: *osx_python_base
@@ -210,7 +217,45 @@ jobs:
       <<: *deploy_step
       skip_cleanup: false
       distributions: bdist_wheel
-  - <<: *osx_pypi_deploy_base
+  - <<: *osx_pypi_deploy_base_1010
+    python: 3.4
+    env:
+    - *env_py34
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_pypi_deploy_base_1010
+    python: 3.5
+    env:
+    - *env_py35
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_pypi_deploy_base_1010
+  - <<: *osx_pypi_deploy_base_1011
+    python: 3.4
+    env:
+    - *env_py34
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_pypi_deploy_base_1011
+    python: 3.5
+    env:
+    - *env_py35
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_pypi_deploy_base_1011
+  - <<: *osx_pypi_deploy_base_1012
+    python: 3.4
+    env:
+    - *env_py34
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_pypi_deploy_base_1012
+    python: 3.5
+    env:
+    - *env_py35
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_pypi_deploy_base_1012
 
 stages:
 - *test_dpl
