@@ -1,7 +1,9 @@
-3.3.0 (2017-10-xx)
+3.3.0 (2017-10-15)
 ------------------
 
 * Introduce abstract base classes (#102)
+
+* Publish OSX binary wheels (#153)
 
 
 3.2.0 (2017-09-17)
