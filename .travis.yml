@@ -113,7 +113,7 @@ _helpers:
   - *env_pyenv
   - *env_path
   deploy:
-    <<: &deploy_step
+    <<: *deploy_step
     skip_cleanup: false
     distributions: bdist_wheel
 - &osx_pypi_deploy_base_1012
