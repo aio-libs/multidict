@@ -79,13 +79,15 @@ _helpers:
   before_cache:
   - brew --cache
 ######################
+- &generic_deploy_base
+  stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
+  <<: *_mainstream_python_base
 - &osx_pypi_deploy_base_1011
   <<: *osx_python_base
+  <<: *generic_deploy_base
   osx_image: xcode7.3
   script: skip
   after_success: []
-  stage: &test_dpl test deploy
-  python: *mainstream_python
   env:
   - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
   - *env_py36
@@ -187,8 +189,7 @@ jobs:
   # pypy3.5-5.8.0 fails under OS X because it's unsupported
 
   # Build and deploy manylinux1 binary wheels and source distribution
-  - stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
-    <<: *_mainstream_python_base
+  - <<: *generic_deploy_base
     <<: *_reset_steps
     dist: trusty
     group: edge
