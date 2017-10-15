@@ -186,6 +186,7 @@ jobs:
     - *env_path
   # pypy3.5-5.8.0 fails under OS X because it's unsupported
 
+  # Build and deploy manylinux1 binary wheels and source distribution
   - stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
     <<: *_mainstream_python_base
     <<: *_reset_steps
@@ -216,19 +217,9 @@ jobs:
       on:
         tags: true
         all_branches: true
-  - <<: *osx_python_base
-    <<: *_reset_steps
-    stage: *deploy_stage_name
-    python: *mainstream_python
-    env:
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-    deploy:
-      <<: *deploy_step
-      skip_cleanup: false
-      distributions: bdist_wheel
 
+    # Build and deploy MacOS binary wheels for each OSX+Python combo possible
+    # OS X 10.10, Python 3.4
   - <<: *osx_pypi_deploy_base_1010
     python: 3.4
     env:
@@ -236,6 +227,7 @@ jobs:
     - *env_py34
     - *env_pyenv
     - *env_path
+    # OS X 10.10, Python 3.5
   - <<: *osx_pypi_deploy_base_1010
     python: 3.5
     env:
@@ -243,12 +235,14 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
     env:
     - *env_os1010_msg
     - *env_py36
     - *env_pyenv
     - *env_path
+    # OS X 10.11, Python 3.4
   - <<: *osx_pypi_deploy_base_1011
     python: 3.4
     env:
@@ -256,6 +250,7 @@ jobs:
     - *env_py34
     - *env_pyenv
     - *env_path
+    # OS X 10.11, Python 3.5
   - <<: *osx_pypi_deploy_base_1011
     python: 3.5
     env:
@@ -263,12 +258,14 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
     env:
     - *env_os1011_msg
     - *env_py36
     - *env_pyenv
     - *env_path
+    # OS X 10.12, Python 3.4
   - <<: *osx_pypi_deploy_base_1012
     python: 3.4
     env:
@@ -276,6 +273,7 @@ jobs:
     - *env_py34
     - *env_pyenv
     - *env_path
+    # OS X 10.12, Python 3.5
   - <<: *osx_pypi_deploy_base_1012
     python: 3.5
     env:
@@ -283,6 +281,7 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
     env:
     - *env_os1012_msg
