@@ -283,7 +283,6 @@ jobs:
     - *env_path
 
 stages:
-- *test_dpl
 - *doc_stage_name
 - test
 - name: *stage_test_osx_name
