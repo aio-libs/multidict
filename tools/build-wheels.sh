@@ -53,10 +53,12 @@ echo "dist directory:"
 ls /io/dist
 
 for PYTHON in ${PYTHON_VERSIONS}; do
+    # clear python cache
+    find /io -type d -name __pycache__ -delete
+
     echo
     echo -n "Test $PYTHON: "
     /opt/python/${PYTHON}/bin/python -c "import platform; print('Building wheel for {platform} platform.'.format(platform=platform.platform()))"
     /opt/python/${PYTHON}/bin/pip install "$package_name" --no-index -f file:///io/dist
-    find /io/tests -name __pycache__ | xargs rm -rf
     /opt/python/${PYTHON}/bin/py.test /io/tests
 done
