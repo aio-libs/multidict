@@ -68,7 +68,7 @@ class BaseMultiDictTest:
         assert list(d.values()) == []
         assert list(d.items()) == []
 
-        assert cls != list()
+        assert cls() != list()
         with pytest.raises(TypeError, match='\(2 given\)'):
             cls(('key1', 'value1'), ('key2', 'value2'))
 
