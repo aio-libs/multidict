@@ -7,19 +7,26 @@ import pytest
 import multidict
 
 
-def chained_ctor(_multidict_module, impls):
-    impls = (impls,) if isinstance(impls, str) else impls
-    impl, *rest = (getattr(_multidict_module, impl) for impl in impls)
+def chained_callable(module, callables):
+    """
+    Returns callable that will get and call all given objects in module in
+    exact order. If `names` is a single object's name function will return
+    object itself.
 
-    def make_cls(*args, **kwargs):
-        return reduce(lambda res, cur: cur(res), rest, impl(*args, **kwargs))
+    Will treat `names` of type `str` as a list of single element.
+    """
+    callables = (callables,) if isinstance(callables, str) else callables
+    _callable, *rest = (getattr(module, name) for name in callables)
 
-    return make_cls if len(rest) > 0 else impl
+    def chained_call(*args, **kwargs):
+        return reduce(lambda res, c: c(res), rest, _callable(*args, **kwargs))
+
+    return chained_call if len(rest) > 0 else _callable
 
 
 @pytest.fixture(scope='function')
 def cls(request, _multidict):
-    return chained_ctor(_multidict, request.param)
+    return chained_callable(_multidict, request.param)
 
 
 dict_cls = proxy_cls = cls
@@ -299,7 +306,7 @@ class TestMultiDict(BaseMultiDictTest):
         ('MultiDict', 'MultiDictProxy'),
     ])
     def cls(self, request, _multidict):
-        return chained_ctor(_multidict, request.param)
+        return chained_callable(_multidict, request.param)
 
     def test__repr__(self, cls):
         d = cls()
@@ -356,7 +363,7 @@ class TestCIMultiDict(BaseMultiDictTest):
         ('CIMultiDict', 'CIMultiDictProxy'),
     ])
     def cls(self, request, _multidict):
-        return chained_ctor(_multidict, request.param)
+        return chained_callable(_multidict, request.param)
 
     def test_basics(self, cls):
         d = cls([('KEY', 'value1')], KEY='value2')
