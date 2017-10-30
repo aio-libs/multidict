@@ -63,6 +63,7 @@ target/
 
 .develop
 .install-deps
+.idea
 
 multidict/_multidict.html
 multidict/_multidict.c

@@ -93,6 +93,7 @@ Contents
 .. toctree::
 
    multidict
+   benchmark
 
 Indices and tables
 ==================
