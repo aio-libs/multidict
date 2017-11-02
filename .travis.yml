@@ -210,6 +210,7 @@ jobs:
     script:
     - mkdir dist  # so that it whould have priviliges of the current Travis user
     - ./tools/run_docker.sh "multidict"
+    - pip install -r requirements/ci.txt  # to compile *.c files by Cython
 
     # Build and deploy MacOS binary wheels for each OSX+Python combo possible
     # OS X 10.10, Python 3.4
