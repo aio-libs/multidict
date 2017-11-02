@@ -13,12 +13,11 @@ environment:
     - PYTHON: "C:\\Python36-x64"
 
 install:
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U setuptools wheel"
   - tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt
-before_build:
-  - "tools/build.cmd %PYTHON%\\python.exe -m pip install wheel"
 
 build_script:
-  - "tools/build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe setup.py sdist bdist_wheel"
 
 test_script:
   - "tools/build.cmd %PYTHON%\\python.exe -m pytest"
