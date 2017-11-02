@@ -90,6 +90,7 @@ args = dict(
     url='https://github.com/aio-libs/multidict/',
     license='Apache 2',
     packages=['multidict'],
+    python_requires='>=3.4.1',
     tests_require=tests_require,
     setup_requires=pytest_runner,
     include_package_data=True,
