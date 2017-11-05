@@ -2,7 +2,7 @@
 pip==9.0.1
 flake8==3.5.0
 pyflakes>=1.0.0
-coverage==4.4.1
+coverage==4.4.2
 sphinx==1.6.5
 alabaster>=0.6.2
 pytest-cov==2.5.1
