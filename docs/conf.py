@@ -54,6 +54,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'alabaster',
+    'rst.linker',
 ]
 
 
@@ -64,7 +65,10 @@ except ImportError:
     pass
 
 intersphinx_mapping = {
-    'python': ('http://docs.python.org/3', None)}
+    'python': ('http://docs.python.org/3', None),
+    'aiohttp':
+        ('https://aiohttp.readthedocs.io/en/stable/', None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -144,12 +148,14 @@ html_theme = 'alabaster'
 # documentation.
 html_theme_options = {
     # 'logo': 'aiohttp-icon-128x128.png',
-    'description': 'multidict',
+    'description': project,
     'github_user': 'aio-libs',
-    'github_repo': 'multidict',
+    'github_repo': project,
     'github_button': True,
+    'github_type': 'star',
     'github_banner': True,
     'travis_button': True,
+    'codecov_button': True,
     'pre_bg': '#FFF6E5',
     'note_bg': '#E5ECD1',
     'note_border': '#BFCF8C',
@@ -283,7 +289,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'multidict', 'multidict Documentation',
+    ('index', project, 'multidict Documentation',
      ['Andrew Svetlov'], 1)
 ]
 
@@ -297,8 +303,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    ('index', 'multidict', 'multidict Documentation',
-     'Andrew Svetlov', 'multidict', 'One line description of project.',
+    ('index', project, 'multidict Documentation',
+     'Andrew Svetlov', project, 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -313,3 +319,31 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
+
+link_files = {
+    f: dict(
+        using=dict(
+            GH='https://github.com',
+        ),
+        replace=[
+            dict(
+                pattern=r'((Issue|PR)\s?)?#(?P<issue_or_pr>\d+)',
+                url='{GH}/aio-libs/{project}/issues/{issue_or_pr}',
+            ),
+            dict(
+                pattern=r'^(?m)((?P<scm_version>v?\d+(\.\d+){1,2}))\n[-=]+\n',
+                with_scm='{text}\n{rev[timestamp]:%d %b %Y}\n',
+            ),
+            dict(
+                pattern=r'PEP[- ](?P<pep_number>\d+)',
+                url='https://www.python.org/dev/peps/pep-{pep_number:0>4}/',
+            ),
+            dict(
+                # FIXME: currently this puts #v1.2.3 style version into URL, but it should be v1-2-3
+                pattern=r'(' + project + '\sv?|version\s)(?P<pkg_version>\d+(\.\d+){1,2})',
+                url='https://{project}.readthedocs.io/en/latest/changes.html#v{pkg_version}',
+            ),
+        ],
+    )
+    for f in ('../CHANGES.rst', )
+}
