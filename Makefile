@@ -64,8 +64,8 @@ clean:
 	rm -f multidict/_istr.*.so
 	rm -f multidict/_istr.*.pyd
 	rm -rf .tox
-	rm .install-deps
-	rm .develop
+	rm -f .install-deps
+	rm -f .develop
 
 doc:
 	make -C docs html
