@@ -10,4 +10,4 @@ pygments==2.2.0
 mypy==0.550; platform_python_implementation != "PyPy"
 -e .
 
-codecov==2.0.9
+codecov==2.0.10
