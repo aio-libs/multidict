@@ -13,10 +13,11 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
-import os
 import codecs
+import datetime
+import os
 import re
+import sys
 
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(os.path.join(_docs_path,
@@ -84,7 +85,10 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'multidict'
-copyright = '2016-2017, Andrew Svetlov'
+copyright = (
+    '2016‒{end_year}, Andrew Svetlov'.
+    format(end_year=datetime.date.today().year)
+)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
