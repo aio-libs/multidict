@@ -25,7 +25,7 @@
 
 * Fix equality check when other contains more keys (:pr:`124`)
 
-* Fix ``CIMultiDict`` copy (:issue:`107`)
+* Fix :py:class:`CIMultiDict <multidict.CIMultiDict>` copy (:issue:`107`)
 
 3.1.3 (2017-07-14)
 ------------------
@@ -40,7 +40,7 @@
 3.1.1 (2017-07-09)
 ------------------
 
-* Remove memory leak in ``istr`` implementation (:issue:`105`)
+* Remove memory leak in :py:func:`istr <multidict.istr>` implementation (:issue:`105`)
 
 3.1.0 (2017-06-25)
 ------------------
@@ -66,9 +66,9 @@
 
 * Force keys to :py:class:`str` instances (:issue:`88`)
 
-* Implement ``.popall(key[, default])`` (:issue:`84`)
+* Implement :py:func:`.popall(key[, default]) <multidict.MultiDict.popall>` (:issue:`84`)
 
-* ``.pop()`` removes only first occurence, ``.popone()`` added (:issue:`92`)
+* :py:func:`.pop() <multidict.MultiDict.pop>` removes only first occurence, :py:func:`.popone() <multidict.MultiDict.popone>` added (:issue:`92`)
 
 * Implement dict's version (:issue:`86`)
 
@@ -103,13 +103,13 @@
 2.1.2 (2016-09-25)
 ------------------
 
-* Fix ``CIMultiDict.update()`` for case of accepting ``istr``
+* Fix :py:func:`CIMultiDict.update <multidict.CIMultiDict.update>` for case of accepting :py:func:`istr <multidict.istr>`
 
 
 2.1.1 (2016-09-22)
 ------------------
 
-* Fix ``CIMultiDict`` constructor for case of accepting ``istr`` (:issue:`11`)
+* Fix :py:class:`CIMultiDict <multidict.CIMultiDict>` constructor for case of accepting :py:func:`istr <multidict.istr>` (:issue:`11`)
 
 
 2.1.0 (2016-09-18)
@@ -130,9 +130,9 @@
 ------------------
 
 * Switch from uppercase approach for case-insensitive string to
-  ``str.title()`` (:pr:`5`)
+  :py:func:`str.title() <str.title>` (:pr:`5`)
 
-* Deprecase ``upstr`` class in favor of ``istr`` alias.
+* Deprecate :py:func:`upstr <multidict.upstr>` class in favor of :py:func:`istr <multidict.istr>` alias.
 
 1.2.2 (2016-08-02)
 ------------------
@@ -154,9 +154,9 @@
 1.1.0 (2016-07-06)
 ------------------
 
-* Don't double-iterate during MultiDict initialization (:pr:`3`)
+* Don't double-iterate during :py:class:`MultiDict <multidict.MultiDict>` initialization (:pr:`3`)
 
-* Fix CIMultiDict.pop: it is case insensitive now (:issue:`1`)
+* Fix :py:func:`CIMultiDict.pop <multidict.CIMultiDict.pop>`: it is case insensitive now (:issue:`1`)
 
 * Provide manylinux wheels as well as Windows ones
 
