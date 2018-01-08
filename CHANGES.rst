@@ -117,7 +117,7 @@
 
 * Allow to create proxy from proxy
 
-* Add type hints (PEP-484)
+* Add type hints (:pep:`484`)
 
 
 2.0.1 (2016-08-02)
