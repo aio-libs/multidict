@@ -25,7 +25,7 @@
 
 * Fix equality check when other contains more keys (#124)
 
-* Fix `CIMultiDict` copy (#107)
+* Fix ``CIMultiDict`` copy (#107)
 
 3.1.3 (2017-07-14)
 ------------------
@@ -40,14 +40,14 @@
 3.1.1 (2017-07-09)
 ------------------
 
-* Remove memory leak in `istr` implementation (#105)
+* Remove memory leak in ``istr`` implementation (#105)
 
 3.1.0 (2017-06-25)
 ------------------
 
-* Raise `RuntimeError` on dict iterations if the dict was changed (#99)
+* Raise :py:exc:`RuntimeError` on :py:class:`dict` iterations if the dict was changed (#99)
 
-* Update `__init__.pyi` signatures
+* Update ``__init__.pyi`` signatures
 
 3.0.0 (2017-06-21)
 ------------------
@@ -57,18 +57,18 @@
 
 * Preserve order on multidict updates (#68)
 
-  Updates are `md[key] = val` and `md.update(...)` calls.
+  Updates are ``md[key] = val`` and ``md.update(...)`` calls.
 
   Now **the last** entry is replaced with new key/value pair, all
   previous occurrences are removed.
 
   If key is not present in dictionary the pair is added to the end
 
-* Force keys to `str` instances (#88)
+* Force keys to :py:class:`str` instances (#88)
 
-* Implement `.popall(key[, default])` (#84)
+* Implement ``.popall(key[, default])`` (#84)
 
-* `.pop()` removes only first occurence, `.popone()` added (#92)
+* ``.pop()`` removes only first occurence, ``.popone()`` added (#92)
 
 * Implement dict's version (#86)
 
@@ -82,7 +82,7 @@
 2.1.6 (2017-05-27)
 ------------------
 
-* Rebuild the library for fixning missing `__spec__` attribute (#79)
+* Rebuild the library for fixning missing ``__spec__`` attribute (#79)
 
 2.1.5 (2017-05-13)
 ------------------
@@ -92,7 +92,7 @@
 2.1.4 (2016-12-1)
 ------------------
 
-* Remove LICENSE filename extension @ MANIFEST.in file (#31)
+* Remove ``LICENSE`` filename extension @ ``MANIFEST.in`` file (#31)
 
 2.1.3 (2016-11-26)
 ------------------
@@ -103,13 +103,13 @@
 2.1.2 (2016-09-25)
 ------------------
 
-* Fix `CIMultiDict.update()` for case of accepting `istr`
+* Fix ``CIMultiDict.update()`` for case of accepting ``istr``
 
 
 2.1.1 (2016-09-22)
 ------------------
 
-* Fix `CIMultiDict` constructor for case of accepting `istr` (#11)
+* Fix ``CIMultiDict`` constructor for case of accepting ``istr`` (#11)
 
 
 2.1.0 (2016-09-18)
@@ -123,32 +123,32 @@
 2.0.1 (2016-08-02)
 ------------------
 
-* Don't crash on `{} - MultiDict().keys()` and similar operations (#6)
+* Don't crash on ``{} - MultiDict().keys()`` and similar operations (#6)
 
 
 2.0.0 (2016-07-28)
 ------------------
 
 * Switch from uppercase approach for case-insensitive string to
-  `str.title()` (#5)
+  ``str.title()`` (#5)
 
-* Deprecase `upstr` class in favor of `istr` alias.
+* Deprecase ``upstr`` class in favor of ``istr`` alias.
 
 1.2.2 (2016-08-02)
 ------------------
 
-* Don't crash on `{} - MultiDict().keys()` and similar operations (#6)
+* Don't crash on ``{} - MultiDict().keys()`` and similar operations (#6)
 
 1.2.1 (2016-07-21)
 ------------------
 
-* Don't expose `multidict.__version__`
+* Don't expose ``multidict.__version__``
 
 
 1.2.0 (2016-07-16)
 ------------------
 
-* Make `upstr(upstr('abc'))` much faster
+* Make ``upstr(upstr('abc'))`` much faster
 
 
 1.1.0 (2016-07-06)
