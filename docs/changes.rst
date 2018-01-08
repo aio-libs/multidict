@@ -1,3 +1,3 @@
 .. _changes:
 
-.. include:: ../CHANGES (links).rst
+.. include:: ../CHANGES.rst

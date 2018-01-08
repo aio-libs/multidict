@@ -52,10 +52,10 @@ import alabaster
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
+    'sphinx.ext.extlinks',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.viewcode',
     'alabaster',
-    'rst.linker',
 ]
 
 
@@ -84,6 +84,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
+org = 'aio-libs'
 project = 'multidict'
 copyright = (
     '2016‒{end_year}, Andrew Svetlov'.
@@ -153,7 +154,7 @@ html_theme = 'alabaster'
 html_theme_options = {
     # 'logo': 'aiohttp-icon-128x128.png',
     'description': project,
-    'github_user': 'aio-libs',
+    'github_user': org,
     'github_repo': project,
     'github_button': True,
     'github_type': 'star',
@@ -324,30 +325,9 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
 
-link_files = {
-    f: dict(
-        using=dict(
-            GH='https://github.com',
-        ),
-        replace=[
-            dict(
-                pattern=r'((Issue|PR)\s?)?#(?P<issue_or_pr>\d+)',
-                url='{GH}/aio-libs/{project}/issues/{issue_or_pr}',
-            ),
-            dict(
-                pattern=r'^(?m)((?P<scm_version>v?\d+(\.\d+){1,2}))\n[-=]+\n',
-                with_scm='{text}\n{rev[timestamp]:%d %b %Y}\n',
-            ),
-            dict(
-                pattern=r'PEP[- ](?P<pep_number>\d+)',
-                url='https://www.python.org/dev/peps/pep-{pep_number:0>4}/',
-            ),
-            dict(
-                # FIXME: currently this puts #v1.2.3 style version into URL, but it should be v1-2-3
-                pattern=r'(' + project + '\sv?|version\s)(?P<pkg_version>\d+(\.\d+){1,2})',
-                url='https://{project}.readthedocs.io/en/latest/changes.html#v{pkg_version}',
-            ),
-        ],
-    )
-    for f in ('../CHANGES.rst', )
+github_repo_url = f'https://github.com/{org}/{project}'
+
+extlinks = {
+    'issue': (f'{github_repo_url}/issues/%s', '#'),
+    'pr': (f'{github_repo_url}/pulls/%s', 'PR #'),
 }
