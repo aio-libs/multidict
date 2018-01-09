@@ -3,11 +3,11 @@ pip==9.0.1
 flake8==3.5.0
 pyflakes>=1.0.0
 coverage==4.4.2
-sphinx==1.6.5
+sphinx==1.6.6
 alabaster>=0.6.2
 pytest-cov==2.5.1
 pygments==2.2.0
 mypy==0.560; platform_python_implementation != "PyPy"
 -e .
 
-codecov==2.0.10
+codecov==2.0.13
