@@ -76,3 +76,8 @@ Apache 2
 
 .. _aiohttp: https://github.com/KeepSafe/aiohttp
 .. _Cython: http://cython.org/
+
+
+Changelog
+---------
+See `RTD page <http://multidict.readthedocs.org/en/latest/changelog>`_.
