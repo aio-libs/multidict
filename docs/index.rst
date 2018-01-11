@@ -94,6 +94,7 @@ Contents
 
    multidict
    benchmark
+   changes
 
 Indices and tables
 ==================

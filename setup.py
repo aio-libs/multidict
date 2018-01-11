@@ -74,7 +74,7 @@ args = dict(
     name='multidict',
     version=version,
     description=('multidict implementation'),
-    long_description='\n\n'.join((read('README.rst'), read('CHANGES.rst'))),
+    long_description=read('README.rst'),
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
         'Intended Audience :: Developers',

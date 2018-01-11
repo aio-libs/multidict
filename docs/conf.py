@@ -13,10 +13,11 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
-import os
 import codecs
+import datetime
+import os
 import re
+import sys
 
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(os.path.join(_docs_path,
@@ -51,8 +52,9 @@ import alabaster
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
+    'sphinx.ext.extlinks',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.viewcode',
     'alabaster',
 ]
 
@@ -64,7 +66,10 @@ except ImportError:
     pass
 
 intersphinx_mapping = {
-    'python': ('http://docs.python.org/3', None)}
+    'python': ('http://docs.python.org/3', None),
+    'aiohttp':
+        ('https://aiohttp.readthedocs.io/en/stable/', None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -79,8 +84,12 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
+org = 'aio-libs'
 project = 'multidict'
-copyright = '2016-2017, Andrew Svetlov'
+copyright = (
+    '2016‒{end_year}, Andrew Svetlov'.
+    format(end_year=datetime.date.today().year)
+)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -144,12 +153,14 @@ html_theme = 'alabaster'
 # documentation.
 html_theme_options = {
     # 'logo': 'aiohttp-icon-128x128.png',
-    'description': 'multidict',
-    'github_user': 'aio-libs',
-    'github_repo': 'multidict',
+    'description': project,
+    'github_user': org,
+    'github_repo': project,
     'github_button': True,
+    'github_type': 'star',
     'github_banner': True,
     'travis_button': True,
+    'codecov_button': True,
     'pre_bg': '#FFF6E5',
     'note_bg': '#E5ECD1',
     'note_border': '#BFCF8C',
@@ -283,7 +294,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'multidict', 'multidict Documentation',
+    ('index', project, 'multidict Documentation',
      ['Andrew Svetlov'], 1)
 ]
 
@@ -297,8 +308,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    ('index', 'multidict', 'multidict Documentation',
-     'Andrew Svetlov', 'multidict', 'One line description of project.',
+    ('index', project, 'multidict Documentation',
+     'Andrew Svetlov', project, 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -313,3 +324,10 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
+
+github_repo_url = f'https://github.com/{org}/{project}'
+
+extlinks = {
+    'issue': (f'{github_repo_url}/issues/%s', '#'),
+    'pr': (f'{github_repo_url}/pulls/%s', 'PR #'),
+}
