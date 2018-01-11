@@ -80,4 +80,4 @@ Apache 2
 
 Changelog
 ---------
-See `RTD page <http://multidict.readthedocs.org/en/latest/changelog>`_.
+See `RTD page <http://multidict.readthedocs.org/en/latest/changes.html>`_.
