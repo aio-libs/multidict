@@ -173,31 +173,31 @@ jobs:
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
 
-  - <<: *osx_python_base
-    python: 3.4
-    env:
-    - &env_py34 PYTHON_VERSION=3.4.6
-    - *env_pyenv
-    - *env_path
-  - <<: *osx_python_base
-    python: 3.5
-    env:
-    - &env_py35 PYTHON_VERSION=3.5.3
-    - *env_pyenv
-    - *env_path
-  - <<: *osx_python_base
-    python: *mainstream_python
-    env:
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-  - <<: *osx_python_base
-    python: nightly
-    env:
-    - PYTHON_VERSION=3.7-dev
-    - *env_pyenv
-    - *env_path
-  # pypy3.5-5.8.0 fails under OS X because it's unsupported
+  # - <<: *osx_python_base
+  #   python: 3.4
+  #   env:
+  #   - &env_py34 PYTHON_VERSION=3.4.6
+  #   - *env_pyenv
+  #   - *env_path
+  # - <<: *osx_python_base
+  #   python: 3.5
+  #   env:
+  #   - &env_py35 PYTHON_VERSION=3.5.3
+  #   - *env_pyenv
+  #   - *env_path
+  # - <<: *osx_python_base
+  #   python: *mainstream_python
+  #   env:
+  #   - *env_py36
+  #   - *env_pyenv
+  #   - *env_path
+  # - <<: *osx_python_base
+  #   python: nightly
+  #   env:
+  #   - PYTHON_VERSION=3.7-dev
+  #   - *env_pyenv
+  #   - *env_path
+  # # pypy3.5-5.8.0 fails under OS X because it's unsupported
 
   # Build and deploy manylinux1 binary wheels and source distribution
   - <<: *generic_deploy_base
