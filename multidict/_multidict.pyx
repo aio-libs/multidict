@@ -287,6 +287,9 @@ cdef class MultiDict(_Base):
     cdef _extend(self, tuple args, dict kwargs, name, bint do_add):
         cdef _Pair item
         cdef object key
+        cdef object value
+        cdef object arg
+        cdef object i
 
         if len(args) > 1:
             raise TypeError("{} takes at most 1 positional argument"
@@ -303,37 +306,20 @@ cdef class MultiDict(_Base):
                         self._add(key, value)
                     else:
                         self._replace(key, value)
-            elif hasattr(arg, 'items'):
-                for i in arg.items():
-                    if isinstance(i, _Pair):
-                        item = <_Pair>i
-                        key = item._key
-                        value = item._value
-                    else:
-                        key = i[0]
-                        value = i[1]
-                    if do_add:
-                        self._add(key, value)
-                    else:
-                        self._replace(key, value)
             else:
+                if hasattr(arg, 'items'):
+                    arg = arg.items()
                 for i in arg:
-                    if isinstance(i, _Pair):
-                        item = <_Pair>i
-                        key = item._key
-                        value = item._value
-                    else:
-                        if not len(i) == 2:
-                            raise TypeError(
-                                "{} takes either dict or list of (key, value) "
-                                "tuples".format(name))
-                        key = i[0]
-                        value = i[1]
+                    if not len(i) == 2:
+                        raise TypeError(
+                            "{} takes either dict or list of (key, value) "
+                            "tuples".format(name))
+                    key = i[0]
+                    value = i[1]
                     if do_add:
                         self._add(key, value)
                     else:
                         self._replace(key, value)
-
 
         for key, value in kwargs.items():
             if do_add:

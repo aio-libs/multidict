@@ -226,9 +226,7 @@ class MultiDict(_Base, MutableMultiMapping):
                             " ({} given)".format(name, len(args)))
         if args:
             arg = args[0]
-            if isinstance(args[0], MultiDictProxy):
-                items = arg._impl._items
-            elif isinstance(args[0], MultiDict):
+            if isinstance(args[0], (MultiDict, MultiDictProxy)):
                 items = arg._impl._items
             elif hasattr(arg, 'items'):
                 items = [(k, k, v) for k, v in arg.items()]
