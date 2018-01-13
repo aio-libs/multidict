@@ -171,16 +171,6 @@ class TestMutableMultiDict:
 
         assert 'other' in d
 
-    def test_update(self, cls):
-        d = cls()
-        d.add('key', 'val1')
-        d.add('key', 'val2')
-        d.add('key2', 'val3')
-
-        d.update(key='val')
-
-        assert [('key', 'val'), ('key2', 'val3')] == list(d.items())
-
     def test_replacement_order(self, cls):
         d = cls()
         d.add('key1', 'val1')
@@ -419,32 +409,12 @@ class TestCIMutableMultiDict:
 
         assert 'other' in d
 
-    def test_update(self, cls):
-        d = cls()
-        d.add('KEY', 'val1')
-        d.add('key', 'val2')
-        d.add('key2', 'val3')
-
-        d.update(Key='val')
-
-        assert [('Key', 'val'), ('key2', 'val3')] == list(d.items())
-
     def test_extend_with_istr(self, cls, istr):
         us = istr('a')
         d = cls()
 
         d.extend([(us, 'val')])
         assert [('A', 'val')] == list(d.items())
-
-    def test_update_istr(self, cls, istr):
-        d = cls()
-        d.add(istr('KEY'), 'val1')
-        d.add('key', 'val2')
-        d.add('key2', 'val3')
-
-        d.update({istr('key'): 'val'})
-
-        assert [('Key', 'val'), ('key2', 'val3')] == list(d.items())
 
     def test_copy_istr(self, cls, istr):
         d = cls({istr('Foo'): 'bar'})

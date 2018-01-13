@@ -187,7 +187,8 @@ class MultiDict(_Base, MutableMultiMapping):
     def __init__(self, *args, **kwargs):
         self._impl = _Impl()
 
-        self._extend(args, kwargs, self.__class__.__name__, self.add)
+        self._extend(args, kwargs, self.__class__.__name__,
+                     self._extend_items)
 
     def __reduce__(self):
         return (self.__class__, (list(self.items()),))
@@ -217,7 +218,7 @@ class MultiDict(_Base, MutableMultiMapping):
 
         This method must be used instead of update.
         """
-        self._extend(args, kwargs, 'extend', self.add)
+        self._extend(args, kwargs, 'extend', self._extend_items)
 
     def _extend(self, args, kwargs, name, method):
         if len(args) > 1:
@@ -240,11 +241,14 @@ class MultiDict(_Base, MutableMultiMapping):
                             "tuples".format(name))
                     items.append((item[0], item[0], item[1]))
 
-            for identity, key, value in items:
-                method(key, value)
+            method(items)
 
-        for key, value in kwargs.items():
-            method(key, value)
+        method([(self._title(key), key, value)
+               for key, value in kwargs.items()])
+
+    def _extend_items(self, items):
+        for identity, key, value in items:
+            self.add(key, value)
 
     def clear(self):
         """Remove all items from MultiDict."""
@@ -338,7 +342,39 @@ class MultiDict(_Base, MutableMultiMapping):
 
     def update(self, *args, **kwargs):
         """Update the dictionary from *other*, overwriting existing keys."""
-        self._extend(args, kwargs, 'update', self._replace)
+        self._extend(args, kwargs, 'update', self._update_items)
+
+    def _update_items(self, items):
+        if not items:
+            return
+        used_keys = {}
+        for identity, key, value in items:
+            start = used_keys.get(identity, 0)
+            for i in range(start, len(self._impl._items)):
+                item = self._impl._items[i]
+                if item[0] == identity:
+                    used_keys[identity] = i + 1
+                    self._impl._items[i] = (identity, key, value)
+                    break
+            else:
+                self._impl._items.append((identity, key, value))
+                used_keys[identity] = len(self._impl._items)
+
+        # drop tails
+        i = 0
+        while i < len(self._impl._items):
+            item = self._impl._items[i]
+            identity = item[0]
+            pos = used_keys.get(identity)
+            if pos is None:
+                i += 1
+                continue
+            if i >= pos:
+                del self._impl._items[i]
+            else:
+                i += 1
+
+        self._impl.incr_version()
 
     def _replace(self, key, value):
         key = self._key(key)
