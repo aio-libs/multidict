@@ -1,5 +1,7 @@
 # Some simple testing tasks (sorry, UNIX only).
 
+all: test
+
 .install-deps: $(shell find requirements -type f)
 	pip install -U -r requirements/dev.txt
 	touch .install-deps
