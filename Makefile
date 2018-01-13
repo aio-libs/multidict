@@ -1,6 +1,6 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-.install-deps: requirements/dev.txt
+.install-deps: $(shell find requirements -type f)
 	pip install -U -r requirements/dev.txt
 	touch .install-deps
 
