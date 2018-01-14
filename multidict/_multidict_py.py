@@ -228,16 +228,18 @@ class MultiDict(_Base, MutableMultiMapping):
             arg = args[0]
             if isinstance(args[0], (MultiDict, MultiDictProxy)):
                 items = arg._impl._items
-            elif hasattr(arg, 'items'):
-                items = [(k, k, v) for k, v in arg.items()]
             else:
+                if hasattr(arg, 'items'):
+                    arg = arg.items()
                 items = []
                 for item in arg:
                     if not len(item) == 2:
                         raise TypeError(
                             "{} takes either dict or list of (key, value) "
                             "tuples".format(name))
-                    items.append((item[0], item[0], item[1]))
+                    items.append((self._title(item[0]),
+                                  self._key(item[0]),
+                                  item[1]))
 
             method(items)
 

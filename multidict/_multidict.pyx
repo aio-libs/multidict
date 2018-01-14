@@ -382,7 +382,6 @@ cdef class MultiDict(_Base):
                     _Pair, identity, key, value))
                 size += 1
                 used_keys[identity] = size
-            self._replace(key, value)
 
         self._post_update(used_keys)
 
