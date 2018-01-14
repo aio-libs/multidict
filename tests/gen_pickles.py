@@ -1,9 +1,6 @@
 import pickle
 
-from multidict._compat import USE_CYTHON
-
-if USE_CYTHON:
-    from multidict._multidict import MultiDict, CIMultiDict  # noqa
+from multidict._multidict import MultiDict, CIMultiDict  # noqa
 
 from multidict._multidict_py import (MultiDict as PyMultiDict,  # noqa
                                      CIMultiDict as PyCIMultiDict)
@@ -16,7 +13,12 @@ def write(name, proto):
         pickle.dump(d, f, proto)
 
 
-for proto in range(pickle.HIGHEST_PROTOCOL):
-    for name in ('MultiDict', 'CIMultiDict', 'PyMultiDict', 'PyCIMultiDict'):
-        if USE_CYTHON or name.startswith('Py'):
+def generate():
+    for proto in range(pickle.HIGHEST_PROTOCOL):
+        for name in ('MultiDict', 'CIMultiDict',
+                     'PyMultiDict', 'PyCIMultiDict'):
             write(name, proto)
+
+
+if __name__ == '__main__':
+    generate()
