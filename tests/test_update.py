@@ -78,6 +78,30 @@ def test_update_remove(cls):
     assert list(obj1.items()) == expected
 
 
+def test_update_replace_seq(cls):
+    obj1 = cls([('a', 1), ('b', 2), ('a', 3), ('c', 10)])
+    obj2 = [('a', 4), ('b', 5), ('a', 6)]
+    obj1.update(obj2)
+    expected = [('a', 4), ('b', 5), ('a', 6), ('c', 10)]
+    assert list(obj1.items()) == expected
+
+
+def test_update_append_seq(cls):
+    obj1 = cls([('a', 1), ('b', 2), ('a', 3), ('c', 10)])
+    obj2 = [('a', 4), ('a', 5), ('a', 6)]
+    obj1.update(obj2)
+    expected = [('a', 4), ('b', 2), ('a', 5), ('c', 10), ('a', 6)]
+    assert list(obj1.items()) == expected
+
+
+def test_update_remove_seq(cls):
+    obj1 = cls([('a', 1), ('b', 2), ('a', 3), ('c', 10)])
+    obj2 = [('a', 4)]
+    obj1.update(obj2)
+    expected = [('a', 4), ('b', 2), ('c', 10)]
+    assert list(obj1.items()) == expected
+
+
 def test_update_md(md_cls):
     d = md_cls()
     d.add('key', 'val1')

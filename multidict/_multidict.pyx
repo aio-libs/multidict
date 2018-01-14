@@ -298,34 +298,137 @@ cdef class MultiDict(_Base):
         if args:
             arg = args[0]
             if isinstance(arg, _Base):
-                for i in (<_Base>arg)._impl._items:
-                    item = <_Pair>i
-                    key = item._key
-                    value = item._value
-                    if do_add:
-                        self._add(key, value)
-                    else:
-                        self._replace(key, value)
+                if do_add:
+                    self._append_items((<_Base>arg)._impl)
+                else:
+                    self._update_items((<_Base>arg)._impl)
             else:
                 if hasattr(arg, 'items'):
                     arg = arg.items()
-                for i in arg:
-                    if not len(i) == 2:
-                        raise TypeError(
-                            "{} takes either dict or list of (key, value) "
-                            "tuples".format(name))
-                    key = i[0]
-                    value = i[1]
-                    if do_add:
-                        self._add(key, value)
-                    else:
-                        self._replace(key, value)
+                if do_add:
+                    self._append_items_seq(arg, name)
+                else:
+                    self._update_items_seq(arg, name)
 
         for key, value in kwargs.items():
             if do_add:
                 self._add(key, value)
             else:
                 self._replace(key, value)
+
+    cdef object _update_items(self, _Impl impl):
+        cdef _Pair item, item2
+        cdef object i
+        cdef dict used_keys = {}
+        cdef Py_ssize_t start
+        cdef Py_ssize_t post
+        cdef Py_ssize_t size = len(self._impl._items)
+        cdef Py_hash_t h
+
+        for i in impl._items:
+            item = <_Pair>i
+
+            start = used_keys.get(item._identity, 0)
+            for pos in range(start, size):
+                item2 = <_Pair>(self._impl._items[pos])
+                if item2._hash != item._hash:
+                    continue
+                if item2._identity == item._identity:
+                    used_keys[item._identity] = pos + 1
+                    item2._key = item._key
+                    item2._value = item._value
+                    break
+            else:
+                self._impl._items.append(_Pair.__new__(
+                    _Pair, item._identity, item._key, item._value))
+                size += 1
+                used_keys[item._identity] = size
+
+        self._post_update(used_keys)
+
+    cdef object _update_items_seq(self, object arg, object name):
+        cdef _Pair item
+        cdef object i
+        cdef object identity
+        cdef object key
+        cdef object value
+        cdef dict used_keys = {}
+        cdef Py_ssize_t start
+        cdef Py_ssize_t post
+        cdef Py_ssize_t size = len(self._impl._items)
+        cdef Py_hash_t h
+        for i in arg:
+            if not len(i) == 2:
+                raise TypeError(
+                    "{} takes either dict or list of (key, value) "
+                    "tuples".format(name))
+            key = _str(i[0])
+            value = i[1]
+            identity = self._title(key)
+            h = hash(identity)
+
+            start = used_keys.get(identity, 0)
+            for pos in range(start, size):
+                item = <_Pair>(self._impl._items[pos])
+                if item._hash != h:
+                    continue
+                if item._identity == identity:
+                    used_keys[identity] = pos + 1
+                    item._key = key
+                    item._value = value
+                    break
+            else:
+                self._impl._items.append(_Pair.__new__(
+                    _Pair, identity, key, value))
+                size += 1
+                used_keys[identity] = size
+            self._replace(key, value)
+
+        self._post_update(used_keys)
+
+    cdef object _post_update(self, dict used_keys):
+        cdef Py_ssize_t i = 0
+        cdef _Pair item
+        while i < len(self._impl._items):
+            item = <_Pair>self._impl._items[i]
+            pos = used_keys.get(item._identity)
+            if pos is None:
+                i += 1
+                continue
+            if i >= pos:
+                del self._impl._items[i]
+            else:
+                i += 1
+
+        self._impl.incr_version()
+
+    cdef object _append_items(self, _Impl impl):
+        cdef _Pair item
+        cdef object i
+        cdef str key
+        cdef object value
+        for i in impl._items:
+            item = <_Pair>i
+            key = item._key
+            value = item._value
+            self._impl._items.append(_Pair.__new__(
+                _Pair, self._title(key), key, value))
+        self._impl.incr_version()
+
+    cdef object _append_items_seq(self, object arg, object name):
+        cdef object i
+        cdef object key
+        cdef object value
+        for i in arg:
+            if not len(i) == 2:
+                raise TypeError(
+                    "{} takes either dict or list of (key, value) "
+                    "tuples".format(name))
+            key = i[0]
+            value = i[1]
+            self._impl._items.append(_Pair.__new__(
+                _Pair, self._title(key), _str(key), value))
+        self._impl.incr_version()
 
     cdef _add(self, key, value):
         self._impl._items.append(_Pair.__new__(
