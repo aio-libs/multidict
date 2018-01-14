@@ -1,5 +1,11 @@
 .. _changes:
 
+4.0.0 (2018-01-14)
+------------------
+
+* Accept multiple keys in :py:meth:`MultiDict.update` and
+  :py:meth:`CIMultiDict.update` (:pr:`199`)
+
 3.3.2 (2017-11-02)
 ------------------
 
