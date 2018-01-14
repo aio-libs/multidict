@@ -1,6 +1,11 @@
 import pickle
 
-from multidict._multidict import MultiDict, CIMultiDict  # noqa
+from multidict._compat import USE_CYTHON
+
+try:
+    from multidict._multidict import MultiDict, CIMultiDict  # noqa
+except ImportError:
+    pass
 
 from multidict._multidict_py import (MultiDict as PyMultiDict,  # noqa
                                      CIMultiDict as PyCIMultiDict)
@@ -14,6 +19,8 @@ def write(name, proto):
 
 
 def generate():
+    if not USE_CYTHON:
+        raise RuntimeError("Cython is required")
     for proto in range(pickle.HIGHEST_PROTOCOL):
         for name in ('MultiDict', 'CIMultiDict',
                      'PyMultiDict', 'PyCIMultiDict'):
