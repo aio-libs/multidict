@@ -1,8 +1,6 @@
 version: 2
 jobs:
   macos-build:
-    parallelism: 4
-
     macos:
       # Travis:
       # 6.4 -> 10.10
