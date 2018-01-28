@@ -243,7 +243,7 @@ class MultiDict(_Base, MutableMultiMapping):
 
             method(items)
 
-        method([(self._title(key), key, value)
+        method([(self._title(key), self._key(key), value)
                for key, value in kwargs.items()])
 
     def _extend_items(self, items):
