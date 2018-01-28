@@ -3,7 +3,7 @@
 4.1.0 (2018-01-28)
 ------------------
 
-* Fix key casing in Pure Python impmenetation of
+* Fix key casing in Pure Python implementation of
   :py:class:`CIMultiDict` (:pr:`202`)
 
 4.0.0 (2018-01-14)
