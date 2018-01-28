@@ -258,7 +258,6 @@ class MultiDict(_Base, MutableMultiMapping):
     # Mapping interface #
 
     def __setitem__(self, key, value):
-        key = self._title(key)
         self._replace(key, value)
 
     def __delitem__(self, key):
@@ -276,9 +275,9 @@ class MultiDict(_Base, MutableMultiMapping):
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
-        key = self._title(key)
+        identity = self._title(key)
         for i, k, v in self._impl._items:
-            if i == key:
+            if i == identity:
                 return v
         self.add(key, default)
         return default

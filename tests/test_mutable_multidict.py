@@ -251,11 +251,13 @@ class TestCIMutableMultiDict:
     def test_ctor(self, cls):
         d = cls(k1='v1')
         assert 'v1' == d['K1']
+        assert ('k1', 'v1') in d.items()
 
     def test_setitem(self, cls):
         d = cls()
         d['k1'] = 'v1'
         assert 'v1' == d['K1']
+        assert ('k1', 'v1') in d.items()
 
     def test_delitem(self, cls):
         d = cls()
@@ -269,6 +271,7 @@ class TestCIMutableMultiDict:
 
         d2 = d1.copy()
         assert d1 == d2
+        assert d1.items() == d2.items()
         assert d1 is not d2
 
     def test__repr__(self, cls):
@@ -285,18 +288,22 @@ class TestCIMutableMultiDict:
 
         assert d == {}
         d['KEY'] = 'one'
+        assert ('KEY', 'one') in d.items()
         assert d == cls({'Key': 'one'})
         assert d.getall('key') == ['one']
 
         d['KEY'] = 'two'
+        assert ('KEY', 'two') in d.items()
         assert d == cls({'Key': 'two'})
         assert d.getall('key') == ['two']
 
         d.add('KEY', 'one')
+        assert ('KEY', 'one') in d.items()
         assert 2 == len(d)
         assert d.getall('key') == ['two', 'one']
 
         d.add('FOO', 'bar')
+        assert ('FOO', 'bar') in d.items()
         assert 3 == len(d)
         assert d.getall('foo') == ['bar']
 
@@ -361,6 +368,7 @@ class TestCIMutableMultiDict:
         assert 'one' == d.setdefault('key', 'three')
         assert 'three' == d.setdefault('otherkey', 'three')
         assert 'otherkey' in d
+        assert ('otherkey', 'three') in d.items()
         assert 'three' == d['OTHERKEY']
 
     def test_popitem(self, cls):
