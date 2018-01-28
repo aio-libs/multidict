@@ -37,9 +37,8 @@ class TestMutableMultiDict:
 
         assert d.getall('key') == ['value1', 'value2']
 
-        with pytest.raises(KeyError) as excinfo:
+        with pytest.raises(KeyError, match='some_key'):
             d.getall('some_key')
-        assert 'some_key' in str(excinfo.value)
 
         default = object()
         assert d.getall('some_key', default) is default
@@ -116,7 +115,7 @@ class TestMutableMultiDict:
         assert d == {'foo': 'bar'}
         assert list(d.items()) == [('foo', 'bar')]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match='key'):
             del d['key']
 
     def test_set_default(self, cls):
@@ -166,7 +165,7 @@ class TestMutableMultiDict:
     def test_pop_raises(self, cls):
         d = cls(other='val')
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match='key'):
             d.pop('key')
 
         assert 'other' in d
@@ -218,7 +217,7 @@ class TestMutableMultiDict:
 
     def test_popall_key_error(self, cls):
         d = cls()
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match='key'):
             d.popall('key')
 
 
@@ -244,18 +243,19 @@ class TestCIMutableMultiDict:
 
         assert d.getall('key') == ['value1', 'value2']
 
-        with pytest.raises(KeyError) as excinfo:
+        with pytest.raises(KeyError, match='some_key'):
             d.getall('some_key')
-        assert 'some_key' in str(excinfo.value)
 
     def test_ctor(self, cls):
         d = cls(k1='v1')
         assert 'v1' == d['K1']
+        assert ('k1', 'v1') in d.items()
 
     def test_setitem(self, cls):
         d = cls()
         d['k1'] = 'v1'
         assert 'v1' == d['K1']
+        assert ('k1', 'v1') in d.items()
 
     def test_delitem(self, cls):
         d = cls()
@@ -269,6 +269,7 @@ class TestCIMutableMultiDict:
 
         d2 = d1.copy()
         assert d1 == d2
+        assert d1.items() == d2.items()
         assert d1 is not d2
 
     def test__repr__(self, cls):
@@ -285,18 +286,22 @@ class TestCIMutableMultiDict:
 
         assert d == {}
         d['KEY'] = 'one'
+        assert ('KEY', 'one') in d.items()
         assert d == cls({'Key': 'one'})
         assert d.getall('key') == ['one']
 
         d['KEY'] = 'two'
+        assert ('KEY', 'two') in d.items()
         assert d == cls({'Key': 'two'})
         assert d.getall('key') == ['two']
 
         d.add('KEY', 'one')
+        assert ('KEY', 'one') in d.items()
         assert 2 == len(d)
         assert d.getall('key') == ['two', 'one']
 
         d.add('FOO', 'bar')
+        assert ('FOO', 'bar') in d.items()
         assert 3 == len(d)
         assert d.getall('foo') == ['bar']
 
@@ -353,7 +358,7 @@ class TestCIMutableMultiDict:
         assert d == {'foo': 'bar'}
         assert list(d.items()) == [('foo', 'bar')]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match='key'):
             del d['key']
 
     def test_set_default(self, cls):
@@ -361,6 +366,7 @@ class TestCIMutableMultiDict:
         assert 'one' == d.setdefault('key', 'three')
         assert 'three' == d.setdefault('otherkey', 'three')
         assert 'otherkey' in d
+        assert ('otherkey', 'three') in d.items()
         assert 'three' == d['OTHERKEY']
 
     def test_popitem(self, cls):
@@ -404,7 +410,7 @@ class TestCIMutableMultiDict:
     def test_pop_raises(self, cls):
         d = cls(OTHER='val')
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="KEY"):
             d.pop('KEY')
 
         assert 'other' in d

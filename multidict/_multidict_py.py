@@ -243,7 +243,7 @@ class MultiDict(_Base, MutableMultiMapping):
 
             method(items)
 
-        method([(self._title(key), key, value)
+        method([(self._title(key), self._key(key), value)
                for key, value in kwargs.items()])
 
     def _extend_items(self, items):
@@ -258,15 +258,14 @@ class MultiDict(_Base, MutableMultiMapping):
     # Mapping interface #
 
     def __setitem__(self, key, value):
-        key = self._title(key)
         self._replace(key, value)
 
     def __delitem__(self, key):
-        key = self._title(key)
+        identity = self._title(key)
         items = self._impl._items
         found = False
         for i in range(len(items) - 1, -1, -1):
-            if items[i][0] == key:
+            if items[i][0] == identity:
                 del items[i]
                 found = True
         if not found:
@@ -276,9 +275,9 @@ class MultiDict(_Base, MutableMultiMapping):
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
-        key = self._title(key)
+        identity = self._title(key)
         for i, k, v in self._impl._items:
-            if i == key:
+            if i == identity:
                 return v
         self.add(key, default)
         return default
@@ -290,9 +289,9 @@ class MultiDict(_Base, MutableMultiMapping):
         KeyError is raised.
 
         """
-        key = self._title(key)
+        identity = self._title(key)
         for i in range(len(self._impl._items)):
-            if self._impl._items[i][0] == key:
+            if self._impl._items[i][0] == identity:
                 value = self._impl._items[i][2]
                 del self._impl._items[i]
                 self._impl.incr_version()
