@@ -118,9 +118,9 @@ class BaseMultiDictTest:
         assert d.get('key') == 'value1'
         assert d['key'] == 'value1'
 
-        with pytest.raises(KeyError, matches='key2'):
+        with pytest.raises(KeyError, match='key2'):
             d['key2']
-        with pytest.raises(KeyError, matches='key2'):
+        with pytest.raises(KeyError, match='key2'):
             d.getone('key2')
 
         assert d.getone('key2', 'default') == 'default'
@@ -326,7 +326,7 @@ class TestMultiDict(BaseMultiDictTest):
 
         assert d.getall('key') == ['value1', 'value2']
 
-        with pytest.raises(KeyError, matches='some_key'):
+        with pytest.raises(KeyError, match='some_key'):
             d.getall('some_key')
 
         default = object()
