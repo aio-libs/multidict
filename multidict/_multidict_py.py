@@ -261,11 +261,11 @@ class MultiDict(_Base, MutableMultiMapping):
         self._replace(key, value)
 
     def __delitem__(self, key):
-        key = self._title(key)
+        identity = self._title(key)
         items = self._impl._items
         found = False
         for i in range(len(items) - 1, -1, -1):
-            if items[i][0] == key:
+            if items[i][0] == identity:
                 del items[i]
                 found = True
         if not found:
@@ -289,9 +289,9 @@ class MultiDict(_Base, MutableMultiMapping):
         KeyError is raised.
 
         """
-        key = self._title(key)
+        identity = self._title(key)
         for i in range(len(self._impl._items)):
-            if self._impl._items[i][0] == key:
+            if self._impl._items[i][0] == identity:
                 value = self._impl._items[i][2]
                 del self._impl._items[i]
                 self._impl.incr_version()

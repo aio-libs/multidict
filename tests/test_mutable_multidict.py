@@ -37,9 +37,8 @@ class TestMutableMultiDict:
 
         assert d.getall('key') == ['value1', 'value2']
 
-        with pytest.raises(KeyError) as excinfo:
+        with pytest.raises(KeyError, match='some_key'):
             d.getall('some_key')
-        assert 'some_key' in str(excinfo.value)
 
         default = object()
         assert d.getall('some_key', default) is default
@@ -116,7 +115,7 @@ class TestMutableMultiDict:
         assert d == {'foo': 'bar'}
         assert list(d.items()) == [('foo', 'bar')]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match='key'):
             del d['key']
 
     def test_set_default(self, cls):
@@ -166,7 +165,7 @@ class TestMutableMultiDict:
     def test_pop_raises(self, cls):
         d = cls(other='val')
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match='key'):
             d.pop('key')
 
         assert 'other' in d
@@ -218,7 +217,7 @@ class TestMutableMultiDict:
 
     def test_popall_key_error(self, cls):
         d = cls()
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match='key'):
             d.popall('key')
 
 
@@ -244,9 +243,8 @@ class TestCIMutableMultiDict:
 
         assert d.getall('key') == ['value1', 'value2']
 
-        with pytest.raises(KeyError) as excinfo:
+        with pytest.raises(KeyError, match='some_key'):
             d.getall('some_key')
-        assert 'some_key' in str(excinfo.value)
 
     def test_ctor(self, cls):
         d = cls(k1='v1')
@@ -360,7 +358,7 @@ class TestCIMutableMultiDict:
         assert d == {'foo': 'bar'}
         assert list(d.items()) == [('foo', 'bar')]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match='key'):
             del d['key']
 
     def test_set_default(self, cls):
@@ -412,7 +410,7 @@ class TestCIMutableMultiDict:
     def test_pop_raises(self, cls):
         d = cls(OTHER='val')
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="KEY"):
             d.pop('KEY')
 
         assert 'other' in d
