@@ -329,5 +329,5 @@ github_repo_url = f'https://github.com/{org}/{project}'
 
 extlinks = {
     'issue': (f'{github_repo_url}/issues/%s', '#'),
-    'pr': (f'{github_repo_url}/pulls/%s', 'PR #'),
+    'pr': (f'{github_repo_url}/pull/%s', 'PR #'),
 }
