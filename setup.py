@@ -16,6 +16,12 @@ except ImportError:
 
 ext = '.pyx' if USE_CYTHON else '.c'
 
+if bool(os.environ.get('PROFILE_BUILD')):
+    macros = [('CYTHON_TRACE', '1')]
+else:
+    macros = []
+
+
 extensions = [Extension('multidict._multidict',
                         ['multidict/_multidict' + ext],
                         # extra_compile_args=["-g"],
@@ -24,7 +30,11 @@ extensions = [Extension('multidict._multidict',
 
 
 if USE_CYTHON:
-    extensions = cythonize(extensions)
+    if bool(os.environ.get('PROFILE_BUILD')):
+        directives = {"linetrace": True}
+    else:
+        directives = {}
+    extensions = cythonize(extensions, compiler_directives=directives)
 
 extensions.append(Extension('multidict._istr',
                             ['multidict/_istr.c']))

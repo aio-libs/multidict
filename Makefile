@@ -15,6 +15,8 @@ flake: .install-deps
 
 
 .develop: .install-deps $(shell find multidict -type f)
+	rm -f multidict/*.so
+	rm -f multidict/_multidict.c
 	pip install -e .
 	touch .develop
 
@@ -37,11 +39,19 @@ vtest: flake .develop rmcache mypy
 cov cover coverage:
 	tox
 
-cov-dev: .develop rmcache mypy
+profile-dev-base: .install-deps
+	rm -f .develop
+	rm -f multidict/*.so
+	rm -f multidict/_multidict.c
+	PROFILE_BUILD=x pip install -e .
+	touch .develop
+
+
+cov-dev: profile-dev-base rmcache mypy
 	pytest --cov=multidict --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/htmlcov/index.html"
 
-cov-dev-full: .develop rmcache mypy
+cov-dev-full: profile-dev-base rmcache mypy
 	AIOHTTPMULTIDICT_NO_EXTENSIONS=1 pytest --cov=multidict --cov-append tests 
 	pytest --cov=multidict --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/htmlcov/index.html"
@@ -59,6 +69,7 @@ clean:
 	rm -rf coverage
 	rm -rf build
 	rm -rf cover
+	rm -rf htmlcov
 	make -C docs clean SPHINXBUILD=false
 	python3 setup.py clean
 	rm -f multidict/_multidict.html
