@@ -1,4 +1,7 @@
 import gc
+import sys
+
+import pytest
 
 from multidict._compat import USE_CYTHON
 
@@ -64,6 +67,8 @@ class TestPyIStr(IStrMixin):
         istr2 = _istr()
         _istr(istr2)
 
+    @pytest.mark.skipif('pypy' in dir(sys),
+                        reason="PyPy has different GC implementation")
     def test_leak(self):
         gc.collect()
         cnt = len(gc.get_objects())
@@ -72,7 +77,7 @@ class TestPyIStr(IStrMixin):
 
         gc.collect()
         cnt2 = len(gc.get_objects())
-        assert abs(cnt - cnt2) < 10  # on PyPy these numbers are not equal
+        assert cnt == cnt2
 
 
 if USE_CYTHON:
