@@ -1,0 +1,16 @@
+language: python
+
+python:
+- 3.6
+
+env:
+# MULTIDICT_NO_EXTENSIONS environment variables
+# are considered as enabled if they are any non-empty strings.
+- tests with extensions enabled
+- MULTIDICT_NO_EXTENSIONS=X
+
+build:
+  ci:
+  - pip install --upgrade pip wheel setuptools
+  - pip install -r requirements/ci.txt
+  - make test
