@@ -355,7 +355,7 @@ For more effective processing it should know if the *key* is already
 title cased.
 
 To skip the :meth:`~str.title()` call you may want to create title
-cased strings by hands, e.g::
+cased strings by hand, e.g::
 
    >>> key = istr('Key')
    >>> key
@@ -402,6 +402,6 @@ Abstract Base Classes
 The module provides two ABCs: ``MutliMapping`` and
 ``MutableMultiMapping``.  They are similar to
 :class:`collections.abc.Mapping` and
-:class:`collections.abc.MultiMapping` and inherited from them.
+:class:`collections.abc.MutableMapping` and inherited from them.
 
 .. versionadded:: 3.3
