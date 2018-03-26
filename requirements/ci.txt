@@ -6,7 +6,7 @@ sphinx==1.7.2
 alabaster>=0.6.2
 pytest-cov==2.5.1
 pygments==2.2.0
-mypy==0.570; platform_python_implementation != "PyPy"
+mypy==0.580; platform_python_implementation != "PyPy"
 -e .
 
 codecov==2.0.15
