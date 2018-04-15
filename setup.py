@@ -79,9 +79,13 @@ pytest_runner = ['pytest-runner'] if NEEDS_PYTEST else []
 
 tests_require = ['pytest']
 
+name = 'multidict'
+appveyor_slug = 'asvetlov/{}'.format(name)  # FIXME: move under aio-libs/* slug
+repo_slug = 'aio-libs/{}'.format(name)
+repo_url = 'https://github.com/{}'.format(repo_slug)
 
 args = dict(
-    name='multidict',
+    name=name,
     version=version,
     description=('multidict implementation'),
     long_description=read('README.rst'),
@@ -93,11 +97,23 @@ args = dict(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Development Status :: 5 - Production/Stable',
     ],
     author='Andrew Svetlov',
     author_email='andrew.svetlov@gmail.com',
-    url='https://github.com/aio-libs/multidict/',
+    url=repo_url,
+    project_urls={
+        'Chat: Gitter': 'https://gitter.im/aio-libs/Lobby',
+        'CI: AppVeyor': 'https://ci.appveyor.com/project/{}'.format(appveyor_slug),
+        'CI: Circle': 'https://circleci.com/gh/{}'.format(repo_slug),
+        'CI: Shippable': 'https://app.shippable.com/github/{}'.format(repo_slug),
+        'CI: Travis': 'https://travis-ci.org/{}'.format(repo_slug),
+        'Coverage: codecov': 'https://codecov.io/github/{}'.format(repo_slug),
+        'Docs: RTD': 'https://{}.readthedocs.io'.format(name),
+        'GitHub: issues': '{}/issues'.format(repo_url),
+        'GitHub: repo': repo_url,
+    },
     license='Apache 2',
     packages=['multidict'],
     python_requires='>=3.4.1',
