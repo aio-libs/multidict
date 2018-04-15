@@ -11,9 +11,12 @@ if USE_CYTHON:
 from multidict._multidict_py import istr as _istr  # noqa: E402
 
 
+IMPLEMENTATION = getattr(sys, 'implementation')  # to suppress mypy error
+
+
 class IStrMixin:
 
-    cls = None
+    cls = NotImplemented
 
     def test_ctor(self):
         s = self.cls()
@@ -67,7 +70,7 @@ class TestPyIStr(IStrMixin):
         istr2 = _istr()
         _istr(istr2)
 
-    @pytest.mark.skipif(sys.implementation.name != 'cpython',
+    @pytest.mark.skipif(IMPLEMENTATION.name != 'cpython',
                         reason="PyPy has different GC implementation")
     def test_leak(self):
         gc.collect()

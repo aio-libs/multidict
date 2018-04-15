@@ -26,7 +26,7 @@ rmcache:
 
 mypy: .develop
 	if python -c "import sys; sys.exit(sys.implementation.name != 'cpython')"; then \
-	    mypy multidict tests/test_mypy.py; \
+	    mypy multidict tests; \
 	fi
 
 

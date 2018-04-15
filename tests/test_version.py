@@ -11,7 +11,7 @@ from multidict._multidict_py import (MultiDict as _MultiDict,  # noqa: E402
 
 
 class VersionMixin:
-    cls = None
+    cls = NotImplemented
 
     def getver(self, md):
         raise NotImplementedError
