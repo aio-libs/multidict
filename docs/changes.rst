@@ -1,5 +1,10 @@
 .. _changes:
 
+4.2.0 (2018-01-15)
+------------------
+
+* Publish ``py.typed`` flag for type hinting analyzers (``mypy`` etc).
+
 4.1.0 (2018-01-28)
 ------------------
 
