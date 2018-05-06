@@ -1,6 +1,11 @@
 .. _changes:
 
-4.2.0 (2018-01-15)
+4.3.0 (2018-05-06)
+------------------
+
+* Polish type hints, make multidict type definitions generic.
+
+4.2.0 (2018-04-15)
 ------------------
 
 * Publish ``py.typed`` flag for type hinting analyzers (``mypy`` etc).
