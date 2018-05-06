@@ -22,7 +22,7 @@ class MultiMapping(Mapping[_S, _T], Generic[_T]):
 _Arg = Union[Mapping[_S, _T],
              Dict[_S, _T],
              MultiMapping[_T],
-             Iterable[Tuple[_S. _T]]]
+             Iterable[Tuple[_S, _T]]]
 
 
 class MutableMultiMapping(MultiMapping[_T],
