@@ -2,8 +2,8 @@ import multidict
 
 
 def test_classes_not_abstract() -> None:
-    d1 = multidict.MultiDict({'a': 'b'})
-    d2 = multidict.CIMultiDict({'a': 'b'})
+    d1 = multidict.MultiDict({'a': 'b'})  # type: multidict.MultiDict[str]
+    d2 = multidict.CIMultiDict({'a': 'b'})  # type: multidict.CIMultiDict[str]
 
     d3 = multidict.MultiDictProxy(d1)
     d4 = multidict.CIMultiDictProxy(d2)

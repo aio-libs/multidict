@@ -74,3 +74,5 @@ multidict/_istr.html
 
 # test results in junit format for Appveyor
 /junit-test-results.xml
+
+.pytest_cache
