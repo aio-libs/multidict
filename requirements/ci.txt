@@ -1,6 +1,5 @@
 -r wheel.txt
 flake8==3.5.0
-flake8-pyi==18.3.1
 pyflakes>=1.0.0
 coverage==4.5.1
 sphinx==1.7.4
@@ -11,3 +10,5 @@ mypy==0.590; platform_python_implementation != "PyPy"
 -e .
 
 codecov==2.0.15
+
+flake8-pyi==18.3.1; python_version >= "3.6"
