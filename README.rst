@@ -8,9 +8,9 @@ multidict
 .. image:: https://readthedocs.org/projects/multidict/badge/?version=latest
    :target: http://multidict.readthedocs.org/en/latest/?badge=latest
 
-.. image:: https://img.shields.io/travis/aio-libs/multidict/master.svg?label=Linux%20build%20%40%20Travis%20CI
+.. image:: https://travis-ci.org/aio-libs/multidict.svg?branch=master
    :align: right
-   :target: http://travis-ci.org/aio-libs/multidict
+   :target: http://travis-ci.com/aio-libs/multidict
 
 .. image:: https://img.shields.io/appveyor/ci/asvetlov/multidict/master.svg?label=Windows%20build%20%40%20Appveyor
    :align: right
