@@ -77,7 +77,7 @@ def read(f):
 NEEDS_PYTEST = {'pytest', 'test'}.intersection(sys.argv)
 pytest_runner = ['pytest-runner'] if NEEDS_PYTEST else []
 
-tests_require = ['pytest']
+tests_require = ['pytest', 'pytest-cov']
 
 name = 'multidict'
 appveyor_slug = 'asvetlov/{}'.format(name)  # FIXME: move under aio-libs/* slug
