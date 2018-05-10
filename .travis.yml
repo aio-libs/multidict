@@ -25,7 +25,7 @@ env:
   matrix:
   # MULTIDICT_NO_EXTENSIONS environment variables
   # are considered as enabled if they are any non-empty strings.
-  - tests with extensions enabled
+  - tests with extensions enabled <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <-=
   - MULTIDICT_NO_EXTENSIONS=X
 
 _helpers:
@@ -144,25 +144,25 @@ jobs:
 
   - <<: *_doc_base
     env:
-    - docs
+    - docs <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
     script:
     - make doc-spelling
 
   - <<: *_lint_base
     env:
-    - flake8
+    - flake8 <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <=
     script:
     - flake8 multidict tests
 
   - <<: *_lint_base
     env:
-    - mypy
+    - mypy <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
     script:
     - make mypy
 
   - <<: *_lint_base
     env:
-    - dist setup check
+    - dist setup check <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
     install:
     - *upgrade_python_toolset
     - pip install docutils
@@ -198,7 +198,7 @@ jobs:
   # Build and deploy manylinux1 binary wheels and source distribution
   - <<: *generic_deploy_base
     <<: *_reset_steps
-    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution
+    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
     dist: trusty
     group: edge
     services:
