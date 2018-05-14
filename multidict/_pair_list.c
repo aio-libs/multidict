@@ -201,8 +201,8 @@ pair_list_del_hash(PyObject *op, PyObject *identity, Py_hash_t hash)
 {
     // return 1 if deleted, 0 if not found
     Py_ssize_t pos;
-    pair_t * pair;
-    int ret;
+    pair_t *pair;
+    PyObject *ret;
     pair_list_t *list = (pair_list_t *) op;
 
     for (pos = 0; pos < list->size; pos++) {
@@ -210,14 +210,16 @@ pair_list_del_hash(PyObject *op, PyObject *identity, Py_hash_t hash)
 	if (pair->hash != hash) {
 	    continue;
 	}
-	ret = PyUnicode_Compare(pair->identity, identity);
-	if (ret == 0) {
+	ret = PyUnicode_RichCompare(pair->identity, identity, Py_EQ);
+	if (ret == Py_True) {
+	    Py_DECREF(ret);
 	    return pair_list_del_at(list, pos);
 	}
-	if (ret == -1) {
-	    if (PyErr_Occurred() != NULL) {
-		return -1;
-	    }
+	else if (ret == NULL) {
+	    return -1;
+	}
+	else {
+	    Py_DECREF(ret);
 	}
     }
     return 0;
@@ -261,10 +263,9 @@ pair_list_version(PyObject *op)
 
 
 int 
-pair_list_next(PyObject *op, Py_ssize_t *ppos,
-		   PyObject **pkey, PyObject **pvalue)
+_pair_list_next(pair_list_t *list, Py_ssize_t *ppos,
+		PyObject **pkey, PyObject **pvalue, Py_hash_t *hash)
 {
-    pair_list_t *list = (pair_list_t *) op;
     pair_t *pair = pair_list_get(list, *ppos);
     *ppos = *ppos + 1;
     if (*ppos >= list->size) {
@@ -276,7 +277,53 @@ pair_list_next(PyObject *op, Py_ssize_t *ppos,
     if (pvalue) {
 	*pvalue = pair->value;
     }
+    *hash = pair->hash;
     return 1;
+}
+
+
+PyObject *
+pair_list_get_one(PyObject *op, PyObject *ident)
+{
+    pair_list_t *list = (pair_list_t *) op;
+    Py_hash_t hash1, hash2;
+    Py_ssize_t pos = 0;
+    PyObject *identity;
+    PyObject *value;
+    PyObject *ret;
+
+    hash1 = PyObject_Hash(identity);
+    if (hash1 == -1) {
+	return NULL;
+    }
+    while (_pair_list_next(list, &pos, &identity, &value, &hash2)) {
+        if (hash1 != hash2) {
+	    continue;
+	}
+	ret = PyUnicode_RichCompare(ident, identity, Py_EQ);
+	if (ret == Py_True) {
+	    Py_DECREF(ret);
+	    Py_INCREF(value);
+	    return value;
+	}
+	else if (ret == NULL) {
+	    return NULL;
+	}
+	else {
+	    Py_DECREF(ret);
+	}
+    }
+    return NULL;
+}
+
+
+int 
+pair_list_next(PyObject *op, Py_ssize_t *ppos,
+		   PyObject **pkey, PyObject **pvalue)
+{
+    pair_list_t *list = (pair_list_t *) op;
+    Py_hash_t hash;
+    return _pair_list_next(list, ppos, pkey, pvalue, &hash);
 }
 
 
