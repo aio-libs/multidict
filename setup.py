@@ -22,11 +22,18 @@ else:
     macros = []
 
 
-extensions = [Extension('multidict._multidict',
-                        ['multidict/_multidict' + ext],
-                        # extra_compile_args=["-g"],
-                        # extra_link_args=["-g"],
-)]
+extensions = [
+    Extension('multidict._multidict',
+              ['multidict/_multidict' + ext],
+              # extra_compile_args=["-g"],
+              # extra_link_args=["-g"],
+    ),
+Extension('multidict._pair_list',
+              ['multidict/_pair_list' + ext],
+              # extra_compile_args=["-g"],
+              # extra_link_args=["-g"],
+    ),
+]
 
 
 if USE_CYTHON:
