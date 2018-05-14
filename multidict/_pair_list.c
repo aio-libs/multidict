@@ -2,10 +2,13 @@
 #include "_pair_list.h"
 
 #include "Python.h"
+#include "object.h"
 #include "structmember.h"
 
 
 #define MIN_LIST_CAPACITY 32
+
+static PyTypeObject pair_list_type;
 
 static void
 pair_set(pair_t *pair,
@@ -43,7 +46,7 @@ pair_list_get(pair_list_t *list, size_t i)
 }
 
 static int
-pair_list_realloc(pair_list_t *list, Py_ssize_t new_capacity)
+pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
 {
     // TODO: use more smart algo for capacity grow
     pair_t *new_pairs = PyMem_Realloc(list->pairs, new_capacity);
@@ -59,10 +62,10 @@ pair_list_realloc(pair_list_t *list, Py_ssize_t new_capacity)
     return 0;
 }
 
-pair_list_t *
-pair_list_new()
+PyObject *
+pair_list_new(void)
 {
-    pair_list_t *list = (pair_list_t*)PyMem_Malloc(sizeof(pair_list_t));
+    pair_list_t *list = PyObject_GC_New(pair_list_t, &pair_list_type);
     if (NULL == list) {
         return NULL;
     }
@@ -77,12 +80,15 @@ pair_list_new()
     list->capacity = MIN_LIST_CAPACITY;
     list->size = 0;
 
-    return list;
+    return (PyObject *)list;
 }
 
+
 void
-pair_list_free(pair_list_t *list)
+pair_list_dealloc(pair_list_t *list)
 {
+    PyObject_GC_UnTrack(list);
+    Py_TRASHCAN_SAFE_BEGIN(list);
     for (size_t i = 0; i < list->size; i++) {
         pair_t *pair = pair_list_get(list, i);
 
@@ -90,27 +96,32 @@ pair_list_free(pair_list_t *list)
         Py_XDECREF(pair->key);
         Py_XDECREF(pair->value);
     }
+    list->size = 0;
 
     PyMem_Free(list->pairs);
     list->pairs = NULL;
 
-    PyMem_Free(list);
-    list = NULL;
+    Py_TYPE(list)->tp_free((PyObject *)list);
+    Py_TRASHCAN_SAFE_END(list);
 }
 
+
 Py_ssize_t
-pair_list_len(pair_list_t *list)
+pair_list_len(PyObject *op)
 {
+    pair_list_t *list = (pair_list_t *) op;
     return list->size;
 }
 
+
 int
-pair_list_add(pair_list_t *list,
+pair_list_add(PyObject *op,
               PyObject *identity,
               PyObject *key,
               PyObject *value,
               Py_hash_t hash)
 {
+    pair_list_t *list = (pair_list_t *) op;
     if (list->capacity <= list->size) {
         if (pair_list_resize(list, list->capacity + MIN_LIST_CAPACITY) < 0) {
             return -1;
@@ -123,45 +134,6 @@ pair_list_add(pair_list_t *list,
 
     list->size += 1;
 
-    return 0;
-}
-
-
-int
-pair_list_del(pair_list_t *list, PyObject *identity)
-{
-    Py_hash_t hash;
-    hash = PyObject_Hash(identity);
-    if (hash == -1) {
-	return -1;
-    }
-    return pair_list_del_hash(list, identity, hash);
-}
-
-
-int
-pair_list_del_hash(pair_list_t *list, PyObject *identity, Py_hash_t hash)
-{
-    // return 1 if deleted, 0 if not found
-    Py_ssize_t pos;
-    pair_t * pair;
-    int ret;
-
-    for(pos=0; pos < list->size; pos++) {
-        pair = pair_list_get(list, pos);
-	if (pair->hash != hash) {
-	    continue;
-	}
-	ret = PyUnicode_Compare(pair->identity, identity);
-	if (ret == 0) {
-	    return pair_list_del_at(pos);
-	}
-	if (ret == -1) {
-	    if (PyErr_Occurred() != NULL) {
-		return -1;
-	    }
-	}
-    }
     return 0;
 }
 
@@ -195,8 +167,49 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
 
 
 int
-pair_list_at(pair_list_t *list, size_t idx, pair_t *pair)
+pair_list_del_hash(PyObject *op, PyObject *identity, Py_hash_t hash)
 {
+    // return 1 if deleted, 0 if not found
+    Py_ssize_t pos;
+    pair_t * pair;
+    int ret;
+    pair_list_t *list = (pair_list_t *) op;
+
+    for (pos = 0; pos < list->size; pos++) {
+        pair = pair_list_get(list, pos);
+	if (pair->hash != hash) {
+	    continue;
+	}
+	ret = PyUnicode_Compare(pair->identity, identity);
+	if (ret == 0) {
+	    return pair_list_del_at(list, pos);
+	}
+	if (ret == -1) {
+	    if (PyErr_Occurred() != NULL) {
+		return -1;
+	    }
+	}
+    }
+    return 0;
+}
+
+
+int
+pair_list_del(PyObject *list, PyObject *identity)
+{
+    Py_hash_t hash;
+    hash = PyObject_Hash(identity);
+    if (hash == -1) {
+	return -1;
+    }
+    return pair_list_del_hash(list, identity, hash);
+}
+
+
+int
+pair_list_at(PyObject *op, size_t idx, pair_t *pair)
+{
+    pair_list_t *list = (pair_list_t *) op;
     if (idx > list->size) {
         return -1;
     }
@@ -223,67 +236,37 @@ PyDoc_STRVAR(pair_list__doc__, "pair_list implementation");
 #define DEFERRED_ADDRESS(ADDR) 0
 
 
-static void pair_list_dealloc(istrobject *self)
+
+static int
+pair_list_traverse(PyObject *op, visitproc visit, void *arg)
 {
-    Py_XDECREF(self->canonical);
-    PyUnicode_Type.tp_dealloc((PyObject*)self);
+     pair_list_t *list = (pair_list_t *)op;
+     pair_t * pair;
+     Py_ssize_t i;
+     for (i = 0; i < list->size; i++) {
+	 pair = pair_list_get(list, i);
+	 // Don't need traverse key and identity: they are terminals
+	 Py_VISIT(pair->value);
+     }
+     return 0;
 }
 
-static PyObject *
-pair_list_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+
+static int
+pair_list_clear(PyObject *op)
 {
-    PyObject *x = NULL;
-    static char *kwlist[] = {"object", "encoding", "errors", 0};
-    char *encoding = NULL;
-    char *errors = NULL;
-    PyObject *s = NULL;
-    PyObject *tmp = NULL;
-    PyObject * new_args = NULL;
-    PyObject * ret = NULL;
-
-    ModData * state = global_state();
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|Oss:str",
-                                     kwlist, &x, &encoding, &errors))
-        return NULL;
-    if (x == NULL) {
-        s = state->emptystr;
-        Py_INCREF(s);
-    }
-    else if (PyObject_IsInstance(x, (PyObject*)&istr_type)) {
-        Py_INCREF(x);
-        return x;
-    }
-    else {
-        if (encoding == NULL && errors == NULL) {
-            tmp = PyObject_Str(x);
-        } else {
-            tmp = PyUnicode_FromEncodedObject(x, encoding, errors);
-        }
-        if (!tmp) {
-            goto finish;
-        }
-        s = PyObject_CallMethodObjArgs(tmp, state->title, NULL);
-    }
-    if (!s)
-        goto finish;
-
-    new_args = PyTuple_Pack(1, s);
-    if (!new_args) {
-        goto finish;
-    }
-    ret = PyUnicode_Type.tp_new(type, new_args, state->emptydict);
-    if (!ret) {
-        goto finish;
-    }
-    ((istrobject*)ret)->canonical = s;
-    s = NULL;  /* the reference is stollen by .canonical */
-finish:
-    Py_XDECREF(tmp);
-    Py_XDECREF(s);
-    Py_XDECREF(new_args);
-    return ret;
+     pair_list_t *list = (pair_list_t *)op;
+     pair_t * pair;
+     Py_ssize_t i;
+     for (i = 0; i < list->size; i++) {
+	 pair = pair_list_get(list, i);
+	 Py_CLEAR(pair->key);
+	 Py_CLEAR(pair->identity);
+	 Py_CLEAR(pair->value);
+     }
+     return 0;
 }
+
 
 static PyTypeObject pair_list_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
@@ -299,16 +282,16 @@ static PyTypeObject pair_list_type = {
     0,                                          /* tp_as_number */
     0,                                          /* tp_as_sequence */
     0,                                          /* tp_as_mapping */
-    0,                                          /* tp_hash */
+    PyObject_HashNotImplemented,                /* tp_hash */
     0,                                          /* tp_call */
     0,                                          /* tp_str */
-    0,                                          /* tp_getattro */
+    PyObject_GenericGetAttr,                    /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,                         /* tp_flags */
     0,                                          /* tp_doc */
-    0,                                          /* tp_traverse */
-    0,                                          /* tp_clear */
+    pair_list_traverse,                         /* tp_traverse */
+    pair_list_clear,                            /* tp_clear */
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */
@@ -322,8 +305,9 @@ static PyTypeObject pair_list_type = {
     0,                                          /* tp_descr_set */
     0,                                          /* tp_dictoffset */
     0,                                          /* tp_init */
-    0,                                          /* tp_alloc */
+    PyType_GenericAlloc,                        /* tp_alloc */
     0,                                          /* tp_new */
+    PyObject_GC_Del,                            /* tp_free */
 };
 
 
@@ -337,7 +321,7 @@ static struct PyModuleDef _pair_list_module = {
     PyModuleDef_HEAD_INIT,
     "multidict._pair_list",
     pair_list__doc__,
-    sizeof(ModData),
+    0,
     NULL,  /* m_methods */
     NULL,  /* m_reload */
     NULL,  /* m_traverse */
@@ -346,50 +330,20 @@ static struct PyModuleDef _pair_list_module = {
 };
 
 
-PyObject* PyInit__istr(void)
+PyObject* PyInit__pair_list(void)
 {
-    PyObject * tmp;
     PyObject *mod;
 
-    mod = PyState_FindModule(&_istrmodule);
-    if (mod) {
-        Py_INCREF(mod);
-        return mod;
-    }
-
-    istr_type.tp_base = &PyUnicode_Type;
-    if (PyType_Ready(&istr_type) < 0) {
+    pair_list_type.tp_base = &PyUnicode_Type;
+    if (PyType_Ready(&pair_list_type) < 0) {
         return NULL;
     }
 
-    mod = PyModule_Create(&_istrmodule);
+    mod = PyModule_Create(&_pair_list_module);
     if (!mod) {
         return NULL;
     }
-    tmp = PyUnicode_FromString("title");
-    if (!tmp) {
-        goto err;
-    }
-    modstate(mod)->title = tmp;
-    tmp = PyUnicode_New(0, 0);
-    if (!tmp) {
-        goto err;
-    }
-    modstate(mod)->emptystr = tmp;
-    tmp = PyUnicode_FromString("title");
-    if(!tmp) {
-        goto err;
-    }
-    modstate(mod)->title = tmp;
-
-    Py_INCREF(&istr_type);
-    if (PyModule_AddObject(mod, "istr", (PyObject *)&istr_type) < 0)
-        goto err;
-
     return mod;
-err:
-    Py_DECREF(mod);
-    return NULL;
 }
 
 

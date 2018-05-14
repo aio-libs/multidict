@@ -38,10 +38,12 @@ if USE_CYTHON:
         directives = {}
     extensions = cythonize(extensions, compiler_directives=directives)
 
-extensions.extend([Extension('multidict._istr',
-                             ['multidict/_istr.c']),
-                   Extension('multidict._pair_list',
-                             ['multidict/_pair_list.c'])])
+extensions.extend([
+    Extension('multidict._istr',
+              ['multidict/_istr.c']),
+    Extension('multidict._pair_list',
+              ['multidict/_pair_list.c'])
+])
 
 
 class BuildFailed(Exception):
@@ -130,6 +132,7 @@ args = dict(
 try:
     setup(**args)
 except BuildFailed:
+    raise
     print("************************************************************")
     print("Cannot compile C accelerator module, use pure python version")
     print("************************************************************")
