@@ -17,18 +17,19 @@ typedef struct pair_list {
     pair_t *pairs;
     Py_ssize_t  capacity;
     Py_ssize_t  size;
+    Py_ssize_t  version;
 } pair_list_t;
 
 
-pair_list_t *pair_list_new();
+PyObject *pair_list_new();
 
-Py_ssize_t pair_list_len();
+Py_ssize_t pair_list_len(PyObject *list);
 
-void pair_list_free(pair_list_t *list);
+void pair_list_free(PyObject *list);
 
-int pair_list_add(pair_list_t *list, PyObject *identity, PyObject *key,
+int pair_list_add(PyObject *list, PyObject *identity, PyObject *key,
 		  PyObject *value, Py_hash_t hash);
 
-int pair_list_at(pair_list_t *list, size_t idx, pair_t *pair);
+int pair_list_at(PyObject *list, size_t idx, pair_t *pair);
 
 #endif
