@@ -10,6 +10,33 @@
 
 static PyTypeObject pair_list_type;
 
+
+/*Global counter used to set ma_version_tag field of dictionary.
+ * It is incremented each time that a dictionary is created and each
+ * time that a dictionary is modified. */
+static uint64_t pair_list_global_version = 0;
+
+#define NEXT_VERSION() (++pair_list_global_version)
+
+
+typedef struct pair {
+    PyObject  *identity;  // 8
+    PyObject  *key;       // 8
+    PyObject  *value;     // 8
+    Py_hash_t  hash;      // 8 ssize_t
+} pair_t;
+
+
+typedef struct pair_list {
+    pair_t *pairs;
+    Py_ssize_t  capacity;
+    Py_ssize_t  size;
+    Py_ssize_t  version;
+} pair_list_t;
+
+
+
+
 static void
 pair_set(pair_t *pair,
 	 PyObject *identity,
@@ -79,6 +106,7 @@ pair_list_new(void)
 
     list->capacity = MIN_LIST_CAPACITY;
     list->size = 0;
+    list->version = NEXT_VERSION();
 
     return (PyObject *)list;
 }
@@ -133,6 +161,7 @@ pair_list_add(PyObject *op,
     pair_set(new_pair, identity, key, value, hash);
 
     list->size += 1;
+    list->version = NEXT_VERSION();
 
     return 0;
 }
@@ -149,6 +178,7 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
     pair_clear(pair);
 
     list->size -= 1;
+    list->version = NEXT_VERSION();
 
     if (list->size == 0) {
         return 1;
@@ -222,6 +252,13 @@ pair_list_at(PyObject *op, size_t idx, pair_t *pair)
 }
 
 
+uint64_t pair_list_version(PyObject *op)
+{
+    pair_list_t *list = (pair_list_t *) op;
+    return list->version;
+}
+
+
 /***********************************************************************/
 
 PyDoc_STRVAR(pair_list__doc__, "pair_list implementation");
@@ -252,19 +289,22 @@ pair_list_traverse(PyObject *op, visitproc visit, void *arg)
 }
 
 
-static int
+int
 pair_list_clear(PyObject *op)
 {
-     pair_list_t *list = (pair_list_t *)op;
-     pair_t * pair;
-     Py_ssize_t i;
-     for (i = 0; i < list->size; i++) {
-	 pair = pair_list_get(list, i);
-	 Py_CLEAR(pair->key);
-	 Py_CLEAR(pair->identity);
-	 Py_CLEAR(pair->value);
-     }
-     return 0;
+    pair_list_t *list = (pair_list_t *)op;
+    pair_t * pair;
+    Py_ssize_t i;
+
+    list->version = NEXT_VERSION();
+    for (i = 0; i < list->size; i++) {
+	pair = pair_list_get(list, i);
+	Py_CLEAR(pair->key);
+	Py_CLEAR(pair->identity);
+	Py_CLEAR(pair->value);
+    }
+
+    return 0;
 }
 
 
