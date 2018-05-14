@@ -15,19 +15,20 @@ typedef struct pair {
 
 typedef struct pair_list {
     pair_t *pairs;
-    size_t  capacity;
-    size_t  size;
+    Py_ssize_t  capacity;
+    Py_ssize_t  size;
 } pair_list_t;
+
 
 pair_list_t *pair_list_new();
 
-size_t pair_list_len();
+Py_ssize_t pair_list_len();
 
 void pair_list_free(pair_list_t *list);
 
-bool pair_list_add(pair_list_t *list, PyObject *identity, PyObject *key,
-                   PyObject *value, Py_hash_t hash);
+int pair_list_add(pair_list_t *list, PyObject *identity, PyObject *key,
+		  PyObject *value, Py_hash_t hash);
 
-bool pair_list_at(pair_list_t *list, size_t idx, pair_t *pair);
+int pair_list_at(pair_list_t *list, size_t idx, pair_t *pair);
 
 #endif
