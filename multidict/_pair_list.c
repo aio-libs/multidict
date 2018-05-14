@@ -252,10 +252,31 @@ pair_list_at(PyObject *op, size_t idx, pair_t *pair)
 }
 
 
-uint64_t pair_list_version(PyObject *op)
+uint64_t 
+pair_list_version(PyObject *op)
 {
     pair_list_t *list = (pair_list_t *) op;
     return list->version;
+}
+
+
+int 
+pair_list_next(PyObject *op, Py_ssize_t *ppos,
+		   PyObject **pkey, PyObject **pvalue)
+{
+    pair_list_t *list = (pair_list_t *) op;
+    pair_t *pair = pair_list_get(list, *ppos);
+    *ppos = *ppos + 1;
+    if (*ppos >= list->size) {
+	return 0;
+    }
+    if (pkey) {
+	*pkey = pair->key;
+    }
+    if (pvalue) {
+	*pvalue = pair->value;
+    }
+    return 1;
 }
 
 
