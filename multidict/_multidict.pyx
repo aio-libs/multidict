@@ -19,39 +19,6 @@ def getversion(_Base md):
     return md._impl._version
 
 
-cdef _eq(self, other):
-    cdef int is_left_base, is_right_base
-    cdef Py_ssize_t i, l
-    cdef list lft_items, rgt_items
-    cdef _Pair lft, rgt
-
-    is_left_base = isinstance(self, _Base)
-    is_right_base = isinstance(other, _Base)
-
-    if is_left_base and is_right_base:
-        lft_items = (<_Base>self)._impl._items
-        rgt_items = (<_Base>other)._impl._items
-        l = len(lft_items)
-        if l != len(rgt_items):
-            return False
-        for i in range(l):
-            lft = <_Pair>(lft_items[i])
-            rgt = <_Pair>(rgt_items[i])
-            if lft._hash != rgt._hash:
-                return False
-            if lft._identity != rgt._identity:
-                return False
-            if lft._value != rgt._value:
-                return False
-        return True
-    elif is_left_base and isinstance(other, abc.Mapping):
-        return (<_Base>self)._eq_to_mapping(other)
-    elif is_right_base and isinstance(self, abc.Mapping):
-        return (<_Base>other)._eq_to_mapping(self)
-    else:
-        return NotImplemented
-
-
 cdef class _Pair:
     cdef str _identity
     cdef Py_hash_t _hash
@@ -202,15 +169,29 @@ cdef class _Base:
                 return False
         return True
 
-    def __richcmp__(self, other, op):
-        if op == 2:  # ==
-            return _eq(self, other)
-        elif op == 3:  # !=
-            ret = _eq(self, other)
-            if ret is NotImplemented:
-                return ret
-            else:
-                return not ret
+    def __eq__(self, other):
+        cdef Py_ssize_t i, l
+        cdef list lft_items, rgt_items
+        cdef _Pair lft, rgt
+
+        if isinstance(other, _Base):
+            lft_items = self._impl._items
+            rgt_items = (<_Base>other)._impl._items
+            l = len(lft_items)
+            if l != len(rgt_items):
+                return False
+            for i in range(l):
+                lft = <_Pair>(lft_items[i])
+                rgt = <_Pair>(rgt_items[i])
+                if lft._hash != rgt._hash:
+                    return False
+                if lft._identity != rgt._identity:
+                    return False
+                if lft._value != rgt._value:
+                    return False
+            return True
+        elif isinstance(other, abc.Mapping):
+            return self._eq_to_mapping(other)
         else:
             return NotImplemented
 
