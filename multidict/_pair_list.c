@@ -35,6 +35,22 @@ typedef struct pair_list {
 } pair_list_t;
 
 
+int inline static cmp_str(PyObject *s1, PyObject *s2)
+{
+    int ret;
+    ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
+    if (ret == Py_True) {
+	Py_DECREF(ret);
+	return 1;
+    }
+    else if (ret == NULL) {
+	return -1;
+    }
+    else {
+	Py_DECREF(ret);
+	return 0;
+    }
+}
 
 
 static void
@@ -202,7 +218,7 @@ pair_list_del_hash(PyObject *op, PyObject *identity, Py_hash_t hash)
     // return 1 if deleted, 0 if not found
     Py_ssize_t pos;
     pair_t *pair;
-    PyObject *ret;
+    int ret;
     pair_list_t *list = (pair_list_t *) op;
 
     for (pos = 0; pos < list->size; pos++) {
@@ -210,16 +226,12 @@ pair_list_del_hash(PyObject *op, PyObject *identity, Py_hash_t hash)
 	if (pair->hash != hash) {
 	    continue;
 	}
-	ret = PyUnicode_RichCompare(pair->identity, identity, Py_EQ);
-	if (ret == Py_True) {
-	    Py_DECREF(ret);
+	ret = str_cmp(pair->identity, identity);
+	if (ret) {
 	    return pair_list_del_at(list, pos);
 	}
-	else if (ret == NULL) {
+	else if (ret == -1) {
 	    return -1;
-	}
-	else {
-	    Py_DECREF(ret);
 	}
     }
     return 0;
@@ -290,7 +302,7 @@ pair_list_get_one(PyObject *op, PyObject *ident)
     Py_ssize_t pos = 0;
     PyObject *identity;
     PyObject *value;
-    PyObject *ret;
+    int ret;
 
     hash1 = PyObject_Hash(identity);
     if (hash1 == -1) {
@@ -300,7 +312,7 @@ pair_list_get_one(PyObject *op, PyObject *ident)
         if (hash1 != hash2) {
 	    continue;
 	}
-	ret = PyUnicode_RichCompare(ident, identity, Py_EQ);
+	ret = str_cmp(ident, identity, Py_EQ);
 	if (ret == Py_True) {
 	    Py_DECREF(ret);
 	    Py_INCREF(value);
