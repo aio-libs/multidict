@@ -14,7 +14,9 @@ cdef extern from "_pair_list.h":
     int pair_list_next(object lst, Py_ssize_t *ppos,
                        PyObject* *pkey, PyObject* *pvalue)
 
+    int pair_list_contains(object lst, object identity)
     object pair_list_get_one(object lst, object identity)
+    object pair_list_get_all(object lst, object identity)
 
     int pair_list_del(object lst, object identity)
     int pair_list_del_hash(object lst, object identity, Py_hash_t hash)

@@ -304,6 +304,35 @@ pair_list_next(PyObject *op, Py_ssize_t *ppos,
 }
 
 
+int
+pair_list_contains(PyObject *op, PyObject *ident)
+{
+    pair_list_t *list = (pair_list_t *) op;
+    Py_hash_t hash1, hash2;
+    Py_ssize_t pos = 0;
+    PyObject *identity;
+    int tmp;
+
+    hash1 = PyObject_Hash(ident);
+    if (hash1 == -1) {
+	return NULL;
+    }
+    while (_pair_list_next(list, &pos, &identity, NULL, &hash2)) {
+        if (hash1 != hash2) {
+	    continue;
+	}
+	tmp = str_cmp(ident, identity);
+	if (tmp > 0) {
+	    return 1;
+	}
+	else if (tmp < 0) {
+	    return -1;
+	}
+    }
+    return 0;
+}
+
+
 PyObject *
 pair_list_get_one(PyObject *op, PyObject *ident)
 {
@@ -314,8 +343,9 @@ pair_list_get_one(PyObject *op, PyObject *ident)
     PyObject *value;
     int tmp;
 
-    hash1 = PyObject_Hash(identity);
+    hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
+	PyErr_Clear();  // NULL is for "not found without exceptions"
 	return NULL;
     }
     while (_pair_list_next(list, &pos, &identity, &value, &hash2)) {
@@ -347,8 +377,9 @@ pair_list_get_all(PyObject *op, PyObject *ident)
     int tmp;
     PyObject *res = NULL;
 
-    hash1 = PyObject_Hash(identity);
+    hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
+	PyErr_Clear();  // NULL is for "not found without exceptions"
 	return NULL;
     }
     while (_pair_list_next(list, &pos, &identity, &value, &hash2)) {

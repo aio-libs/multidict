@@ -21,7 +21,10 @@ int pair_list_next(PyObject *list, Py_ssize_t *ppos,
 		   PyObject **pkey, PyObject **pvalue);
 
 
+int pair_list_contains(PyObject *list, PyObject *identity);
+
 PyObject * pair_list_get_one(PyObject *list, PyObject *identity);
+PyObject * pair_list_get_all(PyObject *list, PyObject *identity);
 
 
 int pair_list_del(PyObject *list, PyObject *identity);
