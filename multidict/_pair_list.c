@@ -345,7 +345,6 @@ pair_list_get_one(PyObject *op, PyObject *ident)
 
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
-	PyErr_Clear();  // NULL is for "not found without exceptions"
 	return NULL;
     }
     while (_pair_list_next(list, &pos, &identity, &value, &hash2)) {
@@ -358,10 +357,10 @@ pair_list_get_one(PyObject *op, PyObject *ident)
 	    return value;
 	}
 	else if (tmp < 0) {
-	    PyErr_Clear();  // NULL is for "not found without exceptions"
 	    return NULL;
 	}
     }
+    PyErr_SetException(PyExc_KeyError, "key not found");
     return NULL;
 }
 
@@ -404,14 +403,15 @@ pair_list_get_all(PyObject *op, PyObject *ident)
 	    }
 	}
 	else if (tmp < 0) {
-	    PyErr_Clear();  // NULL is for "not found without exceptions"
 	    goto fail;
 	}
+    }
+    if (res == NULL) {
+	PyErr_SetException(PyExc_KeyError, "key not found");
     }
     return res;
 
 fail:
-    Py_CLEAR(res);
     return NULL;
 }
 
