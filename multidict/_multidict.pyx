@@ -9,6 +9,8 @@ from cpython.object cimport PyObject_Str
 from ._abc import MultiMapping, MutableMultiMapping
 from ._istr import istr
 
+from ._pair_list cimport *
+
 cdef object _marker = object()
 
 upstr = istr  # for relaxing backward compatibility problems

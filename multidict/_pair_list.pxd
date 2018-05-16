@@ -1,4 +1,5 @@
-from libc.stdint import uint64_t
+from cpython.object cimport PyObject
+from libc.stdint cimport uint64_t
 
 cdef extern from "_pair_list.h":
 
@@ -8,7 +9,7 @@ cdef extern from "_pair_list.h":
 
     int pair_list_clear(object lst)
 
-    int pair_list_add_with_hash(lobect lst,
+    int pair_list_add_with_hash(object lst,
                                 object identity, object key,
                                 object value, Py_hash_t hash)
 
