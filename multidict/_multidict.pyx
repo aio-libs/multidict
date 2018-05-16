@@ -55,6 +55,7 @@ cdef class _Base:
 
     cdef _getone(self, str identity, key, default):
         try:
+            print('_getone')
             return pair_list_get_one(self._impl, identity)
         except KeyError:
             if default is not _marker:
@@ -390,7 +391,8 @@ cdef class MultiDict(_Base):
 
     cdef _add(self, key, value):
         cdef str identity = self._title(key)
-        pair_list_add_with_hash(self._impl._items,
+        print(identity, _str(key), value, hash(identity))
+        pair_list_add_with_hash(self._impl,
                                 identity,
                                 _str(key), value, hash(identity))
 
@@ -617,7 +619,7 @@ cdef class _ItemsIter:
     def __cinit__(self, object impl):
         self._impl = impl
         self._current = 0
-        self._version = pair_list_version(impl._items)
+        self._version = pair_list_version(impl)
 
     def __iter__(self):
         return self
@@ -676,7 +678,7 @@ cdef class _ValuesIter:
     def __cinit__(self, object impl):
         self._impl = impl
         self._current = 0
-        self._version = pair_list_version(impl._items)
+        self._version = pair_list_version(impl)
 
     def __iter__(self):
         return self
@@ -721,7 +723,7 @@ cdef class _KeysIter:
     def __cinit__(self, object impl):
         self._impl = impl
         self._current = 0
-        self._version = pair_list_version(impl._items)
+        self._version = pair_list_version(impl)
 
     def __iter__(self):
         return self

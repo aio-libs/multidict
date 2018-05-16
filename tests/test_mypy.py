@@ -8,5 +8,7 @@ def test_classes_not_abstract() -> None:
     d3 = multidict.MultiDictProxy(d1)
     d4 = multidict.CIMultiDictProxy(d2)
 
+    d1.getone('a')
+    d2.getall('a')
     d3.getone('a')
     d4.getall('a')

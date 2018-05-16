@@ -26,8 +26,9 @@ extensions = [
     Extension('multidict._multidict',
               ['multidict/_multidict' + ext,
                'multidict/_pair_list.c'],
-              # extra_compile_args=["-g"],
-              # extra_link_args=["-g"],
+              define_macros=[('DEBUG', '1')],
+              extra_compile_args=["-g", "-Wall"],
+              extra_link_args=["-g"],
     ),
 ]
 

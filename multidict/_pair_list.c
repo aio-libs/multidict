@@ -5,7 +5,7 @@
 #include "object.h"
 #include "structmember.h"
 
-
+#include <stdio.h>
 #define MIN_LIST_CAPACITY 32
 
 static PyTypeObject pair_list_type;
@@ -28,10 +28,10 @@ typedef struct pair {
 
 
 typedef struct pair_list {
-    pair_t *pairs;
     Py_ssize_t  capacity;
     Py_ssize_t  size;
     Py_ssize_t  version;
+    pair_t *pairs;
 } pair_list_t;
 
 
@@ -54,26 +54,6 @@ inline static int str_cmp(PyObject *s1, PyObject *s2)
 
 
 static void
-pair_set(pair_t *pair,
-	 PyObject *identity,
-	 PyObject *key,
-	 PyObject *value,
-	 Py_hash_t hash)
-{
-    Py_INCREF(identity);
-    pair->identity = identity;
-
-    Py_INCREF(key);
-    pair->key = key;
-
-    Py_INCREF(value);
-    pair->value = value;
-
-    pair->hash = hash;
-}
-
-
-static void
 pair_clear(pair_t *pair)
 {
     Py_DECREF(pair->identity);
@@ -84,13 +64,14 @@ pair_clear(pair_t *pair)
 static pair_t*
 pair_list_get(pair_list_t *list, Py_ssize_t i)
 {
-    pair_t *item = list->pairs + i;
+    pair_t *item = &list->pairs[i];
     return item;
 }
 
 static int
 pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
 {
+    printf("resize\n");
     // TODO: use more smart algo for capacity grow
     pair_t *new_pairs = PyMem_Realloc(list->pairs, new_capacity);
 
@@ -109,14 +90,13 @@ PyObject *
 pair_list_new(void)
 {
     pair_list_t *list = PyObject_GC_New(pair_list_t, &pair_list_type);
-    if (NULL == list) {
+    if (list == NULL) {
         return NULL;
     }
 
     // TODO: align size of pair to the nearest power of 2
-    list->pairs = PyMem_Calloc(MIN_LIST_CAPACITY, sizeof(pair_t));
-    if (NULL == list->pairs) {
-        PyMem_Free(list);
+    list->pairs = PyMem_Malloc(MIN_LIST_CAPACITY * sizeof(pair_t));
+    if (list->pairs == NULL) {
         return NULL;
     }
 
@@ -172,9 +152,20 @@ pair_list_add_with_hash(PyObject *op,
         }
     }
 
-    pair_t *new_pair = pair_list_get(list, list->size);
+    pair_t *pair = pair_list_get(list, list->size);
+    printf("pair_list_add_with_hash %ld\n", pair);
+    printf("pair_list_add_with_hash .. %ld\n", hash);
 
-    pair_set(new_pair, identity, key, value, hash);
+    Py_INCREF(identity);
+    pair->identity = identity;
+
+    Py_INCREF(key);
+    pair->key = key;
+
+    Py_INCREF(value);
+    pair->value = value;
+
+    pair->hash = hash;
 
     list->size += 1;
     list->version = NEXT_VERSION();
@@ -284,24 +275,42 @@ pair_list_version(PyObject *op)
 int 
 _pair_list_next(PyObject *op, Py_ssize_t *ppos,
 		PyObject **pidentity, PyObject **pkey,
-		PyObject **pvalue, Py_hash_t *hash)
+		PyObject **pvalue, Py_hash_t *phash)
 {
     pair_list_t *list = (pair_list_t *) op;
-    pair_t *pair = pair_list_get(list, *ppos);
-    *ppos = *ppos + 1;
+    pair_t *pair;
+
+    printf("a.1\n");
     if (*ppos >= list->size) {
 	return 0;
     }
+    printf("a.2 %ld\n", *ppos);
+    pair = pair_list_get(list, *ppos);
+
+    printf("a.3 %ld\n", pair);
     if (pidentity) {
+	printf("a.3.1\n");
 	*pidentity = pair->identity;
     }
+    printf("a.4\n");
     if (pkey) {
+	printf("a.4.1\n");
 	*pkey = pair->key;
     }
+    printf("a.5\n");
     if (pvalue) {
+	printf("a.5.1\n");
 	*pvalue = pair->value;
     }
-    *hash = pair->hash;
+    printf("a.6\n");
+    if (phash) {
+	printf("a.6.1 %ld\n", pair->hash);
+	*phash = pair->hash;
+    }
+
+    printf("a.7\n");
+    *ppos = *ppos + 1;
+    printf("a.8\n");
     return 1;
 }
 
@@ -357,19 +366,26 @@ pair_list_get_one(PyObject *op, PyObject *ident)
     if (hash1 == -1) {
 	return NULL;
     }
+    printf("1\n");
     while (_pair_list_next(op, &pos, &identity, NULL, &value, &hash2)) {
+	printf("2\n");
         if (hash1 != hash2) {
+	    printf("2.1 %ld %ld\n", hash1, hash2);
 	    continue;
 	}
+	printf("3\n");
 	tmp = str_cmp(ident, identity);
+	printf("4\n");
 	if (tmp > 0) {
 	    Py_INCREF(value);
 	    return value;
 	}
 	else if (tmp < 0) {
+	    printf("5\n");
 	    return NULL;
 	}
     }
+    printf("6\n");
     PyErr_SetObject(PyExc_KeyError, ident);
     return NULL;
 }
@@ -673,7 +689,7 @@ pair_list_clear(PyObject *op)
 
 static PyTypeObject pair_list_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "multidict._pair_list._pair_list",
+    "multidict._multidict._pair_list",
     sizeof(pair_list_t),
     0,
     (destructor)pair_list_dealloc,              /* tp_dealloc */
@@ -688,10 +704,10 @@ static PyTypeObject pair_list_type = {
     PyObject_HashNotImplemented,                /* tp_hash */
     0,                                          /* tp_call */
     0,                                          /* tp_str */
-    PyObject_GenericGetAttr,                    /* tp_getattro */
+    0,                                          /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                         /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
     0,                                          /* tp_doc */
     pair_list_traverse,                         /* tp_traverse */
     pair_list_clear,                            /* tp_clear */
@@ -718,19 +734,6 @@ static int mod_clear(PyObject *m)
 {
   return 0;
 }
-
-
-static struct PyModuleDef _pair_list_module = {
-    PyModuleDef_HEAD_INIT,
-    "multidict._multidict",
-    pair_list__doc__,
-    0,
-    NULL,  /* m_methods */
-    NULL,  /* m_reload */
-    NULL,  /* m_traverse */
-    mod_clear,  /* m_clear */
-    NULL   /* m_free */
-};
 
 
 int pair_list_init(void)
