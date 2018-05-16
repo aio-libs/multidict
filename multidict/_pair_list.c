@@ -35,9 +35,9 @@ typedef struct pair_list {
 } pair_list_t;
 
 
-int inline static cmp_str(PyObject *s1, PyObject *s2)
+inline static int str_cmp(PyObject *s1, PyObject *s2)
 {
-    int ret;
+    PyObject *ret;
     ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
     if (ret == Py_True) {
 	Py_DECREF(ret);
@@ -227,7 +227,7 @@ pair_list_del_hash(PyObject *op, PyObject *identity, Py_hash_t hash)
 	    continue;
 	}
 	ret = str_cmp(pair->identity, identity);
-	if (ret) {
+	if (ret > 0) {
 	    return pair_list_del_at(list, pos);
 	}
 	else if (ret == -1) {
@@ -294,6 +294,16 @@ _pair_list_next(pair_list_t *list, Py_ssize_t *ppos,
 }
 
 
+int 
+pair_list_next(PyObject *op, Py_ssize_t *ppos,
+		   PyObject **pkey, PyObject **pvalue)
+{
+    pair_list_t *list = (pair_list_t *) op;
+    Py_hash_t hash;
+    return _pair_list_next(list, ppos, pkey, pvalue, &hash);
+}
+
+
 PyObject *
 pair_list_get_one(PyObject *op, PyObject *ident)
 {
@@ -302,7 +312,7 @@ pair_list_get_one(PyObject *op, PyObject *ident)
     Py_ssize_t pos = 0;
     PyObject *identity;
     PyObject *value;
-    int ret;
+    int tmp;
 
     hash1 = PyObject_Hash(identity);
     if (hash1 == -1) {
@@ -312,30 +322,66 @@ pair_list_get_one(PyObject *op, PyObject *ident)
         if (hash1 != hash2) {
 	    continue;
 	}
-	ret = str_cmp(ident, identity, Py_EQ);
-	if (ret == Py_True) {
-	    Py_DECREF(ret);
+	tmp = str_cmp(ident, identity);
+	if (tmp > 0) {
 	    Py_INCREF(value);
 	    return value;
 	}
-	else if (ret == NULL) {
+	else if (tmp < 0) {
+	    PyErr_Clear();  // NULL is for "not found without exceptions"
 	    return NULL;
-	}
-	else {
-	    Py_DECREF(ret);
 	}
     }
     return NULL;
 }
 
 
-int 
-pair_list_next(PyObject *op, Py_ssize_t *ppos,
-		   PyObject **pkey, PyObject **pvalue)
+PyObject *
+pair_list_get_all(PyObject *op, PyObject *ident)
 {
     pair_list_t *list = (pair_list_t *) op;
-    Py_hash_t hash;
-    return _pair_list_next(list, ppos, pkey, pvalue, &hash);
+    Py_hash_t hash1, hash2;
+    Py_ssize_t pos = 0;
+    PyObject *identity;
+    PyObject *value;
+    int tmp;
+    PyObject *res = NULL;
+
+    hash1 = PyObject_Hash(identity);
+    if (hash1 == -1) {
+	return NULL;
+    }
+    while (_pair_list_next(list, &pos, &identity, &value, &hash2)) {
+        if (hash1 != hash2) {
+	    continue;
+	}
+	tmp = str_cmp(ident, identity);
+	if (tmp > 0) {
+	    if (res == NULL) {
+		res = PyList_New(1);
+		if (res == NULL) {
+		    goto fail;
+		}
+		if (PyList_SetItem(res, 0, value) < 0) {
+		    goto fail;
+		}
+		Py_INCREF(value);
+	    } else {
+		if (PyList_Append(res, value) < 0) {
+		    goto fail;
+		}
+	    }
+	}
+	else if (tmp < 0) {
+	    PyErr_Clear();  // NULL is for "not found without exceptions"
+	    goto fail;
+	}
+    }
+    return res;
+
+fail:
+    Py_CLEAR(res);
+    return NULL;
 }
 
 
