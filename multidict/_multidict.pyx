@@ -89,7 +89,7 @@ cdef class _Base:
     def __len__(self):
         return pair_list_len(self._impl)
 
-    def keys(self):
+    cpdef keys(self):
         """Return a new view of the dictionary's keys."""
         return _KeysView.__new__(_KeysView, self)
 
@@ -634,8 +634,8 @@ cdef class _ItemsView(_ViewBaseSet):
 
     def isdisjoint(self, other):
         'Return True if two sets have a null intersection.'
-        for t in self:
-            if t in other:
+        for v in other:
+            if v in self:
                 return False
         return True
 
@@ -743,8 +743,7 @@ cdef class _KeysView(_ViewBaseSet):
         return True
 
     def __contains__(self, value):
-        return False
-        return pair_list_contains(self._md, value)
+        return self._md._contains(value)
 
     def __iter__(self):
         return _KeysIter.__new__(_KeysIter, self._md._impl)
