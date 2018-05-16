@@ -12,8 +12,8 @@ Py_ssize_t pair_list_len(PyObject *list);
 
 int pair_list_clear(PyObject *list);
 
-int pair_list_add(PyObject *list, PyObject *identity, PyObject *key,
-		  PyObject *value, Py_hash_t hash);
+int pair_list_add_with_hash(PyObject *list, PyObject *identity,
+			    PyObject *key, PyObject *value, Py_hash_t hash);
 
 // int pair_list_at(PyObject *list, size_t idx, pair_t *pair);
 
@@ -29,6 +29,9 @@ PyObject * pair_list_get_all(PyObject *list, PyObject *identity);
 
 int pair_list_del(PyObject *list, PyObject *identity);
 int pair_list_del_hash(PyObject *list, PyObject *identity, Py_hash_t hash);
+
+PyObject * pair_list_set_default(PyObject *op, PyObject *ident,
+				 PyObject *key, PyObject *value);
 
 uint64_t pair_list_version(PyObject *list);
 

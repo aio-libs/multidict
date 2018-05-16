@@ -8,8 +8,9 @@ cdef extern from "_pair_list.h":
 
     int pair_list_clear(object lst)
 
-    int pair_list_add(lobect lst, object identity, object key,
-                      object value, object hash)
+    int pair_list_add_with_hash(lobect lst,
+                                object identity, object key,
+                                object value, Py_hash_t hash)
 
     int pair_list_next(object lst, Py_ssize_t *ppos,
                        PyObject* *pkey, PyObject* *pvalue)
@@ -20,5 +21,8 @@ cdef extern from "_pair_list.h":
 
     int pair_list_del(object lst, object identity)
     int pair_list_del_hash(object lst, object identity, Py_hash_t hash)
+
+    object pair_list_set_default(object lst, object identity,
+                                 object key, object value)
 
     uint64_t pair_list_version(object lst)

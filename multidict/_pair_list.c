@@ -159,7 +159,7 @@ pair_list_len(PyObject *op)
 
 
 int
-pair_list_add(PyObject *op,
+pair_list_add_with_hash(PyObject *op,
               PyObject *identity,
               PyObject *key,
               PyObject *value,
@@ -415,6 +415,41 @@ fail:
     return NULL;
 }
 
+
+PyObject *
+pair_list_set_default(PyObject *op, PyObject *ident,
+		      PyObject *key, PyObject *value)
+{
+    pair_list_t *list = (pair_list_t *) op;
+    Py_hash_t hash1, hash2;
+    Py_ssize_t pos = 0;
+    PyObject *identity;
+    PyObject *value2;
+    int tmp;
+
+    hash1 = PyObject_Hash(ident);
+    if (hash1 == -1) {
+	return NULL;
+    }
+    while (_pair_list_next(list, &pos, &identity, &value2, &hash2)) {
+        if (hash1 != hash2) {
+	    continue;
+	}
+	tmp = str_cmp(ident, identity);
+	if (tmp > 0) {
+	    Py_INCREF(value);
+	    return value2;
+	}
+	else if (tmp < 0) {
+	    return NULL;
+	}
+    }
+    if (pair_list_add_with_hash(list, ident, key, value, hash1) < 0) {
+	return NULL;
+    }
+    Py_INCREF(value);
+    return value;
+}
 
 /***********************************************************************/
 
