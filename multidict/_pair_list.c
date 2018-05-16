@@ -82,7 +82,7 @@ pair_clear(pair_t *pair)
 }
 
 static pair_t*
-pair_list_get(pair_list_t *list, size_t i)
+pair_list_get(pair_list_t *list, Py_ssize_t i)
 {
     pair_t *item = list->pairs + i;
     return item;
@@ -196,7 +196,8 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
     list->size -= 1;
     list->version = NEXT_VERSION();
 
-    if (list->size == 0) {
+    if (list->size == pos) {
+	// remove from tail, no need to shift body
         return 1;
     }
     tail = list->size - pos;
@@ -367,7 +368,6 @@ pair_list_get_all(PyObject *op, PyObject *ident)
 
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
-	PyErr_Clear();  // NULL is for "not found without exceptions"
 	return NULL;
     }
     while (_pair_list_next(list, &pos, &identity, NULL, &value, &hash2)) {
@@ -401,6 +401,7 @@ pair_list_get_all(PyObject *op, PyObject *ident)
     return res;
 
 fail:
+    Py_CLEAR(res);
     return NULL;
 }
 
@@ -439,6 +440,131 @@ pair_list_set_default(PyObject *op, PyObject *ident,
     Py_INCREF(value);
     return value;
 }
+
+
+PyObject *
+pair_list_pop_one(PyObject *op, PyObject *ident)
+{
+    pair_list_t *list = (pair_list_t *) op;
+    Py_hash_t hash1, hash2;
+    Py_ssize_t pos = 0;
+    PyObject *identity;
+    PyObject *value = NULL;
+    int tmp;
+
+    hash1 = PyObject_Hash(ident);
+    if (hash1 == -1) {
+	return NULL;
+    }
+    while (_pair_list_next(list, &pos, &identity, NULL, &value, &hash2)) {
+        if (hash1 != hash2) {
+	    continue;
+	}
+	tmp = str_cmp(ident, identity);
+	if (tmp > 0) {
+	    Py_INCREF(value);
+	    if (pair_list_del_at(list, pos) < 0) {
+		goto fail;
+	    }
+	    return value;
+	}
+	else if (tmp < 0) {
+	    return NULL;
+	}
+    }
+    PyErr_SetObject(PyExc_KeyError, ident);
+    return NULL;
+fail:
+    Py_CLEAR(value);
+    return NULL;
+}
+
+
+PyObject *
+pair_list_pop_all(PyObject *op, PyObject *ident)
+    pair_list_t *list = (pair_list_t *) op;
+    Py_hash_t hash;
+    Py_ssize_t pos = 0;
+    pair_t *pair;
+    int tmp;
+    PyObject *res = NULL;
+
+    hash = PyObject_Hash(ident);
+    if (hash == -1) {
+	return NULL;
+    }
+
+    if (list->size == 0) {
+	PyErr_SetObject(PyExc_KeyError, ident);
+	return NULL;
+    }
+
+    for (pos = list->size - 1; pos >= 0; pos--) {
+	pair = pair_list_get(list, pos);
+        if (hash != pair->hash) {
+	    continue;
+	}
+	tmp = str_cmp(ident, identity);
+	if (tmp > 0) {
+	    if (res == NULL) {
+		res = PyList_New(1);
+		if (res == NULL) {
+		    goto fail;
+		}
+		if (PyList_SetItem(res, 0, value) < 0) {
+		    goto fail;
+		}
+		Py_INCREF(value);
+	    } else {
+		if (PyList_Append(res, value) < 0) {
+		    goto fail;
+		}
+	    }
+	    if (pair_list_del_at(list, pos) < 0) {
+		goto fail;
+	    }
+	}
+	else if (tmp < 0) {
+	    goto fail;
+	}
+    }
+    if (res == NULL) {
+	PyErr_SetObject(PyExc_KeyError, ident);
+    } else {
+	if (PyList_Reverse(res) < 0) {
+	    goto fail;
+	}
+    }
+    return res;
+
+fail:
+    Py_CLEAR(res);
+    return NULL;
+}
+
+
+PyObject *
+pair_list_pop_item(PyObject *op)
+{
+    pair_list_t *list = (pair_list_t *) op;
+    PyObject *ret;
+    pair_t * pair;
+    if (list->size == 0) {
+	PyErr_SetString(PyExc_KeyError, "empty multidict");
+	return NULL;
+    }
+    pair = pair_list_get(list, 0);
+    ret = PyTuple_Pack(2, pair->key, pair->value);
+    if (ret == NULL) {
+	return NULL;
+    }
+    if (pair_list_del_at(list, pos) < 0) {
+	Py_CLEAR(ret);
+	goto NULL;
+    }
+    return ret;
+}
+
 
 /***********************************************************************/
 

@@ -21,16 +21,9 @@ def getversion(_Base md):
     return pair_list_version(md._impl)
 
 
-cdef class _Impl:
-    cdef object _items
-
-    def __cinit__(self):
-        self._items = pair_list_new()
-
-
 cdef class _Base:
 
-    cdef _Impl _impl
+    cdef object _impl
 
     cdef str _title(self, s):
         typ = type(s)
@@ -89,7 +82,7 @@ cdef class _Base:
         return iter(self.keys())
 
     def __len__(self):
-        return len(self._impl._items)
+        return pair_list_len(self._impl)
 
     cpdef keys(self):
         """Return a new view of the dictionary's keys."""
@@ -223,7 +216,7 @@ cdef class MultiDict(_Base):
     """An ordered dictionary that can have multiple values for each key."""
 
     def __init__(self, *args, **kwargs):
-        self._impl = _Impl()
+        self._impl = pair_list_new()
         self._extend(args, kwargs, 'MultiDict', True)
 
     def __reduce__(self):
@@ -263,13 +256,13 @@ cdef class MultiDict(_Base):
             else:
                 self._replace(key, value)
 
-    cdef object _update_items(self, _Impl impl):
+    cdef object _update_items(self, object impl):
         cdef _Pair item, item2
         cdef object i
         cdef dict used_keys = {}
         cdef Py_ssize_t start
         cdef Py_ssize_t post
-        cdef Py_ssize_t size = pair_list_len(self._impl._items)
+        cdef Py_ssize_t size = pair_list_len(self._impl)
         cdef Py_hash_t h
 
         cdef Py_ssize_t pos
@@ -359,7 +352,7 @@ cdef class MultiDict(_Base):
 
         self._impl.incr_version()
 
-    cdef object _append_items(self, _Impl impl):
+    cdef object _append_items(self, object impl):
         cdef _Pair item
         cdef object i
         cdef str key
@@ -488,24 +481,13 @@ cdef class MultiDict(_Base):
         KeyError is raised.
 
         """
-        cdef object value = None
-        cdef str identity = self._title(key)
-        cdef Py_hash_t h = hash(identity)
-        cdef _Pair item
-        cdef list items = self._impl._items
-        for i in range(len(items)):
-            item = <_Pair>items[i]
-            if item._hash != h:
-                continue
-            if item._identity == identity:
-                value = item._value
-                del items[i]
-                self._impl.incr_version()
-                return value
-        if default is _marker:
-            raise KeyError(key)
-        else:
-            return default
+        try:
+            return pair_list_pop_one(self._impl, self._title(key))
+        except KeyError:
+            if default is _marker:
+                raise
+            else:
+                return default
 
     pop = popone
 
@@ -517,40 +499,17 @@ cdef class MultiDict(_Base):
         KeyError is raised.
 
         """
-        cdef bint found = False
-        cdef str identity = self._title(key)
-        cdef Py_hash_t h = hash(identity)
-        cdef _Pair item
-        cdef list items = self._impl._items
-        cdef list ret = []
-        for i in range(len(items)-1, -1, -1):
-            item = <_Pair>items[i]
-            if item._hash != h:
-                continue
-            if item._identity == identity:
-                ret.append(item._value)
-                del items[i]
-                self._impl.incr_version()
-                found = True
-        if not found:
+        try:
+            return pair_list_pop_all(self._impl, self._title(key))
+        except KeyError:
             if default is _marker:
-                raise KeyError(key)
+                raise
             else:
                 return default
-        else:
-            ret.reverse()
-            return ret
 
     def popitem(self):
         """Remove and return an arbitrary (key, value) pair."""
-        cdef _Pair item
-        cdef list items = self._impl._items
-        if items:
-            item = <_Pair>items.pop(0)
-            self._impl.incr_version()
-            return (item._key, item._value)
-        else:
-            raise KeyError("empty multidict")
+        return pair_list_pop_item(self._impl)
 
     def update(self, *args, **kwargs):
         """Update the dictionary from *other*, overwriting existing keys."""
@@ -564,7 +523,7 @@ cdef class CIMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
     def __init__(self, *args, **kwargs):
-        self._impl = _Impl()
+        self._impl = pair_list_new()
         self._extend(args, kwargs, 'CIMultiDict', True)
 
     def __reduce__(self):
@@ -594,13 +553,13 @@ MutableMultiMapping.register(CIMultiDict)
 
 cdef class _ViewBase:
 
-    cdef _Impl _impl
+    cdef object _impl
 
-    def __cinit__(self, _Impl impl):
+    def __cinit__(self, object impl):
         self._impl = impl
 
     def __len__(self):
-        return pair_list_len(self._impl._items)
+        return pair_list_len(self._impl)
 
 
 cdef class _ViewBaseSet(_ViewBase):
@@ -685,11 +644,11 @@ cdef class _ViewBaseSet(_ViewBase):
 
 
 cdef class _ItemsIter:
-    cdef _Impl _impl
+    cdef object _impl
     cdef Py_ssize_t _current
-    cdef unsigned long long _version
+    cdef uint64_t _version
 
-    def __cinit__(self, _Impl impl):
+    def __cinit__(self, object impl):
         self._impl = impl
         self._current = 0
         self._version = pair_list_version(impl._items)
@@ -702,7 +661,7 @@ cdef class _ItemsIter:
             raise RuntimeError("Dictionary changed during iteration")
         cdef PyObject *key
         cdef PyObject *value
-        if not _pair_list_next(self._impl._items,
+        if not _pair_list_next(self._impl,
                                &self._current, NULL, &key, &value, NULL):
             raise StopIteration
         return (<object>key, <object>value)
@@ -745,11 +704,11 @@ abc.ItemsView.register(_ItemsView)
 
 
 cdef class _ValuesIter:
-    cdef _Impl _impl
+    cdef object _impl
     cdef Py_ssize_t _current
-    cdef unsigned long long _version
+    cdef uint64_t _version
 
-    def __cinit__(self, _Impl impl):
+    def __cinit__(self, object impl):
         self._impl = impl
         self._current = 0
         self._version = pair_list_version(impl._items)
@@ -758,10 +717,10 @@ cdef class _ValuesIter:
         return self
 
     def __next__(self):
-        if self._version != pair_list_version(self._impl._items):
+        if self._version != pair_list_version(self._impl):
             raise RuntimeError("Dictionary changed during iteration")
         cdef PyObject *value
-        if not _pair_list_next(self._impl._items,
+        if not _pair_list_next(self._impl,
                               &self._current, NULL, NULL, &value, NULL):
             raise StopIteration
         return <object>value
@@ -790,11 +749,11 @@ abc.ValuesView.register(_ValuesView)
 
 
 cdef class _KeysIter:
-    cdef _Impl _impl
+    cdef object _impl
     cdef Py_ssize_t _current
-    cdef unsigned long long _version
+    cdef uint64_t _version
 
-    def __cinit__(self, _Impl impl):
+    def __cinit__(self, object impl):
         self._impl = impl
         self._current = 0
         self._version = pair_list_version(impl._items)
@@ -803,10 +762,10 @@ cdef class _KeysIter:
         return self
 
     def __next__(self):
-        if self._version != pair_list_version(self._impl._items):
+        if self._version != pair_list_version(self._impl):
             raise RuntimeError("Dictionary changed during iteration")
         cdef PyObject * key
-        if not pair_list_next(self._impl._items,
+        if not pair_list_next(self._impl,
                               &self._current, NULL, &key, NULL):
             raise StopIteration
         return <object>(key)
@@ -822,7 +781,7 @@ cdef class _KeysView(_ViewBaseSet):
         return True
 
     def __contains__(self, value):
-        return pair_list_contains(self._impl._items, value)
+        return pair_list_contains(self._impl, value)
 
     def __iter__(self):
         return _KeysIter.__new__(_KeysIter, self._impl)
