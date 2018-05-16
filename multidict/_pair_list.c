@@ -28,6 +28,7 @@ typedef struct pair {
 
 
 typedef struct pair_list {
+    PyObject_HEAD
     Py_ssize_t  capacity;
     Py_ssize_t  size;
     Py_ssize_t  version;
@@ -153,8 +154,6 @@ pair_list_add_with_hash(PyObject *op,
     }
 
     pair_t *pair = pair_list_get(list, list->size);
-    printf("pair_list_add_with_hash %ld\n", pair);
-    printf("pair_list_add_with_hash .. %ld\n", hash);
 
     Py_INCREF(identity);
     pair->identity = identity;
@@ -282,38 +281,25 @@ _pair_list_next(PyObject *op, Py_ssize_t *ppos,
     pair_list_t *list = (pair_list_t *) op;
     pair_t *pair;
 
-    printf("_pair_list_next.1\n");
     if (*ppos >= list->size) {
-	printf("_pair_list_next.end\n");
 	return 0;
     }
-    printf("_pair_list_next.2 %ld\n", *ppos);
     pair = pair_list_get(list, *ppos);
 
-    printf("_pair_list_next.3 %ld\n", pair);
     if (pidentity) {
-	printf("_pair_list_next.3.1\n");
 	*pidentity = pair->identity;
     }
-    printf("_pair_list_next.4\n");
     if (pkey) {
-	printf("_pair_list_next.4.1\n");
 	*pkey = pair->key;
     }
-    printf("_pair_list_next.5\n");
     if (pvalue) {
-	printf("_pair_list_next.5.1\n");
 	*pvalue = pair->value;
     }
-    printf("_pair_list_next.6\n");
     if (phash) {
-	printf("_pair_list_next.6.1 %ld\n", pair->hash);
 	*phash = pair->hash;
     }
 
-    printf("_pair_list_next.7\n");
     *ppos = *ppos + 1;
-    printf("_pair_list_next.8\n");
     return 1;
 }
 
@@ -369,26 +355,19 @@ pair_list_get_one(PyObject *op, PyObject *ident)
     if (hash1 == -1) {
 	return NULL;
     }
-    printf("1\n");
     while (_pair_list_next(op, &pos, &identity, NULL, &value, &hash2)) {
-	printf("2\n");
         if (hash1 != hash2) {
-	    printf("2.1 %ld %ld\n", hash1, hash2);
 	    continue;
 	}
-	printf("3\n");
 	tmp = str_cmp(ident, identity);
-	printf("4\n");
 	if (tmp > 0) {
 	    Py_INCREF(value);
 	    return value;
 	}
 	else if (tmp < 0) {
-	    printf("5\n");
 	    return NULL;
 	}
     }
-    printf("6\n");
     PyErr_SetObject(PyExc_KeyError, ident);
     return NULL;
 }
@@ -733,11 +712,6 @@ static PyTypeObject pair_list_type = {
     PyObject_GC_Del,                            /* tp_free */
 };
 
-
-static int mod_clear(PyObject *m)
-{
-  return 0;
-}
 
 
 int pair_list_init(void)

@@ -14,29 +14,25 @@ def cls(request):
     return request.param
 
 
-def xtest_guard_items(cls):
+def test_guard_items(cls):
     md = cls({'a': 'b'})
     it = iter(md.items())
     md['a'] = 'c'
     with pytest.raises(RuntimeError):
-        print('-----------------')
         next(it)
 
 
 def test_guard_keys(cls):
     md = cls({'a': 'b'})
-    #print(md)
     it = iter(md.keys())
     md['a'] = 'c'
     with pytest.raises(RuntimeError):
-        print('======================')
         next(it)
 
 
-def xtest_guard_values(cls):
+def test_guard_values(cls):
     md = cls({'a': 'b'})
     it = iter(md.values())
     md['a'] = 'c'
     with pytest.raises(RuntimeError):
-        print('***************')
         next(it)

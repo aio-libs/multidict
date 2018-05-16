@@ -27,6 +27,9 @@ cdef class _Base:
 
     cdef object _impl
 
+    def _get_impl(self):
+        return self._impl
+
     cdef str _title(self, s):
         typ = type(s)
         if typ is str:
