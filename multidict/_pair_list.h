@@ -30,18 +30,18 @@ int pair_list_next(PyObject *list, Py_ssize_t *ppos,
 
 int pair_list_contains(PyObject *list, PyObject *identity);
 
-PyObject* pair_list_get_one(PyObject *list, PyObject *identity);
-PyObject* pair_list_get_all(PyObject *list, PyObject *identity);
+PyObject* pair_list_get_one(PyObject *list, PyObject *identity, PyObject *key);
+PyObject* pair_list_get_all(PyObject *list, PyObject *identity, PyObject *key);
 
 
-int pair_list_del(PyObject *list, PyObject *identity);
-int pair_list_del_hash(PyObject *list, PyObject *identity, Py_hash_t hash);
+int pair_list_del(PyObject *list, PyObject *identity, PyObject *key);
+int pair_list_del_hash(PyObject *list, PyObject *identity, PyObject *key, Py_hash_t hash);
 
 PyObject* pair_list_set_default(PyObject *list, PyObject *ident,
 			 PyObject *key, PyObject *value);
 
-PyObject* pair_list_pop_one(PyObject *list, PyObject *identity);
-PyObject* pair_list_pop_all(PyObject *list, PyObject *identity);
+PyObject* pair_list_pop_one(PyObject *list, PyObject *identity, PyObject *key);
+PyObject* pair_list_pop_all(PyObject *list, PyObject *identity, PyObject *key);
 PyObject* pair_list_pop_item(PyObject *list);
 
 

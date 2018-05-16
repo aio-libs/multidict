@@ -45,7 +45,7 @@ cdef class _Base:
 
     cdef _getall(self, str identity, key, default):
         try:
-            return pair_list_get_all(self._impl, identity)
+            return pair_list_get_all(self._impl, identity, key)
         except KeyError:
             if default is not _marker:
                 return default
@@ -58,8 +58,7 @@ cdef class _Base:
 
     cdef _getone(self, str identity, key, default):
         try:
-            print('_getone')
-            return pair_list_get_one(self._impl, identity)
+            return pair_list_get_one(self._impl, identity, key)
         except KeyError:
             if default is not _marker:
                 return default
@@ -388,7 +387,6 @@ cdef class MultiDict(_Base):
 
     cdef _add(self, key, value):
         cdef str identity = self._title(key)
-        print(identity, _str(key), value, hash(identity))
         pair_list_add_with_hash(self._impl,
                                 identity,
                                 _str(key), value, hash(identity))
@@ -431,7 +429,7 @@ cdef class MultiDict(_Base):
     cdef _remove(self, key):
         cdef str identity = self._title(key)
         cdef Py_hash_t h = hash(identity)
-        return pair_list_del_hash(self._impl, identity, h)
+        return pair_list_del_hash(self._impl, identity, key, h)
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
@@ -447,7 +445,7 @@ cdef class MultiDict(_Base):
 
         """
         try:
-            return pair_list_pop_one(self._impl, self._title(key))
+            return pair_list_pop_one(self._impl, self._title(key), key)
         except KeyError:
             if default is _marker:
                 raise
@@ -465,7 +463,7 @@ cdef class MultiDict(_Base):
 
         """
         try:
-            return pair_list_pop_all(self._impl, self._title(key))
+            return pair_list_pop_all(self._impl, self._title(key), key)
         except KeyError:
             if default is _marker:
                 raise
@@ -721,15 +719,12 @@ cdef class _KeysIter:
         self._impl = impl
         self._current = 0
         self._version = pair_list_version(impl)
-        print('keys iter version', self._version)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        print("__next__", self._version, pair_list_version(self._impl))
         if self._version != pair_list_version(self._impl):
-            print("Changed")
             raise RuntimeError("Dictionary changed during iteration")
         cdef PyObject * key
         if not pair_list_next(self._impl,
