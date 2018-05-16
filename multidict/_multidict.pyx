@@ -78,10 +78,10 @@ cdef class _Base:
         return self._getone(self._title(key), key, default)
 
     def __contains__(self, key):
-        return self._contains(self._title(key))
+        return self._contains(key)
 
-    cdef _contains(self, str identity):
-        return pair_list_contains(self._impl, identity)
+    cdef _contains(self, key):
+        return pair_list_contains(self._impl, self._title(key))
 
     def __iter__(self):
         return iter(self.keys())
@@ -738,7 +738,9 @@ cdef class _KeysView(_ViewBaseSet):
     def isdisjoint(self, other):
         'Return True if two sets have a null intersection.'
         for k in other:
+            print('isdisjoint.1', k)
             if k in self:
+                print('isdisjoint.2', k)
                 return False
         return True
 
