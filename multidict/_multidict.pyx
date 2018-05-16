@@ -366,18 +366,12 @@ cdef class MultiDict(_Base):
         # self._impl.incr_version()
 
     cdef object _append_items(self, object impl):
-        raise NotImplementedError()
-        # cdef _Pair item
-        # cdef object i
-        # cdef str key
-        # cdef object value
-        # for i in impl._items:
-        #     item = <_Pair>i
-        #     key = item._key
-        #     value = item._value
-        #     self._impl._items.append(_Pair.__new__(
-        #         _Pair, self._title(key), key, value))
-        # self._impl.incr_version()
+        cdef PyObject *key
+        cdef PyObject *val
+        cdef Py_ssize_t pos
+        pos = 0
+        while _pair_list_next(impl, &pos, NULL, &key, &val, NULL):
+            self._add(<object>key, <object>val)
 
     cdef object _append_items_seq(self, object arg, object name):
         cdef object i
