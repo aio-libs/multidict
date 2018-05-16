@@ -72,9 +72,17 @@ pair_list_get(pair_list_t *list, Py_ssize_t i)
 static int
 pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
 {
+    pair_t *new_pairs;
     printf("resize\n");
     // TODO: use more smart algo for capacity grow
-    pair_t *new_pairs = PyMem_Realloc(list->pairs, new_capacity);
+    if (new_capacity < MIN_LIST_CAPACITY) {
+	new_capacity = MIN_LIST_CAPACITY;
+    }
+    if (list->capacity == new_capacity) {
+	// No need to resize
+	return 0;
+    }
+    new_pairs = PyMem_Realloc(list->pairs, new_capacity);
 
     if (NULL == new_pairs) {
         // if not enought mem for realloc we do nothing, just return false
@@ -195,9 +203,7 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
 	   pair_list_get(list, pos),
 	   sizeof(pair_t) * tail);
     if (list->capacity - list->size > MIN_LIST_CAPACITY) {
-	if (list->capacity > MIN_LIST_CAPACITY) {
-	    return pair_list_resize(list, list->capacity - MIN_LIST_CAPACITY);
-	}
+	return pair_list_resize(list, list->capacity - MIN_LIST_CAPACITY);
     }
     return 0;
 }
@@ -658,6 +664,10 @@ pair_list_clear(PyObject *op)
     pair_t * pair;
     Py_ssize_t pos;
 
+    if (list->size == 0) {
+	return 0;
+    }
+
     list->version = NEXT_VERSION();
     for (pos = 0; pos < list->size; pos++) {
 	pair = pair_list_get(list, pos);
@@ -665,8 +675,8 @@ pair_list_clear(PyObject *op)
 	Py_CLEAR(pair->identity);
 	Py_CLEAR(pair->value);
     }
-
-    return 0;
+    list->size = 0;
+    return pair_list_resize(list, 0);
 }
 
 
