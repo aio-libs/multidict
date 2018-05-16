@@ -104,16 +104,11 @@ class TestMutableMultiDict:
     def test_clear(self, cls):
         d = cls([('key', 'one')], key='two', foo='bar')
 
-        print('clear.begin')
         d.clear()
-        print('clear.1')
         assert d == {}
-        print('clear.2')
         assert list(d.items()) == []
-        print('clear.end')
 
     def test_del(self, cls):
-        print('del')
         d = cls([('key', 'one'), ('key', 'two')], foo='bar')
         assert list(d.keys()) == ['key', 'key', 'foo']
 
@@ -136,8 +131,11 @@ class TestMutableMultiDict:
         d.add('key', 'val1')
         d.add('key', 'val2')
 
+        print('0')
         assert ('key', 'val1') == d.popitem()
+        print('1')
         assert [('key', 'val2')] == list(d.items())
+        print('2')
 
     def test_popitem_empty_multidict(self, cls):
         d = cls()

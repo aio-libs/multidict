@@ -73,7 +73,6 @@ static int
 pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
 {
     pair_t *new_pairs;
-    printf("resize\n");
     // TODO: use more smart algo for capacity grow
     if (new_capacity < MIN_LIST_CAPACITY) {
 	new_capacity = MIN_LIST_CAPACITY;
@@ -82,6 +81,8 @@ pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
 	// No need to resize
 	return 0;
     }
+
+    printf("resize\n");
     new_pairs = PyMem_Realloc(list->pairs, new_capacity);
 
     if (NULL == new_pairs) {
@@ -196,7 +197,7 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
 
     if (list->size == pos) {
 	// remove from tail, no need to shift body
-        return 1;
+        return 0;
     }
     tail = list->size - pos;
     memmove(pair_list_get(list, pos),
@@ -473,22 +474,25 @@ PyObject *
 pair_list_pop_one(PyObject *op, PyObject *ident, PyObject *key)
 {
     pair_list_t *list = (pair_list_t *) op;
-    Py_hash_t hash1, hash2;
-    Py_ssize_t pos = 0;
-    PyObject *identity;
+    pair_t * pair;
+
+    Py_hash_t hash;
+    Py_ssize_t pos;
     PyObject *value = NULL;
     int tmp;
 
-    hash1 = PyObject_Hash(ident);
-    if (hash1 == -1) {
+    hash = PyObject_Hash(ident);
+    if (hash == -1) {
 	return NULL;
     }
-    while (_pair_list_next(op, &pos, &identity, NULL, &value, &hash2)) {
-        if (hash1 != hash2) {
+    for (pos=0; pos < list->size; pos++) {
+	pair = pair_list_get(list, pos);
+        if (pair->hash != hash) {
 	    continue;
 	}
-	tmp = str_cmp(ident, identity);
+	tmp = str_cmp(ident, pair->identity);
 	if (tmp > 0) {
+	    value = pair->value;
 	    Py_INCREF(value);
 	    if (pair_list_del_at(list, pos) < 0) {
 		goto fail;
