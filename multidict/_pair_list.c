@@ -199,9 +199,9 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
         return 1;
     }
     tail = list->size - pos;
-    memcpy(pair_list_get(list, pos +1),
-	   pair_list_get(list, pos),
-	   sizeof(pair_t) * tail);
+    memmove(pair_list_get(list, pos),
+	    pair_list_get(list, pos + 1),
+	    sizeof(pair_t) * tail);
     if (list->capacity - list->size > MIN_LIST_CAPACITY) {
 	return pair_list_resize(list, list->capacity - MIN_LIST_CAPACITY);
     }
@@ -217,6 +217,7 @@ _pair_list_drop_tail(PyObject *op, PyObject *identity, Py_hash_t hash,
     pair_t *pair;
     int ret;
     pair_list_t *list = (pair_list_t *) op;
+    int found = 0;
 
     if (pos >= list->size) {
 	return 0;
@@ -224,20 +225,24 @@ _pair_list_drop_tail(PyObject *op, PyObject *identity, Py_hash_t hash,
 
     for (; pos < list->size; pos++) {
         pair = pair_list_get(list, pos);
+	printf("drop_tail %ld %ld %ld\n", pos, pair->hash, hash);
 	if (pair->hash != hash) {
 	    continue;
 	}
 	ret = str_cmp(pair->identity, identity);
 	if (ret > 0) {
+	    printf("drop_tail del at %ld\n", pos);
 	    if (pair_list_del_at(list, pos) < 0) {
 		return -1;
 	    }
+	    found = 1;
 	    pos--;
 	}
 	else if (ret == -1) {
 	    return -1;
 	}
     }
+    return found;
 }
 
 int
@@ -623,7 +628,10 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
     }
     else {
 	list->version = NEXT_VERSION();
-	return _pair_list_drop_tail(op, identity, hash, pos+1);
+	if (_pair_list_drop_tail(op, identity, hash, pos+1) < 0) {
+	    return -1;
+	}
+	return 0;
     }
 }
 

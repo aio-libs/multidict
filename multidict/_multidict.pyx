@@ -429,7 +429,7 @@ cdef class MultiDict(_Base):
     cdef _remove(self, key):
         cdef str identity = self._title(key)
         cdef Py_hash_t h = hash(identity)
-        return pair_list_del_hash(self._impl, identity, key, h)
+        pair_list_del_hash(self._impl, identity, key, h)
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""

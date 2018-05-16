@@ -104,12 +104,18 @@ class TestMutableMultiDict:
     def test_clear(self, cls):
         d = cls([('key', 'one')], key='two', foo='bar')
 
+        print('clear.begin')
         d.clear()
+        print('clear.1')
         assert d == {}
+        print('clear.2')
         assert list(d.items()) == []
+        print('clear.end')
 
     def test_del(self, cls):
+        print('del')
         d = cls([('key', 'one'), ('key', 'two')], foo='bar')
+        assert list(d.keys()) == ['key', 'key', 'foo']
 
         del d['key']
         assert d == {'foo': 'bar'}
