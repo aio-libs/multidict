@@ -722,7 +722,7 @@ static int mod_clear(PyObject *m)
 
 static struct PyModuleDef _pair_list_module = {
     PyModuleDef_HEAD_INIT,
-    "multidict._pair_list",
+    "multidict._multidict",
     pair_list__doc__,
     0,
     NULL,  /* m_methods */
@@ -733,20 +733,12 @@ static struct PyModuleDef _pair_list_module = {
 };
 
 
-PyObject* PyInit__pair_list(void)
+int pair_list_init(void)
 {
-    PyObject *mod;
-
     pair_list_type.tp_base = &PyUnicode_Type;
     if (PyType_Ready(&pair_list_type) < 0) {
-        return NULL;
+        return -1;
     }
-
-    mod = PyModule_Create(&_pair_list_module);
-    if (!mod) {
-        return NULL;
-    }
-    return mod;
 }
 
 

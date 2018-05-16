@@ -16,6 +16,8 @@ cdef object _marker = object()
 upstr = istr  # for relaxing backward compatibility problems
 cdef object _istr = istr
 
+pair_list_init()
+
 
 def getversion(_Base md):
     return pair_list_version(md._impl)
@@ -261,7 +263,7 @@ cdef class MultiDict(_Base):
                 self._replace(key, value)
 
     cdef object _update_items(self, object impl):
-        return
+        raise NotImplementedError()
         # cdef _Pair item, item2
         # cdef object i
         # cdef dict used_keys = {}
@@ -303,7 +305,7 @@ cdef class MultiDict(_Base):
         # self._post_update(used_keys)
 
     cdef object _update_items_seq(self, object arg, object name):
-        return
+        raise NotImplementedError()
         # cdef _Pair item
         # cdef object i
         # cdef object identity
@@ -343,7 +345,7 @@ cdef class MultiDict(_Base):
         # self._post_update(used_keys)
 
     cdef object _post_update(self, dict used_keys):
-        return
+        raise NotImplementedError()
         # cdef Py_ssize_t i = 0
         # cdef _Pair item
         # while i < len(self._impl._items):
@@ -360,7 +362,7 @@ cdef class MultiDict(_Base):
         # self._impl.incr_version()
 
     cdef object _append_items(self, object impl):
-        return
+        raise NotImplementedError()
         # cdef _Pair item
         # cdef object i
         # cdef str key

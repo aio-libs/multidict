@@ -24,7 +24,8 @@ else:
 
 extensions = [
     Extension('multidict._multidict',
-              ['multidict/_multidict' + ext],
+              ['multidict/_multidict' + ext,
+               'multidict/_pair_list.c'],
               # extra_compile_args=["-g"],
               # extra_link_args=["-g"],
     ),
@@ -41,9 +42,6 @@ if USE_CYTHON:
 extensions.extend([
     Extension('multidict._istr',
               ['multidict/_istr.c']),
-    Extension('multidict._pair_list',
-              ['multidict/_pair_list.c'],
-              macros=[('MULTIDICT_EXPORT', '1')])
 ])
 
 
