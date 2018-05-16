@@ -238,6 +238,7 @@ _pair_list_drop_tail(PyObject *op, PyObject *identity, Py_hash_t hash,
 int
 pair_list_del_hash(PyObject *op, PyObject *identity, Py_hash_t hash)
 {
+    pair_list_t *list = (pair_list_t *)op;
     int ret = _pair_list_drop_tail(op, identity, hash, 0);
     if (ret < 0) {
 	return -1;
@@ -247,6 +248,7 @@ pair_list_del_hash(PyObject *op, PyObject *identity, Py_hash_t hash)
 	return -1;
     }
     else {
+	list->version = NEXT_VERSION();
 	return 0;
     }
 }
@@ -280,37 +282,38 @@ _pair_list_next(PyObject *op, Py_ssize_t *ppos,
     pair_list_t *list = (pair_list_t *) op;
     pair_t *pair;
 
-    printf("a.1\n");
+    printf("_pair_list_next.1\n");
     if (*ppos >= list->size) {
+	printf("_pair_list_next.end\n");
 	return 0;
     }
-    printf("a.2 %ld\n", *ppos);
+    printf("_pair_list_next.2 %ld\n", *ppos);
     pair = pair_list_get(list, *ppos);
 
-    printf("a.3 %ld\n", pair);
+    printf("_pair_list_next.3 %ld\n", pair);
     if (pidentity) {
-	printf("a.3.1\n");
+	printf("_pair_list_next.3.1\n");
 	*pidentity = pair->identity;
     }
-    printf("a.4\n");
+    printf("_pair_list_next.4\n");
     if (pkey) {
-	printf("a.4.1\n");
+	printf("_pair_list_next.4.1\n");
 	*pkey = pair->key;
     }
-    printf("a.5\n");
+    printf("_pair_list_next.5\n");
     if (pvalue) {
-	printf("a.5.1\n");
+	printf("_pair_list_next.5.1\n");
 	*pvalue = pair->value;
     }
-    printf("a.6\n");
+    printf("_pair_list_next.6\n");
     if (phash) {
-	printf("a.6.1 %ld\n", pair->hash);
+	printf("_pair_list_next.6.1 %ld\n", pair->hash);
 	*phash = pair->hash;
     }
 
-    printf("a.7\n");
+    printf("_pair_list_next.7\n");
     *ppos = *ppos + 1;
-    printf("a.8\n");
+    printf("_pair_list_next.8\n");
     return 1;
 }
 
@@ -634,6 +637,7 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
 	return pair_list_add_with_hash(op, identity, key, value, hash);
     }
     else {
+	list->version = NEXT_VERSION();
 	return _pair_list_drop_tail(op, identity, hash, pos+1);
     }
 }

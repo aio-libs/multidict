@@ -724,12 +724,15 @@ cdef class _KeysIter:
         self._impl = impl
         self._current = 0
         self._version = pair_list_version(impl)
+        print('keys iter version', self._version)
 
     def __iter__(self):
         return self
 
     def __next__(self):
+        print("__next__", self._version, pair_list_version(self._impl))
         if self._version != pair_list_version(self._impl):
+            print("Changed")
             raise RuntimeError("Dictionary changed during iteration")
         cdef PyObject * key
         if not pair_list_next(self._impl,
@@ -755,7 +758,7 @@ cdef class _KeysView(_ViewBaseSet):
 
     def __repr__(self):
         lst = []
-        for k in self._impl:
+        for k in self:
             lst.append("{!r}".format(k))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)
