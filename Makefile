@@ -79,7 +79,6 @@ clean:
 	rm -f multidict/_multidict.*.pyd
 	rm -f multidict/_istr.*.so
 	rm -f multidict/_istr.*.pyd
-	rm -f multidict/_pair_list.c
 	rm -f multidict/_pair_list.*.so
 	rm -f multidict/_pair_list.*.pyd
 	rm -rf .tox

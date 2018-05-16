@@ -37,4 +37,8 @@ cdef extern from "_pair_list.h":
     object pair_list_pop_all(object lst, object identity)
     object pair_list_pop_item(object lst)
 
+    int pair_list_replace(object lst, object identity, object key,
+                          object value, Py_hash_t hash) except -1
+
+
     uint64_t pair_list_version(object lst)

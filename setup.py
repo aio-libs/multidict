@@ -42,7 +42,8 @@ extensions.extend([
     Extension('multidict._istr',
               ['multidict/_istr.c']),
     Extension('multidict._pair_list',
-              ['multidict/_pair_list.c'])
+              ['multidict/_pair_list.c'],
+              macros=[('MULTIDICT_EXPORT', '1')])
 ])
 
 
