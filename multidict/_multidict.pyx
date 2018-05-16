@@ -18,37 +18,14 @@ cdef object _istr = istr
 
 
 def getversion(_Base md):
-    return md._impl._version
-
-
-cdef class _Pair:
-    cdef str _identity
-    cdef Py_hash_t _hash
-    cdef str _key
-    cdef object _value
-
-    def __cinit__(self, identity, key, value):
-        self._hash = hash(identity)
-        self._identity = <str>identity
-        self._key = <str>key
-        self._value = value
-
-
-cdef unsigned long long _version
+    return pair_list_version(md._impl)
 
 
 cdef class _Impl:
-    cdef list _items
-    cdef unsigned long long _version
+    cdef object _items
 
     def __cinit__(self):
-        self._items = []
-        self.incr_version()
-
-    cdef void incr_version(self):
-        global _version
-        _version += 1
-        self._version = _version
+        self._items = pair_list_new()
 
 
 cdef class _Base:
@@ -69,39 +46,26 @@ cdef class _Base:
         return self._getall(self._title(key), key, default)
 
     cdef _getall(self, str identity, key, default):
-        cdef list res
-        cdef _Pair item
-        cdef Py_hash_t h = hash(identity)
-        res = []
-        for i in self._impl._items:
-            item = <_Pair>i
-            if item._hash != h:
-                continue
-            if item._identity == identity:
-                res.append(item._value)
-        if res:
-            return res
-        elif default is not _marker:
-            return default
-        else:
-            raise KeyError('Key not found: %r' % key)
+        try:
+            return pair_list_get_all(self._impl, identity)
+        except KeyError:
+            if default is not _marker:
+                return default
+            else:
+                raise
 
     def getone(self, key, default=_marker):
         """Get first value matching the key."""
         return self._getone(self._title(key), key, default)
 
     cdef _getone(self, str identity, key, default):
-        cdef _Pair item
-        cdef Py_hash_t h = hash(identity)
-        for i in self._impl._items:
-            item = <_Pair>i
-            if item._hash != h:
-                continue
-            if item._identity == identity:
-                return item._value
-        if default is not _marker:
-            return default
-        raise KeyError('Key not found: %r' % key)
+        try:
+            return pair_list_get_one(self._impl, identity)
+        except KeyError:
+            if default is not _marker:
+                return default
+            else:
+                raise
 
     # Mapping interface #
 
@@ -119,15 +83,7 @@ cdef class _Base:
         return self._contains(self._title(key))
 
     cdef _contains(self, str identity):
-        cdef _Pair item
-        cdef Py_hash_t h = hash(identity)
-        for i in self._impl._items:
-            item = <_Pair>i
-            if item._hash != h:
-                continue
-            if item._identity == identity:
-                return True
-        return False
+        return pair_list_contains(self._impl, identity)
 
     def __iter__(self):
         return iter(self.keys())
@@ -148,52 +104,61 @@ cdef class _Base:
         return _ValuesView.__new__(_ValuesView, self._impl)
 
     def __repr__(self):
-        cdef _Pair item
         lst = []
-        for i in self._impl._items:
-            item = <_Pair>i
-            lst.append("'{}': {!r}".format(item._key, item._value))
+        for k, v in self.items():
+            lst.append("'{}': {!r}".format(k, v))
         body = ', '.join(lst)
         return '<{}({})>'.format(self.__class__.__name__, body)
 
     cdef _eq_to_mapping(self, other):
-        cdef _Pair item
-        if len(self._impl._items) != len(other):
+        cdef object identity
+        cdef object value
+        cdef Py_ssize_t pos
+        cdef Py_hash_t h
+        if pair_list_len(self._impl) != len(other):
             return False
-        for i in self._impl._items:
-            item = <_Pair>i
+        pos = 0
+        while pair_list_next(self._impl, &pos, &identity, NULL, &value):
             for k, v in other.items():
-                if self._title(k) != item._identity:
+                if self._title(k) != identity:
                     continue
-                if v == item._value:
+                if v == value:
                     break
             else:
                 return False
         return True
 
-    def __eq__(self, other):
-        cdef Py_ssize_t i, l
-        cdef list lft_items, rgt_items
-        cdef _Pair lft, rgt
+    def __eq__(self, arg):
+        cdef Py_ssize_t pos1
+        cdef object identity1
+        cdef object value1
+        cdef Py_hash_t h1
 
-        if isinstance(other, _Base):
-            lft_items = self._impl._items
-            rgt_items = (<_Base>other)._impl._items
-            l = len(lft_items)
-            if l != len(rgt_items):
+        cdef Py_ssize_t pos2
+        cdef object identity2
+        cdef object value2
+        cdef Py_hash_t h2
+
+        cdef _Base other
+
+        if isinstance(arg, _Base):
+            other = <_Base>arg
+            if pair_list_len(self._impl) != pair_list_len(other._impl):
                 return False
-            for i in range(l):
-                lft = <_Pair>(lft_items[i])
-                rgt = <_Pair>(rgt_items[i])
-                if lft._hash != rgt._hash:
+            pos1 = pos2 = 0
+            while (_pair_list_next(self._impl, &pos1, &identity1,
+                                   NULL, &value1, &h1) and
+                   _pair_list_next(other._impl, &pos2, &identity2,
+                                   NULL, &value2, &h2)):
+                if h1 != h2:
                     return False
-                if lft._identity != rgt._identity:
+                if identity1 != identity2:
                     return False
-                if lft._value != rgt._value:
+                if value1 != value2:
                     return False
             return True
-        elif isinstance(other, abc.Mapping):
-            return self._eq_to_mapping(other)
+        elif isinstance(arg, abc.Mapping):
+            return self._eq_to_mapping(arg)
         else:
             return NotImplemented
 
@@ -268,7 +233,6 @@ cdef class MultiDict(_Base):
         )
 
     cdef _extend(self, tuple args, dict kwargs, name, bint do_add):
-        cdef _Pair item
         cdef object key
         cdef object value
         cdef object arg
@@ -305,10 +269,21 @@ cdef class MultiDict(_Base):
         cdef dict used_keys = {}
         cdef Py_ssize_t start
         cdef Py_ssize_t post
-        cdef Py_ssize_t size = len(self._impl._items)
+        cdef Py_ssize_t size = pair_list_len(self._impl._items)
         cdef Py_hash_t h
 
-        for i in impl._items:
+        cdef Py_ssize_t pos
+        cdef identity1
+        cdef key1
+        cdef val1
+        cdef h1
+        cdef identity2
+        cdef key2
+        cdef val2
+        cdef h2
+        pos = 0
+
+        while _pair_list_next(impl._items, &pos, &identity1, &key1, &val1, &h1):
             item = <_Pair>i
 
             start = used_keys.get(item._identity, 0)
@@ -413,9 +388,10 @@ cdef class MultiDict(_Base):
         self._impl.incr_version()
 
     cdef _add(self, key, value):
-        self._impl._items.append(_Pair.__new__(
-            _Pair, self._title(key), _str(key), value))
-        self._impl.incr_version()
+        cdef str indentity = self._title(key)
+        pair_list_add_with_hash(self._impl._items,
+                                identity,
+                                _str(key), value, hash(identity))
 
     cdef _replace(self, key, value):
         cdef str identity = self._title(key)
@@ -470,8 +446,7 @@ cdef class MultiDict(_Base):
 
     def clear(self):
         """Remove all items from MultiDict"""
-        self._impl._items.clear()
-        self._impl.incr_version()
+        pair_list_clear(self._impl)
 
     # MutableMapping interface #
 
@@ -503,16 +478,7 @@ cdef class MultiDict(_Base):
         """Return value for key, set value to default if key is not present."""
         cdef _Pair item
         cdef str identity = self._title(key)
-        cdef Py_hash_t h = hash(identity)
-        cdef list items = self._impl._items
-        for i in items:
-            item = <_Pair>i
-            if item._hash != h:
-                continue
-            if item._identity == identity:
-                return item._value
-        self._add(key, default)
-        return default
+        return pair_list_set_default(self._impl, identity, key, default)
 
     def popone(self, key, default=_marker):
         """Remove the last occurrence of key and return the corresponding
@@ -634,7 +600,7 @@ cdef class _ViewBase:
         self._impl = impl
 
     def __len__(self):
-        return len(self._impl._items)
+        return pair_list_len(self._impl._items)
 
 
 cdef class _ViewBaseSet(_ViewBase):
@@ -720,37 +686,33 @@ cdef class _ViewBaseSet(_ViewBase):
 
 cdef class _ItemsIter:
     cdef _Impl _impl
-    cdef int _current
-    cdef int _len
+    cdef Py_ssize_t _current
     cdef unsigned long long _version
 
     def __cinit__(self, _Impl impl):
         self._impl = impl
         self._current = 0
-        self._version = impl._version
-        self._len = len(impl._items)
+        self._version = pair_list_version(impl._items)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self._version != self._impl._version:
+        if self._version != pair_list_version(self._impl):
             raise RuntimeError("Dictionary changed during iteration")
-        if self._current == self._len:
+        cdef PyObject *key
+        cdef PyObject *value
+        if not _pair_list_next(self._impl._items,
+                               &self._current, NULL, &key, &value, NULL):
             raise StopIteration
-        item = <_Pair>self._impl._items[self._current]
-        self._current += 1
-        return (item._key, item._value)
+        return (<object>key, <object>value)
 
 
 cdef class _ItemsView(_ViewBaseSet):
 
     def isdisjoint(self, other):
         'Return True if two sets have a null intersection.'
-        cdef _Pair item
-        for i in self._impl._items:
-            item = <_Pair>i
-            t = (item._key, item._value)
+        for t in self:
             if t in other:
                 return False
         return True
@@ -763,8 +725,8 @@ cdef class _ItemsView(_ViewBaseSet):
         assert len(i) == 2
         key = i[0]
         value = i[1]
-        for item in self._impl._items:
-            if key == item._key and value == item._value:
+        for k, v in self:
+            if key == k and value == v:
                 return True
         return False
 
@@ -772,11 +734,9 @@ cdef class _ItemsView(_ViewBaseSet):
         return _ItemsIter.__new__(_ItemsIter, self._impl)
 
     def __repr__(self):
-        cdef _Pair item
         lst = []
-        for i in self._impl._items:
-            item = <_Pair>i
-            lst.append("{!r}: {!r}".format(item._key, item._value))
+        for k ,v in self:
+            lst.append("{!r}: {!r}".format(k, v))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)
 
@@ -786,36 +746,32 @@ abc.ItemsView.register(_ItemsView)
 
 cdef class _ValuesIter:
     cdef _Impl _impl
-    cdef int _current
-    cdef int _len
+    cdef Py_ssize_t _current
     cdef unsigned long long _version
 
     def __cinit__(self, _Impl impl):
         self._impl = impl
         self._current = 0
-        self._len = len(impl._items)
-        self._version = impl._version
+        self._version = pair_list_version(impl._items)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self._version != self._impl._version:
+        if self._version != pair_list_version(self._impl._items):
             raise RuntimeError("Dictionary changed during iteration")
-        if self._current == self._len:
+        cdef PyObject *value
+        if not _pair_list_next(self._impl._items,
+                              &self._current, NULL, NULL, &value, NULL):
             raise StopIteration
-        item = <_Pair>self._impl._items[self._current]
-        self._current += 1
-        return item._value
+        return <object>value
 
 
 cdef class _ValuesView(_ViewBase):
 
     def __contains__(self, value):
-        cdef _Pair item
-        for i in self._impl._items:
-            item = <_Pair>i
-            if item._value == value:
+        for v in self:
+            if v == value:
                 return True
         return False
 
@@ -823,11 +779,9 @@ cdef class _ValuesView(_ViewBase):
         return _ValuesIter.__new__(_ValuesIter, self._impl)
 
     def __repr__(self):
-        cdef _Pair item
         lst = []
-        for i in self._impl._items:
-            item = <_Pair>i
-            lst.append("{!r}".format(item._value))
+        for v in self:
+            lst.append("{!r}".format(v))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)
 
@@ -837,57 +791,46 @@ abc.ValuesView.register(_ValuesView)
 
 cdef class _KeysIter:
     cdef _Impl _impl
-    cdef int _current
-    cdef int _len
+    cdef Py_ssize_t _current
     cdef unsigned long long _version
 
     def __cinit__(self, _Impl impl):
         self._impl = impl
         self._current = 0
-        self._len = len(self._impl._items)
-        self._version = impl._version
+        self._version = pair_list_version(impl._items)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self._version != self._impl._version:
+        if self._version != pair_list_version(self._impl._items):
             raise RuntimeError("Dictionary changed during iteration")
-        if self._current == self._len:
+        cdef PyObject * key
+        if not pair_list_next(self._impl._items,
+                              &self._current, NULL, &key, NULL):
             raise StopIteration
-        item = <_Pair>self._impl._items[self._current]
-        self._current += 1
-        return item._key
+        return <object>(key)
 
 
 cdef class _KeysView(_ViewBaseSet):
 
     def isdisjoint(self, other):
         'Return True if two sets have a null intersection.'
-        cdef _Pair item
-        for i in self._impl._items:
-            item = <_Pair>i
-            if item._key in other:
+        for k in self:
+            if k in other:
                 return False
         return True
 
     def __contains__(self, value):
-        cdef _Pair item
-        for i in self._impl._items:
-            item = <_Pair>i
-            if item._key == value:
-                return True
-        return False
+        return pair_list_contains(self._impl._items, value)
 
     def __iter__(self):
         return _KeysIter.__new__(_KeysIter, self._impl)
 
     def __repr__(self):
-        cdef _Pair item
         lst = []
-        for i in self._impl._items:
-            item = <_Pair>i
-            lst.append("{!r}".format(item._key))
+        for k in self._impl:
+            lst.append("{!r}".format(k))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)
 

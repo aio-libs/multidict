@@ -15,9 +15,12 @@ int pair_list_clear(PyObject *list);
 int pair_list_add_with_hash(PyObject *list, PyObject *identity,
 			    PyObject *key, PyObject *value, Py_hash_t hash);
 
-// int pair_list_at(PyObject *list, size_t idx, pair_t *pair);
+int _pair_list_next(PyObject *list, Py_ssize_t *ppos,
+		    PyObject **pidentity,
+		    PyObject **pkey, PyObject **pvalue, Py_hash_t *hash);
 
 int pair_list_next(PyObject *list, Py_ssize_t *ppos,
+		   PyObject **pidentity,
 		   PyObject **pkey, PyObject **pvalue);
 
 
