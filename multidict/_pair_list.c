@@ -281,6 +281,7 @@ _pair_list_next(PyObject *op, Py_ssize_t *ppos,
     pair_list_t *list = (pair_list_t *) op;
     pair_t *pair;
 
+    printf("next %ld %ld\n", *ppos, list->size);
     if (*ppos >= list->size) {
 	return 0;
     }
@@ -322,22 +323,29 @@ pair_list_contains(PyObject *op, PyObject *ident)
     PyObject *identity;
     int tmp;
 
+    printf("contains.begin\n");
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
 	return -1;
     }
+    printf("contains.1 %ld\n", pos);
     while (_pair_list_next(op, &pos, &identity, NULL, NULL, &hash2)) {
         if (hash1 != hash2) {
+	    printf("contains.cont %ld\n", pos);
 	    continue;
 	}
+	printf("contains.2\n");
 	tmp = str_cmp(ident, identity);
 	if (tmp > 0) {
+	    printf("contains.found\n");
 	    return 1;
 	}
 	else if (tmp < 0) {
+	    printf("contains.exc\n");
 	    return -1;
 	}
     }
+    printf("contains.not-found\n");
     return 0;
 }
 

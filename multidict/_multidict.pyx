@@ -89,17 +89,17 @@ cdef class _Base:
     def __len__(self):
         return pair_list_len(self._impl)
 
-    cpdef keys(self):
+    def keys(self):
         """Return a new view of the dictionary's keys."""
-        return _KeysView.__new__(_KeysView, self._impl)
+        return _KeysView.__new__(_KeysView, self)
 
     def items(self):
         """Return a new view of the dictionary's items *(key, value) pairs)."""
-        return _ItemsView.__new__(_ItemsView, self._impl)
+        return _ItemsView.__new__(_ItemsView, self)
 
     def values(self):
         """Return a new view of the dictionary's values."""
-        return _ValuesView.__new__(_ValuesView, self._impl)
+        return _ValuesView.__new__(_ValuesView, self)
 
     def __repr__(self):
         lst = []
@@ -516,13 +516,13 @@ MutableMultiMapping.register(CIMultiDict)
 
 cdef class _ViewBase:
 
-    cdef object _impl
+    cdef _Base _md
 
-    def __cinit__(self, object impl):
-        self._impl = impl
+    def __cinit__(self, _Base md):
+        self._md = md
 
     def __len__(self):
-        return pair_list_len(self._impl)
+        return pair_list_len(self._md._impl)
 
 
 cdef class _ViewBaseSet(_ViewBase):
@@ -652,7 +652,7 @@ cdef class _ItemsView(_ViewBaseSet):
         return False
 
     def __iter__(self):
-        return _ItemsIter.__new__(_ItemsIter, self._impl)
+        return _ItemsIter.__new__(_ItemsIter, self._md._impl)
 
     def __repr__(self):
         lst = []
@@ -697,7 +697,7 @@ cdef class _ValuesView(_ViewBase):
         return False
 
     def __iter__(self):
-        return _ValuesIter.__new__(_ValuesIter, self._impl)
+        return _ValuesIter.__new__(_ValuesIter, self._md._impl)
 
     def __repr__(self):
         lst = []
@@ -737,16 +737,17 @@ cdef class _KeysView(_ViewBaseSet):
 
     def isdisjoint(self, other):
         'Return True if two sets have a null intersection.'
-        for k in self:
-            if k in other:
+        for k in other:
+            if k in self:
                 return False
         return True
 
     def __contains__(self, value):
-        return pair_list_contains(self._impl, value)
+        return False
+        return pair_list_contains(self._md, value)
 
     def __iter__(self):
-        return _KeysIter.__new__(_KeysIter, self._impl)
+        return _KeysIter.__new__(_KeysIter, self._md._impl)
 
     def __repr__(self):
         lst = []
