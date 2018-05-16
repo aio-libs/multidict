@@ -235,7 +235,8 @@ pair_list_del_hash(PyObject *op, PyObject *identity, Py_hash_t hash)
 	    return -1;
 	}
     }
-    return 0;
+    PyErr_SetObject(PyExc_KeyError, identity);
+    return -1;
 }
 
 
