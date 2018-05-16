@@ -380,7 +380,7 @@ class MultiDict(_Base, MutableMultiMapping):
         identity = self._title(key)
         items = self._impl._items
 
-        for i in range(len(items)-1, -1, -1):
+        for i in range(len(items)):
             item = items[i]
             if item[0] == identity:
                 items[i] = (identity, key, value)
@@ -393,13 +393,12 @@ class MultiDict(_Base, MutableMultiMapping):
             self._impl.incr_version()
             return
 
-        # remove all precending items
-        i = 0
-        while i < rgt:
+        # remove all tail items
+        i = rgt + 1
+        while i < len(items):
             item = items[i]
             if item[0] == identity:
                 del items[i]
-                rgt -= 1
             else:
                 i += 1
 

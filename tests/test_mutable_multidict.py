@@ -183,8 +183,8 @@ class TestMutableMultiDict:
 
         d['key1'] = 'val'
 
-        expected = [('key2', 'val2'),
-                    ('key1', 'val'),
+        expected = [('key1', 'val'),
+                    ('key2', 'val2'),
                     ('key2', 'val4')]
 
         assert expected == list(d.items())

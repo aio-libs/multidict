@@ -226,13 +226,11 @@ _pair_list_drop_tail(PyObject *op, PyObject *identity, Py_hash_t hash,
 
     for (; pos < list->size; pos++) {
         pair = pair_list_get(list, pos);
-	printf("drop_tail %ld %ld %ld\n", pos, pair->hash, hash);
 	if (pair->hash != hash) {
 	    continue;
 	}
 	ret = str_cmp(pair->identity, identity);
 	if (ret > 0) {
-	    printf("drop_tail del at %ld\n", pos);
 	    if (pair_list_del_at(list, pos) < 0) {
 		return -1;
 	    }
