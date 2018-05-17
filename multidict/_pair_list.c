@@ -54,17 +54,23 @@ inline static int str_cmp(PyObject *s1, PyObject *s2)
 }
 
 
-static void
-pair_clear(pair_t *pair)
-{
-    Py_DECREF(pair->identity);
-    Py_DECREF(pair->key);
-    Py_DECREF(pair->value);
-}
-
 static inline pair_t*
 pair_list_get(pair_list_t *list, Py_ssize_t i)
 {
+    /*
+    if (i < 0) {
+	printf("Reading with negative offset\n");
+	abort();
+    }
+    if (i >= list->size) {
+	printf("Reading after the buffer\n");
+	abort();
+    }
+    if (list->size > list->capacity) {
+	printf("Invalid capacity\n");
+	abort();
+    }
+    */
     pair_t *item = list->pairs + i;
     return item;
 }
@@ -82,7 +88,7 @@ pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
 	return 0;
     }
 
-    new_pairs = PyMem_Realloc(list->pairs, new_capacity);
+    new_pairs = PyMem_Resize(list->pairs, pair_t, new_capacity);
 
     if (NULL == new_pairs) {
         // if not enought mem for realloc we do nothing, just return false
@@ -104,7 +110,7 @@ pair_list_new(void)
     }
 
     // TODO: align size of pair to the nearest power of 2
-    list->pairs = PyMem_Malloc(MIN_LIST_CAPACITY * sizeof(pair_t));
+    list->pairs = PyMem_New(pair_t, MIN_LIST_CAPACITY);
     if (list->pairs == NULL) {
         return NULL;
     }
@@ -120,19 +126,23 @@ pair_list_new(void)
 void
 pair_list_dealloc(pair_list_t *list)
 {
+    pair_t *pair;
+    Py_ssize_t pos;
+
     PyObject_GC_UnTrack(list);
     Py_TRASHCAN_SAFE_BEGIN(list);
-    for (size_t i = 0; i < list->size; i++) {
-        pair_t *pair = pair_list_get(list, i);
+    for (pos = 0; pos < list->size; pos++) {
+        pair = pair_list_get(list, pos);
 
         Py_XDECREF(pair->identity);
         Py_XDECREF(pair->key);
         Py_XDECREF(pair->value);
     }
     list->size = 0;
-
-    PyMem_Free(list->pairs);
-    list->pairs = NULL;
+    if (list->pairs != NULL) {
+	PyMem_Del(list->pairs);
+	list->pairs = NULL;
+    }
 
     Py_TYPE(list)->tp_free((PyObject *)list);
     Py_TRASHCAN_SAFE_END(list);
@@ -155,13 +165,15 @@ pair_list_add_with_hash(PyObject *op,
               Py_hash_t hash)
 {
     pair_list_t *list = (pair_list_t *) op;
-    if (list->capacity <= list->size) {
+    pair_t *pair;
+    if (list->capacity < list->size + 1) {
         if (pair_list_resize(list, list->capacity + MIN_LIST_CAPACITY) < 0) {
             return -1;
         }
     }
 
-    pair_t *pair = pair_list_get(list, list->size);
+    pair = pair_list_get(list, list->size);
+    list->size += 1;
 
     Py_INCREF(identity);
     pair->identity = identity;
@@ -174,7 +186,6 @@ pair_list_add_with_hash(PyObject *op,
 
     pair->hash = hash;
 
-    list->size += 1;
     list->version = NEXT_VERSION();
 
     return 0;
@@ -189,7 +200,9 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
     pair_t *pair;
 
     pair = pair_list_get(list, pos);
-    pair_clear(pair);
+    Py_DECREF(pair->identity);
+    Py_DECREF(pair->key);
+    Py_DECREF(pair->value);
 
     list->size -= 1;
     list->version = NEXT_VERSION();
@@ -772,8 +785,6 @@ fail:
 
 /***********************************************************************/
 
-PyDoc_STRVAR(pair_list__doc__, "pair_list implementation");
-
 /* We link this module statically for convenience.  If compiled as a shared
    library instead, some compilers don't allow addresses of Python objects
    defined in other libraries to be used in static initializers here.  The
@@ -891,6 +902,7 @@ int pair_list_init(void)
     if (PyType_Ready(&pair_list_type) < 0) {
         return -1;
     }
+    return 0;
 }
 
 
