@@ -269,61 +269,24 @@ cdef class MultiDict(_Base):
         pair_list_update(self._impl, impl)
 
     cdef object _update_items_seq(self, object arg, object name):
-        raise NotImplementedError()
-        # cdef _Pair item
-        # cdef object i
-        # cdef object identity
-        # cdef object key
-        # cdef object value
-        # cdef dict used_keys = {}
-        # cdef Py_ssize_t start
-        # cdef Py_ssize_t post
-        # cdef Py_ssize_t size = len(self._impl._items)
-        # cdef Py_hash_t h
-        # for i in arg:
-        #     if not len(i) == 2:
-        #         raise TypeError(
-        #             "{} takes either dict or list of (key, value) "
-        #             "tuples".format(name))
-        #     key = _str(i[0])
-        #     value = i[1]
-        #     identity = self._title(key)
-        #     h = hash(identity)
+        cdef object i
+        cdef object identity
+        cdef object key
+        cdef object value
+        cdef Py_hash_t h
+        cdef object impl = pair_list_new()
+        for i in arg:
+            if not len(i) == 2:
+                raise TypeError(
+                    "{} takes either dict or list of (key, value) "
+                    "tuples".format(name))
+            key = _str(i[0])
+            value = i[1]
+            identity = self._title(key)
+            h = hash(identity)
+            pair_list_add_with_hash(impl, identity, key, value, h)
 
-        #     start = used_keys.get(identity, 0)
-        #     for pos in range(start, size):
-        #         item = <_Pair>(self._impl._items[pos])
-        #         if item._hash != h:
-        #             continue
-        #         if item._identity == identity:
-        #             used_keys[identity] = pos + 1
-        #             item._key = key
-        #             item._value = value
-        #             break
-        #     else:
-        #         self._impl._items.append(_Pair.__new__(
-        #             _Pair, identity, key, value))
-        #         size += 1
-        #         used_keys[identity] = size
-
-        # self._post_update(used_keys)
-
-    cdef object _post_update(self, dict used_keys):
-        raise NotImplementedError()
-        # cdef Py_ssize_t i = 0
-        # cdef _Pair item
-        # while i < len(self._impl._items):
-        #     item = <_Pair>self._impl._items[i]
-        #     pos = used_keys.get(item._identity)
-        #     if pos is None:
-        #         i += 1
-        #         continue
-        #     if i >= pos:
-        #         del self._impl._items[i]
-        #     else:
-        #         i += 1
-
-        # self._impl.incr_version()
+        pair_list_update(self._impl, impl)
 
     cdef object _append_items(self, object impl):
         cdef PyObject *key

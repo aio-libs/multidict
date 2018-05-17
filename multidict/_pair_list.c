@@ -82,7 +82,6 @@ pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
 	return 0;
     }
 
-    printf("resize\n");
     new_pairs = PyMem_Realloc(list->pairs, new_capacity);
 
     if (NULL == new_pairs) {
@@ -662,8 +661,6 @@ _pair_list_post_update(pair_list_t *list, PyObject* used_keys, Py_ssize_t pos)
     PyObject *tmp;
     Py_ssize_t num;
 
-    printf("post_update\n");
-
     for (; pos < list->size; pos++) {
 	pair = pair_list_get(list, pos);
 	tmp = PyDict_GetItem(used_keys, pair->identity);
@@ -740,7 +737,8 @@ int pair_list_update(PyObject *op1, PyObject *op2)
 		Py_INCREF(pair2->value);
 		Py_DECREF(pair1->value);
 		pair1->value = pair2->value;
-		if (_dict_set_number(used_keys, pair1->key, pos1 + 1) < 0) {
+
+		if (_dict_set_number(used_keys, pair1->identity, pos1 + 1) < 0) {
 		    goto fail;
 		}
 		found = 1;
@@ -755,7 +753,7 @@ int pair_list_update(PyObject *op1, PyObject *op2)
 					pair2->hash) < 0) {
 		goto fail;
 	    }
-	    if (_dict_set_number(used_keys, pair1->key, list->size) < 0) {
+	    if (_dict_set_number(used_keys, pair2->identity, list->size) < 0) {
 		goto fail;
 	    }
 	}
@@ -770,6 +768,7 @@ fail:
     Py_CLEAR(used_keys);
     return -1;
 }
+
 
 /***********************************************************************/
 
