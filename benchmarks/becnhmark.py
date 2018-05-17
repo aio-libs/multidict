@@ -72,18 +72,21 @@ dct[key]
 
 
 ADD = """\
-dct.add(key, '1')
-dct.add(key, '2')
-dct.add(key, '3')
-dct.add(key, '4')
-dct.add(key, '5')
-dct.add(key, '6')
-dct.add(key, '7')
-dct.add(key, '8')
-dct.add(key, '9')
-dct.add(key, '10')
+add(key, '1')
+add(key, '2')
+add(key, '3')
+add(key, '4')
+add(key, '5')
+add(key, '6')
+add(key, '7')
+add(key, '8')
+add(key, '9')
+add(key, '10')
 """ * 10
 
+SETUP_ADD = """\
+add = dct.add
+"""
 
 def benchmark_name(name, ctx, prefix=None, use_prefix=False):
     if use_prefix:
@@ -133,5 +136,5 @@ if __name__ == '__main__':
                       GET_ITEM, imports + INIT + FILL,
                       inner_loops=30)
         runner.timeit(name('add str'),
-                      ADD, imports + INIT + FILL,
+                      ADD, imports + INIT + FILL + SETUP_ADD,
                       inner_loops=30)

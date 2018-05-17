@@ -36,7 +36,7 @@ typedef struct pair_list {
 } pair_list_t;
 
 
-inline static int str_cmp(PyObject *s1, PyObject *s2)
+static inline int str_cmp(PyObject *s1, PyObject *s2)
 {
     PyObject *ret;
     ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
