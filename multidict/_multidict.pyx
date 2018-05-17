@@ -266,46 +266,7 @@ cdef class MultiDict(_Base):
                 self._replace(key, value)
 
     cdef object _update_items(self, object impl):
-        raise NotImplementedError()
-        # cdef _Pair item, item2
-        # cdef object i
-        # cdef dict used_keys = {}
-        # cdef Py_ssize_t start
-        # cdef Py_ssize_t post
-        # cdef Py_ssize_t size = pair_list_len(self._impl)
-        # cdef Py_hash_t h
-
-        # cdef Py_ssize_t pos
-        # cdef identity1
-        # cdef key1
-        # cdef val1
-        # cdef h1
-        # cdef identity2
-        # cdef key2
-        # cdef val2
-        # cdef h2
-        # pos = 0
-
-        # while _pair_list_next(impl._items, &pos, &identity1, &key1, &val1, &h1):
-        #     item = <_Pair>i
-
-        #     start = used_keys.get(item._identity, 0)
-        #     for pos in range(start, size):
-        #         item2 = <_Pair>(self._impl._items[pos])
-        #         if item2._hash != item._hash:
-        #             continue
-        #         if item2._identity == item._identity:
-        #             used_keys[item._identity] = pos + 1
-        #             item2._key = item._key
-        #             item2._value = item._value
-        #             break
-        #     else:
-        #         self._impl._items.append(_Pair.__new__(
-        #             _Pair, item._identity, item._key, item._value))
-        #         size += 1
-        #         used_keys[item._identity] = size
-
-        # self._post_update(used_keys)
+        pair_list_update(self._impl, impl)
 
     cdef object _update_items_seq(self, object arg, object name):
         raise NotImplementedError()

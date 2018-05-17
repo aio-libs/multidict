@@ -48,6 +48,9 @@ PyObject* pair_list_pop_item(PyObject *list);
 int pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
 	  PyObject *value, Py_hash_t hash);
 
+
+int pair_list_update(PyObject *op1, PyObject *op2);
+
 uint64_t pair_list_version(PyObject *list);
 
 

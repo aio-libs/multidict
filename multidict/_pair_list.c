@@ -616,8 +616,10 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
 	if (tmp > 0) {
 	    found = 1;
 	    Py_INCREF(key);
+	    Py_DECREF(pair->key);
 	    pair->key = key;
 	    Py_INCREF(value);
+	    Py_DECREF(pair->value);
 	    pair->value = value;
 	    break;
 	}
@@ -635,6 +637,138 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
 	}
 	return 0;
     }
+}
+
+
+static int _dict_set_number(PyObject *dict, PyObject *key, Py_ssize_t num)
+{
+    PyObject *tmp;
+    tmp = PyLong_FromSsize_t(num);
+    if (tmp == NULL) {
+	return -1;
+    }
+    if (PyDict_SetItem(dict, key, tmp) < 0) {
+	Py_DECREF(tmp);
+	return -1;
+    }
+    return 0;
+}
+
+
+static int
+_pair_list_post_update(pair_list_t *list, PyObject* used_keys, Py_ssize_t pos)
+{
+    pair_t *pair;
+    PyObject *tmp;
+    Py_ssize_t num;
+
+    printf("post_update\n");
+
+    for (; pos < list->size; pos++) {
+	pair = pair_list_get(list, pos);
+	tmp = PyDict_GetItem(used_keys, pair->identity);
+	if (tmp == NULL) {
+	    // not found
+	    continue;
+	}
+	num = PyLong_AsSsize_t(tmp);
+	if (num == -1) {
+	    if (!PyErr_Occurred()) {
+		PyErr_SetString(PyExc_RuntimeError, "invalid internal state");
+	    }
+	    return -1;
+	}
+	if (pos >= num) {
+	    // del self[pos]
+	    if (pair_list_del_at(list, pos) < 0) {
+		return -1;
+	    }
+	    pos--;
+	}
+    }
+    list->version = NEXT_VERSION();
+    return 0;
+}
+
+
+int pair_list_update(PyObject *op1, PyObject *op2)
+{
+    pair_list_t *list = (pair_list_t *)op1;
+    pair_list_t *other = (pair_list_t *)op2;
+    Py_ssize_t pos1;
+    Py_ssize_t pos2;
+    PyObject *used_keys = NULL;
+    pair_t *pair1;
+    pair_t *pair2;
+    PyObject *tmp;
+    int tmp2;
+    int found;
+
+    if (other->size == 0) {
+	return 0;
+    }
+    used_keys = PyDict_New();
+    if (used_keys == NULL) {
+	return -1;
+    }
+    for (pos2 = 0; pos2 < other->size; pos2++) {
+	pair2 = pair_list_get(other, pos2);
+	tmp = PyDict_GetItem(used_keys, pair2->identity);  // TODO: title case a key
+	if (tmp == NULL) {
+	    pos1 = 0;
+	} else {
+	    pos1 = PyLong_AsSsize_t(tmp);
+	    if (pos1 == -1) {
+		if (!PyErr_Occurred()) {
+		    PyErr_SetString(PyExc_RuntimeError, "invalid internal state");
+		}
+		goto fail;
+	    }
+	}
+	found = 0;
+	for (; pos1 < list->size; pos1++) {
+	    pair1 = pair_list_get(list, pos1);
+	    if (pair1->hash != pair2->hash) {
+		continue;
+	    }
+	    tmp2 = str_cmp(pair1->identity, pair2->identity);
+	    if (tmp2 > 0) {
+		Py_INCREF(pair2->key);
+		Py_DECREF(pair1->key);
+		pair1->key = pair2->key;
+
+		Py_INCREF(pair2->value);
+		Py_DECREF(pair1->value);
+		pair1->value = pair2->value;
+		if (_dict_set_number(used_keys, pair1->key, pos1 + 1) < 0) {
+		    goto fail;
+		}
+		found = 1;
+		break;
+	    } else if (tmp2 < 0) {
+		goto fail;
+	    }
+	}
+	if (!found) {
+	    if (pair_list_add_with_hash(op1, pair2->identity,
+					pair2->key, pair2->value,
+					pair2->hash) < 0) {
+		goto fail;
+	    }
+	    if (_dict_set_number(used_keys, pair1->key, list->size) < 0) {
+		goto fail;
+	    }
+	}
+	
+    }
+    if (_pair_list_post_update(list, used_keys, 0) < 0) {
+	goto fail;
+    }
+    Py_CLEAR(used_keys);
+    return 0;
+fail:
+    Py_CLEAR(used_keys);
+    return -1;
 }
 
 /***********************************************************************/
@@ -687,6 +821,24 @@ pair_list_clear(PyObject *op)
     }
     list->size = 0;
     return pair_list_resize(list, 0);
+}
+
+
+static PyObject *
+pair_list_repr(pair_list_t *list)
+{
+    Py_ssize_t i;
+    i = Py_ReprEnter((PyObject *)list);
+    if (i != 0) {
+	return i > 0 ? PyUnicode_FromString("{...}") : NULL;
+    }
+    if (list->size == 0) {
+	Py_ReprLeave((PyObject *)list);
+	return PyUnicode_FromString("{}");
+    }
+    for (i = 0; i < list->size; i++) {
+    }
+    Py_ReprLeave((PyObject *)list);
 }
 
 
