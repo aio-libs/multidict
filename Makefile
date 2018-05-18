@@ -43,7 +43,6 @@ profile-dev-base: .install-deps
 	rm -f .develop
 	rm -f multidict/*.so
 	rm -f multidict/_multidict.c
-	rm -f multidict/_pair_list.c
 	PROFILE_BUILD=x pip install -e .
 	touch .develop
 
