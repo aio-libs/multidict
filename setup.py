@@ -26,10 +26,10 @@ extensions = [
     Extension('multidict._multidict',
               ['multidict/_multidict' + ext,
                'multidict/_pair_list.c'],
-              define_macros=[('DEBUG', '1')],
-              extra_compile_args=["-g", "-Wall"],
-              extra_link_args=["-g"],
-    ),
+              # define_macros=[('DEBUG', '1')],
+              # extra_compile_args=["-g", "-Wall"],
+              # extra_link_args=["-g"],
+    )
 ]
 
 
@@ -40,10 +40,8 @@ if USE_CYTHON:
         directives = {}
     extensions = cythonize(extensions, compiler_directives=directives)
 
-extensions.extend([
-    Extension('multidict._istr',
-              ['multidict/_istr.c']),
-])
+extensions.append(Extension('multidict._istr',
+                            ['multidict/_istr.c']))
 
 
 class BuildFailed(Exception):

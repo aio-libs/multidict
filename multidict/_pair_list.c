@@ -5,7 +5,6 @@
 #include "object.h"
 #include "structmember.h"
 
-#include <stdio.h>
 #define MIN_LIST_CAPACITY 32
 
 static PyTypeObject pair_list_type;
@@ -27,14 +26,13 @@ typedef struct pair {
 } pair_t;
 
 
-typedef struct pair_list {  // 24 for GC prefix
+typedef struct pair_list {  // 24 for GC prefix, 74 in total
     PyObject_HEAD           // 16
     Py_ssize_t  capacity;   // 8
     Py_ssize_t  size;       // 8
     uint64_t  version;      // 8
     pair_t *pairs;          // 8
-    // pair_t  buffer[29];     // Average is about 7, 29 is more than enough
-} pair_list_t;              // = 74 + 29 * 32 = 1002 (fits to 1024 perfectly)
+} pair_list_t;
 
 
 static inline int str_cmp(PyObject *s1, PyObject *s2)
@@ -58,20 +56,6 @@ static inline int str_cmp(PyObject *s1, PyObject *s2)
 static inline pair_t*
 pair_list_get(pair_list_t *list, Py_ssize_t i)
 {
-    /*
-    if (i < 0) {
-	printf("Reading with negative offset\n");
-	abort();
-    }
-    if (i >= list->size) {
-	printf("Reading after the buffer\n");
-	abort();
-    }
-    if (list->size > list->capacity) {
-	printf("Invalid capacity\n");
-	abort();
-    }
-    */
     pair_t *item = list->pairs + i;
     return item;
 }
@@ -92,8 +76,8 @@ pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
     new_pairs = PyMem_Resize(list->pairs, pair_t, new_capacity);
 
     if (NULL == new_pairs) {
-        // if not enought mem for realloc we do nothing, just return false
-        return -1;
+	// if not enought mem for realloc we do nothing, just return false
+	return -1;
     }
 
     list->pairs = new_pairs;
@@ -107,13 +91,13 @@ pair_list_new(void)
 {
     pair_list_t *list = PyObject_GC_New(pair_list_t, &pair_list_type);
     if (list == NULL) {
-        return NULL;
+	return NULL;
     }
 
     // TODO: align size of pair to the nearest power of 2
     list->pairs = PyMem_New(pair_t, MIN_LIST_CAPACITY);
     if (list->pairs == NULL) {
-        return NULL;
+	return NULL;
     }
 
     list->capacity = MIN_LIST_CAPACITY;
@@ -133,11 +117,11 @@ pair_list_dealloc(pair_list_t *list)
     PyObject_GC_UnTrack(list);
     Py_TRASHCAN_SAFE_BEGIN(list);
     for (pos = 0; pos < list->size; pos++) {
-        pair = pair_list_get(list, pos);
+	pair = pair_list_get(list, pos);
 
-        Py_XDECREF(pair->identity);
-        Py_XDECREF(pair->key);
-        Py_XDECREF(pair->value);
+	Py_XDECREF(pair->identity);
+	Py_XDECREF(pair->key);
+	Py_XDECREF(pair->value);
     }
     list->size = 0;
     if (list->pairs != NULL) {
@@ -160,17 +144,17 @@ pair_list_len(PyObject *op)
 
 int
 pair_list_add_with_hash(PyObject *op,
-              PyObject *identity,
-              PyObject *key,
-              PyObject *value,
-              Py_hash_t hash)
+	      PyObject *identity,
+	      PyObject *key,
+	      PyObject *value,
+	      Py_hash_t hash)
 {
     pair_list_t *list = (pair_list_t *) op;
     pair_t *pair;
     if (list->capacity < list->size + 1) {
-        if (pair_list_resize(list, list->capacity + MIN_LIST_CAPACITY) < 0) {
-            return -1;
-        }
+	if (pair_list_resize(list, list->capacity + MIN_LIST_CAPACITY) < 0) {
+	    return -1;
+	}
     }
 
     pair = pair_list_get(list, list->size);
@@ -210,7 +194,7 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
 
     if (list->size == pos) {
 	// remove from tail, no need to shift body
-        return 0;
+	return 0;
     }
     tail = list->size - pos;
     memmove(pair_list_get(list, pos),
@@ -238,7 +222,7 @@ _pair_list_drop_tail(PyObject *op, PyObject *identity, Py_hash_t hash,
     }
 
     for (; pos < list->size; pos++) {
-        pair = pair_list_get(list, pos);
+	pair = pair_list_get(list, pos);
 	if (pair->hash != hash) {
 	    continue;
 	}
@@ -288,7 +272,7 @@ pair_list_del(PyObject *list, PyObject *identity, PyObject *key)
 }
 
 
-uint64_t 
+uint64_t
 pair_list_version(PyObject *op)
 {
     pair_list_t *list = (pair_list_t *) op;
@@ -296,7 +280,7 @@ pair_list_version(PyObject *op)
 }
 
 
-int 
+int
 _pair_list_next(PyObject *op, Py_ssize_t *ppos,
 		PyObject **pidentity, PyObject **pkey,
 		PyObject **pvalue, Py_hash_t *phash)
@@ -327,7 +311,7 @@ _pair_list_next(PyObject *op, Py_ssize_t *ppos,
 }
 
 
-int 
+int
 pair_list_next(PyObject *op, Py_ssize_t *ppos,
 	       PyObject **pidentity, PyObject **pkey,
 	       PyObject **pvalue)
@@ -350,7 +334,7 @@ pair_list_contains(PyObject *op, PyObject *ident)
 	return -1;
     }
     while (_pair_list_next(op, &pos, &identity, NULL, NULL, &hash2)) {
-        if (hash1 != hash2) {
+	if (hash1 != hash2) {
 	    continue;
 	}
 	tmp = str_cmp(ident, identity);
@@ -379,7 +363,7 @@ pair_list_get_one(PyObject *op, PyObject *ident, PyObject *key)
 	return NULL;
     }
     while (_pair_list_next(op, &pos, &identity, NULL, &value, &hash2)) {
-        if (hash1 != hash2) {
+	if (hash1 != hash2) {
 	    continue;
 	}
 	tmp = str_cmp(ident, identity);
@@ -411,7 +395,7 @@ pair_list_get_all(PyObject *op, PyObject *ident, PyObject *key)
 	return NULL;
     }
     while (_pair_list_next(op, &pos, &identity, NULL, &value, &hash2)) {
-        if (hash1 != hash2) {
+	if (hash1 != hash2) {
 	    continue;
 	}
 	tmp = str_cmp(ident, identity);
@@ -461,7 +445,7 @@ pair_list_set_default(PyObject *op, PyObject *ident,
 	return NULL;
     }
     while (_pair_list_next(op, &pos, &identity, NULL, &value2, &hash2)) {
-        if (hash1 != hash2) {
+	if (hash1 != hash2) {
 	    continue;
 	}
 	tmp = str_cmp(ident, identity);
@@ -498,7 +482,7 @@ pair_list_pop_one(PyObject *op, PyObject *ident, PyObject *key)
     }
     for (pos=0; pos < list->size; pos++) {
 	pair = pair_list_get(list, pos);
-        if (pair->hash != hash) {
+	if (pair->hash != hash) {
 	    continue;
 	}
 	tmp = str_cmp(ident, pair->identity);
@@ -544,7 +528,7 @@ pair_list_pop_all(PyObject *op, PyObject *ident, PyObject *key)
 
     for (pos = list->size - 1; pos >= 0; pos--) {
 	pair = pair_list_get(list, pos);
-        if (hash != pair->hash) {
+	if (hash != pair->hash) {
 	    continue;
 	}
 	tmp = str_cmp(ident, pair->identity);
@@ -622,7 +606,7 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
 
     for (pos = 0; pos < list->size; pos++) {
 	pair = pair_list_get(list, pos);
-        if (hash != pair->hash) {
+	if (hash != pair->hash) {
 	    continue;
 	}
 	tmp = str_cmp(identity, pair->identity);
@@ -771,7 +755,7 @@ int pair_list_update(PyObject *op1, PyObject *op2)
 		goto fail;
 	    }
 	}
-	
+
     }
     if (_pair_list_post_update(list, used_keys, 0) < 0) {
 	goto fail;
@@ -902,9 +886,7 @@ int pair_list_init(void)
 {
     pair_list_type.tp_base = &PyUnicode_Type;
     if (PyType_Ready(&pair_list_type) < 0) {
-        return -1;
+	return -1;
     }
     return 0;
 }
-
-
