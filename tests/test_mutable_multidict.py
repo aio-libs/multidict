@@ -131,11 +131,8 @@ class TestMutableMultiDict:
         d.add('key', 'val1')
         d.add('key', 'val2')
 
-        print('0')
         assert ('key', 'val1') == d.popitem()
-        print('1')
         assert [('key', 'val2')] == list(d.items())
-        print('2')
 
     def test_popitem_empty_multidict(self, cls):
         d = cls()

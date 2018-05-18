@@ -110,7 +110,6 @@ def test_load_from_file(pickle_protocol, cls_name):
     d = cls([('a', 1), ('a', 2)])
     fname = '{}.pickle.{}'.format(cls_name.lower(), pickle_protocol)
     p = here / fname
-    print(p)
     with p.open('rb') as f:
         obj = pickle.load(f)
     assert d == obj
