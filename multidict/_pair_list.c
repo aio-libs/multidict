@@ -23,17 +23,18 @@ typedef struct pair {
     PyObject  *identity;  // 8
     PyObject  *key;       // 8
     PyObject  *value;     // 8
-    Py_hash_t  hash;      // 8 ssize_t
+    Py_hash_t  hash;      // 8
 } pair_t;
 
 
-typedef struct pair_list {
-    PyObject_HEAD
-    Py_ssize_t  capacity;
-    Py_ssize_t  size;
-    Py_ssize_t  version;
-    pair_t *pairs;
-} pair_list_t;
+typedef struct pair_list {  // 24 for GC prefix
+    PyObject_HEAD           // 16
+    Py_ssize_t  capacity;   // 8
+    Py_ssize_t  size;       // 8
+    uint64_t  version;      // 8
+    pair_t *pairs;          // 8
+    // pair_t  buffer[29];     // Average is about 7, 29 is more than enough
+} pair_list_t;              // = 74 + 29 * 32 = 1002 (fits to 1024 perfectly)
 
 
 static inline int str_cmp(PyObject *s1, PyObject *s2)
@@ -465,7 +466,7 @@ pair_list_set_default(PyObject *op, PyObject *ident,
 	}
 	tmp = str_cmp(ident, identity);
 	if (tmp > 0) {
-	    Py_INCREF(value);
+	    Py_INCREF(value2);
 	    return value2;
 	}
 	else if (tmp < 0) {
@@ -834,6 +835,7 @@ pair_list_clear(PyObject *op)
 }
 
 
+/*
 static PyObject *
 pair_list_repr(pair_list_t *list)
 {
@@ -850,7 +852,7 @@ pair_list_repr(pair_list_t *list)
     }
     Py_ReprLeave((PyObject *)list);
 }
-
+*/
 
 static PyTypeObject pair_list_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
