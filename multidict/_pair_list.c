@@ -5,6 +5,14 @@
 #include "object.h"
 #include "structmember.h"
 
+// fix for VisualC complier used by Python 3.4
+#ifdef __GNUC__
+#define INLINE inline
+#else
+#define INLINE
+#endif
+
+
 #define MIN_LIST_CAPACITY 32
 
 static PyTypeObject pair_list_type;
@@ -35,7 +43,7 @@ typedef struct pair_list {  // 24 for GC prefix, 74 in total
 } pair_list_t;
 
 
-static inline int str_cmp(PyObject *s1, PyObject *s2)
+static INLINE int str_cmp(PyObject *s1, PyObject *s2)
 {
     PyObject *ret;
     ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
@@ -53,7 +61,7 @@ static inline int str_cmp(PyObject *s1, PyObject *s2)
 }
 
 
-static inline pair_t*
+static INLINE pair_t*
 pair_list_get(pair_list_t *list, Py_ssize_t i)
 {
     pair_t *item = list->pairs + i;
@@ -197,8 +205,8 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
 	return 0;
     }
     tail = list->size - pos;
-    memmove(pair_list_get(list, pos),
-	    pair_list_get(list, pos + 1),
+    memmove((void *)pair_list_get(list, pos),
+	    (void *)pair_list_get(list, pos + 1),
 	    sizeof(pair_t) * tail);
     if (list->capacity - list->size > MIN_LIST_CAPACITY) {
 	return pair_list_resize(list, list->capacity - MIN_LIST_CAPACITY);
