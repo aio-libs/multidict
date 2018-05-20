@@ -298,7 +298,7 @@ pair_list_version(PyObject *op)
 }
 
 
-int
+int INLINE
 _pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
                 PyObject **pkey, PyObject **pvalue, Py_hash_t *phash)
 {
@@ -329,7 +329,7 @@ _pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
 }
 
 
-int
+int INLINE
 pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
                PyObject **pkey, PyObject **pvalue)
 {
