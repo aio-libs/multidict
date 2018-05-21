@@ -16,6 +16,10 @@
 #define MIN_LIST_CAPACITY 32
 
 static PyTypeObject pair_list_type;
+static PyObject * _istr_type;
+
+
+_Py_IDENTIFIER(title);
 
 
 /* Global counter used to set ma_version_tag field of dictionary.
@@ -58,6 +62,66 @@ str_cmp(PyObject *s1, PyObject *s2)
         Py_DECREF(ret);
         return 0;
     }
+}
+
+
+static INLINE PyObject *
+to_str(PyObject *key)
+{
+    PyObject *type = Py_TYPE(key);
+    if (PyUnicode_CheckExact(key)) {
+	Py_INCREF(key);
+	return key;
+    }
+    if (type == _istr_type) {
+        return PyObject_Str(key);
+    }
+    if (PyUnicode_Check(key)) {
+        return PyObject_Str(key);
+    }
+    PyErr_SetString(PyExc_TypeError,
+		    "MultiDict keys should be either str "
+		    "or subclasses of str");
+    return 0;
+}
+
+
+static INLINE PyObject *
+key_to_identity(PyObject *key)
+{
+    PyObject *type = Py_TYPE(key);
+    if (PyUnicode_CheckExact(key)) {
+	Py_INCREF(key);
+	return key;
+    }
+    if (type == _istr_type) {
+        return PyObject_Str(key);
+    }
+    if (PyUnicode_Check(key)) {
+        return PyObject_Str(key);
+    }
+    PyErr_SetString(PyExc_TypeError,
+		    "MultiDict keys should be either str "
+		    "or subclasses of str");
+    return 0;
+}
+
+
+static INLINE PyObject *
+ci_key_to_identity(PyObject *key)
+{
+    PyObject *type = Py_TYPE(key);
+    if (type == _istr_type) {
+	// replace with direct .canonical attr
+        return _PyObject_CallMethodId(key, &PyId_title, NULL);
+    }
+    if (PyUnicode_Check(key)) {
+        return _PyObject_CallMethodId(key, &PyId_title, NULL);
+    }
+    PyErr_SetString(PyExc_TypeError,
+		    "MultiDict keys should be either str "
+		    "or subclasses of str");
+    return 0;
 }
 
 
@@ -929,8 +993,10 @@ static PyTypeObject pair_list_type = {
 
 
 int
-pair_list_init(void)
+pair_list_init(PyObject *istr_type)
 {
+    Py_INCREF(istr_type);
+    _istr_type = istr_type;
     pair_list_type.tp_base = &PyUnicode_Type;
     if (PyType_Ready(&pair_list_type) < 0) {
         return -1;

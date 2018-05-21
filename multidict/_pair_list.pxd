@@ -45,4 +45,4 @@ cdef extern from "_pair_list.h":
 
     uint64_t pair_list_version(object lst)
 
-    int pair_list_init() except -1
+    int pair_list_init(object istr_type) except -1

@@ -16,7 +16,7 @@ cdef object _marker = object()
 upstr = istr  # for relaxing backward compatibility problems
 cdef object _istr = istr
 
-pair_list_init()
+pair_list_init(istr)
 
 
 def getversion(_Base md):

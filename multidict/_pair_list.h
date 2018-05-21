@@ -53,7 +53,7 @@ int pair_list_update(PyObject *op1, PyObject *op2);
 uint64_t pair_list_version(PyObject *list);
 
 
-int pair_list_init(void);
+int pair_list_init(PyObject * istr_type);
 
 #ifdef __cplusplus
 }
