@@ -423,16 +423,12 @@ pair_list_get_all(PyObject *op, PyObject *ident, PyObject *key)
         tmp = str_cmp(ident, identity);
         if (tmp > 0) {
             if (res == NULL) {
-                res = PyList_New(1);
+                res = PyList_New(0);
                 if (res == NULL) {
                     goto fail;
                 }
-                if (PyList_SetItem(res, 0, value) < 0) {
-                    goto fail;
-                }
-                Py_INCREF(value);
             }
-            else if (PyList_Append(res, value) < 0) {
+            if (PyList_Append(res, value) < 0) {
                 goto fail;
             }
         }
@@ -562,15 +558,12 @@ pair_list_pop_all(PyObject *op, PyObject *ident, PyObject *key)
         tmp = str_cmp(ident, pair->identity);
         if (tmp > 0) {
             if (res == NULL) {
-                res = PyList_New(1);
+                res = PyList_New(0);
                 if (res == NULL) {
                     goto fail;
                 }
-                if (PyList_SetItem(res, 0, pair->value) < 0) {
-                    goto fail;
-                }
-                Py_INCREF(pair->value);
-            } else if (PyList_Append(res, pair->value) < 0) {
+            }
+            if (PyList_Append(res, pair->value) < 0) {
                 goto fail;
             }
             if (pair_list_del_at(list, pos) < 0) {
