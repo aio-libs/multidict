@@ -54,7 +54,7 @@ dct[key] = '7'
 dct[key] = '8'
 dct[key] = '9'
 dct[key] = '10'
-"""
+""" * 10
 
 
 GET_ITEM = """\
@@ -68,22 +68,25 @@ dct[key]
 dct[key]
 dct[key]
 dct[key]
-"""
+""" * 10
 
 
 ADD = """\
-dct.add(key, '1')
-dct.add(key, '2')
-dct.add(key, '3')
-dct.add(key, '4')
-dct.add(key, '5')
-dct.add(key, '6')
-dct.add(key, '7')
-dct.add(key, '8')
-dct.add(key, '9')
-dct.add(key, '10')
-"""
+add(key, '1')
+add(key, '2')
+add(key, '3')
+add(key, '4')
+add(key, '5')
+add(key, '6')
+add(key, '7')
+add(key, '8')
+add(key, '9')
+add(key, '10')
+""" * 10
 
+SETUP_ADD = """\
+add = dct.add
+"""
 
 def benchmark_name(name, ctx, prefix=None, use_prefix=False):
     if use_prefix:
@@ -117,10 +120,10 @@ if __name__ == '__main__':
 
         runner.timeit(name('setitem str'),
                       SET_ITEM, imports + INIT + FILL,
-                      inner_loops=10)
+                      inner_loops=30)
         runner.timeit(name('getitem str'),
                       GET_ITEM, imports + INIT + FILL,
-                      inner_loops=10)
+                      inner_loops=30)
 
         # MultiDict specific
         if impl == 'dict':
@@ -128,10 +131,10 @@ if __name__ == '__main__':
 
         runner.timeit(name('setitem istr'),
                       SET_ITEM, imports + INIT + FILL,
-                      inner_loops=10)
+                      inner_loops=30)
         runner.timeit(name('getitem istr'),
                       GET_ITEM, imports + INIT + FILL,
-                      inner_loops=10)
+                      inner_loops=30)
         runner.timeit(name('add str'),
-                      ADD, imports + INIT + FILL,
-                      inner_loops=10)
+                      ADD, imports + INIT + FILL + SETUP_ADD,
+                      inner_loops=30)

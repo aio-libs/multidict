@@ -22,11 +22,15 @@ else:
     macros = []
 
 
-extensions = [Extension('multidict._multidict',
-                        ['multidict/_multidict' + ext],
-                        # extra_compile_args=["-g"],
-                        # extra_link_args=["-g"],
-)]
+extensions = [
+    Extension('multidict._multidict',
+              ['multidict/_multidict' + ext,
+               'multidict/_pair_list.c'],
+              # define_macros=[('DEBUG', '1')],
+              # extra_compile_args=["-g", "-Wall"],
+              # extra_link_args=["-g"],
+    )
+]
 
 
 if USE_CYTHON:
@@ -126,6 +130,7 @@ args = dict(
 try:
     setup(**args)
 except BuildFailed:
+    raise
     print("************************************************************")
     print("Cannot compile C accelerator module, use pure python version")
     print("************************************************************")
