@@ -130,7 +130,6 @@ args = dict(
 try:
     setup(**args)
 except BuildFailed:
-    raise
     print("************************************************************")
     print("Cannot compile C accelerator module, use pure python version")
     print("************************************************************")
