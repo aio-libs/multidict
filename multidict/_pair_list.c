@@ -72,8 +72,8 @@ key_to_str(PyObject *key)
 {
     PyObject *type = Py_TYPE(key);
     if (PyUnicode_CheckExact(key)) {
-	Py_INCREF(key);
-	return key;
+        Py_INCREF(key);
+        return key;
     }
     if (type == _istr_type) {
         return PyObject_Str(key);
@@ -82,8 +82,8 @@ key_to_str(PyObject *key)
         return PyObject_Str(key);
     }
     PyErr_SetString(PyExc_TypeError,
-		    "MultiDict keys should be either str "
-		    "or subclasses of str");
+                    "MultiDict keys should be either str "
+                    "or subclasses of str");
     return NULL;
 }
 
@@ -93,8 +93,8 @@ key_to_identity(PyObject *key)
 {
     PyObject *type = Py_TYPE(key);
     if (PyUnicode_CheckExact(key)) {
-	Py_INCREF(key);
-	return key;
+        Py_INCREF(key);
+        return key;
     }
     if (type == _istr_type) {
         return PyObject_Str(key);
@@ -103,8 +103,8 @@ key_to_identity(PyObject *key)
         return PyObject_Str(key);
     }
     PyErr_SetString(PyExc_TypeError,
-		    "MultiDict keys should be either str "
-		    "or subclasses of str");
+                    "MultiDict keys should be either str "
+                    "or subclasses of str");
     return NULL;
 }
 
@@ -114,15 +114,15 @@ ci_key_to_identity(PyObject *key)
 {
     PyObject *type = Py_TYPE(key);
     if (type == _istr_type) {
-	// replace with direct .canonical attr
+        // replace with direct .canonical attr
         return _PyObject_CallMethodId(key, &PyId_title, NULL);
     }
     if (PyUnicode_Check(key)) {
         return _PyObject_CallMethodId(key, &PyId_title, NULL);
     }
     PyErr_SetString(PyExc_TypeError,
-		    "CIMultiDict keys should be either str "
-		    "or subclasses of str");
+                    "CIMultiDict keys should be either str "
+                    "or subclasses of str");
     return 0;
 }
 
@@ -235,10 +235,10 @@ pair_list_len(PyObject *op)
 
 int
 _pair_list_add_with_hash(PyObject *op,
-			 PyObject *identity,
-			 PyObject *key,
-			 PyObject *value,
-			 Py_hash_t hash)
+                         PyObject *identity,
+                         PyObject *key,
+                         PyObject *value,
+                         Py_hash_t hash)
 {
     pair_list_t *list = (pair_list_t *)op;
     pair_t *pair;
@@ -271,8 +271,8 @@ _pair_list_add_with_hash(PyObject *op,
 
 int
 pair_list_add(PyObject *op,
-	      PyObject *key,
-	      PyObject *value)
+              PyObject *key,
+              PyObject *value)
 {
     Py_hash_t hash;
     PyObject *identity = NULL;
@@ -282,15 +282,15 @@ pair_list_add(PyObject *op,
 
     identity = list->calc_identity(key);
     if (identity == NULL) {
-	goto fail;
+        goto fail;
     }
     hash = PyObject_Hash(identity);
     if (hash == -1) {
-	goto fail;
+        goto fail;
     }
     str_key = key_to_str(key);
     if (str_key == NULL) {
-	goto fail;
+        goto fail;
     }
     ret = _pair_list_add_with_hash(op, identity, str_key, value, hash);
     Py_DECREF(identity);
@@ -905,7 +905,7 @@ pair_list_update(PyObject *op1, PyObject *op2)
 
         if (!found) {
             if (_pair_list_add_with_hash(op1, pair2->identity, pair2->key,
-					 pair2->value, pair2->hash) < 0) {
+                                         pair2->value, pair2->hash) < 0) {
                 goto fail;
             }
             if (_dict_set_number(used_keys, pair2->identity, list->size) < 0) {
@@ -987,11 +987,11 @@ pair_list_repr(pair_list_t *list)
     Py_ssize_t i;
     i = Py_ReprEnter((PyObject *)list);
     if (i != 0) {
-	return i > 0 ? PyUnicode_FromString("{...}") : NULL;
+        return i > 0 ? PyUnicode_FromString("{...}") : NULL;
     }
     if (list->size == 0) {
-	Py_ReprLeave((PyObject *)list);
-	return PyUnicode_FromString("{}");
+        Py_ReprLeave((PyObject *)list);
+        return PyUnicode_FromString("{}");
     }
     for (i = 0; i < list->size; i++) {
     }
