@@ -10,13 +10,16 @@ extern "C" {
 #include "Python.h"
 
 PyObject* pair_list_new(void);
+PyObject* ci_pair_list_new(void);
 
 Py_ssize_t pair_list_len(PyObject *list);
 
 int pair_list_clear(PyObject *list);
 
-int pair_list_add_with_hash(PyObject *list, PyObject *identity,
-				PyObject *key, PyObject *value, Py_hash_t hash);
+int _pair_list_add_with_hash(PyObject *list, PyObject *identity,
+			     PyObject *key, PyObject *value, Py_hash_t hash);
+
+int pair_list_add(PyObject *list, PyObject *key, PyObject *value);
 
 int _pair_list_next(PyObject *list, Py_ssize_t *ppos,
 	    PyObject **pidentity,

@@ -4,14 +4,16 @@ from libc.stdint cimport uint64_t
 cdef extern from "_pair_list.h":
 
     object pair_list_new()
+    object ci_pair_list_new()
 
     int pair_list_len(object lst) except -1
 
     int pair_list_clear(object lst) except -1
 
-    int pair_list_add_with_hash(object lst,
-                                object identity, object key,
-                                object value, Py_hash_t hash) except -1
+    int _pair_list_add_with_hash(object lst,
+                                 object identity, object key,
+                                 object value, Py_hash_t hash) except -1
+    int pair_list_add(object lst, object key, object value) except -1
 
     int _pair_list_next(object lst, Py_ssize_t *ppos,
                         PyObject* *pidentity,
