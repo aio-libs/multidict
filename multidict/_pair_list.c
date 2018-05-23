@@ -695,7 +695,7 @@ fail:
 
 
 PyObject *
-pair_list_pop_all(PyObject *op, PyObject *ident, PyObject *key)
+pair_list_pop_all(PyObject *op, PyObject *key)
 {
     pair_list_t *list = (pair_list_t *)op;
     Py_hash_t hash;
@@ -703,15 +703,21 @@ pair_list_pop_all(PyObject *op, PyObject *ident, PyObject *key)
     pair_t *pair;
     int tmp;
     PyObject *res = NULL;
+    PyObject *ident = NULL;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash = PyObject_Hash(ident);
     if (hash == -1) {
-        return NULL;
+        goto fail;
     }
 
     if (list->size == 0) {
         PyErr_SetObject(PyExc_KeyError, ident);
-        return NULL;
+        goto fail;
     }
 
     for (pos = list->size - 1; pos >= 0; pos--) {
@@ -747,10 +753,12 @@ pair_list_pop_all(PyObject *op, PyObject *ident, PyObject *key)
     } else if (PyList_Reverse(res) < 0) {
         goto fail;
     }
+    Py_DECREF(ident);
     return res;
 
 fail:
-    Py_CLEAR(res);
+    Py_XDECREF(ident);
+    Py_XDECREF(res);
     return NULL;
 }
 
@@ -774,7 +782,7 @@ pair_list_pop_item(PyObject *op)
     }
 
     if (pair_list_del_at(list, 0) < 0) {
-        Py_CLEAR(ret);
+        Py_DECREF(ret);
         return NULL;
     }
 
@@ -963,11 +971,11 @@ pair_list_update(PyObject *op1, PyObject *op2)
         goto fail;
     }
 
-    Py_CLEAR(used_keys);
+    Py_DECREF(used_keys);
     return 0;
 
 fail:
-    Py_CLEAR(used_keys);
+    Py_XDECREF(used_keys);
     return -1;
 }
 
