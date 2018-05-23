@@ -246,7 +246,7 @@ cdef class MultiDict(_Base):
 
         if args:
             arg = args[0]
-            if isinstance(arg, _Base):
+            if isinstance(arg, _Base) and not kwargs:
                 if do_add:
                     self._append_items((<_Base>arg)._impl)
                 else:
@@ -254,16 +254,20 @@ cdef class MultiDict(_Base):
             else:
                 if hasattr(arg, 'items'):
                     arg = arg.items()
+                if kwargs:
+                    arg = list(arg)
+                    arg.extend(list(kwargs.items()))
                 if do_add:
                     self._append_items_seq(arg, name)
                 else:
                     self._update_items_seq(arg, name)
-
-        for key, value in kwargs.items():
+        else:
+            arg = list(kwargs.items())
             if do_add:
-                self._add(key, value)
+                self._append_items_seq(arg, name)
             else:
-                self._replace(key, value)
+                self._update_items_seq(arg, name)
+
 
     cdef object _update_items(self, object impl):
         pair_list_update(self._impl, impl)
