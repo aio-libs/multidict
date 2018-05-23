@@ -60,7 +60,7 @@ if not PYPY:
         def build_extension(self, ext):
             try:
                 build_ext.build_extension(self, ext)
-            except (CCompilerError, DistutilsExecError,
+            except (DistutilsExecError,
                     DistutilsPlatformError, ValueError):
                 raise BuildFailed()
 
