@@ -643,19 +643,25 @@ fail:
 
 
 PyObject *
-pair_list_pop_one(PyObject *op, PyObject *ident, PyObject *key)
+pair_list_pop_one(PyObject *op, PyObject *key)
 {
     pair_list_t *list = (pair_list_t *)op;
     pair_t *pair;
 
     Py_hash_t hash;
     Py_ssize_t pos;
-    PyObject *value;
+    PyObject *value = NULL;
     int tmp;
+    PyObject *ident = NULL;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash = PyObject_Hash(ident);
     if (hash == -1) {
-        return NULL;
+        goto fail;
     }
 
     for (pos=0; pos < list->size; pos++) {
@@ -670,18 +676,20 @@ pair_list_pop_one(PyObject *op, PyObject *ident, PyObject *key)
             if (pair_list_del_at(list, pos) < 0) {
                 goto fail;
             }
+            Py_DECREF(ident);
             return value;
         }
         else if (tmp < 0) {
-            return NULL;
+            goto fail;
         }
     }
 
     PyErr_SetObject(PyExc_KeyError, key);
-    return NULL;
+    goto fail;
 
 fail:
-    Py_CLEAR(value);
+    Py_XDECREF(value);
+    Py_XDECREF(ident);
     return NULL;
 }
 

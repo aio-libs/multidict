@@ -33,7 +33,7 @@ cdef extern from "_pair_list.h":
 
     object pair_list_set_default(object lst, object key, object value)
 
-    object pair_list_pop_one(object lst, object identity, object key)
+    object pair_list_pop_one(object lst, object key)
     object pair_list_pop_all(object lst, object identity, object key)
     object pair_list_pop_item(object lst)
 

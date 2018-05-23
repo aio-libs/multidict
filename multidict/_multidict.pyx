@@ -358,7 +358,7 @@ cdef class MultiDict(_Base):
 
         """
         try:
-            return pair_list_pop_one(self._impl, self._title(key), key)
+            return pair_list_pop_one(self._impl, key)
         except KeyError:
             if default is _marker:
                 raise
