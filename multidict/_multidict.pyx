@@ -38,11 +38,8 @@ cdef class _Base:
 
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
-        return self._getall(self._title(key), key, default)
-
-    cdef _getall(self, str identity, key, default):
         try:
-            return pair_list_get_all(self._impl, identity, key)
+            return pair_list_get_all(self._impl, key)
         except KeyError:
             if default is not _marker:
                 return default

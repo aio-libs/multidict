@@ -510,18 +510,25 @@ pair_list_get_one(PyObject *op, PyObject *ident, PyObject *key)
 
 
 PyObject *
-pair_list_get_all(PyObject *op, PyObject *ident, PyObject *key)
+pair_list_get_all(PyObject *op, PyObject *key)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
+    PyObject *ident = NULL;
     PyObject *identity = NULL;
     PyObject *value = NULL;
     PyObject *res = NULL;
     int tmp;
+    pair_list_t *list = (pair_list_t *)op;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
-        return NULL;
+        goto fail;
     }
 
     while (_pair_list_next(op, &pos, &identity, NULL, &value, &hash2)) {
@@ -555,7 +562,8 @@ pair_list_get_all(PyObject *op, PyObject *ident, PyObject *key)
     return res;
 
 fail:
-    Py_CLEAR(res);
+    Py_XDECREF(ident);
+    Py_XDECREF(res);
     return NULL;
 }
 
