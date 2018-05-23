@@ -1,9 +1,7 @@
 #include <string.h>
 #include "_pair_list.h"
 
-#include "Python.h"
-#include "object.h"
-#include "structmember.h"
+#include <Python.h>
 
 // fix for VisualC complier used by Python 3.4
 #ifdef __GNUC__
@@ -16,6 +14,13 @@
 #define MIN_LIST_CAPACITY 32
 
 static PyTypeObject pair_list_type;
+static PyObject * _istr_type;
+
+
+_Py_IDENTIFIER(title);
+
+
+typedef PyObject * (*calc_identity_func)(PyObject *key);
 
 
 /* Global counter used to set ma_version_tag field of dictionary.
@@ -34,11 +39,12 @@ typedef struct pair {
 } pair_t;
 
 
-typedef struct pair_list {  // 24 for GC prefix, 74 in total
+typedef struct pair_list {  // 24 for GC prefix, 82 in total
     PyObject_HEAD           // 16
     Py_ssize_t  capacity;   // 8
     Py_ssize_t  size;       // 8
     uint64_t  version;      // 8
+    calc_identity_func calc_identity;  // 8
     pair_t *pairs;          // 8
 } pair_list_t;
 
@@ -58,6 +64,45 @@ str_cmp(PyObject *s1, PyObject *s2)
         Py_DECREF(ret);
         return 0;
     }
+}
+
+
+static INLINE PyObject *
+key_to_str(PyObject *key)
+{
+    PyObject *type = Py_TYPE(key);
+    if (PyUnicode_CheckExact(key)) {
+        Py_INCREF(key);
+        return key;
+    }
+    if (type == _istr_type) {
+        return PyObject_Str(key);
+    }
+    if (PyUnicode_Check(key)) {
+        return PyObject_Str(key);
+    }
+    PyErr_SetString(PyExc_TypeError,
+                    "MultiDict keys should be either str "
+                    "or subclasses of str");
+    return NULL;
+}
+
+
+static PyObject *
+ci_key_to_str(PyObject *key)
+{
+    PyObject *type = Py_TYPE(key);
+    if (type == _istr_type) {
+        // replace with direct .canonical attr
+        return _PyObject_CallMethodId(key, &PyId_title, NULL);
+    }
+    if (PyUnicode_Check(key)) {
+        return _PyObject_CallMethodId(key, &PyId_title, NULL);
+    }
+    PyErr_SetString(PyExc_TypeError,
+                    "CIMultiDict keys should be either str "
+                    "or subclasses of str");
+    return 0;
 }
 
 
@@ -94,8 +139,9 @@ pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
     return 0;
 }
 
-PyObject *
-pair_list_new(void)
+
+static PyObject *
+_pair_list_new(calc_identity_func calc_identity)
 {
     pair_list_t *list = PyObject_GC_New(pair_list_t, &pair_list_type);
     if (list == NULL) {
@@ -111,8 +157,22 @@ pair_list_new(void)
     list->capacity = MIN_LIST_CAPACITY;
     list->size = 0;
     list->version = NEXT_VERSION();
+    list->calc_identity = calc_identity;
 
     return (PyObject *)list;
+}
+
+PyObject *
+pair_list_new(void)
+{
+    return _pair_list_new(key_to_str);
+}
+
+
+PyObject *
+ci_pair_list_new(void)
+{
+    return _pair_list_new(ci_key_to_str);
 }
 
 
@@ -153,11 +213,11 @@ pair_list_len(PyObject *op)
 
 
 int
-pair_list_add_with_hash(PyObject *op,
-                        PyObject *identity,
-                        PyObject *key,
-                        PyObject *value,
-                        Py_hash_t hash)
+_pair_list_add_with_hash(PyObject *op,
+                         PyObject *identity,
+                         PyObject *key,
+                         PyObject *value,
+                         Py_hash_t hash)
 {
     pair_list_t *list = (pair_list_t *)op;
     pair_t *pair;
@@ -185,6 +245,40 @@ pair_list_add_with_hash(PyObject *op,
     list->version = NEXT_VERSION();
 
     return 0;
+}
+
+
+int
+pair_list_add(PyObject *op,
+              PyObject *key,
+              PyObject *value)
+{
+    Py_hash_t hash;
+    PyObject *identity = NULL;
+    PyObject *str_key = NULL;
+    pair_list_t *list = (pair_list_t *)op;
+    int ret;
+
+    identity = list->calc_identity(key);
+    if (identity == NULL) {
+        goto fail;
+    }
+    hash = PyObject_Hash(identity);
+    if (hash == -1) {
+        goto fail;
+    }
+    str_key = key_to_str(key);
+    if (str_key == NULL) {
+        goto fail;
+    }
+    ret = _pair_list_add_with_hash(op, identity, str_key, value, hash);
+    Py_DECREF(identity);
+    Py_DECREF(str_key);
+    return ret;
+fail:
+    Py_XDECREF(identity);
+    Py_XDECREF(str_key);
+    return -1;
 }
 
 
@@ -481,7 +575,7 @@ pair_list_set_default(PyObject *op, PyObject *ident, PyObject *key,
         }
     }
 
-    if (pair_list_add_with_hash(op, ident, key, value, hash1) < 0) {
+    if (_pair_list_add_with_hash(op, ident, key, value, hash1) < 0) {
         return NULL;
     }
 
@@ -655,7 +749,7 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
     }
 
     if (!found) {
-        return pair_list_add_with_hash(op, identity, key, value, hash);
+        return _pair_list_add_with_hash(op, identity, key, value, hash);
     }
     else {
         list->version = NEXT_VERSION();
@@ -789,8 +883,8 @@ pair_list_update(PyObject *op1, PyObject *op2)
         }
 
         if (!found) {
-            if (pair_list_add_with_hash(op1, pair2->identity, pair2->key,
-                pair2->value, pair2->hash) < 0) {
+            if (_pair_list_add_with_hash(op1, pair2->identity, pair2->key,
+                                         pair2->value, pair2->hash) < 0) {
                 goto fail;
             }
             if (_dict_set_number(used_keys, pair2->identity, list->size) < 0) {
@@ -872,11 +966,11 @@ pair_list_repr(pair_list_t *list)
     Py_ssize_t i;
     i = Py_ReprEnter((PyObject *)list);
     if (i != 0) {
-	return i > 0 ? PyUnicode_FromString("{...}") : NULL;
+        return i > 0 ? PyUnicode_FromString("{...}") : NULL;
     }
     if (list->size == 0) {
-	Py_ReprLeave((PyObject *)list);
-	return PyUnicode_FromString("{}");
+        Py_ReprLeave((PyObject *)list);
+        return PyUnicode_FromString("{}");
     }
     for (i = 0; i < list->size; i++) {
     }
@@ -929,8 +1023,10 @@ static PyTypeObject pair_list_type = {
 
 
 int
-pair_list_init(void)
+pair_list_init(PyObject *istr_type)
 {
+    Py_INCREF(istr_type);
+    _istr_type = istr_type;
     pair_list_type.tp_base = &PyUnicode_Type;
     if (PyType_Ready(&pair_list_type) < 0) {
         return -1;

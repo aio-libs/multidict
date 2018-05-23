@@ -16,7 +16,7 @@ cdef object _marker = object()
 upstr = istr  # for relaxing backward compatibility problems
 cdef object _istr = istr
 
-pair_list_init()
+pair_list_init(istr)
 
 
 def getversion(_Base md):
@@ -284,7 +284,7 @@ cdef class MultiDict(_Base):
             value = i[1]
             identity = self._title(key)
             h = hash(identity)
-            pair_list_add_with_hash(impl, identity, key, value, h)
+            _pair_list_add_with_hash(impl, identity, key, value, h)
 
         pair_list_update(self._impl, impl)
 
@@ -310,10 +310,7 @@ cdef class MultiDict(_Base):
             self._add(key, value)
 
     cdef _add(self, key, value):
-        cdef str identity = self._title(key)
-        pair_list_add_with_hash(self._impl,
-                                identity,
-                                _str(key), value, hash(identity))
+        pair_list_add(self._impl, key, value);
 
     cdef _replace(self, key, value):
         cdef str identity = self._title(key)
@@ -410,7 +407,7 @@ cdef class CIMultiDict(MultiDict):
     """An ordered dictionary that can have multiple values for each key."""
 
     def __init__(self, *args, **kwargs):
-        self._impl = pair_list_new()
+        self._impl = ci_pair_list_new()
         self._extend(args, kwargs, 'CIMultiDict', True)
 
     def __reduce__(self):
