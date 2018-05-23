@@ -30,7 +30,7 @@ int pair_list_next(PyObject *list, Py_ssize_t *ppos,
                    PyObject **pkey, PyObject **pvalue);
 
 
-int pair_list_contains(PyObject *list, PyObject *identity);
+int pair_list_contains(PyObject *list, PyObject *key);
 
 PyObject* pair_list_get_one(PyObject *list, PyObject *key);
 PyObject* pair_list_get_all(PyObject *list, PyObject *key);

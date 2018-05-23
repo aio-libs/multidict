@@ -24,7 +24,7 @@ cdef extern from "_pair_list.h":
                        PyObject* *pidentity,
                        PyObject* *pkey, PyObject* *pvalue) except -1
 
-    int pair_list_contains(object lst, object identity) except -1
+    int pair_list_contains(object lst, object key) except -1
     # todo: add key param to raise proper exception key
     object pair_list_get_one(object lst, object key)
     object pair_list_get_all(object lst, object key)

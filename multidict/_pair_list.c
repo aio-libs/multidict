@@ -447,16 +447,23 @@ pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
 
 
 int
-pair_list_contains(PyObject *op, PyObject *ident)
+pair_list_contains(PyObject *op, PyObject *key)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
+    PyObject *ident = NULL;
     PyObject *identity = NULL;
     int tmp;
+    pair_list_t *list = (pair_list_t *)op;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
-        return -1;
+        goto fail;
     }
 
     while (_pair_list_next(op, &pos, &identity, NULL, NULL, &hash2)) {
@@ -465,14 +472,19 @@ pair_list_contains(PyObject *op, PyObject *ident)
         }
         tmp = str_cmp(ident, identity);
         if (tmp > 0) {
+            Py_DECREF(ident);
             return 1;
         }
         else if (tmp < 0) {
-            return -1;
+            goto fail;
         }
     }
 
+    Py_DECREF(ident);
     return 0;
+fail:
+    Py_XDECREF(ident);
+    return -1;
 }
 
 
@@ -504,6 +516,7 @@ pair_list_get_one(PyObject *op, PyObject *key)
         tmp = str_cmp(ident, identity);
         if (tmp > 0) {
             Py_INCREF(value);
+            Py_DECREF(ident);
             return value;
         }
         else if (tmp < 0) {
@@ -511,6 +524,7 @@ pair_list_get_one(PyObject *op, PyObject *key)
         }
     }
 
+    Py_DECREF(ident);
     PyErr_SetObject(PyExc_KeyError, key);
     return NULL;
 fail:
@@ -569,6 +583,7 @@ pair_list_get_all(PyObject *op, PyObject *key)
     if (res == NULL) {
         PyErr_SetObject(PyExc_KeyError, key);
     }
+    Py_DECREF(ident);
     return res;
 
 fail:
@@ -606,6 +621,7 @@ pair_list_set_default(PyObject *op, PyObject *key, PyObject *value)
         tmp = str_cmp(ident, identity);
         if (tmp > 0) {
             Py_INCREF(value2);
+            Py_DECREF(ident);
             return value2;
         }
         else if (tmp < 0) {
@@ -618,6 +634,7 @@ pair_list_set_default(PyObject *op, PyObject *key, PyObject *value)
     }
 
     Py_INCREF(value);
+    Py_DECREF(ident);
     return value;
 fail:
     Py_XDECREF(ident);

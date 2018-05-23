@@ -75,7 +75,7 @@ cdef class _Base:
         return self._contains(key)
 
     cdef _contains(self, key):
-        return pair_list_contains(self._impl, self._title(key))
+        return pair_list_contains(self._impl, key)
 
     def __iter__(self):
         return iter(self.keys())
