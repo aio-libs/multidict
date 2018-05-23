@@ -26,7 +26,7 @@ cdef extern from "_pair_list.h":
 
     int pair_list_contains(object lst, object identity) except -1
     # todo: add key param to raise proper exception key
-    object pair_list_get_one(object lst, object identity, object key)
+    object pair_list_get_one(object lst, object key)
     object pair_list_get_all(object lst, object key)
 
     int pair_list_del(object lst, object key) except -1

@@ -48,11 +48,11 @@ cdef class _Base:
 
     def getone(self, key, default=_marker):
         """Get first value matching the key."""
-        return self._getone(self._title(key), key, default)
+        return self._getone(key, default)
 
-    cdef _getone(self, str identity, key, default):
+    cdef _getone(self, key, default):
         try:
-            return pair_list_get_one(self._impl, identity, key)
+            return pair_list_get_one(self._impl, key)
         except KeyError:
             if default is not _marker:
                 return default
@@ -62,14 +62,14 @@ cdef class _Base:
     # Mapping interface #
 
     def __getitem__(self, key):
-        return self._getone(self._title(key), key, _marker)
+        return self._getone(key, _marker)
 
     def get(self, key, default=None):
         """Get first value matching the key.
 
         The method is alias for .getone().
         """
-        return self._getone(self._title(key), key, default)
+        return self._getone(key, default)
 
     def __contains__(self, key):
         return self._contains(key)
