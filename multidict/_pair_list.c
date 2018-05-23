@@ -89,28 +89,7 @@ key_to_str(PyObject *key)
 
 
 static PyObject *
-key_to_identity(PyObject *key)
-{
-    PyObject *type = Py_TYPE(key);
-    if (PyUnicode_CheckExact(key)) {
-        Py_INCREF(key);
-        return key;
-    }
-    if (type == _istr_type) {
-        return PyObject_Str(key);
-    }
-    if (PyUnicode_Check(key)) {
-        return PyObject_Str(key);
-    }
-    PyErr_SetString(PyExc_TypeError,
-                    "MultiDict keys should be either str "
-                    "or subclasses of str");
-    return NULL;
-}
-
-
-static PyObject *
-ci_key_to_identity(PyObject *key)
+ci_key_to_str(PyObject *key)
 {
     PyObject *type = Py_TYPE(key);
     if (type == _istr_type) {
@@ -186,14 +165,14 @@ _pair_list_new(calc_identity_func calc_identity)
 PyObject *
 pair_list_new(void)
 {
-    return _pair_list_new(key_to_identity);
+    return _pair_list_new(key_to_str);
 }
 
 
 PyObject *
 ci_pair_list_new(void)
 {
-    return _pair_list_new(ci_key_to_identity);
+    return _pair_list_new(ci_key_to_str);
 }
 
 
