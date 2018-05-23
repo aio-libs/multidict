@@ -347,8 +347,7 @@ cdef class MultiDict(_Base):
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
-        cdef str identity = self._title(key)
-        return pair_list_set_default(self._impl, identity, key, default)
+        return pair_list_set_default(self._impl, key, default)
 
     def popone(self, key, default=_marker):
         """Remove the last occurrence of key and return the corresponding

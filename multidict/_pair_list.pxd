@@ -31,8 +31,7 @@ cdef extern from "_pair_list.h":
 
     int pair_list_del(object lst, object key) except -1
 
-    object pair_list_set_default(object lst, object identity,
-                                 object key, object value)
+    object pair_list_set_default(object lst, object key, object value)
 
     object pair_list_pop_one(object lst, object identity, object key)
     object pair_list_pop_all(object lst, object identity, object key)

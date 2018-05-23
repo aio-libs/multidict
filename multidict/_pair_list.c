@@ -350,7 +350,7 @@ _pair_list_drop_tail(PyObject *op, PyObject *identity, Py_hash_t hash,
     return found;
 }
 
-int
+static int
 _pair_list_del_hash(PyObject *op, PyObject *identity,
                     PyObject *key, Py_hash_t hash)
 {
@@ -389,7 +389,7 @@ pair_list_del(PyObject *op, PyObject *key)
         goto fail;
     }
 
-    ret = _pair_list_del_hash(list, identity, key, hash);
+    ret = _pair_list_del_hash(op, identity, key, hash);
     Py_DECREF(identity);
     return ret;
 fail:
@@ -579,18 +579,24 @@ fail:
 
 
 PyObject *
-pair_list_set_default(PyObject *op, PyObject *ident, PyObject *key,
-                      PyObject *value)
+pair_list_set_default(PyObject *op, PyObject *key, PyObject *value)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
+    PyObject *ident = NULL;
     PyObject *identity = NULL;
     PyObject *value2 = NULL;
     int tmp;
+    pair_list_t *list = (pair_list_t *)op;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
-        return NULL;
+        goto fail;
     }
 
     while (_pair_list_next(op, &pos, &identity, NULL, &value2, &hash2)) {
@@ -603,16 +609,19 @@ pair_list_set_default(PyObject *op, PyObject *ident, PyObject *key,
             return value2;
         }
         else if (tmp < 0) {
-            return NULL;
+            goto fail;
         }
     }
 
     if (_pair_list_add_with_hash(op, ident, key, value, hash1) < 0) {
-        return NULL;
+        goto fail;
     }
 
     Py_INCREF(value);
     return value;
+fail:
+    Py_XDECREF(ident);
+    return NULL;
 }
 
 
