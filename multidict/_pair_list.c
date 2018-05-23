@@ -255,7 +255,6 @@ pair_list_add(PyObject *op,
 {
     Py_hash_t hash;
     PyObject *identity = NULL;
-    PyObject *str_key = NULL;
     pair_list_t *list = (pair_list_t *)op;
     int ret;
 
@@ -267,17 +266,11 @@ pair_list_add(PyObject *op,
     if (hash == -1) {
         goto fail;
     }
-    str_key = key_to_str(key);
-    if (str_key == NULL) {
-        goto fail;
-    }
-    ret = _pair_list_add_with_hash(op, identity, str_key, value, hash);
+    ret = _pair_list_add_with_hash(op, identity, key, value, hash);
     Py_DECREF(identity);
-    Py_DECREF(str_key);
     return ret;
 fail:
     Py_XDECREF(identity);
-    Py_XDECREF(str_key);
     return -1;
 }
 

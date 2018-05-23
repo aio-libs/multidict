@@ -194,14 +194,26 @@ class TestMutableMultiDict:
     def test_istr_key(self, cls, istr):
         d = cls()
         d[istr('1')] = 'val'
-        assert type(list(d.keys())[0]) is str
+        assert type(list(d.keys())[0]) is istr
 
     def test_str_derived_key(self, cls):
         class A(str):
             pass
         d = cls()
         d[A('1')] = 'val'
-        assert type(list(d.keys())[0]) is str
+        assert type(list(d.keys())[0]) is A
+
+    def test_istr_key_add(self, cls, istr):
+        d = cls()
+        d.add(istr('1'), 'val')
+        assert type(list(d.keys())[0]) is istr
+
+    def test_str_derived_key_add(self, cls):
+        class A(str):
+            pass
+        d = cls()
+        d.add(A('1'), 'val')
+        assert type(list(d.keys())[0]) is A
 
     def test_popall(self, cls):
         d = cls()

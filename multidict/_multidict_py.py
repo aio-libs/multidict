@@ -198,7 +198,7 @@ class MultiDict(_Base, MutableMultiMapping):
 
     def _key(self, key):
         if isinstance(key, str):
-            return str(key)
+            return key
         else:
             raise TypeError("MultiDict keys should be either str "
                             "or subclasses of str")
