@@ -29,8 +29,7 @@ cdef extern from "_pair_list.h":
     object pair_list_get_one(object lst, object identity, object key)
     object pair_list_get_all(object lst, object identity, object key)
 
-    int pair_list_del(object lst, object identity, object key) except -1
-    int pair_list_del_hash(object lst, object identity, object key, Py_hash_t hash) except -1
+    int pair_list_del(object lst, object key) except -1
 
     object pair_list_set_default(object lst, object identity,
                                  object key, object value)

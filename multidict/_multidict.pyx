@@ -27,9 +27,6 @@ cdef class _Base:
 
     cdef object _impl
 
-    def _get_impl(self):
-        return self._impl
-
     cdef str _title(self, s):
         typ = type(s)
         if typ is str:
@@ -349,12 +346,7 @@ cdef class MultiDict(_Base):
         self._replace(key, value)
 
     def __delitem__(self, key):
-        self._remove(key)
-
-    cdef _remove(self, key):
-        cdef str identity = self._title(key)
-        cdef Py_hash_t h = hash(identity)
-        pair_list_del_hash(self._impl, identity, key, h)
+        pair_list_del(self._impl, key)
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""

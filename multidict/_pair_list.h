@@ -36,8 +36,7 @@ PyObject* pair_list_get_one(PyObject *list, PyObject *identity, PyObject *key);
 PyObject* pair_list_get_all(PyObject *list, PyObject *identity, PyObject *key);
 
 
-int pair_list_del(PyObject *list, PyObject *identity, PyObject *key);
-int pair_list_del_hash(PyObject *list, PyObject *identity, PyObject *key, Py_hash_t hash);
+int pair_list_del(PyObject *list, PyObject *key);
 
 PyObject* pair_list_set_default(PyObject *list, PyObject *ident,
 			 PyObject *key, PyObject *value);

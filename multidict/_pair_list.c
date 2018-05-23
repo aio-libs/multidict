@@ -70,12 +70,12 @@ str_cmp(PyObject *s1, PyObject *s2)
 static INLINE PyObject *
 key_to_str(PyObject *key)
 {
-    PyObject *type = Py_TYPE(key);
+    PyTypeObject *type = Py_TYPE(key);
     if (PyUnicode_CheckExact(key)) {
         Py_INCREF(key);
         return key;
     }
-    if (type == _istr_type) {
+    if ((PyObject *)type == _istr_type) {
         return PyObject_Str(key);
     }
     if (PyUnicode_Check(key)) {
@@ -91,8 +91,8 @@ key_to_str(PyObject *key)
 static PyObject *
 ci_key_to_str(PyObject *key)
 {
-    PyObject *type = Py_TYPE(key);
-    if (type == _istr_type) {
+    PyTypeObject *type = Py_TYPE(key);
+    if ((PyObject *)type == _istr_type) {
         // replace with direct .canonical attr
         return _PyObject_CallMethodId(key, &PyId_title, NULL);
     }
@@ -350,8 +350,9 @@ _pair_list_drop_tail(PyObject *op, PyObject *identity, Py_hash_t hash,
     return found;
 }
 
-int
-pair_list_del_hash(PyObject *op, PyObject *identity, PyObject *key, Py_hash_t hash)
+INLINE int
+_pair_list_del_hash(PyObject *op, PyObject *identity,
+                    PyObject *key, Py_hash_t hash)
 {
     pair_list_t *list = (pair_list_t *)op;
     int ret = _pair_list_drop_tail(op, identity, hash, 0);
@@ -371,16 +372,29 @@ pair_list_del_hash(PyObject *op, PyObject *identity, PyObject *key, Py_hash_t ha
 
 
 int
-pair_list_del(PyObject *list, PyObject *identity, PyObject *key)
+pair_list_del(PyObject *op, PyObject *key)
 {
+    pair_list_t *list = (pair_list_t *)op;
+    PyObject *identity = NULL;
     Py_hash_t hash;
-    hash = PyObject_Hash(identity);
+    int ret;
 
-    if (hash == -1) {
-        return -1;
+    identity = list->calc_identity(key);
+    if (identity == NULL) {
+        goto fail;
     }
 
-    return pair_list_del_hash(list, identity, key, hash);
+    hash = PyObject_Hash(identity);
+    if (hash == -1) {
+        goto fail;
+    }
+
+    ret = _pair_list_del_hash(list, identity, key, hash);
+    Py_DECREF(identity);
+    return ret;
+fail:
+    Py_XDECREF(identity);
+    return -1;
 }
 
 
@@ -966,7 +980,7 @@ pair_list_repr(pair_list_t *list)
     Py_ssize_t i;
     i = Py_ReprEnter((PyObject *)list);
     if (i != 0) {
-        return i > 0 ? PyUnicode_FromString("{...}") : NULL;
+       return i > 0 ? PyUnicode_FromString("{...}") : NULL;
     }
     if (list->size == 0) {
         Py_ReprLeave((PyObject *)list);
