@@ -226,11 +226,14 @@ class MultiDict(_Base, MutableMultiMapping):
                             " ({} given)".format(name, len(args)))
         if args:
             arg = args[0]
-            if isinstance(args[0], (MultiDict, MultiDictProxy)):
+            if isinstance(args[0], (MultiDict, MultiDictProxy)) and not kwargs:
                 items = arg._impl._items
             else:
                 if hasattr(arg, 'items'):
                     arg = arg.items()
+                if kwargs:
+                    arg = list(arg)
+                    arg.extend(list(kwargs.items()))
                 items = []
                 for item in arg:
                     if not len(item) == 2:
@@ -242,9 +245,9 @@ class MultiDict(_Base, MutableMultiMapping):
                                   item[1]))
 
             method(items)
-
-        method([(self._title(key), self._key(key), value)
-               for key, value in kwargs.items()])
+        else:
+            method([(self._title(key), self._key(key), value)
+                    for key, value in kwargs.items()])
 
     def _extend_items(self, items):
         for identity, key, value in items:

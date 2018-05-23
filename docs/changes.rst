@@ -1,5 +1,13 @@
 .. _changes:
 
+4.4.0 (2018-XX-XX)
+------------------
+
+* Rewrite C implementation to use C pair list.
+
+* Fix update order when both ``arg`` and ``kwargs`` are used.
+
+
 4.3.1 (2018-05-06)
 ------------------
 
