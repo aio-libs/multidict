@@ -791,8 +791,7 @@ pair_list_pop_item(PyObject *op)
 
 
 int
-pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
-                  PyObject *value, Py_hash_t hash)
+pair_list_replace(PyObject *op, PyObject * key, PyObject *value)
 {
     pair_list_t *list = (pair_list_t *)op;
     pair_t *pair;
@@ -800,6 +799,20 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
     Py_ssize_t pos;
     int tmp;
     int found = 0;
+
+    PyObject *identity = NULL;
+    Py_hash_t hash;
+
+    identity = list->calc_identity(key);
+    if (identity == NULL) {
+        goto fail;
+    }
+
+    hash = PyObject_Hash(identity);
+    if (hash == -1) {
+        goto fail;
+    }
+
 
     for (pos = 0; pos < list->size; pos++) {
         pair = pair_list_get(list, pos);
@@ -818,20 +831,28 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
             break;
         }
         else if (tmp < 0) {
-            return -1;
+            goto fail;
         }
     }
 
     if (!found) {
-        return _pair_list_add_with_hash(op, identity, key, value, hash);
+        if (_pair_list_add_with_hash(op, identity, key, value, hash) < 0) {
+            goto fail;
+        }
+        Py_DECREF(identity);
+        return 0;
     }
     else {
         list->version = NEXT_VERSION();
         if (_pair_list_drop_tail(op, identity, hash, pos+1) < 0) {
-            return -1;
+            goto fail;
         }
+        Py_DECREF(identity);
         return 0;
     }
+fail:
+    Py_XDECREF(identity);
+    return -1;
 }
 
 
@@ -1003,6 +1024,7 @@ pair_list_traverse(PyObject *op, visitproc visit, void *arg)
     for (pos = 0; pos < list->size; pos++) {
         pair = pair_list_get(list, pos);
         // Don't need traverse key and identity: they are terminals
+        Py_VISIT(pair->key);
         Py_VISIT(pair->value);
     }
 

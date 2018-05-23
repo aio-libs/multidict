@@ -311,10 +311,7 @@ cdef class MultiDict(_Base):
         pair_list_add(self._impl, key, value);
 
     cdef _replace(self, key, value):
-        cdef str identity = self._title(key)
-        cdef str k = _str(key)
-        cdef Py_hash_t h = hash(identity)
-        pair_list_replace(self._impl, identity, k, value, h)
+        pair_list_replace(self._impl, key, value)
 
     def add(self, key, value):
         """Add the key and value, not overwriting any previous value."""
