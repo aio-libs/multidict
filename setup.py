@@ -1,4 +1,3 @@
-import codecs
 import os
 import platform
 import re
@@ -71,8 +70,8 @@ else:
     cmdclass = {}
 
 
-with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
-        __file__)), 'multidict', '__init__.py'), 'r', 'latin1') as fp:
+with open(os.path.join(os.path.abspath(os.path.dirname(
+        __file__)), 'multidict', '__init__.py'), 'r', encoding='latin1') as fp:
     try:
         version = re.findall(r"^__version__ = '([^']+)'\r?$",
                              fp.read(), re.M)[0]
