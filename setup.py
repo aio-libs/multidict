@@ -1,5 +1,6 @@
 import codecs
 import os
+import platform
 import re
 import sys
 from setuptools import setup, Extension
@@ -8,61 +9,66 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
 from distutils.command.build_ext import build_ext
 
 
-try:
-    from Cython.Build import cythonize
-    USE_CYTHON = True
-except ImportError:
-    USE_CYTHON = False
+PYPY = platform.python_implementation() == 'PyPy'
 
-ext = '.pyx' if USE_CYTHON else '.c'
+if not PYPY:
+    try:
+        from Cython.Build import cythonize
+        USE_CYTHON = True
+    except ImportError:
+        USE_CYTHON = False
 
-if bool(os.environ.get('PROFILE_BUILD')):
-    macros = [('CYTHON_TRACE', '1')]
-else:
-    macros = []
+    ext = '.pyx' if USE_CYTHON else '.c'
 
-
-extensions = [
-    Extension('multidict._multidict',
-              ['multidict/_multidict' + ext,
-               'multidict/_pair_list.c'],
-              # define_macros=[('DEBUG', '1')],
-              # extra_compile_args=["-g", "-Wall"],
-              # extra_link_args=["-g"],
-    )
-]
-
-
-if USE_CYTHON:
     if bool(os.environ.get('PROFILE_BUILD')):
-        directives = {"linetrace": True}
+        macros = [('CYTHON_TRACE', '1')]
     else:
-        directives = {}
-    extensions = cythonize(extensions, compiler_directives=directives)
+        macros = []
 
-extensions.append(Extension('multidict._istr',
-                            ['multidict/_istr.c']))
+    extensions = [
+        Extension('multidict._multidict',
+                  ['multidict/_multidict' + ext,
+                   'multidict/_pair_list.c'],
+                  # define_macros=[('DEBUG', '1')],
+                  # extra_compile_args=["-g", "-Wall"],
+                  # extra_link_args=["-g"],
+        )
+    ]
 
+    if USE_CYTHON:
+        if bool(os.environ.get('PROFILE_BUILD')):
+            directives = {"linetrace": True}
+        else:
+            directives = {}
+        extensions = cythonize(extensions, compiler_directives=directives)
 
-class BuildFailed(Exception):
-    pass
+    extensions.append(Extension('multidict._istr',
+                                ['multidict/_istr.c']))
 
+    class BuildFailed(Exception):
+        pass
 
-class ve_build_ext(build_ext):
-    # This class allows C extension building to fail.
+    class ve_build_ext(build_ext):
+        # This class allows C extension building to fail.
 
-    def run(self):
-        try:
-            build_ext.run(self)
-        except (DistutilsPlatformError, FileNotFoundError):
-            raise BuildFailed()
+        def run(self):
+            try:
+                build_ext.run(self)
+            except (DistutilsPlatformError, FileNotFoundError):
+                raise BuildFailed()
 
-    def build_extension(self, ext):
-        try:
-            build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsExecError,
-                DistutilsPlatformError, ValueError):
-            raise BuildFailed()
+        def build_extension(self, ext):
+            try:
+                build_ext.build_extension(self, ext)
+            except (CCompilerError, DistutilsExecError,
+                    DistutilsPlatformError, ValueError):
+                raise BuildFailed()
+
+    cmdclass = dict(build_ext=ve_build_ext)
+else:
+    # Don't use C extensions on PYPY
+    extensions = []
+    cmdclass = {}
 
 
 with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
@@ -125,7 +131,7 @@ args = dict(
     setup_requires=pytest_runner,
     include_package_data=True,
     ext_modules=extensions,
-    cmdclass=dict(build_ext=ve_build_ext))
+    cmdclass=cmdclass)
 
 try:
     setup(**args)
