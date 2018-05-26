@@ -70,12 +70,12 @@ str_cmp(PyObject *s1, PyObject *s2)
 static INLINE PyObject *
 key_to_str(PyObject *key)
 {
-    PyObject *type = Py_TYPE(key);
+    PyTypeObject *type = Py_TYPE(key);
     if (PyUnicode_CheckExact(key)) {
         Py_INCREF(key);
         return key;
     }
-    if (type == _istr_type) {
+    if ((PyObject *)type == _istr_type) {
         return PyObject_Str(key);
     }
     if (PyUnicode_Check(key)) {
@@ -91,8 +91,8 @@ key_to_str(PyObject *key)
 static PyObject *
 ci_key_to_str(PyObject *key)
 {
-    PyObject *type = Py_TYPE(key);
-    if (type == _istr_type) {
+    PyTypeObject *type = Py_TYPE(key);
+    if ((PyObject *)type == _istr_type) {
         // replace with direct .canonical attr
         return _PyObject_CallMethodId(key, &PyId_title, NULL);
     }
@@ -255,7 +255,6 @@ pair_list_add(PyObject *op,
 {
     Py_hash_t hash;
     PyObject *identity = NULL;
-    PyObject *str_key = NULL;
     pair_list_t *list = (pair_list_t *)op;
     int ret;
 
@@ -267,17 +266,11 @@ pair_list_add(PyObject *op,
     if (hash == -1) {
         goto fail;
     }
-    str_key = key_to_str(key);
-    if (str_key == NULL) {
-        goto fail;
-    }
-    ret = _pair_list_add_with_hash(op, identity, str_key, value, hash);
+    ret = _pair_list_add_with_hash(op, identity, key, value, hash);
     Py_DECREF(identity);
-    Py_DECREF(str_key);
     return ret;
 fail:
     Py_XDECREF(identity);
-    Py_XDECREF(str_key);
     return -1;
 }
 
@@ -350,8 +343,9 @@ _pair_list_drop_tail(PyObject *op, PyObject *identity, Py_hash_t hash,
     return found;
 }
 
-int
-pair_list_del_hash(PyObject *op, PyObject *identity, PyObject *key, Py_hash_t hash)
+static int
+_pair_list_del_hash(PyObject *op, PyObject *identity,
+                    PyObject *key, Py_hash_t hash)
 {
     pair_list_t *list = (pair_list_t *)op;
     int ret = _pair_list_drop_tail(op, identity, hash, 0);
@@ -371,16 +365,29 @@ pair_list_del_hash(PyObject *op, PyObject *identity, PyObject *key, Py_hash_t ha
 
 
 int
-pair_list_del(PyObject *list, PyObject *identity, PyObject *key)
+pair_list_del(PyObject *op, PyObject *key)
 {
+    pair_list_t *list = (pair_list_t *)op;
+    PyObject *identity = NULL;
     Py_hash_t hash;
-    hash = PyObject_Hash(identity);
+    int ret;
 
-    if (hash == -1) {
-        return -1;
+    identity = list->calc_identity(key);
+    if (identity == NULL) {
+        goto fail;
     }
 
-    return pair_list_del_hash(list, identity, key, hash);
+    hash = PyObject_Hash(identity);
+    if (hash == -1) {
+        goto fail;
+    }
+
+    ret = _pair_list_del_hash(op, identity, key, hash);
+    Py_DECREF(identity);
+    return ret;
+fail:
+    Py_XDECREF(identity);
+    return -1;
 }
 
 
@@ -433,16 +440,23 @@ pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
 
 
 int
-pair_list_contains(PyObject *op, PyObject *ident)
+pair_list_contains(PyObject *op, PyObject *key)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
+    PyObject *ident = NULL;
     PyObject *identity = NULL;
     int tmp;
+    pair_list_t *list = (pair_list_t *)op;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
-        return -1;
+        goto fail;
     }
 
     while (_pair_list_next(op, &pos, &identity, NULL, NULL, &hash2)) {
@@ -451,29 +465,41 @@ pair_list_contains(PyObject *op, PyObject *ident)
         }
         tmp = str_cmp(ident, identity);
         if (tmp > 0) {
+            Py_DECREF(ident);
             return 1;
         }
         else if (tmp < 0) {
-            return -1;
+            goto fail;
         }
     }
 
+    Py_DECREF(ident);
     return 0;
+fail:
+    Py_XDECREF(ident);
+    return -1;
 }
 
 
 PyObject *
-pair_list_get_one(PyObject *op, PyObject *ident, PyObject *key)
+pair_list_get_one(PyObject *op, PyObject *key)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
+    PyObject *ident = NULL;
     PyObject *identity = NULL;
     PyObject *value = NULL;
     int tmp;
+    pair_list_t *list = (pair_list_t *)op;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
-        return NULL;
+        goto fail;
     }
 
     while (_pair_list_next(op, &pos, &identity, NULL, &value, &hash2)) {
@@ -483,31 +509,43 @@ pair_list_get_one(PyObject *op, PyObject *ident, PyObject *key)
         tmp = str_cmp(ident, identity);
         if (tmp > 0) {
             Py_INCREF(value);
+            Py_DECREF(ident);
             return value;
         }
         else if (tmp < 0) {
-            return NULL;
+            goto fail;
         }
     }
 
+    Py_DECREF(ident);
     PyErr_SetObject(PyExc_KeyError, key);
+    return NULL;
+fail:
+    Py_XDECREF(ident);
     return NULL;
 }
 
 
 PyObject *
-pair_list_get_all(PyObject *op, PyObject *ident, PyObject *key)
+pair_list_get_all(PyObject *op, PyObject *key)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
+    PyObject *ident = NULL;
     PyObject *identity = NULL;
     PyObject *value = NULL;
     PyObject *res = NULL;
     int tmp;
+    pair_list_t *list = (pair_list_t *)op;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
-        return NULL;
+        goto fail;
     }
 
     while (_pair_list_next(op, &pos, &identity, NULL, &value, &hash2)) {
@@ -538,27 +576,35 @@ pair_list_get_all(PyObject *op, PyObject *ident, PyObject *key)
     if (res == NULL) {
         PyErr_SetObject(PyExc_KeyError, key);
     }
+    Py_DECREF(ident);
     return res;
 
 fail:
-    Py_CLEAR(res);
+    Py_XDECREF(ident);
+    Py_XDECREF(res);
     return NULL;
 }
 
 
 PyObject *
-pair_list_set_default(PyObject *op, PyObject *ident, PyObject *key,
-                      PyObject *value)
+pair_list_set_default(PyObject *op, PyObject *key, PyObject *value)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
+    PyObject *ident = NULL;
     PyObject *identity = NULL;
     PyObject *value2 = NULL;
     int tmp;
+    pair_list_t *list = (pair_list_t *)op;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash1 = PyObject_Hash(ident);
     if (hash1 == -1) {
-        return NULL;
+        goto fail;
     }
 
     while (_pair_list_next(op, &pos, &identity, NULL, &value2, &hash2)) {
@@ -568,36 +614,47 @@ pair_list_set_default(PyObject *op, PyObject *ident, PyObject *key,
         tmp = str_cmp(ident, identity);
         if (tmp > 0) {
             Py_INCREF(value2);
+            Py_DECREF(ident);
             return value2;
         }
         else if (tmp < 0) {
-            return NULL;
+            goto fail;
         }
     }
 
     if (_pair_list_add_with_hash(op, ident, key, value, hash1) < 0) {
-        return NULL;
+        goto fail;
     }
 
     Py_INCREF(value);
+    Py_DECREF(ident);
     return value;
+fail:
+    Py_XDECREF(ident);
+    return NULL;
 }
 
 
 PyObject *
-pair_list_pop_one(PyObject *op, PyObject *ident, PyObject *key)
+pair_list_pop_one(PyObject *op, PyObject *key)
 {
     pair_list_t *list = (pair_list_t *)op;
     pair_t *pair;
 
     Py_hash_t hash;
     Py_ssize_t pos;
-    PyObject *value;
+    PyObject *value = NULL;
     int tmp;
+    PyObject *ident = NULL;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash = PyObject_Hash(ident);
     if (hash == -1) {
-        return NULL;
+        goto fail;
     }
 
     for (pos=0; pos < list->size; pos++) {
@@ -612,24 +669,26 @@ pair_list_pop_one(PyObject *op, PyObject *ident, PyObject *key)
             if (pair_list_del_at(list, pos) < 0) {
                 goto fail;
             }
+            Py_DECREF(ident);
             return value;
         }
         else if (tmp < 0) {
-            return NULL;
+            goto fail;
         }
     }
 
     PyErr_SetObject(PyExc_KeyError, key);
-    return NULL;
+    goto fail;
 
 fail:
-    Py_CLEAR(value);
+    Py_XDECREF(value);
+    Py_XDECREF(ident);
     return NULL;
 }
 
 
 PyObject *
-pair_list_pop_all(PyObject *op, PyObject *ident, PyObject *key)
+pair_list_pop_all(PyObject *op, PyObject *key)
 {
     pair_list_t *list = (pair_list_t *)op;
     Py_hash_t hash;
@@ -637,15 +696,21 @@ pair_list_pop_all(PyObject *op, PyObject *ident, PyObject *key)
     pair_t *pair;
     int tmp;
     PyObject *res = NULL;
+    PyObject *ident = NULL;
+
+    ident = list->calc_identity(key);
+    if (ident == NULL) {
+        goto fail;
+    }
 
     hash = PyObject_Hash(ident);
     if (hash == -1) {
-        return NULL;
+        goto fail;
     }
 
     if (list->size == 0) {
         PyErr_SetObject(PyExc_KeyError, ident);
-        return NULL;
+        goto fail;
     }
 
     for (pos = list->size - 1; pos >= 0; pos--) {
@@ -681,10 +746,12 @@ pair_list_pop_all(PyObject *op, PyObject *ident, PyObject *key)
     } else if (PyList_Reverse(res) < 0) {
         goto fail;
     }
+    Py_DECREF(ident);
     return res;
 
 fail:
-    Py_CLEAR(res);
+    Py_XDECREF(ident);
+    Py_XDECREF(res);
     return NULL;
 }
 
@@ -708,7 +775,7 @@ pair_list_pop_item(PyObject *op)
     }
 
     if (pair_list_del_at(list, 0) < 0) {
-        Py_CLEAR(ret);
+        Py_DECREF(ret);
         return NULL;
     }
 
@@ -717,8 +784,7 @@ pair_list_pop_item(PyObject *op)
 
 
 int
-pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
-                  PyObject *value, Py_hash_t hash)
+pair_list_replace(PyObject *op, PyObject * key, PyObject *value)
 {
     pair_list_t *list = (pair_list_t *)op;
     pair_t *pair;
@@ -726,6 +792,20 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
     Py_ssize_t pos;
     int tmp;
     int found = 0;
+
+    PyObject *identity = NULL;
+    Py_hash_t hash;
+
+    identity = list->calc_identity(key);
+    if (identity == NULL) {
+        goto fail;
+    }
+
+    hash = PyObject_Hash(identity);
+    if (hash == -1) {
+        goto fail;
+    }
+
 
     for (pos = 0; pos < list->size; pos++) {
         pair = pair_list_get(list, pos);
@@ -744,20 +824,28 @@ pair_list_replace(PyObject *op, PyObject *identity, PyObject * key,
             break;
         }
         else if (tmp < 0) {
-            return -1;
+            goto fail;
         }
     }
 
     if (!found) {
-        return _pair_list_add_with_hash(op, identity, key, value, hash);
+        if (_pair_list_add_with_hash(op, identity, key, value, hash) < 0) {
+            goto fail;
+        }
+        Py_DECREF(identity);
+        return 0;
     }
     else {
         list->version = NEXT_VERSION();
         if (_pair_list_drop_tail(op, identity, hash, pos+1) < 0) {
-            return -1;
+            goto fail;
         }
+        Py_DECREF(identity);
         return 0;
     }
+fail:
+    Py_XDECREF(identity);
+    return -1;
 }
 
 
@@ -897,11 +985,11 @@ pair_list_update(PyObject *op1, PyObject *op2)
         goto fail;
     }
 
-    Py_CLEAR(used_keys);
+    Py_DECREF(used_keys);
     return 0;
 
 fail:
-    Py_CLEAR(used_keys);
+    Py_XDECREF(used_keys);
     return -1;
 }
 
@@ -929,6 +1017,7 @@ pair_list_traverse(PyObject *op, visitproc visit, void *arg)
     for (pos = 0; pos < list->size; pos++) {
         pair = pair_list_get(list, pos);
         // Don't need traverse key and identity: they are terminals
+        Py_VISIT(pair->key);
         Py_VISIT(pair->value);
     }
 
@@ -966,7 +1055,7 @@ pair_list_repr(pair_list_t *list)
     Py_ssize_t i;
     i = Py_ReprEnter((PyObject *)list);
     if (i != 0) {
-        return i > 0 ? PyUnicode_FromString("{...}") : NULL;
+       return i > 0 ? PyUnicode_FromString("{...}") : NULL;
     }
     if (list->size == 0) {
         Py_ReprLeave((PyObject *)list);

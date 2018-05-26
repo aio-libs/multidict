@@ -24,23 +24,20 @@ cdef extern from "_pair_list.h":
                        PyObject* *pidentity,
                        PyObject* *pkey, PyObject* *pvalue) except -1
 
-    int pair_list_contains(object lst, object identity) except -1
+    int pair_list_contains(object lst, object key) except -1
     # todo: add key param to raise proper exception key
-    object pair_list_get_one(object lst, object identity, object key)
-    object pair_list_get_all(object lst, object identity, object key)
+    object pair_list_get_one(object lst, object key)
+    object pair_list_get_all(object lst, object key)
 
-    int pair_list_del(object lst, object identity, object key) except -1
-    int pair_list_del_hash(object lst, object identity, object key, Py_hash_t hash) except -1
+    int pair_list_del(object lst, object key) except -1
 
-    object pair_list_set_default(object lst, object identity,
-                                 object key, object value)
+    object pair_list_set_default(object lst, object key, object value)
 
-    object pair_list_pop_one(object lst, object identity, object key)
-    object pair_list_pop_all(object lst, object identity, object key)
+    object pair_list_pop_one(object lst, object key)
+    object pair_list_pop_all(object lst, object key)
     object pair_list_pop_item(object lst)
 
-    int pair_list_replace(object lst, object identity, object key,
-                          object value, Py_hash_t hash) except -1
+    int pair_list_replace(object lst, object key, object value) except -1
 
 
     int pair_list_update(object list, object other) except -1

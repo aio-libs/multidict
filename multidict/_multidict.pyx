@@ -27,9 +27,6 @@ cdef class _Base:
 
     cdef object _impl
 
-    def _get_impl(self):
-        return self._impl
-
     cdef str _title(self, s):
         typ = type(s)
         if typ is str:
@@ -41,11 +38,8 @@ cdef class _Base:
 
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
-        return self._getall(self._title(key), key, default)
-
-    cdef _getall(self, str identity, key, default):
         try:
-            return pair_list_get_all(self._impl, identity, key)
+            return pair_list_get_all(self._impl, key)
         except KeyError:
             if default is not _marker:
                 return default
@@ -54,11 +48,11 @@ cdef class _Base:
 
     def getone(self, key, default=_marker):
         """Get first value matching the key."""
-        return self._getone(self._title(key), key, default)
+        return self._getone(key, default)
 
-    cdef _getone(self, str identity, key, default):
+    cdef _getone(self, key, default):
         try:
-            return pair_list_get_one(self._impl, identity, key)
+            return pair_list_get_one(self._impl, key)
         except KeyError:
             if default is not _marker:
                 return default
@@ -68,20 +62,20 @@ cdef class _Base:
     # Mapping interface #
 
     def __getitem__(self, key):
-        return self._getone(self._title(key), key, _marker)
+        return self._getone(key, _marker)
 
     def get(self, key, default=None):
         """Get first value matching the key.
 
         The method is alias for .getone().
         """
-        return self._getone(self._title(key), key, default)
+        return self._getone(key, default)
 
     def __contains__(self, key):
         return self._contains(key)
 
     cdef _contains(self, key):
-        return pair_list_contains(self._impl, self._title(key))
+        return pair_list_contains(self._impl, key)
 
     def __iter__(self):
         return iter(self.keys())
@@ -317,10 +311,7 @@ cdef class MultiDict(_Base):
         pair_list_add(self._impl, key, value);
 
     cdef _replace(self, key, value):
-        cdef str identity = self._title(key)
-        cdef str k = _str(key)
-        cdef Py_hash_t h = hash(identity)
-        pair_list_replace(self._impl, identity, k, value, h)
+        pair_list_replace(self._impl, key, value)
 
     def add(self, key, value):
         """Add the key and value, not overwriting any previous value."""
@@ -349,17 +340,11 @@ cdef class MultiDict(_Base):
         self._replace(key, value)
 
     def __delitem__(self, key):
-        self._remove(key)
-
-    cdef _remove(self, key):
-        cdef str identity = self._title(key)
-        cdef Py_hash_t h = hash(identity)
-        pair_list_del_hash(self._impl, identity, key, h)
+        pair_list_del(self._impl, key)
 
     def setdefault(self, key, default=None):
         """Return value for key, set value to default if key is not present."""
-        cdef str identity = self._title(key)
-        return pair_list_set_default(self._impl, identity, key, default)
+        return pair_list_set_default(self._impl, key, default)
 
     def popone(self, key, default=_marker):
         """Remove the last occurrence of key and return the corresponding
@@ -370,7 +355,7 @@ cdef class MultiDict(_Base):
 
         """
         try:
-            return pair_list_pop_one(self._impl, self._title(key), key)
+            return pair_list_pop_one(self._impl, key)
         except KeyError:
             if default is _marker:
                 raise
@@ -388,7 +373,7 @@ cdef class MultiDict(_Base):
 
         """
         try:
-            return pair_list_pop_all(self._impl, self._title(key), key)
+            return pair_list_pop_all(self._impl, key)
         except KeyError:
             if default is _marker:
                 raise
