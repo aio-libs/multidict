@@ -93,16 +93,15 @@ ci_key_to_str(PyObject *key)
 {
     PyTypeObject *type = Py_TYPE(key);
     if ((PyObject *)type == _istr_type) {
-        // replace with direct .canonical attr
-        return _PyObject_CallMethodId(key, &PyId_title, NULL);
+        return PyObject_CallMethod(key, "lower", NULL);
     }
     if (PyUnicode_Check(key)) {
-        return _PyObject_CallMethodId(key, &PyId_title, NULL);
+        return PyObject_CallMethod(key, "lower", NULL);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
                     "or subclasses of str");
-    return 0;
+    return NULL;
 }
 
 static INLINE pair_t *
