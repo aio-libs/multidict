@@ -20,8 +20,11 @@ about: Create a report to help us improve
 **Logs/tracebacks**
 <!-- If applicable, add logs/tracebacks to help explain your problem. -->
 
-**Your version of the programs**
-<!-- Attach your version of the multidict distribution and python versions. -->
+**Your version of the Python**
+<!-- Attach your version of the Python. -->
+
+**Your version of the multidict distribution**
+<!-- Attach your version of the multidict distribution. -->
 
 **Additional context**
 <!-- Add any other context about the problem here. -->
