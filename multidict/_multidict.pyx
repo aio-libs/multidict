@@ -27,15 +27,6 @@ cdef class _Base:
 
     cdef object _impl
 
-    cdef str _title(self, s):
-        typ = type(s)
-        if typ is str:
-            return <str>s
-        elif typ is _istr:
-            return PyObject_Str(s)
-        else:
-            return str(s)
-
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
         try:
@@ -116,7 +107,7 @@ cdef class _Base:
             ident = <object>identity
             val = <object>value
             for k, v in other.items():
-                if self._title(k) != ident:
+                if pair_list_calc_identity(self._impl, k) != ident:
                     continue
                 if v == val:
                     break
@@ -189,14 +180,6 @@ MultiMapping.register(MultiDictProxy)
 cdef class CIMultiDictProxy(MultiDictProxy):
     _proxy_classes = (CIMultiDict, CIMultiDictProxy)
     _base_class = CIMultiDict
-
-    cdef str _title(self, s):
-        typ = type(s)
-        if typ is str:
-            return <str>(s.title())
-        elif type(s) is _istr:
-            return PyObject_Str(s)
-        return s.title()
 
 
 MultiMapping.register(CIMultiDictProxy)
@@ -280,7 +263,7 @@ cdef class MultiDict(_Base):
                     "tuples".format(name))
             key = _str(i[0])
             value = i[1]
-            identity = self._title(key)
+            identity = pair_list_calc_identity(self._impl, key)
             h = hash(identity)
             _pair_list_add_with_hash(impl, identity, key, value, h)
 
@@ -404,14 +387,6 @@ cdef class CIMultiDict(MultiDict):
             self.__class__,
             (list(self.items()),),
         )
-
-    cdef str _title(self, s):
-        typ = type(s)
-        if typ is str:
-            return <str>(s.title())
-        elif type(s) is _istr:
-            return PyObject_Str(s)
-        return s.title()
 
     def copy(self):
         """Return a copy of itself."""

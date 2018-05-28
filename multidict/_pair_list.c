@@ -105,7 +105,6 @@ ci_key_to_str(PyObject *key)
     return 0;
 }
 
-
 static INLINE pair_t *
 pair_list_get(pair_list_t *list, Py_ssize_t i)
 {
@@ -993,6 +992,13 @@ fail:
     return -1;
 }
 
+
+PyObject *
+pair_list_calc_identity(PyObject *op, PyObject *key)
+{
+    pair_list_t *list = (pair_list_t *)op;
+    return list->calc_identity(key);
+}
 
 /***********************************************************************/
 
