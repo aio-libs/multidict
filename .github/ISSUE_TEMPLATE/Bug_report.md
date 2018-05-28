@@ -18,10 +18,10 @@ about: Create a report to help us improve
 <!-- A clear and concise description of what you expected to happen. -->
 
 **Logs/tracebacks**
-<!--If applicable, add logs/tracebacks to help explain your problem. -->
+<!-- If applicable, add logs/tracebacks to help explain your problem. -->
 
 **Your version of the programs**
-<!--Attach your version of the multidict distribution and python versions -->
+<!-- Attach your version of the multidict distribution and python versions. -->
 
 **Additional context**
 <!-- Add any other context about the problem here. -->
