@@ -17,7 +17,7 @@ static PyTypeObject pair_list_type;
 static PyObject * _istr_type;
 
 
-_Py_IDENTIFIER(title);
+_Py_IDENTIFIER(lower);
 
 
 typedef PyObject * (*calc_identity_func)(PyObject *key);
@@ -93,10 +93,10 @@ ci_key_to_str(PyObject *key)
 {
     PyTypeObject *type = Py_TYPE(key);
     if ((PyObject *)type == _istr_type) {
-        return PyObject_CallMethod(key, "lower", NULL);
+        return _PyObject_CallMethodId(key, &PyId_lower, NULL);
     }
     if (PyUnicode_Check(key)) {
-        return PyObject_CallMethod(key, "lower", NULL);
+        return _PyObject_CallMethodId(key, &PyId_lower, NULL);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
