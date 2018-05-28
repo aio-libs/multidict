@@ -993,7 +993,7 @@ fail:
 
 
 PyObject *
-pair_list_calc_identity(PyObject *op, PyObject *key)
+_pair_list_calc_identity(PyObject *op, PyObject *key)
 {
     pair_list_t *list = (pair_list_t *)op;
     return list->calc_identity(key);

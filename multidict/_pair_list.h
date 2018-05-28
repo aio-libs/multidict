@@ -50,7 +50,7 @@ int pair_list_replace(PyObject *op, PyObject * key, PyObject *value);
 
 int pair_list_update(PyObject *op1, PyObject *op2);
 
-PyObject* pair_list_calc_identity(PyObject *list, PyObject *key);
+PyObject* _pair_list_calc_identity(PyObject *list, PyObject *key);
 
 uint64_t pair_list_version(PyObject *list);
 
