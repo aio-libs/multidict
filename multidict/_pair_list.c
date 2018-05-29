@@ -17,7 +17,7 @@ static PyTypeObject pair_list_type;
 static PyObject * _istr_type;
 
 
-_Py_IDENTIFIER(title);
+_Py_IDENTIFIER(lower);
 
 
 typedef PyObject * (*calc_identity_func)(PyObject *key);
@@ -93,18 +93,16 @@ ci_key_to_str(PyObject *key)
 {
     PyTypeObject *type = Py_TYPE(key);
     if ((PyObject *)type == _istr_type) {
-        // replace with direct .canonical attr
-        return _PyObject_CallMethodId(key, &PyId_title, NULL);
+        return _PyObject_CallMethodId(key, &PyId_lower, NULL);
     }
     if (PyUnicode_Check(key)) {
-        return _PyObject_CallMethodId(key, &PyId_title, NULL);
+        return _PyObject_CallMethodId(key, &PyId_lower, NULL);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
                     "or subclasses of str");
-    return 0;
+    return NULL;
 }
-
 
 static INLINE pair_t *
 pair_list_get(pair_list_t *list, Py_ssize_t i)
@@ -993,6 +991,13 @@ fail:
     return -1;
 }
 
+
+PyObject *
+_pair_list_calc_identity(PyObject *op, PyObject *key)
+{
+    pair_list_t *list = (pair_list_t *)op;
+    return list->calc_identity(key);
+}
 
 /***********************************************************************/
 
