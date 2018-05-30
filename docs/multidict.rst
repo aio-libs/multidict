@@ -399,7 +399,7 @@ store them globally, like :mod:`aiohttp.hdrs` does.
 Abstract Base Classes
 =====================
 
-The module provides two ABCs: ``MutliMapping`` and
+The module provides two ABCs: ``MultiMapping`` and
 ``MutableMultiMapping``.  They are similar to
 :class:`collections.abc.Mapping` and
 :class:`collections.abc.MutableMapping` and inherited from them.
