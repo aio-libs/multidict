@@ -992,6 +992,148 @@ fail:
 }
 
 
+int
+pair_list_update_from_seq(PyObject *op, PyObject *seq)
+{
+    pair_list_t *list = (pair_list_t *)op;
+    PyObject *it = NULL; // iter(seq)
+    PyObject *fast = NULL; // item as a 2-tuple or 2-list
+    PyObject *item = NULL; // seq[i]
+    PyObject *used_keys = NULL; // dict(<Identitty: Pos>)
+    PyObject *identity = NULL;
+    PyObject *tmp = NULL;
+    Py_ssize_t i; // index into seq of current element
+    pair_t *pair = NULL;
+    Py_hash_t hash;
+    Py_ssize_t pos;
+    int tmp2;
+    int found;
+
+    it = PyObject_GetIter(seq);
+    if (it == NULL)
+        return -1;
+
+    used_keys = PyDict_New();
+    if (used_keys == NULL) {
+        return -1;
+    }
+
+    for (i = 0; ; ++i) {
+        PyObject *key = NULL;
+        PyObject *value = NULL;
+        Py_ssize_t n;
+
+        fast = NULL;
+        item = PyIter_Next(it);
+        if (item == NULL) {
+            if (PyErr_Occurred())
+                goto fail;
+            break;
+        }
+
+        // Convert item to sequence, and verify length 2.
+        fast = PySequence_Fast(item, "");
+        if (fast == NULL) {
+            if (PyErr_ExceptionMatches(PyExc_TypeError))
+                PyErr_Format(PyExc_TypeError,
+                             "multidict cannot convert sequence element #%zd"
+                             " to a sequence",
+                             i);
+            goto fail;
+        }
+        n = PySequence_Fast_GET_SIZE(fast);
+        if (n != 2) {
+            PyErr_Format(PyExc_ValueError,
+                         "multidict update sequence element #%zd "
+                         "has length %zd; 2 is required",
+                         i, n);
+            goto fail;
+        }
+
+        key = PySequence_Fast_GET_ITEM(fast, 0);
+        value = PySequence_Fast_GET_ITEM(fast, 1);
+
+        identity = list->calc_identity(key);
+        if (identity == NULL) {
+            goto fail;
+        }
+
+        hash = PyObject_Hash(identity);
+        if (hash == -1) {
+            goto fail;
+        }
+
+        tmp = PyDict_GetItem(used_keys, identity);
+
+        if (tmp == NULL) {
+            pos = 0;
+        }
+        else {
+            pos = PyLong_AsSsize_t(tmp);
+            if (pos == -1) {
+                if (!PyErr_Occurred()) {
+                    PyErr_SetString(PyExc_RuntimeError, "invalid internal state");
+                }
+                goto fail;
+            }
+        }
+
+        found = 0;
+        for (; pos < list->size; pos++) {
+            pair = pair_list_get(list, pos);
+            if (pair->hash != hash) {
+                continue;
+            }
+            tmp2 = str_cmp(pair->identity, identity);
+            if (tmp2 > 0) {
+                Py_INCREF(key);
+                Py_DECREF(pair->key);
+                pair->key = key;
+
+                Py_INCREF(value);
+                Py_DECREF(pair->value);
+                pair->value = value;
+
+                if (_dict_set_number(used_keys, pair->identity, pos + 1) < 0) {
+                    goto fail;
+                }
+                found = 1;
+                break;
+            }
+            else if (tmp2 < 0) {
+                goto fail;
+            }
+        }
+
+        if (!found) {
+            if (_pair_list_add_with_hash(op, identity, key, value, hash) < 0) {
+                goto fail;
+            }
+            // TODO: mb here should by Py_INCREF (identity)?!
+            if (_dict_set_number(used_keys, identity, list->size) < 0) {
+                goto fail;
+            }
+        }
+        Py_DECREF(fast);
+        Py_DECREF(item);
+    }
+
+    if (_pair_list_post_update(list, used_keys, 0) < 0) {
+        goto fail;
+    }
+
+    Py_DECREF(it);
+    Py_DECREF(used_keys);
+    return 0;
+
+fail:
+    Py_DECREF(it);
+    Py_XDECREF(used_keys);
+    Py_XDECREF(item);
+    Py_XDECREF(fast);
+    return -1;
+}
+
 PyObject *
 _pair_list_calc_identity(PyObject *op, PyObject *key)
 {
