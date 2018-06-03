@@ -906,11 +906,14 @@ _pair_list_update(PyObject *op, PyObject *key,
                   PyObject *value, PyObject *used_keys,
                   PyObject *identity, Py_hash_t hash)
 {
-    Py_ssize_t pos;
-
     pair_list_t *list = (pair_list_t *)op;
+    PyObject *item = NULL;
+    pair_t *pair = NULL;
+    Py_ssize_t pos;
+    int found;
+    int ident_cmp_res;
 
-    PyObject *item = PyDict_GetItem(used_keys, identity);   
+    item = PyDict_GetItem(used_keys, identity);
     if (item == NULL) {
         pos = 0;
     }
@@ -924,15 +927,15 @@ _pair_list_update(PyObject *op, PyObject *key,
         }
     }
 
-    int found = 0;
+    found = 0;
     for (; pos < list->size; pos++) {
-        pair_t *pair = pair_list_get(list, pos);
+        pair = pair_list_get(list, pos);
         if (pair->hash != hash) {
             continue;
         }
 
-        int d = str_cmp(pair->identity, identity);
-        if (d > 0) {
+        ident_cmp_res = str_cmp(pair->identity, identity);
+        if (ident_cmp_res > 0) {
             Py_INCREF(key);
             Py_DECREF(pair->key);
             pair->key = key;
@@ -948,7 +951,7 @@ _pair_list_update(PyObject *op, PyObject *key,
             found = 1;
             break;
         }
-        else if (d < 0) {
+        else if (ident_cmp_res < 0) {
             return -1;
         }
     }
@@ -974,6 +977,9 @@ pair_list_update(PyObject *op1, PyObject *op2)
     pair_list_t *other = (pair_list_t *)op2;
 
     PyObject *used_keys = NULL;
+    pair_t *pair = NULL;
+
+    Py_ssize_t pos;
 
     if (other->size == 0) {
         return 0;
@@ -984,9 +990,8 @@ pair_list_update(PyObject *op1, PyObject *op2)
         return -1;
     }
 
-    Py_ssize_t pos;
     for (pos = 0; pos < other->size; pos++) {
-        pair_t *pair = pair_list_get(other, pos);
+        pair = pair_list_get(other, pos);
         if (_pair_list_update(list, pair->key, pair->value, used_keys,
                               pair->identity, pair->hash) < 0) {
             goto fail;
@@ -1018,6 +1023,12 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
 
     PyObject *key = NULL;
     PyObject *value = NULL;
+    PyObject *identity = NULL;
+
+    Py_hash_t hash;
+
+    Py_ssize_t i;
+    Py_ssize_t n;
 
     it = PyObject_GetIter(seq);
     if (it == NULL) {
@@ -1029,7 +1040,6 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
         goto fail_1;
     }
 
-    Py_ssize_t i;
     for (i = 0; ; ++i) { // i - index into seq of current element
         fast = NULL;
         item = PyIter_Next(it);
@@ -1052,7 +1062,7 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
             goto fail_1;
         }
 
-        Py_ssize_t n = PySequence_Fast_GET_SIZE(fast);
+        n = PySequence_Fast_GET_SIZE(fast);
         if (n != 2) {
             PyErr_Format(PyExc_ValueError,
                          "multidict update sequence element #%zd "
@@ -1066,12 +1076,12 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
         Py_INCREF(key);
         Py_INCREF(value);
         
-        PyObject *identity = list->calc_identity(key);
+        identity = list->calc_identity(key);
         if (identity == NULL) {
             goto fail_1;
         }
 
-        Py_hash_t hash = PyObject_Hash(identity);
+        hash = PyObject_Hash(identity);
         if (hash == -1) {
             goto fail_1;
         }
