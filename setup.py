@@ -11,6 +11,7 @@ from distutils.command.build_ext import build_ext
 
 PYPY = platform.python_implementation() == 'PyPy'
 
+
 if not PYPY:
     try:
         from Cython.Build import cythonize
@@ -25,13 +26,19 @@ if not PYPY:
     else:
         macros = []
 
+    CFLAGS = ['-O2']
+    # CFLAGS = ['-g']
+    if platform.uname().system != 'Windows':
+        CFLAGS.extend(['-std=c99', '-Wall', '-Wsign-compare', '-Wconversion'])
+
     extensions = [
-        Extension('multidict._multidict',
-                  ['multidict/_multidict' + ext,
-                   'multidict/_pair_list.c'],
-                  # define_macros=[('DEBUG', '1')],
-                  # extra_compile_args=["-g", "-Wall"],
-                  # extra_link_args=["-g"],
+        Extension(
+            'multidict._multidict',
+            [
+                'multidict/_multidict' + ext,
+                'multidict/_pair_list.c'
+            ],
+            extra_compile_args=CFLAGS
         )
     ]
 
