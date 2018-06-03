@@ -998,7 +998,7 @@ pair_list_update(PyObject *op1, PyObject *op2)
         }
     }
 
-    if (_pair_list_post_update(op1, used_keys, 0) < 0) {
+    if (_pair_list_post_update(list, used_keys, 0) < 0) {
         goto fail;
     }
 
@@ -1096,7 +1096,7 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
         Py_DECREF(item);
     }
 
-    if (_pair_list_post_update(op, used_keys, 0) < 0) {
+    if (_pair_list_post_update(list, used_keys, 0) < 0) {
         goto fail_2;
     }
 
