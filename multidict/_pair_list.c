@@ -902,11 +902,13 @@ _pair_list_post_update(pair_list_t *list, PyObject* used_keys, Py_ssize_t pos)
 
 // TODO: need refactoring function name
 static INLINE int
-_pair_list_update(pair_list_t *list, PyObject *key,
+_pair_list_update(PyObject *op, PyObject *key,
                   PyObject *value, PyObject *used_keys,
                   PyObject *identity, Py_hash_t hash)
 {
     Py_ssize_t pos;
+
+    pair_list_t *list = (pair_list_t *)op;
 
     PyObject *item = PyDict_GetItem(used_keys, identity);   
     if (item == NULL) {
@@ -952,7 +954,7 @@ _pair_list_update(pair_list_t *list, PyObject *key,
     }
 
     if (!found) {
-        if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
+        if (_pair_list_add_with_hash(op, identity, key, value, hash) < 0) {
             return -1;
         }
         // TODO: mb here should by Py_INCREF (identity)?!
@@ -982,7 +984,8 @@ pair_list_update(PyObject *op1, PyObject *op2)
         return -1;
     }
 
-    for (Py_ssize_t pos = 0; pos < other->size; pos++) {
+    Py_ssize_t pos;
+    for (pos = 0; pos < other->size; pos++) {
         pair_t *pair = pair_list_get(other, pos);
         if (_pair_list_update(list, pair->key, pair->value, used_keys,
                               pair->identity, pair->hash) < 0) {
@@ -990,7 +993,7 @@ pair_list_update(PyObject *op1, PyObject *op2)
         }
     }
 
-    if (_pair_list_post_update(list, used_keys, 0) < 0) {
+    if (_pair_list_post_update(op1, used_keys, 0) < 0) {
         goto fail;
     }
 
@@ -1026,7 +1029,8 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
         goto fail_1;
     }
 
-    for (Py_ssize_t i = 0; ; ++i) { // i - index into seq of current element
+    Py_ssize_t i;
+    for (i = 0; ; ++i) { // i - index into seq of current element
         fast = NULL;
         item = PyIter_Next(it);
         if (item == NULL) {
@@ -1082,7 +1086,7 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
         Py_DECREF(item);
     }
 
-    if (_pair_list_post_update(list, used_keys, 0) < 0) {
+    if (_pair_list_post_update(op, used_keys, 0) < 0) {
         goto fail_2;
     }
 
