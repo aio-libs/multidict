@@ -397,7 +397,7 @@ pair_list_version(PyObject *op)
 }
 
 
-int INLINE
+INLINE int
 _pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
                 PyObject **pkey, PyObject **pvalue, Py_hash_t *phash)
 {
@@ -428,7 +428,7 @@ _pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
 }
 
 
-int INLINE
+INLINE int
 pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
                PyObject **pkey, PyObject **pvalue)
 {
@@ -992,7 +992,7 @@ pair_list_update(PyObject *op1, PyObject *op2)
 
     for (pos = 0; pos < other->size; pos++) {
         pair = pair_list_get(other, pos);
-        if (_pair_list_update(list, pair->key, pair->value, used_keys,
+        if (_pair_list_update(op1, pair->key, pair->value, used_keys,
                               pair->identity, pair->hash) < 0) {
             goto fail;
         }
@@ -1086,7 +1086,7 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
             goto fail_1;
         }
 
-        if (_pair_list_update(list, key, value, used_keys, identity, hash) < 0) {
+        if (_pair_list_update(op, key, value, used_keys, identity, hash) < 0) {
             goto fail_1;
         }
 
