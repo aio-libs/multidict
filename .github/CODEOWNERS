@@ -1,0 +1,8 @@
+* @asvetlov
+setup.py @webknjaz @asvetlov
+setup.cfg @webknjaz @asvetlov
+*.yml @webknjaz @asvetlov
+*.rst @webknjaz @asvetlov
+/tools/* @webknjaz @asvetlov
+/.github/* @webknjaz @asvetlov
+/.circleci/* @webknjaz @asvetlov
