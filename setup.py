@@ -29,7 +29,8 @@ if not PYPY:
     CFLAGS = ['-O2']
     # CFLAGS = ['-g']
     if platform.system() != 'Windows':
-        CFLAGS.extend(['-std=c99', '-Wall', '-Wsign-compare', '-Wconversion'])
+        CFLAGS.extend(['-std=c99', '-Wall', '-Wsign-compare', '-Wconversion',
+                       '-fno-strict-aliasing'])
 
     extensions = [
         Extension(
