@@ -1121,6 +1121,7 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
     pair_list_t *list = (pair_list_t *)op;
 
     PyObject *identity = NULL;
+    PyObject *ident = NULL;
 
     PyObject *it = NULL; // iter(other)
 
@@ -1169,8 +1170,14 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
             bkey = PyTuple_GET_ITEM(item, 0);
             bvalue = PyTuple_GET_ITEM(item, 1);
 
-            ident_cmp_res = str_cmp(list->calc_identity(bkey), identity);
+            ident = list->calc_identity(bkey);
+            if (ident == NULL) {
+                goto fail;
+            }
+
+            ident_cmp_res = str_cmp(ident, identity);
             if (ident_cmp_res == 0) {
+                Py_DECREF(ident);
                 Py_DECREF(item);
                 continue;
             }
@@ -1180,10 +1187,12 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
 
             if (avalue == bvalue) {
                 is_eq = 1;
+                Py_DECREF(ident);
                 Py_DECREF(item);
                 break;
             }
 
+            Py_DECREF(ident);
             Py_DECREF(item);
         }
         if (!is_eq) {
@@ -1197,6 +1206,7 @@ ret:
     return is_eq;
 
 fail:
+    Py_XDECREF(ident);
     Py_XDECREF(items);
     Py_XDECREF(it);
     Py_XDECREF(item);
