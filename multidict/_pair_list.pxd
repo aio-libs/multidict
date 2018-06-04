@@ -42,8 +42,7 @@ cdef extern from "_pair_list.h":
 
     int pair_list_update(object list, object other) except -1
     int pair_list_update_from_seq(object list, object seq) except -1
-
-    object _pair_list_calc_identity(object list, object key);
+    int pair_list_eq_to_mapping(object list, object other) except -1
 
     uint64_t pair_list_version(object lst)
 

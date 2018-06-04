@@ -29,12 +29,10 @@ int pair_list_next(PyObject *list, Py_ssize_t *ppos,
                    PyObject **pidentity,
                    PyObject **pkey, PyObject **pvalue);
 
-
 int pair_list_contains(PyObject *list, PyObject *key);
 
 PyObject* pair_list_get_one(PyObject *list, PyObject *key);
 PyObject* pair_list_get_all(PyObject *list, PyObject *key);
-
 
 int pair_list_del(PyObject *list, PyObject *key);
 
@@ -44,18 +42,14 @@ PyObject* pair_list_pop_one(PyObject *list, PyObject *key);
 PyObject* pair_list_pop_all(PyObject *list, PyObject *key);
 PyObject* pair_list_pop_item(PyObject *list);
 
-
-int pair_list_replace(PyObject *op, PyObject * key, PyObject *value);
-
+int pair_list_replace(PyObject *op, PyObject *key, PyObject *value);
 
 int pair_list_update(PyObject *op1, PyObject *op2);
-
 int pair_list_update_from_seq(PyObject *op1, PyObject *op2);
 
-PyObject* _pair_list_calc_identity(PyObject *list, PyObject *key);
+int pair_list_eq_to_mapping(PyObject *op, PyObject *other);
 
 uint64_t pair_list_version(PyObject *list);
-
 
 int pair_list_init(PyObject * istr_type);
 

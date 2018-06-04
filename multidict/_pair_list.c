@@ -1115,12 +1115,88 @@ fail_2:
     return -1;
 }
 
-PyObject *
-_pair_list_calc_identity(PyObject *op, PyObject *key)
+int
+pair_list_eq_to_mapping(PyObject *op, PyObject *other)
 {
     pair_list_t *list = (pair_list_t *)op;
-    return list->calc_identity(key);
+
+    PyObject *identity = NULL;
+
+    PyObject *it = NULL; // iter(other)
+
+    PyObject *items = NULL;
+    PyObject *item = NULL;    
+
+    PyObject *avalue = NULL;
+
+    PyObject *bkey = NULL;
+    PyObject *bvalue = NULL;
+
+    Py_ssize_t pos;
+    
+    int ident_cmp_res;
+    int is_eq;
+
+    if (pair_list_len(op) != PyMapping_Length(other)) {
+        return 0;
+    }
+
+    items = PyMapping_Items(other);
+    if (items == NULL) {
+        return -1;
+    }
+
+    it = PyObject_GetIter(items);
+    if (it == NULL) {
+        goto fail;
+    }
+
+    pos = 0;
+    while (pair_list_next(op, &pos, &identity, NULL, &avalue)) {
+        is_eq = 0;
+        while ((item = PyIter_Next(it)) != NULL) {
+            if (!PyTuple_Check(item) || PyTuple_GET_SIZE(item) != 2) {
+                PyErr_SetString(PyExc_ValueError, "items must return 2-tuples");
+                goto fail;
+            }
+
+            bkey = PyTuple_GET_ITEM(item, 0);
+            bvalue = PyTuple_GET_ITEM(item, 1);
+
+            ident_cmp_res = str_cmp(list->calc_identity(bkey), identity);
+            if (ident_cmp_res == 0) {
+                Py_DECREF(item);
+                continue;
+            }
+            else if (ident_cmp_res == -1) {
+                goto fail;
+            }
+
+            if (avalue == bvalue) {
+                is_eq = 1;
+                Py_DECREF(item);
+                break;
+            }
+
+            Py_DECREF(item);
+        }
+        if (!is_eq) {
+            goto ret;
+        }
+    }
+
+ret:
+    Py_DECREF(items);
+    Py_DECREF(it);
+    return is_eq;
+
+fail:
+    Py_XDECREF(items);
+    Py_XDECREF(it);
+    Py_XDECREF(item);
+    return -1;
 }
+
 
 /***********************************************************************/
 
