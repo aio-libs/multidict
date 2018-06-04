@@ -237,36 +237,15 @@ cdef class MultiDict(_Base):
                 if do_add:
                     self._append_items_seq(arg, name)
                 else:
-                    self._update_items_seq(arg, name)
+                    pair_list_update_from_seq(self._impl, arg)
         else:
             arg = list(kwargs.items())
             if do_add:
                 self._append_items_seq(arg, name)
             else:
-                self._update_items_seq(arg, name)
-
+                pair_list_update_from_seq(self._impl, arg)
 
     cdef object _update_items(self, object impl):
-        pair_list_update(self._impl, impl)
-
-    cdef object _update_items_seq(self, object arg, object name):
-        cdef object i
-        cdef object identity
-        cdef object key
-        cdef object value
-        cdef Py_hash_t h
-        cdef object impl = pair_list_new()
-        for i in arg:
-            if not len(i) == 2:
-                raise TypeError(
-                    "{} takes either dict or list of (key, value) "
-                    "tuples".format(name))
-            key = _str(i[0])
-            value = i[1]
-            identity = _pair_list_calc_identity(self._impl, key)
-            h = hash(identity)
-            _pair_list_add_with_hash(impl, identity, key, value, h)
-
         pair_list_update(self._impl, impl)
 
     cdef object _append_items(self, object impl):
