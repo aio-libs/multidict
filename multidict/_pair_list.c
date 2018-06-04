@@ -960,7 +960,6 @@ _pair_list_update(PyObject *op, PyObject *key,
         if (_pair_list_add_with_hash(op, identity, key, value, hash) < 0) {
             return -1;
         }
-        // TODO: mb here should by Py_INCREF (identity)?!
         if (_dict_set_number(used_keys, identity, list->size) < 0) {
             return -1;
         }
