@@ -1146,6 +1146,12 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
         return -1;
     }
 
+#if PY_MINOR_VERSION <= 5
+    if (PyList_Sort(items) < 0) {
+        goto fail;
+    }
+#endif
+
     it = PyObject_GetIter(items);
     if (it == NULL) {
         goto fail;
