@@ -1136,22 +1136,18 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
     Py_ssize_t pos;
     
     int ident_cmp_res;
+    int vals_cmp_res;
     int is_eq;
 
     if (pair_list_len(op) != PyMapping_Length(other)) {
         return 0;
     }
 
+    // TODO: mb we can iterate by dict insted this overhead
     items = PyMapping_Items(other);
     if (items == NULL) {
         return -1;
     }
-
-#if PY_MINOR_VERSION <= 5
-    if (PyList_Sort(items) < 0) {
-        goto fail;
-    }
-#endif
 
     it = PyObject_GetIter(items);
     if (it == NULL) {
@@ -1185,10 +1181,14 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
                 goto fail;
             }
 
-            if (avalue == bvalue) {
+            vals_cmp_res = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
+            if (vals_cmp_res < 0) {
+                goto fail;
+            }
+            else if (vals_cmp_res > 0) {
                 is_eq = 1;
                 Py_DECREF(ident);
-                Py_DECREF(item);
+                Py_DECREF(item);    
                 break;
             }
 
