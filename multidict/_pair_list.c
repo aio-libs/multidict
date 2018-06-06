@@ -1125,7 +1125,6 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
     Py_ssize_t pos;
     
     int cmp;
-    int is_eq;
 
     if (!PyMapping_Check(other)) {
         PyErr_Format(PyExc_TypeError,
@@ -1139,35 +1138,28 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
     }
 
     pos = 0;
-    is_eq = 1;
     while (pair_list_next(op, &pos, NULL, &key, &avalue)) {
         bvalue = PyObject_GetItem(other, key);
         if (bvalue == NULL) {
             PyErr_Clear();
-            is_eq = 0;
-            goto ret;
+            return 0;
         }
 
         cmp = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
         Py_DECREF(bvalue);
 
         if (cmp < 0) {
-            goto fail;
+            return -1;
         }
         else if (cmp > 0) {
             continue;
         }
         else {
-            is_eq = 0;
-            goto ret;
+            return 0;
         }
     }
 
-ret:
-    return is_eq;
-
-fail:
-    return -1;
+    return 1;
 }
 
 
