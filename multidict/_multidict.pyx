@@ -123,7 +123,7 @@ cdef class _Base:
                     return False
             return True
         elif isinstance(arg, abc.Mapping):
-            return pair_list_eq_to_mapping(self._impl, arg)
+            return bool(pair_list_eq_to_mapping(self._impl, arg))
         else:
             return NotImplemented
 

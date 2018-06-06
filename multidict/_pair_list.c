@@ -1118,105 +1118,59 @@ fail_2:
 int
 pair_list_eq_to_mapping(PyObject *op, PyObject *other)
 {
-    pair_list_t *list = (pair_list_t *)op;
-
-    PyObject *identity = NULL;
-    PyObject *ident = NULL;
-
-    PyObject *it = NULL; // iter(other)
-
-    PyObject *items = NULL;
-    PyObject *item = NULL;    
-
+    PyObject *key = NULL;
     PyObject *avalue = NULL;
-
-    PyObject *bkey = NULL;
     PyObject *bvalue = NULL;
 
     Py_ssize_t pos;
     
-    int ident_cmp_res;
-    int vals_cmp_res;
+    int cmp;
     int is_eq;
+
+    if (!PyMapping_Check(other)) {
+        PyErr_Format(PyExc_TypeError,
+                     "other argument must be a mapping, not %s",
+                     Py_TYPE(other)->tp_name);
+        return -1;
+    }
 
     if (pair_list_len(op) != PyMapping_Length(other)) {
         return 0;
     }
 
-    // TODO: mb we can iterate by dict insted this overhead
-    items = PyMapping_Items(other);
-    if (items == NULL) {
-        return -1;
-    }
-
-#if PY_MINOR_VERSION <= 5
-    if (PyList_Sort(items) < 0) {
-        goto fail;
-    }
-#endif
-
-    it = PyObject_GetIter(items);
-    if (it == NULL) {
-        goto fail;
-    }
-
     pos = 0;
     is_eq = 1;
-    while (pair_list_next(op, &pos, &identity, NULL, &avalue)) {
-        is_eq = 0;
-        while ((item = PyIter_Next(it)) != NULL) {
-            if (!PyTuple_Check(item) || PyTuple_GET_SIZE(item) != 2) {
-                PyErr_SetString(PyExc_ValueError, "items must return 2-tuples");
-                goto fail;
-            }
-
-            bkey = PyTuple_GET_ITEM(item, 0);
-            bvalue = PyTuple_GET_ITEM(item, 1);
-
-            ident = list->calc_identity(bkey);
-            if (ident == NULL) {
-                goto fail;
-            }
-
-            ident_cmp_res = str_cmp(ident, identity);
-            if (ident_cmp_res == 0) {
-                Py_DECREF(ident);
-                Py_DECREF(item);
-                continue;
-            }
-            else if (ident_cmp_res == -1) {
-                goto fail;
-            }
-
-            vals_cmp_res = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
-            if (vals_cmp_res < 0) {
-                goto fail;
-            }
-            else if (vals_cmp_res > 0) {
-                is_eq = 1;
-                Py_DECREF(ident);
-                Py_DECREF(item);    
-                break;
-            }
-
-            Py_DECREF(ident);
-            Py_DECREF(item);
+    while (pair_list_next(op, &pos, NULL, &key, &avalue)) {
+        if (!PyMapping_HasKey(other, key)) {
+            is_eq = 0;
+            goto ret;
         }
-        if (!is_eq) {
+
+        bvalue = PyObject_GetItem(other, key);
+        if (bvalue == NULL) {
+            goto fail;
+        }
+
+        cmp = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
+        Py_DECREF(bvalue);
+
+        if (cmp < 0) {
+            goto fail;
+        }
+        else if (cmp > 0) {
+            continue;
+        }
+        else {
+            is_eq = 0;
             goto ret;
         }
     }
 
 ret:
-    Py_DECREF(items);
-    Py_DECREF(it);
     return is_eq;
 
 fail:
-    Py_XDECREF(ident);
-    Py_XDECREF(items);
-    Py_XDECREF(it);
-    Py_XDECREF(item);
+    Py_XDECREF(bvalue);
     return -1;
 }
 
