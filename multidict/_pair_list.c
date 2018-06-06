@@ -1141,14 +1141,11 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
     pos = 0;
     is_eq = 1;
     while (pair_list_next(op, &pos, NULL, &key, &avalue)) {
-        if (!PyMapping_HasKey(other, key)) {
-            is_eq = 0;
-            goto ret;
-        }
-
         bvalue = PyObject_GetItem(other, key);
         if (bvalue == NULL) {
-            goto fail;
+            PyErr_Clear();
+            is_eq = 0;
+            goto ret;
         }
 
         cmp = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
@@ -1170,7 +1167,6 @@ ret:
     return is_eq;
 
 fail:
-    Py_XDECREF(bvalue);
     return -1;
 }
 
