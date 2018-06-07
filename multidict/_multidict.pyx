@@ -93,28 +93,6 @@ cdef class _Base:
         body = ', '.join(lst)
         return '<{}({})>'.format(self.__class__.__name__, body)
 
-    cdef _eq_to_mapping(self, other):
-        cdef PyObject *identity
-        cdef PyObject *value
-        cdef object ident
-        cdef object val
-        cdef Py_ssize_t pos
-        cdef Py_hash_t h
-        if pair_list_len(self._impl) != len(other):
-            return False
-        pos = 0
-        while pair_list_next(self._impl, &pos, &identity, NULL, &value):
-            ident = <object>identity
-            val = <object>value
-            for k, v in other.items():
-                if _pair_list_calc_identity(self._impl, k) != ident:
-                    continue
-                if v == val:
-                    break
-            else:
-                return False
-        return True
-
     def __eq__(self, arg):
         cdef Py_ssize_t pos1
         cdef PyObject *identity1
@@ -145,7 +123,7 @@ cdef class _Base:
                     return False
             return True
         elif isinstance(arg, abc.Mapping):
-            return self._eq_to_mapping(arg)
+            return bool(pair_list_eq_to_mapping(self._impl, arg))
         else:
             return NotImplemented
 

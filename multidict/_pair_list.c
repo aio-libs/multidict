@@ -1115,12 +1115,53 @@ fail_2:
     return -1;
 }
 
-PyObject *
-_pair_list_calc_identity(PyObject *op, PyObject *key)
+int
+pair_list_eq_to_mapping(PyObject *op, PyObject *other)
 {
-    pair_list_t *list = (pair_list_t *)op;
-    return list->calc_identity(key);
+    PyObject *key = NULL;
+    PyObject *avalue = NULL;
+    PyObject *bvalue = NULL;
+
+    Py_ssize_t pos;
+    
+    int cmp;
+
+    if (!PyMapping_Check(other)) {
+        PyErr_Format(PyExc_TypeError,
+                     "other argument must be a mapping, not %s",
+                     Py_TYPE(other)->tp_name);
+        return -1;
+    }
+
+    if (pair_list_len(op) != PyMapping_Length(other)) {
+        return 0;
+    }
+
+    pos = 0;
+    while (pair_list_next(op, &pos, NULL, &key, &avalue)) {
+        bvalue = PyObject_GetItem(other, key);
+        if (bvalue == NULL) {
+            PyErr_Clear();
+            return 0;
+        }
+
+        cmp = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
+        Py_DECREF(bvalue);
+
+        if (cmp < 0) {
+            return -1;
+        }
+        else if (cmp > 0) {
+            continue;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    return 1;
 }
+
 
 /***********************************************************************/
 
