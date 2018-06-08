@@ -1093,6 +1093,7 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
         Py_DECREF(value);
         Py_DECREF(fast);
         Py_DECREF(item);
+        Py_DECREF(identity);
     }
 
     if (_pair_list_post_update(list, used_keys, 0) < 0) {
@@ -1106,12 +1107,13 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
 fail_1:
     Py_XDECREF(key);
     Py_XDECREF(value);
+    Py_XDECREF(fast);
+    Py_XDECREF(item);
+    Py_XDECREF(identity);
 
 fail_2:
     Py_XDECREF(it);
     Py_XDECREF(used_keys);
-    Py_XDECREF(item);
-    Py_XDECREF(fast);
     return -1;
 }
 
