@@ -210,7 +210,7 @@ pair_list_len(PyObject *op)
 }
 
 
-int
+static INLINE int
 _pair_list_add_with_hash(PyObject *op,
                          PyObject *identity,
                          PyObject *key,
