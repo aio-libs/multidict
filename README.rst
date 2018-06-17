@@ -8,7 +8,7 @@ multidict
 .. image:: https://readthedocs.org/projects/multidict/badge/?version=latest
    :target: http://multidict.readthedocs.org/en/latest/?badge=latest
 
-.. image:: https://travis-ci.com/aio-libs/multidict.svg?branch=master
+.. image:: https://img.shields.io/travis-ci/com/aio-libs/multidict/master.svg
    :align: right
    :target: http://travis-ci.com/aio-libs/multidict
 
