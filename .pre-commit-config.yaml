@@ -13,11 +13,12 @@ repos:
   sha: v1.1.1
   hooks:
   - id: trailing-whitespace
+    exclude: &binary-files tests/.*\.pickle\..*
   - id: flake8
   - id: check-merge-conflict
   - id: double-quote-string-fixer
   - id: end-of-file-fixer
-    exclude: tests/*.pickle.*
+    exclude: *binary-files
   - id: name-tests-test
     include: tests/
     args:

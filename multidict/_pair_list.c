@@ -1074,7 +1074,7 @@ pair_list_update_from_seq(PyObject *op, PyObject *seq)
         value = PySequence_Fast_GET_ITEM(fast, 1);
         Py_INCREF(key);
         Py_INCREF(value);
-        
+
         identity = list->calc_identity(key);
         if (identity == NULL) {
             goto fail_1;
@@ -1125,7 +1125,7 @@ pair_list_eq_to_mapping(PyObject *op, PyObject *other)
     PyObject *bvalue = NULL;
 
     Py_ssize_t pos;
-    
+
     int cmp;
 
     if (!PyMapping_Check(other)) {
