@@ -70,8 +70,10 @@ class TestPyIStr(IStrMixin):
         istr2 = _istr()
         _istr(istr2)
 
-    @pytest.mark.skipif(IMPLEMENTATION.name != 'cpython',
-                        reason='PyPy has different GC implementation')
+    @pytest.mark.skipif(
+        IMPLEMENTATION.name != 'cpython',
+        reason='PyPy has different GC implementation',
+    )
     def test_leak(self):
         gc.collect()
         cnt = len(gc.get_objects())
@@ -84,5 +86,6 @@ class TestPyIStr(IStrMixin):
 
 
 if USE_CYTHON:
+
     class TestIStr(IStrMixin):
         cls = istr

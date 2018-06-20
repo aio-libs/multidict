@@ -5,9 +5,11 @@ from multidict._compat import USE_CYTHON
 if USE_CYTHON:
     from multidict._multidict import MultiDict, CIMultiDict, getversion
 
-from multidict._multidict_py import (MultiDict as _MultiDict,  # noqa: E402
-                                     CIMultiDict as _CIMultiDict,
-                                     getversion as _getversion)
+from multidict._multidict_py import (
+    MultiDict as _MultiDict,  # noqa: E402
+    CIMultiDict as _CIMultiDict,
+    getversion as _getversion,
+)
 
 
 class VersionMixin:
@@ -158,6 +160,7 @@ class VersionMixin:
 
 
 if USE_CYTHON:
+
     class TestMultiDict(VersionMixin):
 
         cls = MultiDict
@@ -167,6 +170,7 @@ if USE_CYTHON:
 
 
 if USE_CYTHON:
+
     class TestCIMultiDict(VersionMixin):
 
         cls = CIMultiDict

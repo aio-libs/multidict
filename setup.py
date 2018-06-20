@@ -4,8 +4,11 @@ import platform
 import re
 import sys
 from setuptools import setup, Extension
-from distutils.errors import (CCompilerError, DistutilsExecError,
-                              DistutilsPlatformError)
+from distutils.errors import (
+    CCompilerError,
+    DistutilsExecError,
+    DistutilsPlatformError,
+)
 from distutils.command.build_ext import build_ext
 
 
@@ -15,6 +18,7 @@ PYPY = platform.python_implementation() == 'PyPy'
 if not PYPY:
     try:
         from Cython.Build import cythonize
+
         USE_CYTHON = True
     except ImportError:
         USE_CYTHON = False
@@ -29,18 +33,21 @@ if not PYPY:
     CFLAGS = ['-O2']
     # CFLAGS = ['-g']
     if platform.system() != 'Windows':
-        CFLAGS.extend(['-std=c99', '-Wall', '-Wsign-compare', '-Wconversion',
-                       '-fno-strict-aliasing'])
+        CFLAGS.extend(
+            [
+                '-std=c99',
+                '-Wall',
+                '-Wsign-compare',
+                '-Wconversion',
+                '-fno-strict-aliasing',
+            ]
+        )
 
     extensions = [
         Extension(
             'multidict._multidict',
-            [
-                'multidict/_multidict' + ext,
-                'multidict/_pair_list.c',
-                'multidict/_multidict_iter.c',
-            ],
-            extra_compile_args=CFLAGS
+            ['multidict/_multidict' + ext, 'multidict/_pair_list.c', 'multidict/_multidict_iter.c'],
+            extra_compile_args=CFLAGS,
         )
     ]
 
@@ -51,8 +58,7 @@ if not PYPY:
             directives = {}
         extensions = cythonize(extensions, compiler_directives=directives)
 
-    extensions.append(Extension('multidict._istr',
-                                ['multidict/_istr.c']))
+    extensions.append(Extension('multidict._istr', ['multidict/_istr.c']))
 
     class BuildFailed(Exception):
         pass
@@ -69,8 +75,7 @@ if not PYPY:
         def build_extension(self, ext):
             try:
                 build_ext.build_extension(self, ext)
-            except (DistutilsExecError,
-                    DistutilsPlatformError, ValueError):
+            except (DistutilsExecError, DistutilsPlatformError, ValueError):
                 raise BuildFailed()
 
     cmdclass = dict(build_ext=ve_build_ext)
@@ -80,11 +85,17 @@ else:
     cmdclass = {}
 
 
-with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
-        __file__)), 'multidict', '__init__.py'), 'r', 'latin1') as fp:
+with codecs.open(
+    os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), 'multidict', '__init__.py'
+    ),
+    'r',
+    'latin1',
+) as fp:
     try:
-        version = re.findall(r"^__version__ = '([^']+)'\r?$",
-                             fp.read(), re.M)[0]
+        version = re.findall(r"^__version__ = '([^']+)'\r?$", fp.read(), re.M)[
+            0
+        ]
     except IndexError:
         raise RuntimeError('Unable to determine version.')
 
@@ -124,9 +135,13 @@ args = dict(
     url=repo_url,
     project_urls={
         'Chat: Gitter': 'https://gitter.im/aio-libs/Lobby',
-        'CI: AppVeyor': 'https://ci.appveyor.com/project/{}'.format(appveyor_slug),
+        'CI: AppVeyor': 'https://ci.appveyor.com/project/{}'.format(
+            appveyor_slug
+        ),
         'CI: Circle': 'https://circleci.com/gh/{}'.format(repo_slug),
-        'CI: Shippable': 'https://app.shippable.com/github/{}'.format(repo_slug),
+        'CI: Shippable': 'https://app.shippable.com/github/{}'.format(
+            repo_slug
+        ),
         'CI: Travis': 'https://travis-ci.com/{}'.format(repo_slug),
         'Coverage: codecov': 'https://codecov.io/github/{}'.format(repo_slug),
         'Docs: RTD': 'https://{}.readthedocs.io'.format(name),
@@ -140,7 +155,8 @@ args = dict(
     setup_requires=pytest_runner,
     include_package_data=True,
     ext_modules=extensions,
-    cmdclass=cmdclass)
+    cmdclass=cmdclass,
+)
 
 try:
     setup(**args)

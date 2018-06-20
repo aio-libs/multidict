@@ -20,16 +20,20 @@ import re
 import sys
 
 _docs_path = os.path.dirname(__file__)
-_version_path = os.path.abspath(os.path.join(_docs_path,
-                                             '..', 'multidict', '__init__.py'))
+_version_path = os.path.abspath(
+    os.path.join(_docs_path, '..', 'multidict', '__init__.py')
+)
 with codecs.open(_version_path, 'r', 'latin1') as fp:
     try:
-        _version_info = re.search(r"^__version__ = '"
-                                  r'(?P<major>\d+)'
-                                  r'\.(?P<minor>\d+)'
-                                  r'\.(?P<patch>\d+)'
-                                  r"(?P<tag>.*)?'$",
-                                  fp.read(), re.M).groupdict()
+        _version_info = re.search(
+            r"^__version__ = '"
+            r'(?P<major>\d+)'
+            r'\.(?P<minor>\d+)'
+            r'\.(?P<patch>\d+)'
+            r"(?P<tag>.*)?'$",
+            fp.read(),
+            re.M,
+        ).groupdict()
     except IndexError:
         raise RuntimeError('Unable to determine version.')
 
@@ -61,14 +65,14 @@ extensions = [
 
 try:
     import sphinxcontrib.spelling
+
     extensions.append('sphinxcontrib.spelling')
 except ImportError:
     pass
 
 intersphinx_mapping = {
     'python': ('http://docs.python.org/3', None),
-    'aiohttp':
-        ('https://aiohttp.readthedocs.io/en/stable/', None),
+    'aiohttp': ('https://aiohttp.readthedocs.io/en/stable/', None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -86,9 +90,8 @@ master_doc = 'index'
 # General information about the project.
 org = 'aio-libs'
 project = 'multidict'
-copyright = (
-    '2016‒{end_year}, Andrew Svetlov'.
-    format(end_year=datetime.date.today().year)
+copyright = '2016‒{end_year}, Andrew Svetlov'.format(
+    end_year=datetime.date.today().year
 )
 
 # The version info for the project you're documenting, acts as replacement for
@@ -207,11 +210,7 @@ html_theme_path = [alabaster.get_path()]
 # html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-html_sidebars = {
-    '**': [
-        'about.html', 'navigation.html', 'searchbox.html',
-    ]
-}
+html_sidebars = {'**': ['about.html', 'navigation.html', 'searchbox.html']}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -252,10 +251,8 @@ htmlhelp_basename = 'multidictdoc'
 latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     # 'papersize': 'letterpaper',
-
     # The font size ('10pt', '11pt' or '12pt').
     # 'pointsize': '10pt',
-
     # Additional stuff for the LaTeX preamble.
     # 'preamble': '',
 }
@@ -264,8 +261,13 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ('index', 'multidict.tex', 'multidict Documentation',
-     'Andrew Svetlov', 'manual'),
+    (
+        'index',
+        'multidict.tex',
+        'multidict Documentation',
+        'Andrew Svetlov',
+        'manual',
+    )
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -294,8 +296,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', project, 'multidict Documentation',
-     ['Andrew Svetlov'], 1)
+    ('index', project, 'multidict Documentation', ['Andrew Svetlov'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -308,9 +309,15 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    ('index', project, 'multidict Documentation',
-     'Andrew Svetlov', project, 'One line description of project.',
-     'Miscellaneous'),
+    (
+        'index',
+        project,
+        'multidict Documentation',
+        'Andrew Svetlov',
+        project,
+        'One line description of project.',
+        'Miscellaneous',
+    )
 ]
 
 # Documents to append as an appendix to all manuals.

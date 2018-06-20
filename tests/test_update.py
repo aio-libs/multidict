@@ -3,37 +3,19 @@ import pytest
 from multidict._compat import USE_CYTHON
 
 if USE_CYTHON:
-    from multidict._multidict import (MultiDict, CIMultiDict)
+    from multidict._multidict import MultiDict, CIMultiDict
 
-from multidict._multidict_py import (MultiDict as PyMultiDict,  # noqa: E402
-                                     CIMultiDict as PyCIMultiDict)
+from multidict._multidict_py import (
+    MultiDict as PyMultiDict,  # noqa: E402
+    CIMultiDict as PyCIMultiDict,
+)
 
 
 @pytest.fixture(
-    params=(
-        [
-            MultiDict,
-            CIMultiDict,
-        ]
-        if USE_CYTHON else
-        []
-    ) +
-    [
-        PyMultiDict,
-        PyCIMultiDict
-    ],
-    ids=(
-        [
-            'MultiDict',
-            'CIMultiDict',
-        ]
-        if USE_CYTHON else
-        []
-    ) +
-    [
-        'PyMultiDict',
-        'PyCIMultiDict'
-    ]
+    params=([MultiDict, CIMultiDict] if USE_CYTHON else [])
+    + [PyMultiDict, PyCIMultiDict],
+    ids=(['MultiDict', 'CIMultiDict'] if USE_CYTHON else [])
+    + ['PyMultiDict', 'PyCIMultiDict'],
 )
 def cls(request):
     return request.param

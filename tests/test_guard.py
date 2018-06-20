@@ -8,8 +8,10 @@ if USE_CYTHON:
 from multidict._multidict_py import MultiDict as PyMultiDict  # noqa: E402
 
 
-@pytest.fixture(params=([MultiDict] if USE_CYTHON else []) + [PyMultiDict],
-                ids=(['MultiDict'] if USE_CYTHON else []) + ['PyMultiDict'])
+@pytest.fixture(
+    params=([MultiDict] if USE_CYTHON else []) + [PyMultiDict],
+    ids=(['MultiDict'] if USE_CYTHON else []) + ['PyMultiDict'],
+)
 def cls(request):
     return request.param
 

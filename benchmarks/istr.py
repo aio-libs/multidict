@@ -10,7 +10,7 @@ IMPLEMENTATIONS = {
     """,
     'python': """\
     from multidict._multidict_py import istr
-    """
+    """,
 }
 
 INIT = """\
@@ -48,20 +48,27 @@ if __name__ == '__main__':
     runner = perf.Runner(add_cmdline_args=add_impl_option)
 
     parser = runner.argparser
-    parser.description = ('Allows to measure performance of '
-                          'istr implementations')
-    parser.add_argument('--impl', choices=sorted(IMPLEMENTATIONS),
-                        help='specific implementation to benchmark')
+    parser.description = (
+        'Allows to measure performance of ' 'istr implementations'
+    )
+    parser.add_argument(
+        '--impl',
+        choices=sorted(IMPLEMENTATIONS),
+        help='specific implementation to benchmark',
+    )
 
     options = parser.parse_args()
     implementations = (options.impl,) if options.impl else IMPLEMENTATIONS
 
     for name in implementations:
         imports = textwrap.dedent(IMPLEMENTATIONS[name])
-        name = functools.partial(benchmark_name, ctx=dict(impl=name),
-                                 prefix='(impl = %(impl)s) ',
-                                 use_prefix=len(implementations) > 1)
+        name = functools.partial(
+            benchmark_name,
+            ctx=dict(impl=name),
+            prefix='(impl = %(impl)s) ',
+            use_prefix=len(implementations) > 1,
+        )
 
-        runner.timeit(name('istr->istr'),
-                      ISTR_TO_ISTR, imports + INIT,
-                      inner_loops=10)
+        runner.timeit(
+            name('istr->istr'), ISTR_TO_ISTR, imports + INIT, inner_loops=10
+        )

@@ -4,7 +4,6 @@ from collections.abc import Mapping, MutableMapping
 
 
 class MultiMapping(Mapping):
-
     @abc.abstractmethod
     def getall(self, key, default=None):
         raise KeyError
@@ -15,7 +14,6 @@ class MultiMapping(Mapping):
 
 
 class MutableMultiMapping(MultiMapping, MutableMapping):
-
     @abc.abstractmethod
     def add(self, key, value):
         raise NotImplementedError

@@ -8,9 +8,16 @@ several values for the same key.
 from ._compat import USE_CYTHON_EXTENSIONS
 
 
-__all__ = ('MultiMapping', 'MutableMultiMapping',
-           'MultiDictProxy', 'CIMultiDictProxy',
-           'MultiDict', 'CIMultiDict', 'upstr', 'istr')
+__all__ = (
+    'MultiMapping',
+    'MutableMultiMapping',
+    'MultiDictProxy',
+    'CIMultiDictProxy',
+    'MultiDict',
+    'CIMultiDict',
+    'upstr',
+    'istr',
+)
 
 __version__ = '4.3.1'
 
@@ -20,14 +27,20 @@ from ._abc import MultiMapping, MutableMultiMapping
 try:
     if not USE_CYTHON_EXTENSIONS:
         raise ImportError
-    from ._multidict import (MultiDictProxy,
-                             CIMultiDictProxy,
-                             MultiDict,
-                             CIMultiDict,
-                             upstr, istr)
+    from ._multidict import (
+        MultiDictProxy,
+        CIMultiDictProxy,
+        MultiDict,
+        CIMultiDict,
+        upstr,
+        istr,
+    )
 except ImportError:  # pragma: no cover
-    from ._multidict_py import (MultiDictProxy,
-                                CIMultiDictProxy,
-                                MultiDict,
-                                CIMultiDict,
-                                upstr, istr)
+    from ._multidict_py import (
+        MultiDictProxy,
+        CIMultiDictProxy,
+        MultiDict,
+        CIMultiDict,
+        upstr,
+        istr,
+    )

@@ -42,20 +42,22 @@ def test_exposed_names(cls):
     assert name in multidict.__all__
 
 
-@pytest.mark.parametrize('cls, key_cls', [
-    ('MultiDict', str),
-    (('MultiDict', 'MultiDictProxy'), str)
-], indirect=['cls'])
+@pytest.mark.parametrize(
+    'cls, key_cls',
+    [('MultiDict', str), (('MultiDict', 'MultiDictProxy'), str)],
+    indirect=['cls'],
+)
 def test__iter__types(cls, key_cls):
     d = cls([('key', 'one'), ('key2', 'two'), ('key', 3)])
     for i in d:
         assert type(i) is key_cls, (type(i), key_cls)
 
 
-@pytest.mark.parametrize('dict_cls, proxy_cls', [
-    ('MultiDict', 'MultiDictProxy'),
-    ('CIMultiDict', 'CIMultiDictProxy'),
-], indirect=True)
+@pytest.mark.parametrize(
+    'dict_cls, proxy_cls',
+    [('MultiDict', 'MultiDictProxy'), ('CIMultiDict', 'CIMultiDictProxy')],
+    indirect=True,
+)
 def test_proxy_copy(dict_cls, proxy_cls):
     d1 = dict_cls(key='value', a='b')
     p1 = proxy_cls(d1)
@@ -66,7 +68,6 @@ def test_proxy_copy(dict_cls, proxy_cls):
 
 
 class BaseMultiDictTest:
-
     def test_instantiate__empty(self, cls):
         d = cls()
         assert d == {}
@@ -79,10 +80,7 @@ class BaseMultiDictTest:
         with pytest.raises(TypeError, match='\(2 given\)'):
             cls(('key1', 'value1'), ('key2', 'value2'))
 
-    @pytest.mark.parametrize('arg0', [
-        [('key', 'value1')],
-        {'key': 'value1'}
-    ])
+    @pytest.mark.parametrize('arg0', [[('key', 'value1')], {'key': 'value1'}])
     def test_instantiate__from_arg0(self, cls, arg0):
         d = cls(arg0)
 
@@ -99,8 +97,7 @@ class BaseMultiDictTest:
         assert len(d) == 2
         assert sorted(d.keys()) == ['key', 'key2']
         assert sorted(d.values()) == ['value1', 'value2']
-        assert sorted(d.items()) == [('key', 'value1'),
-                                     ('key2', 'value2')]
+        assert sorted(d.items()) == [('key', 'value1'), ('key2', 'value2')]
 
     def test_instantiate__from_generator(self, cls):
         d = cls((str(i), i) for i in range(2))
@@ -125,7 +122,7 @@ class BaseMultiDictTest:
 
         assert d.getone('key2', 'default') == 'default'
 
-    def test__iter__(self, cls, ):
+    def test__iter__(self, cls):
         d = cls([('key', 'one'), ('key2', 'two'), ('key', 3)])
         assert list(d) == ['key', 'key2', 'key']
 
@@ -263,10 +260,9 @@ class BaseMultiDictTest:
 
         assert {'key', 'key3'} == {'key2', 'key3'} ^ d.keys()
 
-    @pytest.mark.parametrize('_set, expected', [
-        ({'key2'}, True),
-        ({'key'}, False)
-    ])
+    @pytest.mark.parametrize(
+        '_set, expected', [({'key2'}, True), ({'key'}, False)]
+    )
     def test_isdisjoint(self, cls, _set, expected):
         d = cls([('key', 'value1')])
 
@@ -283,9 +279,9 @@ class BaseMultiDictTest:
 
             assert sys.exc_info()[1] == e
 
-    @pytest.mark.parametrize('op', [
-        operator.or_, operator.and_, operator.sub, operator.xor
-    ])
+    @pytest.mark.parametrize(
+        'op', [operator.or_, operator.and_, operator.sub, operator.xor]
+    )
     @pytest.mark.parametrize('other', [{'other'}])
     def test_op_issue_410(self, cls, op, other):
         d = cls([('key', 'value')])
@@ -300,11 +296,7 @@ class BaseMultiDictTest:
 
 
 class TestMultiDict(BaseMultiDictTest):
-
-    @pytest.fixture(params=[
-        'MultiDict',
-        ('MultiDict', 'MultiDictProxy'),
-    ])
+    @pytest.fixture(params=['MultiDict', ('MultiDict', 'MultiDictProxy')])
     def cls(self, request, _multidict):
         return chained_callable(_multidict, request.param)
 
@@ -357,11 +349,9 @@ class TestMultiDict(BaseMultiDictTest):
 
 
 class TestCIMultiDict(BaseMultiDictTest):
-
-    @pytest.fixture(params=[
-        'CIMultiDict',
-        ('CIMultiDict', 'CIMultiDictProxy'),
-    ])
+    @pytest.fixture(
+        params=['CIMultiDict', ('CIMultiDict', 'CIMultiDictProxy')]
+    )
     def cls(self, request, _multidict):
         return chained_callable(_multidict, request.param)
 

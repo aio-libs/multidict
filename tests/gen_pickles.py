@@ -7,8 +7,10 @@ try:
 except ImportError:
     pass
 
-from multidict._multidict_py import (MultiDict as PyMultiDict,  # noqa
-                                     CIMultiDict as PyCIMultiDict)
+from multidict._multidict_py import (
+    MultiDict as PyMultiDict,  # noqa
+    CIMultiDict as PyCIMultiDict,
+)
 
 
 def write(name, proto):
@@ -22,8 +24,12 @@ def generate():
     if not USE_CYTHON:
         raise RuntimeError('Cython is required')
     for proto in range(pickle.HIGHEST_PROTOCOL):
-        for name in ('MultiDict', 'CIMultiDict',
-                     'PyMultiDict', 'PyCIMultiDict'):
+        for name in (
+            'MultiDict',
+            'CIMultiDict',
+            'PyMultiDict',
+            'PyCIMultiDict',
+        ):
             write(name, proto)
 
 

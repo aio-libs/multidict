@@ -2,7 +2,6 @@ import pytest
 
 
 class TestMutableMultiDict:
-
     @pytest.fixture
     def cls(self, _multidict):
         return _multidict.MultiDict
@@ -180,9 +179,7 @@ class TestMutableMultiDict:
 
         d['key1'] = 'val'
 
-        expected = [('key1', 'val'),
-                    ('key2', 'val2'),
-                    ('key2', 'val4')]
+        expected = [('key1', 'val'), ('key2', 'val2'), ('key2', 'val4')]
 
         assert expected == list(d.items())
 
@@ -199,6 +196,7 @@ class TestMutableMultiDict:
     def test_str_derived_key(self, cls):
         class A(str):
             pass
+
         d = cls()
         d[A('1')] = 'val'
         assert type(list(d.keys())[0]) is A
@@ -211,6 +209,7 @@ class TestMutableMultiDict:
     def test_str_derived_key_add(self, cls):
         class A(str):
             pass
+
         d = cls()
         d.add(A('1'), 'val')
         assert type(list(d.keys())[0]) is A
@@ -235,7 +234,6 @@ class TestMutableMultiDict:
 
 
 class TestCIMutableMultiDict:
-
     @pytest.fixture
     def cls(self, _multidict):
         return _multidict.CIMultiDict

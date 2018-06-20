@@ -14,8 +14,9 @@ class istr(str):
 
     __is_istr__ = True
 
-    def __new__(cls, val='',
-                encoding=sys.getdefaultencoding(), errors='strict'):
+    def __new__(
+        cls, val='', encoding=sys.getdefaultencoding(), errors='strict'
+    ):
         if getattr(val, '__is_istr__', False):
             # Faster than instance check
             return val
@@ -57,7 +58,6 @@ class _Impl:
 
 
 class _Base:
-
     def _title(self, key):
         return key
 
@@ -144,19 +144,19 @@ class _Base:
 
 
 class MultiDictProxy(_Base, MultiMapping):
-
     def __init__(self, arg):
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
                 'ctor requires MultiDict or MultiDictProxy instance'
-                ', not {}'.format(
-                    type(arg)))
+                ', not {}'.format(type(arg))
+            )
 
         self._impl = arg._impl
 
     def __reduce__(self):
-        raise TypeError("can't pickle {} objects".format(
-            self.__class__.__name__))
+        raise TypeError(
+            "can't pickle {} objects".format(self.__class__.__name__)
+        )
 
     def copy(self):
         """Return a copy of itself."""
@@ -164,13 +164,12 @@ class MultiDictProxy(_Base, MultiMapping):
 
 
 class CIMultiDictProxy(MultiDictProxy):
-
     def __init__(self, arg):
         if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
             raise TypeError(
                 'ctor requires CIMultiDict or CIMultiDictProxy instance'
-                ', not {}'.format(
-                    type(arg)))
+                ', not {}'.format(type(arg))
+            )
 
         self._impl = arg._impl
 
@@ -183,12 +182,10 @@ class CIMultiDictProxy(MultiDictProxy):
 
 
 class MultiDict(_Base, MutableMultiMapping):
-
     def __init__(self, *args, **kwargs):
         self._impl = _Impl()
 
-        self._extend(args, kwargs, self.__class__.__name__,
-                     self._extend_items)
+        self._extend(args, kwargs, self.__class__.__name__, self._extend_items)
 
     def __reduce__(self):
         return (self.__class__, (list(self.items()),))
@@ -200,8 +197,9 @@ class MultiDict(_Base, MutableMultiMapping):
         if isinstance(key, str):
             return key
         else:
-            raise TypeError('MultiDict keys should be either str '
-                            'or subclasses of str')
+            raise TypeError(
+                'MultiDict keys should be either str ' 'or subclasses of str'
+            )
 
     def add(self, key, value):
         identity = self._title(key)
@@ -222,8 +220,10 @@ class MultiDict(_Base, MutableMultiMapping):
 
     def _extend(self, args, kwargs, name, method):
         if len(args) > 1:
-            raise TypeError('{} takes at most 1 positional argument'
-                            ' ({} given)'.format(name, len(args)))
+            raise TypeError(
+                '{} takes at most 1 positional argument'
+                ' ({} given)'.format(name, len(args))
+            )
         if args:
             arg = args[0]
             if isinstance(args[0], (MultiDict, MultiDictProxy)) and not kwargs:
@@ -239,15 +239,20 @@ class MultiDict(_Base, MutableMultiMapping):
                     if not len(item) == 2:
                         raise TypeError(
                             '{} takes either dict or list of (key, value) '
-                            'tuples'.format(name))
-                    items.append((self._title(item[0]),
-                                  self._key(item[0]),
-                                  item[1]))
+                            'tuples'.format(name)
+                        )
+                    items.append(
+                        (self._title(item[0]), self._key(item[0]), item[1])
+                    )
 
             method(items)
         else:
-            method([(self._title(key), self._key(key), value)
-                    for key, value in kwargs.items()])
+            method(
+                [
+                    (self._title(key), self._key(key), value)
+                    for key, value in kwargs.items()
+                ]
+            )
 
     def _extend_items(self, items):
         for identity, key, value in items:
@@ -317,7 +322,7 @@ class MultiDict(_Base, MutableMultiMapping):
         found = False
         identity = self._title(key)
         ret = []
-        for i in range(len(self._impl._items)-1, -1, -1):
+        for i in range(len(self._impl._items) - 1, -1, -1):
             item = self._impl._items[i]
             if item[0] == identity:
                 ret.append(item[2])
@@ -407,13 +412,11 @@ class MultiDict(_Base, MutableMultiMapping):
 
 
 class CIMultiDict(MultiDict):
-
     def _title(self, key):
         return key.title()
 
 
 class _ViewBase:
-
     def __init__(self, impl):
         self._impl = impl
         self._version = impl._version
@@ -423,7 +426,6 @@ class _ViewBase:
 
 
 class _ItemsView(_ViewBase, abc.ItemsView):
-
     def __contains__(self, item):
         assert isinstance(item, tuple) or isinstance(item, list)
         assert len(item) == 2
@@ -447,7 +449,6 @@ class _ItemsView(_ViewBase, abc.ItemsView):
 
 
 class _ValuesView(_ViewBase, abc.ValuesView):
-
     def __contains__(self, value):
         for item in self._impl._items:
             if item[2] == value:
@@ -469,7 +470,6 @@ class _ValuesView(_ViewBase, abc.ValuesView):
 
 
 class _KeysView(_ViewBase, abc.KeysView):
-
     def __contains__(self, key):
         for item in self._impl._items:
             if item[1] == key:
