@@ -24,7 +24,7 @@ class TestMutableMultiDict:
 
     def test__repr__(self, cls):
         d = cls()
-        assert str(d) == "<%s()>" % cls.__name__
+        assert str(d) == '<%s()>' % cls.__name__
 
         d = cls([('key', 'one'), ('key', 'two')])
 
@@ -287,7 +287,7 @@ class TestCIMutableMultiDict:
 
     def test__repr__(self, cls):
         d = cls()
-        assert str(d) == "<%s()>" % cls.__name__
+        assert str(d) == '<%s()>' % cls.__name__
 
         d = cls([('KEY', 'one'), ('KEY', 'two')])
 
@@ -423,7 +423,7 @@ class TestCIMutableMultiDict:
     def test_pop_raises(self, cls):
         d = cls(OTHER='val')
 
-        with pytest.raises(KeyError, match="KEY"):
+        with pytest.raises(KeyError, match='KEY'):
             d.pop('KEY')
 
         assert 'other' in d

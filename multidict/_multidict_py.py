@@ -35,7 +35,7 @@ upstr = istr  # for relaxing backward compatibility problems
 
 def getversion(md):
     if not isinstance(md, _Base):
-        raise TypeError("Parameter should be multidict or proxy")
+        raise TypeError('Parameter should be multidict or proxy')
     return md._impl._version
 
 
@@ -200,8 +200,8 @@ class MultiDict(_Base, MutableMultiMapping):
         if isinstance(key, str):
             return key
         else:
-            raise TypeError("MultiDict keys should be either str "
-                            "or subclasses of str")
+            raise TypeError('MultiDict keys should be either str '
+                            'or subclasses of str')
 
     def add(self, key, value):
         identity = self._title(key)
@@ -222,8 +222,8 @@ class MultiDict(_Base, MutableMultiMapping):
 
     def _extend(self, args, kwargs, name, method):
         if len(args) > 1:
-            raise TypeError("{} takes at most 1 positional argument"
-                            " ({} given)".format(name, len(args)))
+            raise TypeError('{} takes at most 1 positional argument'
+                            ' ({} given)'.format(name, len(args)))
         if args:
             arg = args[0]
             if isinstance(args[0], (MultiDict, MultiDictProxy)) and not kwargs:
@@ -238,8 +238,8 @@ class MultiDict(_Base, MutableMultiMapping):
                 for item in arg:
                     if not len(item) == 2:
                         raise TypeError(
-                            "{} takes either dict or list of (key, value) "
-                            "tuples".format(name))
+                            '{} takes either dict or list of (key, value) '
+                            'tuples'.format(name))
                     items.append((self._title(item[0]),
                                   self._key(item[0]),
                                   item[1]))
@@ -340,7 +340,7 @@ class MultiDict(_Base, MutableMultiMapping):
             self._impl.incr_version()
             return i[1], i[2]
         else:
-            raise KeyError("empty multidict")
+            raise KeyError('empty multidict')
 
     def update(self, *args, **kwargs):
         """Update the dictionary from *other*, overwriting existing keys."""
@@ -435,13 +435,13 @@ class _ItemsView(_ViewBase, abc.ItemsView):
     def __iter__(self):
         for i, k, v in self._impl._items:
             if self._version != self._impl._version:
-                raise RuntimeError("Dictionary changed during iteration")
+                raise RuntimeError('Dictionary changed during iteration')
             yield k, v
 
     def __repr__(self):
         lst = []
         for item in self._impl._items:
-            lst.append("{!r}: {!r}".format(item[1], item[2]))
+            lst.append('{!r}: {!r}'.format(item[1], item[2]))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)
 
@@ -457,13 +457,13 @@ class _ValuesView(_ViewBase, abc.ValuesView):
     def __iter__(self):
         for item in self._impl._items:
             if self._version != self._impl._version:
-                raise RuntimeError("Dictionary changed during iteration")
+                raise RuntimeError('Dictionary changed during iteration')
             yield item[2]
 
     def __repr__(self):
         lst = []
         for item in self._impl._items:
-            lst.append("{!r}".format(item[2]))
+            lst.append('{!r}'.format(item[2]))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)
 
@@ -479,12 +479,12 @@ class _KeysView(_ViewBase, abc.KeysView):
     def __iter__(self):
         for item in self._impl._items:
             if self._version != self._impl._version:
-                raise RuntimeError("Dictionary changed during iteration")
+                raise RuntimeError('Dictionary changed during iteration')
             yield item[1]
 
     def __repr__(self):
         lst = []
         for item in self._impl._items:
-            lst.append("{!r}".format(item[1]))
+            lst.append('{!r}'.format(item[1]))
         body = ', '.join(lst)
         return '{}({})'.format(self.__class__.__name__, body)

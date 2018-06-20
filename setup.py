@@ -46,7 +46,7 @@ if not PYPY:
 
     if USE_CYTHON:
         if bool(os.environ.get('PROFILE_BUILD')):
-            directives = {"linetrace": True}
+            directives = {'linetrace': True}
         else:
             directives = {}
         extensions = cythonize(extensions, compiler_directives=directives)
@@ -145,9 +145,9 @@ args = dict(
 try:
     setup(**args)
 except BuildFailed:
-    print("************************************************************")
-    print("Cannot compile C accelerator module, use pure python version")
-    print("************************************************************")
+    print('************************************************************')
+    print('Cannot compile C accelerator module, use pure python version')
+    print('************************************************************')
     del args['ext_modules']
     del args['cmdclass']
     setup(**args)

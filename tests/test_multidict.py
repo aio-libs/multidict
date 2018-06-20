@@ -277,7 +277,7 @@ class BaseMultiDictTest:
 
         try:
             raise Exception
-            pytest.fail("Should never happen")  # pragma: no cover
+            pytest.fail('Should never happen')  # pragma: no cover
         except Exception as e:
             repr(d)
 
@@ -292,7 +292,7 @@ class BaseMultiDictTest:
 
         try:
             raise Exception
-            pytest.fail("Should never happen")  # pragma: no cover
+            pytest.fail('Should never happen')  # pragma: no cover
         except Exception as e:
             op(d.keys(), other)
 
