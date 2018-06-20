@@ -27,6 +27,9 @@ multidict
    :target: https://gitter.im/aio-libs/Lobby
    :alt: Chat on Gitter
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/ambv/black
+
 Multidict is dict-like collection of *key-value pairs* where key
 might be occurred more than once in the container.
 
