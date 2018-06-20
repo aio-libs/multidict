@@ -1,13 +1,13 @@
--r wheel.txt
-flake8==3.5.0
-pyflakes>=1.0.0
-coverage==4.5.1
-sphinx==1.7.5
-alabaster>=0.6.2
-pygments==2.2.0
-mypy==0.610; platform_python_implementation != "PyPy"
 -e .
+-r wheel.txt
+alabaster>=0.6.2
 
 codecov==2.0.15
+coverage==4.5.1
+flake8==3.5.0
 
 flake8-pyi==18.3.1; python_version >= "3.6"
+mypy==0.610; platform_python_implementation != "PyPy"
+pyflakes>=1.0.0
+pygments==2.2.0
+sphinx==1.7.5
