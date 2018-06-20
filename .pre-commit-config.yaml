@@ -17,6 +17,7 @@ repos:
   - id: check-merge-conflict
   - id: double-quote-string-fixer
   - id: end-of-file-fixer
+    exclude: tests/*.pickle.*
   - id: name-tests-test
     include: tests/
     args:
