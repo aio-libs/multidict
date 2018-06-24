@@ -1,8 +1,9 @@
 version: 1.0.0a0.dev{build}
 
 environment:
-  PYPI_PASSWD:
-    secure: u+K6dKi7+CXXVFEUG4V7zUyV3w7Ntg0Ork/RGVV0eSQ=
+  PYPI_USERNAME: aio-libs-bot
+  PYPI_PASSWORD:
+    secure: HrwOVde4wZoYHJf9bZ5AsQ==
   matrix:
     - PYTHON: "C:\\Python34"
     - PYTHON: "C:\\Python34-x64"
@@ -37,7 +38,7 @@ before_deploy:
 deploy_script:
   - ps: >-
       if($env:appveyor_repo_tag -eq 'True') {
-          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username andrew.svetlov --password $env:PYPI_PASSWD"
+          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username $env:PYPI_USERNAME --password $env:PYPI_PASSWORD"
       }
 
 #notifications:
