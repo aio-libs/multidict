@@ -16,17 +16,17 @@ environment:
     - PYTHON: "C:\\Python37-x64"
 
 install:
-  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U setuptools wheel codecov"
-  - tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U tox"
+  - "tools/build.cmd %PYTHON%\\python.exe -m tox --notest"  # Pre-populate a virtualenv with dependencies
 
 build_script:
-  - "tools/build.cmd %PYTHON%\\python.exe setup.py sdist bdist_wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe -m tox -e build-dists"
 
 test_script:
-  - "tools/build.cmd %PYTHON%\\python.exe -m pytest tests --junitxml=junit-test-results.xml --cov-report term-missing:skip-covered --cov-report xml"
+  - "tools/build.cmd %PYTHON%\\python.exe -m tox"
 
 after_test:
-  - "tools/build.cmd %PYTHON%\\python.exe -m codecov -f coverage.xml -X gcov"
+  - "tools/build.cmd %PYTHON%\\python.exe -m tox -e codecov"
   - ps: |
       $wc = New-Object 'System.Net.WebClient'
       $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\junit-test-results.xml))
@@ -35,12 +35,15 @@ artifacts:
   - path: dist\*
 
 before_deploy:
-  - "tools/build.cmd %PYTHON%\\python.exe -m pip install twine"
+  - ps: >-
+      if($env:appveyor_repo_tag -eq 'True') {
+          Invoke-Expression "tools/build.cmd $env:PYTHON\\python.exe -m tox -e upload-dists --notest"
+      }
 
 deploy_script:
   - ps: >-
       if($env:appveyor_repo_tag -eq 'True') {
-          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username $env:PYPI_USERNAME --password $env:PYPI_PASSWORD"
+          Invoke-Expression "tools/build.cmd $env:PYTHON\\python.exe -m tox -e upload-dists"
       }
 
 #notifications:

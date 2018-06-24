@@ -48,12 +48,12 @@ profile-dev-base: .install-deps
 
 
 cov-dev: profile-dev-base rmcache mypy
-	pytest --cov=multidict --cov-report=term --cov-report=html tests 
+	pytest --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-dev-full: profile-dev-base rmcache mypy
-	AIOHTTPMULTIDICT_NO_EXTENSIONS=1 pytest --cov=multidict --cov-append tests 
-	pytest --cov=multidict --cov-report=term --cov-report=html tests 
+	MULTIDICT_NO_EXTENSIONS=1 pytest --cov-append tests 
+	pytest --cov-report=term --cov-report=html tests 
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 clean:
