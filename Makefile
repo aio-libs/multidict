@@ -2,59 +2,41 @@
 
 all: test
 
-.install-deps: $(shell find requirements -type f)
-	pip install -U -r requirements/dev.txt
-	touch .install-deps
 
-flake: .install-deps
-#	python setup.py check -rms
-	flake8 multidict
-	if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
-            flake8 tests; \
-        fi
+flake:
+	tox -e flake8
 
-
-.develop: .install-deps $(shell find multidict -type f)
-	rm -f multidict/*.so
-	rm -f multidict/_multidict.c
-	pip install -e .
-	touch .develop
 
 rmcache:
 	rm -rf tests/__pycache__
 
 
-mypy: .develop
-	if python -c "import sys; sys.exit(sys.implementation.name != 'cpython')"; then \
-	    mypy multidict tests; \
-	fi
+mypy:
+	tox -e mypy
 
 
-test: flake .develop rmcache mypy
-	pytest -q ./tests/
-
-vtest: flake .develop rmcache mypy
-	pytest -s -v ./tests/
-
-cov cover coverage:
+test:
 	tox
 
-profile-dev-base: .install-deps
-	rm -f .develop
-	rm -f multidict/*.so
-	rm -f multidict/_multidict.c
-	PROFILE_BUILD=x pip install -e .
-	touch .develop
+
+vtest:
+	tox -- -vv
 
 
-cov-dev: profile-dev-base rmcache mypy
-	pytest --cov-report=term --cov-report=html tests 
-	@echo "open file://`pwd`/htmlcov/index.html"
+qtest:
+	tox -- -q
 
-cov-dev-full: profile-dev-base rmcache mypy
-	MULTIDICT_NO_EXTENSIONS=1 pytest --cov-append tests 
-	pytest --cov-report=term --cov-report=html tests 
-	@echo "open file://`pwd`/htmlcov/index.html"
+
+cov-dev: mypy
+	tox -e profile-dev -- --cov-report=html
+	@which xdg-open 2>/dev/null 1>&2 && export opener=xdg-open || export opener=open && \
+	$${opener} "file://`pwd`/htmlcov/index.html"
+
+cov-dev-full: mypy
+	MULTIDICT_NO_EXTENSIONS=1 tox -e profile-dev -- --cov-report=html
+	tox -e profile-dev -- --cov-report=html
+	@which xdg-open 2>/dev/null 1>&2 && export opener=xdg-open || export opener=open && \
+	$${opener} "file://`pwd`/htmlcov/index.html"
 
 clean:
 	rm -rf `find . -name __pycache__`
@@ -83,22 +65,18 @@ clean:
 	rm -f multidict/_multidict_iter.*.so
 	rm -f multidict/_multidict_iter.*.pyd
 	rm -rf .tox
-	rm -f .install-deps
-	rm -f .develop
 
 doc:
-	make -C docs html
-	@echo "open file://`pwd`/docs/_build/html/index.html"
+	tox -e doc-html
+	@which xdg-open 2>/dev/null 1>&2 && export opener=xdg-open || export opener=open && \
+	$${opener} "file://`pwd`/docs/_build/html/index.html"
 
 doc-spelling:
-	make -C docs spelling
+	tox -e doc-spelling
 
 install:
+	pip install -U tox
 	pip install -U pip
 	pip install -Ur requirements/dev.txt
-
-wheel_x64:
-	docker pull quay.io/pypa/manylinux1_x86_64
-	docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/build-wheels.sh
 
 .PHONY: all build venv flake test vtest testloop cov clean doc
