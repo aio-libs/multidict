@@ -9,7 +9,7 @@ from cpython.object cimport PyObject_Str, Py_NE, PyObject_RichCompare
 from ._abc import MultiMapping, MutableMultiMapping
 from ._istr import istr
 
-from ._multidict_iter import _ItemsIter
+from ._multidict_iter import _ItemsIter, _ValuesIter, _KeysIter
 
 from ._pair_list cimport *
 
@@ -485,29 +485,6 @@ cdef class _ItemsView(_ViewBaseSet):
 abc.ItemsView.register(_ItemsView)
 
 
-cdef class _ValuesIter:
-    cdef object _impl
-    cdef Py_ssize_t _current
-    cdef uint64_t _version
-
-    def __cinit__(self, object impl):
-        self._impl = impl
-        self._current = 0
-        self._version = pair_list_version(impl)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._version != pair_list_version(self._impl):
-            raise RuntimeError("Dictionary changed during iteration")
-        cdef PyObject *value
-        if not _pair_list_next(self._impl,
-                              &self._current, NULL, NULL, &value, NULL):
-            raise StopIteration
-        return <object>value
-
-
 cdef class _ValuesView(_ViewBase):
 
     def __contains__(self, value):
@@ -528,29 +505,6 @@ cdef class _ValuesView(_ViewBase):
 
 
 abc.ValuesView.register(_ValuesView)
-
-
-cdef class _KeysIter:
-    cdef object _impl
-    cdef Py_ssize_t _current
-    cdef uint64_t _version
-
-    def __cinit__(self, object impl):
-        self._impl = impl
-        self._current = 0
-        self._version = pair_list_version(impl)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._version != pair_list_version(self._impl):
-            raise RuntimeError("Dictionary changed during iteration")
-        cdef PyObject * key
-        if not pair_list_next(self._impl,
-                              &self._current, NULL, &key, NULL):
-            raise StopIteration
-        return <object>(key)
 
 
 cdef class _KeysView(_ViewBaseSet):
