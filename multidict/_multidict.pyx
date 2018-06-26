@@ -9,6 +9,8 @@ from cpython.object cimport PyObject_Str, Py_NE, PyObject_RichCompare
 from ._abc import MultiMapping, MutableMultiMapping
 from ._istr import istr
 
+from ._multidict_iter import _ItemsIter
+
 from ._pair_list cimport *
 
 cdef object _marker = object()
@@ -447,7 +449,7 @@ cdef class _ViewBaseSet(_ViewBase):
             other = set(iter(other))
         return self ^ other
 
-
+"""
 cdef class _ItemsIter:
     cdef object _impl
     cdef Py_ssize_t _current
@@ -470,7 +472,7 @@ cdef class _ItemsIter:
                                &self._current, NULL, &key, &value, NULL):
             raise StopIteration
         return (<object>key, <object>value)
-
+"""
 
 cdef class _ItemsView(_ViewBaseSet):
 
