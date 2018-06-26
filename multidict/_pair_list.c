@@ -408,7 +408,7 @@ _pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
         return 0;
     }
 
-    pair = (pair_t*)pair_list_get(list, *ppos);
+    pair = pair_list_get(list, *ppos);
 
     if (pidentity) {
         *pidentity = pair->identity;
