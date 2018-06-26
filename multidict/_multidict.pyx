@@ -449,30 +449,6 @@ cdef class _ViewBaseSet(_ViewBase):
             other = set(iter(other))
         return self ^ other
 
-"""
-cdef class _ItemsIter:
-    cdef object _impl
-    cdef Py_ssize_t _current
-    cdef uint64_t _version
-
-    def __cinit__(self, object impl):
-        self._impl = impl
-        self._current = 0
-        self._version = pair_list_version(impl)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._version != pair_list_version(self._impl):
-            raise RuntimeError("Dictionary changed during iteration")
-        cdef PyObject *key
-        cdef PyObject *value
-        if not _pair_list_next(self._impl,
-                               &self._current, NULL, &key, &value, NULL):
-            raise StopIteration
-        return (<object>key, <object>value)
-"""
 
 cdef class _ItemsView(_ViewBaseSet):
 

@@ -2,15 +2,7 @@
 
 #include <Python.h>
 
-/* We link this module statically for convenience.  If compiled as a shared
-   library instead, some compilers don't allow addresses of Python objects
-   defined in other libraries to be used in static initializers here.  The
-   DEFERRED_ADDRESS macro is used to tag the slots where such addresses
-   appear; the module init function must fill in the tagged slots at runtime.
-   The argument is for documentation -- the macro ignores it.
-*/
-#define DEFERRED_ADDRESS(ADDR) 0
-
+static PyTypeObject multidict_items_iter_type;
 
 typedef struct multidict_items_iter {
     PyObject_HEAD
@@ -34,18 +26,23 @@ multidict_items_iter_init(MultidictItemsIter *self, PyObject *impl)
 }
 
 static PyObject *
-multidict_items_iter_new(PyTypeObject *type, PyObject *impl)
+multidict_items_iter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    MultidictItemsIter *self = PyObject_GC_New(MultidictItemsIter, type);
-    if (self == NULL) {
+    PyObject *impl = NULL;
+    MultidictItemsIter *it = NULL;
+    if (!PyArg_ParseTuple(args, "O", &impl)) {
         return NULL;
     }
 
-    assert(impl != NULL);
+    it = PyObject_GC_New(MultidictItemsIter, type);
+    if (it == NULL) {
+        return NULL;
+    }
+
+    multidict_items_iter_init(it, impl);
     
-    multidict_items_iter_init(self, impl);
-    
-    return (PyObject *)self;
+    return (PyObject *)it;
+
 }
 
 static PyObject *
@@ -77,19 +74,8 @@ static void
 multidict_items_iter_dealloc(MultidictItemsIter *self)
 {
     PyObject_GC_UnTrack(self);
-    Py_TRASHCAN_SAFE_BEGIN(self)
-
     Py_XDECREF(self->impl);
-        
-    Py_TYPE(self)->tp_free((PyObject *)self);
-    Py_TRASHCAN_SAFE_END(self)
-}
-
-static int
-multidict_items_iter_clear(MultidictItemsIter *self)
-{
-    Py_CLEAR(self->impl);
-    return 0;
+    PyObject_GC_Del(self);
 }
 
 static int
@@ -100,19 +86,15 @@ multidict_items_iter_traverse(MultidictItemsIter *self, visitproc visit, void *a
 }
 
 static PyTypeObject multidict_items_iter_type = {
-    PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "multidict._multidict_iter._ItemsIter",
-    sizeof(MultidictItemsIter),
-    .tp_iter     = PyObject_SelfIter,
-    .tp_iternext = (iternextfunc)multidict_items_iter_iternext,
-    .tp_dealloc  = (destructor)multidict_items_iter_dealloc,
-    .tp_flags    = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
-    .tp_traverse = (traverseproc)multidict_items_iter_traverse,
-    .tp_clear    = (inquiry)multidict_items_iter_clear,
-    .tp_init     = (initproc)multidict_items_iter_init,
-    .tp_alloc    = PyType_GenericAlloc,
-    .tp_new      = (newfunc)multidict_items_iter_new,
-    .tp_free     = PyObject_GC_Del,
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name      = "multidict._multidict_iter._ItemsIter",
+    .tp_basicsize = sizeof(MultidictItemsIter),
+    .tp_iter      = PyObject_SelfIter,
+    .tp_iternext  = (iternextfunc)multidict_items_iter_iternext,
+    .tp_dealloc   = (destructor)multidict_items_iter_dealloc,
+    .tp_flags     = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse  = (traverseproc)multidict_items_iter_traverse,
+    .tp_new       = (newfunc)multidict_items_iter_new,
 };
 
 static struct PyModuleDef _multidict_iter_module = {
