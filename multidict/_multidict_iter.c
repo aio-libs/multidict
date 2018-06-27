@@ -2,6 +2,13 @@
 
 #include <Python.h>
 
+// fix for VisualC complier used by Python 3.4
+#ifdef __GNUC__
+#define INLINE inline
+#else
+#define INLINE
+#endif
+
 static PyTypeObject multidict_items_iter_type;
 static PyTypeObject multidict_values_iter_type;
 static PyTypeObject multidict_keys_iter_type;
@@ -13,38 +20,60 @@ typedef struct multidict_iter {
     uint64_t version;
 } MultidictIter;
 
-
-static int
-multidict_iter_init(MultidictIter *self, PyObject *impl)
+static INLINE void
+_init_iter(MultidictIter *it, PyObject *impl)
 {
-    assert(impl != NULL);
-    Py_INCREF(impl);
-
-    self->impl = impl;
-    self->current = 0;
-    self->version = pair_list_version(impl);
-
-    return 0;
+    it->impl = impl;
+    it->current = 0;
+    it->version = pair_list_version(impl);
 }
 
-static PyObject *
-multidict_iter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+PyObject *
+multidict_items_iter_new(PyObject *impl)
 {
-    PyObject *impl = NULL;
-    MultidictIter *it = NULL;
-    if (!PyArg_ParseTuple(args, "O", &impl)) {
-        return NULL;
-    }
-
-    it = PyObject_GC_New(MultidictIter, type);
+    MultidictIter *it = PyObject_GC_New(
+        MultidictIter, &multidict_items_iter_type);
     if (it == NULL) {
         return NULL;
     }
 
-    multidict_iter_init(it, impl);
-    
-    return (PyObject *)it;
+    Py_INCREF(impl);
 
+    _init_iter(it, impl);
+
+    return (PyObject *)it;
+}
+
+PyObject *
+multidict_keys_iter_new(PyObject *impl)
+{
+    MultidictIter *it = PyObject_GC_New(
+        MultidictIter, &multidict_keys_iter_type);
+    if (it == NULL) {
+        return NULL;
+    }
+
+    Py_INCREF(impl);
+
+    _init_iter(it, impl);
+
+    return (PyObject *)it;
+}
+
+PyObject *
+multidict_values_iter_new(PyObject *impl)
+{
+    MultidictIter *it = PyObject_GC_New(
+        MultidictIter, &multidict_values_iter_type);
+    if (it == NULL) {
+        return NULL;
+    }
+
+    Py_INCREF(impl);
+
+    _init_iter(it, impl);
+
+    return (PyObject *)it;
 }
 
 static PyObject *
@@ -129,7 +158,7 @@ multidict_iter_traverse(MultidictIter *self, visitproc visit, void *arg)
 
 static PyTypeObject multidict_items_iter_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "multidict._multidict_iter._ItemsIter",         /* tp_name */
+    "multidict._multidict_iter._itemsiter",         /* tp_name */
     sizeof(MultidictIter),                          /* tp_basicsize */
     0,                                              /* tp_itemsize */
     (destructor)multidict_iter_dealloc,             /* tp_dealloc */
@@ -155,23 +184,11 @@ static PyTypeObject multidict_items_iter_type = {
     0,                                              /* tp_weaklistoffset */
     PyObject_SelfIter,                              /* tp_iter */
     (iternextfunc)multidict_items_iter_iternext,    /* tp_iternext */
-    0,                                              /* tp_methods */
-    0,                                              /* tp_members */
-    0,                                              /* tp_getset */
-    0,                                              /* tp_base */
-    0,                                              /* tp_dict */
-    0,                                              /* tp_descr_get */
-    0,                                              /* tp_descr_set */
-    0,                                              /* tp_dictoffset */
-    0,                                              /* tp_init */
-    0,                                              /* tp_alloc */
-    (newfunc)multidict_iter_new,                    /* tp_new */
-    0,
 };
 
 static PyTypeObject multidict_values_iter_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "multidict._multidict_iter._ValuesIter",         /* tp_name */
+    "multidict._multidict_iter._valuesiter",         /* tp_name */
     sizeof(MultidictIter),                           /* tp_basicsize */
     0,                                               /* tp_itemsize */
     (destructor)multidict_iter_dealloc,              /* tp_dealloc */
@@ -197,23 +214,11 @@ static PyTypeObject multidict_values_iter_type = {
     0,                                               /* tp_weaklistoffset */
     PyObject_SelfIter,                               /* tp_iter */
     (iternextfunc)multidict_values_iter_iternext,    /* tp_iternext */
-    0,                                               /* tp_methods */
-    0,                                               /* tp_members */
-    0,                                               /* tp_getset */
-    0,                                               /* tp_base */
-    0,                                               /* tp_dict */
-    0,                                               /* tp_descr_get */
-    0,                                               /* tp_descr_set */
-    0,                                               /* tp_dictoffset */
-    0,                                               /* tp_init */
-    0,                                               /* tp_alloc */
-    (newfunc)multidict_iter_new,                     /* tp_new */
-    0,
 };
 
 static PyTypeObject multidict_keys_iter_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "multidict._multidict_iter._KeysIter",         /* tp_name */
+    "multidict._multidict_iter._keysiter",         /* tp_name */
     sizeof(MultidictIter),                         /* tp_basicsize */
     0,                                             /* tp_itemsize */
     (destructor)multidict_iter_dealloc,            /* tp_dealloc */
@@ -239,71 +244,15 @@ static PyTypeObject multidict_keys_iter_type = {
     0,                                             /* tp_weaklistoffset */
     PyObject_SelfIter,                             /* tp_iter */
     (iternextfunc)multidict_keys_iter_iternext,    /* tp_iternext */
-    0,                                             /* tp_methods */
-    0,                                             /* tp_members */
-    0,                                             /* tp_getset */
-    0,                                             /* tp_base */
-    0,                                             /* tp_dict */
-    0,                                             /* tp_descr_get */
-    0,                                             /* tp_descr_set */
-    0,                                             /* tp_dictoffset */
-    0,                                             /* tp_init */
-    0,                                             /* tp_alloc */
-    (newfunc)multidict_iter_new,                   /* tp_new */
-    0,
 };
 
-static struct PyModuleDef _multidict_iter_module = {
-    PyModuleDef_HEAD_INIT,       /* m_base */
-    "multidict._multidict_iter", /* m_name */
-    NULL,                        /* m_doc */
-    -1,                          /* m_size */
-    NULL,                        /* m_methods */
-    NULL,                        /* m_reload */
-    NULL,                        /* m_traverse */
-    NULL,                        /* m_clear */
-    NULL                         /* m_free */
-};
-
-PyMODINIT_FUNC
-PyInit__multidict_iter(void)
+int
+multidict_iter_init()
 {
-    PyObject *module = PyState_FindModule(&_multidict_iter_module);
-    if (module) {
-        Py_INCREF(module);
-        return module;
-    }
-
-    module = PyModule_Create(&_multidict_iter_module);
-    if (!module) {
-        goto err;
-    }
-
     if (PyType_Ready(&multidict_items_iter_type) < 0 ||
         PyType_Ready(&multidict_values_iter_type) < 0 ||
         PyType_Ready(&multidict_keys_iter_type) < 0) {
-        goto err;
+        return -1;
     }
-
-    Py_INCREF(&multidict_items_iter_type);
-    Py_INCREF(&multidict_values_iter_type);
-    Py_INCREF(&multidict_keys_iter_type);
-
-    if (PyModule_AddObject(module, "_ItemsIter",
-                           (PyObject *)&multidict_items_iter_type) < 0 ||
-        PyModule_AddObject(module, "_ValuesIter",
-                           (PyObject *)&multidict_values_iter_type) < 0 ||
-        PyModule_AddObject(module, "_KeysIter",
-                           (PyObject *)&multidict_keys_iter_type) < 0) {
-        Py_DECREF(&multidict_items_iter_type);
-        Py_DECREF(&multidict_values_iter_type);
-        Py_DECREF(&multidict_keys_iter_type);
-        goto err;
-    }
-    
-    return module;
-
-err:
-    Py_DECREF(module);
-    return NULL;
+    return 0;
 }

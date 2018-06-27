@@ -9,8 +9,9 @@ from cpython.object cimport PyObject_Str, Py_NE, PyObject_RichCompare
 from ._abc import MultiMapping, MutableMultiMapping
 from ._istr import istr
 
-from ._multidict_iter import _ItemsIter, _ValuesIter, _KeysIter
+# from ._multidict_iter import _ItemsIter, _ValuesIter, _KeysIter
 
+from ._multidict_iter cimport *
 from ._pair_list cimport *
 
 cdef object _marker = object()
@@ -19,6 +20,7 @@ upstr = istr  # for relaxing backward compatibility problems
 cdef object _istr = istr
 
 pair_list_init(istr)
+multidict_iter_init()
 
 
 def getversion(_Base md):
@@ -472,7 +474,7 @@ cdef class _ItemsView(_ViewBaseSet):
         return False
 
     def __iter__(self):
-        return _ItemsIter.__new__(_ItemsIter, self._md._impl)
+        return multidict_items_iter_new(self._md._impl)
 
     def __repr__(self):
         lst = []
@@ -494,7 +496,7 @@ cdef class _ValuesView(_ViewBase):
         return False
 
     def __iter__(self):
-        return _ValuesIter.__new__(_ValuesIter, self._md._impl)
+        return multidict_values_iter_new(self._md._impl)
 
     def __repr__(self):
         lst = []
@@ -522,7 +524,7 @@ cdef class _KeysView(_ViewBaseSet):
         return self._md._contains(value)
 
     def __iter__(self):
-        return _KeysIter.__new__(_KeysIter, self._md._impl)
+        return multidict_keys_iter_new(self._md._impl)
 
     def __repr__(self):
         lst = []
