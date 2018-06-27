@@ -9,8 +9,6 @@ from cpython.object cimport PyObject_Str, Py_NE, PyObject_RichCompare
 from ._abc import MultiMapping, MutableMultiMapping
 from ._istr import istr
 
-# from ._multidict_iter import _ItemsIter, _ValuesIter, _KeysIter
-
 from ._multidict_iter cimport *
 from ._pair_list cimport *
 
