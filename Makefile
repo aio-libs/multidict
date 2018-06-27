@@ -80,6 +80,8 @@ clean:
 	rm -f multidict/_istr.*.pyd
 	rm -f multidict/_pair_list.*.so
 	rm -f multidict/_pair_list.*.pyd
+	rm -f multidict/_multidict_iter.*.so
+	rm -f multidict/_multidict_iter.*.pyd
 	rm -rf .tox
 	rm -f .install-deps
 	rm -f .develop
