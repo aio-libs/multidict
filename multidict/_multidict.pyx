@@ -9,6 +9,7 @@ from cpython.object cimport PyObject_Str, Py_NE, PyObject_RichCompare
 from ._abc import MultiMapping, MutableMultiMapping
 from ._istr import istr
 
+from ._multidict_iter cimport *
 from ._pair_list cimport *
 
 cdef object _marker = object()
@@ -17,6 +18,7 @@ upstr = istr  # for relaxing backward compatibility problems
 cdef object _istr = istr
 
 pair_list_init(istr)
+multidict_iter_init()
 
 
 def getversion(_Base md):
@@ -448,30 +450,6 @@ cdef class _ViewBaseSet(_ViewBase):
         return self ^ other
 
 
-cdef class _ItemsIter:
-    cdef object _impl
-    cdef Py_ssize_t _current
-    cdef uint64_t _version
-
-    def __cinit__(self, object impl):
-        self._impl = impl
-        self._current = 0
-        self._version = pair_list_version(impl)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._version != pair_list_version(self._impl):
-            raise RuntimeError("Dictionary changed during iteration")
-        cdef PyObject *key
-        cdef PyObject *value
-        if not _pair_list_next(self._impl,
-                               &self._current, NULL, &key, &value, NULL):
-            raise StopIteration
-        return (<object>key, <object>value)
-
-
 cdef class _ItemsView(_ViewBaseSet):
 
     def isdisjoint(self, other):
@@ -494,7 +472,7 @@ cdef class _ItemsView(_ViewBaseSet):
         return False
 
     def __iter__(self):
-        return _ItemsIter.__new__(_ItemsIter, self._md._impl)
+        return multidict_items_iter_new(self._md._impl)
 
     def __repr__(self):
         lst = []
@@ -507,29 +485,6 @@ cdef class _ItemsView(_ViewBaseSet):
 abc.ItemsView.register(_ItemsView)
 
 
-cdef class _ValuesIter:
-    cdef object _impl
-    cdef Py_ssize_t _current
-    cdef uint64_t _version
-
-    def __cinit__(self, object impl):
-        self._impl = impl
-        self._current = 0
-        self._version = pair_list_version(impl)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._version != pair_list_version(self._impl):
-            raise RuntimeError("Dictionary changed during iteration")
-        cdef PyObject *value
-        if not _pair_list_next(self._impl,
-                              &self._current, NULL, NULL, &value, NULL):
-            raise StopIteration
-        return <object>value
-
-
 cdef class _ValuesView(_ViewBase):
 
     def __contains__(self, value):
@@ -539,7 +494,7 @@ cdef class _ValuesView(_ViewBase):
         return False
 
     def __iter__(self):
-        return _ValuesIter.__new__(_ValuesIter, self._md._impl)
+        return multidict_values_iter_new(self._md._impl)
 
     def __repr__(self):
         lst = []
@@ -550,29 +505,6 @@ cdef class _ValuesView(_ViewBase):
 
 
 abc.ValuesView.register(_ValuesView)
-
-
-cdef class _KeysIter:
-    cdef object _impl
-    cdef Py_ssize_t _current
-    cdef uint64_t _version
-
-    def __cinit__(self, object impl):
-        self._impl = impl
-        self._current = 0
-        self._version = pair_list_version(impl)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._version != pair_list_version(self._impl):
-            raise RuntimeError("Dictionary changed during iteration")
-        cdef PyObject * key
-        if not pair_list_next(self._impl,
-                              &self._current, NULL, &key, NULL):
-            raise StopIteration
-        return <object>(key)
 
 
 cdef class _KeysView(_ViewBaseSet):
@@ -590,7 +522,7 @@ cdef class _KeysView(_ViewBaseSet):
         return self._md._contains(value)
 
     def __iter__(self):
-        return _KeysIter.__new__(_KeysIter, self._md._impl)
+        return multidict_keys_iter_new(self._md._impl)
 
     def __repr__(self):
         lst = []

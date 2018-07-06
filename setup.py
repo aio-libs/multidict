@@ -37,7 +37,8 @@ if not PYPY:
             'multidict._multidict',
             [
                 'multidict/_multidict' + ext,
-                'multidict/_pair_list.c'
+                'multidict/_pair_list.c',
+                'multidict/_multidict_iter.c',
             ],
             extra_compile_args=CFLAGS
         )
