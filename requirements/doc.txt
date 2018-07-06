@@ -1,2 +1,2 @@
 pyenchant==2.0.0
-sphinxcontrib-spelling==4.1.0
+sphinxcontrib-spelling==4.2.0
