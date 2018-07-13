@@ -130,6 +130,10 @@ _helpers:
   - *env_py36
   - *env_pyenv
   - *env_path
+- &linux_py37
+  python: 3.7
+  dist: xenial
+  sudo: required
 
 os: linux
 
@@ -140,6 +144,14 @@ jobs:
     python: nightly
 
   include:
+  - <<: *linux_py37
+    env:
+      tests with extensions enabled <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <-:
+
+  - <<: *linux_py37
+    env:
+      MULTIDICT_NO_EXTENSIONS: X
+
   - python: *pypy3
     env:
     - MULTIDICT_NO_EXTENSIONS=X
@@ -190,9 +202,9 @@ jobs:
     - *env_pyenv
     - *env_path
   - <<: *osx_python_base
-    python: nightly
+    python: 3.7.0
     env:
-    - PYTHON_VERSION=3.7-dev
+    - PYTHON_VERSION=3.7.0
     - *env_pyenv
     - *env_path
   # pypy3.5-5.10.0 fails under OS X because it's unsupported
@@ -233,6 +245,13 @@ jobs:
     - *env_py36
     - *env_pyenv
     - *env_path
+    # OS X 10.10, Python 3.7
+  - <<: *osx_pypi_deploy_base_1010
+    env:
+    - *env_os1010_msg
+    - &env_py37 PYTHON_VERSION=3.7.0
+    - *env_pyenv
+    - *env_path
     # OS X 10.11, Python 3.4
   - <<: *osx_pypi_deploy_base_1011
     python: 3.4
@@ -256,6 +275,13 @@ jobs:
     - *env_py36
     - *env_pyenv
     - *env_path
+    # OS X 10.11, Python 3.7
+  - <<: *osx_pypi_deploy_base_1011
+    env:
+    - *env_os1011_msg
+    - *env_py37
+    - *env_pyenv
+    - *env_path
     # OS X 10.12, Python 3.4
   - <<: *osx_pypi_deploy_base_1012
     python: 3.4
@@ -277,6 +303,13 @@ jobs:
     env:
     - *env_os1012_msg
     - *env_py36
+    - *env_pyenv
+    - *env_path
+    # OS X 10.12, Python 3.7
+  - <<: *osx_pypi_deploy_base_1012
+    env:
+    - *env_os1012_msg
+    - *env_py37
     - *env_pyenv
     - *env_path
 
