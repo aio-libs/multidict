@@ -97,6 +97,7 @@ _helpers:
 - &osx_pypi_deploy_base_1011
   <<: *osx_python_base
   <<: *generic_deploy_base
+  name: &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
   osx_image: xcode7.3
   script: skip
   after_success: []
