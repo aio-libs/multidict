@@ -153,23 +153,23 @@ jobs:
     - MULTIDICT_NO_EXTENSIONS=X
 
   - <<: *_doc_base
+    name: Documentation linting
     env:
-    - docs <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
     - TOXENV=doc-spelling
 
   - <<: *_lint_base
+    name: Flake8 linter
     env:
-    - flake8 <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <=
     - TOXENV=flake8
 
   - <<: *_lint_base
+    name: MyPy linter
     env:
-    - mypy <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
     - TOXENV=mypy
 
   - <<: *_lint_base
+    name: dist setup check
     env:
-    - dist setup check <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
     - TOXENV=setup-check
 
   - <<: *osx_python_base
