@@ -76,3 +76,4 @@ multidict/_istr.html
 /junit-test-results.xml
 
 .pytest_cache
+.testmondata

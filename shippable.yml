@@ -11,6 +11,5 @@ env:
 
 build:
   ci:
-  - pip install --upgrade pip wheel setuptools
-  - pip install -r requirements/ci.txt
-  - make test
+  - pip install -U tox
+  - python -m tox

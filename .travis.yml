@@ -13,15 +13,15 @@ python:
 - 3.6-dev
 - nightly
 
-install:
-- &upgrade_python_toolset pip install --upgrade pip wheel setuptools
-- pip install -r requirements/ci.txt
+install: &default_install
+- python -m pip install -U tox
+- python -m tox --notest  # Pre-populate a virtualenv with dependencies
 
-script:
-- make test
+script: &default_script
+- python -m tox
 
 after_success:
-- codecov
+- python -m tox -e codecov
 
 env:
   matrix:
@@ -43,14 +43,11 @@ _helpers:
   stage: &doc_stage_name docs, linting and pre-test checks
   <<: *_mainstream_python_base
   <<: *_reset_steps
-  install:
-  - *upgrade_python_toolset
-  - pip install -U -r requirements/dev.txt
+  install: *default_install
+  script: *default_script
 - &_doc_base
   <<: *_lint_base
-  install:
-  - *upgrade_python_toolset
-  - pip install -U -r requirements/doc.txt -r requirements/dev.txt
+  install: *default_install
   after_failure: cat docs/_build/spelling/output.txt
   addons:
     apt:
@@ -159,29 +156,22 @@ jobs:
   - <<: *_doc_base
     env:
     - docs <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
-    script:
-    - make doc-spelling
+    - TOXENV=doc-spelling
 
   - <<: *_lint_base
     env:
     - flake8 <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <=
-    script:
-    - flake8 multidict tests
+    - TOXENV=flake8
 
   - <<: *_lint_base
     env:
     - mypy <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
-    script:
-    - make mypy
+    - TOXENV=mypy
 
   - <<: *_lint_base
     env:
     - dist setup check <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
-    install:
-    - *upgrade_python_toolset
-    - pip install docutils
-    script:
-    - python setup.py check --metadata --restructuredtext --strict --verbose
+    - TOXENV=setup-check
 
   - <<: *osx_python_base
     python: 3.4
@@ -212,14 +202,13 @@ jobs:
   # Build and deploy manylinux1 binary wheels and source distribution
   - <<: *generic_deploy_base
     <<: *_reset_steps
-    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
+    env:
+    - Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
+    - TOXENV=manylinux1
     dist: trusty
     group: edge
     services:
     - docker
-    script:
-    - ./tools/run_docker.sh "multidict"
-    - pip install -r requirements/ci.txt  # to compile *.c files by Cython
 
     # Build and deploy MacOS binary wheels for each OSX+Python combo possible
     # OS X 10.10, Python 3.4
