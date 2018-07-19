@@ -1,5 +1,3 @@
-version: "= 0"
-
 conditions: v1
 
 sudo: false
