@@ -102,7 +102,6 @@ _helpers:
   script: skip
   after_success: []
   env:
-  - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel=
   - &env_py36 PYTHON_VERSION=3.6.1
   - *env_pyenv
   - *env_path
@@ -112,17 +111,17 @@ _helpers:
     distributions: bdist_wheel
 - &osx_pypi_deploy_base_1012
   <<: *osx_pypi_deploy_base_1011
+  name: &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel=
   osx_image: xcode8.1
   env:
-  - &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel=
   - *env_py36
   - *env_pyenv
   - *env_path
 - &osx_pypi_deploy_base_1010
   <<: *osx_pypi_deploy_base_1011
+  name: &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel=
   osx_image: xcode6.4
   env:
-  - &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel=
   - *env_py36
   - *env_pyenv
   - *env_path
@@ -141,14 +140,15 @@ jobs:
 
   include:
   - <<: *linux_py37
-    env:
-      tests with extensions enabled <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <-:
+    name: Python 3.7 env tests with extensions enabled
 
   - <<: *linux_py37
+    name: Python 3.7 env tests with extensions disabled
     env:
       MULTIDICT_NO_EXTENSIONS: X
 
   - python: *pypy3
+    name: PyPy3.5 env tests with extensions disabled
     env:
     - MULTIDICT_NO_EXTENSIONS=X
 
@@ -201,8 +201,8 @@ jobs:
   # Build and deploy manylinux1 binary wheels and source distribution
   - <<: *generic_deploy_base
     <<: *_reset_steps
+    name: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution
     env:
-    - Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
     - TOXENV=manylinux1
     dist: trusty
     group: edge
@@ -213,8 +213,8 @@ jobs:
     # OS X 10.10, Python 3.4
   - <<: *osx_pypi_deploy_base_1010
     python: 3.4
+    name: *env_os1010_msg
     env:
-    - *env_os1010_msg
     - *env_py34
     - *env_pyenv
     - *env_path
