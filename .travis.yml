@@ -213,7 +213,6 @@ jobs:
     # OS X 10.10, Python 3.4
   - <<: *osx_pypi_deploy_base_1010
     python: 3.4
-    name: *env_os1010_msg
     env:
     - *env_py34
     - *env_pyenv
@@ -222,21 +221,18 @@ jobs:
   - <<: *osx_pypi_deploy_base_1010
     python: 3.5
     env:
-    - *env_os1010_msg
     - *env_py35
     - *env_pyenv
     - *env_path
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
     env:
-    - *env_os1010_msg
     - *env_py36
     - *env_pyenv
     - *env_path
     # OS X 10.10, Python 3.7
   - <<: *osx_pypi_deploy_base_1010
     env:
-    - *env_os1010_msg
     - &env_py37 PYTHON_VERSION=3.7.0
     - *env_pyenv
     - *env_path
@@ -244,7 +240,6 @@ jobs:
   - <<: *osx_pypi_deploy_base_1011
     python: 3.4
     env:
-    - *env_os1011_msg
     - *env_py34
     - *env_pyenv
     - *env_path
@@ -252,21 +247,18 @@ jobs:
   - <<: *osx_pypi_deploy_base_1011
     python: 3.5
     env:
-    - *env_os1011_msg
     - *env_py35
     - *env_pyenv
     - *env_path
     # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
     env:
-    - *env_os1011_msg
     - *env_py36
     - *env_pyenv
     - *env_path
     # OS X 10.11, Python 3.7
   - <<: *osx_pypi_deploy_base_1011
     env:
-    - *env_os1011_msg
     - *env_py37
     - *env_pyenv
     - *env_path
@@ -274,7 +266,6 @@ jobs:
   - <<: *osx_pypi_deploy_base_1012
     python: 3.4
     env:
-    - *env_os1012_msg
     - *env_py34
     - *env_pyenv
     - *env_path
@@ -282,21 +273,18 @@ jobs:
   - <<: *osx_pypi_deploy_base_1012
     python: 3.5
     env:
-    - *env_os1012_msg
     - *env_py35
     - *env_pyenv
     - *env_path
     # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
     env:
-    - *env_os1012_msg
     - *env_py36
     - *env_pyenv
     - *env_path
     # OS X 10.12, Python 3.7
   - <<: *osx_pypi_deploy_base_1012
     env:
-    - *env_os1012_msg
     - *env_py37
     - *env_pyenv
     - *env_path
