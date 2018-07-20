@@ -140,7 +140,7 @@ jobs:
 
   include:
   - <<: *linux_py37
-    name: Python 3.7 env tests with extensions enabled
+    name: Python 3.7 env tests with extensions enabled ($TRAVIS_PYTHON_VERSION)
 
   - <<: *linux_py37
     name: Python 3.7 env tests with extensions disabled
