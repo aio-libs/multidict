@@ -19,6 +19,10 @@ test:
 	tox
 
 
+test-all:
+	tox -e,
+
+
 vtest:
 	tox -- -vv
 
@@ -79,4 +83,4 @@ install:
 	pip install -U pip
 	pip install -Ur requirements/dev.txt
 
-.PHONY: all build venv flake test vtest testloop cov clean doc
+.PHONY: all build venv flake test test-all vtest qtest cov clean doc
