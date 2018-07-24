@@ -2,10 +2,10 @@
 flake8==3.5.0
 pyflakes>=1.0.0
 coverage==4.5.1
-sphinx==1.7.5
+sphinx==1.7.6
 alabaster>=0.6.2
 pygments==2.2.0
-mypy==0.610; platform_python_implementation != "PyPy"
+mypy==0.620; platform_python_implementation != "PyPy"
 -e .
 
 codecov==2.0.15
