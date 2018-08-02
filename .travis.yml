@@ -74,6 +74,9 @@ _helpers:
 - &generic_deploy_base
   stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
   <<: *_mainstream_python_base
+  script:
+  - tox  # This will build both source distribution and binary wheels
+  - echo > setup.py  # make Travis not invoke setuptools, only twine upload
   deploy: &deploy_step
     provider: pypi
     # `skip_cleanup: true` is required to preserve binary wheels, built
@@ -99,12 +102,12 @@ _helpers:
   <<: *generic_deploy_base
   name: &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
   osx_image: xcode7.3
-  script: skip
   after_success: []
   env:
   - &env_py36 PYTHON_VERSION=3.6.1
   - *env_pyenv
   - *env_path
+  - TOXENV=build-dists
   deploy:
     <<: *deploy_step
     skip_cleanup: false
@@ -199,14 +202,11 @@ jobs:
   # pypy3.5-5.10.0 fails under OS X because it's unsupported
 
   # Build and deploy manylinux1 binary wheels and source distribution
-  - <<: *generic_deploy_base
-    <<: *_reset_steps
+  - <<: *_reset_steps
+    <<: *generic_deploy_base
     name: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution
     env:
     - TOXENV=build-sdist,manylinux1
-    script:
-    - tox  # This will build both source distribution and binary wheels
-    - echo > setup.py  # make Travis not invoke setuptools, only twine upload
     dist: trusty
     group: edge
     services:
