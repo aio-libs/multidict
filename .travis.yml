@@ -203,7 +203,10 @@ jobs:
     <<: *_reset_steps
     name: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution
     env:
-    - TOXENV=manylinux1
+    - TOXENV=build-sdist,manylinux1
+    script:
+    - tox  # This will build both source distribution and binary wheels
+    - echo > setup.py  # make Travis not invoke setuptools, only twine upload
     dist: trusty
     group: edge
     services:
