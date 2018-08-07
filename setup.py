@@ -26,8 +26,8 @@ if not PYPY:
     else:
         macros = []
 
-    CFLAGS = ['-O2']
-    # CFLAGS = ['-g']
+    # CFLAGS = ['-O2']
+    CFLAGS = ['-g']
     if platform.system() != 'Windows':
         CFLAGS.extend(['-std=c99', '-Wall', '-Wsign-compare', '-Wconversion',
                        '-fno-strict-aliasing'])
@@ -39,6 +39,7 @@ if not PYPY:
                 'multidict/_multidict' + ext,
                 'multidict/_pair_list.c',
                 'multidict/_multidict_iter.c',
+                'multidict/_multidict_views.c'
             ],
             extra_compile_args=CFLAGS
         )

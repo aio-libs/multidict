@@ -10,6 +10,7 @@ from ._abc import MultiMapping, MutableMultiMapping
 from ._istr import istr
 
 from ._multidict_iter cimport *
+from ._multidict_views cimport *
 from ._pair_list cimport *
 
 cdef object _marker = object()
@@ -18,8 +19,8 @@ upstr = istr  # for relaxing backward compatibility problems
 cdef object _istr = istr
 
 pair_list_init(istr)
-multidict_iter_init()
-
+# multidict_iter_init()
+multidict_views_init()
 
 def getversion(_Base md):
     return pair_list_version(md._impl)
@@ -29,6 +30,9 @@ cdef class _Base:
 
     cdef object _impl
 
+    def impl(self):
+        return self._impl
+    
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
         try:
@@ -82,7 +86,8 @@ cdef class _Base:
 
     def items(self):
         """Return a new view of the dictionary's items *(key, value) pairs)."""
-        return _ItemsView.__new__(_ItemsView, self)
+        return multidict_items_view_new(self)
+        # return _ItemsView.__new__(_ItemsView, self)
 
     def values(self):
         """Return a new view of the dictionary's values."""
