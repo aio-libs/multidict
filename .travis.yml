@@ -74,6 +74,7 @@ _helpers:
 - &generic_deploy_base
   stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
   <<: *_mainstream_python_base
+  install: *default_install
   script:
   - tox  # This will build both source distribution and binary wheels
   - echo > setup.py  # make Travis not invoke setuptools, only twine upload
