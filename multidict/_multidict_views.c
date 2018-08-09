@@ -80,9 +80,53 @@ items_iter(_MultidictViewObject *self)
     if (self->md == NULL) {
         Py_RETURN_NONE;
     }
+    
     PyObject *impl = PyObject_CallMethod(self->md, "impl", "");
     PyObject *iter = multidict_items_iter_new(impl);
+
     return iter;
+}
+
+static PyObject *
+items_repr(_MultidictViewObject *mv)
+{
+    PyObject *key    = NULL,
+             *val    = NULL,
+             *lst    = NULL,
+             *iter   = NULL,
+             *item   = NULL,
+             *str    = NULL,
+             *body   = NULL,
+             *result = NULL;
+
+    lst = PyList_New(0);
+    if (lst == NULL) {
+        return result;
+    }
+    
+    iter = items_iter(mv);
+    if (iter == NULL) {
+        goto ret;
+    }
+
+    while ((item = PyIter_Next(iter)) != NULL) {
+        key = PyTuple_GET_ITEM(item, 0);
+        val = PyTuple_GET_ITEM(item, 1);
+        str = PyUnicode_FromFormat("%R: %R", key, val);
+ 
+        if (PyList_Append(lst, str) < 0) {
+            goto ret;
+        }
+
+        Py_DECREF(item);
+    }
+    
+    body   = PyUnicode_Join(PyUnicode_FromString(", "), lst);
+    result = PyUnicode_FromFormat("%s(%U)", Py_TYPE(mv)->tp_name, body);
+
+ret:
+    Py_DECREF(lst);
+    return result;
 }
 
 static PyObject *
@@ -191,10 +235,10 @@ static PySequenceMethods multidict_items_as_sequence = {
     0,                                  /* sq_ass_slice */
     (objobjproc)items_contains,         /* sq_contains */
 };
-  
+
 static PyTypeObject multidict_items_view_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "multidict._multidict_views._itemsview",        /* tp_name */
+    "_ItemsView",                                   /* tp_name */
     sizeof(_MultidictViewObject),                   /* tp_basicsize */
     0,                                              /* tp_itemsize */
     (destructor)view_dealloc,                       /* tp_dealloc */
@@ -202,7 +246,7 @@ static PyTypeObject multidict_items_view_type = {
     0,                                              /* tp_getattr */
     0,                                              /* tp_setattr */
     0,                                              /* tp_reserved */
-    0,                                              /* tp_repr */
+    (reprfunc)items_repr,                           /* tp_repr */
     0,                                              /* tp_as_number */
     &multidict_items_as_sequence,                   /* tp_as_sequence */
     0,                                              /* tp_as_mapping */
