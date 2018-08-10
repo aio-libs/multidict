@@ -43,8 +43,8 @@ rm -fv /io/dist/*-linux_*.whl
 
 echo
 echo
-echo "Cleanup non-$package_name wheels"
-find /io/dist -maxdepth 1 -type f ! -name "$package_name"'-*-manylinux1_*.whl' -print0 | xargs -0 rm -fv
+echo "Cleanup non-$package_name dists"
+find /io/dist -maxdepth 1 -type f ! -name "$package_name"'-*-manylinux1_*.whl' ! -name "$package_name"'-*.tar.gz' -print0 | xargs -0 rm -fv
 
 echo
 echo
