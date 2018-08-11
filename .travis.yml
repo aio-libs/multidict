@@ -110,7 +110,7 @@ _helpers:
   - *env_pyenv
   - *env_path
   - &env_tox_build-dists TOXENV=build-dists
-  - &env_macos_dpl_target MACOSX_DEPLOYMENT_TARGET=10.6
+  - &env_macos_dpl_target "MACOSX_DEPLOYMENT_TARGET=10.6 PYTHON_CONFIGURE_OPTS='--enable-universalsdk=/ --with-universal-archs=intel'"
   deploy:
     <<: *deploy_step
     skip_cleanup: false
