@@ -111,7 +111,7 @@ _helpers:
     PYTHON_VERSION: &py36 3.6.6
     TOXENV: build-dists
     MACOSX_DEPLOYMENT_TARGET: 10.6
-    PYTHON_CONFIGURE_OPTS: --enable-universalsdk=/ --with-universal-archs=intel
+    PYTHON_CONFIGURE_OPTS: "'--enable-universalsdk=/ --with-universal-archs=intel'"
   deploy:
     <<: *deploy_step
     skip_cleanup: false
