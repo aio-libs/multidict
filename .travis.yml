@@ -132,7 +132,7 @@ _helpers:
 
 env:
   matrix:
-    tests with extensions enabled <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <-:
+    "tests with extensions enabled <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <-":
     <<: *env_extensions_disabled
 
 os: linux
