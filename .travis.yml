@@ -125,7 +125,7 @@ _helpers:
   python: 3.7
   dist: xenial
   sudo: required
-- &env_extensions_disabled:
+- &env_extensions_disabled
   # MULTIDICT_NO_EXTENSIONS environment variables
   # are considered as enabled if they are any non-empty strings.
   MULTIDICT_NO_EXTENSIONS: X
