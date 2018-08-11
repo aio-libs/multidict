@@ -103,7 +103,7 @@ _helpers:
   after_success: []
   env: &env_osx_base
     <<: *env_pyenv_base
-    PYTHON_VERSION: &py36 3.6.1
+    PYTHON_VERSION: &py36 3.6.6
     TOXENV: build-dists
     MACOSX_DEPLOYMENT_TARGET: 10.6
     PYTHON_CONFIGURE_OPTS: --enable-universalsdk=/ --with-universal-archs=intel
@@ -176,12 +176,12 @@ jobs:
       TOXENV: setup-check
 
   - <<: *osx_python_base
-    python: &py34 3.4.6
+    python: &py34 3.4.4
     env:
       <<: *env_osx_base
       PYTHON_VERSION: *py34
   - <<: *osx_python_base
-    python: &py35 3.5.3
+    python: &py35 3.5.4
     env:
       <<: *env_osx_base
       PYTHON_VERSION: *py35
