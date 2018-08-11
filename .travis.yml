@@ -110,6 +110,7 @@ _helpers:
   - *env_pyenv
   - *env_path
   - &env_tox_build-dists TOXENV=build-dists
+  - &env_macos_dpl_target MACOSX_DEPLOYMENT_TARGET=10.6
   deploy:
     <<: *deploy_step
     skip_cleanup: false
@@ -123,6 +124,7 @@ _helpers:
   - *env_pyenv
   - *env_path
   - *env_tox_build-dists
+  - *env_macos_dpl_target
 - &osx_pypi_deploy_base_1010
   <<: *osx_pypi_deploy_base_1011
   name: &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel=
@@ -132,6 +134,7 @@ _helpers:
   - *env_pyenv
   - *env_path
   - *env_tox_build-dists
+  - *env_macos_dpl_target
 - &linux_py37
   python: 3.7
   dist: xenial
@@ -225,6 +228,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
     # OS X 10.10, Python 3.5
   - <<: *osx_pypi_deploy_base_1010
     python: 3.5
@@ -233,6 +237,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
     env:
@@ -240,6 +245,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
     # OS X 10.10, Python 3.7
   - <<: *osx_pypi_deploy_base_1010
     env:
@@ -247,6 +253,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
     # OS X 10.11, Python 3.4
   - <<: *osx_pypi_deploy_base_1011
     python: 3.4
@@ -254,6 +261,7 @@ jobs:
     - *env_py34
     - *env_pyenv
     - *env_path
+    - *env_macos_dpl_target
     - *env_tox_build-dists
     # OS X 10.11, Python 3.5
   - <<: *osx_pypi_deploy_base_1011
@@ -262,6 +270,7 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    - *env_macos_dpl_target
     - *env_tox_build-dists
     # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
@@ -270,6 +279,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
     # OS X 10.11, Python 3.7
   - <<: *osx_pypi_deploy_base_1011
     env:
@@ -277,6 +287,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
     # OS X 10.12, Python 3.4
   - <<: *osx_pypi_deploy_base_1012
     python: 3.4
@@ -285,6 +296,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
     # OS X 10.12, Python 3.5
   - <<: *osx_pypi_deploy_base_1012
     python: 3.5
@@ -293,6 +305,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
     # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
     env:
@@ -300,6 +313,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
     # OS X 10.12, Python 3.7
   - <<: *osx_pypi_deploy_base_1012
     env:
@@ -307,6 +321,7 @@ jobs:
     - *env_pyenv
     - *env_path
     - *env_tox_build-dists
+    - *env_macos_dpl_target
 
 stages:
 - *doc_stage_name
