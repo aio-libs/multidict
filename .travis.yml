@@ -99,6 +99,10 @@ _helpers:
   osx_image: xcode7.3
   before_install: &install-from-python_org
   - curl -Lo "/tmp/python-${PYTHON_VERSION}.pkg" "https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macosx10.6.pkg" && sudo installer -pkg "/tmp/python-${PYTHON_VERSION}.pkg" -target / && rm -f "/tmp/python-${PYTHON_VERSION}.pkg"
+  - export PYTHON_VERSION_SHORT=$(echo ${PYTHON_VERSION} | awk -F. '{print$1"."$2}')
+  - export PATH="/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION_SHORT}/bin:${PATH}"
+  - virtualenv -p "/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION_SHORT}/bin/python${PYTHON_VERSION_SHORT}" "${HOME}/virtualenv/python${PYTHON_VERSION_SHORT}"
+  - "${HOME}/virtualenv/python${PYTHON_VERSION_SHORT}/bin/activate"
   - *python_version
   after_success: []
   env: &env_osx_base
