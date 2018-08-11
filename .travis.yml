@@ -21,18 +21,11 @@ script: &default_script
 after_success:
 - python -m tox -e codecov
 
-env:
-  matrix:
-  # MULTIDICT_NO_EXTENSIONS environment variables
-  # are considered as enabled if they are any non-empty strings.
-  - tests with extensions enabled <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <-=
-  - MULTIDICT_NO_EXTENSIONS=X
-
 _helpers:
 - &_mainstream_python_base
   python: *mainstream_python
 - &_reset_steps
-  env: []
+  env: {}
   before_install: skip
   install: skip
   script: skip
@@ -56,10 +49,10 @@ _helpers:
   os: osx
   language: generic
   python: &pypy3 pypy3.5-5.10.0
-  env:
-  - &env_pypy3 PYTHON_VERSION=pypy3.5-5.10.0
-  - &env_pyenv PYENV_ROOT="$HOME/.pyenv"
-  - &env_path PATH="$PYENV_ROOT/bin:$PATH"
+  env: &env_pyenv_base
+    PYTHON_VERSION: *pypy3
+    PYENV_ROOT: ${HOME}/.pyenv
+    PATH: ${PYENV_ROOT}/bin:${PATH}
   before_install:
   - brew update
   - brew install pyenv || brew upgrade pyenv
@@ -108,12 +101,12 @@ _helpers:
   - curl -Lo "/tmp/python-${PYTHON_VERSION}.pkg" "https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macosx10.6.pkg" && sudo installer -pkg "/tmp/python-${PYTHON_VERSION}.pkg" -target / && rm -f "/tmp/python-${PYTHON_VERSION}.pkg"
   - *python_version
   after_success: []
-  env:
-  - &env_py36 PYTHON_VERSION=3.6.1
-  - *env_pyenv
-  - *env_path
-  - &env_tox_build-dists TOXENV=build-dists
-  - &env_macos_dpl_target "MACOSX_DEPLOYMENT_TARGET=10.6 PYTHON_CONFIGURE_OPTS='--enable-universalsdk=/ --with-universal-archs=intel'"
+  env: &env_osx_base
+    <<: *env_pyenv_base
+    PYTHON_VERSION: &py36 3.6.1
+    TOXENV: build-dists
+    MACOSX_DEPLOYMENT_TARGET: 10.6
+    PYTHON_CONFIGURE_OPTS: --enable-universalsdk=/ --with-universal-archs=intel
   deploy:
     <<: *deploy_step
     skip_cleanup: false
@@ -122,26 +115,25 @@ _helpers:
   <<: *osx_pypi_deploy_base_1011
   name: &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel=
   osx_image: xcode8.1
-  env:
-  - *env_py36
-  - *env_pyenv
-  - *env_path
-  - *env_tox_build-dists
-  - *env_macos_dpl_target
+  env: *env_osx_base
 - &osx_pypi_deploy_base_1010
   <<: *osx_pypi_deploy_base_1011
   name: &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel=
   osx_image: xcode6.4
-  env:
-  - *env_py36
-  - *env_pyenv
-  - *env_path
-  - *env_tox_build-dists
-  - *env_macos_dpl_target
+  env: *env_osx_base
 - &linux_py37
   python: 3.7
   dist: xenial
   sudo: required
+- &env_extensions_disabled:
+  # MULTIDICT_NO_EXTENSIONS environment variables
+  # are considered as enabled if they are any non-empty strings.
+  MULTIDICT_NO_EXTENSIONS: X
+
+env:
+  matrix:
+    tests with extensions enabled <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <-:
+    <<: *env_extensions_disabled
 
 os: linux
 
@@ -157,58 +149,50 @@ jobs:
 
   - <<: *linux_py37
     name: Python 3.7 env tests with extensions disabled
-    env:
-      MULTIDICT_NO_EXTENSIONS: X
+    env: *env_extensions_disabled
 
   - python: *pypy3
     name: PyPy3.5 env tests with extensions disabled
-    env:
-    - MULTIDICT_NO_EXTENSIONS=X
+    env: *env_extensions_disabled
 
   - <<: *_doc_base
     name: Documentation linting
     env:
-    - TOXENV=doc-spelling
+      TOXENV: doc-spelling
 
   - <<: *_lint_base
     name: Flake8 linter
     env:
-    - TOXENV=flake8
+      TOXENV: flake8
 
   - <<: *_lint_base
     name: MyPy linter
     env:
-    - TOXENV=mypy
+      TOXENV: mypy
 
   - <<: *_lint_base
     name: dist setup check
     env:
-    - TOXENV=setup-check
+      TOXENV: setup-check
 
   - <<: *osx_python_base
-    python: 3.4
+    python: &py34 3.4.6
     env:
-    - &env_py34 PYTHON_VERSION=3.4.6
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py34
   - <<: *osx_python_base
-    python: 3.5
+    python: &py35 3.5.3
     env:
-    - &env_py35 PYTHON_VERSION=3.5.3
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py35
   - <<: *osx_python_base
     python: *mainstream_python
-    env:
-    - *env_py36
-    - *env_pyenv
-    - *env_path
+    env: *env_osx_base
   - <<: *osx_python_base
-    python: 3.7.0
+    python: &py37 3.7.0
     env:
-    - PYTHON_VERSION=3.7.0
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py37
   # pypy3.5-5.10.0 fails under OS X because it's unsupported
 
   # Build and deploy manylinux1 binary wheels and source distribution
@@ -216,7 +200,7 @@ jobs:
     <<: *generic_deploy_base
     name: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution
     env:
-    - TOXENV=build-sdist,manylinux1
+      TOXENV: build-sdist,manylinux1
     dist: trusty
     group: edge
     services:
@@ -225,106 +209,64 @@ jobs:
     # Build and deploy MacOS binary wheels for each OSX+Python combo possible
     # OS X 10.10, Python 3.4
   - <<: *osx_pypi_deploy_base_1010
-    python: 3.4
+    python: *py34
     env:
-    - *env_py34
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+      <<: *env_osx_base
+      PYTHON_VERSION: *py34
     # OS X 10.10, Python 3.5
   - <<: *osx_pypi_deploy_base_1010
-    python: 3.5
+    python: *py35
     env:
-    - *env_py35
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+      <<: *env_osx_base
+      PYTHON_VERSION: *py35
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
-    env:
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+    env: *env_osx_base
     # OS X 10.10, Python 3.7
   - <<: *osx_pypi_deploy_base_1010
     env:
-    - &env_py37 PYTHON_VERSION=3.7.0
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+      <<: *env_osx_base
+      PYTHON_VERSION: *py37
     # OS X 10.11, Python 3.4
   - <<: *osx_pypi_deploy_base_1011
-    python: 3.4
+    python: *py34
     env:
-    - *env_py34
-    - *env_pyenv
-    - *env_path
-    - *env_macos_dpl_target
-    - *env_tox_build-dists
+      <<: *env_osx_base
+      PYTHON_VERSION: *py34
     # OS X 10.11, Python 3.5
   - <<: *osx_pypi_deploy_base_1011
-    python: 3.5
+    python: *py35
     env:
-    - *env_py35
-    - *env_pyenv
-    - *env_path
-    - *env_macos_dpl_target
-    - *env_tox_build-dists
+      <<: *env_osx_base
+      PYTHON_VERSION: *py35
     # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
-    env:
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+    env: *env_osx_base
     # OS X 10.11, Python 3.7
   - <<: *osx_pypi_deploy_base_1011
     env:
-    - *env_py37
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+      <<: *env_osx_base
+      PYTHON_VERSION: *py37
     # OS X 10.12, Python 3.4
   - <<: *osx_pypi_deploy_base_1012
-    python: 3.4
+    python: *py34
     env:
-    - *env_py34
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+      <<: *env_osx_base
+      PYTHON_VERSION: *py34
     # OS X 10.12, Python 3.5
   - <<: *osx_pypi_deploy_base_1012
-    python: 3.5
+    python: *py35
     env:
-    - *env_py35
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+      <<: *env_osx_base
+      PYTHON_VERSION: *py35
     # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
-    env:
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+    env: *env_osx_base
     # OS X 10.12, Python 3.7
   - <<: *osx_pypi_deploy_base_1012
     env:
-    - *env_py37
-    - *env_pyenv
-    - *env_path
-    - *env_tox_build-dists
-    - *env_macos_dpl_target
+      <<: *env_osx_base
+      PYTHON_VERSION: *py37
 
 stages:
 - *doc_stage_name
