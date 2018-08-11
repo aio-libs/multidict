@@ -61,8 +61,8 @@ _helpers:
   - &env_pyenv PYENV_ROOT="$HOME/.pyenv"
   - &env_path PATH="$PYENV_ROOT/bin:$PATH"
   before_install:
-  - brew install zlib readline
-  - brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/master/Formula/pyenv.rb || brew upgrade pyenv
+  - brew update
+  - brew install pyenv || brew upgrade pyenv
   - &ensure_pyenv_preloaded |
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
