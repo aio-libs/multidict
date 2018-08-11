@@ -104,6 +104,9 @@ _helpers:
   <<: *generic_deploy_base
   name: &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
   osx_image: xcode7.3
+  before_install: &install-from-python_org
+  - curl -Lo "/tmp/python-${PYTHON_VERSION}.pkg" "https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macosx10.6.pkg" && sudo installer -pkg "/tmp/python-${PYTHON_VERSION}.pkg" -target / && rm -f "/tmp/python-${PYTHON_VERSION}.pkg"
+  - *python_version
   after_success: []
   env:
   - &env_py36 PYTHON_VERSION=3.6.1
