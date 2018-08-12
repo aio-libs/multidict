@@ -120,7 +120,7 @@ _helpers:
 - &osx_pypi_deploy_base_1012
   <<: *osx_pypi_deploy_base_1011
   name: &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel=
-  osx_image: xcode8.1
+  osx_image: xcode8.3
   env: *env_osx_base
 - &osx_pypi_deploy_base_1010
   <<: *osx_pypi_deploy_base_1011
