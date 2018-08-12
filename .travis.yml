@@ -103,7 +103,9 @@ _helpers:
   - export PYTHON_VENV_PATH="${HOME}/virtualenv/python${PYTHON_VERSION_SHORT}"
   - virtualenv -p "/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION_SHORT}/bin/python${PYTHON_VERSION_SHORT}" "${PYTHON_VENV_PATH}"
   - . "${PYTHON_VENV_PATH}/bin/activate"
+  - curl https://bootstrap.pypa.io/get-pip.py | python
   - *python_version
+  - pip --version
   after_success: []
   env: &env_osx_base
     <<: *env_pyenv_base
