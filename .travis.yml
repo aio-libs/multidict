@@ -70,6 +70,7 @@ _helpers:
   script: *default_script
   before_deploy:
   - echo > setup.py  # make Travis not invoke setuptools, only twine upload
+  - pip install --upgrade pyOpenSSL  # Workaround for 'twine' not working on some versions of Mac OSX: pypa/twine#273
   deploy: &deploy_step
     provider: pypi
     # `skip_cleanup: true` is required to preserve binary wheels, built
