@@ -108,7 +108,10 @@ _helpers:
   - ls "${PYTHON_INSTALL_PATH}/bin"
   - export VENV_CMD=$(command -v virtualenv 2>/dev/null || command -v pyvenv 2>/dev/null || echo "${PYTHON_INSTALL_EXE} -m venv")
   - >
-    [ "${VENV_CMD}" == "virtualenv" ] && export VENV_CMD="${VENV_CMD} -p '${PYTHON_INSTALL_EXE}'"
+    if [ "${VENV_CMD}" == "virtualenv" ]
+    then
+        export VENV_CMD="${VENV_CMD} -p '${PYTHON_INSTALL_EXE}'"
+    fi
   - ${VENV_CMD} "${PYTHON_VENV_PATH}"
   - . "${PYTHON_VENV_PATH}/bin/activate"
   - curl https://bootstrap.pypa.io/get-pip.py | python
