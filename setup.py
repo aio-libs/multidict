@@ -12,6 +12,10 @@ from distutils.command.build_ext import build_ext
 PYPY = platform.python_implementation() == 'PyPy'
 
 
+# Fallbacks for PyPy: don't use C extensions
+extensions = []
+cmdclass = {}
+
 if not PYPY:
     try:
         from Cython.Build import cythonize
@@ -73,11 +77,28 @@ if not PYPY:
                     DistutilsPlatformError, ValueError):
                 raise BuildFailed()
 
-    cmdclass = dict(build_ext=ve_build_ext)
-else:
-    # Don't use C extensions on PYPY
-    extensions = []
-    cmdclass = {}
+    cmdclass['build_ext'] = ve_build_ext
+
+
+try:
+    from wheel.bdist_wheel import bdist_wheel
+
+    class _bdist_wheel(bdist_wheel):
+        def get_tag(self):
+            tag = super().get_tag()
+            if tag[2] != 'macosx_10_6_intel':
+                return tag
+
+            compatible_versions_x86_64 = range(9, 14)
+            compatible_platforms = ['macosx_10_6_intel'] + [
+                f'macosx_10_{v}_x86_64' for v in compatible_versions_x86_64
+            ]
+            new_version_tag = '.'.join(compatible_platforms)
+            return tag[:2] + (new_version_tag, )
+
+    cmdclass['bdist_wheel'] = _bdist_wheel
+except ImportError:
+    """Wheel is not installed."""
 
 
 with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
