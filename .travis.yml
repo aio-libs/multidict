@@ -67,6 +67,7 @@ _helpers:
   stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
   <<: *_mainstream_python_base
   install: *default_install
+  script: *default_script
   before_deploy:
   - echo > setup.py  # make Travis not invoke setuptools, only twine upload
   deploy: &deploy_step
