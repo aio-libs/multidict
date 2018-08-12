@@ -101,7 +101,8 @@ _helpers:
   - export PYTHON_VERSION_SHORT=$(echo ${PYTHON_VERSION} | awk -F. '{print$1"."$2}')
   - export PATH="/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION_SHORT}/bin:${PATH}"
   - export PYTHON_VENV_PATH="${HOME}/virtualenv/python${PYTHON_VERSION_SHORT}"
-  - virtualenv -p "/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION_SHORT}/bin/python${PYTHON_VERSION_SHORT}" "${PYTHON_VENV_PATH}"
+  - export VENV_CMD=$(command -v virtualenv >/dev/null 2>&1 || echo 'python -m venv')
+  - "${VENV_CMD}" -p "/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION_SHORT}/bin/python${PYTHON_VERSION_SHORT}" "${PYTHON_VENV_PATH}"
   - . "${PYTHON_VENV_PATH}/bin/activate"
   - curl https://bootstrap.pypa.io/get-pip.py | python
   - *python_version
