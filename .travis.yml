@@ -127,6 +127,11 @@ _helpers:
   name: &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel=
   osx_image: xcode6.4
   env: *env_osx_base
+- &osx_pypi_deploy_base_1013
+  <<: *osx_pypi_deploy_base_1011
+  name: &env_os1010_msg Build and deploy to PYPI of OS X 10.13 binary wheel=
+  osx_image: xcode9.4
+  env: *env_osx_base
 - &linux_py37
   python: 3.7
   dist: xenial
@@ -272,6 +277,27 @@ jobs:
     env: *env_osx_base
     # OS X 10.12, Python 3.7
   - <<: *osx_pypi_deploy_base_1012
+    env:
+      <<: *env_osx_base
+      PYTHON_VERSION: *py37
+########
+    # OS X 10.13, Python 3.4
+  - <<: *osx_pypi_deploy_base_1013
+    python: *py34
+    env:
+      <<: *env_osx_base
+      PYTHON_VERSION: *py34
+    # OS X 10.13, Python 3.5
+  - <<: *osx_pypi_deploy_base_1013
+    python: *py35
+    env:
+      <<: *env_osx_base
+      PYTHON_VERSION: *py35
+    # OS X 10.13, Python 3.6
+  - <<: *osx_pypi_deploy_base_1013
+    env: *env_osx_base
+    # OS X 10.13, Python 3.7
+  - <<: *osx_pypi_deploy_base_1013
     env:
       <<: *env_osx_base
       PYTHON_VERSION: *py37
