@@ -118,10 +118,6 @@ _helpers:
     TOXENV: build-dists
     MACOSX_DEPLOYMENT_TARGET: 10.6
     PYTHON_CONFIGURE_OPTS: "'--enable-universalsdk=/ --with-universal-archs=intel'"
-  deploy:
-    <<: *deploy_step
-    skip_cleanup: false
-    distributions: bdist_wheel
 - &osx_pypi_deploy_base_1012
   <<: *osx_pypi_deploy_base_1011
   name: &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel=
