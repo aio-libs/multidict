@@ -91,7 +91,8 @@ try:
 
             compatible_versions_x86_64 = range(9, 14)
             compatible_platforms = ['macosx_10_6_intel'] + [
-                f'macosx_10_{v}_x86_64' for v in compatible_versions_x86_64
+                'macosx_10_{v}_x86_64'.format(v=v)
+                for v in compatible_versions_x86_64
             ]
             new_version_tag = '.'.join(compatible_platforms)
             return tag[:2] + (new_version_tag, )
