@@ -7,9 +7,9 @@ extern "C" {
 
 #include "Python.h"
 
-PyObject *multidict_items_view_new(PyObject *impl);
-PyObject *multidict_keys_view_new(PyObject *impl);
-PyObject *multidict_values_view_new(PyObject *impl);
+PyObject *multidict_view_items_new(PyObject *impl);
+PyObject *multidict_view_keys_new(PyObject *impl);
+PyObject *multidict_view_values_new(PyObject *impl);
 
 int multidict_views_init();
 
