@@ -112,6 +112,7 @@ _helpers:
     then
         export VENV_CMD="${VENV_CMD} -p '${PYTHON_INSTALL_EXE}'"
     fi
+  - echo "${VENV_CMD}"
   - ${VENV_CMD} "${PYTHON_VENV_PATH}"
   - . "${PYTHON_VENV_PATH}/bin/activate"
   - curl https://bootstrap.pypa.io/get-pip.py | python
