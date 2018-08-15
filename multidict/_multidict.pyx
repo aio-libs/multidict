@@ -86,7 +86,7 @@ cdef class _Base:
 
     def items(self):
         """Return a new view of the dictionary's items *(key, value) pairs)."""
-        return multidict_view_items_new(self)
+        return multidict_itemsview_new(self)
         # return _ItemsView.__new__(_ItemsView, self)
 
     def values(self):

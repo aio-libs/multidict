@@ -20,17 +20,19 @@
 */
 #define DEFERRED_ADDRESS(ADDR) 0
 
-static PyTypeObject multidict_view_items_type;
-static PyTypeObject multidict_view_values_type;
-static PyTypeObject multidict_view_keys_type;
+static PyTypeObject multidict_itemsview_type;
+static PyTypeObject multidict_valuesview_type;
+static PyTypeObject multidict_keysview_type;
 
-static PyObject *view_items_repr_func;
-static PyObject *abc_itemsview_register_func;
 static PyObject *viewbaseset_richcmp_func;
 static PyObject *viewbaseset_and_func;
 static PyObject *viewbaseset_or_func;
 static PyObject *viewbaseset_sub_func;
 static PyObject *viewbaseset_xor_func;
+
+static PyObject *itemsview_repr_func;
+
+static PyObject *abc_itemsview_register_func;
 
 typedef struct {
     PyObject_HEAD
@@ -104,10 +106,10 @@ multidict_view_xor(PyObject *self, PyObject *other)
 /********** Items **********/
 
 PyObject *
-multidict_view_items_new(PyObject *md)
+multidict_itemsview_new(PyObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, &multidict_view_items_type);
+        _Multidict_ViewObject, &multidict_itemsview_type);
     if (mv == NULL) {
         return NULL;
     }
@@ -120,7 +122,7 @@ multidict_view_items_new(PyObject *md)
 }
 
 static PyObject *
-multidict_view_items_iter(_Multidict_ViewObject *self)
+multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
     if (self->md == NULL) {
         Py_RETURN_NONE;
@@ -133,14 +135,14 @@ multidict_view_items_iter(_Multidict_ViewObject *self)
 }
 
 static PyObject *
-multidict_view_items_repr(_Multidict_ViewObject *self)
+multidict_itemsview_repr(_Multidict_ViewObject *self)
 {
     return PyObject_CallFunctionObjArgs(
-        view_items_repr_func, self, NULL);
+        itemsview_repr_func, self, NULL);
 }
 
 static PyObject *
-multidict_view_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
+multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 {
     PyObject *it   = NULL,
              *item = NULL;
@@ -186,10 +188,10 @@ multidict_view_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 PyDoc_STRVAR(isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
-static PyMethodDef multidict_view_item_methods[] = {
+static PyMethodDef multidict_itemsview_methods[] = {
     {
         "isdisjoint",
-        (PyCFunction)multidict_view_isdisjoint,
+        (PyCFunction)multidict_itemsview_isdisjoint,
         METH_O,
         isdisjoint_doc
     },
@@ -200,7 +202,7 @@ static PyMethodDef multidict_view_item_methods[] = {
 };
 
 static int
-multidict_view_items_contains(_Multidict_ViewObject *self, PyObject *obj)
+multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
 {
     int contains = 0;
     
@@ -218,7 +220,7 @@ multidict_view_items_contains(_Multidict_ViewObject *self, PyObject *obj)
     bkey = PyTuple_GET_ITEM(obj, 0);
     bval = PyTuple_GET_ITEM(obj, 1);
 
-    iter = multidict_view_items_iter(self);
+    iter = multidict_itemsview_iter(self);
     if (iter == NULL) {
         return 0;
     }
@@ -241,7 +243,7 @@ ret:
     return contains;
 }
 
-static PySequenceMethods multidict_view_items_as_sequence = {
+static PySequenceMethods multidict_itemsview_as_sequence = {
     (lenfunc)multidict_view_len,               /* sq_length */
     0,                                         /* sq_concat */
     0,                                         /* sq_repeat */
@@ -249,10 +251,10 @@ static PySequenceMethods multidict_view_items_as_sequence = {
     0,                                         /* sq_slice */
     0,                                         /* sq_ass_item */
     0,                                         /* sq_ass_slice */
-    (objobjproc)multidict_view_items_contains, /* sq_contains */
+    (objobjproc)multidict_itemsview_contains, /* sq_contains */
 };
 
-static PyNumberMethods multidict_view_items_as_number = {
+static PyNumberMethods multidict_itemsview_as_number = {
     0,                              /* nb_add */
     (binaryfunc)multidict_view_sub, /* nb_subtract */
     0,                              /* nb_multiply */
@@ -271,7 +273,7 @@ static PyNumberMethods multidict_view_items_as_number = {
     (binaryfunc)multidict_view_or,  /* nb_or */
 };
 
-static PyTypeObject multidict_view_items_type = {
+static PyTypeObject multidict_itemsview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     // PyVarObject_HEAD_INIT(NULL, 0)
     "_ItemsView",                                   /* tp_name */
@@ -282,9 +284,9 @@ static PyTypeObject multidict_view_items_type = {
     0,                                              /* tp_getattr */
     0,                                              /* tp_setattr */
     0,                                              /* tp_reserved */
-    (reprfunc)multidict_view_items_repr,            /* tp_repr */
-    &multidict_view_items_as_number,                /* tp_as_number */
-    &multidict_view_items_as_sequence,              /* tp_as_sequence */
+    (reprfunc)multidict_itemsview_repr,             /* tp_repr */
+    &multidict_itemsview_as_number,                 /* tp_as_number */
+    &multidict_itemsview_as_sequence,               /* tp_as_sequence */
     0,                                              /* tp_as_mapping */
     0,                                              /* tp_hash */
     0,                                              /* tp_call */
@@ -298,9 +300,9 @@ static PyTypeObject multidict_view_items_type = {
     0,                                              /* tp_clear */
     multidict_view_richcompare,                     /* tp_richcompare */
     0,                                              /* tp_weaklistoffset */
-    (getiterfunc)multidict_view_items_iter,         /* tp_iter */
+    (getiterfunc)multidict_itemsview_iter,          /* tp_iter */
     0,                                              /* tp_iternext */
-    multidict_view_item_methods,                    /* tp_methods */
+    multidict_itemsview_methods,                    /* tp_methods */
 };
 
 
@@ -310,7 +312,7 @@ PyObject *
 multidict_view_keys_new(PyObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, &multidict_view_keys_type);
+        _Multidict_ViewObject, &multidict_keysview_type);
     if (mv == NULL) {
         return NULL;
     }
@@ -331,7 +333,7 @@ multidict_view_keys_iter(_Multidict_ViewObject *self)
     return multidict_keys_iter_new(PyObject_GetAttrString(self->md, "_impl"));
 }
 
-static PyTypeObject multidict_view_keys_type = {
+static PyTypeObject multidict_keysview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "_KeysView",                                   /* tp_name */
     sizeof(_Multidict_ViewObject),                 /* tp_basicsize */
@@ -368,7 +370,7 @@ PyObject *
 multidict_view_values_new(PyObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, &multidict_view_values_type);
+        _Multidict_ViewObject, &multidict_valuesview_type);
     if (mv == NULL) {
         return NULL;
     }
@@ -389,7 +391,7 @@ multidict_view_values_iter(_Multidict_ViewObject *self)
     return multidict_values_iter_new(PyObject_GetAttrString(self->md, "_impl"));
 }
 
-static PyTypeObject multidict_view_values_type = {
+static PyTypeObject multidict_valuesview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "_ValuesView",                                   /* tp_name */
     sizeof(_Multidict_ViewObject),                   /* tp_basicsize */
@@ -433,19 +435,20 @@ multidict_views_init()
         goto fail;                              \
     }
 
-    GET_MOD_ATTR(view_items_repr_func, "_itemsview_repr");
-    GET_MOD_ATTR(abc_itemsview_register_func, "_abc_itemsview_register");
     GET_MOD_ATTR(viewbaseset_richcmp_func, "_viewbaseset_richcmp");
     GET_MOD_ATTR(viewbaseset_and_func, "_viewbaseset_and");
     GET_MOD_ATTR(viewbaseset_or_func, "_viewbaseset_or");
     GET_MOD_ATTR(viewbaseset_sub_func, "_viewbaseset_sub");
     GET_MOD_ATTR(viewbaseset_xor_func, "_viewbaseset_xor");
 
+    GET_MOD_ATTR(itemsview_repr_func, "_itemsview_repr");
+    GET_MOD_ATTR(abc_itemsview_register_func, "_abc_itemsview_register");
+    
     if (multidict_iter_init() < 0) {
         goto fail;
     }
     
-    if (PyType_Ready(&multidict_view_items_type) < 0
+    if (PyType_Ready(&multidict_itemsview_type) < 0
         // PyType_Ready(&multidict_values_views_type) < 0 ||
         // PyType_Ready(&multidict_keys_views_type) < 0
         ) {
@@ -454,7 +457,7 @@ multidict_views_init()
 
     // abc.ItemsView.register(_ItemsView)
     PyObject_CallFunctionObjArgs(
-        abc_itemsview_register_func, (PyObject*)&multidict_view_items_type, NULL);
+        abc_itemsview_register_func, (PyObject*)&multidict_itemsview_type, NULL);
 
     Py_DECREF(module);
     return 0;
