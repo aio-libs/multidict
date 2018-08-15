@@ -30,6 +30,7 @@ static PyObject *viewbaseset_or_func;
 static PyObject *viewbaseset_sub_func;
 static PyObject *viewbaseset_xor_func;
 
+static PyObject *itemsview_isdisjoint_func;
 static PyObject *itemsview_repr_func;
 
 static PyObject *abc_itemsview_register_func;
@@ -144,45 +145,8 @@ multidict_itemsview_repr(_Multidict_ViewObject *self)
 static PyObject *
 multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 {
-    PyObject *it   = NULL,
-             *item = NULL;
-
-    int contains = 0;
-
-    if ((PyObject*)self == other) {
-        if (multidict_view_len(self) == 0) {
-            Py_RETURN_TRUE;
-        } else {
-            Py_RETURN_FALSE;
-        }
-    }
-
-    it = PyObject_GetIter(other);
-    if (it == NULL) {
-        return NULL;
-    }
-
-    while ((item = PyIter_Next(it)) != NULL) {
-        contains = PySequence_Contains((PyObject*)self, item);
-
-        Py_DECREF(item);
-        if (contains == -1) {
-            Py_DECREF(it);
-            return NULL;
-        }
-
-        if (contains) {
-            Py_DECREF(it);
-            Py_RETURN_FALSE;
-        }
-    }
-    Py_DECREF(it);
-    
-    if (PyErr_Occurred()) {
-        return NULL;
-    }
-
-    Py_RETURN_TRUE;
+    return PyObject_CallFunctionObjArgs(
+        itemsview_isdisjoint_func, self, other, NULL);
 }
 
 PyDoc_STRVAR(isdisjoint_doc,
@@ -441,6 +405,7 @@ multidict_views_init()
     GET_MOD_ATTR(viewbaseset_sub_func, "_viewbaseset_sub");
     GET_MOD_ATTR(viewbaseset_xor_func, "_viewbaseset_xor");
 
+    GET_MOD_ATTR(itemsview_repr_func, "_itemsview_isdisjoint");
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_repr");
     GET_MOD_ATTR(abc_itemsview_register_func, "_abc_itemsview_register");
     
