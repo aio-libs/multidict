@@ -455,41 +455,6 @@ cdef class _ViewBaseSet(_ViewBase):
         return self ^ other
 
 
-cdef class _ItemsView(_ViewBaseSet):
-
-    def isdisjoint(self, other):
-        'Return True if two sets have a null intersection.'
-        for v in other:
-            if v in self:
-                return False
-        return True
-
-    def __contains__(self, i):
-        cdef str key
-        cdef object value
-        assert isinstance(i, tuple) or isinstance(i, list)
-        assert len(i) == 2
-        key = i[0]
-        value = i[1]
-        for k, v in self:
-            if key == k and value == v:
-                return True
-        return False
-
-    def __iter__(self):
-        return multidict_items_iter_new(self._md._impl)
-
-    def __repr__(self):
-        lst = []
-        for k ,v in self:
-            lst.append("{!r}: {!r}".format(k, v))
-        body = ', '.join(lst)
-        return '{}({})'.format(self.__class__.__name__, body)
-
-
-abc.ItemsView.register(_ItemsView)
-
-
 cdef class _ValuesView(_ViewBase):
 
     def __contains__(self, value):
