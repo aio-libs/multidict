@@ -95,3 +95,11 @@ def _itemsview_repr(view):
         lst.append("{!r}: {!r}".format(k, v))
     body = ', '.join(lst)
     return '{}({})'.format(view.__class__.__name__, body)
+
+
+def _keysview_repr(view):
+    lst = []
+    for k in view:
+        lst.append("{!r}".format(k))
+    body = ', '.join(lst)
+    return '{}({})'.format(view.__class__.__name__, body)
