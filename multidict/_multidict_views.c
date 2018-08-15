@@ -240,7 +240,6 @@ static PyNumberMethods multidict_itemsview_as_number = {
 
 static PyTypeObject multidict_itemsview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    // PyVarObject_HEAD_INIT(NULL, 0)
     "_ItemsView",                                   /* tp_name */
     sizeof(_Multidict_ViewObject),                  /* tp_basicsize */
     0,                                              /* tp_itemsize */
