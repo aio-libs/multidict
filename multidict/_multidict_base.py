@@ -97,6 +97,14 @@ def _itemsview_repr(view):
     return '{}({})'.format(view.__class__.__name__, body)
 
 
+def _keysview_isdisjoint(view, other):
+    'Return True if two sets have a null intersection.'
+    for k in other:
+        if k in view:
+            return False
+    return True
+
+
 def _keysview_repr(view):
     lst = []
     for k in view:
