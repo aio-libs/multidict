@@ -89,6 +89,14 @@ def _viewbaseset_xor(view, other):
     return view ^ other
 
 
+def _itemsview_isdisjoint(view, other):
+    'Return True if two sets have a null intersection.'
+    for v in other:
+        if v in view:
+            return False
+    return True
+
+
 def _itemsview_repr(view):
     lst = []
     for k ,v in view:
