@@ -273,7 +273,7 @@ static PyTypeObject multidict_itemsview_type = {
 /********** Keys **********/
 
 PyObject *
-multidict_view_keys_new(PyObject *md)
+multidict_keysview_new(PyObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
         _Multidict_ViewObject, &multidict_keysview_type);
@@ -289,7 +289,7 @@ multidict_view_keys_new(PyObject *md)
 }
 
 static PyObject *
-multidict_view_keys_iter(_Multidict_ViewObject *self)
+multidict_keysview_iter(_Multidict_ViewObject *self)
 {
     if (self->md == NULL) {
         Py_RETURN_NONE;
@@ -323,7 +323,7 @@ static PyTypeObject multidict_keysview_type = {
     0,                                             /* tp_clear */
     0,                                             /* tp_richcompare */
     0,                                             /* tp_weaklistoffset */
-    (getiterfunc)multidict_view_keys_iter,         /* tp_iter */
+    (getiterfunc)multidict_keysview_iter,          /* tp_iter */
     0,                                             /* tp_iternext */
 };
 
@@ -331,7 +331,7 @@ static PyTypeObject multidict_keysview_type = {
 /********** Values **********/
 
 PyObject *
-multidict_view_values_new(PyObject *md)
+multidict_valuesview_new(PyObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
         _Multidict_ViewObject, &multidict_valuesview_type);
@@ -347,7 +347,7 @@ multidict_view_values_new(PyObject *md)
 }
 
 static PyObject *
-multidict_view_values_iter(_Multidict_ViewObject *self)
+multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
     if (self->md == NULL) {
         Py_RETURN_NONE;
@@ -381,7 +381,7 @@ static PyTypeObject multidict_valuesview_type = {
     0,                                               /* tp_clear */
     0,                                               /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
-    (getiterfunc)multidict_view_values_iter,         /* tp_iter */
+    (getiterfunc)multidict_valuesview_iter,          /* tp_iter */
     0,                                               /* tp_iternext */
 };
 
