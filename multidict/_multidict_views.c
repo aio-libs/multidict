@@ -431,6 +431,5 @@ fail:
     Py_CLEAR(module);
     return -1;
 
-#undef WITH_MOD
 #undef GET_MOD_ATTR
 }
