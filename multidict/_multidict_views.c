@@ -41,12 +41,13 @@ typedef struct {
 } _Multidict_ViewObject;
 
 
+/********** Base **********/
+
 static INLINE void
 _init_view(_Multidict_ViewObject *self, PyObject *md)
 {
     self->md = md;
 }
-
 
 static void
 multidict_view_dealloc(_Multidict_ViewObject *self)
