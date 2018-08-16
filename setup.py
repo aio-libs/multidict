@@ -26,8 +26,8 @@ if not PYPY:
     else:
         macros = []
 
-    # CFLAGS = ['-O2']
-    CFLAGS = ['-g']
+    CFLAGS = ['-O2']
+    # CFLAGS = ['-g']
     if platform.system() != 'Windows':
         CFLAGS.extend(['-std=c99', '-Wall', '-Wsign-compare', '-Wconversion',
                        '-fno-strict-aliasing'])
