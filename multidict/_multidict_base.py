@@ -10,6 +10,10 @@ def _abc_keysview_register(view_cls):
     abc.KeysView.register(view_cls)
 
 
+def _abc_valuesview_register(view_cls):
+    abc.ValuesView.register(view_cls)
+
+
 def _viewbaseset_richcmp(view, other, op):
     if op == 0:  # <
         if not isinstance(other, Set):

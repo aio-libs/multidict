@@ -34,6 +34,7 @@ static PyObject *viewbaseset_xor_func;
 
 static PyObject *abc_itemsview_register_func;
 static PyObject *abc_keysview_register_func;
+static PyObject *abc_valuesview_register_func;
 
 static PyObject *itemsview_isdisjoint_func;
 static PyObject *itemsview_repr_func;
@@ -506,6 +507,7 @@ multidict_views_init()
 
     GET_MOD_ATTR(abc_itemsview_register_func, "_abc_itemsview_register");
     GET_MOD_ATTR(abc_keysview_register_func, "_abc_keysview_register");
+    GET_MOD_ATTR(abc_valuesview_register_func, "_abc_valuesview_register");
 
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_isdisjoint");
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_repr");
@@ -520,9 +522,9 @@ multidict_views_init()
     }
     
     if (PyType_Ready(&multidict_itemsview_type) < 0 ||
-        // PyType_Ready(&multidict_values_views_type) < 0 ||
-        PyType_Ready(&multidict_keysview_type) < 0
-        ) {
+        PyType_Ready(&multidict_valuesview_type) < 0 ||
+        PyType_Ready(&multidict_keysview_type) < 0) 
+    {
         goto fail;
     }
 
@@ -533,6 +535,10 @@ multidict_views_init()
     // abc.KeysView.register(_KeysView)
     PyObject_CallFunctionObjArgs(
         abc_keysview_register_func, (PyObject*)&multidict_keysview_type, NULL);
+
+    // abc.ValuesView.register(_KeysView)
+    PyObject_CallFunctionObjArgs(
+        abc_valuesview_register_func, (PyObject*)&multidict_valuesview_type, NULL);
 
     Py_DECREF(module);
     return 0;
