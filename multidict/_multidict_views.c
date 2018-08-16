@@ -41,6 +41,8 @@ static PyObject *itemsview_repr_func;
 static PyObject *keysview_repr_func;
 static PyObject *keysview_isdisjoint_func;
 
+static PyObject *valuesview_repr_func;
+
 typedef struct {
     PyObject_HEAD
     PyObject *md;
@@ -411,6 +413,13 @@ multidict_valuesview_iter(_Multidict_ViewObject *self)
     return multidict_values_iter_new(impl);
 }
 
+static PyObject *
+multidict_valuesview_repr(_Multidict_ViewObject *self)
+{
+    return PyObject_CallFunctionObjArgs(
+        valuesview_repr_func, self, NULL);
+}
+
 static PyTypeObject multidict_valuesview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "_ValuesView",                                   /* tp_name */
@@ -421,7 +430,7 @@ static PyTypeObject multidict_valuesview_type = {
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
-    0,                                               /* tp_repr */
+    (reprfunc)multidict_valuesview_repr,             /* tp_repr */
     0,                                               /* tp_as_number */
     0,                                               /* tp_as_sequence */
     0,                                               /* tp_as_mapping */
@@ -469,6 +478,8 @@ multidict_views_init()
     
     GET_MOD_ATTR(keysview_repr_func, "_keysview_repr");
     GET_MOD_ATTR(keysview_isdisjoint_func, "_keysview_isdisjoint");
+
+    GET_MOD_ATTR(valuesview_repr_func, "_valuesview_repr");
 
     if (multidict_iter_init() < 0) {
         goto fail;
