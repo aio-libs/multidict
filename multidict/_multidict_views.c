@@ -163,12 +163,15 @@ multidict_itemsview_new(PyObject *md)
 static PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
+    PyObject *impl = NULL,
+             *iter = NULL;
+
     if (self->md == NULL) {
         Py_RETURN_NONE;
     }
 
-    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    PyObject *iter = multidict_items_iter_new(impl);
+    impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    iter = multidict_items_iter_new(impl);
 
     return iter;
 }
@@ -310,10 +313,14 @@ multidict_keysview_new(PyObject *md)
 static PyObject *
 multidict_keysview_iter(_Multidict_ViewObject *self)
 {
+    PyObject *impl = NULL;
+
     if (self->md == NULL) {
         Py_RETURN_NONE;
     }
-    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+
+    impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    
     return multidict_keys_iter_new(impl);
 }
 
@@ -422,10 +429,14 @@ multidict_valuesview_new(PyObject *md)
 static PyObject *
 multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
+    PyObject *impl = NULL;
+
     if (self->md == NULL) {
         Py_RETURN_NONE;
     }
-    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    
+    impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    
     return multidict_values_iter_new(impl);
 }
 
