@@ -20,6 +20,8 @@
 */
 #define DEFERRED_ADDRESS(ADDR) 0
 
+_Py_IDENTIFIER(impl);
+
 static PyTypeObject multidict_itemsview_type;
 static PyTypeObject multidict_valuesview_type;
 static PyTypeObject multidict_keysview_type;
@@ -62,7 +64,7 @@ multidict_view_len(_Multidict_ViewObject *self)
 {
     Py_ssize_t len = 0;
     if (self->md != NULL) {
-        PyObject *impl = PyObject_CallMethod(self->md, "impl", "");
+        PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
         len = pair_list_len(impl);
     }
     return len;
@@ -129,8 +131,8 @@ multidict_itemsview_iter(_Multidict_ViewObject *self)
     if (self->md == NULL) {
         Py_RETURN_NONE;
     }
-    
-    PyObject *impl = PyObject_CallMethod(self->md, "impl", "");
+
+    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
     PyObject *iter = multidict_items_iter_new(impl);
 
     return iter;
@@ -294,7 +296,8 @@ multidict_keysview_iter(_Multidict_ViewObject *self)
     if (self->md == NULL) {
         Py_RETURN_NONE;
     }
-    return multidict_keys_iter_new(PyObject_GetAttrString(self->md, "_impl"));
+    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    return multidict_keys_iter_new(impl);
 }
 
 static PyTypeObject multidict_keysview_type = {
@@ -352,7 +355,8 @@ multidict_valuesview_iter(_Multidict_ViewObject *self)
     if (self->md == NULL) {
         Py_RETURN_NONE;
     }
-    return multidict_values_iter_new(PyObject_GetAttrString(self->md, "_impl"));
+    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    return multidict_values_iter_new(impl);
 }
 
 static PyTypeObject multidict_valuesview_type = {
