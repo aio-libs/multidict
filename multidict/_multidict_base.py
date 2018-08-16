@@ -34,7 +34,7 @@ def _viewbaseset_richcmp(view, other, op):
         return len(view) == len(other) and view <= other
     elif op == 3:  # !=
         return not view == other
-    elif op == 4:  #  >
+    elif op == 4:  # >
         if not isinstance(other, Set):
             return NotImplemented
         return len(view) > len(other) and view >= other
@@ -107,7 +107,7 @@ def _itemsview_isdisjoint(view, other):
 
 def _itemsview_repr(view):
     lst = []
-    for k ,v in view:
+    for k, v in view:
         lst.append("{!r}: {!r}".format(k, v))
     body = ', '.join(lst)
     return '{}({})'.format(view.__class__.__name__, body)
