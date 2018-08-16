@@ -300,6 +300,24 @@ multidict_keysview_iter(_Multidict_ViewObject *self)
     return multidict_keys_iter_new(impl);
 }
 
+static int
+multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
+{
+    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    return pair_list_contains(impl, key);
+}
+
+static PySequenceMethods multidict_keysview_as_sequence = {
+    (lenfunc)multidict_view_len,               /* sq_length */
+    0,                                         /* sq_concat */
+    0,                                         /* sq_repeat */
+    0,                                         /* sq_item */
+    0,                                         /* sq_slice */
+    0,                                         /* sq_ass_item */
+    0,                                         /* sq_ass_slice */
+    (objobjproc)multidict_keysview_contains,   /* sq_contains */
+};
+
 static PyTypeObject multidict_keysview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "_KeysView",                                   /* tp_name */
@@ -312,7 +330,7 @@ static PyTypeObject multidict_keysview_type = {
     0,                                             /* tp_reserved */
     0,                                             /* tp_repr */
     0,                                             /* tp_as_number */
-    0,                                             /* tp_as_sequence */
+    &multidict_keysview_as_sequence,               /* tp_as_sequence */
     0,                                             /* tp_as_mapping */
     0,                                             /* tp_hash */
     0,                                             /* tp_call */
