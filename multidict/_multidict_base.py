@@ -123,3 +123,11 @@ def _keysview_repr(view):
         lst.append("{!r}".format(k))
     body = ', '.join(lst)
     return '{}({})'.format(view.__class__.__name__, body)
+
+
+def _valuesview_repr(view):
+    lst = []
+    for v in view:
+        lst.append("{!r}".format(v))
+    body = ', '.join(lst)
+    return '{}({})'.format(view.__class__.__name__, body)
