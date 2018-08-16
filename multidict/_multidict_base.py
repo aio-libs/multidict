@@ -1,9 +1,13 @@
 from collections import abc
-from collections.abc import Set
+from collections.abc import Set, Iterable
 
 
 def _abc_itemsview_register(view_cls):
     abc.ItemsView.register(view_cls)
+
+
+def _abc_keysview_register(view_cls):
+    abc.KeysView.register(view_cls)
 
 
 def _viewbaseset_richcmp(view, other, op):

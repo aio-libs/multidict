@@ -82,12 +82,11 @@ cdef class _Base:
 
     cpdef keys(self):
         """Return a new view of the dictionary's keys."""
-        return _KeysView.__new__(_KeysView, self)
+        return multidict_keysview_new(self)
 
     def items(self):
         """Return a new view of the dictionary's items *(key, value) pairs)."""
         return multidict_itemsview_new(self)
-        # return _ItemsView.__new__(_ItemsView, self)
 
     def values(self):
         """Return a new view of the dictionary's values."""
@@ -475,31 +474,3 @@ cdef class _ValuesView(_ViewBase):
 
 
 abc.ValuesView.register(_ValuesView)
-
-
-cdef class _KeysView(_ViewBaseSet):
-
-    def isdisjoint(self, other):
-        'Return True if two sets have a null intersection.'
-        for k in other:
-            print('isdisjoint.1', k)
-            if k in self:
-                print('isdisjoint.2', k)
-                return False
-        return True
-
-    def __contains__(self, value):
-        return self._md._contains(value)
-
-    def __iter__(self):
-        return multidict_keys_iter_new(self._md._impl)
-
-    def __repr__(self):
-        lst = []
-        for k in self:
-            lst.append("{!r}".format(k))
-        body = ', '.join(lst)
-        return '{}({})'.format(self.__class__.__name__, body)
-
-
-abc.KeysView.register(_KeysView)
