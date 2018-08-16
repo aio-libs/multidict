@@ -81,6 +81,8 @@ static PyObject *
 multidict_view_richcompare(PyObject *self, PyObject *other, int op)
 {
     PyObject *op_obj = PyLong_FromLong(op);
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         viewbaseset_richcmp_func, self, other, op_obj, NULL);
 }
@@ -88,6 +90,8 @@ multidict_view_richcompare(PyObject *self, PyObject *other, int op)
 static PyObject *
 multidict_view_and(PyObject *self, PyObject *other)
 {
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         viewbaseset_and_func, self, other, NULL);
 }
@@ -95,6 +99,8 @@ multidict_view_and(PyObject *self, PyObject *other)
 static PyObject *
 multidict_view_or(PyObject *self, PyObject *other)
 {
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         viewbaseset_or_func, self, other, NULL);
 }
@@ -102,6 +108,8 @@ multidict_view_or(PyObject *self, PyObject *other)
 static PyObject *
 multidict_view_sub(PyObject *self, PyObject *other)
 {
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         viewbaseset_sub_func, self, other, NULL);
 }
@@ -109,6 +117,8 @@ multidict_view_sub(PyObject *self, PyObject *other)
 static PyObject *
 multidict_view_xor(PyObject *self, PyObject *other)
 {
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         viewbaseset_xor_func, self, other, NULL);
 }
@@ -166,6 +176,8 @@ multidict_itemsview_iter(_Multidict_ViewObject *self)
 static PyObject *
 multidict_itemsview_repr(_Multidict_ViewObject *self)
 {
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         itemsview_repr_func, self, NULL);
 }
@@ -173,6 +185,8 @@ multidict_itemsview_repr(_Multidict_ViewObject *self)
 static PyObject *
 multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 {
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         itemsview_isdisjoint_func, self, other, NULL);
 }
@@ -196,8 +210,6 @@ static PyMethodDef multidict_itemsview_methods[] = {
 static int
 multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
 {
-    int contains = 0;
-    
     PyObject *akey  = NULL,
              *aval  = NULL,
              *bkey  = NULL,
@@ -224,16 +236,14 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
         if (PyObject_RichCompareBool(akey, bkey, Py_EQ) > 0 &&
             PyObject_RichCompareBool(aval, bval, Py_EQ) > 0)
         {
-            // TODO: fixme - memleak
-            contains = 1;
-            goto ret;
+            Py_DECREF(item);
+            return 1;
         }
         
         Py_DECREF(item);
     }
 
-ret:
-    return contains;
+    return 0;
 }
 
 static PySequenceMethods multidict_itemsview_as_sequence = {
@@ -310,6 +320,8 @@ multidict_keysview_iter(_Multidict_ViewObject *self)
 static PyObject *
 multidict_keysview_repr(_Multidict_ViewObject *self)
 {
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         keysview_repr_func, self, NULL);
 }
@@ -317,6 +329,8 @@ multidict_keysview_repr(_Multidict_ViewObject *self)
 static PyObject *
 multidict_keysview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 {
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         keysview_isdisjoint_func, self, other, NULL);
 }
@@ -418,6 +432,8 @@ multidict_valuesview_iter(_Multidict_ViewObject *self)
 static PyObject *
 multidict_valuesview_repr(_Multidict_ViewObject *self)
 {
+    // TODO: mb we should decref PyObject from PyObject_CallFunctionObjArgs
+    // function call ?
     return PyObject_CallFunctionObjArgs(
         valuesview_repr_func, self, NULL);
 }
@@ -488,6 +504,7 @@ static PyTypeObject multidict_valuesview_type = {
 int
 multidict_views_init()
 {
+    PyObject *reg_func_call_result = NULL;
     PyObject *module = PyImport_ImportModule("multidict._multidict_base");
     if (module == NULL) {
         goto fail;
@@ -529,16 +546,19 @@ multidict_views_init()
     }
 
     // abc.ItemsView.register(_ItemsView)
-    PyObject_CallFunctionObjArgs(
+    reg_func_call_result = PyObject_CallFunctionObjArgs(
         abc_itemsview_register_func, (PyObject*)&multidict_itemsview_type, NULL);
+    Py_DECREF(reg_func_call_result);
 
     // abc.KeysView.register(_KeysView)
-    PyObject_CallFunctionObjArgs(
+    reg_func_call_result = PyObject_CallFunctionObjArgs(
         abc_keysview_register_func, (PyObject*)&multidict_keysview_type, NULL);
+    Py_DECREF(reg_func_call_result);
 
     // abc.ValuesView.register(_KeysView)
-    PyObject_CallFunctionObjArgs(
+    reg_func_call_result = PyObject_CallFunctionObjArgs(
         abc_valuesview_register_func, (PyObject*)&multidict_valuesview_type, NULL);
+    Py_DECREF(reg_func_call_result);
 
     Py_DECREF(module);
     return 0;
