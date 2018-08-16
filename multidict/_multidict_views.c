@@ -223,6 +223,7 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
         if (PyObject_RichCompareBool(akey, bkey, Py_EQ) > 0 &&
             PyObject_RichCompareBool(aval, bval, Py_EQ) > 0)
         {
+            // TODO: fixme - memleak
             contains = 1;
             goto ret;
         }
@@ -420,6 +421,39 @@ multidict_valuesview_repr(_Multidict_ViewObject *self)
         valuesview_repr_func, self, NULL);
 }
 
+static int
+multidict_valuesview_contains(_Multidict_ViewObject *self, PyObject *value)
+{
+    PyObject *iter  = NULL,
+             *item  = NULL;
+
+    iter = multidict_valuesview_iter(self);
+    if (iter == NULL) {
+        return 0;
+    }
+
+    while ((item = PyIter_Next(iter)) != NULL) {
+        if (PyObject_RichCompareBool(item, value, Py_EQ)) {
+            Py_DECREF(item);
+            return 1;
+        }
+        Py_DECREF(item);
+    }
+
+    return 0;
+}
+
+static PySequenceMethods multidict_valuesview_as_sequence = {
+    (lenfunc)multidict_view_len,               /* sq_length */
+    0,                                         /* sq_concat */
+    0,                                         /* sq_repeat */
+    0,                                         /* sq_item */
+    0,                                         /* sq_slice */
+    0,                                         /* sq_ass_item */
+    0,                                         /* sq_ass_slice */
+    (objobjproc)multidict_valuesview_contains, /* sq_contains */
+};
+
 static PyTypeObject multidict_valuesview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "_ValuesView",                                   /* tp_name */
@@ -432,7 +466,7 @@ static PyTypeObject multidict_valuesview_type = {
     0,                                               /* tp_reserved */
     (reprfunc)multidict_valuesview_repr,             /* tp_repr */
     0,                                               /* tp_as_number */
-    0,                                               /* tp_as_sequence */
+    &multidict_valuesview_as_sequence,               /* tp_as_sequence */
     0,                                               /* tp_as_mapping */
     0,                                               /* tp_hash */
     0,                                               /* tp_call */
