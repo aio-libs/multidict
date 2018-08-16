@@ -37,6 +37,8 @@ static PyObject *itemsview_repr_func;
 
 static PyObject *abc_itemsview_register_func;
 
+static PyObject *keysview_repr_func;
+
 typedef struct {
     PyObject_HEAD
     PyObject *md;
@@ -307,6 +309,13 @@ multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
     return pair_list_contains(impl, key);
 }
 
+static PyObject *
+multidict_keysview_repr(_Multidict_ViewObject *self)
+{
+    return PyObject_CallFunctionObjArgs(
+        keysview_repr_func, self, NULL);
+}
+
 static PySequenceMethods multidict_keysview_as_sequence = {
     (lenfunc)multidict_view_len,               /* sq_length */
     0,                                         /* sq_concat */
@@ -328,7 +337,7 @@ static PyTypeObject multidict_keysview_type = {
     0,                                             /* tp_getattr */
     0,                                             /* tp_setattr */
     0,                                             /* tp_reserved */
-    0,                                             /* tp_repr */
+    (reprfunc)multidict_keysview_repr,             /* tp_repr */
     0,                                             /* tp_as_number */
     &multidict_keysview_as_sequence,               /* tp_as_sequence */
     0,                                             /* tp_as_mapping */
@@ -431,6 +440,8 @@ multidict_views_init()
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_repr");
     GET_MOD_ATTR(abc_itemsview_register_func, "_abc_itemsview_register");
     
+    GET_MOD_ATTR(keysview_repr_func, "_keysview_repr");
+
     if (multidict_iter_init() < 0) {
         goto fail;
     }
