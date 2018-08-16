@@ -465,7 +465,7 @@ static PyTypeObject multidict_valuesview_type = {
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
     (reprfunc)multidict_valuesview_repr,             /* tp_repr */
-    0,                                               /* tp_as_number */
+    &multidict_view_as_number,                       /* tp_as_number */
     &multidict_valuesview_as_sequence,               /* tp_as_sequence */
     0,                                               /* tp_as_mapping */
     0,                                               /* tp_hash */
