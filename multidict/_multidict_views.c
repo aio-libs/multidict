@@ -38,6 +38,7 @@ static PyObject *itemsview_repr_func;
 static PyObject *abc_itemsview_register_func;
 
 static PyObject *keysview_repr_func;
+static PyObject *keysview_isdisjoint_func;
 
 typedef struct {
     PyObject_HEAD
@@ -154,7 +155,7 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
         itemsview_isdisjoint_func, self, other, NULL);
 }
 
-PyDoc_STRVAR(isdisjoint_doc,
+PyDoc_STRVAR(itemsview_isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
 static PyMethodDef multidict_itemsview_methods[] = {
@@ -162,7 +163,7 @@ static PyMethodDef multidict_itemsview_methods[] = {
         "isdisjoint",
         (PyCFunction)multidict_itemsview_isdisjoint,
         METH_O,
-        isdisjoint_doc
+        itemsview_isdisjoint_doc
     },
     {
         NULL,
@@ -302,18 +303,41 @@ multidict_keysview_iter(_Multidict_ViewObject *self)
     return multidict_keys_iter_new(impl);
 }
 
-static int
-multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
-{
-    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    return pair_list_contains(impl, key);
-}
-
 static PyObject *
 multidict_keysview_repr(_Multidict_ViewObject *self)
 {
     return PyObject_CallFunctionObjArgs(
         keysview_repr_func, self, NULL);
+}
+
+static PyObject *
+multidict_keysview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
+{
+    return PyObject_CallFunctionObjArgs(
+        keysview_isdisjoint_func, self, other, NULL);
+}
+
+PyDoc_STRVAR(keysview_isdisjoint_doc,
+             "Return True if two sets have a null intersection.");
+
+static PyMethodDef multidict_keysview_methods[] = {
+    {
+        "isdisjoint",
+        (PyCFunction)multidict_keysview_isdisjoint,
+        METH_O,
+        keysview_isdisjoint_doc
+    },
+    {
+        NULL,
+        NULL
+    }   /* sentinel */
+};
+
+static int
+multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
+{
+    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    return pair_list_contains(impl, key);
 }
 
 static PySequenceMethods multidict_keysview_as_sequence = {
@@ -355,6 +379,7 @@ static PyTypeObject multidict_keysview_type = {
     0,                                             /* tp_weaklistoffset */
     (getiterfunc)multidict_keysview_iter,          /* tp_iter */
     0,                                             /* tp_iternext */
+    multidict_keysview_methods,                    /* tp_methods */
 };
 
 
@@ -441,6 +466,7 @@ multidict_views_init()
     GET_MOD_ATTR(abc_itemsview_register_func, "_abc_itemsview_register");
     
     GET_MOD_ATTR(keysview_repr_func, "_keysview_repr");
+    GET_MOD_ATTR(keysview_isdisjoint_func, "_keysview_isdisjoint");
 
     if (multidict_iter_init() < 0) {
         goto fail;
