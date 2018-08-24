@@ -1,4 +1,5 @@
 import codecs
+from itertools import islice
 import os
 import platform
 import re
@@ -83,18 +84,100 @@ if not PYPY:
 try:
     from wheel.bdist_wheel import bdist_wheel
 
+    def emit_chunks_of(num, from_):
+        res = []
+        for i in from_:
+            res.append(i)
+            if len(res) >= num:
+                yield tuple(res)
+                res = []
+        if len(res):
+            yield tuple(res)
+
     class _bdist_wheel(bdist_wheel):
+        user_options = bdist_wheel.user_options + [
+            ('plat-tag-chunk-num=', None,
+             'macOS platform tags subset size'),
+            ('plat-tag-chunk-pos=', None,
+             'macOS platform tags chunk position'),
+        ]
+
+        @property
+        def macos_platforms_range(self):
+            return range(6, 14)
+
+        def initialize_options(self):
+            super().initialize_options()
+            self.plat_tag_chunk_num = None
+            self.plat_tag_chunk_pos = None
+
+        def finalize_options(self):
+            super().finalize_options()
+
+            try:
+                self.plat_tag_chunk_num = int(self.plat_tag_chunk_num)
+                if not self.plat_tag_chunk_num:
+                    raise ValueError
+            except TypeError:
+                """None value."""
+                pass
+            except ValueError:
+                """Empty string or 0."""
+                raise ValueError(
+                    'plat-tag-chunk-num must be a positive number'
+                )
+
+            try:
+                self.plat_tag_chunk_pos = int(self.plat_tag_chunk_pos)
+                if not self.plat_tag_chunk_pos:
+                    raise ValueError
+            except TypeError:
+                """None value."""
+                pass
+            except ValueError:
+                """Empty string or 0."""
+                raise ValueError(
+                    'plat-tag-chunk-num must be a positive number'
+                )
+
+        def get_macos_compatible_tags(self):
+            return (
+                'macosx_10_{ver}_{arch}'.format(ver=v, arch=a)
+                for v in self.macos_platforms_range
+                for a in ('intel', 'x86_64')
+            )
+
+        def select_macos_tags_chunk(self):
+            compatible_platforms = self.get_macos_compatible_tags()
+
+            if self.plat_tag_chunk_num and self.plat_tag_chunk_pos:
+                compatible_platforms = islice(
+                    emit_chunks_of(
+                        self.plat_tag_chunk_num,
+                        compatible_platforms,
+                    ),
+                    self.plat_tag_chunk_pos - 1,
+                    self.plat_tag_chunk_pos,
+                )
+                try:
+                    compatible_platforms = next(
+                        iter(compatible_platforms)
+                    )
+                except StopIteration:
+                    raise ValueError(
+                        'You must select an existing macOS tag chunk.'
+                    )
+
+            return tuple(compatible_platforms)
+
         def get_tag(self):
             tag = super().get_tag()
             if tag[2] != 'macosx_10_6_intel':
                 return tag
 
-            compatible_versions_x86_64 = range(9, 14)
-            compatible_platforms = ['macosx_10_6_intel'] + [
-                'macosx_10_{v}_x86_64'.format(v=v)
-                for v in compatible_versions_x86_64
-            ]
+            compatible_platforms = self.select_macos_tags_chunk()
             new_version_tag = '.'.join(compatible_platforms)
+
             return tag[:2] + (new_version_tag, )
 
     cmdclass['bdist_wheel'] = _bdist_wheel
