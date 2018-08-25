@@ -122,7 +122,7 @@ _helpers:
   env: &env_osx_base
     <<: *env_pyenv_base
     PYTHON_VERSION: &py36 3.6.6
-    TOXENV: build-dists
+    TOXENV: build-macos-dists
     MACOSX_DEPLOYMENT_TARGET: 10.6
     PYTHON_CONFIGURE_OPTS: "'--enable-universalsdk=/ --with-universal-archs=intel'"
 - &osx_pypi_deploy_base_1012
