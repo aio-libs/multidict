@@ -1,6 +1,6 @@
 .. _changes:
 
-4.4.0 (2018-XX-XX)
+4.4.0 (2018-07-04)
 ------------------
 
 * Rewrite C implementation to use C pair list.

@@ -12,7 +12,7 @@ __all__ = ('MultiMapping', 'MutableMultiMapping',
            'MultiDictProxy', 'CIMultiDictProxy',
            'MultiDict', 'CIMultiDict', 'upstr', 'istr')
 
-__version__ = '4.4.0a42'
+__version__ = '4.4.0'
 
 
 from ._abc import MultiMapping, MutableMultiMapping
