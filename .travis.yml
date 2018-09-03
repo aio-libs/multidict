@@ -232,83 +232,22 @@ jobs:
     - docker
 
     # Build and deploy MacOS binary wheels for each OSX+Python combo possible
-    # OS X 10.10, Python 3.4
-  - <<: *osx_pypi_deploy_base_1010
-    python: *py34
-    env:
-      <<: *env_osx_deploy_base
-      PYTHON_VERSION: *py34
-    # OS X 10.10, Python 3.5
-  - <<: *osx_pypi_deploy_base_1010
-    python: *py35
-    env:
-      <<: *env_osx_deploy_base
-      PYTHON_VERSION: *py35
-    # OS X 10.10, Python 3.6
-  - <<: *osx_pypi_deploy_base_1010
-    env: *env_osx_deploy_base
-    # OS X 10.10, Python 3.7
-  - <<: *osx_pypi_deploy_base_1010
-    env:
-      <<: *env_osx_deploy_base
-      PYTHON_VERSION: *py37
-    # OS X 10.11, Python 3.4
-  - <<: *osx_pypi_deploy_base_1011
-    python: *py34
-    env:
-      <<: *env_osx_deploy_base
-      PYTHON_VERSION: *py34
-    # OS X 10.11, Python 3.5
-  - <<: *osx_pypi_deploy_base_1011
-    python: *py35
-    env:
-      <<: *env_osx_deploy_base
-      PYTHON_VERSION: *py35
-    # OS X 10.11, Python 3.6
-  - <<: *osx_pypi_deploy_base_1011
-    env: *env_osx_deploy_base
-    # OS X 10.11, Python 3.7
-  - <<: *osx_pypi_deploy_base_1011
-    env:
-      <<: *env_osx_deploy_base
-      PYTHON_VERSION: *py37
-    # OS X 10.12, Python 3.4
-  - <<: *osx_pypi_deploy_base_1012
-    python: *py34
-    env:
-      <<: *env_osx_deploy_base
-      PYTHON_VERSION: *py34
-    # OS X 10.12, Python 3.5
-  - <<: *osx_pypi_deploy_base_1012
-    python: *py35
-    env:
-      <<: *env_osx_deploy_base
-      PYTHON_VERSION: *py35
-    # OS X 10.12, Python 3.6
-  - <<: *osx_pypi_deploy_base_1012
-    env: *env_osx_deploy_base
-    # OS X 10.12, Python 3.7
-  - <<: *osx_pypi_deploy_base_1012
-    env:
-      <<: *env_osx_deploy_base
-      PYTHON_VERSION: *py37
-########
-    # OS X 10.13, Python 3.4
+    # OS X 10.6-10.13, Python 3.4
   - <<: *osx_pypi_deploy_base_1013
     python: *py34
     env:
       <<: *env_osx_deploy_base
       PYTHON_VERSION: *py34
-    # OS X 10.13, Python 3.5
+    # OS X 10.6-10.13, Python 3.5
   - <<: *osx_pypi_deploy_base_1013
     python: *py35
     env:
       <<: *env_osx_deploy_base
       PYTHON_VERSION: *py35
-    # OS X 10.13, Python 3.6
+    # OS X 10.6-10.13, Python 3.6
   - <<: *osx_pypi_deploy_base_1013
     env: *env_osx_deploy_base
-    # OS X 10.13, Python 3.7
+    # OS X 10.6-10.13, Python 3.7
   - <<: *osx_pypi_deploy_base_1013
     env:
       <<: *env_osx_deploy_base
