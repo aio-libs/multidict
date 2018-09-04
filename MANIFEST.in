@@ -11,4 +11,5 @@ exclude multidict/_multidict.html
 exclude multidict/_multidict.*.so
 exclude multidict/_multidict.pyd
 exclude multidict/_multidict.*.pyd
+exclude multidict/_istr.pyd
 prune docs/_build
