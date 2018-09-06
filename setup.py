@@ -1,4 +1,5 @@
 import codecs
+import pathlib
 from itertools import islice
 import os
 import platform
@@ -11,6 +12,7 @@ from distutils.command.build_ext import build_ext
 
 
 PYPY = platform.python_implementation() == 'PyPy'
+here = pathlib.Path(__file__).parent
 
 
 # Fallbacks for PyPy: don't use C extensions
@@ -23,6 +25,13 @@ if not PYPY:
         USE_CYTHON = True
     except ImportError:
         USE_CYTHON = False
+
+    if (here / '.git').exists() and not USE_CYTHON:
+        print("Install cython when building from git clone",
+              file=sys.stderr)
+        print("Hint:", file=sys.stderr)
+        print("  pip install cython", file=sys.stderr)
+        sys.exit(1)
 
     ext = '.pyx' if USE_CYTHON else '.c'
 
@@ -74,7 +83,7 @@ if not PYPY:
         def build_extension(self, ext):
             try:
                 build_ext.build_extension(self, ext)
-            except (DistutilsExecError,
+            except (CompilerError, DistutilsExecError,
                     DistutilsPlatformError, ValueError):
                 raise BuildFailed()
 
