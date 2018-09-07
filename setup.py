@@ -15,6 +15,7 @@ PROFILE_BUILD = bool(os.environ.get('PROFILE_BUILD'))
 NO_EXTENSIONS = bool(os.environ.get('MULTIDICT_NO_EXTENSIONS'))
 PYPY = platform.python_implementation() == 'PyPy'
 USE_CYTHON_EXTENSIONS = not NO_EXTENSIONS and not PYPY
+extra_ignore_compile_exc = () if USE_CYTHON_EXTENSIONS else (CompilerError, )
 here = pathlib.Path(__file__).parent
 
 
@@ -86,7 +87,7 @@ if USE_CYTHON_EXTENSIONS:
         def build_extension(self, ext):
             try:
                 build_ext.build_extension(self, ext)
-            except (CompilerError, DistutilsExecError,
+            except (*extra_ignore_compile_exc, DistutilsExecError,
                     DistutilsPlatformError, ValueError):
                 raise BuildFailed()
 
