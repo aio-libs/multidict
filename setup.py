@@ -37,7 +37,7 @@ IS_GIT_REPO = (here / '.git').exists()
 
 extra_ignore_compile_exc = (
     () if USE_CYTHON_EXTENSIONS and IS_GIT_REPO
-    else (CompilerError, )
+    else (CCompilerError, )
 )
 """Additional exceptions to ignore during compilation."""
 
