@@ -183,21 +183,25 @@ jobs:
   - <<: *_doc_base
     name: Documentation linting
     env:
+      <<: *env_extensions_disabled
       TOXENV: doc-spelling
 
   - <<: *_lint_base
     name: Flake8 linter
     env:
+      <<: *env_extensions_disabled
       TOXENV: flake8
 
   - <<: *_lint_base
     name: MyPy linter
     env:
+      <<: *env_extensions_disabled
       TOXENV: mypy
 
   - <<: *_lint_base
     name: dist setup check
     env:
+      <<: *env_extensions_disabled
       TOXENV: setup-check
 
   - <<: *osx_python_base

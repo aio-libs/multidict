@@ -1,4 +1,5 @@
 import codecs
+import pathlib
 from itertools import islice
 import os
 import platform
@@ -9,24 +10,53 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 from distutils.command.build_ext import build_ext
 
+try:
+    from Cython.Build import cythonize
+    USE_CYTHON = True
+except ImportError:
+    USE_CYTHON = False
+
+
+PROFILE_BUILD = bool(os.environ.get('PROFILE_BUILD'))
+"""Flag whether extensions should be built with profiling enabled."""
+
+NO_EXTENSIONS = bool(os.environ.get('MULTIDICT_NO_EXTENSIONS'))
+"""Flag whether extensions building/usage should be skipped."""
 
 PYPY = platform.python_implementation() == 'PyPy'
+"""Flag whether we are in PyPy runtime."""
 
+USE_CYTHON_EXTENSIONS = not NO_EXTENSIONS and not PYPY
+"""Flag whether prerequisites for building extensions are met."""
+
+here = pathlib.Path(__file__).parent
+"""Current folder (containing setup.py)."""
+
+IS_GIT_REPO = (here / '.git').exists()
+"""Flag whether we are in Git repo."""
+
+ignore_compile_excs = (
+    () if USE_CYTHON_EXTENSIONS and IS_GIT_REPO
+    else (CCompilerError, )
+) + (DistutilsExecError, DistutilsPlatformError, ValueError)
+"""Exceptions to ignore during compilation."""
 
 # Fallbacks for PyPy: don't use C extensions
 extensions = []
 cmdclass = {}
 
-if not PYPY:
-    try:
-        from Cython.Build import cythonize
-        USE_CYTHON = True
-    except ImportError:
-        USE_CYTHON = False
+if USE_CYTHON_EXTENSIONS:
+
+    if IS_GIT_REPO and not USE_CYTHON:
+        print("Install cython when building from git clone",
+              file=sys.stderr)
+        print("Hint:", file=sys.stderr)
+        print("  pip install cython", file=sys.stderr)
+        sys.exit(1)
 
     ext = '.pyx' if USE_CYTHON else '.c'
 
-    if bool(os.environ.get('PROFILE_BUILD')):
+    if PROFILE_BUILD:
         macros = [('CYTHON_TRACE', '1')]
     else:
         macros = []
@@ -50,7 +80,7 @@ if not PYPY:
     ]
 
     if USE_CYTHON:
-        if bool(os.environ.get('PROFILE_BUILD')):
+        if PROFILE_BUILD:
             directives = {"linetrace": True}
         else:
             directives = {}
@@ -74,8 +104,7 @@ if not PYPY:
         def build_extension(self, ext):
             try:
                 build_ext.build_extension(self, ext)
-            except (DistutilsExecError,
-                    DistutilsPlatformError, ValueError):
+            except ignore_compile_excs:
                 raise BuildFailed()
 
     cmdclass['build_ext'] = ve_build_ext
