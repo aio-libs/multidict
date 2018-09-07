@@ -10,27 +10,31 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 from distutils.command.build_ext import build_ext
 
+try:
+    from Cython.Build import cythonize
+    USE_CYTHON = True
+except ImportError:
+    USE_CYTHON = False
+
 
 PROFILE_BUILD = bool(os.environ.get('PROFILE_BUILD'))
 NO_EXTENSIONS = bool(os.environ.get('MULTIDICT_NO_EXTENSIONS'))
 PYPY = platform.python_implementation() == 'PyPy'
 USE_CYTHON_EXTENSIONS = not NO_EXTENSIONS and not PYPY
-extra_ignore_compile_exc = () if USE_CYTHON_EXTENSIONS else (CompilerError, )
 here = pathlib.Path(__file__).parent
-
+IS_GIT_REPO = (here / '.git').exists()
+extra_ignore_compile_exc = (
+    () if USE_CYTHON_EXTENSIONS and IS_GIT_REPO
+    else (CompilerError, )
+)
 
 # Fallbacks for PyPy: don't use C extensions
 extensions = []
 cmdclass = {}
 
 if USE_CYTHON_EXTENSIONS:
-    try:
-        from Cython.Build import cythonize
-        USE_CYTHON = True
-    except ImportError:
-        USE_CYTHON = False
 
-    if (here / '.git').exists() and not USE_CYTHON:
+    if IS_GIT_REPO and not USE_CYTHON:
         print("Install cython when building from git clone",
               file=sys.stderr)
         print("Hint:", file=sys.stderr)
