@@ -12,4 +12,9 @@ env:
 build:
   ci:
   - pip install -U tox
+  - |
+      if [ -z "$MULTIDICT_NO_EXTENSIONS" ]
+      then
+          rm -rf .git
+      fi
   - python -m tox
