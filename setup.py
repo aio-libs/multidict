@@ -18,15 +18,28 @@ except ImportError:
 
 
 PROFILE_BUILD = bool(os.environ.get('PROFILE_BUILD'))
+"""Flag whether extensions should be built with profiling enabled."""
+
 NO_EXTENSIONS = bool(os.environ.get('MULTIDICT_NO_EXTENSIONS'))
+"""Flag whether extensions building/usage should be skipped."""
+
 PYPY = platform.python_implementation() == 'PyPy'
+"""Flag whether we are in PyPy runtime."""
+
 USE_CYTHON_EXTENSIONS = not NO_EXTENSIONS and not PYPY
+"""Flag whether prerequisites for building extensions are met."""
+
 here = pathlib.Path(__file__).parent
+"""Current folder (containing setup.py)."""
+
 IS_GIT_REPO = (here / '.git').exists()
+"""Flag whether we are in Git repo."""
+
 extra_ignore_compile_exc = (
     () if USE_CYTHON_EXTENSIONS and IS_GIT_REPO
     else (CompilerError, )
 )
+"""Additional exceptions to ignore during compilation."""
 
 # Fallbacks for PyPy: don't use C extensions
 extensions = []
