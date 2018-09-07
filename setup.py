@@ -11,7 +11,10 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
 from distutils.command.build_ext import build_ext
 
 
+PROFILE_BUILD = bool(os.environ.get('PROFILE_BUILD'))
+NO_EXTENSIONS = bool(os.environ.get('MULTIDICT_NO_EXTENSIONS'))
 PYPY = platform.python_implementation() == 'PyPy'
+USE_CYTHON_EXTENSIONS = not NO_EXTENSIONS and not PYPY
 here = pathlib.Path(__file__).parent
 
 
@@ -19,7 +22,7 @@ here = pathlib.Path(__file__).parent
 extensions = []
 cmdclass = {}
 
-if not PYPY:
+if USE_CYTHON_EXTENSIONS:
     try:
         from Cython.Build import cythonize
         USE_CYTHON = True
@@ -35,7 +38,7 @@ if not PYPY:
 
     ext = '.pyx' if USE_CYTHON else '.c'
 
-    if bool(os.environ.get('PROFILE_BUILD')):
+    if PROFILE_BUILD:
         macros = [('CYTHON_TRACE', '1')]
     else:
         macros = []
@@ -59,7 +62,7 @@ if not PYPY:
     ]
 
     if USE_CYTHON:
-        if bool(os.environ.get('PROFILE_BUILD')):
+        if PROFILE_BUILD:
             directives = {"linetrace": True}
         else:
             directives = {}
