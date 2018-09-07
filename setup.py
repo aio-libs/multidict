@@ -35,11 +35,11 @@ here = pathlib.Path(__file__).parent
 IS_GIT_REPO = (here / '.git').exists()
 """Flag whether we are in Git repo."""
 
-extra_ignore_compile_exc = (
+ignore_compile_excs = (
     () if USE_CYTHON_EXTENSIONS and IS_GIT_REPO
     else (CCompilerError, )
-)
-"""Additional exceptions to ignore during compilation."""
+) + (DistutilsExecError, DistutilsPlatformError, ValueError)
+"""Exceptions to ignore during compilation."""
 
 # Fallbacks for PyPy: don't use C extensions
 extensions = []
@@ -104,8 +104,7 @@ if USE_CYTHON_EXTENSIONS:
         def build_extension(self, ext):
             try:
                 build_ext.build_extension(self, ext)
-            except (*extra_ignore_compile_exc, DistutilsExecError,
-                    DistutilsPlatformError, ValueError):
+            except ignore_compile_excs:
                 raise BuildFailed()
 
     cmdclass['build_ext'] = ve_build_ext
