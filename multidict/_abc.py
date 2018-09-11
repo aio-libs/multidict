@@ -1,8 +1,7 @@
 import abc
-import typing
 
 from typing import (Mapping, MutableMapping, List, Union, Iterable,
-                    Iterator, TypeVar, Tuple, Dict, Optional)
+                    TypeVar, Tuple, Dict, Optional)
 
 
 _T = TypeVar('_T')
