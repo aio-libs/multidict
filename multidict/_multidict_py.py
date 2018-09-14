@@ -213,6 +213,8 @@ class MultiDict(_Base, MutableMultiMapping):
         cls = self.__class__
         return cls(self.items())
 
+    __copy__ = copy
+
     def extend(self, *args, **kwargs):
         """Extend current MultiDict with more values.
 
