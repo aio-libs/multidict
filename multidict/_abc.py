@@ -6,6 +6,8 @@ from typing import (Mapping, MutableMapping, List, Union, Iterable,
 
 _T = TypeVar('_T')
 
+_D = TypeVar('_D')
+
 
 # Note: type defs are slightly different from __init__.pyi version The
 # correct one (and checked by mypy) is the later.  Type checks here
@@ -16,11 +18,13 @@ _T = TypeVar('_T')
 class MultiMapping(Mapping[str, _T]):
 
     @abc.abstractmethod
-    def getall(self, key: str, default: Optional[_T]=None) -> List[_T]:
+    def getall(self, key: str,
+               default: Optional[_D]=None) -> Union[List[_T], _D, None]:
         raise KeyError
 
     @abc.abstractmethod
-    def getone(self, key: str, default: Optional[_T]=None) -> _T:
+    def getone(self, key: str,
+               default: Optional[_D]=None) -> Union[_T, _D, None]:
         raise KeyError
 
 
