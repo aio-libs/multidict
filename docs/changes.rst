@@ -1,5 +1,14 @@
 .. _changes:
 
+4.4.1 (2018-09-17)
+------------------
+
+* Fix type annotations (:pr:`283`)
+
+* Allow to install the library on systems without compilation toolset
+  (:pr:`281`)
+
+
 4.4.0 (2018-07-04)
 ------------------
 
