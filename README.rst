@@ -12,9 +12,9 @@ multidict
    :align: right
    :target: http://travis-ci.com/aio-libs/multidict
 
-.. image:: https://img.shields.io/appveyor/ci/asvetlov/multidict/master.svg?label=Windows%20build%20%40%20Appveyor
+.. image:: https://img.shields.io/appveyor/ci/aio-libs/multidict/master.svg?label=Windows%20build%20%40%20Appveyor
    :align: right
-   :target: https://ci.appveyor.com/project/asvetlov/multidict/branch/master
+   :target: https://ci.appveyor.com/project/aio-libs/multidict/branch/master
 
 .. image:: https://img.shields.io/pypi/pyversions/multidict.svg
    :target: https://pypi.org/project/multidict
