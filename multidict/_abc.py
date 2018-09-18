@@ -3,8 +3,6 @@ import abc
 from collections.abc import Mapping, MutableMapping
 
 
-
-
 class _TypingMeta(abc.ABCMeta):
     # A fake metaclass to satisfy typing deps in runtime
     # basically MultiMapping[str] and other generic-like type instantiations
