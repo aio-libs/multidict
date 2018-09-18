@@ -157,3 +157,8 @@ def test_proxy_inheritance(proxy_classes):
     proxy, _ = proxy_classes
     assert issubclass(proxy, MultiMapping)
     assert not issubclass(proxy, MutableMultiMapping)
+
+
+def test_generic_type_in_runtime():
+    MultiMapping[str]
+    MutableMultiMapping[str]
