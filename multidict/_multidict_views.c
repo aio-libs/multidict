@@ -55,6 +55,7 @@ typedef struct {
 static INLINE void
 _init_view(_Multidict_ViewObject *self, PyObject *md)
 {
+    Py_INCREF(md);
     self->md = md;
 }
 
@@ -66,15 +67,28 @@ multidict_view_dealloc(_Multidict_ViewObject *self)
     PyObject_GC_Del(self);
 }
 
+static int
+multidict_view_traverse(_Multidict_ViewObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->md);
+    return 0;
+}
+
+static int
+multidict_view_clear(_Multidict_ViewObject *self)
+{
+    Py_CLEAR(self->md);
+    return 0;
+}
+
 static Py_ssize_t
 multidict_view_len(_Multidict_ViewObject *self)
 {
-    Py_ssize_t len = 0;
-    if (self->md != NULL) {
-        PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-        len = pair_list_len(impl);
+    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    if (impl == NULL) {
+        return 0;
     }
-    return len;
+    return pair_list_len(impl);
 }
 
 static PyObject *
@@ -143,8 +157,6 @@ multidict_itemsview_new(PyObject *md)
         return NULL;
     }
 
-    Py_INCREF(md);
-
     _init_view(mv, md);
 
     return (PyObject *)mv;
@@ -153,17 +165,11 @@ multidict_itemsview_new(PyObject *md)
 static PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
-    PyObject *impl = NULL,
-             *iter = NULL;
-
-    if (self->md == NULL) {
-        Py_RETURN_NONE;
+    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    if (impl == NULL) {
+        return NULL;
     }
-
-    impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    iter = multidict_items_iter_new(impl);
-
-    return iter;
+    return multidict_items_iter_new(impl);
 }
 
 static PyObject *
@@ -268,8 +274,8 @@ static PyTypeObject multidict_itemsview_type = {
     0,                                              /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,        /* tp_flags */
     0,                                              /* tp_doc */
-    0,                                              /* tp_traverse */
-    0,                                              /* tp_clear */
+    multidict_view_traverse,                        /* tp_traverse */
+    multidict_view_clear,                           /* tp_clear */
     multidict_view_richcompare,                     /* tp_richcompare */
     0,                                              /* tp_weaklistoffset */
     (getiterfunc)multidict_itemsview_iter,          /* tp_iter */
@@ -289,8 +295,6 @@ multidict_keysview_new(PyObject *md)
         return NULL;
     }
 
-    Py_INCREF(md);
-
     _init_view(mv, md);
 
     return (PyObject *)mv;
@@ -299,14 +303,10 @@ multidict_keysview_new(PyObject *md)
 static PyObject *
 multidict_keysview_iter(_Multidict_ViewObject *self)
 {
-    PyObject *impl = NULL;
-
-    if (self->md == NULL) {
-        Py_RETURN_NONE;
+    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    if (impl == NULL) {
+        return NULL;
     }
-
-    impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    
     return multidict_keys_iter_new(impl);
 }
 
@@ -344,6 +344,9 @@ static int
 multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
 {
     PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    if (impl == NULL) {
+        return -1;
+    }
     return pair_list_contains(impl, key);
 }
 
@@ -380,8 +383,8 @@ static PyTypeObject multidict_keysview_type = {
     0,                                             /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,       /* tp_flags */
     0,                                             /* tp_doc */
-    0,                                             /* tp_traverse */
-    0,                                             /* tp_clear */
+    multidict_view_traverse,                       /* tp_traverse */
+    multidict_view_clear,                          /* tp_clear */
     multidict_view_richcompare,                    /* tp_richcompare */
     0,                                             /* tp_weaklistoffset */
     (getiterfunc)multidict_keysview_iter,          /* tp_iter */
@@ -401,8 +404,6 @@ multidict_valuesview_new(PyObject *md)
         return NULL;
     }
 
-    Py_INCREF(md);
-
     _init_view(mv, md);
 
     return (PyObject *)mv;
@@ -411,14 +412,10 @@ multidict_valuesview_new(PyObject *md)
 static PyObject *
 multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
-    PyObject *impl = NULL;
-
-    if (self->md == NULL) {
-        Py_RETURN_NONE;
+    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
+    if (impl == NULL) {
+        return NULL;
     }
-    
-    impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    
     return multidict_values_iter_new(impl);
 }
 
@@ -484,8 +481,8 @@ static PyTypeObject multidict_valuesview_type = {
     0,                                               /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
     0,                                               /* tp_doc */
-    0,                                               /* tp_traverse */
-    0,                                               /* tp_clear */
+    multidict_view_traverse,                         /* tp_traverse */
+    multidict_view_clear,                            /* tp_clear */
     0,                                               /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
     (getiterfunc)multidict_valuesview_iter,          /* tp_iter */
@@ -539,16 +536,25 @@ multidict_views_init()
     // abc.ItemsView.register(_ItemsView)
     reg_func_call_result = PyObject_CallFunctionObjArgs(
         abc_itemsview_register_func, (PyObject*)&multidict_itemsview_type, NULL);
+    if (reg_func_call_result == NULL) {
+        goto fail;
+    }
     Py_DECREF(reg_func_call_result);
 
     // abc.KeysView.register(_KeysView)
     reg_func_call_result = PyObject_CallFunctionObjArgs(
         abc_keysview_register_func, (PyObject*)&multidict_keysview_type, NULL);
+    if (reg_func_call_result == NULL) {
+        goto fail;
+    }
     Py_DECREF(reg_func_call_result);
 
     // abc.ValuesView.register(_KeysView)
     reg_func_call_result = PyObject_CallFunctionObjArgs(
         abc_valuesview_register_func, (PyObject*)&multidict_valuesview_type, NULL);
+    if (reg_func_call_result == NULL) {
+        goto fail;
+    }
     Py_DECREF(reg_func_call_result);
 
     Py_DECREF(module);
