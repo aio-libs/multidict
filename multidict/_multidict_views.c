@@ -231,11 +231,18 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
         if (PyObject_RichCompareBool(akey, bkey, Py_EQ) > 0 &&
             PyObject_RichCompareBool(aval, bval, Py_EQ) > 0)
         {
+            Py_DECREF(iter);
             Py_DECREF(item);
             return 1;
         }
         
         Py_DECREF(item);
+    }
+
+    Py_DECREF(iter);
+
+    if (PyErr_Occurred()) {
+        return -1;
     }
 
     return 0;
@@ -439,10 +446,17 @@ multidict_valuesview_contains(_Multidict_ViewObject *self, PyObject *value)
 
     while ((item = PyIter_Next(iter)) != NULL) {
         if (PyObject_RichCompareBool(item, value, Py_EQ)) {
+            Py_DECREF(iter);
             Py_DECREF(item);
             return 1;
         }
         Py_DECREF(item);
+    }
+
+    Py_DECREF(iter);
+
+    if (PyErr_Occurred()) {
+        return -1;
     }
 
     return 0;
