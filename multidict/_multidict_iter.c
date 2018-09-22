@@ -23,6 +23,8 @@ typedef struct multidict_iter {
 static INLINE void
 _init_iter(MultidictIter *it, PyObject *impl)
 {
+    Py_INCREF(impl);
+
     it->impl = impl;
     it->current = 0;
     it->version = pair_list_version(impl);
@@ -36,8 +38,6 @@ multidict_items_iter_new(PyObject *impl)
     if (it == NULL) {
         return NULL;
     }
-
-    Py_INCREF(impl);
 
     _init_iter(it, impl);
 
@@ -53,8 +53,6 @@ multidict_keys_iter_new(PyObject *impl)
         return NULL;
     }
 
-    Py_INCREF(impl);
-
     _init_iter(it, impl);
 
     return (PyObject *)it;
@@ -68,8 +66,6 @@ multidict_values_iter_new(PyObject *impl)
     if (it == NULL) {
         return NULL;
     }
-
-    Py_INCREF(impl);
 
     _init_iter(it, impl);
 
@@ -156,6 +152,13 @@ multidict_iter_traverse(MultidictIter *self, visitproc visit, void *arg)
     return 0;
 }
 
+static int
+multidict_iter_clear(MultidictIter *self)
+{
+    Py_CLEAR(self->impl);
+    return 0;
+}
+
 /***********************************************************************/
 
 /* We link this module statically for convenience.  If compiled as a shared
@@ -190,7 +193,7 @@ static PyTypeObject multidict_items_iter_type = {
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,        /* tp_flags */
     0,                                              /* tp_doc */
     (traverseproc)multidict_iter_traverse,          /* tp_traverse */
-    0,                                              /* tp_clear */
+    multidict_iter_clear,                           /* tp_clear */
     0,                                              /* tp_richcompare */
     0,                                              /* tp_weaklistoffset */
     PyObject_SelfIter,                              /* tp_iter */
@@ -220,7 +223,7 @@ static PyTypeObject multidict_values_iter_type = {
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
     0,                                               /* tp_doc */
     (traverseproc)multidict_iter_traverse,           /* tp_traverse */
-    0,                                               /* tp_clear */
+    multidict_iter_clear,                            /* tp_clear */
     0,                                               /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
     PyObject_SelfIter,                               /* tp_iter */
@@ -250,7 +253,7 @@ static PyTypeObject multidict_keys_iter_type = {
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,       /* tp_flags */
     0,                                             /* tp_doc */
     (traverseproc)multidict_iter_traverse,         /* tp_traverse */
-    0,                                             /* tp_clear */
+    multidict_iter_clear,                          /* tp_clear */
     0,                                             /* tp_richcompare */
     0,                                             /* tp_weaklistoffset */
     PyObject_SelfIter,                             /* tp_iter */
