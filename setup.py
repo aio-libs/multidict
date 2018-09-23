@@ -74,6 +74,7 @@ if USE_CYTHON_EXTENSIONS:
                 'multidict/_multidict' + ext,
                 'multidict/_pair_list.c',
                 'multidict/_multidict_iter.c',
+                'multidict/_multidict_views.c'
             ],
             extra_compile_args=CFLAGS
         )

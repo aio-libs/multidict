@@ -10,6 +10,7 @@ from ._abc import MultiMapping, MutableMultiMapping
 from ._istr import istr
 
 from ._multidict_iter cimport *
+from ._multidict_views cimport *
 from ._pair_list cimport *
 
 cdef object _marker = object()
@@ -18,8 +19,8 @@ upstr = istr  # for relaxing backward compatibility problems
 cdef object _istr = istr
 
 pair_list_init(istr)
-multidict_iter_init()
-
+# multidict_iter_init()
+multidict_views_init()
 
 def getversion(_Base md):
     return pair_list_version(md._impl)
@@ -29,6 +30,9 @@ cdef class _Base:
 
     cdef object _impl
 
+    def impl(self):
+        return self._impl
+    
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
         try:
@@ -78,15 +82,15 @@ cdef class _Base:
 
     cpdef keys(self):
         """Return a new view of the dictionary's keys."""
-        return _KeysView.__new__(_KeysView, self)
+        return multidict_keysview_new(self)
 
     def items(self):
         """Return a new view of the dictionary's items *(key, value) pairs)."""
-        return _ItemsView.__new__(_ItemsView, self)
+        return multidict_itemsview_new(self)
 
     def values(self):
         """Return a new view of the dictionary's values."""
-        return _ValuesView.__new__(_ValuesView, self)
+        return multidict_valuesview_new(self)
 
     def __repr__(self):
         lst = []
@@ -354,182 +358,5 @@ cdef class CIMultiDict(MultiDict):
         return ret
 
 
-
 MutableMultiMapping.register(CIMultiDict)
 
-
-cdef class _ViewBase:
-
-    cdef _Base _md
-
-    def __cinit__(self, _Base md):
-        self._md = md
-
-    def __len__(self):
-        return pair_list_len(self._md._impl)
-
-
-cdef class _ViewBaseSet(_ViewBase):
-
-    def __richcmp__(self, other, op):
-        if op == 0:  # <
-            if not isinstance(other, Set):
-                return NotImplemented
-            return len(self) < len(other) and self <= other
-        elif op == 1:  # <=
-            if not isinstance(other, Set):
-                return NotImplemented
-            if len(self) > len(other):
-                return False
-            for elem in self:
-                if elem not in other:
-                    return False
-            return True
-        elif op == 2:  # ==
-            if not isinstance(other, Set):
-                return NotImplemented
-            return len(self) == len(other) and self <= other
-        elif op == 3:  # !=
-            return not self == other
-        elif op == 4:  #  >
-            if not isinstance(other, Set):
-                return NotImplemented
-            return len(self) > len(other) and self >= other
-        elif op == 5:  # >=
-            if not isinstance(other, Set):
-                return NotImplemented
-            if len(self) < len(other):
-                return False
-            for elem in other:
-                if elem not in self:
-                    return False
-            return True
-
-    def __and__(self, other):
-        if not isinstance(other, Iterable):
-            return NotImplemented
-        if isinstance(self, _ViewBaseSet):
-            self = set(iter(self))
-        if isinstance(other, _ViewBaseSet):
-            other = set(iter(other))
-        if not isinstance(other, Set):
-            other = set(iter(other))
-        return self & other
-
-    def __or__(self, other):
-        if not isinstance(other, Iterable):
-            return NotImplemented
-        if isinstance(self, _ViewBaseSet):
-            self = set(iter(self))
-        if isinstance(other, _ViewBaseSet):
-            other = set(iter(other))
-        if not isinstance(other, Set):
-            other = set(iter(other))
-        return self | other
-
-    def __sub__(self, other):
-        if not isinstance(other, Iterable):
-            return NotImplemented
-        if isinstance(self, _ViewBaseSet):
-            self = set(iter(self))
-        if isinstance(other, _ViewBaseSet):
-            other = set(iter(other))
-        if not isinstance(other, Set):
-            other = set(iter(other))
-        return self - other
-
-    def __xor__(self, other):
-        if not isinstance(other, Iterable):
-            return NotImplemented
-        if isinstance(self, _ViewBaseSet):
-            self = set(iter(self))
-        if isinstance(other, _ViewBaseSet):
-            other = set(iter(other))
-        if not isinstance(other, Set):
-            other = set(iter(other))
-        return self ^ other
-
-
-cdef class _ItemsView(_ViewBaseSet):
-
-    def isdisjoint(self, other):
-        'Return True if two sets have a null intersection.'
-        for v in other:
-            if v in self:
-                return False
-        return True
-
-    def __contains__(self, i):
-        cdef str key
-        cdef object value
-        assert isinstance(i, tuple) or isinstance(i, list)
-        assert len(i) == 2
-        key = i[0]
-        value = i[1]
-        for k, v in self:
-            if key == k and value == v:
-                return True
-        return False
-
-    def __iter__(self):
-        return multidict_items_iter_new(self._md._impl)
-
-    def __repr__(self):
-        lst = []
-        for k ,v in self:
-            lst.append("{!r}: {!r}".format(k, v))
-        body = ', '.join(lst)
-        return '{}({})'.format(self.__class__.__name__, body)
-
-
-abc.ItemsView.register(_ItemsView)
-
-
-cdef class _ValuesView(_ViewBase):
-
-    def __contains__(self, value):
-        for v in self:
-            if v == value:
-                return True
-        return False
-
-    def __iter__(self):
-        return multidict_values_iter_new(self._md._impl)
-
-    def __repr__(self):
-        lst = []
-        for v in self:
-            lst.append("{!r}".format(v))
-        body = ', '.join(lst)
-        return '{}({})'.format(self.__class__.__name__, body)
-
-
-abc.ValuesView.register(_ValuesView)
-
-
-cdef class _KeysView(_ViewBaseSet):
-
-    def isdisjoint(self, other):
-        'Return True if two sets have a null intersection.'
-        for k in other:
-            print('isdisjoint.1', k)
-            if k in self:
-                print('isdisjoint.2', k)
-                return False
-        return True
-
-    def __contains__(self, value):
-        return self._md._contains(value)
-
-    def __iter__(self):
-        return multidict_keys_iter_new(self._md._impl)
-
-    def __repr__(self):
-        lst = []
-        for k in self:
-            lst.append("{!r}".format(k))
-        body = ', '.join(lst)
-        return '{}({})'.format(self.__class__.__name__, body)
-
-
-abc.KeysView.register(_KeysView)
