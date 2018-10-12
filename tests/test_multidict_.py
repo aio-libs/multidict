@@ -10,6 +10,7 @@ PROXY_DICTS = [MultiDictProxy, CIMultiDictProxy]
 def md_simple(request):
     return request.param([('key1', 'value1')])
 
+
 @pytest.fixture(params=MUTABLE_DICTS)
 def md_w_multivalue_per_key(request):
     return request.param([('key1', 'one'), ('key2', 'two'), ('key1', 3)])
@@ -107,7 +108,8 @@ class TestContents:
         assert 'foo' not in self.d.values()
 
     def test_items__contains(self, cls):
-        assert list(self.d.items()) == [('key1', 'one'), ('key2', 'two'), ('key1', 3)]
+        expected_result = [('key1', 'one'), ('key2', 'two'), ('key1', 3)]
+        assert list(self.d.items()) == expected_result
 
         assert ('key1', 'one') in self.d.items()
         assert ('key2', 'two') in self.d.items()
