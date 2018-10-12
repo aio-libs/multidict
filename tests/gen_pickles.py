@@ -21,7 +21,7 @@ def write(name, proto):
 def generate():
     if not USE_CYTHON:
         raise RuntimeError("Cython is required")
-    for proto in range(pickle.HIGHEST_PROTOCOL):
+    for proto in range(pickle.HIGHEST_PROTOCOL+1):
         for name in ('MultiDict', 'CIMultiDict',
                      'PyMultiDict', 'PyCIMultiDict'):
             write(name, proto)

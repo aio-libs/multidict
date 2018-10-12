@@ -20,5 +20,5 @@ def _multidict(request):
 def pytest_generate_tests(metafunc):
     if 'pickle_protocol' in metafunc.fixturenames:
         metafunc.parametrize("pickle_protocol",
-                             list(range(pickle.HIGHEST_PROTOCOL)),
+                             list(range(pickle.HIGHEST_PROTOCOL+1)),
                              scope='session')
