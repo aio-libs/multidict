@@ -141,7 +141,7 @@ _helpers:
   env: *env_osx_deploy_base
 - &osx_pypi_deploy_base_1013
   <<: *osx_pypi_deploy_base_1011
-  name: &env_os1010_msg Build and deploy to PYPI of OS X 10.13 binary wheel=
+  name: &env_os1013_msg Build and deploy to PYPI of OS X 10.13 binary wheel=
   osx_image: xcode9.4
   env: *env_osx_deploy_base
 - &linux_py37
