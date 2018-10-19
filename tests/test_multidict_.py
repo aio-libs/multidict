@@ -3,16 +3,32 @@ import pytest
 from multidict import MultiDict, CIMultiDict, MultiDictProxy, CIMultiDictProxy
 
 MUTABLE_DICTS = [MultiDict, CIMultiDict]
-PROXY_DICTS = [MultiDictProxy, CIMultiDictProxy]
+ALL_DICTS = [MultiDict, CIMultiDict, MultiDictProxy, CIMultiDictProxy]
 
 
-@pytest.fixture(params=MUTABLE_DICTS)
+def create_any_instance(request, val):
+    inst = {
+        MultiDict: MultiDict(val),
+        CIMultiDict: CIMultiDict(val),
+        MultiDictProxy: MultiDictProxy(MultiDict(val)),
+        CIMultiDictProxy: CIMultiDictProxy(CIMultiDict(val)),
+    }[request.param]
+    return inst
+
+@pytest.fixture(params=ALL_DICTS)
 def md_simple(request):
-    return request.param([('key1', 'value1')])
+    val = [('key1', 'value1')]
+    return create_any_instance(request, val)
 
-@pytest.fixture(params=MUTABLE_DICTS)
-def md_w_multivalue_per_key(request):
-    return request.param([('key1', 'one'), ('key2', 'two'), ('key1', 3)])
+@pytest.fixture(params=ALL_DICTS)
+def md_twokeys(request):
+    val = [('key1', 'value1'), ('key2', 'value2')]
+    return create_any_instance(request, val)
+
+@pytest.fixture(params=ALL_DICTS)
+def md_multivalue(request):
+    val = [('key1', 'one'), ('key2', 'two'), ('key1', 3)]
+    return create_any_instance(request, val)
 
 
 @pytest.mark.parametrize("cls", MUTABLE_DICTS)
@@ -27,8 +43,6 @@ class TestInstantiation:
         assert list(d.items()) == []
 
         assert cls() != list()
-        with pytest.raises(TypeError, match='\(2 given\)'):
-            cls(('key1', 'value1'), ('key2', 'value2'))
 
     @pytest.mark.parametrize('arg0', [
         [('key', 'value1')],
@@ -66,68 +80,124 @@ class TestInstantiation:
         with pytest.raises(TypeError):
             cls([(1, 2, 3)])
 
+        with pytest.raises(TypeError, match=r'(2 given)'):
+            cls(('key1', 'value1'), ('key2', 'value2'))
 
-@pytest.mark.parametrize("cls", MUTABLE_DICTS+PROXY_DICTS)
+
 class TestContents:
 
-    @pytest.fixture(autouse=True)
-    def _autoassign_md_to_d(self, md_w_multivalue_per_key):
-        self.d = md_w_multivalue_per_key
+    def test_getting_items(self, md_multivalue):
+        assert md_multivalue.getone('key1') == 'one'
+        assert md_multivalue.getone('key1') == 'one'
+        assert md_multivalue.get('key1') == 'one'
+        assert md_multivalue['key1'] == 'one'
 
-    def test_getting_items(self, cls):
-        assert self.d.getone('key1') == 'one'
-        assert self.d.get('key1') == 'one'
-        assert self.d['key1'] == 'one'
+        with pytest.raises(KeyError, match='key99'):
+            md_multivalue['key99']
+        with pytest.raises(KeyError, match='key99'):
+            md_multivalue.getone('key99')
 
-        with pytest.raises(KeyError, match='key0'):
-            self.d['key0']
-        with pytest.raises(KeyError, match='key0'):
-            self.d.getone('key0')
+        assert md_multivalue.getone('key99', 'default') == 'default'
 
-        assert self.d.getone('key0', 'default') == 'default'
+    def test__iter__(self, md_multivalue):
+        assert list(md_multivalue) == ['key1', 'key2', 'key1']
 
-    def test__iter__(self, cls):
-        assert list(self.d) == ['key1', 'key2', 'key1']
+    def test_keys__contains(self, md_multivalue):
+        assert list(md_multivalue.keys()) == ['key1', 'key2', 'key1']
 
-    def test_keys__contains(self, cls):
-        assert list(self.d.keys()) == ['key1', 'key2', 'key1']
+        assert 'key1' in md_multivalue.keys()
+        assert 'key2' in md_multivalue.keys()
 
-        assert 'key1' in self.d.keys()
-        assert 'key2' in self.d.keys()
+        assert 'foo' not in md_multivalue.keys()
 
-        assert 'foo' not in self.d.keys()
+    def test_values__contains(self, md_multivalue):
+        assert list(md_multivalue.values()) == ['one', 'two', 3]
 
-    def test_values__contains(self, cls):
-        assert list(self.d.values()) == ['one', 'two', 3]
+        assert 'one' in md_multivalue.values()
+        assert 'two' in md_multivalue.values()
+        assert 3 in md_multivalue.values()
 
-        assert 'one' in self.d.values()
-        assert 'two' in self.d.values()
-        assert 3 in self.d.values()
+        assert 'foo' not in md_multivalue.values()
 
-        assert 'foo' not in self.d.values()
+    def test_items__contains(self, md_multivalue):
+        assert list(md_multivalue.items()) == [('key1', 'one'), ('key2', 'two'), ('key1', 3)]
 
-    def test_items__contains(self, cls):
-        assert list(self.d.items()) == [('key1', 'one'), ('key2', 'two'), ('key1', 3)]
+        assert ('key1', 'one') in md_multivalue.items()
+        assert ('key2', 'two') in md_multivalue.items()
+        assert ('key1', 3) in md_multivalue.items()
 
-        assert ('key1', 'one') in self.d.items()
-        assert ('key2', 'two') in self.d.items()
-        assert ('key1', 3) in self.d.items()
-
-        assert ('foo', 'bar') not in self.d.items()
+        assert ('foo', 'bar') not in md_multivalue.items()
 
 
-@pytest.mark.parametrize("cls", MUTABLE_DICTS+PROXY_DICTS)
 class TestComparisons:
 
-    @pytest.fixture(autouse=True)
-    def _autoassign_md_simple_to_d(self, md_simple):
-        self.d = md_simple
+    def test_keys_is_set_less(self, md_simple):
+        assert md_simple.keys() < {'key1', 'key2'}
 
-    def test_keys_is_set_less(self, cls):
-        assert self.d.keys() < {'key1', 'key2'}
+    def test_keys_is_set_less_equal(self, md_simple):
+        assert md_simple.keys() <= {'key1'}
 
-    def test_keys_is_set_less_equal(self, cls):
-        assert self.d.keys() <= {'key1'}
+    def test_keys_is_set_equal(self, md_simple):
+        assert md_simple.keys() == {'key1'}
 
-    def test_keys_is_set_equal(self, cls):
-        assert self.d.keys() == {'key1'}
+    def test_keys_is_set_greater(self, md_simple):
+        assert {'key1', 'key2'} > md_simple.keys()
+
+    def test_keys_is_set_greater_equal(self, md_simple):
+        assert {'key1'} >= md_simple.keys()
+
+    def test_keys_is_set_not_equal(self, md_simple):
+        assert md_simple.keys() != {'key2'}
+
+    def test_eq(self, md_simple):
+        assert {'key1': 'value1'} == md_simple
+
+    @pytest.mark.parametrize("cls", MUTABLE_DICTS)
+    def test_eq2(self, cls, md_simple):
+        another_md = cls([('key2', 'value1')])
+        assert md_simple != another_md
+
+    @pytest.mark.parametrize("cls", MUTABLE_DICTS)
+    def test_eq3(self, cls, md_simple):
+        empty_md = cls()
+        assert md_simple != empty_md
+
+    @pytest.mark.parametrize("cls", MUTABLE_DICTS)
+    def test_eq_other_mapping_contains_more_keys(self, cls):
+        d1 = cls(foo='bar')
+        d2 = dict(foo='bar', bar='baz')
+        assert d1 != d2
+
+    def test_ne(self, md_simple):
+        assert md_simple != {'key1': 'another_value'}
+
+    def test_and(self, md_simple):
+        assert {'key1'} == md_simple.keys() & {'key1', 'key2'}
+
+    def test_and2(self, md_simple):
+        assert {'key1'} == {'key1', 'key2'} & md_simple.keys()
+
+    def test_or(self, md_simple):
+        assert {'key1', 'key2'} == md_simple.keys() | {'key2'}
+
+    def test_or2(self, md_simple):
+        assert {'key1', 'key2'} == {'key2'} | md_simple.keys()
+
+    def test_sub(self, md_twokeys):
+        assert {'key1'} == md_twokeys.keys() - {'key2'}
+
+    def test_sub2(self, md_twokeys):
+        assert {'key3'} == {'key1', 'key2', 'key3'} - md_twokeys.keys()
+
+    def test_xor(self, md_twokeys):
+        assert {'key1', 'key3'} == md_twokeys.keys() ^ {'key2', 'key3'}
+
+    def test_xor2(self, md_twokeys):
+        assert {'key1', 'key3'} == {'key2', 'key3'} ^ md_twokeys.keys()
+
+    @pytest.mark.parametrize('_set, expected', [
+        ({'key2'}, True),
+        ({'key1'}, False)
+    ])
+    def test_isdisjoint(self, md_simple, _set, expected):
+        assert md_simple.keys().isdisjoint(_set) == expected
