@@ -74,7 +74,7 @@ if USE_CYTHON_EXTENSIONS:
                 'multidict/_multidict' + ext,
                 'multidict/_pair_list.c',
                 'multidict/_multidict_iter.c',
-                'multidict/_multidict_views.c'
+                'multidict/_multidict_views.c',
             ],
             extra_compile_args=CFLAGS
         )
@@ -89,6 +89,16 @@ if USE_CYTHON_EXTENSIONS:
 
     extensions.append(Extension('multidict._istr',
                                 ['multidict/_istr.c']))
+    extensions.append(Extension(
+            'multidict._multidict_c',
+            [
+                'multidict/_multidict_c.c',
+                'multidict/_pair_list.c',
+                'multidict/_multidict_iter.c',
+                'multidict/_multidict_views.c',
+            ]
+        )
+    )
 
     class BuildFailed(Exception):
         pass
