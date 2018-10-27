@@ -319,17 +319,178 @@ static PyTypeObject multidict_base_type = {
 
 /******************** MultiDict ********************/
 
-static void
+static INLINE int
+multidict_internal_update_items(_MultiDictBaseObject *self,
+                                _MultiDictBaseObject *impl)
+{
+    return pair_list_update(self->impl, impl);
+}
+
+static int
+multidict_internal_append_items(_MultiDictBaseObject *self,
+                                _MultiDictBaseObject *impl)
+{
+    PyObject *key   = NULL,
+             *value = NULL;
+
+    Py_ssize_t pos = 0;
+
+    while (_pair_list_next(impl, &pos, NULL, &key, &value, NULL)) {
+        if (pair_list_add(self->impl, key, value) < 0) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+static int
+multidict_internal_append_items_seq(_MultiDictBaseObject *self,
+                                    PyObject *arg,
+                                    const char *name)
+{
+    PyObject *key   = NULL,
+             *value = NULL,
+             *item  = NULL,
+             *iter  = PyObject_GetIter(arg);
+
+    if (iter == NULL) {
+        return -1;
+    }
+
+    while (item = PyIter_Next(iter)) {
+        if (PyObject_Length(item) != 2) {
+            PyErr_Format(PyExc_TypeError,
+                     "%s takes either dict or list of (key, value) tuples",
+                     name, NULL);
+            Py_DECREF(item);
+            Py_DECREF(iter);
+            return -1;
+        }
+        key   = PyTuple_GET_ITEM(item, 0);
+        value = PyTuple_GET_ITEM(item, 0);
+        // TODO: add err check
+        pair_list_add(self->impl, key, value);
+        Py_DECREF(item);
+    }
+
+    Py_DECREF(iter);
+    return 0;
+}
+
+static int
+multidict_internal_list_extend(PyObject *list, PyObject *target_list)
+{
+    PyObject *item = NULL,
+             *iter = PyObject_GetIter(target_list);
+
+    if (iter == NULL) {
+        return -1;
+    }
+
+    while (item = PyIter_Next(iter)) {
+        if (PyList_Append(list, item) < 0) {
+            Py_DECREF(item);
+            Py_DECREF(iter);
+            return -1;
+        }
+        Py_DECREF(item);
+    }
+
+    Py_DECREF(iter);
+    return 0;
+}
+
+static int
 multidict_internal_extend(_MultiDictBaseObject *self, PyObject *args,
                           PyObject *kwds, const char *name, int do_add)
 {
+    // TOOD: Refactoring me. Split on little functions;
 
+    PyObject *arg        = NULL,
+             *arg_items  = NULL,
+             *kwds_items = NULL;
+
+    int cmp = 0;
+
+    if (PyObject_Length(args) > 1) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s takes at most 1 positional argument (%zd given)",
+                     name, PyObject_Length(args), NULL);
+        goto fail;
+    }
+
+    if (args != Py_None) {
+        arg = PyTuple_GetItem(args, 0);
+        if (!arg) {
+            goto fail;
+        }
+        Py_INCREF(arg);
+
+        cmp = PyObject_IsInstance(arg, (PyObject*)&multidict_base_type);
+        if (cmp < 0) {
+            goto fail;
+        }
+
+        if (cmp && kwds == Py_None) {
+            if (do_add) {
+                // TODO: add err check
+                multidict_internal_append_items(
+                    self,
+                    ((_MultiDictBaseObject*)arg)->impl
+                );
+            } else {
+                // TODO: add err check
+                multidict_internal_update_items(
+                    self,
+                    ((_MultiDictBaseObject*)arg)->impl
+                );
+            }
+        } else {
+            if (PyObject_HasAttrString(arg, "items")) {
+                arg_items = multidict_items(self, arg);
+            }
+
+            if (kwds != Py_None) {
+                kwds_items = PyDict_Items(kwds);
+                multidict_internal_list_extend(arg_items, kwds_items);
+            }
+
+            if (do_add) {
+                // TODO: add err check
+                multidict_internal_append_items_seq(self, arg, name);
+            } else {
+                // TODO: add err check
+                pair_list_update_from_seq(self->impl, arg);
+            }
+        }
+    } else {
+        arg = PyDict_Items(kwds);
+        if (do_add) {
+            // TODO: add err check
+            multidict_internal_append_items_seq(self, arg, name);
+        } else {
+            pair_list_update_from_seq(self->impl, arg);
+        }
+    }
+
+    Py_DECREF(arg);
+    Py_DECREF(arg_items);
+    Py_DECREF(kwds_items);
+    return 0;
+
+fail:
+    Py_XDECREF(arg);
+    Py_XDECREF(arg_items);
+    Py_XDECREF(kwds_items);
+    return -1;
 }
 
 static int
 multidict_tp_init(_MultiDictBaseObject *self, PyObject *args, PyObject *kwds)
 {
     self->impl = pair_list_new();
+    // TOOD: add err check
     multidict_internal_extend(self, args, kwds, "MultiDict", 1);
     return 0;
 }
