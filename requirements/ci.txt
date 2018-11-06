@@ -1,5 +1,5 @@
 -r wheel.txt
-flake8==3.5.0
+flake8==3.6.0
 pyflakes>=1.0.0
 coverage==4.5.1
 sphinx==1.8.1
