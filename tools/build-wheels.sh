@@ -60,5 +60,5 @@ for PYTHON in ${PYTHON_VERSIONS}; do
     echo -n "Test $PYTHON: "
     /opt/python/${PYTHON}/bin/python -c "import platform; print('Building wheel for {platform} platform.'.format(platform=platform.platform()))"
     /opt/python/${PYTHON}/bin/pip install "$package_name" --no-index -f file:///io/dist
-    /opt/python/${PYTHON}/bin/py.test /io/tests
+    /opt/python/${PYTHON}/bin/pytest /io/tests
 done
