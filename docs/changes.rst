@@ -1,5 +1,10 @@
 .. _changes:
 
+4.5.0 (2018-11-19)
+
+* Multidict views ported from Cython to C extension (:pr:`275`)
+
+
 4.4.2 (2018-09-19)
 ------------------
 
