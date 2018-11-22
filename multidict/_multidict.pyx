@@ -32,7 +32,7 @@ cdef class _Base:
 
     def impl(self):
         return self._impl
-    
+
     def getall(self, key, default=_marker):
         """Return a list of all values matching the key."""
         try:

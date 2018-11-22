@@ -235,7 +235,7 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
             Py_DECREF(item);
             return 1;
         }
-        
+
         Py_DECREF(item);
     }
 
@@ -530,7 +530,7 @@ multidict_views_init()
 
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_isdisjoint");
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_repr");
-    
+
     GET_MOD_ATTR(keysview_repr_func, "_keysview_repr");
     GET_MOD_ATTR(keysview_isdisjoint_func, "_keysview_isdisjoint");
 
@@ -539,10 +539,10 @@ multidict_views_init()
     if (multidict_iter_init() < 0) {
         goto fail;
     }
-    
+
     if (PyType_Ready(&multidict_itemsview_type) < 0 ||
         PyType_Ready(&multidict_valuesview_type) < 0 ||
-        PyType_Ready(&multidict_keysview_type) < 0) 
+        PyType_Ready(&multidict_keysview_type) < 0)
     {
         goto fail;
     }
