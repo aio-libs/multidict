@@ -94,9 +94,15 @@ multidict_view_len(_Multidict_ViewObject *self)
 static PyObject *
 multidict_view_richcompare(PyObject *self, PyObject *other, int op)
 {
+    PyObject *ret;
     PyObject *op_obj = PyLong_FromLong(op);
-    return PyObject_CallFunctionObjArgs(
+    if (op_obj == NULL) {
+        return NULL;
+    }
+    ret = PyObject_CallFunctionObjArgs(
         viewbaseset_richcmp_func, self, other, op_obj, NULL);
+    Py_DECREF(op_obj);
+    return ret;
 }
 
 static PyObject *
@@ -165,11 +171,14 @@ multidict_itemsview_new(PyObject *md)
 static PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
+    PyObject *iter;
     PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
     if (impl == NULL) {
         return NULL;
     }
-    return multidict_items_iter_new(impl);
+    iter = multidict_items_iter_new(impl);
+    Py_DECREF(impl);
+    return iter;
 }
 
 static PyObject *
@@ -211,6 +220,7 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
              *bval  = NULL,
              *iter  = NULL,
              *item  = NULL;
+    int ret1, ret2;
 
     if (!PyTuple_Check(obj) || PyTuple_GET_SIZE(obj) != 2) {
         return 0;
@@ -228,14 +238,25 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
         akey = PyTuple_GET_ITEM(item, 0);
         aval = PyTuple_GET_ITEM(item, 1);
 
-        if (PyObject_RichCompareBool(akey, bkey, Py_EQ) > 0 &&
-            PyObject_RichCompareBool(aval, bval, Py_EQ) > 0)
+        ret1 = PyObject_RichCompareBool(akey, bkey, Py_EQ);
+        if (ret1 < 0) {
+            Py_DECREF(iter);
+            Py_DECREF(item);
+            return -1;
+        }
+        ret2 = PyObject_RichCompareBool(aval, bval, Py_EQ);
+        if (ret2 < 0) {
+            Py_DECREF(iter);
+            Py_DECREF(item);
+            return -1;
+        }
+        if (ret1 > 0 && ret2 > 0)
         {
             Py_DECREF(iter);
             Py_DECREF(item);
             return 1;
         }
-        
+
         Py_DECREF(item);
     }
 
@@ -276,13 +297,13 @@ static PyTypeObject multidict_itemsview_type = {
     0,                                              /* tp_hash */
     0,                                              /* tp_call */
     0,                                              /* tp_str */
-    0,                                              /* tp_getattro */
+    PyObject_GenericGetAttr,                        /* tp_getattro */
     0,                                              /* tp_setattro */
     0,                                              /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,        /* tp_flags */
     0,                                              /* tp_doc */
-    multidict_view_traverse,                        /* tp_traverse */
-    multidict_view_clear,                           /* tp_clear */
+    (traverseproc)multidict_view_traverse,          /* tp_traverse */
+    (inquiry)multidict_view_clear,                  /* tp_clear */
     multidict_view_richcompare,                     /* tp_richcompare */
     0,                                              /* tp_weaklistoffset */
     (getiterfunc)multidict_itemsview_iter,          /* tp_iter */
@@ -310,11 +331,14 @@ multidict_keysview_new(PyObject *md)
 static PyObject *
 multidict_keysview_iter(_Multidict_ViewObject *self)
 {
+    PyObject *iter;
     PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
     if (impl == NULL) {
         return NULL;
     }
-    return multidict_keys_iter_new(impl);
+    iter = multidict_keys_iter_new(impl);
+    Py_DECREF(impl);
+    return iter;
 }
 
 static PyObject *
@@ -385,13 +409,13 @@ static PyTypeObject multidict_keysview_type = {
     0,                                             /* tp_hash */
     0,                                             /* tp_call */
     0,                                             /* tp_str */
-    0,                                             /* tp_getattro */
+    PyObject_GenericGetAttr,                       /* tp_getattro */
     0,                                             /* tp_setattro */
     0,                                             /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,       /* tp_flags */
     0,                                             /* tp_doc */
-    multidict_view_traverse,                       /* tp_traverse */
-    multidict_view_clear,                          /* tp_clear */
+    (traverseproc)multidict_view_traverse,         /* tp_traverse */
+    (inquiry)multidict_view_clear,                 /* tp_clear */
     multidict_view_richcompare,                    /* tp_richcompare */
     0,                                             /* tp_weaklistoffset */
     (getiterfunc)multidict_keysview_iter,          /* tp_iter */
@@ -419,11 +443,14 @@ multidict_valuesview_new(PyObject *md)
 static PyObject *
 multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
+    PyObject *iter;
     PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
     if (impl == NULL) {
         return NULL;
     }
-    return multidict_values_iter_new(impl);
+    iter = multidict_values_iter_new(impl);
+    Py_DECREF(impl);
+    return iter;
 }
 
 static PyObject *
@@ -431,35 +458,6 @@ multidict_valuesview_repr(_Multidict_ViewObject *self)
 {
     return PyObject_CallFunctionObjArgs(
         valuesview_repr_func, self, NULL);
-}
-
-static int
-multidict_valuesview_contains(_Multidict_ViewObject *self, PyObject *value)
-{
-    PyObject *iter  = NULL,
-             *item  = NULL;
-
-    iter = multidict_valuesview_iter(self);
-    if (iter == NULL) {
-        return 0;
-    }
-
-    while ((item = PyIter_Next(iter)) != NULL) {
-        if (PyObject_RichCompareBool(item, value, Py_EQ)) {
-            Py_DECREF(iter);
-            Py_DECREF(item);
-            return 1;
-        }
-        Py_DECREF(item);
-    }
-
-    Py_DECREF(iter);
-
-    if (PyErr_Occurred()) {
-        return -1;
-    }
-
-    return 0;
 }
 
 static PySequenceMethods multidict_valuesview_as_sequence = {
@@ -470,7 +468,7 @@ static PySequenceMethods multidict_valuesview_as_sequence = {
     0,                                         /* sq_slice */
     0,                                         /* sq_ass_item */
     0,                                         /* sq_ass_slice */
-    (objobjproc)multidict_valuesview_contains, /* sq_contains */
+    (objobjproc)0,                             /* sq_contains */
 };
 
 static PyTypeObject multidict_valuesview_type = {
@@ -484,19 +482,19 @@ static PyTypeObject multidict_valuesview_type = {
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
     (reprfunc)multidict_valuesview_repr,             /* tp_repr */
-    &multidict_view_as_number,                       /* tp_as_number */
+    0,                                               /* tp_as_number */
     &multidict_valuesview_as_sequence,               /* tp_as_sequence */
     0,                                               /* tp_as_mapping */
     0,                                               /* tp_hash */
     0,                                               /* tp_call */
     0,                                               /* tp_str */
-    0,                                               /* tp_getattro */
+    PyObject_GenericGetAttr,                         /* tp_getattro */
     0,                                               /* tp_setattro */
     0,                                               /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
     0,                                               /* tp_doc */
-    multidict_view_traverse,                         /* tp_traverse */
-    multidict_view_clear,                            /* tp_clear */
+    (traverseproc)multidict_view_traverse,           /* tp_traverse */
+    (inquiry)multidict_view_clear,                   /* tp_clear */
     0,                                               /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
     (getiterfunc)multidict_valuesview_iter,          /* tp_iter */
@@ -530,7 +528,7 @@ multidict_views_init()
 
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_isdisjoint");
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_repr");
-    
+
     GET_MOD_ATTR(keysview_repr_func, "_keysview_repr");
     GET_MOD_ATTR(keysview_isdisjoint_func, "_keysview_isdisjoint");
 
@@ -539,10 +537,10 @@ multidict_views_init()
     if (multidict_iter_init() < 0) {
         goto fail;
     }
-    
+
     if (PyType_Ready(&multidict_itemsview_type) < 0 ||
         PyType_Ready(&multidict_valuesview_type) < 0 ||
-        PyType_Ready(&multidict_keysview_type) < 0) 
+        PyType_Ready(&multidict_keysview_type) < 0)
     {
         goto fail;
     }

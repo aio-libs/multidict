@@ -193,7 +193,7 @@ static PyTypeObject multidict_items_iter_type = {
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,        /* tp_flags */
     0,                                              /* tp_doc */
     (traverseproc)multidict_iter_traverse,          /* tp_traverse */
-    multidict_iter_clear,                           /* tp_clear */
+    (inquiry)multidict_iter_clear,                  /* tp_clear */
     0,                                              /* tp_richcompare */
     0,                                              /* tp_weaklistoffset */
     PyObject_SelfIter,                              /* tp_iter */
@@ -223,7 +223,7 @@ static PyTypeObject multidict_values_iter_type = {
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
     0,                                               /* tp_doc */
     (traverseproc)multidict_iter_traverse,           /* tp_traverse */
-    multidict_iter_clear,                            /* tp_clear */
+    (inquiry)multidict_iter_clear,                   /* tp_clear */
     0,                                               /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
     PyObject_SelfIter,                               /* tp_iter */
@@ -253,7 +253,7 @@ static PyTypeObject multidict_keys_iter_type = {
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,       /* tp_flags */
     0,                                             /* tp_doc */
     (traverseproc)multidict_iter_traverse,         /* tp_traverse */
-    multidict_iter_clear,                          /* tp_clear */
+    (inquiry)multidict_iter_clear,                 /* tp_clear */
     0,                                             /* tp_richcompare */
     0,                                             /* tp_weaklistoffset */
     PyObject_SelfIter,                             /* tp_iter */

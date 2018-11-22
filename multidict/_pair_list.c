@@ -124,7 +124,7 @@ pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
         return 0;
     }
 
-    new_pairs = PyMem_Resize(list->pairs, pair_t, new_capacity);
+    new_pairs = PyMem_Resize(list->pairs, pair_t, (size_t)new_capacity);
 
     if (NULL == new_pairs) {
         // if not enought mem for realloc we do nothing, just return false
@@ -294,9 +294,10 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
     }
 
     tail = list->size - pos;
+    // TODO: raise an error if tail < 0
     memmove((void *)pair_list_get(list, pos),
             (void *)pair_list_get(list, pos + 1),
-            sizeof(pair_t) * tail);
+            sizeof(pair_t) * (size_t)tail);
 
     if (list->capacity - list->size > MIN_LIST_CAPACITY) {
         return pair_list_resize(list, list->capacity - MIN_LIST_CAPACITY);
