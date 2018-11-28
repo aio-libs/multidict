@@ -1,5 +1,10 @@
 .. _changes:
 
+4.5.2 (2018-11-28)
+------------------
+
+* Fix another memory leak introduced by 4.5.0 release (:pr:`307`)
+
 4.5.1 (2018-11-22)
 ------------------
 
