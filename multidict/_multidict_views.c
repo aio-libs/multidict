@@ -84,11 +84,14 @@ multidict_view_clear(_Multidict_ViewObject *self)
 static Py_ssize_t
 multidict_view_len(_Multidict_ViewObject *self)
 {
+    Py_ssize_t ret;
     PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
     if (impl == NULL) {
         return 0;
     }
-    return pair_list_len(impl);
+    ret = pair_list_len(impl);
+    Py_DECREF(impl);
+    return ret;
 }
 
 static PyObject *
@@ -374,11 +377,14 @@ static PyMethodDef multidict_keysview_methods[] = {
 static int
 multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
 {
+    int ret;
     PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
     if (impl == NULL) {
         return -1;
     }
-    return pair_list_contains(impl, key);
+    ret = pair_list_contains(impl, key);
+    Py_DECREF(impl);
+    return ret;
 }
 
 static PySequenceMethods multidict_keysview_as_sequence = {
