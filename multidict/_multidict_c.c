@@ -11,32 +11,29 @@
 #define INLINE
 #endif
 
-// TODO: mb not need
-// #define MultiDict_Check(o) (Py_TYPE(o) == &multidict_base_type)
-
-#define MARKER (0)
-
 static PyObject *collections_abc_mapping;
 
-static PyTypeObject multidict_base_type;
 static PyTypeObject multidict_type;
+static PyTypeObject multidict_proxy_type;
 
-/******************** Base ********************/
+#define MultiDict_Check(o) (Py_TYPE(o) == &multidict_type)
+
+/******************** MultiDict ********************/
 
 typedef struct {
     PyObject_HEAD
     PyObject *impl;
-} _MultiDictBaseObject;
+} _MultiDictObject;
 
 PyDoc_STRVAR(multidict_getall_doc,
              "Return a list of all values matching the key.");  
 
 static PyObject *
-multidict_getall(_MultiDictBaseObject *self, PyObject *args, PyObject *kwds)
+multidict_getall(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *list     = NULL,
              *key      = NULL,
-             *_default = MARKER;
+             *_default = NULL;
 
     static char *keywords[] = {"key", "default"};
 
@@ -49,7 +46,7 @@ multidict_getall(_MultiDictBaseObject *self, PyObject *args, PyObject *kwds)
     list = pair_list_get_all(self->impl, key);
     if (list == NULL) {
         if (PyErr_ExceptionMatches(PyExc_KeyError)) {
-            if (_default != MARKER) {
+            if (_default != NULL) {
                 return _default;
             }
             PyErr_SetNone(PyExc_Exception);
@@ -60,13 +57,13 @@ multidict_getall(_MultiDictBaseObject *self, PyObject *args, PyObject *kwds)
 }
 
 static INLINE PyObject *
-multidict_internal_getone(_MultiDictBaseObject *self, PyObject *key,
+multidict_internal_getone(_MultiDictObject *self, PyObject *key,
                           PyObject *_default)
 {
     PyObject *val = pair_list_get_one(self->impl, key);
     if (val == NULL) {
         if (PyErr_ExceptionMatches(PyExc_KeyError)) {
-            if (_default != MARKER) {
+            if (_default != NULL) {
                 return _default;
             }
             PyErr_SetNone(PyExc_Exception);
@@ -81,10 +78,10 @@ PyDoc_STRVAR(multidict_get_doc,
 "Get first value matching the key.\n\nThe method is alias for .getone().");
 
 static PyObject *
-multidict_getone(_MultiDictBaseObject *self, PyObject *args, PyObject *kwds)
+multidict_getone(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
-             *_default = MARKER;
+             *_default = NULL;
 
     static char *keywords[] = {"key", "default"};
 
@@ -100,7 +97,7 @@ multidict_getone(_MultiDictBaseObject *self, PyObject *args, PyObject *kwds)
 PyDoc_STRVAR(multidict_keys_doc, "Return a new view of the dictionary's keys.");
 
 static PyObject *
-multidict_keys(_MultiDictBaseObject *self, PyObject *args)
+multidict_keys(_MultiDictObject *self, PyObject *args)
 {
     return multidict_keysview_new((PyObject*)self);
 }
@@ -109,7 +106,7 @@ PyDoc_STRVAR(multidict_items_doc,
 "Return a new view of the dictionary's items *(key, value) pairs).");
 
 static PyObject *
-multidict_items(_MultiDictBaseObject *self, PyObject *args)
+multidict_items(_MultiDictObject *self, PyObject *args)
 {
     return multidict_itemsview_new((PyObject*)self);
 }
@@ -118,37 +115,37 @@ PyDoc_STRVAR(multidict_values_doc,
 "Return a new view of the dictionary's values.");
 
 static PyObject *
-multidict_values(_MultiDictBaseObject *self, PyObject *args)
+multidict_values(_MultiDictObject *self, PyObject *args)
 {
     return multidict_valuesview_new((PyObject*)self);
 }
 
 static Py_ssize_t
-multidict_mp_len(_MultiDictBaseObject *self)
+multidict_mp_len(_MultiDictObject *self)
 {
     return pair_list_len(self->impl);
 }
 
 static PyObject *
-multidict_mp_getitem(_MultiDictBaseObject *self, PyObject *key)
+multidict_mp_getitem(_MultiDictObject *self, PyObject *key)
 {
-    return multidict_internal_getone(self, key, MARKER);
+    return multidict_internal_getone(self, key, NULL);
 }
 
 static int
-multidict_sq_contains(_MultiDictBaseObject *self, PyObject *key)
+multidict_sq_contains(_MultiDictObject *self, PyObject *key)
 {
     return pair_list_contains(self->impl, key);
 }
 
 static PyObject *
-mulditict_tp_iter(_MultiDictBaseObject *self)
+mulditict_tp_iter(_MultiDictObject *self)
 {
     return PyObject_GetIter(multidict_keysview_new((PyObject*)self));
 }
 
-static int
-multidict_internal_eq(_MultiDictBaseObject *self, _MultiDictBaseObject *other)
+static PyObject *
+multidict_internal_eq(_MultiDictObject *self, _MultiDictObject *other)
 {
     Py_ssize_t pos1 = 0,
                pos2 = 0;
@@ -162,11 +159,11 @@ multidict_internal_eq(_MultiDictBaseObject *self, _MultiDictBaseObject *other)
              *value2    = NULL;
 
     if (self == other) {
-        return 1;
+        Py_RETURN_TRUE;
     }
 
     if (pair_list_len(self->impl) != pair_list_len(other->impl)) {
-        return 0;
+        Py_RETURN_FALSE;
     }
 
     while (_pair_list_next(self->impl, &pos1, &identity1, NULL, &value1, &h1) &&
@@ -176,11 +173,11 @@ multidict_internal_eq(_MultiDictBaseObject *self, _MultiDictBaseObject *other)
             PyObject_RichCompare(identity1, identity2, Py_NE) ||
             PyObject_RichCompare(value1, value2, Py_NE))
         {
-            return 0;
+            Py_RETURN_FALSE;
         }
     }
 
-    return 1;
+    Py_RETURN_TRUE;
 }
 
 static PyObject *
@@ -192,25 +189,21 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
         Py_RETURN_NOTIMPLEMENTED;
     }
 
-    cmp = PyObject_IsInstance(other, (PyObject*)&multidict_base_type);
-    if (cmp < 0) {
-        return NULL;
-    }
-    if (cmp) {
-        if (multidict_internal_eq((_MultiDictBaseObject*)self,
-                                  (_MultiDictBaseObject*)other))
-        {
-            Py_RETURN_TRUE;
-        }
-        Py_RETURN_FALSE;
+    // TODO: add MultiDictProxy_Check
+    if (MultiDict_Check(other)) {
+        return multidict_internal_eq(
+            (_MultiDictObject*)self,
+            (_MultiDictObject*)other
+        );
     }
 
     cmp = PyObject_IsInstance(other, (PyObject*)&collections_abc_mapping);
     if (cmp < 0) {
         return NULL;
     }
+
     if (cmp) {
-        if (pair_list_eq_to_mapping(((_MultiDictBaseObject*)self)->impl, other)) {
+        if (pair_list_eq_to_mapping(((_MultiDictObject*)self)->impl, other)) {
             Py_RETURN_TRUE;
         }
         Py_RETURN_FALSE;
@@ -219,7 +212,7 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
     Py_RETURN_NOTIMPLEMENTED;
 }
 
-static PySequenceMethods multidict_base_sequence = {
+static PySequenceMethods multidict_sequence = {
     0,                                  /* sq_length */
     0,                                  /* sq_concat */
     0,                                  /* sq_repeat */
@@ -230,107 +223,21 @@ static PySequenceMethods multidict_base_sequence = {
     (objobjproc)multidict_sq_contains,  /* sq_contains */
 };
 
-static PyMappingMethods multidict_base_mapping = {
+static PyMappingMethods multidict_mapping = {
     (lenfunc)multidict_mp_len,          /* mp_length */
     (binaryfunc)multidict_mp_getitem    /* mp_subscript */
 };
 
-static PyMethodDef multidict_base_methods[] = {
-    {
-        "getall",
-        (PyCFunction)multidict_getall,
-        METH_VARARGS | METH_KEYWORDS,
-        multidict_getall_doc
-    },
-    {
-        "getone",
-        (PyCFunction)multidict_getone,
-        METH_VARARGS | METH_KEYWORDS,
-        multidict_getone_doc
-    },
-    {
-        "get",
-        (PyCFunction)multidict_getone,
-        METH_VARARGS | METH_KEYWORDS,
-        multidict_get_doc
-    },
-    {
-        "keys",
-        (PyCFunction)multidict_keys,
-        METH_NOARGS,
-        multidict_keys_doc
-    },
-    {
-        "items",
-        (PyCFunction)multidict_items,
-        METH_NOARGS,
-        multidict_items_doc
-    },
-    {
-        "values",
-        (PyCFunction)multidict_values,
-        METH_NOARGS,
-        multidict_values_doc
-    },
-    {
-        NULL,
-        NULL
-    }   /* sentinel */
-};
-
-static PyTypeObject multidict_base_type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "multidict._multidict_c._Base",                  /* tp_name */
-    sizeof(_MultiDictBaseObject),                    /* tp_basicsize */
-    0,                                               /* tp_itemsize */
-    0,                                               /* tp_dealloc */
-    0,                                               /* tp_print */
-    0,                                               /* tp_getattr */
-    0,                                               /* tp_setattr */
-    0,                                               /* tp_reserved */
-    0,                                               /* tp_repr */
-    0,                                               /* tp_as_number */
-    &multidict_base_sequence,                        /* tp_as_sequence */
-    &multidict_base_mapping,                         /* tp_as_mapping */
-    0,                                               /* tp_hash */
-    0,                                               /* tp_call */
-    0,                                               /* tp_str */
-    0,                                               /* tp_getattro */
-    0,                                               /* tp_setattro */
-    0,                                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,        /* tp_flags */
-    0,                                               /* tp_doc */
-    0,                                               /* tp_traverse */
-    0,                                               /* tp_clear */
-    (richcmpfunc)multidict_tp_richcompare,           /* tp_richcompare */
-    0,                                               /* tp_weaklistoffset */
-    (getiterfunc)mulditict_tp_iter,                  /* tp_iter */
-    0,                                               /* tp_iternext */
-    multidict_base_methods,                          /* tp_methods */
-    0,                                               /* tp_members */
-    0,                                               /* tp_getset */
-    0,                                               /* tp_base */
-    0,                                               /* tp_dict */
-    0,                                               /* tp_descr_get */
-    0,                                               /* tp_descr_set */
-    0,                                               /* tp_dictoffset */
-    0,                                               /* tp_init */
-    0,                                               /* tp_alloc */
-    0                                                /* tp_new */
-};
-
-/******************** MultiDict ********************/
-
 static INLINE int
-multidict_internal_update_items(_MultiDictBaseObject *self,
-                                _MultiDictBaseObject *impl)
+multidict_internal_update_items(_MultiDictObject *self,
+                                _MultiDictObject *impl)
 {
     return pair_list_update((PyObject*)self->impl, (PyObject*)impl);
 }
 
 static int
-multidict_internal_append_items(_MultiDictBaseObject *self,
-                                _MultiDictBaseObject *impl)
+multidict_internal_append_items(_MultiDictObject *self,
+                                _MultiDictObject *impl)
 {
     PyObject *key   = NULL,
              *value = NULL;
@@ -347,7 +254,7 @@ multidict_internal_append_items(_MultiDictBaseObject *self,
 }
 
 static int
-multidict_internal_append_items_seq(_MultiDictBaseObject *self,
+multidict_internal_append_items_seq(_MultiDictObject *self,
                                     PyObject *arg,
                                     const char *name)
 {
@@ -404,7 +311,7 @@ multidict_internal_list_extend(PyObject *list, PyObject *target_list)
 }
 
 static int
-multidict_internal_extend(_MultiDictBaseObject *self, PyObject *args,
+multidict_internal_extend(_MultiDictObject *self, PyObject *args,
                           PyObject *kwds, const char *name, int do_add)
 {
     // TOOD: Refactoring me. Split on little functions;
@@ -412,8 +319,6 @@ multidict_internal_extend(_MultiDictBaseObject *self, PyObject *args,
     PyObject *arg        = NULL,
              *arg_items  = NULL,
              *kwds_items = NULL;
-
-    int cmp = 0;
 
     if (PyObject_Length(args) > 1) {
         PyErr_Format(PyExc_TypeError,
@@ -429,23 +334,19 @@ multidict_internal_extend(_MultiDictBaseObject *self, PyObject *args,
         }
         Py_INCREF(arg);
 
-        cmp = PyObject_IsInstance(arg, (PyObject*)&multidict_base_type);
-        if (cmp < 0) {
-            goto fail;
-        }
-
-        if (cmp && kwds == Py_None) {
+        // TODO: fixme multidict_base_type
+        if (MultiDict_Check(arg) && kwds == Py_None) {
             if (do_add) {
                 // TODO: add err check
                 multidict_internal_append_items(
                     self,
-                    (_MultiDictBaseObject*)((_MultiDictBaseObject*)arg)->impl
+                    (_MultiDictObject*)((_MultiDictObject*)arg)->impl
                 );
             } else {
                 // TODO: add err check
                 multidict_internal_update_items(
                     self,
-                    (_MultiDictBaseObject*)((_MultiDictBaseObject*)arg)->impl
+                    (_MultiDictObject*)((_MultiDictObject*)arg)->impl
                 );
             }
         } else {
@@ -489,7 +390,7 @@ fail:
 }
 
 static int
-multidict_tp_init(_MultiDictBaseObject *self, PyObject *args, PyObject *kwds)
+multidict_tp_init(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     self->impl = pair_list_new();
     // TOOD: add err check
@@ -500,11 +401,11 @@ multidict_tp_init(_MultiDictBaseObject *self, PyObject *args, PyObject *kwds)
 static PyObject *
 multidict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    _MultiDictBaseObject *self = NULL;
+    _MultiDictObject *self = NULL;
 
     assert(type != NULL && type->tp_alloc != NULL);
 
-    self = (_MultiDictBaseObject*)type->tp_alloc(type, 0);
+    self = (_MultiDictObject*)type->tp_alloc(type, 0);
     if (self == NULL) {
         return NULL;
     }
@@ -516,7 +417,7 @@ PyDoc_STRVAR(multidict_add_doc,
 "Add the key and value, not overwriting any previous value.");
 
 static PyObject *
-multidict_add(_MultiDictBaseObject *self, PyObject *args)
+multidict_add(_MultiDictObject *self, PyObject *args)
 {
     PyObject *key = NULL,
              *val = NULL;
@@ -535,14 +436,14 @@ multidict_add(_MultiDictBaseObject *self, PyObject *args)
 PyDoc_STRVAR(multidict_copy_doc, "Return a copy of itself.");
 
 static PyObject *
-multidict_copy(_MultiDictBaseObject *self)
+multidict_copy(_MultiDictObject *self)
 {
-    _MultiDictBaseObject *new_multidict = NULL;
+    _MultiDictObject *new_multidict = NULL;
 
     PyObject *arg_items = NULL,
              *items     = NULL;
 
-    new_multidict = (_MultiDictBaseObject*)multidict_new(
+    new_multidict = (_MultiDictObject*)multidict_new(
         &multidict_type, NULL, NULL);
     if (new_multidict == NULL) {
         return NULL;
@@ -582,7 +483,7 @@ PyDoc_STRVAR(multdicit_method_extend_doc,
 This method must be used instead of update.");
 
 static PyObject *
-multidict_extend(_MultiDictBaseObject *self, PyObject *args,
+multidict_extend(_MultiDictObject *self, PyObject *args,
                         PyObject *kwds)
 {
     if (multidict_internal_extend(self, args, kwds, "extend", 1) < 0) {
@@ -595,7 +496,7 @@ multidict_extend(_MultiDictBaseObject *self, PyObject *args,
 PyDoc_STRVAR(multidict_clear_doc, "Remove all items from MultiDict");
 
 static PyObject *
-multidict_clear(_MultiDictBaseObject *self)
+multidict_clear(_MultiDictObject *self)
 {
     pair_list_clear(self->impl);
 
@@ -603,6 +504,42 @@ multidict_clear(_MultiDictBaseObject *self)
 }
 
 static PyMethodDef multidict_methods[] = {
+    {
+        "getall",
+        (PyCFunction)multidict_getall,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_getall_doc
+    },
+    {
+        "getone",
+        (PyCFunction)multidict_getone,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_getone_doc
+    },
+    {
+        "get",
+        (PyCFunction)multidict_getone,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_get_doc
+    },
+    {
+        "keys",
+        (PyCFunction)multidict_keys,
+        METH_NOARGS,
+        multidict_keys_doc
+    },
+    {
+        "items",
+        (PyCFunction)multidict_items,
+        METH_NOARGS,
+        multidict_items_doc
+    },
+    {
+        "values",
+        (PyCFunction)multidict_values,
+        METH_NOARGS,
+        multidict_values_doc
+    },
     {
         "add",
         (PyCFunction)multidict_add,
@@ -626,13 +563,17 @@ static PyMethodDef multidict_methods[] = {
         (PyCFunction)multidict_clear,
         METH_O,
         multidict_clear_doc
-    }
+    },
+    {
+        NULL,
+        NULL
+    }   /* sentinel */
 };
 
 static PyTypeObject multidict_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict_c.MultiDict",              /* tp_name */
-    sizeof(_MultiDictBaseObject),                    /* tp_basicsize */
+    sizeof(_MultiDictObject),                    /* tp_basicsize */
     0,                                               /* tp_itemsize */
     0,                                               /* tp_dealloc */
     0,                                               /* tp_print */
@@ -641,8 +582,8 @@ static PyTypeObject multidict_type = {
     0,                                               /* tp_reserved */
     0,                                               /* tp_repr */
     0,                                               /* tp_as_number */
-    0,                                               /* tp_as_sequence */
-    0,                                               /* tp_as_mapping */
+    &multidict_sequence,                             /* tp_as_sequence */
+    &multidict_mapping,                              /* tp_as_mapping */
     0,                                               /* tp_hash */
     0,                                               /* tp_call */
     0,                                               /* tp_str */
@@ -656,14 +597,14 @@ static PyTypeObject multidict_type = {
     0,                                               /* tp_doc */
     0,                                               /* tp_traverse */
     0,                                               /* tp_clear */
-    0,                                               /* tp_richcompare */
+    (richcmpfunc)multidict_tp_richcompare,           /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
-    0,                                               /* tp_iter */
+    (getiterfunc)mulditict_tp_iter,                  /* tp_iter */
     0,                                               /* tp_iternext */
     multidict_methods,                               /* tp_methods */
     0,                                               /* tp_members */
     0,                                               /* tp_getset */
-    &multidict_base_type,                            /* tp_base */
+    0,                                               /* tp_base */
     0,                                               /* tp_dict */
     0,                                               /* tp_descr_get */
     0,                                               /* tp_descr_set */
@@ -738,13 +679,13 @@ PyInit__multidict_c()
         return NULL;
     }
 
-    if (PyType_Ready(&multidict_base_type) < 0) {
+    if (PyType_Ready(&multidict_type) < 0) {
         return NULL;
     }
 
-    Py_INCREF(&multidict_base_type);
-    if (PyModule_AddObject(module, "_Base", (PyObject*)&multidict_base_type) < 0) {
-        Py_DECREF(&multidict_base_type);
+    Py_INCREF(&multidict_type);
+    if (PyModule_AddObject(module, "MultiDict", (PyObject*)&multidict_type) < 0) {
+        Py_DECREF(&multidict_type);
         return NULL;
     }
 
