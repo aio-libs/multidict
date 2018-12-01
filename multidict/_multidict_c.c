@@ -127,9 +127,19 @@ multidict_mp_len(_MultiDictObject *self)
 }
 
 static PyObject *
-multidict_mp_getitem(_MultiDictObject *self, PyObject *key)
+multidict_mp_subscript(_MultiDictObject *self, PyObject *key)
 {
     return multidict_internal_getone(self, key, NULL);
+}
+
+static int
+multidict_mp_as_subscript(_MultiDictObject *self, PyObject *key, PyObject *val)
+{
+    if (val == NULL) {
+        return pair_list_del(self->impl, key);
+    } else {
+        return pair_list_replace(self->impl, key, val);
+    }
 }
 
 static int
@@ -224,8 +234,9 @@ static PySequenceMethods multidict_sequence = {
 };
 
 static PyMappingMethods multidict_mapping = {
-    (lenfunc)multidict_mp_len,          /* mp_length */
-    (binaryfunc)multidict_mp_getitem    /* mp_subscript */
+    (lenfunc)multidict_mp_len,                /* mp_length */
+    (binaryfunc)multidict_mp_subscript,       /* mp_subscript */
+    (objobjargproc)multidict_mp_as_subscript  /* mp_ass_subscript */
 };
 
 static INLINE int
