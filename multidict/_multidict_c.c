@@ -537,6 +537,34 @@ multidict_popone(_MultiDictObject *self, PyObject *args, PyObject *kwds)
     return ret_val;
 }
 
+static PyObject *
+multidict_popall(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *key      = NULL,
+             *_default = NULL,
+             *ret_val  = NULL;
+
+    static char *keywords[] = {"key", "default"};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popall",
+                                     keywords, &key, &_default))
+    {
+        return NULL;
+    }
+
+    ret_val = pair_list_pop_all(self->impl, key);
+
+    if (ret_val == NULL &&
+        PyErr_ExceptionMatches(PyExc_KeyError) &&
+        _default != NULL)
+    {
+        PyErr_Clear();
+        return _default;
+    }
+
+    return ret_val;
+}
+
 PyDoc_STRVAR(multidict_add_doc,
 "Add the key and value, not overwriting any previous value.");
 
@@ -555,6 +583,11 @@ PyDoc_STRVAR(multidict_setdefault_doc,
 
 PyDoc_STRVAR(multidict_popone_doc,
 "Remove the last occurrence of key and return the corresponding value.\n\n\
+If key is not found, default is returned if given, otherwise KeyError is \
+raised.\n");
+
+PyDoc_STRVAR(multidict_popall_doc,
+"Remove all occurrences of key and return the list of corresponding values.\n\n\
 If key is not found, default is returned if given, otherwise KeyError is \
 raised.\n");
 
@@ -647,6 +680,12 @@ static PyMethodDef multidict_methods[] = {
         (PyCFunction)multidict_popone,
         METH_VARARGS | METH_KEYWORDS,
         multidict_popone_doc
+    },
+    {
+        "popall",
+        (PyCFunction)multidict_popall,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_popall_doc
     },
     {
         NULL,
