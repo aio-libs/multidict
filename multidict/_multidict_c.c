@@ -25,8 +25,8 @@ typedef struct {
 
 /******************** Base Methods ********************/
 
-static PyObject *
-multidict_items(_MultiDictObject *self, PyObject *args);
+/* Forward declaration */
+static PyObject *multidict_items(_MultiDictObject *self, PyObject *args);
 
 static INLINE PyObject *
 _multidict_getone(_MultiDictObject *self, PyObject *key, PyObject *_default)
