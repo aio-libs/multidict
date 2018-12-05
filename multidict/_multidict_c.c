@@ -401,21 +401,6 @@ multidict_tp_init(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-multidict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    _MultiDictObject *self = NULL;
-
-    assert(type != NULL && type->tp_alloc != NULL);
-
-    self = (_MultiDictObject*)type->tp_alloc(type, 0);
-    if (self == NULL) {
-        return NULL;
-    }
-
-    return (PyObject*)self;
-}
-
-static PyObject *
 multidict_add(_MultiDictObject *self, PyObject *args)
 {
     PyObject *key = NULL,
@@ -440,8 +425,7 @@ multidict_copy(_MultiDictObject *self)
     PyObject *arg_items = NULL,
              *items     = NULL;
 
-    new_multidict = (_MultiDictObject*)multidict_new(
-        &multidict_type, NULL, NULL);
+    new_multidict = PyObject_New(_MultiDictObject, &multidict_type);
     if (new_multidict == NULL) {
         return NULL;
     }
@@ -763,8 +747,8 @@ static PyTypeObject multidict_type = {
     0,                                               /* tp_descr_set */
     0,                                               /* tp_dictoffset */
     (initproc)multidict_tp_init,                     /* tp_init */
-    (allocfunc)PyType_GenericAlloc,                  /* tp_alloc */
-    (newfunc)multidict_new,                          /* tp_new */
+    PyType_GenericAlloc,                             /* tp_alloc */
+    PyType_GenericNew,                               /* tp_new */
     PyObject_GC_Del,                                 /* tp_free */
 };
 
