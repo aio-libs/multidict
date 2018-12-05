@@ -118,17 +118,21 @@ _multidict_append_items_seq(_MultiDictObject *self, PyObject *arg,
 
     while ((item = PyIter_Next(iter)) != NULL) {
         if (PyObject_Length(item) != 2) {
-            PyErr_Format(PyExc_TypeError,
-                     "%s takes either dict or list of (key, value) tuples",
-                     name, NULL);
+            PyErr_Format(
+                PyExc_TypeError,
+                "%s takes either dict or list of (key, value) tuples",
+                name,
+                NULL
+            );
             Py_DECREF(item);
             Py_DECREF(iter);
             return -1;
         }
+
         key   = PyTuple_GET_ITEM(item, 0);
         value = PyTuple_GET_ITEM(item, 0);
-        // TODO: add err check
         pair_list_add(self->impl, key, value);
+
         Py_DECREF(item);
     }
 
