@@ -205,9 +205,10 @@ _multidict_extend(_MultiDictObject *self, PyObject *args, PyObject *kwds,
             }
         } else {
             // TODO: FIX ME!
-            if (PyObject_HasAttrString(arg, "items")) {
-                arg_items = multidict_items(self);
-            }
+            // Totaly wrong!!! Rewrite this part of code!
+            // if (PyObject_HasAttrString(arg, "items")) {
+            //     arg_items = multidict_items(self);
+            // }
 
             if (kwds != Py_None) {
                 kwds_items = PyDict_Items(kwds);
