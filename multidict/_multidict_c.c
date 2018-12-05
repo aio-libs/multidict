@@ -565,6 +565,12 @@ multidict_popall(_MultiDictObject *self, PyObject *args, PyObject *kwds)
     return ret_val;
 }
 
+static PyObject *
+multidict_popitem(_MultiDictObject *self)
+{
+    return pair_list_pop_item(self->impl);
+}
+
 PyDoc_STRVAR(multidict_add_doc,
 "Add the key and value, not overwriting any previous value.");
 
@@ -590,6 +596,9 @@ PyDoc_STRVAR(multidict_popall_doc,
 "Remove all occurrences of key and return the list of corresponding values.\n\n\
 If key is not found, default is returned if given, otherwise KeyError is \
 raised.\n");
+
+PyDoc_STRVAR(multidict_popitem_doc,
+"Remove and return an arbitrary (key, value) pair.");
 
 static PySequenceMethods multidict_sequence = {
     0,                                  /* sq_length */
@@ -686,6 +695,12 @@ static PyMethodDef multidict_methods[] = {
         (PyCFunction)multidict_popall,
         METH_VARARGS | METH_KEYWORDS,
         multidict_popall_doc
+    },
+    {
+        "popitem",
+        (PyCFunction)multidict_popitem,
+        METH_O,
+        multidict_popitem_doc
     },
     {
         NULL,
