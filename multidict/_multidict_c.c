@@ -571,6 +571,12 @@ multidict_popitem(_MultiDictObject *self)
     return pair_list_pop_item(self->impl);
 }
 
+static PyObject *
+multidict_update(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    return _multidict_extend(self, args, kwds, "update", 0);
+}
+
 PyDoc_STRVAR(multidict_add_doc,
 "Add the key and value, not overwriting any previous value.");
 
@@ -599,6 +605,9 @@ raised.\n");
 
 PyDoc_STRVAR(multidict_popitem_doc,
 "Remove and return an arbitrary (key, value) pair.");
+
+PyDoc_STRVAR(multidict_update_doc,
+"Update the dictionary from *other*, overwriting existing keys.");
 
 static PySequenceMethods multidict_sequence = {
     0,                                  /* sq_length */
@@ -701,6 +710,12 @@ static PyMethodDef multidict_methods[] = {
         (PyCFunction)multidict_popitem,
         METH_O,
         multidict_popitem_doc
+    },
+    {
+        "update",
+        (PyCFunction)multidict_update,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_update_doc
     },
     {
         NULL,
