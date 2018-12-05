@@ -32,13 +32,13 @@ static INLINE PyObject *
 _multidict_getone(_MultiDictObject *self, PyObject *key, PyObject *_default)
 {
     PyObject *val = pair_list_get_one(self->impl, key);
-    if (val == NULL) {
-        if (PyErr_ExceptionMatches(PyExc_KeyError)) {
-            if (_default != NULL) {
-                return _default;
-            }
-            PyErr_SetNone(PyExc_Exception);
-        }
+
+    if (val == NULL &&
+        PyErr_ExceptionMatches(PyExc_KeyError) &&
+        _default != NULL)
+    {
+        PyErr_Clear();
+        return _default;
     }
 
     return val;
@@ -254,13 +254,13 @@ multidict_getall(_MultiDictObject *self, PyObject *args, PyObject *kwds)
     }
 
     list = pair_list_get_all(self->impl, key);
-    if (list == NULL) {
-        if (PyErr_ExceptionMatches(PyExc_KeyError)) {
-            if (_default != NULL) {
-                return _default;
-            }
-            PyErr_SetNone(PyExc_Exception);
-        }
+
+    if (list == NULL &&
+        PyErr_ExceptionMatches(PyExc_KeyError) &&
+        _default != NULL)
+    {
+        PyErr_Clear();
+        return _default;
     }
 
     return list;
