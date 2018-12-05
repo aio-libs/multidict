@@ -558,7 +558,10 @@ multidict_popitem(_MultiDictObject *self)
 static PyObject *
 multidict_update(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
-    return _multidict_extend(self, args, kwds, "update", 0);
+    if (_multidict_extend(self, args, kwds, "update", 0) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 PyDoc_STRVAR(multidict_add_doc,
