@@ -493,6 +493,22 @@ multidict_clear(_MultiDictObject *self)
     Py_RETURN_NONE;
 }
 
+static PyObject *
+multidict_setdefault(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *key      = NULL,
+             *_default = NULL;
+
+    static char *keywords[] = {"key", "default"};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:setdefault",
+                                     keywords, &key, &_default))
+    {
+        return NULL;
+    }
+    return pair_list_set_default(self->impl, key, _default);
+}
+
 PyDoc_STRVAR(multidict_add_doc,
 "Add the key and value, not overwriting any previous value.");
 
@@ -505,6 +521,9 @@ This method must be used instead of update.");
 
 PyDoc_STRVAR(multidict_clear_doc,
 "Remove all items from MultiDict");
+
+PyDoc_STRVAR(multidict_setdefault_doc,
+"Return value for key, set value to default if key is not present.");
 
 static PySequenceMethods multidict_sequence = {
     0,                                  /* sq_length */
@@ -583,6 +602,12 @@ static PyMethodDef multidict_methods[] = {
         (PyCFunction)multidict_clear,
         METH_O,
         multidict_clear_doc
+    },
+    {
+        "setdefault",
+        (PyCFunction)multidict_setdefault,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_setdefault_doc
     },
     {
         NULL,
