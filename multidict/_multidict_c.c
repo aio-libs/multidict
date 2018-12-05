@@ -395,8 +395,12 @@ static int
 multidict_tp_init(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     self->impl = pair_list_new();
-    // TOOD: add err check
-    _multidict_extend(self, args, kwds, "MultiDict", 1);
+    if (self->impl == NULL) {
+        return -1;
+    }
+    if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
+        return -1;
+    }
     return 0;
 }
 
