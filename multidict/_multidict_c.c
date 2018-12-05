@@ -768,6 +768,15 @@ static PyTypeObject multidict_type = {
     PyObject_GC_Del,                                 /* tp_free */
 };
 
+/******************** CIMultiDict ********************/
+// TODO: impl CIMultiDict
+
+/******************** MultiDictProxy ********************/
+// TODO: impl MultiDictProxy
+
+/******************** CIMultiDictProxy ********************/
+// TODO: impl CIMultiDictProxy
+
 /******************** Module ********************/
 
 static void
