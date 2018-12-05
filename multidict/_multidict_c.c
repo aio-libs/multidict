@@ -429,7 +429,7 @@ multidict_copy(_MultiDictObject *self)
     PyObject *arg_items = NULL,
              *items     = NULL;
 
-    new_multidict = PyObject_New(_MultiDictObject, &multidict_type);
+    new_multidict = PyObject_GC_New(_MultiDictObject, &multidict_type);
     if (new_multidict == NULL) {
         return NULL;
     }
