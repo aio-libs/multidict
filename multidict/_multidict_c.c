@@ -27,7 +27,7 @@ typedef struct {
 /******************** Base Methods ********************/
 
 /* Forward declaration */
-static PyObject *multidict_items(_MultiDictObject *self, PyObject *args);
+static PyObject *multidict_items(_MultiDictObject *self);
 
 static INLINE PyObject *
 _multidict_getone(_MultiDictObject *self, PyObject *key, PyObject *_default)
@@ -204,8 +204,9 @@ _multidict_extend(_MultiDictObject *self, PyObject *args, PyObject *kwds,
                 );
             }
         } else {
+            // TODO: FIX ME!
             if (PyObject_HasAttrString(arg, "items")) {
-                arg_items = multidict_items(self, arg);
+                arg_items = multidict_items(self);
             }
 
             if (kwds != Py_None) {
@@ -289,19 +290,19 @@ multidict_getone(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-multidict_keys(_MultiDictObject *self, PyObject *args)
+multidict_keys(_MultiDictObject *self)
 {
     return multidict_keysview_new((PyObject*)self);
 }
 
 static PyObject *
-multidict_items(_MultiDictObject *self, PyObject *args)
+multidict_items(_MultiDictObject *self)
 {
     return multidict_itemsview_new((PyObject*)self);
 }
 
 static PyObject *
-multidict_values(_MultiDictObject *self, PyObject *args)
+multidict_values(_MultiDictObject *self)
 {
     return multidict_valuesview_new((PyObject*)self);
 }
@@ -435,7 +436,7 @@ multidict_copy(_MultiDictObject *self)
         return NULL;
     }
 
-    items = multidict_items(self, NULL);
+    items = multidict_items(self);
     if (items == NULL) {
         goto fail;
     }
@@ -664,7 +665,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "copy",
         (PyCFunction)multidict_copy,
-        METH_O,
+        METH_NOARGS,
         multidict_copy_doc
     },
     {
@@ -676,7 +677,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "clear",
         (PyCFunction)multidict_clear,
-        METH_O,
+        METH_NOARGS,
         multidict_clear_doc
     },
     {
@@ -700,7 +701,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "popitem",
         (PyCFunction)multidict_popitem,
-        METH_O,
+        METH_NOARGS,
         multidict_popitem_doc
     },
     {
