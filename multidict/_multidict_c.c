@@ -726,7 +726,7 @@ static PyMethodDef multidict_methods[] = {
 static PyTypeObject multidict_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict_c.MultiDict",              /* tp_name */
-    sizeof(_MultiDictObject),                    /* tp_basicsize */
+    sizeof(_MultiDictObject),                        /* tp_basicsize */
     0,                                               /* tp_itemsize */
     0,                                               /* tp_dealloc */
     0,                                               /* tp_print */
