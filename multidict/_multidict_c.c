@@ -12,6 +12,7 @@
 #endif
 
 static PyObject *collections_abc_mapping;
+static PyObject *istr;
 
 static PyTypeObject multidict_type;
 static PyTypeObject multidict_proxy_type;
@@ -796,11 +797,17 @@ module_init()
     WITH_MOD("collections.abc")
     GET_MOD_ATTR(collections_abc_mapping, "Mapping")
 
+    WITH_MOD("._istr")
+    GET_MOD_ATTR(istr, "istr")
+
+    pair_list_init(istr);
+
     Py_DECREF(module);
     return 0;
 
 fail:
     Py_CLEAR(collections_abc_mapping);
+    Py_CLEAR(istr);
     module_free(NULL);
     return -1;
 }
