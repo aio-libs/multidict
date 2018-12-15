@@ -65,7 +65,7 @@ if USE_CYTHON_EXTENSIONS:
     # CFLAGS = ['-g']
     if platform.system() != 'Windows':
         CFLAGS.extend(['-std=c99', '-Wall', '-Wsign-compare', '-Wconversion',
-                       '-fno-strict-aliasing'])
+                       '-fno-strict-aliasing', '-pedantic'])
 
     extensions = [
         Extension(
