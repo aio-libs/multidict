@@ -495,6 +495,7 @@ multidict_copy(_MultiDictObject *self)
         goto fail;
     }
 
+    // TODO: "Implementation looks as slow as possible ..."
     arg_items = PyTuple_New(1);
     if (arg_items == NULL) {
         goto fail;
