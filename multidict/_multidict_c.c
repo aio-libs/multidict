@@ -258,21 +258,12 @@ _multidict_extend_with_none_args(_MultiDictObject *self, PyObject *kwds,
     arg = PyDict_Items(kwds);
     if (do_add) {
         err = _multidict_append_items_seq(self, arg, name);
-        if (err < 0) {
-            goto fail;
-        }
     } else {
         err = pair_list_update_from_seq(self->impl, arg);
-        if (err < 0) {
-            goto fail;
-        }
     }
 
-    return 0;
-
-fail:
-    Py_XDECREF(arg);
-    return -1;
+    Py_DECREF(arg);
+    return err;
 }
 
 static int
