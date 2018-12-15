@@ -168,6 +168,7 @@ multidict_itemsview_new(PyObject *md)
 
     _init_view(mv, md);
 
+    PyObject_GC_Track(mv);
     return (PyObject *)mv;
 }
 
@@ -328,6 +329,7 @@ multidict_keysview_new(PyObject *md)
 
     _init_view(mv, md);
 
+    PyObject_GC_Track(mv);
     return (PyObject *)mv;
 }
 
@@ -443,6 +445,7 @@ multidict_valuesview_new(PyObject *md)
 
     _init_view(mv, md);
 
+    PyObject_GC_Track(mv);
     return (PyObject *)mv;
 }
 
