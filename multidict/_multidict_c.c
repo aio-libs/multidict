@@ -1,8 +1,8 @@
-#include <Python.h>
-#include <structmember.h>
-
+#include "_multidict_c.h"
 #include "_pair_list.h"
 #include "_multidict_views.h"
+
+#include <structmember.h>
 
 // fix for VisualC complier used by Python 3.4
 #ifdef __GNUC__
@@ -20,18 +20,24 @@ static PyTypeObject multidict_proxy_type;
 
 #define MultiDict_Check(o) (Py_TYPE(o) == &multidict_type)
 
-typedef struct {
-    PyObject_HEAD
-    PyObject *impl;
-} _MultiDictObject;
-
 /******************** Base Methods ********************/
 
 /* Forward declaration */
-static PyObject *multidict_items(_MultiDictObject *self);
+static PyObject *multidict_items(MultiDictObject *self);
+
+static INLINE MultiDictObject *
+_mulditict_alloc(PyTypeObject *md_obj_type)
+{
+    MultiDictObject *obj = PyObject_GC_New(MultiDictObject, md_obj_type);
+    if (obj == NULL) {
+        return NULL;
+    }
+    PyObject_GC_Track(obj);
+    return obj;
+}
 
 static INLINE PyObject *
-_multidict_getone(_MultiDictObject *self, PyObject *key, PyObject *_default)
+_multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 {
     PyObject *val = pair_list_get_one(self->impl, key);
 
@@ -48,7 +54,7 @@ _multidict_getone(_MultiDictObject *self, PyObject *key, PyObject *_default)
 }
 
 static PyObject *
-_multidict_eq(_MultiDictObject *self, _MultiDictObject *other)
+_multidict_eq(MultiDictObject *self, MultiDictObject *other)
 {
     Py_ssize_t pos1 = 0,
                pos2 = 0;
@@ -84,13 +90,13 @@ _multidict_eq(_MultiDictObject *self, _MultiDictObject *other)
 }
 
 static INLINE int
-_multidict_update_items(_MultiDictObject *self, _MultiDictObject *impl)
+_multidict_update_items(MultiDictObject *self, MultiDictObject *impl)
 {
     return pair_list_update((PyObject*)self->impl, (PyObject*)impl);
 }
 
 static int
-_multidict_append_items(_MultiDictObject *self, _MultiDictObject *impl)
+_multidict_append_items(MultiDictObject *self, MultiDictObject *impl)
 {
     PyObject *key   = NULL,
              *value = NULL;
@@ -107,7 +113,7 @@ _multidict_append_items(_MultiDictObject *self, _MultiDictObject *impl)
 }
 
 static int
-_multidict_append_items_seq(_MultiDictObject *self, PyObject *arg,
+_multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
                             const char *name)
 {
     PyObject *key   = NULL,
@@ -177,7 +183,7 @@ _multidict_list_extend(PyObject *list, PyObject *target_list)
 }
 
 static int
-_multidict_extend_with_some_args(_MultiDictObject *self, PyObject *args,
+_multidict_extend_with_some_args(MultiDictObject *self, PyObject *args,
                                  PyObject *kwds, const char *name, int do_add)
 {
     // TODO: check this code for memory pitfalls
@@ -196,7 +202,7 @@ _multidict_extend_with_some_args(_MultiDictObject *self, PyObject *args,
         if (do_add) {
             err = _multidict_append_items(
                 self,
-                (_MultiDictObject*)((_MultiDictObject*)arg)->impl
+                (MultiDictObject*)((MultiDictObject*)arg)->impl
             );
             if (err < 0) {
                 goto fail;
@@ -204,7 +210,7 @@ _multidict_extend_with_some_args(_MultiDictObject *self, PyObject *args,
         } else {
             err = _multidict_update_items(
                 self,
-                (_MultiDictObject*)((_MultiDictObject*)arg)->impl
+                (MultiDictObject*)((MultiDictObject*)arg)->impl
             );
             if (err < 0) {
                 goto fail;
@@ -212,7 +218,7 @@ _multidict_extend_with_some_args(_MultiDictObject *self, PyObject *args,
         }
     } else {
         if (PyObject_HasAttrString(arg, "items")) {
-            arg_items = multidict_items((_MultiDictObject*)arg);
+            arg_items = multidict_items((MultiDictObject*)arg);
             if (arg_items == NULL) {
                 goto fail;
             }
@@ -249,7 +255,7 @@ fail:
 }
 
 static INLINE int
-_multidict_extend_with_none_args(_MultiDictObject *self, PyObject *kwds,
+_multidict_extend_with_none_args(MultiDictObject *self, PyObject *kwds,
                                  const char *name, int do_add)
 {
     PyObject *arg = NULL;
@@ -268,7 +274,7 @@ _multidict_extend_with_none_args(_MultiDictObject *self, PyObject *kwds,
 }
 
 static int
-_multidict_extend(_MultiDictObject *self, PyObject *args, PyObject *kwds,
+_multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
                   const char *name, int do_add)
 {
     int err = 0;
@@ -280,7 +286,7 @@ _multidict_extend(_MultiDictObject *self, PyObject *args, PyObject *kwds,
         return -1;
     }
 
-    if (args == Py_None) {
+    if (PyTuple_GET_SIZE(args) == 0) {
         err = _multidict_extend_with_none_args(self, kwds, name, do_add);
     } else {
         err = _multidict_extend_with_some_args(self, args, kwds, name, do_add);
@@ -290,14 +296,14 @@ _multidict_extend(_MultiDictObject *self, PyObject *args, PyObject *kwds,
 }
 
 static INLINE PyObject *
-_multidict_copy(_MultiDictObject *self, PyTypeObject *multidict_tp_object)
+_multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
 {
-        _MultiDictObject *new_multidict = NULL;
+    MultiDictObject *new_multidict = NULL;
 
     PyObject *arg_items = NULL,
              *items     = NULL;
 
-    new_multidict = PyObject_GC_New(_MultiDictObject, multidict_tp_object);
+    new_multidict = PyObject_GC_New(MultiDictObject, multidict_tp_object);
     if (new_multidict == NULL) {
         return NULL;
     }
@@ -333,7 +339,7 @@ fail:
 }
 
 static PyObject *
-multidict_getall(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *list     = NULL,
              *key      = NULL,
@@ -362,7 +368,7 @@ multidict_getall(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-multidict_getone(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_getone(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
              *_default = NULL;
@@ -379,37 +385,37 @@ multidict_getone(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-multidict_keys(_MultiDictObject *self)
+multidict_keys(MultiDictObject *self)
 {
     return multidict_keysview_new((PyObject*)self);
 }
 
 static PyObject *
-multidict_items(_MultiDictObject *self)
+multidict_items(MultiDictObject *self)
 {
     return multidict_itemsview_new((PyObject*)self);
 }
 
 static PyObject *
-multidict_values(_MultiDictObject *self)
+multidict_values(MultiDictObject *self)
 {
     return multidict_valuesview_new((PyObject*)self);
 }
 
 static Py_ssize_t
-multidict_mp_len(_MultiDictObject *self)
+multidict_mp_len(MultiDictObject *self)
 {
     return pair_list_len(self->impl);
 }
 
 static PyObject *
-multidict_mp_subscript(_MultiDictObject *self, PyObject *key)
+multidict_mp_subscript(MultiDictObject *self, PyObject *key)
 {
     return _multidict_getone(self, key, NULL);
 }
 
 static int
-multidict_mp_as_subscript(_MultiDictObject *self, PyObject *key, PyObject *val)
+multidict_mp_as_subscript(MultiDictObject *self, PyObject *key, PyObject *val)
 {
     if (val == NULL) {
         return pair_list_del(self->impl, key);
@@ -419,13 +425,13 @@ multidict_mp_as_subscript(_MultiDictObject *self, PyObject *key, PyObject *val)
 }
 
 static int
-multidict_sq_contains(_MultiDictObject *self, PyObject *key)
+multidict_sq_contains(MultiDictObject *self, PyObject *key)
 {
     return pair_list_contains(self->impl, key);
 }
 
 static PyObject *
-mulditict_tp_iter(_MultiDictObject *self)
+mulditict_tp_iter(MultiDictObject *self)
 {
     return PyObject_GetIter(multidict_keysview_new((PyObject*)self));
 }
@@ -442,8 +448,8 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
     // TODO: add MultiDictProxy_Check
     if (MultiDict_Check(other)) {
         return _multidict_eq(
-            (_MultiDictObject*)self,
-            (_MultiDictObject*)other
+            (MultiDictObject*)self,
+            (MultiDictObject*)other
         );
     }
 
@@ -453,13 +459,35 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
     }
 
     if (cmp) {
-        if (pair_list_eq_to_mapping(((_MultiDictObject*)self)->impl, other)) {
+        if (pair_list_eq_to_mapping(((MultiDictObject*)self)->impl, other)) {
             Py_RETURN_TRUE;
         }
         Py_RETURN_FALSE;
     }
 
     Py_RETURN_NOTIMPLEMENTED;
+}
+
+static void
+multidict_tp_dealloc(MultiDictObject *self)
+{
+    PyObject_GC_UnTrack(self);
+    Py_XDECREF(self->impl);
+    PyObject_GC_Del(self);
+}
+
+static int
+multidict_tp_traverse(MultiDictObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->impl);
+    return 0;
+}
+
+static int
+multidict_tp_clear(MultiDictObject *self)
+{
+    Py_CLEAR(self->impl);
+    return 0;
 }
 
 PyDoc_STRVAR(multidict_getall_doc,
@@ -483,20 +511,28 @@ PyDoc_STRVAR(multidict_values_doc,
 /******************** MultiDict ********************/
 
 static int
-multidict_tp_init(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     self->impl = pair_list_new();
     if (self->impl == NULL) {
         return -1;
     }
-    if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
-        return -1;
+    if (kwds) {
+        if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
+            return -1;
+        }
     }
     return 0;
 }
 
 static PyObject *
-multidict_add(_MultiDictObject *self, PyObject *args)
+multidict_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    return (PyObject*)_mulditict_alloc(&multidict_type);
+}
+
+static PyObject *
+multidict_add(MultiDictObject *self, PyObject *args)
 {
     PyObject *key = NULL,
              *val = NULL;
@@ -513,13 +549,13 @@ multidict_add(_MultiDictObject *self, PyObject *args)
 }
 
 static PyObject *
-multidict_copy(_MultiDictObject *self)
+multidict_copy(MultiDictObject *self)
 {
     return _multidict_copy(self, &multidict_type);
 }
 
 static PyObject *
-multidict_extend(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     if (_multidict_extend(self, args, kwds, "extend", 1) < 0) {
         return NULL;
@@ -529,7 +565,7 @@ multidict_extend(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-multidict_clear(_MultiDictObject *self)
+multidict_clear(MultiDictObject *self)
 {
     if (pair_list_clear(self->impl) < 0) {
         return NULL;
@@ -539,7 +575,7 @@ multidict_clear(_MultiDictObject *self)
 }
 
 static PyObject *
-multidict_setdefault(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_setdefault(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
              *_default = NULL;
@@ -555,7 +591,7 @@ multidict_setdefault(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-multidict_popone(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_popone(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
              *_default = NULL,
@@ -583,7 +619,7 @@ multidict_popone(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-multidict_popall(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
              *_default = NULL,
@@ -611,13 +647,13 @@ multidict_popall(_MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-multidict_popitem(_MultiDictObject *self)
+multidict_popitem(MultiDictObject *self)
 {
     return pair_list_pop_item(self->impl);
 }
 
 static PyObject *
-multidict_update(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     if (_multidict_extend(self, args, kwds, "update", 0) < 0) {
         return NULL;
@@ -774,9 +810,9 @@ static PyMethodDef multidict_methods[] = {
 static PyTypeObject multidict_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict_c.MultiDict",              /* tp_name */
-    sizeof(_MultiDictObject),                        /* tp_basicsize */
+    sizeof(MultiDictObject),                         /* tp_basicsize */
     0,                                               /* tp_itemsize */
-    0,                                               /* tp_dealloc */
+    (destructor)multidict_tp_dealloc,                /* tp_dealloc */
     0,                                               /* tp_print */
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
@@ -795,8 +831,8 @@ static PyTypeObject multidict_type = {
         | Py_TPFLAGS_BASETYPE
         | Py_TPFLAGS_HAVE_GC,                        /* tp_flags */
     0,                                               /* tp_doc */
-    0,                                               /* tp_traverse */
-    0,                                               /* tp_clear */
+    (traverseproc)multidict_tp_traverse,             /* tp_traverse */
+    (inquiry)multidict_tp_clear,                     /* tp_clear */
     (richcmpfunc)multidict_tp_richcompare,           /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
     (getiterfunc)mulditict_tp_iter,                  /* tp_iter */
@@ -810,28 +846,35 @@ static PyTypeObject multidict_type = {
     0,                                               /* tp_descr_set */
     0,                                               /* tp_dictoffset */
     (initproc)multidict_tp_init,                     /* tp_init */
-    PyType_GenericAlloc,                             /* tp_alloc */
-    PyType_GenericNew,                               /* tp_new */
-    PyObject_GC_Del,                                 /* tp_free */
+    0,                                               /* tp_alloc */
+    multidict_tp_new,                                /* tp_new */
 };
 
 /******************** CIMultiDict ********************/
 
 static int
-cimultidict_tp_init(_MultiDictObject *self, PyObject *args, PyObject *kwds)
+cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     self->impl = ci_pair_list_new();
     if (self->impl == NULL) {
         return -1;
     }
-    if (_multidict_extend(self, args, kwds, "CIMultiDict", 1) < 0) {
-        return -1;
+    if (kwds) {
+        if (_multidict_extend(self, args, kwds, "CIMultiDict", 1) < 0) {
+            return -1;
+        }
     }
     return 0;
 }
 
 static PyObject *
-cimultidict_copy(_MultiDictObject *self)
+cimultidict_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    return (PyObject*)_mulditict_alloc(&cimultidict_type);
+}
+
+static PyObject *
+cimultidict_copy(MultiDictObject *self)
 {
     return _multidict_copy(self, &cimultidict_type);
 }
@@ -855,9 +898,9 @@ static PyMethodDef cimultidict_methods[] = {
 static PyTypeObject cimultidict_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict_c.CIMultiDict",            /* tp_name */
-    sizeof(_MultiDictObject),                        /* tp_basicsize */
+    sizeof(MultiDictObject),                         /* tp_basicsize */
     0,                                               /* tp_itemsize */
-    0,                                               /* tp_dealloc */
+    (destructor)multidict_tp_dealloc,                /* tp_dealloc */
     0,                                               /* tp_print */
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
@@ -872,12 +915,10 @@ static PyTypeObject cimultidict_type = {
     0,                                               /* tp_getattro */
     0,                                               /* tp_setattro */
     0,                                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT
-        | Py_TPFLAGS_BASETYPE
-        | Py_TPFLAGS_HAVE_GC,                        /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
     0,                                               /* tp_doc */
-    0,                                               /* tp_traverse */
-    0,                                               /* tp_clear */
+    (traverseproc)multidict_tp_traverse,             /* tp_traverse */
+    (inquiry)multidict_tp_clear,                     /* tp_clear */
     0,                                               /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
     0,                                               /* tp_iter */
@@ -891,9 +932,8 @@ static PyTypeObject cimultidict_type = {
     0,                                               /* tp_descr_set */
     0,                                               /* tp_dictoffset */
     (initproc)cimultidict_tp_init,                   /* tp_init */
-    PyType_GenericAlloc,                             /* tp_alloc */
-    PyType_GenericNew,                               /* tp_new */
-    PyObject_GC_Del,                                 /* tp_free */
+    0,                                               /* tp_alloc */
+    cimultidict_tp_new,                              /* tp_new */
 };
 
 /******************** MultiDictProxy ********************/
@@ -931,10 +971,16 @@ module_init()
     WITH_MOD("collections.abc")
     GET_MOD_ATTR(collections_abc_mapping, "Mapping")
 
-    WITH_MOD("._istr")
+    WITH_MOD("multidict._istr")
     GET_MOD_ATTR(istr, "istr")
 
-    pair_list_init(istr);
+    if (pair_list_init(istr) < 0) {
+        goto fail;
+    }
+
+    if (multidict_views_init() < 0) {
+        goto fail;
+    }
 
     Py_DECREF(module);
     return 0;
@@ -961,13 +1007,8 @@ static PyModuleDef multidict_module = {
 PyMODINIT_FUNC
 PyInit__multidict_c()
 {
-    PyObject *module = PyState_FindModule(&multidict_module);
-    if (module) {
-        Py_INCREF(module);
-        return module;
-    }
+    PyObject *module = NULL;
 
-    module = PyModule_Create(&multidict_module);
     if (module_init() < 0) {
         return NULL;
     }
@@ -980,17 +1021,23 @@ PyInit__multidict_c()
         return NULL;
     }
 
+    module = PyModule_Create(&multidict_module);
+    if (module == NULL) {
+        return 0;
+    }
+
     Py_INCREF(&multidict_type);
-    if (PyModule_AddObject(module, "MultiDict",
-                           (PyObject*)&multidict_type) < 0)
+    if (PyModule_AddObject(
+            module, "MultiDict", (PyObject*)&multidict_type) < 0)
     {
         Py_DECREF(&multidict_type);
         return NULL;
+
     }
 
     Py_INCREF(&cimultidict_type);
-    if (PyModule_AddObject(module, "CIMultiDict",
-                           (PyObject*)&cimultidict_type) < 0)
+    if (PyModule_AddObject(
+            module, "CIMultiDict", (PyObject*)&cimultidict_type) < 0)
     {
         Py_DECREF(&cimultidict_type);
         return NULL;
