@@ -3,7 +3,7 @@
 XXX (2018-12-16)
 ----------------
 
-* Fix memory leak introduced by 4.5.0 release (:pr:`314`)
+* Fix GC object tracking (:pr:`314`)
 
 4.5.2 (2018-11-28)
 ------------------
