@@ -1005,7 +1005,7 @@ static PyModuleDef multidict_module = {
 };
 
 PyMODINIT_FUNC
-PyInit__multidict_c()
+PyInit__multidict()
 {
     PyObject *module = NULL;
 

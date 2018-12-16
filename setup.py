@@ -45,6 +45,8 @@ ignore_compile_excs = (
 extensions = []
 cmdclass = {}
 
+
+# TODO: rewrite me for use C extension insted cython
 if USE_CYTHON_EXTENSIONS:
 
     if IS_GIT_REPO and not USE_CYTHON:
@@ -67,38 +69,26 @@ if USE_CYTHON_EXTENSIONS:
         CFLAGS.extend(['-std=c99', '-Wall', '-Wsign-compare', '-Wconversion',
                        '-fno-strict-aliasing', '-pedantic'])
 
+    # TODO: this is temporary and should be rewritten
     extensions = [
         Extension(
-            'multidict._multidict',
+            'multidict._istr',
             [
-                'multidict/_multidict' + ext,
-                'multidict/_pair_list.c',
-                'multidict/_multidict_iter.c',
-                'multidict/_multidict_views.c'
+                'multidict/_istr.c'
             ],
             extra_compile_args=CFLAGS
-        )
-    ]
-
-    if USE_CYTHON:
-        if PROFILE_BUILD:
-            directives = {"linetrace": True}
-        else:
-            directives = {}
-        extensions = cythonize(extensions, compiler_directives=directives)
-
-    extensions.append(Extension('multidict._istr',
-                                ['multidict/_istr.c']))
-    extensions.append(Extension(
-            'multidict._multidict_c',
+        ),
+        Extension(
+            'multidict._multidict',
             [
                 'multidict/_multidict_c.c',
                 'multidict/_pair_list.c',
                 'multidict/_multidict_iter.c',
                 'multidict/_multidict_views.c',
-            ]
+            ],
+            extra_compile_args=CFLAGS
         )
-    )
+    ]
 
     class BuildFailed(Exception):
         pass
