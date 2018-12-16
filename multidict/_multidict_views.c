@@ -1,8 +1,7 @@
+#include "_multidict_c.h"
 #include "_multidict_views.h"
 #include "_multidict_iter.h"
 #include "_pair_list.h"
-
-#include <Python.h>
 
 // fix for VisualC complier used by Python 3.4
 #ifdef __GNUC__
@@ -19,8 +18,6 @@
    The argument is for documentation -- the macro ignores it.
 */
 #define DEFERRED_ADDRESS(ADDR) 0
-
-_Py_IDENTIFIER(impl);
 
 static PyTypeObject multidict_itemsview_type;
 static PyTypeObject multidict_valuesview_type;
@@ -84,14 +81,7 @@ multidict_view_clear(_Multidict_ViewObject *self)
 static Py_ssize_t
 multidict_view_len(_Multidict_ViewObject *self)
 {
-    Py_ssize_t ret;
-    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    if (impl == NULL) {
-        return 0;
-    }
-    ret = pair_list_len(impl);
-    Py_DECREF(impl);
-    return ret;
+    return pair_list_len(((MultiDictObject*)self->md)->impl);
 }
 
 static PyObject *
@@ -175,14 +165,7 @@ multidict_itemsview_new(PyObject *md)
 static PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
-    PyObject *iter;
-    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    if (impl == NULL) {
-        return NULL;
-    }
-    iter = multidict_items_iter_new(impl);
-    Py_DECREF(impl);
-    return iter;
+    return multidict_items_iter_new(((MultiDictObject*)self->md)->impl);
 }
 
 static PyObject *
@@ -336,14 +319,7 @@ multidict_keysview_new(PyObject *md)
 static PyObject *
 multidict_keysview_iter(_Multidict_ViewObject *self)
 {
-    PyObject *iter;
-    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    if (impl == NULL) {
-        return NULL;
-    }
-    iter = multidict_keys_iter_new(impl);
-    Py_DECREF(impl);
-    return iter;
+    return multidict_keys_iter_new(((MultiDictObject*)self->md)->impl);
 }
 
 static PyObject *
@@ -379,14 +355,7 @@ static PyMethodDef multidict_keysview_methods[] = {
 static int
 multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
 {
-    int ret;
-    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    if (impl == NULL) {
-        return -1;
-    }
-    ret = pair_list_contains(impl, key);
-    Py_DECREF(impl);
-    return ret;
+    return pair_list_contains(((MultiDictObject*)self->md)->impl, key);
 }
 
 static PySequenceMethods multidict_keysview_as_sequence = {
@@ -452,14 +421,7 @@ multidict_valuesview_new(PyObject *md)
 static PyObject *
 multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
-    PyObject *iter;
-    PyObject *impl = _PyObject_CallMethodId(self->md, &PyId_impl, NULL);
-    if (impl == NULL) {
-        return NULL;
-    }
-    iter = multidict_values_iter_new(impl);
-    Py_DECREF(impl);
-    return iter;
+    return multidict_values_iter_new(((MultiDictObject*)self->md)->impl);
 }
 
 static PyObject *
