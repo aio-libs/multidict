@@ -12,6 +12,11 @@ typedef struct {
     PyObject *impl;
 } MultiDictObject;
 
+typedef struct {
+    PyObject_HEAD
+    MultiDictObject *md;
+} MultiDictProxyObject;
+
 #ifdef __cplusplus
 }
 #endif
