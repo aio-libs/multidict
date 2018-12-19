@@ -1330,62 +1330,65 @@ PyInit__multidict()
     PyObject *module = NULL;
 
     if (module_init() < 0) {
-        return NULL;
+        goto fail;
     }
 
     if (PyType_Ready(&multidict_type) < 0) {
-        return NULL;
+        goto fail;
     }
 
     if (PyType_Ready(&cimultidict_type) < 0) {
-        return NULL;
+        goto fail;
     }
 
     if (PyType_Ready(&multidict_proxy_type) < 0) {
-        return NULL;
+        goto fail;
     }
 
     if (PyType_Ready(&cimultidict_proxy_type) < 0) {
-        return NULL;
+        goto fail;
     }
 
     module = PyModule_Create(&multidict_module);
     if (module == NULL) {
-        return 0;
+        goto fail;
     }
 
     Py_INCREF(&multidict_type);
     if (PyModule_AddObject(
             module, "MultiDict", (PyObject*)&multidict_type) < 0)
     {
-        Py_DECREF(&multidict_type);
-        return NULL;
-
+        goto fail;
     }
 
     Py_INCREF(&cimultidict_type);
     if (PyModule_AddObject(
             module, "CIMultiDict", (PyObject*)&cimultidict_type) < 0)
     {
-        Py_DECREF(&cimultidict_type);
-        return NULL;
+        goto fail;
     }
 
     Py_INCREF(&multidict_proxy_type);
     if (PyModule_AddObject(
             module, "MultiDictProxy", (PyObject*)&multidict_proxy_type) < 0)
     {
-        Py_DECREF(&multidict_proxy_type);
-        return NULL;
+        goto fail;
     }
 
     Py_INCREF(&cimultidict_proxy_type);
     if (PyModule_AddObject(
             module, "CIMultiDictProxy", (PyObject*)&cimultidict_proxy_type) < 0)
     {
-        Py_DECREF(&cimultidict_proxy_type);
-        return NULL;
+        goto fail;
     }
 
     return module;
+
+fail:
+    Py_XDECREF(&multidict_type);
+    Py_XDECREF(&cimultidict_type);
+    Py_XDECREF(&multidict_proxy_type);
+    Py_XDECREF(&cimultidict_proxy_type);
+
+    return NULL;
 }
