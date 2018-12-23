@@ -29,6 +29,13 @@ static PyTypeObject cimultidict_proxy_type;
 #define MultiDictProxy_CheckExact(o) (Py_TYPE(o) == &multidict_proxy_type)
 #define CIMultiDictProxy_CheckExact(o) (Py_TYPE(o) == &cimultidict_proxy_type)
 
+/* Helper macro for something like isinstance(obj, Base) */
+#define _MultiDict_Check(o)             \
+    (MultiDict_CheckExact(o)) ||        \
+    (CIMultiDict_CheckExact(o)) ||      \
+    (MultiDictProxy_CheckExact(o)) ||   \
+    (CIMultiDictProxy_CheckExact(o))
+
 /******************** Internal Methods ********************/
 
 /* Forward declaration */
@@ -208,32 +215,30 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
                                  PyObject *kwds, const char *name, int do_add)
 {
     PyObject *arg_items  = NULL, /* tracked by GC */
-             *kwds_items = NULL; /* new reference */
+             *kwds_items = NULL, /* new reference */
+             *impl       = NULL; /* borrowed ref */
 
     int err = 0;
 
-    if ((MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) &&
-        kwds == Py_None)
-    {
-        if (do_add) {
-            err = _multidict_append_items(
-                self,
-                (MultiDictObject*)((MultiDictObject*)arg)->impl
-            );
-        } else {
-            err = _multidict_update_items(
-                self,
-                (MultiDictObject*)((MultiDictObject*)arg)->impl
-            );
+    // TODO: mb can be refactored more clear
+    if (_MultiDict_Check(arg) && (kwds == NULL || kwds == Py_None)) {
+        if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
+            impl = (MultiDictObject*)((MultiDictObject*)arg)->impl;
+        } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
+            impl = (MultiDictObject*)((MultiDictProxyObject*)arg)->md->impl;
         }
-        return err;
+
+        if (do_add) {
+            return _multidict_append_items(self, impl);
+        }
+
+        return _multidict_update_items(self, impl);
     }
 
     if (PyObject_HasAttrString(arg, "items")) {
         arg_items = multidict_items((MultiDictObject*)arg);
         if (arg_items == NULL) {
-            err = -1;
-            goto fail;
+            return -1;
         }
         if (kwds && kwds != Py_None) {
             kwds_items = PyDict_Items(kwds);
@@ -241,20 +246,17 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
             Py_DECREF(kwds_items);
             if (err < 0) {
                 Py_DECREF(arg_items);
-                goto fail;
+                return -1;
             }
         }
         Py_DECREF(arg_items);
     }
 
     if (do_add) {
-        err = _multidict_append_items_seq(self, arg, name);
-    } else {
-        err = pair_list_update_from_seq(self->impl, arg);
+        return _multidict_append_items_seq(self, arg, name);
     }
 
-fail:
-    return err;
+    return pair_list_update_from_seq(self->impl, arg);
 }
 
 static INLINE int
@@ -289,7 +291,7 @@ _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
         return -1;
     }
 
-    if (!PyArg_UnpackTuple(args, "multidict", 0, 1, &arg)) {
+    if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
         return -1;
     }
 
