@@ -212,7 +212,7 @@ _multidict_list_extend(PyObject *list, PyObject *target_list)
 
 static int
 _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
-                                 PyObject *kwds, const char *name, int do_add)
+                            PyObject *kwds, const char *name, int do_add)
 {
     PyObject *arg_items  = NULL, /* tracked by GC */
              *kwds_items = NULL, /* new reference */
@@ -308,10 +308,15 @@ _multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
     MultiDictObject *new_multidict = NULL;
 
     PyObject *arg_items = NULL,
-             *items     = NULL;
+             *items     = NULL,
+             *obj       = NULL;
 
     new_multidict = PyObject_GC_New(MultiDictObject, multidict_tp_object);
     if (new_multidict == NULL) {
+        return NULL;
+    }
+
+    if (multidict_tp_object->tp_init(new_multidict, NULL, NULL) < 0) {
         return NULL;
     }
 
@@ -465,8 +470,7 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
         );
     }
 
-    cmp = PyObject_IsInstance(other, (PyObject*)&collections_abc_mut_mapping);
-    cmp = PyObject_IsInstance(other, (PyObject*)&collections_abc_mut_mapping);
+    cmp = PyObject_IsInstance(other, (PyObject*)collections_abc_mut_mapping);
     if (cmp < 0) {
         return NULL;
     }
@@ -530,8 +534,10 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (self->impl == NULL) {
         return -1;
     }
-    if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
-        return -1;
+    if (args != NULL) {
+        if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
+            return -1;
+        }
     }
     return 0;
 }
@@ -870,7 +876,7 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (self->impl == NULL) {
         return -1;
     }
-    if (kwds) {
+    if (args != NULL) {
         if (_multidict_extend(self, args, kwds, "CIMultiDict", 1) < 0) {
             return -1;
         }
@@ -1016,6 +1022,23 @@ multidict_proxy_values(MultiDictProxyObject *self)
     return multidict_values(self->md);
 }
 
+static PyObject *
+multidict_proxy_copy(MultiDictProxyObject *self)
+{
+    MultiDictObject *new_multidict = multidict_tp_new(
+        &multidict_type, NULL, NULL);
+    if (new_multidict == NULL) {
+        return NULL;
+    }
+    if (multidict_tp_init(new_multidict, NULL, NULL) < 0) {
+        return NULL;
+    }
+    if (_multidict_extend_with_args(new_multidict, self, NULL, "copy", 1) < 0) {
+        return NULL;
+    }
+    return new_multidict;
+}
+
 static Py_ssize_t
 multidict_proxy_mp_len(MultiDictProxyObject *self)
 {
@@ -1125,9 +1148,8 @@ static PyMethodDef multidict_proxy_methods[] = {
         multidict_values_doc
     },
     {
-        // TODO: fixme
         "copy",
-        (PyCFunction)multidict_copy,
+        (PyCFunction)multidict_proxy_copy,
         METH_NOARGS,
         multidict_copy_doc
     },
@@ -1186,10 +1208,7 @@ static int
 cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
                           PyObject *kwds)
 {
-    // TODO: fix "SystemError: <class 'multidict._multidict.MultiDictProxy'> 
-    // returned NULL without setting an error" arg == NULL
     PyObject *arg = NULL;
-
     if (!PyArg_UnpackTuple(args, "multidict._multidict.CIMultiDictProxy",
                            0, 1, &arg))
     {
@@ -1209,6 +1228,12 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     Py_INCREF(arg);
     self->md = arg;
     return 0;
+}
+
+static PyObject *
+cimultidict_proxy_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    return (PyObject*)_mulditict_proxy_alloc(&cimultidict_proxy_type);
 }
 
 static PyTypeObject cimultidict_proxy_type = {
@@ -1249,7 +1274,7 @@ static PyTypeObject cimultidict_proxy_type = {
     0,                                               /* tp_dictoffset */
     (initproc)cimultidict_proxy_tp_init,             /* tp_init */
     0,                                               /* tp_alloc */
-    multidict_proxy_tp_new,                          /* tp_new */
+    cimultidict_proxy_tp_new,                          /* tp_new */
 };
 
 /******************** Module ********************/
