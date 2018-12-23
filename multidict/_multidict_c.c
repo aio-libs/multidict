@@ -1324,8 +1324,8 @@ PyInit__multidict()
     }
 
     if (PyType_Ready(&multidict_type) < 0 ||
-        PyType_Ready(&cimultidict_type) < 0 || 
-        PyType_Ready(&multidict_proxy_type) < 0 || 
+        PyType_Ready(&cimultidict_type) < 0 ||
+        PyType_Ready(&multidict_proxy_type) < 0 ||
         PyType_Ready(&cimultidict_proxy_type) < 0)
     {
         goto fail;
