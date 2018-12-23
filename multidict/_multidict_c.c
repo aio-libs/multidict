@@ -347,14 +347,17 @@ _multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
         goto fail;
     }
 
-    Py_DECREF(arg_items);
     Py_DECREF(items);
+    Py_DECREF(arg_items);
+
     return (PyObject*)new_multidict;
 
 fail:
-    Py_XDECREF(arg_items);
     Py_XDECREF(items);
-    // TODO: dealloc(new_multiidct)
+    Py_XDECREF(arg_items);
+
+    Py_DECREF(new_multidict);
+
     return NULL;
 }
 
