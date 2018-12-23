@@ -1,5 +1,6 @@
 // TODO:
 //      - add reduce
+//      - add getversion
 
 #include "_multidict_c.h"
 #include "_pair_list.h"
