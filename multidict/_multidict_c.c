@@ -1270,51 +1270,9 @@ module_free(void *m)
     Py_CLEAR(collections_abc_mapping);
 }
 
-static int
-module_init()
-{
-    PyObject *module  = NULL;
-
-#define WITH_MOD(NAME)                      \
-    Py_CLEAR(module);                       \
-    module = PyImport_ImportModule(NAME);   \
-    if (module == NULL) {                   \
-        goto fail;                          \
-    }
-
-#define GET_MOD_ATTR(VAR, NAME)                 \
-    VAR = PyObject_GetAttrString(module, NAME); \
-    if (VAR == NULL) {                          \
-        goto fail;                              \
-    }
-
-    WITH_MOD("collections.abc")
-    GET_MOD_ATTR(collections_abc_mapping, "Mapping")
-
-    WITH_MOD("multidict._istr")
-    GET_MOD_ATTR(istr, "istr")
-
-    if (pair_list_init(istr) < 0) {
-        goto fail;
-    }
-
-    if (multidict_views_init() < 0) {
-        goto fail;
-    }
-
-    Py_DECREF(module);
-    return 0;
-
-fail:
-    Py_CLEAR(collections_abc_mapping);
-    Py_CLEAR(istr);
-    module_free(NULL);
-    return -1;
-}
-
 static PyModuleDef multidict_module = {
     PyModuleDef_HEAD_INIT,      /* m_base */
-    "multidict._multidict",     /* m_name */
+    "_multidict",               /* m_name */
     NULL,                       /* m_doc */
     -1,                         /* m_size */
     NULL,                       /* m_methods */
@@ -1329,28 +1287,44 @@ PyInit__multidict()
 {
     PyObject *module = NULL;
 
-    if (module_init() < 0) {
+#define WITH_MOD(NAME)                      \
+    Py_CLEAR(module);                       \
+    module = PyImport_ImportModule(NAME);   \
+    if (module == NULL) {                   \
+        goto fail;                          \
+    }
+
+#define GET_MOD_ATTR(VAR, NAME)                 \
+    VAR = PyObject_GetAttrString(module, NAME); \
+    if (VAR == NULL) {                          \
+        goto fail;                              \
+    }
+
+    WITH_MOD("multidict._istr");
+    GET_MOD_ATTR(istr, "istr");
+
+    if (pair_list_init(istr) < 0) {
         goto fail;
     }
 
-    if (PyType_Ready(&multidict_type) < 0) {
+    if (multidict_views_init() < 0) {
         goto fail;
     }
 
-    if (PyType_Ready(&cimultidict_type) < 0) {
-        goto fail;
-    }
-
-    if (PyType_Ready(&multidict_proxy_type) < 0) {
-        goto fail;
-    }
-
-    if (PyType_Ready(&cimultidict_proxy_type) < 0) {
+    if ((PyType_Ready(&multidict_type) < 0) ||
+        (PyType_Ready(&cimultidict_type) < 0) || 
+        (PyType_Ready(&multidict_proxy_type) < 0) || 
+        (PyType_Ready(&cimultidict_proxy_type) < 0))
+    {
         goto fail;
     }
 
     module = PyModule_Create(&multidict_module);
-    if (module == NULL) {
+
+    Py_INCREF(istr);
+    if (PyModule_AddObject(
+            module, "istr", (PyObject*)istr) < 0)
+    {
         goto fail;
     }
 
@@ -1385,10 +1359,15 @@ PyInit__multidict()
     return module;
 
 fail:
+    Py_XDECREF(collections_abc_mapping);
+    Py_XDECREF(istr);
     Py_XDECREF(&multidict_type);
     Py_XDECREF(&cimultidict_type);
     Py_XDECREF(&multidict_proxy_type);
     Py_XDECREF(&cimultidict_proxy_type);
 
     return NULL;
+
+#undef WITH_MOD
+#undef GET_MOD_ATTR
 }
