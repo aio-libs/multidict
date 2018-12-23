@@ -160,7 +160,7 @@ _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
         }
 
         key   = PyTuple_GET_ITEM(item, 0);
-        value = PyTuple_GET_ITEM(item, 0);
+        value = PyTuple_GET_ITEM(item, 1);
         pair_list_add(self->impl, key, value);
 
         Py_DECREF(item);
@@ -204,79 +204,61 @@ _multidict_list_extend(PyObject *list, PyObject *target_list)
 }
 
 static int
-_multidict_extend_with_some_args(MultiDictObject *self, PyObject *args,
+_multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
                                  PyObject *kwds, const char *name, int do_add)
 {
-    // TODO: check this code for memory pitfalls
-    PyObject *arg        = NULL, // For borrowed reference
-             *arg_items  = NULL, // For object which tracked by GC
-             *kwds_items = NULL; // For new reference
+    PyObject *arg_items  = NULL, /* tracked by GC */
+             *kwds_items = NULL; /* new reference */
 
     int err = 0;
 
-    arg = PyTuple_GetItem(args, 0);
-    if (!arg) {
-        goto fail;
-    }
-
-    if ((MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) && kwds == Py_None) {
+    if ((MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) &&
+        kwds == Py_None)
+    {
         if (do_add) {
             err = _multidict_append_items(
                 self,
                 (MultiDictObject*)((MultiDictObject*)arg)->impl
             );
-            if (err < 0) {
-                goto fail;
-            }
         } else {
             err = _multidict_update_items(
                 self,
                 (MultiDictObject*)((MultiDictObject*)arg)->impl
             );
-            if (err < 0) {
-                goto fail;
-            }
         }
-    } else {
-        if (PyObject_HasAttrString(arg, "items")) {
-            arg_items = multidict_items((MultiDictObject*)arg);
-            if (arg_items == NULL) {
-                goto fail;
-            }
-        }
-
-        if (kwds != Py_None) {
-            kwds_items = PyDict_Items(kwds);
-            err = _multidict_list_extend(arg_items, kwds_items);
-            if (err < 0) {
-                goto fail;
-            }
-        }
-
-        if (do_add) {
-            err = _multidict_append_items_seq(self, arg, name);
-            if (err < 0) {
-                goto fail;
-            }
-        } else {
-            err = pair_list_update_from_seq(self->impl, arg);
-            if (err < 0) {
-                goto fail;
-            }
-        }
+        return err;
     }
 
-    Py_DECREF(kwds_items);
-    return 0;
+    if (PyObject_HasAttrString(arg, "items")) {
+        arg_items = multidict_items((MultiDictObject*)arg);
+        if (arg_items == NULL) {
+            err = -1;
+            goto fail;
+        }
+        if (kwds && kwds != Py_None) {
+            kwds_items = PyDict_Items(kwds);
+            err = _multidict_list_extend(arg_items, kwds_items);
+            Py_DECREF(kwds_items);
+            if (err < 0) {
+                Py_DECREF(arg_items);
+                goto fail;
+            }
+        }
+        Py_DECREF(arg_items);
+    }
+
+    if (do_add) {
+        err = _multidict_append_items_seq(self, arg, name);
+    } else {
+        err = pair_list_update_from_seq(self->impl, arg);
+    }
 
 fail:
-    Py_XDECREF(arg_items);
-    Py_XDECREF(kwds_items);
-    return -1;
+    return err;
 }
 
 static INLINE int
-_multidict_extend_with_none_args(MultiDictObject *self, PyObject *kwds,
+_multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
                                  const char *name, int do_add)
 {
     PyObject *arg = NULL;
@@ -298,7 +280,7 @@ static int
 _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
                   const char *name, int do_add)
 {
-    int err = 0;
+    PyObject *arg = NULL;
 
     if (PyObject_Length(args) > 1) {
         PyErr_Format(PyExc_TypeError,
@@ -307,13 +289,15 @@ _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
         return -1;
     }
 
-    if (PyTuple_GET_SIZE(args) == 0) {
-        err = _multidict_extend_with_none_args(self, kwds, name, do_add);
-    } else {
-        err = _multidict_extend_with_some_args(self, args, kwds, name, do_add);
+    if (!PyArg_UnpackTuple(args, "multidict", 0, 1, &arg)) {
+        return -1;
     }
 
-    return err;
+    if (arg) {
+        return _multidict_extend_with_args(self, arg, kwds, name, do_add);
+    } else if (kwds) {
+        return _multidict_extend_with_kwds(self, kwds, name, do_add);
+    }
 }
 
 static INLINE PyObject *
@@ -544,10 +528,8 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (self->impl == NULL) {
         return -1;
     }
-    if (kwds) {
-        if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
-            return -1;
-        }
+    if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
+        return -1;
     }
     return 0;
 }
