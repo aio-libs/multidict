@@ -1,6 +1,5 @@
 // TODO:
 //      - add reduce
-//      - add getversion
 
 #include "_multidict_c.h"
 #include "_pair_list.h"
@@ -1277,6 +1276,23 @@ static PyTypeObject cimultidict_proxy_type = {
     cimultidict_proxy_tp_new,                          /* tp_new */
 };
 
+/******************** Other functions ********************/
+
+static PyObject *
+getversion(PyObject *arg)
+{
+    PyObject *impl = NULL;
+    if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
+        impl = (MultiDictObject*)((MultiDictObject*)arg)->impl;
+    } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
+        impl = (MultiDictObject*)((MultiDictProxyObject*)arg)->md->impl;
+    } else {
+        // TODO: set exception of not supported type
+        return NULL;
+    }
+    return PyLong_FromUnsignedLong(pair_list_version(impl));
+}
+
 /******************** Module ********************/
 
 static void
@@ -1287,12 +1303,21 @@ module_free(void *m)
     Py_CLEAR(collections_abc_mut_multi_mapping);
 }
 
+static PyMethodDef multidict_module_methods[] = {
+    {
+        "getversion",
+        (PyCFunction)getversion,
+        METH_O,
+        NULL
+    },
+};
+
 static PyModuleDef multidict_module = {
     PyModuleDef_HEAD_INIT,      /* m_base */
     "_multidict",               /* m_name */
     NULL,                       /* m_doc */
     -1,                         /* m_size */
-    NULL,                       /* m_methods */
+    multidict_module_methods,   /* m_methods */
     NULL,                       /* m_slots */
     NULL,                       /* m_traverse */
     NULL,                       /* m_clear */
