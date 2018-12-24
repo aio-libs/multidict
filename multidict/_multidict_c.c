@@ -287,15 +287,20 @@ _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
         return -1;
     }
 
-    if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
-        return -1;
+    if (PyObject_Length(args) == 1) {
+        if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
+            return -1;
+        }
+        if (arg) {
+            return _multidict_extend_with_args(self, arg, kwds, name, do_add);
+        }
     }
 
-    if (arg) {
-        return _multidict_extend_with_args(self, arg, kwds, name, do_add);
-    } else if (kwds) {
+    if (kwds && PyObject_Length(kwds) > 0) {
         return _multidict_extend_with_kwds(self, kwds, name, do_add);
     }
+
+    return 0;
 }
 
 static INLINE PyObject *
@@ -563,10 +568,8 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (self->impl == NULL) {
         return -1;
     }
-    if (args != NULL && PyObject_Length(args) > 0) {
-        if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
-            return -1;
-        }
+    if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
+        return -1;
     }
     return 0;
 }
@@ -911,10 +914,8 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (self->impl == NULL) {
         return -1;
     }
-    if (args != NULL && PyObject_Length(args) > 0) {
-        if (_multidict_extend(self, args, kwds, "CIMultiDict", 1) < 0) {
-            return -1;
-        }
+    if (_multidict_extend(self, args, kwds, "CIMultiDict", 1) < 0) {
+        return -1;
     }
     return 0;
 }
@@ -994,8 +995,6 @@ static int
 multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
                         PyObject *kwds)
 {
-    // TODO: fix "SystemError: <class 'multidict._multidict.MultiDictProxy'>
-    // returned NULL without setting an error" arg == NULL
     PyObject *arg = NULL;
 
     if (!PyArg_UnpackTuple(args, "multidict._multidict.MultiDictProxy",
