@@ -563,7 +563,7 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (self->impl == NULL) {
         return -1;
     }
-    if (args != NULL) {
+    if (args != NULL && PyObject_Length(args) > 0) {
         if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
             return -1;
         }
@@ -911,7 +911,7 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (self->impl == NULL) {
         return -1;
     }
-    if (args != NULL) {
+    if (args != NULL && PyObject_Length(args) > 0) {
         if (_multidict_extend(self, args, kwds, "CIMultiDict", 1) < 0) {
             return -1;
         }
