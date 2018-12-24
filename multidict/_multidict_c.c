@@ -1,6 +1,3 @@
-// TODO:
-//      - add reduce
-
 #include "_multidict_c.h"
 #include "_pair_list.h"
 #include "_multidict_views.h"
@@ -418,6 +415,39 @@ multidict_values(MultiDictObject *self)
     return multidict_valuesview_new((PyObject*)self);
 }
 
+static PyObject *
+multidict_reduce(MultiDictObject *self)
+{
+    PyObject *items      = NULL,
+             *items_list = NULL,
+             *args       = NULL,
+             *result     = NULL;
+
+    items = multidict_items(self);
+    if (items == NULL) {
+        goto ret;
+    }
+
+    items_list = PySequence_List(items);
+    if (items_list == NULL) {
+        goto ret;
+    }
+
+    args = PyTuple_Pack(1, items_list);
+    if (args == NULL) {
+        goto ret;
+    }
+
+    result = PyTuple_Pack(2, Py_TYPE(self), args);
+
+ret:
+    Py_XDECREF(args);
+    Py_XDECREF(items_list);
+    Py_XDECREF(items);
+
+    return result;
+}
+
 static Py_ssize_t
 multidict_mp_len(MultiDictObject *self)
 {
@@ -818,6 +848,12 @@ static PyMethodDef multidict_methods[] = {
         multidict_update_doc
     },
     {
+        "__reduce__",
+        (PyCFunction)multidict_reduce,
+        METH_NOARGS,
+        NULL,
+    },
+    {
         NULL,
         NULL
     }   /* sentinel */
@@ -825,7 +861,7 @@ static PyMethodDef multidict_methods[] = {
 
 static PyTypeObject multidict_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "multidict._multidict_c.MultiDict",              /* tp_name */
+    "multidict._multidict.MultiDict",                /* tp_name */
     sizeof(MultiDictObject),                         /* tp_basicsize */
     0,                                               /* tp_itemsize */
     (destructor)multidict_tp_dealloc,                /* tp_dealloc */
@@ -1038,6 +1074,17 @@ multidict_proxy_copy(MultiDictProxyObject *self)
     return new_multidict;
 }
 
+static PyObject *
+multidict_proxy_reduce(MultiDictProxyObject *self)
+{
+    PyErr_Format(
+        PyExc_TypeError,
+        "can't pickle %s objects", Py_TYPE(self)->tp_name
+    );
+
+    return NULL;
+}
+
 static Py_ssize_t
 multidict_proxy_mp_len(MultiDictProxyObject *self)
 {
@@ -1151,6 +1198,12 @@ static PyMethodDef multidict_proxy_methods[] = {
         (PyCFunction)multidict_proxy_copy,
         METH_NOARGS,
         multidict_copy_doc
+    },
+    {
+        "__reduce__",
+        (PyCFunction)multidict_proxy_reduce,
+        METH_NOARGS,
+        NULL
     },
     {
         NULL,
