@@ -363,10 +363,10 @@ multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
              *key      = NULL,
              *_default = NULL;
 
-    static char *keywords[] = {"key", "default"};
+    static char *getall_keywords[] = {"key", "default", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getall",
-                                     keywords, &key, &_default))
+                                     getall_keywords, &key, &_default))
     {
         return NULL;
     }
@@ -391,10 +391,10 @@ multidict_getone(MultiDictObject *self, PyObject *args, PyObject *kwds)
     PyObject *key      = NULL,
              *_default = NULL;
 
-    static char *keywords[] = {"key", "default"};
+    static char *getone_keywords[] = {"key", "default", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getone",
-                                     keywords, &key, &_default))
+                                     getone_keywords, &key, &_default))
     {
         return NULL;
     }
@@ -629,10 +629,10 @@ multidict_setdefault(MultiDictObject *self, PyObject *args, PyObject *kwds)
     PyObject *key      = NULL,
              *_default = NULL;
 
-    static char *keywords[] = {"key", "default"};
+    static char *setdefault_keywords[] = {"key", "default", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:setdefault",
-                                     keywords, &key, &_default))
+                                     setdefault_keywords, &key, &_default))
     {
         return NULL;
     }
@@ -646,10 +646,10 @@ multidict_popone(MultiDictObject *self, PyObject *args, PyObject *kwds)
              *_default = NULL,
              *ret_val  = NULL;
 
-    static char *keywords[] = {"key", "default"};
+    static char *popone_keywords[] = {"key", "default", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popone",
-                                     keywords, &key, &_default))
+                                     popone_keywords, &key, &_default))
     {
         return NULL;
     }
@@ -674,10 +674,10 @@ multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
              *_default = NULL,
              *ret_val  = NULL;
 
-    static char *keywords[] = {"key", "default"};
+    static char *popall_keywords[] = {"key", "default", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popall",
-                                     keywords, &key, &_default))
+                                     popall_keywords, &key, &_default))
     {
         return NULL;
     }
