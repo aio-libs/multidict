@@ -91,6 +91,9 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
              *value1    = NULL,
              *value2    = NULL;
 
+    int cmp_identity = 0,
+        cmp_value    = 0;
+
     if (self == other) {
         Py_RETURN_TRUE;
     }
@@ -102,10 +105,15 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
     while (_pair_list_next(self->impl, &pos1, &identity1, NULL, &value1, &h1) &&
            _pair_list_next(other->impl, &pos2, &identity2, NULL, &value2, &h2))
     {
-        if ((h1 != h2) ||
-            PyObject_RichCompare(identity1, identity2, Py_NE) ||
-            PyObject_RichCompare(value1, value2, Py_NE))
-        {
+        cmp_identity = PyObject_RichCompareBool(identity1, identity2, Py_NE);
+        if (cmp_identity < 0) {
+            return NULL;
+        }
+        cmp_value = PyObject_RichCompareBool(value1, value2, Py_NE);
+        if (cmp_value < 0) {
+            return NULL;
+        }
+        if (h1 != h2 || cmp_identity || cmp_value) {
             Py_RETURN_FALSE;
         }
     }
@@ -497,7 +505,7 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
     }
 
     // TODO: add MultiDictProxy_CheckExact
-    if (MultiDict_CheckExact(other)) {
+    if (MultiDict_CheckExact(other) || CIMultiDict_CheckExact(other)) {
         return _multidict_eq(
             (MultiDictObject*)self,
             (MultiDictObject*)other
