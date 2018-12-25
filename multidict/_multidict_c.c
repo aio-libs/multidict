@@ -280,18 +280,18 @@ _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
 {
     PyObject *arg = NULL;
 
-    if (PyObject_Length(args) > 1) {
-        PyErr_Format(PyExc_TypeError,
-                     "%s takes at most 1 positional argument (%zd given)",
-                     name, PyObject_Length(args), NULL);
-        return -1;
-    }
-
-    if (PyObject_Length(args) == 1) {
-        if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
+    if (args != NULL) {
+        if (PyObject_Length(args) > 1) {
+            PyErr_Format(PyExc_TypeError,
+                        "%s takes at most 1 positional argument (%zd given)",
+                        name, PyObject_Length(args), NULL);
             return -1;
         }
-        if (arg) {
+
+        if (PyObject_Length(args) == 1) {
+            if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
+                return -1;
+            }
             return _multidict_extend_with_args(self, arg, kwds, name, do_add);
         }
     }
@@ -1003,6 +1003,10 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         return -1;
     }
     if (arg == NULL) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "__init__() missing 1 required positional argument: 'arg'"
+        );
         return -1;
     }
     if (!MultiDictProxy_CheckExact(self) && !MultiDict_CheckExact(self)) {
@@ -1266,6 +1270,10 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         return -1;
     }
     if (arg == NULL) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "__init__() missing 1 required positional argument: 'arg'"
+        );
         return -1;
     }
     if (!CIMultiDictProxy_CheckExact(self) && !CIMultiDict_CheckExact(self)) {
