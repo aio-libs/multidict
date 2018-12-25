@@ -1353,7 +1353,7 @@ getversion(PyObject *self, PyObject *md)
     } else if (MultiDictProxy_CheckExact(md) || CIMultiDictProxy_CheckExact(md)) {
         impl = (MultiDictObject*)((MultiDictProxyObject*)md)->md->impl;
     } else {
-        // TODO: set exception of not supported type
+        PyErr_Format(PyExc_TypeError, "unexpected type");
         return NULL;
     }
     return PyLong_FromUnsignedLong(pair_list_version(impl));
