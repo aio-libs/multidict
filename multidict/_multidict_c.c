@@ -1339,13 +1339,13 @@ static PyTypeObject cimultidict_proxy_type = {
 /******************** Other functions ********************/
 
 static PyObject *
-getversion(PyObject *arg)
+getversion(PyObject *self, PyObject *md)
 {
     PyObject *impl = NULL;
-    if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
-        impl = (MultiDictObject*)((MultiDictObject*)arg)->impl;
-    } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
-        impl = (MultiDictObject*)((MultiDictProxyObject*)arg)->md->impl;
+    if (MultiDict_CheckExact(md) || CIMultiDict_CheckExact(md)) {
+        impl = (MultiDictObject*)((MultiDictObject*)md)->impl;
+    } else if (MultiDictProxy_CheckExact(md) || CIMultiDictProxy_CheckExact(md)) {
+        impl = (MultiDictObject*)((MultiDictProxyObject*)md)->md->impl;
     } else {
         // TODO: set exception of not supported type
         return NULL;
