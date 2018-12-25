@@ -833,6 +833,12 @@ static PyMethodDef multidict_methods[] = {
         multidict_popone_doc
     },
     {
+        "pop",
+        (PyCFunction)multidict_popone,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_popone_doc
+    },
+    {
         "popall",
         (PyCFunction)multidict_popall,
         METH_VARARGS | METH_KEYWORDS,
