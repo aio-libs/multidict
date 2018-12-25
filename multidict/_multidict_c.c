@@ -504,11 +504,17 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
         Py_RETURN_NOTIMPLEMENTED;
     }
 
-    // TODO: add MultiDictProxy_CheckExact
     if (MultiDict_CheckExact(other) || CIMultiDict_CheckExact(other)) {
         return _multidict_eq(
             (MultiDictObject*)self,
             (MultiDictObject*)other
+        );
+    }
+
+    if (MultiDictProxy_CheckExact(other) || CIMultiDictProxy_CheckExact(other)) {
+        return _multidict_eq(
+            (MultiDictObject*)self,
+            ((MultiDictProxyObject*)other)->md
         );
     }
 
