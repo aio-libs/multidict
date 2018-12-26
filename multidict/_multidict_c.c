@@ -245,23 +245,30 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
         if (arg_items == NULL) {
             return -1;
         }
-        if (kwds && kwds != Py_None) {
-            kwds_items = PyDict_Items(kwds);
-            err = _multidict_list_extend(arg_items, kwds_items);
-            Py_DECREF(kwds_items);
-            if (err < 0) {
-                Py_DECREF(arg_items);
-                return -1;
-            }
+    } else {
+        arg_items = arg;
+        Py_INCREF(arg_items);
+    }
+
+    if (kwds && kwds != Py_None) {
+        kwds_items = PyDict_Items(kwds);
+        err = _multidict_list_extend(arg_items, kwds_items);
+        Py_DECREF(kwds_items);
+        if (err < 0) {
+            Py_DECREF(arg_items);
+            return -1;
         }
-        Py_DECREF(arg_items);
     }
 
     if (do_add) {
-        return _multidict_append_items_seq(self, arg, name);
+        err = _multidict_append_items_seq(self, arg, name);
+    } else {
+        err =  pair_list_update_from_seq(self->impl, arg);
     }
 
-    return pair_list_update_from_seq(self->impl, arg);
+    Py_DECREF(arg_items);
+
+    return err;
 }
 
 static INLINE int
@@ -289,24 +296,26 @@ _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
 {
     PyObject *arg = NULL;
 
-    if (args != NULL) {
-        if (PyObject_Length(args) > 1) {
-            PyErr_Format(PyExc_TypeError,
-                        "%s takes at most 1 positional argument (%zd given)",
-                        name, PyObject_Length(args), NULL);
-            return -1;
-        }
-
-        if (PyObject_Length(args) == 1) {
-            if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
-                return -1;
-            }
-            return _multidict_extend_with_args(self, arg, kwds, name, do_add);
-        }
+    if (args && PyObject_Length(args) > 1)  {
+        PyErr_Format(
+            PyExc_TypeError,
+            "%s takes at most 1 positional argument (%zd given)",
+            name, PyObject_Length(args), NULL
+        );
+        return -1;
     }
 
-    if (kwds && PyObject_Length(kwds) > 0) {
-        return _multidict_extend_with_kwds(self, kwds, name, do_add);
+    if (args && PyObject_Length(args) > 0) {
+        if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
+            return -1;
+        }
+        if (_multidict_extend_with_args(self, arg, kwds, name, do_add) < 0) {
+            return -1;
+        }
+    } else if (kwds && PyObject_Length(kwds) > 0) {
+        if (_multidict_extend_with_kwds(self, kwds, name, do_add) < 0) {
+            return -1;
+        }
     }
 
     return 0;
