@@ -78,7 +78,7 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
     return val;
 }
 
-static PyObject *
+static int
 _multidict_eq(MultiDictObject *self, MultiDictObject *other)
 {
     Py_ssize_t pos1 = 0,
@@ -100,7 +100,7 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
     }
 
     if (pair_list_len(self->impl) != pair_list_len(other->impl)) {
-        Py_RETURN_FALSE;
+        return 0;
     }
 
     while (_pair_list_next(self->impl, &pos1, &identity1, NULL, &value1, &h1) &&
@@ -108,18 +108,18 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
     {
         cmp_identity = PyObject_RichCompareBool(identity1, identity2, Py_NE);
         if (cmp_identity < 0) {
-            return NULL;
+            return -1;
         }
         cmp_value = PyObject_RichCompareBool(value1, value2, Py_NE);
         if (cmp_value < 0) {
-            return NULL;
+            return -1;
         }
         if (h1 != h2 || cmp_identity || cmp_value) {
-            Py_RETURN_FALSE;
+            return 0;
         }
     }
 
-    Py_RETURN_TRUE;
+    return 1;
 }
 
 static INLINE int
@@ -508,6 +508,8 @@ mulditict_tp_iter(MultiDictObject *self)
 static PyObject *
 multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
 {
+    // TODO: refactoring me with love
+
     int cmp = 0;
 
     if (op != Py_EQ && op != Py_NE) {
@@ -515,17 +517,33 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
     }
 
     if (MultiDict_CheckExact(other) || CIMultiDict_CheckExact(other)) {
-        return _multidict_eq(
+        cmp = _multidict_eq(
             (MultiDictObject*)self,
             (MultiDictObject*)other
         );
+        if (cmp < 0) {
+            // TODO: set exception
+            return NULL;
+        }
+        if (op == Py_NE) {
+            cmp = !cmp;
+        }
+        return PyBool_FromLong(cmp);
     }
 
     if (MultiDictProxy_CheckExact(other) || CIMultiDictProxy_CheckExact(other)) {
-        return _multidict_eq(
+        cmp = _multidict_eq(
             (MultiDictObject*)self,
             ((MultiDictProxyObject*)other)->md
         );
+        if (cmp < 0) {
+            // TODO: set exception
+            return NULL;
+        }
+        if (op == Py_NE) {
+            cmp = !cmp;
+        }
+        return PyBool_FromLong(cmp);
     }
 
     cmp = PyObject_IsInstance(other, (PyObject*)collections_abc_mapping);
@@ -534,10 +552,14 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
     }
 
     if (cmp) {
-        if (pair_list_eq_to_mapping(((MultiDictObject*)self)->impl, other)) {
-            Py_RETURN_TRUE;
+        cmp = pair_list_eq_to_mapping(((MultiDictObject*)self)->impl, other);
+        if (cmp < 0) {
+            return NULL;
         }
-        Py_RETURN_FALSE;
+        if (op == Py_NE) {
+            cmp = !cmp;
+        }
+        return PyBool_FromLong(cmp);
     }
 
     Py_RETURN_NOTIMPLEMENTED;
