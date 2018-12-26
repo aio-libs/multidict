@@ -1404,9 +1404,12 @@ static PyMethodDef multidict_module_methods[] = {
     {
         "getversion",
         (PyCFunction)getversion,
-        METH_O,
-        NULL
+        METH_O
     },
+    {
+        NULL,
+        NULL
+    }   /* sentinel */
 };
 
 static PyModuleDef multidict_module = {
