@@ -11,6 +11,7 @@
 #define INLINE
 #endif
 
+static PyObject *collections_abc_mapping;
 static PyObject *collections_abc_mut_mapping;
 static PyObject *collections_abc_mut_multi_mapping;
 static PyObject *istr;
@@ -518,7 +519,7 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
         );
     }
 
-    cmp = PyObject_IsInstance(other, (PyObject*)collections_abc_mut_mapping);
+    cmp = PyObject_IsInstance(other, (PyObject*)collections_abc_mapping);
     if (cmp < 0) {
         return NULL;
     }
@@ -1396,6 +1397,7 @@ static void
 module_free(void *m)
 {
     Py_CLEAR(istr);
+    Py_CLEAR(collections_abc_mapping);
     Py_CLEAR(collections_abc_mut_mapping);
     Py_CLEAR(collections_abc_mut_multi_mapping);
 }
@@ -1445,6 +1447,9 @@ PyInit__multidict()
 
     WITH_MOD("multidict._istr");
     GET_MOD_ATTR(istr, "istr");
+
+    WITH_MOD("collections.abc");
+    GET_MOD_ATTR(collections_abc_mapping, "Mapping");
 
     WITH_MOD("multidict._abc");
     GET_MOD_ATTR(collections_abc_mut_mapping, "MultiMapping");
@@ -1547,8 +1552,9 @@ PyInit__multidict()
     return module;
 
 fail:
+    Py_XDECREF(collections_abc_mapping);
     Py_XDECREF(collections_abc_mut_mapping);
-    Py_XDECREF(collections_abc_mut_mapping);
+    Py_XDECREF(collections_abc_mut_multi_mapping);
     Py_XDECREF(istr);
     Py_XDECREF(&multidict_type);
     Py_XDECREF(&cimultidict_type);
