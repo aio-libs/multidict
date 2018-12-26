@@ -1015,7 +1015,8 @@ static int
 multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
                         PyObject *kwds)
 {
-    PyObject *arg = NULL;
+    PyObject        *arg = NULL;
+    MultiDictObject *md  = NULL;
 
     if (!PyArg_UnpackTuple(args, "multidict._multidict.MultiDictProxy",
                            0, 1, &arg))
@@ -1029,16 +1030,25 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         );
         return -1;
     }
-    if (!MultiDictProxy_CheckExact(self) && !MultiDict_CheckExact(self)) {
-        // TODO: fix format
+    if (!MultiDictProxy_CheckExact(arg) &&
+        !CIMultiDict_CheckExact(arg) &&
+        !MultiDict_CheckExact(arg))
+    {
         PyErr_Format(
             PyExc_TypeError,
-            "ctor requires MultiDict or MultiDictProxy instance, not ..."
+            "ctor requires MultiDict or MultiDictProxy instance, not %s",
+            Py_TYPE(arg)->tp_name
         );
         return -1;
     }
-    Py_INCREF(arg);
-    self->md = arg;
+
+    md = (MultiDictObject*)arg;
+    if (MultiDictProxy_CheckExact(arg)) {
+        md = ((MultiDictProxyObject*)arg)->md;
+    }
+    Py_INCREF(md);
+    self->md = md;
+    
     return 0;
 }
 
@@ -1143,7 +1153,6 @@ static void
 multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
 {
     PyObject_GC_UnTrack(self);
-    Py_XDECREF(self->md);
     PyObject_GC_Del(self);
 }
 
@@ -1283,9 +1292,11 @@ static int
 cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
                           PyObject *kwds)
 {
-    PyObject *arg = NULL;
+    PyObject *arg = NULL,
+             *md  = NULL;
+
     if (!PyArg_UnpackTuple(args, "multidict._multidict.CIMultiDictProxy",
-                           0, 1, &arg))
+                           1, 1, &arg))
     {
         return -1;
     }
@@ -1296,16 +1307,22 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         );
         return -1;
     }
-    if (!CIMultiDictProxy_CheckExact(self) && !CIMultiDict_CheckExact(self)) {
-        // TODO: fix format
+    if (!CIMultiDictProxy_CheckExact(arg) && !CIMultiDict_CheckExact(arg)) {
         PyErr_Format(
             PyExc_TypeError,
-            "ctor requires CIMultiDict or CIMultiDictProxy instance, not ..."
+            "ctor requires CIMultiDict or CIMultiDictProxy instance, not %s",
+            Py_TYPE(arg)->tp_name
         );
         return -1;
     }
-    Py_INCREF(arg);
-    self->md = arg;
+
+    md = arg;
+    if (CIMultiDictProxy_CheckExact(arg)) {
+        md = ((MultiDictProxyObject*)arg)->md;
+    }
+    Py_INCREF(md);
+    self->md = md;
+
     return 0;
 }
 
