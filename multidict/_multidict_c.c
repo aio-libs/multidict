@@ -265,9 +265,9 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
     }
 
     if (do_add) {
-        err = _multidict_append_items_seq(self, arg, name);
+        err = _multidict_append_items_seq(self, arg_items, name);
     } else {
-        err =  pair_list_update_from_seq(self->impl, arg);
+        err =  pair_list_update_from_seq(self->impl, arg_items);
     }
 
     Py_DECREF(arg_items);
