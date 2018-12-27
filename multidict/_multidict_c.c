@@ -125,20 +125,20 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
 }
 
 static INLINE int
-_multidict_update_items(MultiDictObject *self, MultiDictObject *impl)
+_multidict_update_items(MultiDictObject *self, PyObject *impl)
 {
-    return pair_list_update((PyObject*)self->impl, (PyObject*)impl);
+    return pair_list_update((PyObject*)self->impl, impl);
 }
 
 static int
-_multidict_append_items(MultiDictObject *self, MultiDictObject *impl)
+_multidict_append_items(MultiDictObject *self, PyObject *impl)
 {
     PyObject *key   = NULL,
              *value = NULL;
 
     Py_ssize_t pos = 0;
 
-    while (_pair_list_next((PyObject*)impl, &pos, NULL, &key, &value, NULL)) {
+    while (_pair_list_next(impl, &pos, NULL, &key, &value, NULL)) {
         if (pair_list_add(self->impl, key, value) < 0) {
             return -1;
         }
@@ -230,9 +230,9 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
     // TODO: mb can be refactored more clear
     if (_MultiDict_Check(arg) && (kwds == NULL || kwds == Py_None)) {
         if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
-            impl = (MultiDictObject*)((MultiDictObject*)arg)->impl;
+            impl = ((MultiDictObject*)arg)->impl;
         } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
-            impl = (MultiDictObject*)((MultiDictProxyObject*)arg)->md->impl;
+            impl = ((MultiDictProxyObject*)arg)->md->impl;
         }
 
         if (do_add) {
@@ -333,15 +333,16 @@ _multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
     MultiDictObject *new_multidict = NULL;
 
     PyObject *arg_items = NULL,
-             *items     = NULL,
-             *obj       = NULL;
+             *items     = NULL;
 
     new_multidict = PyObject_GC_New(MultiDictObject, multidict_tp_object);
     if (new_multidict == NULL) {
         return NULL;
     }
 
-    if (multidict_tp_object->tp_init(new_multidict, NULL, NULL) < 0) {
+    if (multidict_tp_object->tp_init(
+        (PyObject*)new_multidict, NULL, NULL) < 0)
+    {
         return NULL;
     }
 
@@ -1138,15 +1139,16 @@ multidict_proxy_values(MultiDictProxyObject *self)
 static PyObject *
 multidict_proxy_copy(MultiDictProxyObject *self)
 {
-    MultiDictObject *new_multidict = multidict_tp_new(
-        &multidict_type, NULL, NULL);
+    PyObject *new_multidict = multidict_tp_new(&multidict_type, NULL, NULL);
     if (new_multidict == NULL) {
         return NULL;
     }
-    if (multidict_tp_init(new_multidict, NULL, NULL) < 0) {
+    if (multidict_tp_init((MultiDictObject*)new_multidict, NULL, NULL) < 0) {
         return NULL;
     }
-    if (_multidict_extend_with_args(new_multidict, self, NULL, "copy", 1) < 0) {
+    if (_multidict_extend_with_args(
+        (MultiDictObject*)new_multidict, (PyObject*)self, NULL, "copy", 1) < 0)
+    {
         return NULL;
     }
     return new_multidict;
@@ -1337,8 +1339,8 @@ static int
 cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
                           PyObject *kwds)
 {
-    PyObject *arg = NULL,
-             *md  = NULL;
+    PyObject        *arg = NULL;
+    MultiDictObject *md  = NULL;
 
     if (!PyArg_UnpackTuple(args, "multidict._multidict.CIMultiDictProxy",
                            1, 1, &arg))
@@ -1361,7 +1363,7 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         return -1;
     }
 
-    md = arg;
+    md = (MultiDictObject*)arg;
     if (CIMultiDictProxy_CheckExact(arg)) {
         md = ((MultiDictProxyObject*)arg)->md;
     }
@@ -1425,9 +1427,9 @@ getversion(PyObject *self, PyObject *md)
 {
     PyObject *impl = NULL;
     if (MultiDict_CheckExact(md) || CIMultiDict_CheckExact(md)) {
-        impl = (MultiDictObject*)((MultiDictObject*)md)->impl;
+        impl = ((MultiDictObject*)md)->impl;
     } else if (MultiDictProxy_CheckExact(md) || CIMultiDictProxy_CheckExact(md)) {
-        impl = (MultiDictObject*)((MultiDictProxyObject*)md)->md->impl;
+        impl = ((MultiDictProxyObject*)md)->md->impl;
     } else {
         PyErr_Format(PyExc_TypeError, "unexpected type");
         return NULL;
