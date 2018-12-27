@@ -21,6 +21,8 @@ static PyTypeObject cimultidict_type;
 static PyTypeObject multidict_proxy_type;
 static PyTypeObject cimultidict_proxy_type;
 
+static PyObject *repr_func;
+
 #define MultiDict_CheckExact(o) (Py_TYPE(o) == &multidict_type)
 #define CIMultiDict_CheckExact(o) (Py_TYPE(o) == &cimultidict_type)
 #define MultiDictProxy_CheckExact(o) (Py_TYPE(o) == &multidict_proxy_type)
@@ -473,6 +475,13 @@ ret:
     Py_XDECREF(items);
 
     return result;
+}
+
+static PyObject *
+multidict_repr(PyObject *self)
+{
+    return PyObject_CallFunctionObjArgs(
+        repr_func, self, NULL);
 }
 
 static Py_ssize_t
@@ -928,7 +937,7 @@ static PyTypeObject multidict_type = {
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
-    0,                                               /* tp_repr */
+    (reprfunc)multidict_repr,                        /* tp_repr */
     0,                                               /* tp_as_number */
     &multidict_sequence,                             /* tp_as_sequence */
     &multidict_mapping,                              /* tp_as_mapping */
@@ -1289,7 +1298,7 @@ static PyTypeObject multidict_proxy_type = {
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
-    0,                                               /* tp_repr */
+    (reprfunc)multidict_repr,                        /* tp_repr */
     0,                                               /* tp_as_number */
     &multidict_proxy_sequence,                       /* tp_as_sequence */
     &multidict_proxy_mapping,                        /* tp_as_mapping */
@@ -1491,6 +1500,9 @@ PyInit__multidict()
 
     WITH_MOD("multidict._abc");
     GET_MOD_ATTR(collections_abc_mut_multi_mapping, "MutableMultiMapping");
+
+    WITH_MOD("multidict._multidict_base");
+    GET_MOD_ATTR(repr_func, "_mdrepr");
 
     if (pair_list_init(istr) < 0 ||
         multidict_views_init() < 0) {
