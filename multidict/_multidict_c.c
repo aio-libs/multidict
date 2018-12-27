@@ -96,7 +96,7 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
         cmp_value    = 0;
 
     if (self == other) {
-        Py_RETURN_TRUE;
+        return 1;
     }
 
     if (pair_list_len(self->impl) != pair_list_len(other->impl)) {
@@ -241,7 +241,11 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
     }
 
     if (PyObject_HasAttrString(arg, "items")) {
-        arg_items = multidict_items((MultiDictObject*)arg);
+        if (_MultiDict_Check(arg)) {
+            arg_items = multidict_items((MultiDictObject*)arg);
+        } else {
+            arg_items = PyMapping_Items(arg);
+        }
         if (arg_items == NULL) {
             return -1;
         }
