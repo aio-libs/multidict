@@ -3,6 +3,8 @@ setup.py @webknjaz @asvetlov
 setup.cfg @webknjaz @asvetlov
 *.yml @webknjaz @asvetlov
 *.rst @webknjaz @asvetlov
+/multidict/*.c @iemelyanov @asvetlov
+/multidict/*.h @iemelyanov @asvetlov
 /tools/* @webknjaz @asvetlov
 /.github/* @webknjaz @asvetlov
 /.circleci/* @webknjaz @asvetlov
