@@ -41,6 +41,7 @@ multidict_items_iter_new(PyObject *impl)
 
     _init_iter(it, impl);
 
+    PyObject_GC_Track(it);
     return (PyObject *)it;
 }
 
@@ -55,6 +56,7 @@ multidict_keys_iter_new(PyObject *impl)
 
     _init_iter(it, impl);
 
+    PyObject_GC_Track(it);
     return (PyObject *)it;
 }
 
@@ -69,6 +71,7 @@ multidict_values_iter_new(PyObject *impl)
 
     _init_iter(it, impl);
 
+    PyObject_GC_Track(it);
     return (PyObject *)it;
 }
 
