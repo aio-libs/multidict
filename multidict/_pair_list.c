@@ -157,6 +157,7 @@ _pair_list_new(calc_identity_func calc_identity)
     list->version = NEXT_VERSION();
     list->calc_identity = calc_identity;
 
+    PyObject_GC_Track(list);
     return (PyObject *)list;
 }
 
