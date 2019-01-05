@@ -29,39 +29,16 @@ static PyObject *repr_func;
 #define CIMultiDictProxy_CheckExact(o) (Py_TYPE(o) == &cimultidict_proxy_type)
 
 /* Helper macro for something like isinstance(obj, Base) */
-#define _MultiDict_Check(o)             \
-    (MultiDict_CheckExact(o)) ||        \
-    (CIMultiDict_CheckExact(o)) ||      \
-    (MultiDictProxy_CheckExact(o)) ||   \
-    (CIMultiDictProxy_CheckExact(o))
+#define _MultiDict_Check(o)              \
+    ((MultiDict_CheckExact(o)) ||        \
+     (CIMultiDict_CheckExact(o)) ||      \
+     (MultiDictProxy_CheckExact(o)) ||   \
+     (CIMultiDictProxy_CheckExact(o)))
 
 /******************** Internal Methods ********************/
 
 /* Forward declaration */
 static PyObject *multidict_items(MultiDictObject *self);
-
-static INLINE MultiDictProxyObject *
-_mulditict_proxy_alloc(PyTypeObject *mdproxy_obj_type)
-{
-    MultiDictProxyObject *obj = PyObject_GC_New(
-        MultiDictProxyObject, mdproxy_obj_type);
-    if (obj == NULL) {
-        return NULL;
-    }
-    PyObject_GC_Track(obj);
-    return obj;
-}
-
-static INLINE MultiDictObject *
-_mulditict_alloc(PyTypeObject *md_obj_type)
-{
-    MultiDictObject *obj = PyObject_GC_New(MultiDictObject, md_obj_type);
-    if (obj == NULL) {
-        return NULL;
-    }
-    PyObject_GC_Track(obj);
-    return obj;
-}
 
 static INLINE PyObject *
 _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
@@ -175,7 +152,12 @@ _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
 
         key   = PyTuple_GET_ITEM(item, 0);
         value = PyTuple_GET_ITEM(item, 1);
-        pair_list_add(self->impl, key, value);
+
+        if (pair_list_add(self->impl, key, value) < 0) {
+            Py_DECREF(item);
+            Py_DECREF(iter);
+            return -1;
+        }
 
         Py_DECREF(item);
     }
@@ -228,7 +210,7 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
     int err = 0;
 
     // TODO: mb can be refactored more clear
-    if (_MultiDict_Check(arg) && (kwds == NULL || kwds == Py_None)) {
+    if (_MultiDict_Check(arg) && kwds == NULL) {
         if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
             impl = ((MultiDictObject*)arg)->impl;
         } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
@@ -256,7 +238,7 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
         Py_INCREF(arg_items);
     }
 
-    if (kwds && kwds != Py_None) {
+    if (kwds && PyArg_ValidateKeywordArguments(kwds)) {
         kwds_items = PyDict_Items(kwds);
         err = _multidict_list_extend(arg_items, kwds_items);
         Py_DECREF(kwds_items);
@@ -284,6 +266,10 @@ _multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
     PyObject *arg = NULL;
 
     int err = 0;
+
+    if (!PyArg_ValidateKeywordArguments(kwds)) {
+        return -1;
+    }
 
     arg = PyDict_Items(kwds);
     if (do_add) {
@@ -335,7 +321,8 @@ _multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
     PyObject *arg_items = NULL,
              *items     = NULL;
 
-    new_multidict = PyObject_GC_New(MultiDictObject, multidict_tp_object);
+    new_multidict = (MultiDictObject*)PyType_GenericNew(
+        multidict_tp_object, NULL, NULL);
     if (new_multidict == NULL) {
         return NULL;
     }
@@ -360,7 +347,7 @@ _multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
     PyTuple_SET_ITEM(arg_items, 0, items);
 
     if (_multidict_extend(
-        new_multidict, arg_items, Py_None, "copy", 1) < 0)
+        new_multidict, arg_items, NULL, "copy", 1) < 0)
     {
         goto fail;
     }
@@ -514,7 +501,7 @@ multidict_sq_contains(MultiDictObject *self, PyObject *key)
 }
 
 static PyObject *
-mulditict_tp_iter(MultiDictObject *self)
+multidict_tp_iter(MultiDictObject *self)
 {
     return PyObject_GetIter(multidict_keysview_new((PyObject*)self));
 }
@@ -632,12 +619,6 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
     return 0;
-}
-
-static PyObject *
-multidict_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    return (PyObject*)_mulditict_alloc(&multidict_type);
 }
 
 static PyObject *
@@ -956,7 +937,7 @@ static PyTypeObject multidict_type = {
     (inquiry)multidict_tp_clear,                     /* tp_clear */
     (richcmpfunc)multidict_tp_richcompare,           /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
-    (getiterfunc)mulditict_tp_iter,                  /* tp_iter */
+    (getiterfunc)multidict_tp_iter,                  /* tp_iter */
     0,                                               /* tp_iternext */
     multidict_methods,                               /* tp_methods */
     0,                                               /* tp_members */
@@ -967,8 +948,8 @@ static PyTypeObject multidict_type = {
     0,                                               /* tp_descr_set */
     0,                                               /* tp_dictoffset */
     (initproc)multidict_tp_init,                     /* tp_init */
-    0,                                               /* tp_alloc */
-    multidict_tp_new,                                /* tp_new */
+    PyType_GenericAlloc,                             /* tp_alloc */
+    PyType_GenericNew,                               /* tp_new */
 };
 
 /******************** CIMultiDict ********************/
@@ -984,12 +965,6 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         return -1;
     }
     return 0;
-}
-
-static PyObject *
-cimultidict_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    return (PyObject*)_mulditict_alloc(&cimultidict_type);
 }
 
 static PyObject *
@@ -1051,8 +1026,8 @@ static PyTypeObject cimultidict_type = {
     0,                                               /* tp_descr_set */
     0,                                               /* tp_dictoffset */
     (initproc)cimultidict_tp_init,                   /* tp_init */
-    0,                                               /* tp_alloc */
-    cimultidict_tp_new,                              /* tp_new */
+    PyType_GenericAlloc,                             /* tp_alloc */
+    PyType_GenericNew,                               /* tp_new */
 };
 
 /******************** MultiDictProxy ********************/
@@ -1099,12 +1074,6 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
 }
 
 static PyObject *
-multidict_proxy_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    return (PyObject*)_mulditict_proxy_alloc(&multidict_proxy_type);
-}
-
-static PyObject *
 multidict_proxy_getall(MultiDictProxyObject *self, PyObject *args,
                        PyObject *kwds)
 {
@@ -1139,19 +1108,24 @@ multidict_proxy_values(MultiDictProxyObject *self)
 static PyObject *
 multidict_proxy_copy(MultiDictProxyObject *self)
 {
-    PyObject *new_multidict = multidict_tp_new(&multidict_type, NULL, NULL);
+    PyObject *new_multidict = PyType_GenericNew(&multidict_type, NULL, NULL);
     if (new_multidict == NULL) {
-        return NULL;
+        goto fail;
     }
     if (multidict_tp_init((MultiDictObject*)new_multidict, NULL, NULL) < 0) {
-        return NULL;
+        goto fail;
     }
     if (_multidict_extend_with_args(
         (MultiDictObject*)new_multidict, (PyObject*)self, NULL, "copy", 1) < 0)
     {
-        return NULL;
+        goto fail;
     }
+
     return new_multidict;
+
+fail:
+    Py_XDECREF(new_multidict);
+    return NULL;
 }
 
 static PyObject *
@@ -1184,9 +1158,9 @@ multidict_proxy_sq_contains(MultiDictProxyObject *self, PyObject *key)
 }
 
 static PyObject *
-mulditict_proxy_tp_iter(MultiDictProxyObject *self)
+multidict_proxy_tp_iter(MultiDictProxyObject *self)
 {
-    return mulditict_tp_iter(self->md);
+    return multidict_tp_iter(self->md);
 }
 
 static PyObject *
@@ -1318,7 +1292,7 @@ static PyTypeObject multidict_proxy_type = {
     (inquiry)multidict_proxy_tp_clear,               /* tp_clear */
     (richcmpfunc)multidict_proxy_tp_richcompare,     /* tp_richcompare */
     0,                                               /* tp_weaklistoffset */
-    (getiterfunc)mulditict_proxy_tp_iter,            /* tp_iter */
+    (getiterfunc)multidict_proxy_tp_iter,            /* tp_iter */
     0,                                               /* tp_iternext */
     multidict_proxy_methods,                         /* tp_methods */
     0,                                               /* tp_members */
@@ -1329,8 +1303,8 @@ static PyTypeObject multidict_proxy_type = {
     0,                                               /* tp_descr_set */
     0,                                               /* tp_dictoffset */
     (initproc)multidict_proxy_tp_init,               /* tp_init */
-    0,                                               /* tp_alloc */
-    multidict_proxy_tp_new,                          /* tp_new */
+    PyType_GenericAlloc,                             /* tp_alloc */
+    PyType_GenericNew,                               /* tp_new */
 };
 
 /******************** CIMultiDictProxy ********************/
@@ -1373,12 +1347,6 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     return 0;
 }
 
-static PyObject *
-cimultidict_proxy_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    return (PyObject*)_mulditict_proxy_alloc(&cimultidict_proxy_type);
-}
-
 static PyTypeObject cimultidict_proxy_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict.CIMultiDictProxy",         /* tp_name */
@@ -1416,8 +1384,8 @@ static PyTypeObject cimultidict_proxy_type = {
     0,                                               /* tp_descr_set */
     0,                                               /* tp_dictoffset */
     (initproc)cimultidict_proxy_tp_init,             /* tp_init */
-    0,                                               /* tp_alloc */
-    cimultidict_proxy_tp_new,                          /* tp_new */
+    PyType_GenericAlloc,                             /* tp_alloc */
+    PyType_GenericNew,                               /* tp_new */
 };
 
 /******************** Other functions ********************/
