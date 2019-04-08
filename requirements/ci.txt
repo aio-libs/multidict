@@ -5,7 +5,7 @@ coverage==4.5.3
 sphinx==2.0.0
 alabaster>=0.6.2
 pygments==2.3.1
-mypy==0.650; platform_python_implementation != "PyPy"
+mypy==0.700; platform_python_implementation != "PyPy"
 
 codecov==2.0.15
 
