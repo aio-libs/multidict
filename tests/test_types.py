@@ -45,11 +45,20 @@ def test_create_cimultidict_proxy_from_cimultidict_proxy_from_ci(_multidict):
 
 
 def test_create_cimultidict_proxy_from_nonmultidict(_multidict):
-    with pytest.raises(TypeError):
+    with pytest.raises(
+        TypeError,
+        match=(
+            "ctor requires CIMultiDict or CIMultiDictProxy instance, "
+            "not <class 'dict'>"
+        ),
+    ):
         _multidict.CIMultiDictProxy({})
 
 
 def test_create_ci_multidict_proxy_from_multidict(_multidict):
     d = _multidict.MultiDict(key='val')
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=(
+            "ctor requires CIMultiDict or CIMultiDictProxy instance, "
+            "not <class 'multidict._multidict.*.MultiDict'>"
+    )):
         _multidict.CIMultiDictProxy(d)
