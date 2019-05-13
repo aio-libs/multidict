@@ -4,7 +4,7 @@ pyflakes>=1.0.0
 coverage==4.5.3
 sphinx==2.0.1
 alabaster>=0.6.2
-pygments==2.3.1
+pygments==2.4.0
 mypy==0.650; platform_python_implementation != "PyPy"
 
 codecov==2.0.15
