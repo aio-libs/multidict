@@ -1,4 +1,4 @@
 cython==0.29.7
 pytest==4.5.0
-pytest-cov==2.6.1
+pytest-cov==2.7.1
 
