@@ -1,7 +1,14 @@
 # Label PRs with `deps-update` label
 label_prs: deps-update
 
+# Specify requirement files by hand, default is empty
+# default: empty
+# allowed: list
 requirements:
-- tox.ini
+# Add extra deps lookup location
+- tox.ini:
+    # update all dependencies and pin them
+    update: all
+    pin: True
 
 schedule: every week
