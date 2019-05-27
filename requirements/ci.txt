@@ -2,7 +2,7 @@
 flake8==3.7.7
 pyflakes>=1.0.0
 coverage==4.5.3
-sphinx==1.8.3
+sphinx==2.0.1
 alabaster>=0.6.2
 pygments==2.3.1
 
