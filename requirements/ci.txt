@@ -1,11 +1,13 @@
 -r wheel.txt
-flake8==3.6.0
+flake8==3.7.8
 pyflakes>=1.0.0
-coverage==4.5.2
-sphinx==1.8.3
+coverage==4.5.3
+sphinx==1.8.5; python_version < "3.5"  # pyup: < 2
+sphinx==2.1.2; python_version >= "3.5"
 alabaster>=0.6.2
-pygments==2.3.1
+pygments==2.3.1; python_version < "3.5"  # pyup: < 2.3.2
+pygments==2.4.2; python_version >= "3.5"
 
 codecov==2.0.15
 
-flake8-pyi==18.3.1; python_version >= "3.6"
+flake8-pyi==19.3.0; python_version >= "3.6"
