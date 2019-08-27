@@ -1,5 +1,13 @@
+version: 2
+
+formats: all
+
 build:
   image: latest
 python:
   version: 3.6
-  pip_install: true
+  install:
+  - method: pip
+    path: cython
+  - method: pip
+    path: .
