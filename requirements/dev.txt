@@ -1,2 +1,2 @@
 -r ci.txt
-pyperformance==1.6.1
+pyperformance==0.9.1
