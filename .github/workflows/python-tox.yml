@@ -62,6 +62,10 @@ jobs:
         - macOS-10.14
         env:
         - TOXENV: python
+          MULTIDICT_NO_EXTENSIONS: ${{ matrix.multidict-extensions-mode }}
+        multidict-extensions-mode:
+        - X  # disable
+        - ''  # keep enabled
 
     steps:
     - uses: actions/checkout@master
