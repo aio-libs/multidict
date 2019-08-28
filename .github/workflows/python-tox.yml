@@ -18,9 +18,13 @@ jobs:
         - ubuntu-18.04
         env:
         - TOXENV: doc-spelling
+          MULTIDICT_NO_EXTENSIONS: X
         - TOXENV: flake8
+          MULTIDICT_NO_EXTENSIONS: X
         - TOXENV: mypy
+          MULTIDICT_NO_EXTENSIONS: X
         - TOXENV: setup-check
+          MULTIDICT_NO_EXTENSIONS: X
     steps:
     - uses: actions/checkout@master
     - name: Set up Python ${{ matrix.python-version }}
