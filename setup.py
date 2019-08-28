@@ -17,6 +17,9 @@ except ImportError:
     USE_CYTHON = False
 
 
+IS_RTFD = bool(os.getenv('READTHEDOCS'))
+"""Flag whether the current env is Read The Docs."""
+
 PROFILE_BUILD = bool(os.environ.get('PROFILE_BUILD'))
 """Flag whether extensions should be built with profiling enabled."""
 
@@ -26,7 +29,7 @@ NO_EXTENSIONS = bool(os.environ.get('MULTIDICT_NO_EXTENSIONS'))
 PYPY = platform.python_implementation() == 'PyPy'
 """Flag whether we are in PyPy runtime."""
 
-USE_CYTHON_EXTENSIONS = not NO_EXTENSIONS and not PYPY
+USE_CYTHON_EXTENSIONS = not NO_EXTENSIONS and not PYPY and not IS_RTFD
 """Flag whether prerequisites for building extensions are met."""
 
 here = pathlib.Path(__file__).parent
