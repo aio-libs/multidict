@@ -38,10 +38,6 @@ jobs:
       run: |
         python -m tox --parallel auto --notest
       env: ${{ matrix.env }}
-    - name: Initialize pre-commit envs if needed
-      run: >-
-        test -d .tox/docs-spelling &&
-        DEBIAN_FRONTEND=noninteractive sudo apt install -y libenchant-dev || :
     - name: Test with tox
       run: |
         python -m tox --parallel 0
