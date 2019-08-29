@@ -1,30 +1,32 @@
-name: Test suite
+name: Code quality
 
 on:
   push:
   pull_request:
   schedule:
-  - cron: 1 0 * * *  # Run daily at 0:01 UTC
+  # Run every Friday at 18:02 UTC
+  # https://crontab.guru/#2_18_*_*_5
+  - cron: 2 18 * * 5
 
 jobs:
-  tests:
+  linters:
     runs-on: ${{ matrix.os }}
     strategy:
       # max-parallel: 5
       matrix:
         python-version:
         - 3.7
-        - 3.6
-        - 3.5
         os:
         - ubuntu-18.04
-        - ubuntu-16.04
-        - macOS-10.14
         env:
-        - TOXENV: python
-        - TOXENV: python
+        - TOXENV: doc-spelling
           MULTIDICT_NO_EXTENSIONS: X
-
+        - TOXENV: flake8
+          MULTIDICT_NO_EXTENSIONS: X
+        - TOXENV: mypy
+          MULTIDICT_NO_EXTENSIONS: X
+        - TOXENV: setup-check
+          MULTIDICT_NO_EXTENSIONS: X
     steps:
     - uses: actions/checkout@master
     - name: Set up Python ${{ matrix.python-version }}
