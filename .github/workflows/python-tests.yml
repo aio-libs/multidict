@@ -43,5 +43,5 @@ jobs:
       env: ${{ matrix.env }}
     - name: Test with tox
       run: |
-        python -m tox --parallel 0
+        python -m tox --parallel 0 -- -ra
       env: ${{ matrix.env }}
