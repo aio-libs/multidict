@@ -105,9 +105,10 @@ _helpers:
     # inside of manylinux1 docker container during `script` step above.
     skip_cleanup: true
     skip-existing: true
-    user: aio-libs-bot
+    user: __token__
     password:
-      secure: TVfWbgKAtYbj5MDQnif0cbKUN7GVgckXAmRZ2tHW4ikh/rEkpOTVqPGUlidPNHay72za1ndCQf0TWiffq5vRnFI35Trt4h3LqgJ6xJUJpnTmmWW20ahFFEoWn7WulTmOyT9WxWsSSnRmecrttARhG2Iz+Kyz1OcdnfC0aHIIf7ffOpigrdm5ES1kM2wKLNxRK/oAw8OHBAy1rrKMlws2KFApwQYJEZ2rjHNXufZn861VCNu6Kflf3HysUQKKoxeHfH7XNtwle980A6w7z7w69B+1gEBHyB7WSSiLM3f/nTknP2qVR79ekf9rgzzpg/AoLYB8z9H2MrELrxChHW+O244y/QBbUAvEsxO57Snc5NvvqKH/1SUMsQMYK/RgGjIq3mh9buFu0VeSMPy7EiuKAGgDAU2G9C0a6fo0Q6v9/EOfBD7yrrZheCTp2/ViMIb7ImsDgKZZtIu3yZNA7HkjI4vaZm0uf7sPVbI0xA9MvWYP4WVxYJWmBB37Jc0JyCz+jEgTJ1wVcab1152Q7S+VdvSqjwS5b9oXtpdhl28N/HV/AZaLk/qAM8djfAUBX+4SrltkkLaVpfUOCLxbRTmI4MjKsOWUu+e6sTNdqQZIIn6XsMXxIeX5kRfAuvOrro5wRgc3bAkT19qfVqm39Re+4GMarbcs0WgkToI/8EQ6zRQ=
+      secure: >-
+        LI6iPU1chdwFKOjyWohqqASOvCBHSb3qCs0ViJzOhNsL3PbXqM4NYZFkZPqzyOVR12PSFbiTwN/sg1KZTfMlxsFos8jNSm+WC5yhY2vmUOGQTzA626Cj5IBcB7gH3JqyPMPjOTFZB3wmYGubHVYeDv4RQwLJpPWj9f7EeWjSLEWeJO1tEEd4TcYu69tPn6C06ZSsIbZQDicASmSuubJpHIyUMYvtIClpAld+pM/TGllzZnapyF0NchhAKRUPAwRGvpWP7etOT5G9Yw1rh+p2BZvLzE5SXXbj6YdE+nXyENC6Vlwdc0DRs5rDpryfWMFP5zSe4tLIIUpz/b5vwqBQQhe/xN+4L5JchHAkhrICKBbpFttHB1iS8YRmTHAYzI2e3/yQgKDykcj7Rye1fj7Aaqzf60f2fCUX8C5b5rTlU+fvyM2qJCAVwOGuwWdPrLTasCz21UtUAcDLLCXExWRTtgUbVUHAf93Kyf4qlQrAgWPV+xgMXQffmr4nYU4aq/a6qg5p1NVNgcQ9Mo2RZtXYR0nIPJ+AuLpJC3XruPxp+vyNnqjrctEDJP2gOoVa2rqqhlZUzuGTAGin/BMKRNpam/qBG/vXhgIZYNL416B4MS5T+novYGOotXsijopRAWBPPQcz1QlGQ8yV/ITTqno4b3ZU3ptRxOPqACC7pbijLBs=
     # Although Travis CI instructs `setup.py` to build source distribution,
     # which is default value for distribution option (`distribution: sdist`),
     # it will also upload all wheels we've previously built in manylinux1
