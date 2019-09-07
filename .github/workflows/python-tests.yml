@@ -24,8 +24,8 @@ jobs:
         - windows-2019
         - windows-2016
         env:
-        - TOXENV: python
-        - TOXENV: python
+        - TOXENV: ci
+        - TOXENV: ci
           MULTIDICT_NO_EXTENSIONS: X
 
     steps:
