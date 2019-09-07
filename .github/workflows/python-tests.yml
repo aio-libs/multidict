@@ -40,6 +40,8 @@ jobs:
     - name: 'Initialize tox envs: ${{ matrix.env.TOXENV }}'
       run: |
         python -m tox --parallel 0 --notest -vv
+        ls -R
+        pwd
       env: ${{ matrix.env }}
     - name: Test with tox
       run: |
