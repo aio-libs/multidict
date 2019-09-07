@@ -39,7 +39,7 @@ jobs:
         python -m pip install --upgrade tox
     - name: 'Initialize tox envs: ${{ matrix.env.TOXENV }}'
       run: |
-        python -m tox --parallel auto --notest -vv
+        python -m tox --parallel 0 --notest -vv
       env: ${{ matrix.env }}
     - name: Test with tox
       run: |
