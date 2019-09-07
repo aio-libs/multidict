@@ -45,7 +45,5 @@ jobs:
       env: ${{ matrix.env }}
     - name: Test with tox
       run: |
-        mv multidict multidict.bak
         python -m tox --parallel 0 -- -ra
-        mv multidict.bak multidict
       env: ${{ matrix.env }}
