@@ -39,9 +39,11 @@ jobs:
         python -m pip install --upgrade tox
     - name: 'Initialize tox envs: ${{ matrix.env.TOXENV }}'
       run: |
-        python -m tox --parallel auto --notest
+        python -m tox --parallel auto --notest -vv
       env: ${{ matrix.env }}
     - name: Test with tox
       run: |
+        mv multidict multidict.bak
         python -m tox --parallel 0 -- -ra
+        mv multidict.bak multidict
       env: ${{ matrix.env }}
