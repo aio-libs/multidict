@@ -19,6 +19,10 @@ test:
 	tox
 
 
+dev:
+	tox -e dev
+
+
 test-all:
 	tox -e,
 

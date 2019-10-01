@@ -79,3 +79,8 @@ multidict/_istr.html
 .testmondata
 
 TAGS
+
+# For vscode
+.history/
+.vscode/
+.venv/
