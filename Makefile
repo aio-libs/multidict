@@ -1,4 +1,6 @@
 # Some simple testing tasks (sorry, UNIX only).
+VIRTUALENV=.venv
+PY=python
 
 all: test
 
@@ -20,7 +22,7 @@ test:
 
 
 dev:
-	tox -e dev
+	tox --devenv $(VIRTUALENV) -e $(PY)
 
 
 test-all:
