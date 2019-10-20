@@ -21,7 +21,7 @@ test:
 	tox
 
 
-dev:
+dev-env:
 	tox --devenv $(VIRTUALENV) -e $(PY)
 
 
