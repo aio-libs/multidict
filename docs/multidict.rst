@@ -236,7 +236,7 @@ MultiDictProxy
    the multidict’s entries, which means that when the multidict changes,
    the view reflects these changes.
 
-   Raises :exc:`TypeError` is *multidict* is not :class:`MultiDict` instance.
+   Raises :exc:`TypeError` if *multidict* is not a :class:`MultiDict` instance.
 
    .. method:: len(d)
 
