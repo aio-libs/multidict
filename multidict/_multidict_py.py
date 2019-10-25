@@ -306,7 +306,7 @@ class MultiDict(_Base, MutableMultiMapping):
         else:
             return default
 
-    pop = popone
+    pop = popone  # type: ignore
 
     def popall(self, key, default=_marker):
         """Remove all occurrences of key and return the list of corresponding
