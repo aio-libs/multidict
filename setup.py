@@ -264,6 +264,7 @@ args = dict(
         'Chat: Gitter': 'https://gitter.im/aio-libs/Lobby',
         'CI: AppVeyor': 'https://ci.appveyor.com/project/{}'.format(appveyor_slug),
         'CI: Circle': 'https://circleci.com/gh/{}'.format(repo_slug),
+        'CI: GitHub': 'https://github.com/{}/actions'.format(repo_slug),
         'CI: Shippable': 'https://app.shippable.com/github/{}'.format(repo_slug),
         'CI: Travis': 'https://travis-ci.com/{}'.format(repo_slug),
         'Coverage: codecov': 'https://codecov.io/github/{}'.format(repo_slug),
