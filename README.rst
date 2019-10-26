@@ -16,6 +16,14 @@ multidict
    :align: right
    :target: https://ci.appveyor.com/project/aio-libs/multidict/branch/master
 
+.. image:: https://github.com/aio-libs/multidict/workflows/Test%20suite/badge.svg
+   :align: right
+   :target: https://github.com/aio-libs/multidict/actions?workflow=Test+suite
+
+.. image:: https://github.com/aio-libs/multidict/workflows/Code%20quality/badge.svg
+   :align: right
+   :target: https://github.com/aio-libs/multidict/actions?workflow=Code+quality
+
 .. image:: https://img.shields.io/pypi/pyversions/multidict.svg
    :target: https://pypi.org/project/multidict
 
