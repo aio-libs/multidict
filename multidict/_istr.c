@@ -27,13 +27,13 @@ typedef struct {
 static struct PyModuleDef _istrmodule;
 static PyTypeObject istr_type;
 
-static ModData * 
+static ModData *
 modstate(PyObject *mod)
 {
     return (ModData*)PyModule_GetState(mod);
 }
 
-static ModData * 
+static ModData *
 global_state(void)
 {
     return modstate(PyState_FindModule(&_istrmodule));
