@@ -152,7 +152,7 @@
 * Implement :py:func:`.popall(key[, default]) <multidict.MultiDict.popall>`
   `#84 <https://github.com/aio-libs/multidict/issues/84>`_
 
-* :py:func:`.pop() <multidict.MultiDict.pop>` removes only first occurence,
+* :py:func:`.pop() <multidict.MultiDict.pop>` removes only first occurrence,
   :py:func:`.popone() <multidict.MultiDict.popone>` added
   `#92 <https://github.com/aio-libs/multidict/issues/92>`_
 
@@ -171,7 +171,7 @@
 2.1.6 (2017-05-27)
 ------------------
 
-* Rebuild the library for fixning missing ``__spec__`` attribute
+* Rebuild the library for fixing missing ``__spec__`` attribute
   `#79 <https://github.com/aio-libs/multidict/issues/79>`_
 
 2.1.5 (2017-05-13)
@@ -194,7 +194,8 @@
 2.1.2 (2016-09-25)
 ------------------
 
-* Fix :py:func:`CIMultiDict.update <multidict.CIMultiDict.update>` for case of accepting :py:func:`istr <multidict.istr>`
+* Fix :py:func:`CIMultiDict.update <multidict.CIMultiDict.update>` for case of accepting
+  :py:func:`istr <multidict.istr>`
 
 
 2.1.1 (2016-09-22)
