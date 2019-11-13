@@ -1,44 +1,28 @@
 from collections.abc import Mapping, MutableMapping
+
 import pytest
 
 from multidict import MultiMapping, MutableMultiMapping
 from multidict._compat import USE_CYTHON
+from multidict._multidict_py import CIMultiDict as PyCIMultiDict
+from multidict._multidict_py import CIMultiDictProxy as PyCIMultiDictProxy
+from multidict._multidict_py import MultiDict as PyMultiDict  # noqa: E402
+from multidict._multidict_py import MultiDictProxy as PyMultiDictProxy
 
 if USE_CYTHON:
-    from multidict._multidict import (MultiDict, CIMultiDict,
-                                      MultiDictProxy, CIMultiDictProxy)
-
-from multidict._multidict_py import (MultiDict as PyMultiDict,  # noqa: E402
-                                     CIMultiDict as PyCIMultiDict,
-                                     MultiDictProxy as PyMultiDictProxy,
-                                     CIMultiDictProxy as PyCIMultiDictProxy)
+    from multidict._multidict import (
+        MultiDict,
+        CIMultiDict,
+        MultiDictProxy,
+        CIMultiDictProxy,
+    )
 
 
 @pytest.fixture(
-    params=(
-        [
-            MultiDict,
-            CIMultiDict,
-        ]
-        if USE_CYTHON else
-        []
-    ) +
-    [
-        PyMultiDict,
-        PyCIMultiDict
-    ],
-    ids=(
-        [
-            'MultiDict',
-            'CIMultiDict',
-        ]
-        if USE_CYTHON else
-        []
-    ) +
-    [
-        'PyMultiDict',
-        'PyCIMultiDict'
-    ]
+    params=([MultiDict, CIMultiDict] if USE_CYTHON else [])
+    + [PyMultiDict, PyCIMultiDict],
+    ids=(["MultiDict", "CIMultiDict"] if USE_CYTHON else [])
+    + ["PyMultiDict", "PyCIMultiDict"],
 )
 def cls(request):
     return request.param
@@ -46,29 +30,13 @@ def cls(request):
 
 @pytest.fixture(
     params=(
-        [
-            (MultiDictProxy, MultiDict),
-            (CIMultiDictProxy, CIMultiDict),
-        ]
-        if USE_CYTHON else
-        []
-    ) +
-    [
-        (PyMultiDictProxy, PyMultiDict),
-        (PyCIMultiDictProxy, PyCIMultiDict),
-    ],
-    ids=(
-        [
-            'MultiDictProxy',
-            'CIMultiDictProxy',
-        ]
-        if USE_CYTHON else
-        []
-    ) +
-    [
-        'PyMultiDictProxy',
-        'PyCIMultiDictProxy'
-    ]
+        [(MultiDictProxy, MultiDict), (CIMultiDictProxy, CIMultiDict)]
+        if USE_CYTHON
+        else []
+    )
+    + [(PyMultiDictProxy, PyMultiDict), (PyCIMultiDictProxy, PyCIMultiDict)],
+    ids=(["MultiDictProxy", "CIMultiDictProxy"] if USE_CYTHON else [])
+    + ["PyMultiDictProxy", "PyCIMultiDictProxy"],
 )
 def proxy_classes(request):
     return request.param
@@ -100,12 +68,12 @@ class A(MultiMapping):
 
 def test_abc_getall():
     with pytest.raises(KeyError):
-        A().getall('key')
+        A().getall("key")
 
 
 def test_abc_getone():
     with pytest.raises(KeyError):
-        A().getone('key')
+        A().getone("key")
 
 
 class B(A, MutableMultiMapping):
@@ -130,7 +98,7 @@ class B(A, MutableMultiMapping):
 
 def test_abc_add():
     with pytest.raises(NotImplementedError):
-        B().add('key', 'val')
+        B().add("key", "val")
 
 
 def test_abc_extend():
@@ -140,12 +108,12 @@ def test_abc_extend():
 
 def test_abc_popone():
     with pytest.raises(KeyError):
-        B().popone('key')
+        B().popone("key")
 
 
 def test_abc_popall():
     with pytest.raises(KeyError):
-        B().popall('key')
+        B().popall("key")
 
 
 def test_multidict_inheritance(cls):

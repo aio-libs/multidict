@@ -62,6 +62,8 @@ target/
 .ipynb_checkpoints
 
 .develop
+.flake
+.install-cython
 .install-deps
 .idea
 

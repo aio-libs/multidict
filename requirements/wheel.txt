@@ -1,5 +1,4 @@
-cython==0.29.14
-pytest==4.6.6; python_version < "3.5"  # pyup: < 5
-pytest==5.2.2; python_version >= "3.5"
+-e .
+pytest==5.2.2
 pytest-cov==2.8.1
 

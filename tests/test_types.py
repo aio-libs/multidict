@@ -23,13 +23,13 @@ def test_create_multidict_proxy_from_nonmultidict(_multidict):
 
 
 def test_create_multidict_proxy_from_cimultidict(_multidict):
-    d = _multidict.CIMultiDict(key='val')
+    d = _multidict.CIMultiDict(key="val")
     p = _multidict.MultiDictProxy(d)
     assert p == d
 
 
 def test_create_multidict_proxy_from_multidict_proxy_from_mdict(_multidict):
-    d = _multidict.MultiDict(key='val')
+    d = _multidict.MultiDict(key="val")
     p = _multidict.MultiDictProxy(d)
     assert p == d
     p2 = _multidict.MultiDictProxy(p)
@@ -37,7 +37,7 @@ def test_create_multidict_proxy_from_multidict_proxy_from_mdict(_multidict):
 
 
 def test_create_cimultidict_proxy_from_cimultidict_proxy_from_ci(_multidict):
-    d = _multidict.CIMultiDict(key='val')
+    d = _multidict.CIMultiDict(key="val")
     p = _multidict.CIMultiDictProxy(d)
     assert p == d
     p2 = _multidict.CIMultiDictProxy(p)
@@ -56,9 +56,12 @@ def test_create_cimultidict_proxy_from_nonmultidict(_multidict):
 
 
 def test_create_ci_multidict_proxy_from_multidict(_multidict):
-    d = _multidict.MultiDict(key='val')
-    with pytest.raises(TypeError, match=(
+    d = _multidict.MultiDict(key="val")
+    with pytest.raises(
+        TypeError,
+        match=(
             "ctor requires CIMultiDict or CIMultiDictProxy instance, "
             "not <class 'multidict._multidict.*.MultiDict'>"
-    )):
+        ),
+    ):
         _multidict.CIMultiDictProxy(d)

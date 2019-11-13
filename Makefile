@@ -1,52 +1,100 @@
 # Some simple testing tasks (sorry, UNIX only).
-VIRTUALENV=.venv
-PY=python
+.PHONY: all build flake test vtest cov clean doc mypy
+
+
+PYXS = $(wildcard multidict/*.pyx)
+SRC = multidict tests setup.py
 
 all: test
 
+.install-cython:
+	pip install -r requirements/cython.txt
+	touch .install-cython
 
-flake:
-	tox -e flake8
+multidict/%.c: multidict/%.pyx
+	cython -3 -o $@ $< -I multidict
+
+cythonize: .install-cython $(PYXS:.pyx=.c)
+
+.install-deps: cythonize $(shell find requirements -type f)
+	pip install -r requirements/dev.txt
+	@touch .install-deps
+
+.flake: .install-deps $(shell find multidict -type f) \
+                      $(shell find tests -type f)
+	flake8 multidict tests
+	python setup.py check -rms
+	@if ! isort -c -rc multidict tests; then \
+            echo "Import sort errors, run 'make isort' to fix them!!!"; \
+            isort --diff -rc multidict tests; \
+            false; \
+	fi
+	@touch .flake
 
 
-rmcache:
-	rm -rf tests/__pycache__
+isort-check:
+	@if ! isort -c -rc $(SRC); then \
+            echo "Import sort errors, run 'make fmt' to fix them!!!"; \
+            isort --diff -rc $(SRC); \
+            false; \
+	fi
 
+flake8:
+	flake8 $(SRC)
+
+black-check:
+	@if ! isort -c -rc $(SRC); then \
+            echo "black errors, run 'make fmt' to fix them!!!"; \
+	    black -t py35 --diff --check $(SRC); \
+            false; \
+	fi
 
 mypy:
-	tox -e mypy
+	mypy multidict tests
 
+lint: flake8 black-check mypy
 
-test:
-	tox
+fmt:
+	black -t py35 $(SRC)
+	isort -rc $(SRC)
 
+check_changes:
+	./tools/check_changes.py
 
-dev-env:
-	tox --devenv $(VIRTUALENV) -e $(PY)
+.develop: .install-deps $(shell find multidict -type f) .flake check_changes mypy
+	# pip install -e .
+	@touch .develop
 
+test: .develop
+	@pytest -q
 
-test-all:
-	tox -e,
+vtest: .develop
+	@pytest -s -v
 
+cov-dev: .develop
+	@pytest --cov-report=html
+	@echo "open file://`pwd`/htmlcov/index.html"
 
-vtest:
-	tox -- -vv
+cov-ci-run: .develop
+	@echo "Regular run"
+	@pytest --cov-report=html
 
+cov-dev-full: cov-ci-run
+	@echo "open file://`pwd`/htmlcov/index.html"
 
-qtest:
-	tox -- -q
+doc:
+	@make -C docs html SPHINXOPTS="-W -E"
+	@echo "open file://`pwd`/docs/_build/html/index.html"
 
+doc-spelling:
+	@make -C docs spelling SPHINXOPTS="-W -E"
 
-cov-dev: mypy
-	tox -e profile-dev -- --cov-report=html
-	@which xdg-open 2>/dev/null 1>&2 && export opener=xdg-open || export opener=open && \
-	$${opener} "file://`pwd`/htmlcov/index.html"
+install:
+	@pip install -U 'pip'
+	@pip install -Ur requirements/dev.txt
 
-cov-dev-full: mypy
-	MULTIDICT_NO_EXTENSIONS=1 tox -e profile-dev -- --cov-report=html
-	tox -e profile-dev -- --cov-report=html
-	@which xdg-open 2>/dev/null 1>&2 && export opener=xdg-open || export opener=open && \
-	$${opener} "file://`pwd`/htmlcov/index.html"
+install-dev: .develop
+
 
 clean:
 	rm -rf `find . -name __pycache__`
@@ -75,18 +123,3 @@ clean:
 	rm -f multidict/_multidict_iter.*.so
 	rm -f multidict/_multidict_iter.*.pyd
 	rm -rf .tox
-
-doc:
-	tox -e doc-html
-	@which xdg-open 2>/dev/null 1>&2 && export opener=xdg-open || export opener=open && \
-	$${opener} "file://`pwd`/docs/_build/html/index.html"
-
-doc-spelling:
-	tox -e doc-spelling
-
-install:
-	pip install -U tox
-	pip install -U pip
-	pip install -Ur requirements/dev.txt
-
-.PHONY: all build venv flake test test-all vtest qtest cov clean doc

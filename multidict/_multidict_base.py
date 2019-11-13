@@ -1,5 +1,5 @@
 from collections import abc
-from collections.abc import Set, Iterable
+from collections.abc import Iterable, Set
 
 
 def _abc_itemsview_register(view_cls):
@@ -98,7 +98,7 @@ def _viewbaseset_xor(view, other):
 
 
 def _itemsview_isdisjoint(view, other):
-    'Return True if two sets have a null intersection.'
+    "Return True if two sets have a null intersection."
     for v in other:
         if v in view:
             return False
@@ -109,12 +109,12 @@ def _itemsview_repr(view):
     lst = []
     for k, v in view:
         lst.append("{!r}: {!r}".format(k, v))
-    body = ', '.join(lst)
-    return '{}({})'.format(view.__class__.__name__, body)
+    body = ", ".join(lst)
+    return "{}({})".format(view.__class__.__name__, body)
 
 
 def _keysview_isdisjoint(view, other):
-    'Return True if two sets have a null intersection.'
+    "Return True if two sets have a null intersection."
     for k in other:
         if k in view:
             return False
@@ -125,13 +125,13 @@ def _keysview_repr(view):
     lst = []
     for k in view:
         lst.append("{!r}".format(k))
-    body = ', '.join(lst)
-    return '{}({})'.format(view.__class__.__name__, body)
+    body = ", ".join(lst)
+    return "{}({})".format(view.__class__.__name__, body)
 
 
 def _valuesview_repr(view):
     lst = []
     for v in view:
         lst.append("{!r}".format(v))
-    body = ', '.join(lst)
-    return '{}({})'.format(view.__class__.__name__, body)
+    body = ", ".join(lst)
+    return "{}({})".format(view.__class__.__name__, body)

@@ -1,5 +1,4 @@
 import abc
-
 from collections.abc import Mapping, MutableMapping
 
 
@@ -13,7 +12,6 @@ class _TypingMeta(abc.ABCMeta):
 
 
 class MultiMapping(Mapping, metaclass=_TypingMeta):
-
     @abc.abstractmethod
     def getall(self, key, default=None):
         raise KeyError
@@ -24,7 +22,6 @@ class MultiMapping(Mapping, metaclass=_TypingMeta):
 
 
 class MutableMultiMapping(MultiMapping, MutableMapping):
-
     @abc.abstractmethod
     def add(self, key, value):
         raise NotImplementedError
