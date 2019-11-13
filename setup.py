@@ -4,13 +4,6 @@ import pathlib
 import platform
 import re
 import sys
-from distutils.command.build_ext import build_ext
-from distutils.errors import (
-    CCompilerError,
-    DistutilsExecError,
-    DistutilsPlatformError,
-)
-from itertools import islice
 
 from setuptools import Extension, setup
 
@@ -36,7 +29,7 @@ CFLAGS = ["-O2"]
 # CFLAGS = ['-g']
 if platform.system() != "Windows":
     CFLAGS.extend(
-        ["-std=c99", "-Wall", "-Wsign-compare", "-Wconversion", "-fno-strict-aliasing",]
+        ["-std=c99", "-Wall", "-Wsign-compare", "-Wconversion", "-fno-strict-aliasing"]
     )
 
 extensions = [
