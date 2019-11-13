@@ -33,7 +33,7 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 
 
 isort-check:
-	if ! isort -c -rc $(SRC); then \
+	@if ! isort -c -rc $(SRC); then \
             echo "Import sort errors, run 'make fmt' to fix them!!!"; \
             isort --diff -c -rc $(SRC); \
             false; \
