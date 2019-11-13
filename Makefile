@@ -33,9 +33,9 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 
 
 isort-check:
-	@if ! isort -c -rc $(SRC); then \
+	if ! isort -c -rc $(SRC); then \
             echo "Import sort errors, run 'make fmt' to fix them!!!"; \
-            isort --diff -rc $(SRC); \
+            isort --diff -c -rc $(SRC); \
             false; \
 	fi
 
@@ -52,7 +52,7 @@ black-check:
 mypy:
 	mypy multidict tests
 
-lint: flake8 black-check mypy
+lint: flake8 black-check mypy isort-check
 
 fmt:
 	black -t py35 $(SRC)
