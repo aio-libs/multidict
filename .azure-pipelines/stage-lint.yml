@@ -103,7 +103,7 @@ stages:
 
     - script: |
         towncrier --yes
-        make doc
+        make doc-spelling
       displayName: 'Run docs checker'
       env:
         MULTIDICT_NO_EXTENSIONS: 1
