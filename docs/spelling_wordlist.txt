@@ -7,6 +7,7 @@ autodetection
 autogenerates
 autogeneration
 basename
+bugfixes
 cchardet
 cChardet
 changelog
@@ -20,6 +21,7 @@ dict
 eof
 fallback
 fastpath
+filename
 github
 google
 gunicorn
@@ -52,6 +54,7 @@ pickable
 pre
 proxied
 pyenv
+refactor
 refactored
 regex
 regexs
