@@ -64,11 +64,6 @@ def read(f):
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
 
-name = "multidict"
-appveyor_slug = "asvetlov/{}".format(name)  # FIXME: move under aio-libs/* slug
-repo_slug = "aio-libs/{}".format(name)
-repo_url = "https://github.com/{}".format(repo_slug)
-
 args = dict(
     name="multidict",
     version=version,
@@ -86,7 +81,7 @@ args = dict(
     ],
     author="Andrew Svetlov",
     author_email="andrew.svetlov@gmail.com",
-    url=repo_url,
+    url="https://github.com/aio-libs/multidict",
     project_urls={
         "Chat: Gitter": "https://gitter.im/aio-libs/Lobby",
         "CI: Azure Pipelines": "https://dev.azure.com/aio-libs/multidict/_build",
@@ -97,7 +92,7 @@ args = dict(
     },
     license="Apache 2",
     packages=["multidict"],
-    python_requires=">=3.5.3",
+    python_requires=">=3.5",
     include_package_data=True,
 )
 
