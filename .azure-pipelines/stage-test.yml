@@ -67,7 +67,7 @@ stages:
       displayName: 'Cythonize'
 
     - script: |
-        pytohn -m pip install -r requirements/dev.txt pytest-azurepipelines
+        python -m pip install -r requirements/dev.txt pytest-azurepipelines
       displayName: 'Install dependencies'
       env:
         MULTIDICT_NO_EXTENSIONS: '$(no_extensions)'
