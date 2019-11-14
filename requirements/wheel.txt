@@ -1,4 +1,2 @@
 -e .
-pytest==5.2.2
-pytest-cov==2.8.1
 
