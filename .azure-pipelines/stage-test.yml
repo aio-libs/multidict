@@ -67,7 +67,7 @@ stages:
       displayName: 'Cythonize'
 
     - script: |
-        python -m pip install -r requirements/dev.txt
+        python -m pip install -r requirements/ci.txt
       displayName: 'Install dependencies'
       env:
         MULTIDICT_NO_EXTENSIONS: '$(no_extensions)'
