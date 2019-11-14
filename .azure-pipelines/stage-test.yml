@@ -67,7 +67,7 @@ stages:
       displayName: 'Cythonize'
 
     - script: |
-        python -m pip install .
+        pip install .
       displayName: 'Install itself'
       env:
         MULTIDICT_NO_EXTENSIONS: '$(no_extensions)'
