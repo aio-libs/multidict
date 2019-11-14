@@ -11,4 +11,4 @@ if USE_CYTHON_EXTENSIONS:
     try:
         from . import _multidict  # noqa
     except ImportError:
-        USE_CYTHON_EXTENSIONS = False
+        USE_CYTHON_EXTENSIONS = USE_CYTHON = False
