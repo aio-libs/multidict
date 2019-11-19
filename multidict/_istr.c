@@ -1,4 +1,4 @@
-#include "Python.h"
+#include "_istr.h"
 #include "structmember.h"
 
 PyDoc_STRVAR(istr__doc__, "istr class implementation");
@@ -14,14 +14,8 @@ PyDoc_STRVAR(istr__doc__, "istr class implementation");
 
 
 typedef struct {
-    PyUnicodeObject str;
-    PyObject * canonical;
-} istrobject;
-
-typedef struct {
-    PyObject *title;
+    PyObject *lower;
     PyObject *emptystr;
-    PyObject *emptydict;
 } ModData;
 
 static struct PyModuleDef _istrmodule;
@@ -39,31 +33,6 @@ global_state(void)
     return modstate(PyState_FindModule(&_istrmodule));
 }
 
-
-
-static PyObject *
-istr_title(istrobject *self, PyObject *args)
-{
-    if (!PyArg_ParseTuple(args, ":title"))
-        return NULL;
-    Py_INCREF(self);
-    return (PyObject*)self;
-}
-
-static PyObject *
-istr_str(istrobject *self)
-{
-    Py_INCREF(self->canonical);
-    return self->canonical;
-}
-
-static PyMethodDef istr_methods[] = {
-    {"title", (PyCFunction)istr_title, METH_VARARGS,
-        PyDoc_STR("title()")},
-    {NULL,      NULL},
-};
-
-
 void istr_dealloc(istrobject *self)
 {
     Py_XDECREF(self->canonical);
@@ -75,16 +44,14 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyObject *x = NULL;
     static char *kwlist[] = {"object", "encoding", "errors", 0};
-    char *encoding = NULL;
-    char *errors = NULL;
+    PyObject *encoding = NULL;
+    PyObject *errors = NULL;
     PyObject *s = NULL;
-    PyObject *tmp = NULL;
-    PyObject * new_args = NULL;
     PyObject * ret = NULL;
 
     ModData * state = global_state();
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|Oss:str",
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OOO:str",
                                      kwlist, &x, &encoding, &errors))
         return NULL;
     if (x == NULL) {
@@ -95,35 +62,20 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_INCREF(x);
         return x;
     }
-    else {
-        if (encoding == NULL && errors == NULL) {
-            tmp = PyObject_Str(x);
-        } else {
-            tmp = PyUnicode_FromEncodedObject(x, encoding, errors);
-        }
-        if (!tmp) {
-            goto finish;
-        }
-        s = PyObject_CallMethodObjArgs(tmp, state->title, NULL);
-    }
-    if (!s)
-        goto finish;
-
-    new_args = PyTuple_Pack(1, s);
-    if (!new_args) {
-        goto finish;
-    }
-    ret = PyUnicode_Type.tp_new(type, new_args, state->emptydict);
+    ret = PyUnicode_Type.tp_new(type, args, kwds);
     if (!ret) {
-        goto finish;
+        goto fail;
+    }
+    s = PyObject_CallMethodObjArgs(ret, state->lower, NULL);
+    if (!s) {
+        goto fail;
     }
     ((istrobject*)ret)->canonical = s;
     s = NULL;  /* the reference is stollen by .canonical */
-finish:
-    Py_XDECREF(tmp);
-    Py_XDECREF(s);
-    Py_XDECREF(new_args);
     return ret;
+fail:
+    Py_XDECREF(ret);
+    return NULL;
 }
 
 static PyTypeObject istr_type = {
@@ -142,7 +94,7 @@ static PyTypeObject istr_type = {
     0,                                          /* tp_as_mapping */
     0,                                          /* tp_hash */
     0,                                          /* tp_call */
-    (reprfunc)istr_str,                         /* tp_str */
+    0,                                          /* tp_str */
     0,                                          /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
@@ -155,7 +107,7 @@ static PyTypeObject istr_type = {
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */
     0,                                          /* tp_iternext */
-    istr_methods,                               /* tp_methods */
+    0,                                          /* tp_methods */
     0,                                          /* tp_members */
     0,                                          /* tp_getset */
     DEFERRED_ADDRESS(&PyUnicode_Type),          /* tp_base */
@@ -171,9 +123,8 @@ static PyTypeObject istr_type = {
 
 static int mod_clear(PyObject *m)
 {
-  Py_CLEAR(modstate(m)->title);
+  Py_CLEAR(modstate(m)->lower);
   Py_CLEAR(modstate(m)->emptystr);
-  Py_CLEAR(modstate(m)->emptydict);
   return 0;
 }
 
@@ -211,21 +162,16 @@ PyObject* PyInit__istr(void)
     if (!mod) {
         return NULL;
     }
-    tmp = PyUnicode_FromString("title");
+    tmp = PyUnicode_FromString("lower");
     if (!tmp) {
         goto err;
     }
-    modstate(mod)->title = tmp;
+    modstate(mod)->lower = tmp;
     tmp = PyUnicode_New(0, 0);
     if (!tmp) {
         goto err;
     }
     modstate(mod)->emptystr = tmp;
-    tmp = PyUnicode_FromString("title");
-    if(!tmp) {
-        goto err;
-    }
-    modstate(mod)->title = tmp;
 
     Py_INCREF(&istr_type);
     if (PyModule_AddObject(mod, "istr", (PyObject *)&istr_type) < 0)
