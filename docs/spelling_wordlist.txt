@@ -17,6 +17,7 @@ criterias
 css
 ctor
 Ctrl
+cython
 dict
 eof
 fallback
