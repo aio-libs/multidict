@@ -22,12 +22,8 @@ class IStrMixin:
         assert "" == s
 
     def test_ctor_str(self):
-        s = self.cls("a")
-        assert "A" == s
-
-    def test_ctor_str_uppercase(self):
-        s = self.cls("A")
-        assert "A" == s
+        s = self.cls("aBcD")
+        assert "aBcD" == s
 
     def test_ctor_istr(self):
         s = self.cls("A")
