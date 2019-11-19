@@ -8,5 +8,3 @@ python:
   version: 3.7
   install:
   - requirements: requirements/doc.txt
-  - method: pip
-    path: .

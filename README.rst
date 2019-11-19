@@ -2,34 +2,25 @@
 multidict
 =========
 
-.. image:: https://img.shields.io/pypi/v/multidict.svg
-   :target: https://pypi.org/project/multidict
-
-.. image:: https://readthedocs.org/projects/multidict/badge/?version=latest
-   :target: http://multidict.readthedocs.org/en/latest/?badge=latest
-
-.. image:: https://img.shields.io/travis-ci/com/aio-libs/multidict/master.svg
-   :align: right
-   :target: http://travis-ci.com/aio-libs/multidict
-
-.. image:: https://img.shields.io/appveyor/ci/aio-libs/multidict/master.svg?label=Windows%20build%20%40%20Appveyor
-   :align: right
-   :target: https://ci.appveyor.com/project/aio-libs/multidict/branch/master
-
-.. image:: https://github.com/aio-libs/multidict/workflows/Test%20suite/badge.svg
-   :align: right
-   :target: https://github.com/aio-libs/multidict/actions?workflow=Test+suite
-
-.. image:: https://github.com/aio-libs/multidict/workflows/Code%20quality/badge.svg
-   :align: right
-   :target: https://github.com/aio-libs/multidict/actions?workflow=Code+quality
-
-.. image:: https://img.shields.io/pypi/pyversions/multidict.svg
-   :target: https://pypi.org/project/multidict
+.. image:: https://dev.azure.com/aio-libs/multidict/_apis/build/status/CI?branchName=master
+   :target: https://dev.azure.com/aio-libs/multidict/_build
+   :alt: Azure Pipelines status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/aio-libs/multidict
    :alt: Coverage metrics
+
+.. image:: https://img.shields.io/pypi/v/multidict.svg
+   :target: https://pypi.org/project/multidict
+   :alt: PyPI
+
+.. image:: https://readthedocs.org/projects/multidict/badge/?version=latest
+   :target: http://multidict.readthedocs.org/en/latest/?badge=latest
+   :alt: Documentationb
+
+.. image:: https://img.shields.io/pypi/pyversions/multidict.svg
+   :target: https://pypi.org/project/multidict
+   :alt: Python versions
 
 .. image:: https://badges.gitter.im/Join%20Chat.svg
    :target: https://gitter.im/aio-libs/Lobby
