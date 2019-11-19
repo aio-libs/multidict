@@ -13,7 +13,7 @@ variables:
 resources:
   containers:
   - container: manylinux
-    image: quay.io/pypa/manylinux1_x86_64
+    image: quay.io/pypa/manylinux2010_x86_64
   repositories:
   - repository: templates
     type: github
