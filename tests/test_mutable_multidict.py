@@ -427,11 +427,11 @@ class TestCIMutableMultiDict:
         assert "other" in d
 
     def test_extend_with_istr(self, cls, istr):
-        us = istr("a")
+        us = istr("aBc")
         d = cls()
 
         d.extend([(us, "val")])
-        assert [("A", "val")] == list(d.items())
+        assert [("aBc", "val")] == list(d.items())
 
     def test_copy_istr(self, cls, istr):
         d = cls({istr("Foo"): "bar"})
