@@ -19,7 +19,7 @@ __all__ = (
     "istr",
 )
 
-__version__ = "4.6.0a1"
+__version__ = "4.6.0a2"
 
 
 try:
