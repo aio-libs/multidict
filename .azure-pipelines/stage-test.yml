@@ -45,7 +45,7 @@ stages:
         Py35-Cython-Win:
           python.version: '3.5'
           no_extensions: ''
-          image: 'windows-latest'
+          image: 'vs2015-win2012r2'
         Py36-Cython-Win:
           python.version: '3.6'
           no_extensions: ''
