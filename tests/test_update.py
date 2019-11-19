@@ -107,7 +107,7 @@ def test_update_istr_ci_md(ci_md_cls, istr):
 
     d.update({istr("key"): "val"})
 
-    assert [("Key", "val"), ("key2", "val3")] == list(d.items())
+    assert [("key", "val"), ("key2", "val3")] == list(d.items())
 
 
 def test_update_ci_md(ci_md_cls):
