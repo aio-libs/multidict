@@ -14,3 +14,14 @@ Changelog
 
 .. towncrier release notes start
 
+4.6.0 (2019-11-20)
+====================
+
+Bugfixes
+--------
+
+- Fix GC object tracking.
+  `#314 <https://github.com/aio-libs/aiohttp/issues/314>`_
+- Preserve the case of `istr` strings.
+  `#374 <https://github.com/aio-libs/aiohttp/issues/374>`_
+- Generate binary wheels for Python 3.8.
