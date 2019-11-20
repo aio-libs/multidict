@@ -49,6 +49,9 @@ stages:
     displayName: 'Manylinux'
     strategy:
       matrix:
+        py35 x64:
+          python.code: 'cp35-cp35m'
+          manylinux: 'manylinux_64'
         py36 x64:
           python.code: 'cp36-cp36m'
           manylinux: 'manylinux_64'
@@ -92,6 +95,10 @@ stages:
   - job:
     strategy:
       matrix:
+        Win py35 x64:
+          python.version: '3.5'
+          python.architecture: 'x64'
+          image: 'vs2017-win2016'
         Win py36 x64:
           python.version: '3.6'
           python.architecture: 'x64'
@@ -104,6 +111,10 @@ stages:
           python.version: '3.8'
           python.architecture: 'x64'
           image: 'windows-latest'
+        Win py35 x86:
+          python.version: '3.5'
+          python.architecture: 'x86'
+          image: 'vs2017-win2016'
         Win py36 x86:
           python.version: '3.6'
           python.architecture: 'x86'
@@ -116,6 +127,10 @@ stages:
           python.version: '3.8'
           python.architecture: 'x86'
           image: 'windows-latest'
+        Mac py35:
+          python.version: '3.5'
+          image: 'macos-latest'
+          python.architecture: 'x64'
         Mac py36:
           python.version: '3.6'
           image: 'macos-latest'
