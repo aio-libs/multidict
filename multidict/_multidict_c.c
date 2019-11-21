@@ -1057,7 +1057,8 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     {
         PyErr_Format(
             PyExc_TypeError,
-            "ctor requires MultiDict or MultiDictProxy instance, not %s",
+            "ctor requires MultiDict or MultiDictProxy instance, "
+            "not <classs '%s'>",
             Py_TYPE(arg)->tp_name
         );
         return -1;
@@ -1331,7 +1332,8 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     if (!CIMultiDictProxy_CheckExact(arg) && !CIMultiDict_CheckExact(arg)) {
         PyErr_Format(
             PyExc_TypeError,
-            "ctor requires CIMultiDict or CIMultiDictProxy instance, not %s",
+            "ctor requires CIMultiDict or CIMultiDictProxy instance, "
+            "not <class '%s'>",
             Py_TYPE(arg)->tp_name
         );
         return -1;
