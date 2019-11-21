@@ -85,6 +85,9 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
     while (_pair_list_next(self->impl, &pos1, &identity1, NULL, &value1, &h1) &&
            _pair_list_next(other->impl, &pos2, &identity2, NULL, &value2, &h2))
     {
+        if (h1 != h2) {
+            return 0;
+        }
         cmp_identity = PyObject_RichCompareBool(identity1, identity2, Py_NE);
         if (cmp_identity < 0) {
             return -1;
@@ -93,7 +96,7 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
         if (cmp_value < 0) {
             return -1;
         }
-        if (h1 != h2 || cmp_identity || cmp_value) {
+        if (cmp_identity || cmp_value) {
             return 0;
         }
     }
