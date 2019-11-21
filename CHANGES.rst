@@ -14,6 +14,15 @@ Changelog
 
 .. towncrier release notes start
 
+4.6.1 (2019-11-21)
+====================
+
+Bugfixes
+--------
+
+- Fix PyPI link for GitHub Issues badge.
+  `#391 <https://github.com/aio-libs/aiohttp/issues/391>`_
+
 4.6.0 (2019-11-20)
 ====================
 
