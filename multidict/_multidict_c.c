@@ -916,7 +916,7 @@ static PyTypeObject multidict_type = {
     sizeof(MultiDictObject),                         /* tp_basicsize */
     0,                                               /* tp_itemsize */
     (destructor)multidict_tp_dealloc,                /* tp_dealloc */
-    0,                                               /* tp_print */
+    0,                                               /* tp_vectorcall_offset */
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
@@ -996,7 +996,7 @@ static PyTypeObject cimultidict_type = {
     sizeof(MultiDictObject),                         /* tp_basicsize */
     0,                                               /* tp_itemsize */
     (destructor)multidict_tp_dealloc,                /* tp_dealloc */
-    0,                                               /* tp_print */
+    0,                                               /* tp_vectorcall_offset */
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
@@ -1272,7 +1272,7 @@ static PyTypeObject multidict_proxy_type = {
     sizeof(MultiDictProxyObject),                    /* tp_basicsize */
     0,                                               /* tp_itemsize */
     (destructor)multidict_proxy_tp_dealloc,          /* tp_dealloc */
-    0,                                               /* tp_print */
+    0,                                               /* tp_vectorcall_offset */
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
@@ -1356,7 +1356,7 @@ static PyTypeObject cimultidict_proxy_type = {
     sizeof(MultiDictProxyObject),                    /* tp_basicsize */
     0,                                               /* tp_itemsize */
     (destructor)multidict_proxy_tp_dealloc,          /* tp_dealloc */
-    0,                                               /* tp_print */
+    0,                                               /* tp_vectorcall_offset */
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */

@@ -179,7 +179,7 @@ static PyTypeObject multidict_items_iter_type = {
     sizeof(MultidictIter),                          /* tp_basicsize */
     0,                                              /* tp_itemsize */
     (destructor)multidict_iter_dealloc,             /* tp_dealloc */
-    0,                                              /* tp_print */
+    0,                                              /* tp_vectorcall_offset */
     0,                                              /* tp_getattr */
     0,                                              /* tp_setattr */
     0,                                              /* tp_reserved */
@@ -209,7 +209,7 @@ static PyTypeObject multidict_values_iter_type = {
     sizeof(MultidictIter),                           /* tp_basicsize */
     0,                                               /* tp_itemsize */
     (destructor)multidict_iter_dealloc,              /* tp_dealloc */
-    0,                                               /* tp_print */
+    0,                                               /* tp_vectorcall_offset */
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
@@ -239,7 +239,7 @@ static PyTypeObject multidict_keys_iter_type = {
     sizeof(MultidictIter),                         /* tp_basicsize */
     0,                                             /* tp_itemsize */
     (destructor)multidict_iter_dealloc,            /* tp_dealloc */
-    0,                                             /* tp_print */
+    0,                                             /* tp_vectorcall_offset */
     0,                                             /* tp_getattr */
     0,                                             /* tp_setattr */
     0,                                             /* tp_reserved */
