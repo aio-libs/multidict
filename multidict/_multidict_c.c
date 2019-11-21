@@ -526,7 +526,6 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
             (MultiDictObject*)other
         );
         if (cmp < 0) {
-            // TODO: set exception
             return NULL;
         }
         if (op == Py_NE) {
@@ -541,7 +540,6 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
             ((MultiDictProxyObject*)other)->md
         );
         if (cmp < 0) {
-            // TODO: set exception
             return NULL;
         }
         if (op == Py_NE) {
