@@ -4,13 +4,6 @@
 
 #include <structmember.h>
 
-// fix for VisualC complier used by Python 3.4
-#ifdef __GNUC__
-#define INLINE inline
-#else
-#define INLINE
-#endif
-
 static PyObject *collections_abc_mapping;
 static PyObject *collections_abc_mut_mapping;
 static PyObject *collections_abc_mut_multi_mapping;
@@ -40,7 +33,7 @@ static PyObject *repr_func;
 /* Forward declaration */
 static PyObject *multidict_items(MultiDictObject *self);
 
-static INLINE PyObject *
+static inline PyObject *
 _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 {
     PyObject *val = pair_list_get_one(self->impl, key);
@@ -104,7 +97,7 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
     return 1;
 }
 
-static INLINE int
+static inline int
 _multidict_update_items(MultiDictObject *self, PyObject *impl)
 {
     return pair_list_update((PyObject*)self->impl, impl);
@@ -262,7 +255,7 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
     return err;
 }
 
-static INLINE int
+static inline int
 _multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
                                  const char *name, int do_add)
 {
@@ -316,7 +309,7 @@ _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
     return 0;
 }
 
-static INLINE PyObject *
+static inline PyObject *
 _multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
 {
     MultiDictObject *new_multidict = NULL;

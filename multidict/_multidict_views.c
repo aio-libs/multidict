@@ -3,13 +3,6 @@
 #include "_multidict_iter.h"
 #include "_pair_list.h"
 
-// fix for VisualC complier used by Python 3.4
-#ifdef __GNUC__
-#define INLINE inline
-#else
-#define INLINE
-#endif
-
 /* We link this module statically for convenience.  If compiled as a shared
    library instead, some compilers don't allow addresses of Python objects
    defined in other libraries to be used in static initializers here.  The
@@ -49,7 +42,7 @@ typedef struct {
 
 /********** Base **********/
 
-static INLINE void
+static inline void
 _init_view(_Multidict_ViewObject *self, PyObject *md)
 {
     Py_INCREF(md);
