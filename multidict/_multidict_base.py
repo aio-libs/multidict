@@ -135,3 +135,11 @@ def _valuesview_repr(view):
         lst.append("{!r}".format(v))
     body = ", ".join(lst)
     return "{}({})".format(view.__class__.__name__, body)
+
+
+def _mdrepr(md):
+    lst = []
+    for k, v in md.items():
+        lst.append("'{}': {!r}".format(k, v))
+    body = ", ".join(lst)
+    return "<{}({})>".format(md.__class__.__name__, body)
