@@ -88,7 +88,7 @@ args = dict(
         "CI: Azure Pipelines": "https://dev.azure.com/aio-libs/multidict/_build",
         "Coverage: codecov": "https://codecov.io/github/aio-libs/multidict",
         "Docs: RTD": "https://multidict.readthedocs.io",
-        "GitHub: issues": "https://github.com/aio-libs/mutlidict/issues",
+        "GitHub: issues": "https://github.com/aio-libs/multidict/issues",
         "GitHub: repo": "https://github.com/aio-libs/multidict",
     },
     license="Apache 2",
