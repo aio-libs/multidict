@@ -14,7 +14,6 @@ all: test
 .flake: .install-deps $(shell find multidict -type f) \
                       $(shell find tests -type f)
 	flake8 multidict tests
-	python setup.py check -rms
 	@if ! isort -c -rc multidict tests; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc multidict tests; \

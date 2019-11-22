@@ -74,7 +74,7 @@ multidict_view_clear(_Multidict_ViewObject *self)
 static Py_ssize_t
 multidict_view_len(_Multidict_ViewObject *self)
 {
-    return pair_list_len(((MultiDictObject*)self->md)->impl);
+    return pair_list_len(&((MultiDictObject*)self->md)->pairs);
 }
 
 static PyObject *
@@ -158,7 +158,7 @@ multidict_itemsview_new(PyObject *md)
 static PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_items_iter_new(((MultiDictObject*)self->md)->impl);
+    return multidict_items_iter_new(((MultiDictObject*)self->md));
 }
 
 static PyObject *
@@ -312,7 +312,7 @@ multidict_keysview_new(PyObject *md)
 static PyObject *
 multidict_keysview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_keys_iter_new(((MultiDictObject*)self->md)->impl);
+    return multidict_keys_iter_new(((MultiDictObject*)self->md));
 }
 
 static PyObject *
@@ -348,7 +348,7 @@ static PyMethodDef multidict_keysview_methods[] = {
 static int
 multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
 {
-    return pair_list_contains(((MultiDictObject*)self->md)->impl, key);
+    return pair_list_contains(&((MultiDictObject*)self->md)->pairs, key);
 }
 
 static PySequenceMethods multidict_keysview_as_sequence = {
@@ -414,7 +414,7 @@ multidict_valuesview_new(PyObject *md)
 static PyObject *
 multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_values_iter_new(((MultiDictObject*)self->md)->impl);
+    return multidict_values_iter_new(((MultiDictObject*)self->md));
 }
 
 static PyObject *

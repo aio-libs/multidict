@@ -1,4 +1,5 @@
 #include "_pair_list.h"
+#include "_multidict_c.h"
 
 #include <Python.h>
 
@@ -8,23 +9,23 @@ static PyTypeObject multidict_keys_iter_type;
 
 typedef struct multidict_iter {
     PyObject_HEAD
-    PyObject *impl;
+    MultiDictObject *md;  // MultiDict or CIMultiDict
     Py_ssize_t current;
     uint64_t version;
 } MultidictIter;
 
 static inline void
-_init_iter(MultidictIter *it, PyObject *impl)
+_init_iter(MultidictIter *it, MultiDictObject *md)
 {
-    Py_INCREF(impl);
+    Py_INCREF(md);
 
-    it->impl = impl;
+    it->md = md;
     it->current = 0;
-    it->version = pair_list_version(impl);
+    it->version = pair_list_version(&md->pairs);
 }
 
 PyObject *
-multidict_items_iter_new(PyObject *impl)
+multidict_items_iter_new(MultiDictObject *md)
 {
     MultidictIter *it = PyObject_GC_New(
         MultidictIter, &multidict_items_iter_type);
@@ -32,14 +33,14 @@ multidict_items_iter_new(PyObject *impl)
         return NULL;
     }
 
-    _init_iter(it, impl);
+    _init_iter(it, md);
 
     PyObject_GC_Track(it);
     return (PyObject *)it;
 }
 
 PyObject *
-multidict_keys_iter_new(PyObject *impl)
+multidict_keys_iter_new(MultiDictObject *md)
 {
     MultidictIter *it = PyObject_GC_New(
         MultidictIter, &multidict_keys_iter_type);
@@ -47,14 +48,14 @@ multidict_keys_iter_new(PyObject *impl)
         return NULL;
     }
 
-    _init_iter(it, impl);
+    _init_iter(it, md);
 
     PyObject_GC_Track(it);
     return (PyObject *)it;
 }
 
 PyObject *
-multidict_values_iter_new(PyObject *impl)
+multidict_values_iter_new(MultiDictObject *md)
 {
     MultidictIter *it = PyObject_GC_New(
         MultidictIter, &multidict_values_iter_type);
@@ -62,7 +63,7 @@ multidict_values_iter_new(PyObject *impl)
         return NULL;
     }
 
-    _init_iter(it, impl);
+    _init_iter(it, md);
 
     PyObject_GC_Track(it);
     return (PyObject *)it;
@@ -75,12 +76,12 @@ multidict_items_iter_iternext(MultidictIter *self)
     PyObject *value = NULL;
     PyObject *ret = NULL;
 
-    if (self->version != pair_list_version(self->impl)) {
+    if (self->version != pair_list_version(&self->md->pairs)) {
         PyErr_SetString(PyExc_RuntimeError, "Dictionary changed during iteration");
         return NULL;
     }
 
-    if (!_pair_list_next(self->impl, &self->current, NULL, &key, &value, NULL)) {
+    if (!_pair_list_next(&self->md->pairs, &self->current, NULL, &key, &value, NULL)) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
@@ -98,12 +99,12 @@ multidict_values_iter_iternext(MultidictIter *self)
 {
     PyObject *value = NULL;
 
-    if (self->version != pair_list_version(self->impl)) {
+    if (self->version != pair_list_version(&self->md->pairs)) {
         PyErr_SetString(PyExc_RuntimeError, "Dictionary changed during iteration");
         return NULL;
     }
 
-    if (!pair_list_next(self->impl, &self->current, NULL, NULL, &value)) {
+    if (!pair_list_next(&self->md->pairs, &self->current, NULL, NULL, &value)) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
@@ -118,12 +119,12 @@ multidict_keys_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
 
-    if (self->version != pair_list_version(self->impl)) {
+    if (self->version != pair_list_version(&self->md->pairs)) {
         PyErr_SetString(PyExc_RuntimeError, "Dictionary changed during iteration");
         return NULL;
     }
 
-    if (!pair_list_next(self->impl, &self->current, NULL, &key, NULL)) {
+    if (!pair_list_next(&self->md->pairs, &self->current, NULL, &key, NULL)) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
@@ -137,21 +138,21 @@ static void
 multidict_iter_dealloc(MultidictIter *self)
 {
     PyObject_GC_UnTrack(self);
-    Py_XDECREF(self->impl);
+    Py_XDECREF(self->md);
     PyObject_GC_Del(self);
 }
 
 static int
 multidict_iter_traverse(MultidictIter *self, visitproc visit, void *arg)
 {
-    Py_VISIT(self->impl);
+    Py_VISIT(self->md);
     return 0;
 }
 
 static int
 multidict_iter_clear(MultidictIter *self)
 {
-    Py_CLEAR(self->impl);
+    Py_CLEAR(self->md);
     return 0;
 }
 

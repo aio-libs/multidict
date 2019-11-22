@@ -6,10 +6,11 @@ extern "C" {
 #endif
 
 #include <Python.h>
+#include "_pair_list.h"
 
-typedef struct {
-    PyObject_HEAD
-    PyObject *impl;
+typedef struct {  // 16 or 24 for GC prefix
+    PyObject_HEAD  // 16
+    pair_list_t pairs;
 } MultiDictObject;
 
 typedef struct {
