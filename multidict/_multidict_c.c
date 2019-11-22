@@ -411,6 +411,26 @@ multidict_getone(MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+multidict_get(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *key      = NULL,
+             *_default = Py_None,
+             *ret;
+
+    static char *getone_keywords[] = {"key", "default", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getone",
+                                     getone_keywords, &key, &_default))
+    {
+        return NULL;
+    }
+    Py_INCREF(Py_None);  // incref the default if not set
+    ret = _multidict_getone(self, key, _default);
+    Py_DECREF(Py_None);
+    return ret;
+}
+
+static PyObject *
 multidict_keys(MultiDictObject *self)
 {
     return multidict_keysview_new((PyObject*)self);
@@ -808,7 +828,7 @@ static PyMethodDef multidict_methods[] = {
     },
     {
         "get",
-        (PyCFunction)multidict_getone,
+        (PyCFunction)multidict_get,
         METH_VARARGS | METH_KEYWORDS,
         multidict_get_doc
     },
@@ -1081,6 +1101,13 @@ multidict_proxy_getone(MultiDictProxyObject *self, PyObject *args,
 }
 
 static PyObject *
+multidict_proxy_get(MultiDictProxyObject *self, PyObject *args,
+                       PyObject *kwds)
+{
+    return multidict_get(self->md, args, kwds);
+}
+
+static PyObject *
 multidict_proxy_keys(MultiDictProxyObject *self)
 {
     return multidict_keys(self->md);
@@ -1217,7 +1244,7 @@ static PyMethodDef multidict_proxy_methods[] = {
     },
     {
         "get",
-        (PyCFunction)multidict_proxy_getone,
+        (PyCFunction)multidict_proxy_get,
         METH_VARARGS | METH_KEYWORDS,
         multidict_get_doc
     },
