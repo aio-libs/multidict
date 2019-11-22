@@ -36,7 +36,7 @@ static PyObject *multidict_items(MultiDictObject *self);
 static inline PyObject *
 _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 {
-    PyObject *val = pair_list_get_one(self->impl, key);
+    PyObject *val = pair_list_get_one(&self->pairs, key);
 
     if (val == NULL &&
         PyErr_ExceptionMatches(PyExc_KeyError) &&
@@ -71,12 +71,12 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
         return 1;
     }
 
-    if (pair_list_len(self->impl) != pair_list_len(other->impl)) {
+    if (pair_list_len(&self->pairs) != pair_list_len(&other->pairs)) {
         return 0;
     }
 
-    while (_pair_list_next(self->impl, &pos1, &identity1, NULL, &value1, &h1) &&
-           _pair_list_next(other->impl, &pos2, &identity2, NULL, &value2, &h2))
+    while (_pair_list_next(&self->pairs, &pos1, &identity1, NULL, &value1, &h1) &&
+           _pair_list_next(&other->pairs, &pos2, &identity2, NULL, &value2, &h2))
     {
         if (h1 != h2) {
             return 0;
@@ -98,21 +98,21 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
 }
 
 static inline int
-_multidict_update_items(MultiDictObject *self, PyObject *impl)
+_multidict_update_items(MultiDictObject *self, pair_list_t *pairs)
 {
-    return pair_list_update((PyObject*)self->impl, impl);
+    return pair_list_update(&self->pairs, pairs);
 }
 
 static int
-_multidict_append_items(MultiDictObject *self, PyObject *impl)
+_multidict_append_items(MultiDictObject *self, pair_list_t *pairs)
 {
     PyObject *key   = NULL,
              *value = NULL;
 
     Py_ssize_t pos = 0;
 
-    while (_pair_list_next(impl, &pos, NULL, &key, &value, NULL)) {
-        if (pair_list_add(self->impl, key, value) < 0) {
+    while (_pair_list_next(pairs, &pos, NULL, &key, &value, NULL)) {
+        if (pair_list_add(&self->pairs, key, value) < 0) {
             return -1;
         }
     }
@@ -149,7 +149,7 @@ _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
         key   = PyTuple_GET_ITEM(item, 0);
         value = PyTuple_GET_ITEM(item, 1);
 
-        if (pair_list_add(self->impl, key, value) < 0) {
+        if (pair_list_add(&self->pairs, key, value) < 0) {
             Py_DECREF(item);
             Py_DECREF(iter);
             return -1;
@@ -200,24 +200,24 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
                             PyObject *kwds, const char *name, int do_add)
 {
     PyObject *arg_items  = NULL, /* tracked by GC */
-             *kwds_items = NULL, /* new reference */
-             *impl       = NULL; /* borrowed ref */
+             *kwds_items = NULL; /* new reference */
+    pair_list_t *pairs = NULL;
 
     int err = 0;
 
     // TODO: mb can be refactored more clear
     if (_MultiDict_Check(arg) && kwds == NULL) {
         if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
-            impl = ((MultiDictObject*)arg)->impl;
+            pairs = &((MultiDictObject*)arg)->pairs;
         } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
-            impl = ((MultiDictProxyObject*)arg)->md->impl;
+            pairs = &((MultiDictProxyObject*)arg)->md->pairs;
         }
 
         if (do_add) {
-            return _multidict_append_items(self, impl);
+            return _multidict_append_items(self, pairs);
         }
 
-        return _multidict_update_items(self, impl);
+        return _multidict_update_items(self, pairs);
     }
 
     if (PyObject_HasAttrString(arg, "items")) {
@@ -247,7 +247,7 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
     if (do_add) {
         err = _multidict_append_items_seq(self, arg_items, name);
     } else {
-        err =  pair_list_update_from_seq(self->impl, arg_items);
+        err =  pair_list_update_from_seq(&self->pairs, arg_items);
     }
 
     Py_DECREF(arg_items);
@@ -271,7 +271,7 @@ _multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
     if (do_add) {
         err = _multidict_append_items_seq(self, arg, name);
     } else {
-        err = pair_list_update_from_seq(self->impl, arg);
+        err = pair_list_update_from_seq(&self->pairs, arg);
     }
 
     Py_DECREF(arg);
@@ -379,7 +379,7 @@ multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    list = pair_list_get_all(self->impl, key);
+    list = pair_list_get_all(&self->pairs, key);
 
     if (list == NULL &&
         PyErr_ExceptionMatches(PyExc_KeyError) &&
@@ -471,7 +471,7 @@ multidict_repr(PyObject *self)
 static Py_ssize_t
 multidict_mp_len(MultiDictObject *self)
 {
-    return pair_list_len(self->impl);
+    return pair_list_len(&self->pairs);
 }
 
 static PyObject *
@@ -484,16 +484,16 @@ static int
 multidict_mp_as_subscript(MultiDictObject *self, PyObject *key, PyObject *val)
 {
     if (val == NULL) {
-        return pair_list_del(self->impl, key);
+        return pair_list_del(&self->pairs, key);
     } else {
-        return pair_list_replace(self->impl, key, val);
+        return pair_list_replace(&self->pairs, key, val);
     }
 }
 
 static int
 multidict_sq_contains(MultiDictObject *self, PyObject *key)
 {
-    return pair_list_contains(self->impl, key);
+    return pair_list_contains(&self->pairs, key);
 }
 
 static PyObject *
@@ -547,7 +547,7 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
     }
 
     if (cmp) {
-        cmp = pair_list_eq_to_mapping(((MultiDictObject*)self)->impl, other);
+        cmp = pair_list_eq_to_mapping(&((MultiDictObject*)self)->pairs, other);
         if (cmp < 0) {
             return NULL;
         }
@@ -564,22 +564,22 @@ static void
 multidict_tp_dealloc(MultiDictObject *self)
 {
     PyObject_GC_UnTrack(self);
-    Py_XDECREF(self->impl);
+    Py_TRASHCAN_SAFE_BEGIN(self);
+    pair_list_dealloc(&self->pairs);
     PyObject_GC_Del(self);
+    Py_TRASHCAN_SAFE_END(self);
 }
 
 static int
 multidict_tp_traverse(MultiDictObject *self, visitproc visit, void *arg)
 {
-    Py_VISIT(self->impl);
-    return 0;
+    return pair_list_traverse(&self->pairs, visit, arg);
 }
 
 static int
 multidict_tp_clear(MultiDictObject *self)
 {
-    Py_CLEAR(self->impl);
-    return 0;
+    return pair_list_clear(&self->pairs);
 }
 
 PyDoc_STRVAR(multidict_getall_doc,
@@ -605,8 +605,7 @@ PyDoc_STRVAR(multidict_values_doc,
 static int
 multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
-    self->impl = pair_list_new();
-    if (self->impl == NULL) {
+    if (pair_list_init(&self->pairs) < 0) {
         return -1;
     }
     if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
@@ -625,7 +624,7 @@ multidict_add(MultiDictObject *self, PyObject *args)
         return NULL;
     }
 
-    if (pair_list_add(self->impl, key, val) < 0) {
+    if (pair_list_add(&self->pairs, key, val) < 0) {
         return NULL;
     }
 
@@ -651,7 +650,7 @@ multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 static PyObject *
 multidict_clear(MultiDictObject *self)
 {
-    if (pair_list_clear(self->impl) < 0) {
+    if (pair_list_clear(&self->pairs) < 0) {
         return NULL;
     }
 
@@ -671,7 +670,7 @@ multidict_setdefault(MultiDictObject *self, PyObject *args, PyObject *kwds)
     {
         return NULL;
     }
-    return pair_list_set_default(self->impl, key, _default);
+    return pair_list_set_default(&self->pairs, key, _default);
 }
 
 static PyObject *
@@ -689,7 +688,7 @@ multidict_popone(MultiDictObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    ret_val = pair_list_pop_one(self->impl, key);
+    ret_val = pair_list_pop_one(&self->pairs, key);
 
     if (ret_val == NULL &&
         PyErr_ExceptionMatches(PyExc_KeyError) &&
@@ -717,7 +716,7 @@ multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    ret_val = pair_list_pop_all(self->impl, key);
+    ret_val = pair_list_pop_all(&self->pairs, key);
 
     if (ret_val == NULL &&
         PyErr_ExceptionMatches(PyExc_KeyError) &&
@@ -733,7 +732,7 @@ multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
 static PyObject *
 multidict_popitem(MultiDictObject *self)
 {
-    return pair_list_pop_item(self->impl);
+    return pair_list_pop_item(&self->pairs);
 }
 
 static PyObject *
@@ -951,8 +950,7 @@ static PyTypeObject multidict_type = {
 static int
 cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
-    self->impl = ci_pair_list_new();
-    if (self->impl == NULL) {
+    if (ci_pair_list_init(&self->pairs) < 0) {
         return -1;
     }
     if (_multidict_extend(self, args, kwds, "CIMultiDict", 1) < 0) {
@@ -1389,16 +1387,16 @@ static PyTypeObject cimultidict_proxy_type = {
 static PyObject *
 getversion(PyObject *self, PyObject *md)
 {
-    PyObject *impl = NULL;
+    pair_list_t *pairs = NULL;
     if (MultiDict_CheckExact(md) || CIMultiDict_CheckExact(md)) {
-        impl = ((MultiDictObject*)md)->impl;
+        pairs = &((MultiDictObject*)md)->pairs;
     } else if (MultiDictProxy_CheckExact(md) || CIMultiDictProxy_CheckExact(md)) {
-        impl = ((MultiDictProxyObject*)md)->md->impl;
+        pairs = &((MultiDictProxyObject*)md)->md->pairs;
     } else {
         PyErr_Format(PyExc_TypeError, "unexpected type");
         return NULL;
     }
-    return PyLong_FromUnsignedLong(pair_list_version(impl));
+    return PyLong_FromUnsignedLong(pair_list_version(pairs));
 }
 
 /******************** Module ********************/
@@ -1470,7 +1468,7 @@ PyInit__multidict()
     WITH_MOD("multidict._multidict_base");
     GET_MOD_ATTR(repr_func, "_mdrepr");
 
-    if (pair_list_init(istr) < 0 ||
+    if (pair_list_global_init(istr) < 0 ||
         multidict_views_init() < 0) {
         goto fail;
     }
