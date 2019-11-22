@@ -41,4 +41,5 @@ except ImportError:  # pragma: no cover
         istr,
     )
 
+
 upstr = istr
