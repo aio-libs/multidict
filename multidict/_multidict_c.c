@@ -1194,6 +1194,7 @@ static void
 multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
 {
     PyObject_GC_UnTrack(self);
+    Py_DECREF(self->md);
     PyObject_GC_Del(self);
 }
 
