@@ -94,7 +94,7 @@ pair_list_grow(pair_list_t *list)
     Py_ssize_t new_capacity;
     pair_t *new_pairs;
 
-    if (list_size < list->capacity) {
+    if (list->size < list->capacity) {
         return 0;
     }
 
@@ -1178,7 +1178,12 @@ pair_list_clear(pair_list_t *list)
         Py_CLEAR(pair->value);
     }
     list->size = 0;
-    return pair_list_resize(list, 0);
+    if (list->pairs != list->buffer) {
+        PyMem_Del(list->pairs);
+        list->pairs = list->buffer;
+    }
+
+    return 0;
 }
 
 

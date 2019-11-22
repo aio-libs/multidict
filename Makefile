@@ -102,12 +102,7 @@ clean:
 	rm -rf htmlcov
 	make -C docs clean SPHINXBUILD=false
 	python3 setup.py clean
-	rm -f multidict/_multidict.html
-	rm -f multidict/_multidict.c
-	rm -f multidict/_multidict.*.so
-	rm -f multidict/_multidict.*.pyd
-	rm -f multidict/_multidict_c.*.so
-	rm -f multidict/_multidict_c.*.pyd
-	rm -f multidict/_istr.*.so
-	rm -f multidict/_istr.*.pyd
+	rm -f multidict/*.html
+	rm -f multidict/*.so
+	rm -f multidict/*.pyd
 	rm -rf .tox
