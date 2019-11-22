@@ -4,14 +4,6 @@
 
 #include <Python.h>
 
-// fix for VisualC complier used by Python 3.4
-#ifdef __GNUC__
-#define INLINE inline
-#else
-#define INLINE
-#endif
-
-
 #define MIN_LIST_CAPACITY 32
 
 static PyTypeObject pair_list_type;
@@ -50,7 +42,7 @@ typedef struct pair_list {  // 24 for GC prefix, 82 in total
 } pair_list_t;
 
 
-static INLINE int
+static inline int
 str_cmp(PyObject *s1, PyObject *s2)
 {
     PyObject *ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
@@ -68,7 +60,7 @@ str_cmp(PyObject *s1, PyObject *s2)
 }
 
 
-static INLINE PyObject *
+static inline PyObject *
 key_to_str(PyObject *key)
 {
     PyTypeObject *type = Py_TYPE(key);
@@ -108,7 +100,7 @@ ci_key_to_str(PyObject *key)
     return NULL;
 }
 
-static INLINE pair_t *
+static inline pair_t *
 pair_list_get(pair_list_t *list, Py_ssize_t i)
 {
     pair_t *item = list->pairs + i;
@@ -215,7 +207,7 @@ pair_list_len(PyObject *op)
 }
 
 
-static INLINE int
+static inline int
 _pair_list_add_with_hash(PyObject *op,
                          PyObject *identity,
                          PyObject *key,
@@ -403,7 +395,7 @@ pair_list_version(PyObject *op)
 }
 
 
-INLINE int
+inline int
 _pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
                 PyObject **pkey, PyObject **pvalue, Py_hash_t *phash)
 {
@@ -434,7 +426,7 @@ _pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
 }
 
 
-INLINE int
+inline int
 pair_list_next(PyObject *op, Py_ssize_t *ppos, PyObject **pidentity,
                PyObject **pkey, PyObject **pvalue)
 {
@@ -907,7 +899,7 @@ _pair_list_post_update(pair_list_t *list, PyObject* used_keys, Py_ssize_t pos)
 }
 
 // TODO: need refactoring function name
-static INLINE int
+static inline int
 _pair_list_update(PyObject *op, PyObject *key,
                   PyObject *value, PyObject *used_keys,
                   PyObject *identity, Py_hash_t hash)
@@ -1250,7 +1242,7 @@ static PyTypeObject pair_list_type = {
     sizeof(pair_list_t),
     0,
     (destructor)pair_list_dealloc,              /* tp_dealloc */
-    0,                                          /* tp_print */
+    0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
     0,                                          /* tp_reserved */

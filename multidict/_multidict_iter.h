@@ -11,7 +11,7 @@ PyObject *multidict_items_iter_new(PyObject *impl);
 PyObject *multidict_keys_iter_new(PyObject *impl);
 PyObject *multidict_values_iter_new(PyObject *impl);
 
-int multidict_iter_init();
+int multidict_iter_init(void);
 
 #ifdef __cplusplus
 }

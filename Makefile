@@ -7,16 +7,7 @@ SRC = multidict tests setup.py
 
 all: test
 
-.install-cython:
-	pip install -r requirements/cython.txt
-	touch .install-cython
-
-multidict/%.c: multidict/%.pyx
-	cython -3 -o $@ $< -I multidict
-
-cythonize: .install-cython $(PYXS:.pyx=.c)
-
-.install-deps: cythonize $(shell find requirements -type f)
+.install-deps: $(shell find requirements -type f)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
@@ -116,10 +107,8 @@ clean:
 	rm -f multidict/_multidict.c
 	rm -f multidict/_multidict.*.so
 	rm -f multidict/_multidict.*.pyd
+	rm -f multidict/_multidict_c.*.so
+	rm -f multidict/_multidict_c.*.pyd
 	rm -f multidict/_istr.*.so
 	rm -f multidict/_istr.*.pyd
-	rm -f multidict/_pair_list.*.so
-	rm -f multidict/_pair_list.*.pyd
-	rm -f multidict/_multidict_iter.*.so
-	rm -f multidict/_multidict_iter.*.pyd
 	rm -rf .tox

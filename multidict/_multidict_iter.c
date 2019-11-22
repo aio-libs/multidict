@@ -2,13 +2,6 @@
 
 #include <Python.h>
 
-// fix for VisualC complier used by Python 3.4
-#ifdef __GNUC__
-#define INLINE inline
-#else
-#define INLINE
-#endif
-
 static PyTypeObject multidict_items_iter_type;
 static PyTypeObject multidict_values_iter_type;
 static PyTypeObject multidict_keys_iter_type;
@@ -20,7 +13,7 @@ typedef struct multidict_iter {
     uint64_t version;
 } MultidictIter;
 
-static INLINE void
+static inline void
 _init_iter(MultidictIter *it, PyObject *impl)
 {
     Py_INCREF(impl);
@@ -179,7 +172,7 @@ static PyTypeObject multidict_items_iter_type = {
     sizeof(MultidictIter),                          /* tp_basicsize */
     0,                                              /* tp_itemsize */
     (destructor)multidict_iter_dealloc,             /* tp_dealloc */
-    0,                                              /* tp_print */
+    0,                                              /* tp_vectorcall_offset */
     0,                                              /* tp_getattr */
     0,                                              /* tp_setattr */
     0,                                              /* tp_reserved */
@@ -209,7 +202,7 @@ static PyTypeObject multidict_values_iter_type = {
     sizeof(MultidictIter),                           /* tp_basicsize */
     0,                                               /* tp_itemsize */
     (destructor)multidict_iter_dealloc,              /* tp_dealloc */
-    0,                                               /* tp_print */
+    0,                                               /* tp_vectorcall_offset */
     0,                                               /* tp_getattr */
     0,                                               /* tp_setattr */
     0,                                               /* tp_reserved */
@@ -239,7 +232,7 @@ static PyTypeObject multidict_keys_iter_type = {
     sizeof(MultidictIter),                         /* tp_basicsize */
     0,                                             /* tp_itemsize */
     (destructor)multidict_iter_dealloc,            /* tp_dealloc */
-    0,                                             /* tp_print */
+    0,                                             /* tp_vectorcall_offset */
     0,                                             /* tp_getattr */
     0,                                             /* tp_setattr */
     0,                                             /* tp_reserved */

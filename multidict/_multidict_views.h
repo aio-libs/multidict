@@ -11,7 +11,7 @@ PyObject *multidict_itemsview_new(PyObject *impl);
 PyObject *multidict_keysview_new(PyObject *impl);
 PyObject *multidict_valuesview_new(PyObject *impl);
 
-int multidict_views_init();
+int multidict_views_init(void);
 
 #ifdef __cplusplus
 }

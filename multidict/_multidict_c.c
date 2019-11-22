@@ -1,0 +1,1581 @@
+#include "_multidict_c.h"
+#include "_pair_list.h"
+#include "_multidict_views.h"
+
+#include <structmember.h>
+
+static PyObject *collections_abc_mapping;
+static PyObject *collections_abc_mut_mapping;
+static PyObject *collections_abc_mut_multi_mapping;
+static PyObject *istr;
+
+static PyTypeObject multidict_type;
+static PyTypeObject cimultidict_type;
+static PyTypeObject multidict_proxy_type;
+static PyTypeObject cimultidict_proxy_type;
+
+static PyObject *repr_func;
+
+#define MultiDict_CheckExact(o) (Py_TYPE(o) == &multidict_type)
+#define CIMultiDict_CheckExact(o) (Py_TYPE(o) == &cimultidict_type)
+#define MultiDictProxy_CheckExact(o) (Py_TYPE(o) == &multidict_proxy_type)
+#define CIMultiDictProxy_CheckExact(o) (Py_TYPE(o) == &cimultidict_proxy_type)
+
+/* Helper macro for something like isinstance(obj, Base) */
+#define _MultiDict_Check(o)              \
+    ((MultiDict_CheckExact(o)) ||        \
+     (CIMultiDict_CheckExact(o)) ||      \
+     (MultiDictProxy_CheckExact(o)) ||   \
+     (CIMultiDictProxy_CheckExact(o)))
+
+/******************** Internal Methods ********************/
+
+/* Forward declaration */
+static PyObject *multidict_items(MultiDictObject *self);
+
+static inline PyObject *
+_multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
+{
+    PyObject *val = pair_list_get_one(self->impl, key);
+
+    if (val == NULL &&
+        PyErr_ExceptionMatches(PyExc_KeyError) &&
+        _default != NULL)
+    {
+        PyErr_Clear();
+        Py_INCREF(_default);
+        return _default;
+    }
+
+    return val;
+}
+
+static int
+_multidict_eq(MultiDictObject *self, MultiDictObject *other)
+{
+    Py_ssize_t pos1 = 0,
+               pos2 = 0;
+
+    Py_hash_t h1 = 0,
+              h2 = 0;
+
+    PyObject *identity1 = NULL,
+             *identity2 = NULL,
+             *value1    = NULL,
+             *value2    = NULL;
+
+    int cmp_identity = 0,
+        cmp_value    = 0;
+
+    if (self == other) {
+        return 1;
+    }
+
+    if (pair_list_len(self->impl) != pair_list_len(other->impl)) {
+        return 0;
+    }
+
+    while (_pair_list_next(self->impl, &pos1, &identity1, NULL, &value1, &h1) &&
+           _pair_list_next(other->impl, &pos2, &identity2, NULL, &value2, &h2))
+    {
+        if (h1 != h2) {
+            return 0;
+        }
+        cmp_identity = PyObject_RichCompareBool(identity1, identity2, Py_NE);
+        if (cmp_identity < 0) {
+            return -1;
+        }
+        cmp_value = PyObject_RichCompareBool(value1, value2, Py_NE);
+        if (cmp_value < 0) {
+            return -1;
+        }
+        if (cmp_identity || cmp_value) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+static inline int
+_multidict_update_items(MultiDictObject *self, PyObject *impl)
+{
+    return pair_list_update((PyObject*)self->impl, impl);
+}
+
+static int
+_multidict_append_items(MultiDictObject *self, PyObject *impl)
+{
+    PyObject *key   = NULL,
+             *value = NULL;
+
+    Py_ssize_t pos = 0;
+
+    while (_pair_list_next(impl, &pos, NULL, &key, &value, NULL)) {
+        if (pair_list_add(self->impl, key, value) < 0) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+static int
+_multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
+                            const char *name)
+{
+    PyObject *key   = NULL,
+             *value = NULL,
+             *item  = NULL,
+             *iter  = PyObject_GetIter(arg);
+
+    if (iter == NULL) {
+        return -1;
+    }
+
+    while ((item = PyIter_Next(iter)) != NULL) {
+        if (PyObject_Length(item) != 2) {
+            PyErr_Format(
+                PyExc_TypeError,
+                "%s takes either dict or list of (key, value) tuples",
+                name,
+                NULL
+            );
+            Py_DECREF(item);
+            Py_DECREF(iter);
+            return -1;
+        }
+
+        key   = PyTuple_GET_ITEM(item, 0);
+        value = PyTuple_GET_ITEM(item, 1);
+
+        if (pair_list_add(self->impl, key, value) < 0) {
+            Py_DECREF(item);
+            Py_DECREF(iter);
+            return -1;
+        }
+
+        Py_DECREF(item);
+    }
+
+    Py_DECREF(iter);
+
+    if (PyErr_Occurred()) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+_multidict_list_extend(PyObject *list, PyObject *target_list)
+{
+    PyObject *item = NULL,
+             *iter = PyObject_GetIter(target_list);
+
+    if (iter == NULL) {
+        return -1;
+    }
+
+    while ((item = PyIter_Next(iter)) != NULL) {
+        if (PyList_Append(list, item) < 0) {
+            Py_DECREF(item);
+            Py_DECREF(iter);
+            return -1;
+        }
+        Py_DECREF(item);
+    }
+
+    Py_DECREF(iter);
+
+    if (PyErr_Occurred()) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+_multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
+                            PyObject *kwds, const char *name, int do_add)
+{
+    PyObject *arg_items  = NULL, /* tracked by GC */
+             *kwds_items = NULL, /* new reference */
+             *impl       = NULL; /* borrowed ref */
+
+    int err = 0;
+
+    // TODO: mb can be refactored more clear
+    if (_MultiDict_Check(arg) && kwds == NULL) {
+        if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
+            impl = ((MultiDictObject*)arg)->impl;
+        } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
+            impl = ((MultiDictProxyObject*)arg)->md->impl;
+        }
+
+        if (do_add) {
+            return _multidict_append_items(self, impl);
+        }
+
+        return _multidict_update_items(self, impl);
+    }
+
+    if (PyObject_HasAttrString(arg, "items")) {
+        if (_MultiDict_Check(arg)) {
+            arg_items = multidict_items((MultiDictObject*)arg);
+        } else {
+            arg_items = PyMapping_Items(arg);
+        }
+        if (arg_items == NULL) {
+            return -1;
+        }
+    } else {
+        arg_items = arg;
+        Py_INCREF(arg_items);
+    }
+
+    if (kwds && PyArg_ValidateKeywordArguments(kwds)) {
+        kwds_items = PyDict_Items(kwds);
+        err = _multidict_list_extend(arg_items, kwds_items);
+        Py_DECREF(kwds_items);
+        if (err < 0) {
+            Py_DECREF(arg_items);
+            return -1;
+        }
+    }
+
+    if (do_add) {
+        err = _multidict_append_items_seq(self, arg_items, name);
+    } else {
+        err =  pair_list_update_from_seq(self->impl, arg_items);
+    }
+
+    Py_DECREF(arg_items);
+
+    return err;
+}
+
+static inline int
+_multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
+                                 const char *name, int do_add)
+{
+    PyObject *arg = NULL;
+
+    int err = 0;
+
+    if (!PyArg_ValidateKeywordArguments(kwds)) {
+        return -1;
+    }
+
+    arg = PyDict_Items(kwds);
+    if (do_add) {
+        err = _multidict_append_items_seq(self, arg, name);
+    } else {
+        err = pair_list_update_from_seq(self->impl, arg);
+    }
+
+    Py_DECREF(arg);
+    return err;
+}
+
+static int
+_multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
+                  const char *name, int do_add)
+{
+    PyObject *arg = NULL;
+
+    if (args && PyObject_Length(args) > 1)  {
+        PyErr_Format(
+            PyExc_TypeError,
+            "%s takes at most 1 positional argument (%zd given)",
+            name, PyObject_Length(args), NULL
+        );
+        return -1;
+    }
+
+    if (args && PyObject_Length(args) > 0) {
+        if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
+            return -1;
+        }
+        if (_multidict_extend_with_args(self, arg, kwds, name, do_add) < 0) {
+            return -1;
+        }
+    } else if (kwds && PyObject_Length(kwds) > 0) {
+        if (_multidict_extend_with_kwds(self, kwds, name, do_add) < 0) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+static inline PyObject *
+_multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
+{
+    MultiDictObject *new_multidict = NULL;
+
+    PyObject *arg_items = NULL,
+             *items     = NULL;
+
+    new_multidict = (MultiDictObject*)PyType_GenericNew(
+        multidict_tp_object, NULL, NULL);
+    if (new_multidict == NULL) {
+        return NULL;
+    }
+
+    if (multidict_tp_object->tp_init(
+        (PyObject*)new_multidict, NULL, NULL) < 0)
+    {
+        return NULL;
+    }
+
+    items = multidict_items(self);
+    if (items == NULL) {
+        goto fail;
+    }
+
+    // TODO: "Implementation looks as slow as possible ..."
+    arg_items = PyTuple_New(1);
+    if (arg_items == NULL) {
+        goto fail;
+    }
+
+    PyTuple_SET_ITEM(arg_items, 0, items);
+
+    if (_multidict_extend(
+        new_multidict, arg_items, NULL, "copy", 1) < 0)
+    {
+        goto fail;
+    }
+
+    Py_DECREF(items);
+    Py_DECREF(arg_items);
+
+    return (PyObject*)new_multidict;
+
+fail:
+    Py_XDECREF(items);
+    Py_XDECREF(arg_items);
+
+    Py_DECREF(new_multidict);
+
+    return NULL;
+}
+
+/******************** Base Methods ********************/
+
+static PyObject *
+multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *list     = NULL,
+             *key      = NULL,
+             *_default = NULL;
+
+    static char *getall_keywords[] = {"key", "default", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getall",
+                                     getall_keywords, &key, &_default))
+    {
+        return NULL;
+    }
+
+    list = pair_list_get_all(self->impl, key);
+
+    if (list == NULL &&
+        PyErr_ExceptionMatches(PyExc_KeyError) &&
+        _default != NULL)
+    {
+        PyErr_Clear();
+        Py_INCREF(_default);
+        return _default;
+    }
+
+    return list;
+}
+
+static PyObject *
+multidict_getone(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *key      = NULL,
+             *_default = NULL;
+
+    static char *getone_keywords[] = {"key", "default", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getone",
+                                     getone_keywords, &key, &_default))
+    {
+        return NULL;
+    }
+
+    return _multidict_getone(self, key, _default);
+}
+
+static PyObject *
+multidict_keys(MultiDictObject *self)
+{
+    return multidict_keysview_new((PyObject*)self);
+}
+
+static PyObject *
+multidict_items(MultiDictObject *self)
+{
+    return multidict_itemsview_new((PyObject*)self);
+}
+
+static PyObject *
+multidict_values(MultiDictObject *self)
+{
+    return multidict_valuesview_new((PyObject*)self);
+}
+
+static PyObject *
+multidict_reduce(MultiDictObject *self)
+{
+    PyObject *items      = NULL,
+             *items_list = NULL,
+             *args       = NULL,
+             *result     = NULL;
+
+    items = multidict_items(self);
+    if (items == NULL) {
+        goto ret;
+    }
+
+    items_list = PySequence_List(items);
+    if (items_list == NULL) {
+        goto ret;
+    }
+
+    args = PyTuple_Pack(1, items_list);
+    if (args == NULL) {
+        goto ret;
+    }
+
+    result = PyTuple_Pack(2, Py_TYPE(self), args);
+
+ret:
+    Py_XDECREF(args);
+    Py_XDECREF(items_list);
+    Py_XDECREF(items);
+
+    return result;
+}
+
+static PyObject *
+multidict_repr(PyObject *self)
+{
+    return PyObject_CallFunctionObjArgs(
+        repr_func, self, NULL);
+}
+
+static Py_ssize_t
+multidict_mp_len(MultiDictObject *self)
+{
+    return pair_list_len(self->impl);
+}
+
+static PyObject *
+multidict_mp_subscript(MultiDictObject *self, PyObject *key)
+{
+    return _multidict_getone(self, key, NULL);
+}
+
+static int
+multidict_mp_as_subscript(MultiDictObject *self, PyObject *key, PyObject *val)
+{
+    if (val == NULL) {
+        return pair_list_del(self->impl, key);
+    } else {
+        return pair_list_replace(self->impl, key, val);
+    }
+}
+
+static int
+multidict_sq_contains(MultiDictObject *self, PyObject *key)
+{
+    return pair_list_contains(self->impl, key);
+}
+
+static PyObject *
+multidict_tp_iter(MultiDictObject *self)
+{
+    return PyObject_GetIter(multidict_keysview_new((PyObject*)self));
+}
+
+static PyObject *
+multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
+{
+    // TODO: refactoring me with love
+
+    int cmp = 0;
+
+    if (op != Py_EQ && op != Py_NE) {
+        Py_RETURN_NOTIMPLEMENTED;
+    }
+
+    if (MultiDict_CheckExact(other) || CIMultiDict_CheckExact(other)) {
+        cmp = _multidict_eq(
+            (MultiDictObject*)self,
+            (MultiDictObject*)other
+        );
+        if (cmp < 0) {
+            return NULL;
+        }
+        if (op == Py_NE) {
+            cmp = !cmp;
+        }
+        return PyBool_FromLong(cmp);
+    }
+
+    if (MultiDictProxy_CheckExact(other) || CIMultiDictProxy_CheckExact(other)) {
+        cmp = _multidict_eq(
+            (MultiDictObject*)self,
+            ((MultiDictProxyObject*)other)->md
+        );
+        if (cmp < 0) {
+            return NULL;
+        }
+        if (op == Py_NE) {
+            cmp = !cmp;
+        }
+        return PyBool_FromLong(cmp);
+    }
+
+    cmp = PyObject_IsInstance(other, (PyObject*)collections_abc_mapping);
+    if (cmp < 0) {
+        return NULL;
+    }
+
+    if (cmp) {
+        cmp = pair_list_eq_to_mapping(((MultiDictObject*)self)->impl, other);
+        if (cmp < 0) {
+            return NULL;
+        }
+        if (op == Py_NE) {
+            cmp = !cmp;
+        }
+        return PyBool_FromLong(cmp);
+    }
+
+    Py_RETURN_NOTIMPLEMENTED;
+}
+
+static void
+multidict_tp_dealloc(MultiDictObject *self)
+{
+    PyObject_GC_UnTrack(self);
+    Py_XDECREF(self->impl);
+    PyObject_GC_Del(self);
+}
+
+static int
+multidict_tp_traverse(MultiDictObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->impl);
+    return 0;
+}
+
+static int
+multidict_tp_clear(MultiDictObject *self)
+{
+    Py_CLEAR(self->impl);
+    return 0;
+}
+
+PyDoc_STRVAR(multidict_getall_doc,
+"Return a list of all values matching the key.");
+
+PyDoc_STRVAR(multidict_getone_doc,
+"Get first value matching the key.");
+
+PyDoc_STRVAR(multidict_get_doc,
+"Get first value matching the key.\n\nThe method is alias for .getone().");
+
+PyDoc_STRVAR(multidict_keys_doc,
+"Return a new view of the dictionary's keys.");
+
+PyDoc_STRVAR(multidict_items_doc,
+"Return a new view of the dictionary's items *(key, value) pairs).");
+
+PyDoc_STRVAR(multidict_values_doc,
+"Return a new view of the dictionary's values.");
+
+/******************** MultiDict ********************/
+
+static int
+multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    self->impl = pair_list_new();
+    if (self->impl == NULL) {
+        return -1;
+    }
+    if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
+        return -1;
+    }
+    return 0;
+}
+
+static PyObject *
+multidict_add(MultiDictObject *self, PyObject *args)
+{
+    PyObject *key = NULL,
+             *val = NULL;
+
+    if (!PyArg_UnpackTuple(args, "set", 2, 2, &key, &val)) {
+        return NULL;
+    }
+
+    if (pair_list_add(self->impl, key, val) < 0) {
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+multidict_copy(MultiDictObject *self)
+{
+    return _multidict_copy(self, &multidict_type);
+}
+
+static PyObject *
+multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    if (_multidict_extend(self, args, kwds, "extend", 1) < 0) {
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+multidict_clear(MultiDictObject *self)
+{
+    if (pair_list_clear(self->impl) < 0) {
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+multidict_setdefault(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *key      = NULL,
+             *_default = NULL;
+
+    static char *setdefault_keywords[] = {"key", "default", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:setdefault",
+                                     setdefault_keywords, &key, &_default))
+    {
+        return NULL;
+    }
+    return pair_list_set_default(self->impl, key, _default);
+}
+
+static PyObject *
+multidict_popone(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *key      = NULL,
+             *_default = NULL,
+             *ret_val  = NULL;
+
+    static char *popone_keywords[] = {"key", "default", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popone",
+                                     popone_keywords, &key, &_default))
+    {
+        return NULL;
+    }
+
+    ret_val = pair_list_pop_one(self->impl, key);
+
+    if (ret_val == NULL &&
+        PyErr_ExceptionMatches(PyExc_KeyError) &&
+        _default != NULL)
+    {
+        PyErr_Clear();
+        return _default;
+    }
+
+    return ret_val;
+}
+
+static PyObject *
+multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *key      = NULL,
+             *_default = NULL,
+             *ret_val  = NULL;
+
+    static char *popall_keywords[] = {"key", "default", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popall",
+                                     popall_keywords, &key, &_default))
+    {
+        return NULL;
+    }
+
+    ret_val = pair_list_pop_all(self->impl, key);
+
+    if (ret_val == NULL &&
+        PyErr_ExceptionMatches(PyExc_KeyError) &&
+        _default != NULL)
+    {
+        PyErr_Clear();
+        return _default;
+    }
+
+    return ret_val;
+}
+
+static PyObject *
+multidict_popitem(MultiDictObject *self)
+{
+    return pair_list_pop_item(self->impl);
+}
+
+static PyObject *
+multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    if (_multidict_extend(self, args, kwds, "update", 0) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(multidict_add_doc,
+"Add the key and value, not overwriting any previous value.");
+
+PyDoc_STRVAR(multidict_copy_doc,
+"Return a copy of itself.");
+
+PyDoc_STRVAR(multdicit_method_extend_doc,
+"Extend current MultiDict with more values.\n\
+This method must be used instead of update.");
+
+PyDoc_STRVAR(multidict_clear_doc,
+"Remove all items from MultiDict");
+
+PyDoc_STRVAR(multidict_setdefault_doc,
+"Return value for key, set value to default if key is not present.");
+
+PyDoc_STRVAR(multidict_popone_doc,
+"Remove the last occurrence of key and return the corresponding value.\n\n\
+If key is not found, default is returned if given, otherwise KeyError is \
+raised.\n");
+
+PyDoc_STRVAR(multidict_popall_doc,
+"Remove all occurrences of key and return the list of corresponding values.\n\n\
+If key is not found, default is returned if given, otherwise KeyError is \
+raised.\n");
+
+PyDoc_STRVAR(multidict_popitem_doc,
+"Remove and return an arbitrary (key, value) pair.");
+
+PyDoc_STRVAR(multidict_update_doc,
+"Update the dictionary from *other*, overwriting existing keys.");
+
+static PySequenceMethods multidict_sequence = {
+    0,                                  /* sq_length */
+    0,                                  /* sq_concat */
+    0,                                  /* sq_repeat */
+    0,                                  /* sq_item */
+    0,                                  /* sq_slice */
+    0,                                  /* sq_ass_item */
+    0,                                  /* sq_ass_slice */
+    (objobjproc)multidict_sq_contains,  /* sq_contains */
+};
+
+static PyMappingMethods multidict_mapping = {
+    (lenfunc)multidict_mp_len,                /* mp_length */
+    (binaryfunc)multidict_mp_subscript,       /* mp_subscript */
+    (objobjargproc)multidict_mp_as_subscript  /* mp_ass_subscript */
+};
+
+static PyMethodDef multidict_methods[] = {
+    {
+        "getall",
+        (PyCFunction)multidict_getall,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_getall_doc
+    },
+    {
+        "getone",
+        (PyCFunction)multidict_getone,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_getone_doc
+    },
+    {
+        "get",
+        (PyCFunction)multidict_getone,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_get_doc
+    },
+    {
+        "keys",
+        (PyCFunction)multidict_keys,
+        METH_NOARGS,
+        multidict_keys_doc
+    },
+    {
+        "items",
+        (PyCFunction)multidict_items,
+        METH_NOARGS,
+        multidict_items_doc
+    },
+    {
+        "values",
+        (PyCFunction)multidict_values,
+        METH_NOARGS,
+        multidict_values_doc
+    },
+    {
+        "add",
+        (PyCFunction)multidict_add,
+        METH_VARARGS,
+        multidict_add_doc
+    },
+    {
+        "copy",
+        (PyCFunction)multidict_copy,
+        METH_NOARGS,
+        multidict_copy_doc
+    },
+    {
+        "extend",
+        (PyCFunction)multidict_extend,
+        METH_VARARGS | METH_KEYWORDS,
+        multdicit_method_extend_doc
+    },
+    {
+        "clear",
+        (PyCFunction)multidict_clear,
+        METH_NOARGS,
+        multidict_clear_doc
+    },
+    {
+        "setdefault",
+        (PyCFunction)multidict_setdefault,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_setdefault_doc
+    },
+    {
+        "popone",
+        (PyCFunction)multidict_popone,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_popone_doc
+    },
+    {
+        "pop",
+        (PyCFunction)multidict_popone,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_popone_doc
+    },
+    {
+        "popall",
+        (PyCFunction)multidict_popall,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_popall_doc
+    },
+    {
+        "popitem",
+        (PyCFunction)multidict_popitem,
+        METH_NOARGS,
+        multidict_popitem_doc
+    },
+    {
+        "update",
+        (PyCFunction)multidict_update,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_update_doc
+    },
+    {
+        "__reduce__",
+        (PyCFunction)multidict_reduce,
+        METH_NOARGS,
+        NULL,
+    },
+    {
+        NULL,
+        NULL
+    }   /* sentinel */
+};
+
+static PyTypeObject multidict_type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "multidict._multidict.MultiDict",                /* tp_name */
+    sizeof(MultiDictObject),                         /* tp_basicsize */
+    0,                                               /* tp_itemsize */
+    (destructor)multidict_tp_dealloc,                /* tp_dealloc */
+    0,                                               /* tp_vectorcall_offset */
+    0,                                               /* tp_getattr */
+    0,                                               /* tp_setattr */
+    0,                                               /* tp_reserved */
+    (reprfunc)multidict_repr,                        /* tp_repr */
+    0,                                               /* tp_as_number */
+    &multidict_sequence,                             /* tp_as_sequence */
+    &multidict_mapping,                              /* tp_as_mapping */
+    0,                                               /* tp_hash */
+    0,                                               /* tp_call */
+    0,                                               /* tp_str */
+    0,                                               /* tp_getattro */
+    0,                                               /* tp_setattro */
+    0,                                               /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT
+        | Py_TPFLAGS_BASETYPE
+        | Py_TPFLAGS_HAVE_GC,                        /* tp_flags */
+    0,                                               /* tp_doc */
+    (traverseproc)multidict_tp_traverse,             /* tp_traverse */
+    (inquiry)multidict_tp_clear,                     /* tp_clear */
+    (richcmpfunc)multidict_tp_richcompare,           /* tp_richcompare */
+    0,                                               /* tp_weaklistoffset */
+    (getiterfunc)multidict_tp_iter,                  /* tp_iter */
+    0,                                               /* tp_iternext */
+    multidict_methods,                               /* tp_methods */
+    0,                                               /* tp_members */
+    0,                                               /* tp_getset */
+    0,                                               /* tp_base */
+    0,                                               /* tp_dict */
+    0,                                               /* tp_descr_get */
+    0,                                               /* tp_descr_set */
+    0,                                               /* tp_dictoffset */
+    (initproc)multidict_tp_init,                     /* tp_init */
+    PyType_GenericAlloc,                             /* tp_alloc */
+    PyType_GenericNew,                               /* tp_new */
+};
+
+/******************** CIMultiDict ********************/
+
+static int
+cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
+{
+    self->impl = ci_pair_list_new();
+    if (self->impl == NULL) {
+        return -1;
+    }
+    if (_multidict_extend(self, args, kwds, "CIMultiDict", 1) < 0) {
+        return -1;
+    }
+    return 0;
+}
+
+static PyObject *
+cimultidict_copy(MultiDictObject *self)
+{
+    return _multidict_copy(self, &cimultidict_type);
+}
+
+PyDoc_STRVAR(cimultidict_copy_doc,
+"Return a copy of itself.");
+
+static PyMethodDef cimultidict_methods[] = {
+    {
+        "copy",
+        (PyCFunction)cimultidict_copy,
+        METH_NOARGS,
+        cimultidict_copy_doc
+    },
+    {
+        NULL,
+        NULL
+    }   /* sentinel */
+};
+
+static PyTypeObject cimultidict_type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "multidict._multidict.CIMultiDict",              /* tp_name */
+    sizeof(MultiDictObject),                         /* tp_basicsize */
+    0,                                               /* tp_itemsize */
+    (destructor)multidict_tp_dealloc,                /* tp_dealloc */
+    0,                                               /* tp_vectorcall_offset */
+    0,                                               /* tp_getattr */
+    0,                                               /* tp_setattr */
+    0,                                               /* tp_reserved */
+    0,                                               /* tp_repr */
+    0,                                               /* tp_as_number */
+    0,                                               /* tp_as_sequence */
+    0,                                               /* tp_as_mapping */
+    0,                                               /* tp_hash */
+    0,                                               /* tp_call */
+    0,                                               /* tp_str */
+    0,                                               /* tp_getattro */
+    0,                                               /* tp_setattro */
+    0,                                               /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
+    0,                                               /* tp_doc */
+    (traverseproc)multidict_tp_traverse,             /* tp_traverse */
+    (inquiry)multidict_tp_clear,                     /* tp_clear */
+    0,                                               /* tp_richcompare */
+    0,                                               /* tp_weaklistoffset */
+    0,                                               /* tp_iter */
+    0,                                               /* tp_iternext */
+    cimultidict_methods,                             /* tp_methods */
+    0,                                               /* tp_members */
+    0,                                               /* tp_getset */
+    &multidict_type,                                 /* tp_base */
+    0,                                               /* tp_dict */
+    0,                                               /* tp_descr_get */
+    0,                                               /* tp_descr_set */
+    0,                                               /* tp_dictoffset */
+    (initproc)cimultidict_tp_init,                   /* tp_init */
+    PyType_GenericAlloc,                             /* tp_alloc */
+    PyType_GenericNew,                               /* tp_new */
+};
+
+/******************** MultiDictProxy ********************/
+
+static int
+multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
+                        PyObject *kwds)
+{
+    PyObject        *arg = NULL;
+    MultiDictObject *md  = NULL;
+
+    if (!PyArg_UnpackTuple(args, "multidict._multidict.MultiDictProxy",
+                           0, 1, &arg))
+    {
+        return -1;
+    }
+    if (arg == NULL) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "__init__() missing 1 required positional argument: 'arg'"
+        );
+        return -1;
+    }
+    if (!MultiDictProxy_CheckExact(arg) &&
+        !CIMultiDict_CheckExact(arg) &&
+        !MultiDict_CheckExact(arg))
+    {
+        PyErr_Format(
+            PyExc_TypeError,
+            "ctor requires MultiDict or MultiDictProxy instance, "
+            "not <classs '%s'>",
+            Py_TYPE(arg)->tp_name
+        );
+        return -1;
+    }
+
+    md = (MultiDictObject*)arg;
+    if (MultiDictProxy_CheckExact(arg)) {
+        md = ((MultiDictProxyObject*)arg)->md;
+    }
+    Py_INCREF(md);
+    self->md = md;
+
+    return 0;
+}
+
+static PyObject *
+multidict_proxy_getall(MultiDictProxyObject *self, PyObject *args,
+                       PyObject *kwds)
+{
+    return multidict_getall(self->md, args, kwds);
+}
+
+static PyObject *
+multidict_proxy_getone(MultiDictProxyObject *self, PyObject *args,
+                       PyObject *kwds)
+{
+    return multidict_getone(self->md, args, kwds);
+}
+
+static PyObject *
+multidict_proxy_keys(MultiDictProxyObject *self)
+{
+    return multidict_keys(self->md);
+}
+
+static PyObject *
+multidict_proxy_items(MultiDictProxyObject *self)
+{
+    return multidict_items(self->md);
+}
+
+static PyObject *
+multidict_proxy_values(MultiDictProxyObject *self)
+{
+    return multidict_values(self->md);
+}
+
+static PyObject *
+multidict_proxy_copy(MultiDictProxyObject *self)
+{
+    PyObject *new_multidict = PyType_GenericNew(&multidict_type, NULL, NULL);
+    if (new_multidict == NULL) {
+        goto fail;
+    }
+    if (multidict_tp_init((MultiDictObject*)new_multidict, NULL, NULL) < 0) {
+        goto fail;
+    }
+    if (_multidict_extend_with_args(
+        (MultiDictObject*)new_multidict, (PyObject*)self, NULL, "copy", 1) < 0)
+    {
+        goto fail;
+    }
+
+    return new_multidict;
+
+fail:
+    Py_XDECREF(new_multidict);
+    return NULL;
+}
+
+static PyObject *
+multidict_proxy_reduce(MultiDictProxyObject *self)
+{
+    PyErr_Format(
+        PyExc_TypeError,
+        "can't pickle %s objects", Py_TYPE(self)->tp_name
+    );
+
+    return NULL;
+}
+
+static Py_ssize_t
+multidict_proxy_mp_len(MultiDictProxyObject *self)
+{
+    return multidict_mp_len(self->md);
+}
+
+static PyObject *
+multidict_proxy_mp_subscript(MultiDictProxyObject *self, PyObject *key)
+{
+    return multidict_mp_subscript(self->md, key);
+}
+
+static int
+multidict_proxy_sq_contains(MultiDictProxyObject *self, PyObject *key)
+{
+    return multidict_sq_contains(self->md, key);
+}
+
+static PyObject *
+multidict_proxy_tp_iter(MultiDictProxyObject *self)
+{
+    return multidict_tp_iter(self->md);
+}
+
+static PyObject *
+multidict_proxy_tp_richcompare(MultiDictProxyObject *self, PyObject *other,
+                               int op)
+{
+    return multidict_tp_richcompare((PyObject*)self->md, other, op);
+}
+
+static void
+multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
+{
+    PyObject_GC_UnTrack(self);
+    PyObject_GC_Del(self);
+}
+
+static int
+multidict_proxy_tp_traverse(MultiDictProxyObject *self, visitproc visit,
+                            void *arg)
+{
+    Py_VISIT(self->md);
+    return 0;
+}
+
+static int
+multidict_proxy_tp_clear(MultiDictProxyObject *self)
+{
+    Py_CLEAR(self->md);
+    return 0;
+}
+
+static PySequenceMethods multidict_proxy_sequence = {
+    0,                                        /* sq_length */
+    0,                                        /* sq_concat */
+    0,                                        /* sq_repeat */
+    0,                                        /* sq_item */
+    0,                                        /* sq_slice */
+    0,                                        /* sq_ass_item */
+    0,                                        /* sq_ass_slice */
+    (objobjproc)multidict_proxy_sq_contains,  /* sq_contains */
+};
+
+static PyMappingMethods multidict_proxy_mapping = {
+    (lenfunc)multidict_proxy_mp_len,          /* mp_length */
+    (binaryfunc)multidict_proxy_mp_subscript, /* mp_subscript */
+    0                                         /* mp_ass_subscript */
+};
+
+static PyMethodDef multidict_proxy_methods[] = {
+    {
+        "getall",
+        (PyCFunction)multidict_proxy_getall,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_getall_doc
+    },
+    {
+        "getone",
+        (PyCFunction)multidict_proxy_getone,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_getone_doc
+    },
+    {
+        "get",
+        (PyCFunction)multidict_proxy_getone,
+        METH_VARARGS | METH_KEYWORDS,
+        multidict_get_doc
+    },
+    {
+        "keys",
+        (PyCFunction)multidict_proxy_keys,
+        METH_NOARGS,
+        multidict_keys_doc
+    },
+    {
+        "items",
+        (PyCFunction)multidict_proxy_items,
+        METH_NOARGS,
+        multidict_items_doc
+    },
+    {
+        "values",
+        (PyCFunction)multidict_proxy_values,
+        METH_NOARGS,
+        multidict_values_doc
+    },
+    {
+        "copy",
+        (PyCFunction)multidict_proxy_copy,
+        METH_NOARGS,
+        multidict_copy_doc
+    },
+    {
+        "__reduce__",
+        (PyCFunction)multidict_proxy_reduce,
+        METH_NOARGS,
+        NULL
+    },
+    {
+        NULL,
+        NULL
+    }   /* sentinel */
+};
+
+static PyTypeObject multidict_proxy_type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "multidict._multidict.MultiDictProxy",           /* tp_name */
+    sizeof(MultiDictProxyObject),                    /* tp_basicsize */
+    0,                                               /* tp_itemsize */
+    (destructor)multidict_proxy_tp_dealloc,          /* tp_dealloc */
+    0,                                               /* tp_vectorcall_offset */
+    0,                                               /* tp_getattr */
+    0,                                               /* tp_setattr */
+    0,                                               /* tp_reserved */
+    (reprfunc)multidict_repr,                        /* tp_repr */
+    0,                                               /* tp_as_number */
+    &multidict_proxy_sequence,                       /* tp_as_sequence */
+    &multidict_proxy_mapping,                        /* tp_as_mapping */
+    0,                                               /* tp_hash */
+    0,                                               /* tp_call */
+    0,                                               /* tp_str */
+    0,                                               /* tp_getattro */
+    0,                                               /* tp_setattro */
+    0,                                               /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT
+        | Py_TPFLAGS_BASETYPE
+        | Py_TPFLAGS_HAVE_GC,                        /* tp_flags */
+    0,                                               /* tp_doc */
+    (traverseproc)multidict_proxy_tp_traverse,       /* tp_traverse */
+    (inquiry)multidict_proxy_tp_clear,               /* tp_clear */
+    (richcmpfunc)multidict_proxy_tp_richcompare,     /* tp_richcompare */
+    0,                                               /* tp_weaklistoffset */
+    (getiterfunc)multidict_proxy_tp_iter,            /* tp_iter */
+    0,                                               /* tp_iternext */
+    multidict_proxy_methods,                         /* tp_methods */
+    0,                                               /* tp_members */
+    0,                                               /* tp_getset */
+    0,                                               /* tp_base */
+    0,                                               /* tp_dict */
+    0,                                               /* tp_descr_get */
+    0,                                               /* tp_descr_set */
+    0,                                               /* tp_dictoffset */
+    (initproc)multidict_proxy_tp_init,               /* tp_init */
+    PyType_GenericAlloc,                             /* tp_alloc */
+    PyType_GenericNew,                               /* tp_new */
+};
+
+/******************** CIMultiDictProxy ********************/
+
+static int
+cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
+                          PyObject *kwds)
+{
+    PyObject        *arg = NULL;
+    MultiDictObject *md  = NULL;
+
+    if (!PyArg_UnpackTuple(args, "multidict._multidict.CIMultiDictProxy",
+                           1, 1, &arg))
+    {
+        return -1;
+    }
+    if (arg == NULL) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "__init__() missing 1 required positional argument: 'arg'"
+        );
+        return -1;
+    }
+    if (!CIMultiDictProxy_CheckExact(arg) && !CIMultiDict_CheckExact(arg)) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "ctor requires CIMultiDict or CIMultiDictProxy instance, "
+            "not <class '%s'>",
+            Py_TYPE(arg)->tp_name
+        );
+        return -1;
+    }
+
+    md = (MultiDictObject*)arg;
+    if (CIMultiDictProxy_CheckExact(arg)) {
+        md = ((MultiDictProxyObject*)arg)->md;
+    }
+    Py_INCREF(md);
+    self->md = md;
+
+    return 0;
+}
+
+static PyTypeObject cimultidict_proxy_type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "multidict._multidict.CIMultiDictProxy",         /* tp_name */
+    sizeof(MultiDictProxyObject),                    /* tp_basicsize */
+    0,                                               /* tp_itemsize */
+    (destructor)multidict_proxy_tp_dealloc,          /* tp_dealloc */
+    0,                                               /* tp_vectorcall_offset */
+    0,                                               /* tp_getattr */
+    0,                                               /* tp_setattr */
+    0,                                               /* tp_reserved */
+    0,                                               /* tp_repr */
+    0,                                               /* tp_as_number */
+    0,                                               /* tp_as_sequence */
+    0,                                               /* tp_as_mapping */
+    0,                                               /* tp_hash */
+    0,                                               /* tp_call */
+    0,                                               /* tp_str */
+    0,                                               /* tp_getattro */
+    0,                                               /* tp_setattro */
+    0,                                               /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
+    0,                                               /* tp_doc */
+    (traverseproc)multidict_proxy_tp_traverse,       /* tp_traverse */
+    (inquiry)multidict_proxy_tp_clear,               /* tp_clear */
+    (richcmpfunc)multidict_proxy_tp_richcompare,     /* tp_richcompare */
+    0,                                               /* tp_weaklistoffset */
+    0,                                               /* tp_iter */
+    0,                                               /* tp_iternext */
+    multidict_proxy_methods,                         /* tp_methods */
+    0,                                               /* tp_members */
+    0,                                               /* tp_getset */
+    &multidict_proxy_type,                           /* tp_base */
+    0,                                               /* tp_dict */
+    0,                                               /* tp_descr_get */
+    0,                                               /* tp_descr_set */
+    0,                                               /* tp_dictoffset */
+    (initproc)cimultidict_proxy_tp_init,             /* tp_init */
+    PyType_GenericAlloc,                             /* tp_alloc */
+    PyType_GenericNew,                               /* tp_new */
+};
+
+/******************** Other functions ********************/
+
+static PyObject *
+getversion(PyObject *self, PyObject *md)
+{
+    PyObject *impl = NULL;
+    if (MultiDict_CheckExact(md) || CIMultiDict_CheckExact(md)) {
+        impl = ((MultiDictObject*)md)->impl;
+    } else if (MultiDictProxy_CheckExact(md) || CIMultiDictProxy_CheckExact(md)) {
+        impl = ((MultiDictProxyObject*)md)->md->impl;
+    } else {
+        PyErr_Format(PyExc_TypeError, "unexpected type");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLong(pair_list_version(impl));
+}
+
+/******************** Module ********************/
+
+static void
+module_free(void *m)
+{
+    Py_CLEAR(istr);
+    Py_CLEAR(collections_abc_mapping);
+    Py_CLEAR(collections_abc_mut_mapping);
+    Py_CLEAR(collections_abc_mut_multi_mapping);
+}
+
+static PyMethodDef multidict_module_methods[] = {
+    {
+        "getversion",
+        (PyCFunction)getversion,
+        METH_O
+    },
+    {
+        NULL,
+        NULL
+    }   /* sentinel */
+};
+
+static PyModuleDef multidict_module = {
+    PyModuleDef_HEAD_INIT,      /* m_base */
+    "_multidict",               /* m_name */
+    NULL,                       /* m_doc */
+    -1,                         /* m_size */
+    multidict_module_methods,   /* m_methods */
+    NULL,                       /* m_slots */
+    NULL,                       /* m_traverse */
+    NULL,                       /* m_clear */
+    (freefunc)module_free       /* m_free */
+};
+
+PyMODINIT_FUNC
+PyInit__multidict()
+{
+    PyObject *module = NULL,
+             *reg_func_call_result = NULL;
+
+#define WITH_MOD(NAME)                      \
+    Py_CLEAR(module);                       \
+    module = PyImport_ImportModule(NAME);   \
+    if (module == NULL) {                   \
+        goto fail;                          \
+    }
+
+#define GET_MOD_ATTR(VAR, NAME)                 \
+    VAR = PyObject_GetAttrString(module, NAME); \
+    if (VAR == NULL) {                          \
+        goto fail;                              \
+    }
+
+    WITH_MOD("multidict._istr");
+    GET_MOD_ATTR(istr, "istr");
+
+    WITH_MOD("collections.abc");
+    GET_MOD_ATTR(collections_abc_mapping, "Mapping");
+
+    WITH_MOD("multidict._abc");
+    GET_MOD_ATTR(collections_abc_mut_mapping, "MultiMapping");
+
+    WITH_MOD("multidict._abc");
+    GET_MOD_ATTR(collections_abc_mut_multi_mapping, "MutableMultiMapping");
+
+    WITH_MOD("multidict._multidict_base");
+    GET_MOD_ATTR(repr_func, "_mdrepr");
+
+    if (pair_list_init(istr) < 0 ||
+        multidict_views_init() < 0) {
+        goto fail;
+    }
+
+    if (PyType_Ready(&multidict_type) < 0 ||
+        PyType_Ready(&cimultidict_type) < 0 ||
+        PyType_Ready(&multidict_proxy_type) < 0 ||
+        PyType_Ready(&cimultidict_proxy_type) < 0)
+    {
+        goto fail;
+    }
+
+    /* Register in _abc mappings (CI)MultiDict and (CI)MultiDictProxy */
+    reg_func_call_result = PyObject_CallMethod(
+        collections_abc_mut_mapping,
+        "register", "O",
+        (PyObject*)&multidict_proxy_type
+    );
+    if (reg_func_call_result == NULL) {
+        goto fail;
+    }
+    Py_DECREF(reg_func_call_result);
+
+    reg_func_call_result = PyObject_CallMethod(
+        collections_abc_mut_mapping,
+        "register", "O",
+        (PyObject*)&cimultidict_proxy_type
+    );
+    if (reg_func_call_result == NULL) {
+        goto fail;
+    }
+    Py_DECREF(reg_func_call_result);
+
+    reg_func_call_result = PyObject_CallMethod(
+        collections_abc_mut_multi_mapping,
+        "register", "O",
+        (PyObject*)&multidict_type
+    );
+    if (reg_func_call_result == NULL) {
+        goto fail;
+    }
+    Py_DECREF(reg_func_call_result);
+
+    reg_func_call_result = PyObject_CallMethod(
+        collections_abc_mut_multi_mapping,
+        "register", "O",
+        (PyObject*)&cimultidict_type
+    );
+    if (reg_func_call_result == NULL) {
+        goto fail;
+    }
+    Py_DECREF(reg_func_call_result);
+
+    /* Instantiate this module */
+    module = PyModule_Create(&multidict_module);
+
+    Py_INCREF(istr);
+    if (PyModule_AddObject(
+            module, "istr", (PyObject*)istr) < 0)
+    {
+        goto fail;
+    }
+
+    Py_INCREF(&multidict_type);
+    if (PyModule_AddObject(
+            module, "MultiDict", (PyObject*)&multidict_type) < 0)
+    {
+        goto fail;
+    }
+
+    Py_INCREF(&cimultidict_type);
+    if (PyModule_AddObject(
+            module, "CIMultiDict", (PyObject*)&cimultidict_type) < 0)
+    {
+        goto fail;
+    }
+
+    Py_INCREF(&multidict_proxy_type);
+    if (PyModule_AddObject(
+            module, "MultiDictProxy", (PyObject*)&multidict_proxy_type) < 0)
+    {
+        goto fail;
+    }
+
+    Py_INCREF(&cimultidict_proxy_type);
+    if (PyModule_AddObject(
+            module, "CIMultiDictProxy", (PyObject*)&cimultidict_proxy_type) < 0)
+    {
+        goto fail;
+    }
+
+    return module;
+
+fail:
+    Py_XDECREF(collections_abc_mapping);
+    Py_XDECREF(collections_abc_mut_mapping);
+    Py_XDECREF(collections_abc_mut_multi_mapping);
+    Py_XDECREF(istr);
+    Py_XDECREF(&multidict_type);
+    Py_XDECREF(&cimultidict_type);
+    Py_XDECREF(&multidict_proxy_type);
+    Py_XDECREF(&cimultidict_proxy_type);
+
+    return NULL;
+
+#undef WITH_MOD
+#undef GET_MOD_ATTR
+}

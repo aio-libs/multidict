@@ -20,23 +20,25 @@ here = pathlib.Path(__file__).parent
 """Current folder (containing setup.py)."""
 
 
-if PROFILE_BUILD:
-    macros = [("CYTHON_TRACE", "1")]
-else:
-    macros = []
-
 CFLAGS = ["-O2"]
 # CFLAGS = ['-g']
 if platform.system() != "Windows":
     CFLAGS.extend(
-        ["-std=c99", "-Wall", "-Wsign-compare", "-Wconversion", "-fno-strict-aliasing"]
+        [
+            "-std=c99",
+            "-Wall",
+            "-Wsign-compare",
+            "-Wconversion",
+            "-fno-strict-aliasing",
+            "-pedantic",
+        ]
     )
 
 extensions = [
     Extension(
         "multidict._multidict",
         [
-            "multidict/_multidict.c",
+            "multidict/_multidict_c.c",
             "multidict/_pair_list.c",
             "multidict/_multidict_iter.c",
             "multidict/_multidict_views.c",
