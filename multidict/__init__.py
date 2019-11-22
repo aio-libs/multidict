@@ -30,7 +30,6 @@ try:
         CIMultiDictProxy,
         MultiDict,
         CIMultiDict,
-        upstr,
         istr,
     )
 except ImportError:  # pragma: no cover
@@ -39,6 +38,7 @@ except ImportError:  # pragma: no cover
         CIMultiDictProxy,
         MultiDict,
         CIMultiDict,
-        upstr,
         istr,
     )
+
+upstr = istr
