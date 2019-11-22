@@ -20,6 +20,21 @@ typedef struct pair {
     Py_hash_t  hash;      // 8
 } pair_t;
 
+/* Note about the structure size
+With 29 pairs the MultiDict object size is slightly less than 1KiB
+(1000-1008 bytes depending on Python version,
+plus extra 12 bytes for memory allocator internal structures).
+As the result the max reserved size is 1020 bytes at most.
+
+To fit into 512 bytes, the structure can contain only 13 pairs
+which is too small, e.g. https://www.python.org returns 16 headers
+(9 of them are caching proxy information though).
+
+The embedded buffer intention is to fit the vast majority of possible
+HTTP headers into the buffer without allocating an extra memory block.
+*/
+
+#define EMBEDDED_CAPACITY 29
 
 typedef struct pair_list {  // 40
     Py_ssize_t  capacity;   // 8
@@ -27,6 +42,7 @@ typedef struct pair_list {  // 40
     uint64_t  version;      // 8
     calc_identity_func calc_identity;  // 8
     pair_t *pairs;          // 8
+    pair_t buffer[EMBEDDED_CAPACITY];
 } pair_list_t;
 
 

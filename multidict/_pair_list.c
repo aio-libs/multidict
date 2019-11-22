@@ -4,7 +4,8 @@
 
 #include <Python.h>
 
-#define MIN_LIST_CAPACITY 32
+#define MIN_CAPACITY 63
+#define CAPACITY_STEP 64
 
 static PyObject * _istr_type;
 
@@ -85,23 +86,68 @@ pair_list_get(pair_list_t *list, Py_ssize_t i)
     return item;
 }
 
-static int
-pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
+
+static inline int
+pair_list_grow(pair_list_t *list)
 {
+    // Grow by one element if needed
+    Py_ssize_t new_capacity;
     pair_t *new_pairs;
-    // TODO: use more smart algo for capacity grow
-    if (new_capacity < MIN_LIST_CAPACITY) {
-        new_capacity = MIN_LIST_CAPACITY;
+
+    if (list_size < list->capacity) {
+        return 0;
     }
-    if (list->capacity == new_capacity) {
-        // No need to resize
+
+    if (list->pairs == list->buffer) {
+        new_pairs = PyMem_New(pair_t, MIN_CAPACITY);
+        memcpy(new_pairs, list->buffer, list->capacity * sizeof(pair_t));
+
+        list->pairs = new_pairs;
+        list->capacity = MIN_CAPACITY;
+        return 0;
+    } else {
+        new_capacity = list->capacity + CAPACITY_STEP;
+        new_pairs = PyMem_Resize(list->pairs, pair_t, (size_t)new_capacity);
+
+        if (NULL == new_pairs) {
+            // Resizing error
+            return -1;
+        }
+
+        list->pairs = new_pairs;
+        list->capacity = new_capacity;
+        return 0;
+    }
+}
+
+
+static inline int
+pair_list_shrink(pair_list_t *list)
+{
+    // Shrink by one element if needed.
+    // Optimization is applied to prevent jitter
+    // (grow-shrink-grow-shrink on adding-removing the single element
+    // when the buffer is full).
+    // To prevent this, the buffer is resized if the size is less than the capacity
+    // by 2*CAPACITY_STEP factor.
+    // The switch back to embedded buffer is never performed for both reasons:
+    // the code simplicity and the jitter prevention.
+
+    pair_t *new_pairs;
+    Py_ssize_t new_capacity;
+
+    if (list->capacity - list->size < 2 * CAPACITY_STEP) {
+        return 0;
+    }
+    new_capacity = list->capacity - CAPACITY_STEP;
+    if (new_capacity < MIN_CAPACITY) {
         return 0;
     }
 
     new_pairs = PyMem_Resize(list->pairs, pair_t, (size_t)new_capacity);
 
     if (NULL == new_pairs) {
-        // if not enought mem for realloc we do nothing, just return false
+        // Resizing error
         return -1;
     }
 
@@ -115,13 +161,8 @@ pair_list_resize(pair_list_t *list, Py_ssize_t new_capacity)
 static inline int
 _pair_list_init(pair_list_t *list, calc_identity_func calc_identity)
 {
-    // TODO: align size of pair to the nearest power of 2
-    list->pairs = PyMem_New(pair_t, MIN_LIST_CAPACITY);
-    if (list->pairs == NULL) {
-        return -1;
-    }
-
-    list->capacity = MIN_LIST_CAPACITY;
+    list->pairs = list->buffer;
+    list->capacity = EMBEDDED_CAPACITY;
     list->size = 0;
     list->version = NEXT_VERSION();
     list->calc_identity = calc_identity;
@@ -157,7 +198,7 @@ pair_list_dealloc(pair_list_t *list)
     }
 
     list->size = 0;
-    if (list->pairs != NULL) {
+    if (list->pairs != list->buffer) {
         PyMem_Del(list->pairs);
         list->pairs = NULL;
     }
@@ -180,14 +221,11 @@ _pair_list_add_with_hash(pair_list_t *list,
 {
     pair_t *pair;
 
-    if (list->capacity < list->size + 1) {
-        if (pair_list_resize(list, list->capacity + MIN_LIST_CAPACITY) < 0) {
-            return -1;
-        }
+    if (pair_list_grow(list) < 0) {
+        return -1;
     }
 
     pair = pair_list_get(list, list->size);
-    list->size += 1;
 
     Py_INCREF(identity);
     pair->identity = identity;
@@ -201,6 +239,7 @@ _pair_list_add_with_hash(pair_list_t *list,
     pair->hash = hash;
 
     list->version = NEXT_VERSION();
+    list->size += 1;
 
     return 0;
 }
@@ -258,11 +297,7 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
             (void *)pair_list_get(list, pos + 1),
             sizeof(pair_t) * (size_t)tail);
 
-    if (list->capacity - list->size > MIN_LIST_CAPACITY) {
-        return pair_list_resize(list, list->capacity - MIN_LIST_CAPACITY);
-    }
-
-    return 0;
+    return pair_list_shrink(list);
 }
 
 
