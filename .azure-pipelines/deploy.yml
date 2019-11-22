@@ -39,9 +39,6 @@ stages:
         parameters:
           steps:
             - script: |
-                make cythonize
-              displayName: 'Cythonize'
-            - script: |
                 python setup.py sdist
               displayName: 'Make tarball'
 
@@ -80,7 +77,6 @@ stages:
 
       - script: |
           source .build-venv/bin/activate
-          make cythonize
           python setup.py bdist_wheel
         displayName: 'Make wheel'
 
@@ -152,7 +148,6 @@ stages:
           architecture: '$(python.architecture)'
           steps:
             - script: |
-                make cythonize
                 python setup.py bdist_wheel
               displayName: 'Make wheel'
 

@@ -47,7 +47,7 @@ insensitive, e.g.::
 
 *Keys* should be either :class:`str` or :class:`istr` instance.
 
-The library has optional Cython_ optimization for sake of speed.
+The library has optional C Extensions for sake of speed.
 
 Library Installation
 --------------------
@@ -104,4 +104,3 @@ Indices and tables
 * :ref:`search`
 
 .. _GitHub: https://github.com/aio-libs/multidict
-.. _Cython: http://cython.org/

@@ -7,16 +7,7 @@ SRC = multidict tests setup.py
 
 all: test
 
-.install-cython:
-	pip install -r requirements/cython.txt
-	touch .install-cython
-
-multidict/%.c: multidict/%.pyx
-	cython -3 -o $@ $< -I multidict
-
-cythonize: .install-cython $(PYXS:.pyx=.c)
-
-.install-deps: cythonize $(shell find requirements -type f)
+.install-deps: $(shell find requirements -type f)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 

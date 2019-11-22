@@ -64,17 +64,13 @@ insensitive, e.g.::
 
 *Keys* should be ``str`` or ``istr`` instances.
 
-The library has optional Cython_ optimization for sake of speed.
+The library has optional C Extensions for sake of speed.
 
 
 License
 -------
 
 Apache 2
-
-
-.. _aiohttp: https://github.com/KeepSafe/aiohttp
-.. _Cython: http://cython.org/
 
 
 Changelog
