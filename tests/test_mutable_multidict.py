@@ -232,6 +232,17 @@ class TestMutableMultiDict:
         with pytest.raises(KeyError, match="key"):
             d.popall("key")
 
+    def test_large_multidict_resizing(self, cls):
+        SIZE = 1024
+        d = cls()
+        for i in range(SIZE):
+            d["key" + str(i)] = i
+
+        for i in range(SIZE - 1):
+            del d["key" + str(i)]
+
+        assert {"key" + str(SIZE - 1): SIZE - 1} == d
+
 
 class TestCIMutableMultiDict:
     @pytest.fixture
