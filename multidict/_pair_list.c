@@ -197,10 +197,20 @@ pair_list_dealloc(pair_list_t *list)
         Py_XDECREF(pair->value);
     }
 
+    /*
+    Strictly speaking, resetting size and capacity and
+    assigning pairs to buffer is not necessary.
+    Do it to consistency and idemotency.
+    The cleanup doesn't hurt performance.
+    !!!
+    !!! The buffer deletion is crucial though.
+    !!!
+    */
     list->size = 0;
     if (list->pairs != list->buffer) {
         PyMem_Del(list->pairs);
-        list->pairs = NULL;
+        list->pairs = list->buffer;
+        list->capacity = EMBEDDED_CAPACITY;
     }
 }
 
