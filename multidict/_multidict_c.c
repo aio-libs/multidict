@@ -922,6 +922,11 @@ static PyMethodDef multidict_methods[] = {
     }   /* sentinel */
 };
 
+
+PyDoc_STRVAR(MultDict_doc,
+"Dictionary with the support for duplicate keys.");
+
+
 static PyTypeObject multidict_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict.MultiDict",                /* tp_name */
@@ -945,7 +950,7 @@ static PyTypeObject multidict_type = {
     Py_TPFLAGS_DEFAULT
         | Py_TPFLAGS_BASETYPE
         | Py_TPFLAGS_HAVE_GC,                        /* tp_flags */
-    0,                                               /* tp_doc */
+    MultDict_doc,                                    /* tp_doc */
     (traverseproc)multidict_tp_traverse,             /* tp_traverse */
     (inquiry)multidict_tp_clear,                     /* tp_clear */
     (richcmpfunc)multidict_tp_richcompare,           /* tp_richcompare */
@@ -1001,6 +1006,10 @@ static PyMethodDef cimultidict_methods[] = {
     }   /* sentinel */
 };
 
+PyDoc_STRVAR(CIMultDict_doc,
+"Dictionary with the support for duplicate case-insensitive keys.");
+
+
 static PyTypeObject cimultidict_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict.CIMultiDict",              /* tp_name */
@@ -1022,7 +1031,7 @@ static PyTypeObject cimultidict_type = {
     0,                                               /* tp_setattro */
     0,                                               /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
-    0,                                               /* tp_doc */
+    CIMultDict_doc,                                  /* tp_doc */
     (traverseproc)multidict_tp_traverse,             /* tp_traverse */
     (inquiry)multidict_tp_clear,                     /* tp_clear */
     0,                                               /* tp_richcompare */
@@ -1285,6 +1294,11 @@ static PyMethodDef multidict_proxy_methods[] = {
     }   /* sentinel */
 };
 
+
+PyDoc_STRVAR(MultDictProxy_doc,
+"Read-only proxy for MultiDict instance.");
+
+
 static PyTypeObject multidict_proxy_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict.MultiDictProxy",           /* tp_name */
@@ -1308,7 +1322,7 @@ static PyTypeObject multidict_proxy_type = {
     Py_TPFLAGS_DEFAULT
         | Py_TPFLAGS_BASETYPE
         | Py_TPFLAGS_HAVE_GC,                        /* tp_flags */
-    0,                                               /* tp_doc */
+    MultDictProxy_doc,                               /* tp_doc */
     (traverseproc)multidict_proxy_tp_traverse,       /* tp_traverse */
     (inquiry)multidict_proxy_tp_clear,               /* tp_clear */
     (richcmpfunc)multidict_proxy_tp_richcompare,     /* tp_richcompare */
@@ -1369,6 +1383,11 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     return 0;
 }
 
+
+PyDoc_STRVAR(CIMultDictProxy_doc,
+"Read-only proxy for CIMultiDict instance.");
+
+
 static PyTypeObject cimultidict_proxy_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict.CIMultiDictProxy",         /* tp_name */
@@ -1390,7 +1409,7 @@ static PyTypeObject cimultidict_proxy_type = {
     0,                                               /* tp_setattro */
     0,                                               /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
-    0,                                               /* tp_doc */
+    CIMultDictProxy_doc,                             /* tp_doc */
     (traverseproc)multidict_proxy_tp_traverse,       /* tp_traverse */
     (inquiry)multidict_proxy_tp_clear,               /* tp_clear */
     (richcmpfunc)multidict_proxy_tp_richcompare,     /* tp_richcompare */

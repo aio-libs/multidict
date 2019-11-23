@@ -126,6 +126,8 @@ class _Base:
 
 
 class MultiDictProxy(_Base, MultiMapping):
+    """Read-only proxy for MultiDict instance."""
+
     def __init__(self, arg):
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
@@ -144,6 +146,8 @@ class MultiDictProxy(_Base, MultiMapping):
 
 
 class CIMultiDictProxy(MultiDictProxy):
+    """Read-only proxy for CIMultiDict instance."""
+
     def __init__(self, arg):
         if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
             raise TypeError(
@@ -162,6 +166,8 @@ class CIMultiDictProxy(MultiDictProxy):
 
 
 class MultiDict(_Base, MutableMultiMapping):
+    """Dictionary with the support for duplicate keys."""
+
     def __init__(self, *args, **kwargs):
         self._impl = _Impl()
 
@@ -392,6 +398,8 @@ class MultiDict(_Base, MutableMultiMapping):
 
 
 class CIMultiDict(MultiDict):
+    """Dictionary with the support for duplicate case-insensitive keys."""
+
     def _title(self, key):
         return key.title()
 
