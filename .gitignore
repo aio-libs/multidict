@@ -68,8 +68,6 @@ target/
 .idea
 
 multidict/_multidict.html
-multidict/_multidict.c
-multidict/_istr.c
 multidict/_istr.html
 
 .mypy_cache
