@@ -1029,7 +1029,7 @@ static PyTypeObject cimultidict_type = {
     (traverseproc)multidict_tp_traverse,             /* tp_traverse */
     (inquiry)multidict_tp_clear,                     /* tp_clear */
     0,                                               /* tp_richcompare */
-    offsetof(DictProxyObject, weaklist),             /* tp_weaklistoffset */
+    offsetof(MultiDictObject, weaklist),             /* tp_weaklistoffset */
     0,                                               /* tp_iter */
     0,                                               /* tp_iternext */
     cimultidict_methods,                             /* tp_methods */

@@ -1,5 +1,6 @@
 import operator
 import sys
+import weakref
 from functools import reduce
 
 import pytest
@@ -347,6 +348,19 @@ class TestMultiDict(BaseMultiDictTest):
         d = cls([("key", "value1")], key="value2")
         assert repr(d.values()) == "_ValuesView('value1', 'value2')"
 
+    def test_weakref(self, cls):
+        called = False
+
+        def cb(wr):
+            nonlocal called
+            called = True
+
+        d = cls()
+        wr = weakref.ref(d, cb)
+        del d
+        assert called
+        del wr
+
 
 class TestCIMultiDict(BaseMultiDictTest):
     @pytest.fixture(params=["CIMultiDict", ("CIMultiDict", "CIMultiDictProxy")])
@@ -401,3 +415,16 @@ class TestCIMultiDict(BaseMultiDictTest):
     def test_values__repr__(self, cls):
         d = cls([("KEY", "value1")], key="value2")
         assert repr(d.values()) == "_ValuesView('value1', 'value2')"
+
+    def test_weakref(self, cls):
+        called = False
+
+        def cb(wr):
+            nonlocal called
+            called = True
+
+        d = cls()
+        wr = weakref.ref(d, cb)
+        del d
+        assert called
+        del wr
