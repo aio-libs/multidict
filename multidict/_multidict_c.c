@@ -1200,7 +1200,7 @@ multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
     if (self->weaklist != NULL) {
         PyObject_ClearWeakRefs((PyObject *)self);
     };
-    Py_DECREF(self->md);
+    Py_XDECREF(self->md);
     PyObject_GC_Del(self);
 }
 
