@@ -100,7 +100,7 @@ pair_list_grow(pair_list_t *list)
 
     if (list->pairs == list->buffer) {
         new_pairs = PyMem_New(pair_t, MIN_CAPACITY);
-        memcpy(new_pairs, list->buffer, list->capacity * sizeof(pair_t));
+        memcpy(new_pairs, list->buffer, (size_t)list->capacity * sizeof(pair_t));
 
         list->pairs = new_pairs;
         list->capacity = MIN_CAPACITY;

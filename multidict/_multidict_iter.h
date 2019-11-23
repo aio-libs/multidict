@@ -6,10 +6,11 @@ extern "C" {
 #endif
 
 #include "Python.h"
+#include "_multidict.h"
 
-PyObject *multidict_items_iter_new(PyObject *impl);
-PyObject *multidict_keys_iter_new(PyObject *impl);
-PyObject *multidict_values_iter_new(PyObject *impl);
+PyObject *multidict_items_iter_new(MultiDictObject *impl);
+PyObject *multidict_keys_iter_new(MultiDictObject *impl);
+PyObject *multidict_values_iter_new(MultiDictObject *impl);
 
 int multidict_iter_init(void);
 
