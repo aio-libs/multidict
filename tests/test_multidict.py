@@ -1,3 +1,4 @@
+import gc
 import operator
 import sys
 import weakref
@@ -295,6 +296,20 @@ class BaseMultiDictTest:
 
             assert sys.exc_info()[1] == e
 
+    def test_weakref(self, cls):
+        called = False
+
+        def cb(wr):
+            nonlocal called
+            called = True
+
+        d = cls()
+        wr = weakref.ref(d, cb)
+        del d
+        gc.collect()
+        assert called
+        del wr
+
 
 class TestMultiDict(BaseMultiDictTest):
     @pytest.fixture(params=["MultiDict", ("MultiDict", "MultiDictProxy")])
@@ -347,19 +362,6 @@ class TestMultiDict(BaseMultiDictTest):
     def test_values__repr__(self, cls):
         d = cls([("key", "value1")], key="value2")
         assert repr(d.values()) == "_ValuesView('value1', 'value2')"
-
-    def test_weakref(self, cls):
-        called = False
-
-        def cb(wr):
-            nonlocal called
-            called = True
-
-        d = cls()
-        wr = weakref.ref(d, cb)
-        del d
-        assert called
-        del wr
 
 
 class TestCIMultiDict(BaseMultiDictTest):
@@ -415,16 +417,3 @@ class TestCIMultiDict(BaseMultiDictTest):
     def test_values__repr__(self, cls):
         d = cls([("KEY", "value1")], key="value2")
         assert repr(d.values()) == "_ValuesView('value1', 'value2')"
-
-    def test_weakref(self, cls):
-        called = False
-
-        def cb(wr):
-            nonlocal called
-            called = True
-
-        d = cls()
-        wr = weakref.ref(d, cb)
-        del d
-        assert called
-        del wr
