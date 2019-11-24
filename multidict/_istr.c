@@ -82,42 +82,12 @@ static PyTypeObject istr_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "multidict._istr.istr",
     sizeof(istrobject),
-    0,
-    (destructor)istr_dealloc,                   /* tp_dealloc */
-    0,                                          /* tp_vectorcall_offset */
-    0,                                          /* tp_getattr */
-    0,                                          /* tp_setattr */
-    0,                                          /* tp_reserved */
-    0,                                          /* tp_repr */
-    0,                                          /* tp_as_number */
-    0,                                          /* tp_as_sequence */
-    0,                                          /* tp_as_mapping */
-    0,                                          /* tp_hash */
-    0,                                          /* tp_call */
-    0,                                          /* tp_str */
-    0,                                          /* tp_getattro */
-    0,                                          /* tp_setattro */
-    0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_UNICODE_SUBCLASS,
-                                                /* tp_flags */
-    0,                                          /* tp_doc */
-    0,                                          /* tp_traverse */
-    0,                                          /* tp_clear */
-    0,                                          /* tp_richcompare */
-    0,                                          /* tp_weaklistoffset */
-    0,                                          /* tp_iter */
-    0,                                          /* tp_iternext */
-    0,                                          /* tp_methods */
-    0,                                          /* tp_members */
-    0,                                          /* tp_getset */
-    DEFERRED_ADDRESS(&PyUnicode_Type),          /* tp_base */
-    0,                                          /* tp_dict */
-    0,                                          /* tp_descr_get */
-    0,                                          /* tp_descr_set */
-    0,                                          /* tp_dictoffset */
-    0,                                          /* tp_init */
-    0,                                          /* tp_alloc */
-    (newfunc)istr_new,                          /* tp_new */
+    .tp_dealloc = (destructor)istr_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT
+              | Py_TPFLAGS_BASETYPE
+              | Py_TPFLAGS_UNICODE_SUBCLASS,
+    .tp_base = DEFERRED_ADDRESS(&PyUnicode_Type),
+    .tp_new = (newfunc)istr_new,
 };
 
 
@@ -134,11 +104,7 @@ static struct PyModuleDef _istrmodule = {
     "multidict._istr",
     istr__doc__,
     sizeof(ModData),
-    NULL,  /* m_methods */
-    NULL,  /* m_reload */
-    NULL,  /* m_traverse */
-    mod_clear,  /* m_clear */
-    NULL   /* m_free */
+    .m_clear = mod_clear,
 };
 
 

@@ -806,20 +806,13 @@ multidict_class_getitem(PyObject *self, PyObject *args)
 }
 
 static PySequenceMethods multidict_sequence = {
-    0,                                  /* sq_length */
-    0,                                  /* sq_concat */
-    0,                                  /* sq_repeat */
-    0,                                  /* sq_item */
-    0,                                  /* sq_slice */
-    0,                                  /* sq_ass_item */
-    0,                                  /* sq_ass_slice */
-    (objobjproc)multidict_sq_contains,  /* sq_contains */
+    .sq_contains = (objobjproc)multidict_sq_contains,
 };
 
 static PyMappingMethods multidict_mapping = {
-    (lenfunc)multidict_mp_len,                /* mp_length */
-    (binaryfunc)multidict_mp_subscript,       /* mp_subscript */
-    (objobjargproc)multidict_mp_as_subscript  /* mp_ass_subscript */
+    .mp_length = (lenfunc)multidict_mp_len,
+    .mp_subscript = (binaryfunc)multidict_mp_subscript,
+    .mp_ass_subscript = (objobjargproc)multidict_mp_as_subscript,
 };
 
 static PyMethodDef multidict_methods[] = {
@@ -946,43 +939,21 @@ static PyTypeObject multidict_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict.MultiDict",                /* tp_name */
     sizeof(MultiDictObject),                         /* tp_basicsize */
-    0,                                               /* tp_itemsize */
-    (destructor)multidict_tp_dealloc,                /* tp_dealloc */
-    0,                                               /* tp_vectorcall_offset */
-    0,                                               /* tp_getattr */
-    0,                                               /* tp_setattr */
-    0,                                               /* tp_reserved */
-    (reprfunc)multidict_repr,                        /* tp_repr */
-    0,                                               /* tp_as_number */
-    &multidict_sequence,                             /* tp_as_sequence */
-    &multidict_mapping,                              /* tp_as_mapping */
-    0,                                               /* tp_hash */
-    0,                                               /* tp_call */
-    0,                                               /* tp_str */
-    0,                                               /* tp_getattro */
-    0,                                               /* tp_setattro */
-    0,                                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT
-        | Py_TPFLAGS_BASETYPE
-        | Py_TPFLAGS_HAVE_GC,                        /* tp_flags */
-    MultDict_doc,                                    /* tp_doc */
-    (traverseproc)multidict_tp_traverse,             /* tp_traverse */
-    (inquiry)multidict_tp_clear,                     /* tp_clear */
-    (richcmpfunc)multidict_tp_richcompare,           /* tp_richcompare */
-    offsetof(MultiDictObject, weaklist),             /* tp_weaklistoffset */
-    (getiterfunc)multidict_tp_iter,                  /* tp_iter */
-    0,                                               /* tp_iternext */
-    multidict_methods,                               /* tp_methods */
-    0,                                               /* tp_members */
-    0,                                               /* tp_getset */
-    0,                                               /* tp_base */
-    0,                                               /* tp_dict */
-    0,                                               /* tp_descr_get */
-    0,                                               /* tp_descr_set */
-    0,                                               /* tp_dictoffset */
-    (initproc)multidict_tp_init,                     /* tp_init */
-    PyType_GenericAlloc,                             /* tp_alloc */
-    PyType_GenericNew,                               /* tp_new */
+    .tp_dealloc = (destructor)multidict_tp_dealloc,
+    .tp_repr = (reprfunc)multidict_repr,
+    .tp_as_sequence = &multidict_sequence,
+    .tp_as_mapping = &multidict_mapping,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC,
+    .tp_doc = MultDict_doc,
+    .tp_traverse = (traverseproc)multidict_tp_traverse,
+    .tp_clear = (inquiry)multidict_tp_clear,
+    .tp_richcompare = (richcmpfunc)multidict_tp_richcompare,
+    .tp_weaklistoffset = offsetof(MultiDictObject, weaklist),
+    .tp_iter = (getiterfunc)multidict_tp_iter,
+    .tp_methods = multidict_methods,
+    .tp_init = (initproc)multidict_tp_init,
+    .tp_alloc = PyType_GenericAlloc,
+    .tp_new = PyType_GenericNew,
 };
 
 /******************** CIMultiDict ********************/
@@ -1029,41 +1000,17 @@ static PyTypeObject cimultidict_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict.CIMultiDict",              /* tp_name */
     sizeof(MultiDictObject),                         /* tp_basicsize */
-    0,                                               /* tp_itemsize */
-    (destructor)multidict_tp_dealloc,                /* tp_dealloc */
-    0,                                               /* tp_vectorcall_offset */
-    0,                                               /* tp_getattr */
-    0,                                               /* tp_setattr */
-    0,                                               /* tp_reserved */
-    0,                                               /* tp_repr */
-    0,                                               /* tp_as_number */
-    0,                                               /* tp_as_sequence */
-    0,                                               /* tp_as_mapping */
-    0,                                               /* tp_hash */
-    0,                                               /* tp_call */
-    0,                                               /* tp_str */
-    0,                                               /* tp_getattro */
-    0,                                               /* tp_setattro */
-    0,                                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
-    CIMultDict_doc,                                  /* tp_doc */
-    (traverseproc)multidict_tp_traverse,             /* tp_traverse */
-    (inquiry)multidict_tp_clear,                     /* tp_clear */
-    0,                                               /* tp_richcompare */
-    offsetof(MultiDictObject, weaklist),             /* tp_weaklistoffset */
-    0,                                               /* tp_iter */
-    0,                                               /* tp_iternext */
-    cimultidict_methods,                             /* tp_methods */
-    0,                                               /* tp_members */
-    0,                                               /* tp_getset */
-    &multidict_type,                                 /* tp_base */
-    0,                                               /* tp_dict */
-    0,                                               /* tp_descr_get */
-    0,                                               /* tp_descr_set */
-    0,                                               /* tp_dictoffset */
-    (initproc)cimultidict_tp_init,                   /* tp_init */
-    PyType_GenericAlloc,                             /* tp_alloc */
-    PyType_GenericNew,                               /* tp_new */
+    .tp_dealloc = (destructor)multidict_tp_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_doc = CIMultDict_doc,
+    .tp_traverse = (traverseproc)multidict_tp_traverse,
+    .tp_clear = (inquiry)multidict_tp_clear,
+    .tp_weaklistoffset = offsetof(MultiDictObject, weaklist),
+    .tp_methods = cimultidict_methods,
+    .tp_base = &multidict_type,
+    .tp_init = (initproc)cimultidict_tp_init,
+    .tp_alloc = PyType_GenericAlloc,
+    .tp_new = PyType_GenericNew,
 };
 
 /******************** MultiDictProxy ********************/
@@ -1241,20 +1188,12 @@ multidict_proxy_tp_clear(MultiDictProxyObject *self)
 }
 
 static PySequenceMethods multidict_proxy_sequence = {
-    0,                                        /* sq_length */
-    0,                                        /* sq_concat */
-    0,                                        /* sq_repeat */
-    0,                                        /* sq_item */
-    0,                                        /* sq_slice */
-    0,                                        /* sq_ass_item */
-    0,                                        /* sq_ass_slice */
-    (objobjproc)multidict_proxy_sq_contains,  /* sq_contains */
+    .sq_contains = (objobjproc)multidict_proxy_sq_contains,
 };
 
 static PyMappingMethods multidict_proxy_mapping = {
-    (lenfunc)multidict_proxy_mp_len,          /* mp_length */
-    (binaryfunc)multidict_proxy_mp_subscript, /* mp_subscript */
-    0                                         /* mp_ass_subscript */
+    .mp_length = (lenfunc)multidict_proxy_mp_len,
+    .mp_subscript = (binaryfunc)multidict_proxy_mp_subscript,
 };
 
 static PyMethodDef multidict_proxy_methods[] = {
@@ -1327,43 +1266,21 @@ static PyTypeObject multidict_proxy_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict.MultiDictProxy",           /* tp_name */
     sizeof(MultiDictProxyObject),                    /* tp_basicsize */
-    0,                                               /* tp_itemsize */
-    (destructor)multidict_proxy_tp_dealloc,          /* tp_dealloc */
-    0,                                               /* tp_vectorcall_offset */
-    0,                                               /* tp_getattr */
-    0,                                               /* tp_setattr */
-    0,                                               /* tp_reserved */
-    (reprfunc)multidict_repr,                        /* tp_repr */
-    0,                                               /* tp_as_number */
-    &multidict_proxy_sequence,                       /* tp_as_sequence */
-    &multidict_proxy_mapping,                        /* tp_as_mapping */
-    0,                                               /* tp_hash */
-    0,                                               /* tp_call */
-    0,                                               /* tp_str */
-    0,                                               /* tp_getattro */
-    0,                                               /* tp_setattro */
-    0,                                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT
-        | Py_TPFLAGS_BASETYPE
-        | Py_TPFLAGS_HAVE_GC,                        /* tp_flags */
-    MultDictProxy_doc,                               /* tp_doc */
-    (traverseproc)multidict_proxy_tp_traverse,       /* tp_traverse */
-    (inquiry)multidict_proxy_tp_clear,               /* tp_clear */
-    (richcmpfunc)multidict_proxy_tp_richcompare,     /* tp_richcompare */
-    offsetof(MultiDictProxyObject, weaklist),        /* tp_weaklistoffset */
-    (getiterfunc)multidict_proxy_tp_iter,            /* tp_iter */
-    0,                                               /* tp_iternext */
-    multidict_proxy_methods,                         /* tp_methods */
-    0,                                               /* tp_members */
-    0,                                               /* tp_getset */
-    0,                                               /* tp_base */
-    0,                                               /* tp_dict */
-    0,                                               /* tp_descr_get */
-    0,                                               /* tp_descr_set */
-    0,                                               /* tp_dictoffset */
-    (initproc)multidict_proxy_tp_init,               /* tp_init */
-    PyType_GenericAlloc,                             /* tp_alloc */
-    PyType_GenericNew,                               /* tp_new */
+    .tp_dealloc = (destructor)multidict_proxy_tp_dealloc,
+    .tp_repr = (reprfunc)multidict_repr,
+    .tp_as_sequence = &multidict_proxy_sequence,
+    .tp_as_mapping = &multidict_proxy_mapping,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC,
+    .tp_doc = MultDictProxy_doc,
+    .tp_traverse = (traverseproc)multidict_proxy_tp_traverse,
+    .tp_clear = (inquiry)multidict_proxy_tp_clear,
+    .tp_richcompare = (richcmpfunc)multidict_proxy_tp_richcompare,
+    .tp_weaklistoffset = offsetof(MultiDictProxyObject, weaklist),
+    .tp_iter = (getiterfunc)multidict_proxy_tp_iter,
+    .tp_methods = multidict_proxy_methods,
+    .tp_init = (initproc)multidict_proxy_tp_init,
+    .tp_alloc = PyType_GenericAlloc,
+    .tp_new = PyType_GenericNew,
 };
 
 /******************** CIMultiDictProxy ********************/
@@ -1416,41 +1333,18 @@ static PyTypeObject cimultidict_proxy_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "multidict._multidict.CIMultiDictProxy",         /* tp_name */
     sizeof(MultiDictProxyObject),                    /* tp_basicsize */
-    0,                                               /* tp_itemsize */
-    (destructor)multidict_proxy_tp_dealloc,          /* tp_dealloc */
-    0,                                               /* tp_vectorcall_offset */
-    0,                                               /* tp_getattr */
-    0,                                               /* tp_setattr */
-    0,                                               /* tp_reserved */
-    0,                                               /* tp_repr */
-    0,                                               /* tp_as_number */
-    0,                                               /* tp_as_sequence */
-    0,                                               /* tp_as_mapping */
-    0,                                               /* tp_hash */
-    0,                                               /* tp_call */
-    0,                                               /* tp_str */
-    0,                                               /* tp_getattro */
-    0,                                               /* tp_setattro */
-    0,                                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
-    CIMultDictProxy_doc,                             /* tp_doc */
-    (traverseproc)multidict_proxy_tp_traverse,       /* tp_traverse */
-    (inquiry)multidict_proxy_tp_clear,               /* tp_clear */
-    (richcmpfunc)multidict_proxy_tp_richcompare,     /* tp_richcompare */
-    offsetof(MultiDictProxyObject, weaklist),        /* tp_weaklistoffset */
-    0,                                               /* tp_iter */
-    0,                                               /* tp_iternext */
-    multidict_proxy_methods,                         /* tp_methods */
-    0,                                               /* tp_members */
-    0,                                               /* tp_getset */
-    &multidict_proxy_type,                           /* tp_base */
-    0,                                               /* tp_dict */
-    0,                                               /* tp_descr_get */
-    0,                                               /* tp_descr_set */
-    0,                                               /* tp_dictoffset */
-    (initproc)cimultidict_proxy_tp_init,             /* tp_init */
-    PyType_GenericAlloc,                             /* tp_alloc */
-    PyType_GenericNew,                               /* tp_new */
+    .tp_dealloc = (destructor)multidict_proxy_tp_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_doc = CIMultDictProxy_doc,
+    .tp_traverse = (traverseproc)multidict_proxy_tp_traverse,
+    .tp_clear = (inquiry)multidict_proxy_tp_clear,
+    .tp_richcompare = (richcmpfunc)multidict_proxy_tp_richcompare,
+    .tp_weaklistoffset = offsetof(MultiDictProxyObject, weaklist),
+    .tp_methods = multidict_proxy_methods,
+    .tp_base = &multidict_proxy_type,
+    .tp_init = (initproc)cimultidict_proxy_tp_init,
+    .tp_alloc = PyType_GenericAlloc,
+    .tp_new = PyType_GenericNew,
 };
 
 /******************** Other functions ********************/
@@ -1496,13 +1390,9 @@ static PyMethodDef multidict_module_methods[] = {
 static PyModuleDef multidict_module = {
     PyModuleDef_HEAD_INIT,      /* m_base */
     "_multidict",               /* m_name */
-    NULL,                       /* m_doc */
-    -1,                         /* m_size */
-    multidict_module_methods,   /* m_methods */
-    NULL,                       /* m_slots */
-    NULL,                       /* m_traverse */
-    NULL,                       /* m_clear */
-    (freefunc)module_free       /* m_free */
+    .m_size = -1,
+    .m_methods = multidict_module_methods,
+    .m_free = (freefunc)module_free,
 };
 
 PyMODINIT_FUNC
