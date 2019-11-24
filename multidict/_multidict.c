@@ -589,7 +589,7 @@ multidict_tp_dealloc(MultiDictObject *self)
         PyObject_ClearWeakRefs((PyObject *)self);
     };
     pair_list_dealloc(&self->pairs);
-    PyObject_GC_Del(self);
+    Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_SAFE_END(self);
 }
 
@@ -954,6 +954,7 @@ static PyTypeObject multidict_type = {
     .tp_init = (initproc)multidict_tp_init,
     .tp_alloc = PyType_GenericAlloc,
     .tp_new = PyType_GenericNew,
+    .tp_free = PyObject_GC_Del,
 };
 
 /******************** CIMultiDict ********************/
@@ -1011,6 +1012,7 @@ static PyTypeObject cimultidict_type = {
     .tp_init = (initproc)cimultidict_tp_init,
     .tp_alloc = PyType_GenericAlloc,
     .tp_new = PyType_GenericNew,
+    .tp_free = PyObject_GC_Del,
 };
 
 /******************** MultiDictProxy ********************/
@@ -1169,7 +1171,7 @@ multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
         PyObject_ClearWeakRefs((PyObject *)self);
     };
     Py_XDECREF(self->md);
-    PyObject_GC_Del(self);
+    Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static int
@@ -1281,6 +1283,7 @@ static PyTypeObject multidict_proxy_type = {
     .tp_init = (initproc)multidict_proxy_tp_init,
     .tp_alloc = PyType_GenericAlloc,
     .tp_new = PyType_GenericNew,
+    .tp_free = PyObject_GC_Del,
 };
 
 /******************** CIMultiDictProxy ********************/
@@ -1345,6 +1348,7 @@ static PyTypeObject cimultidict_proxy_type = {
     .tp_init = (initproc)cimultidict_proxy_tp_init,
     .tp_alloc = PyType_GenericAlloc,
     .tp_new = PyType_GenericNew,
+    .tp_free = PyObject_GC_Del,
 };
 
 /******************** Other functions ********************/

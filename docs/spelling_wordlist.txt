@@ -18,6 +18,7 @@ css
 ctor
 Ctrl
 cython
+deallocation
 dict
 docstrings
 eof

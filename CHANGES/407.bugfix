@@ -1,0 +1,1 @@
+Explicitly call ``tp_free`` slot on deallocation.
