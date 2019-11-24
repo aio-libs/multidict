@@ -38,7 +38,7 @@ extensions = [
     Extension(
         "multidict._multidict",
         [
-            "multidict/_multidict_c.c",
+            "multidict/_multidict.c",
             "multidict/_pair_list.c",
             "multidict/_multidict_iter.c",
             "multidict/_multidict_views.c",

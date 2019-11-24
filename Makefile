@@ -52,7 +52,7 @@ check_changes:
 	./tools/check_changes.py
 
 .develop: .install-deps $(shell find multidict -type f) .flake check_changes mypy
-	# pip install -e .
+	pip install -e .
 	@touch .develop
 
 test: .develop
