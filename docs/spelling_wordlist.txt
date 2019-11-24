@@ -19,6 +19,7 @@ ctor
 Ctrl
 cython
 dict
+docstrings
 eof
 fallback
 fastpath
