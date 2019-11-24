@@ -1,5 +1,7 @@
+import gc
 import operator
 import sys
+import weakref
 from functools import reduce
 
 import pytest
@@ -303,6 +305,20 @@ class BaseMultiDictTest:
             op(d.keys(), other)
 
             assert sys.exc_info()[1] == e
+
+    def test_weakref(self, cls):
+        called = False
+
+        def cb(wr):
+            nonlocal called
+            called = True
+
+        d = cls()
+        wr = weakref.ref(d, cb)
+        del d
+        gc.collect()
+        assert called
+        del wr
 
 
 class TestMultiDict(BaseMultiDictTest):

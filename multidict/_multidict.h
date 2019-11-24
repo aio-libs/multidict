@@ -10,11 +10,13 @@ extern "C" {
 
 typedef struct {  // 16 or 24 for GC prefix
     PyObject_HEAD  // 16
+    PyObject *weaklist;
     pair_list_t pairs;
 } MultiDictObject;
 
 typedef struct {
     PyObject_HEAD
+    PyObject *weaklist;
     MultiDictObject *md;
 } MultiDictProxyObject;
 

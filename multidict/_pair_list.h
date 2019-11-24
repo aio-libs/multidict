@@ -34,7 +34,11 @@ The embedded buffer intention is to fit the vast majority of possible
 HTTP headers into the buffer without allocating an extra memory block.
 */
 
+#if (PY_VERSION_HEX < 0x03080000)
+#define EMBEDDED_CAPACITY 28
+#else
 #define EMBEDDED_CAPACITY 29
+#endif
 
 typedef struct pair_list {  // 40
     Py_ssize_t  capacity;   // 8

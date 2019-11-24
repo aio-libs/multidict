@@ -585,6 +585,9 @@ multidict_tp_dealloc(MultiDictObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_SAFE_BEGIN(self);
+    if (self->weaklist != NULL) {
+        PyObject_ClearWeakRefs((PyObject *)self);
+    };
     pair_list_dealloc(&self->pairs);
     PyObject_GC_Del(self);
     Py_TRASHCAN_SAFE_END(self);
@@ -966,7 +969,7 @@ static PyTypeObject multidict_type = {
     (traverseproc)multidict_tp_traverse,             /* tp_traverse */
     (inquiry)multidict_tp_clear,                     /* tp_clear */
     (richcmpfunc)multidict_tp_richcompare,           /* tp_richcompare */
-    0,                                               /* tp_weaklistoffset */
+    offsetof(MultiDictObject, weaklist),             /* tp_weaklistoffset */
     (getiterfunc)multidict_tp_iter,                  /* tp_iter */
     0,                                               /* tp_iternext */
     multidict_methods,                               /* tp_methods */
@@ -1047,7 +1050,7 @@ static PyTypeObject cimultidict_type = {
     (traverseproc)multidict_tp_traverse,             /* tp_traverse */
     (inquiry)multidict_tp_clear,                     /* tp_clear */
     0,                                               /* tp_richcompare */
-    0,                                               /* tp_weaklistoffset */
+    offsetof(MultiDictObject, weaklist),             /* tp_weaklistoffset */
     0,                                               /* tp_iter */
     0,                                               /* tp_iternext */
     cimultidict_methods,                             /* tp_methods */
@@ -1215,6 +1218,9 @@ static void
 multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
 {
     PyObject_GC_UnTrack(self);
+    if (self->weaklist != NULL) {
+        PyObject_ClearWeakRefs((PyObject *)self);
+    };
     Py_XDECREF(self->md);
     PyObject_GC_Del(self);
 }
@@ -1344,7 +1350,7 @@ static PyTypeObject multidict_proxy_type = {
     (traverseproc)multidict_proxy_tp_traverse,       /* tp_traverse */
     (inquiry)multidict_proxy_tp_clear,               /* tp_clear */
     (richcmpfunc)multidict_proxy_tp_richcompare,     /* tp_richcompare */
-    0,                                               /* tp_weaklistoffset */
+    offsetof(MultiDictProxyObject, weaklist),        /* tp_weaklistoffset */
     (getiterfunc)multidict_proxy_tp_iter,            /* tp_iter */
     0,                                               /* tp_iternext */
     multidict_proxy_methods,                         /* tp_methods */
@@ -1431,7 +1437,7 @@ static PyTypeObject cimultidict_proxy_type = {
     (traverseproc)multidict_proxy_tp_traverse,       /* tp_traverse */
     (inquiry)multidict_proxy_tp_clear,               /* tp_clear */
     (richcmpfunc)multidict_proxy_tp_richcompare,     /* tp_richcompare */
-    0,                                               /* tp_weaklistoffset */
+    offsetof(MultiDictProxyObject, weaklist),        /* tp_weaklistoffset */
     0,                                               /* tp_iter */
     0,                                               /* tp_iternext */
     multidict_proxy_methods,                         /* tp_methods */
