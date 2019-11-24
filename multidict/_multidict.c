@@ -796,6 +796,12 @@ PyDoc_STRVAR(multidict_popitem_doc,
 PyDoc_STRVAR(multidict_update_doc,
 "Update the dictionary from *other*, overwriting existing keys.");
 
+static PyObject *
+multidict_class_getitem(PyObject *self, PyObject *args)
+{
+    Py_RETURN_NONE;
+}
+
 static PySequenceMethods multidict_sequence = {
     0,                                  /* sq_length */
     0,                                  /* sq_concat */
@@ -915,6 +921,12 @@ static PyMethodDef multidict_methods[] = {
         (PyCFunction)multidict_reduce,
         METH_NOARGS,
         NULL,
+    },
+    {
+        "__class_getitem__",
+        multidict_class_getitem,
+        METH_VARARGS | METH_STATIC,
+        NULL
     },
     {
         NULL,
@@ -1286,6 +1298,12 @@ static PyMethodDef multidict_proxy_methods[] = {
         "__reduce__",
         (PyCFunction)multidict_proxy_reduce,
         METH_NOARGS,
+        NULL
+    },
+    {
+        "__class_getitem__",
+        multidict_class_getitem,
+        METH_VARARGS | METH_STATIC,
         NULL
     },
     {
