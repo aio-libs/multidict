@@ -320,6 +320,21 @@ class BaseMultiDictTest:
         assert called
         del wr
 
+    def test_iter_length_hint_keys(self, cls):
+        md = cls(a=1, b=2)
+        it = iter(md.keys())
+        assert it.__length_hint__() == 2
+
+    def test_iter_length_hint_items(self, cls):
+        md = cls(a=1, b=2)
+        it = iter(md.items())
+        assert it.__length_hint__() == 2
+
+    def test_iter_length_hint_values(self, cls):
+        md = cls(a=1, b=2)
+        it = iter(md.values())
+        assert it.__length_hint__() == 2
+
 
 class TestMultiDict(BaseMultiDictTest):
     @pytest.fixture(params=["MultiDict", ("MultiDict", "MultiDictProxy")])

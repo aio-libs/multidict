@@ -156,6 +156,28 @@ multidict_iter_clear(MultidictIter *self)
     return 0;
 }
 
+static PyObject *
+multidict_iter_len(MultidictIter *self)
+{
+    return PyLong_FromSize_t(pair_list_len(&self->md->pairs));
+}
+
+PyDoc_STRVAR(length_hint_doc,
+             "Private method returning an estimate of len(list(it)).");
+
+static PyMethodDef multidict_iter_methods[] = {
+    {
+        "__length_hint__",
+        (PyCFunction)(void(*)(void))multidict_iter_len,
+        METH_NOARGS,
+        length_hint_doc
+    },
+    {
+        NULL,
+        NULL
+    }   /* sentinel */
+};
+
 /***********************************************************************/
 
 /* We link this module statically for convenience.  If compiled as a shared
@@ -177,6 +199,7 @@ static PyTypeObject multidict_items_iter_type = {
     .tp_clear = (inquiry)multidict_iter_clear,
     .tp_iter = PyObject_SelfIter,
     .tp_iternext = (iternextfunc)multidict_items_iter_iternext,
+    .tp_methods = multidict_iter_methods,
 };
 
 static PyTypeObject multidict_values_iter_type = {
@@ -189,6 +212,7 @@ static PyTypeObject multidict_values_iter_type = {
     .tp_clear = (inquiry)multidict_iter_clear,
     .tp_iter = PyObject_SelfIter,
     .tp_iternext = (iternextfunc)multidict_values_iter_iternext,
+    .tp_methods = multidict_iter_methods,
 };
 
 static PyTypeObject multidict_keys_iter_type = {
@@ -201,6 +225,7 @@ static PyTypeObject multidict_keys_iter_type = {
     .tp_clear = (inquiry)multidict_iter_clear,
     .tp_iter = PyObject_SelfIter,
     .tp_iternext = (iternextfunc)multidict_keys_iter_iternext,
+    .tp_methods = multidict_iter_methods,
 };
 
 int

@@ -404,6 +404,23 @@ class CIMultiDict(MultiDict):
         return key.title()
 
 
+class _Iter:
+    __slots__ = ('_size', '_iter')
+
+    def __init__(self, size, iterator):
+        self._size = size
+        self._iter = iterator
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self._iter)
+
+    def __length_hint__(self):
+        return self._size
+
+
 class _ViewBase:
     def __init__(self, impl):
         self._impl = impl
@@ -423,6 +440,9 @@ class _ItemsView(_ViewBase, abc.ItemsView):
         return False
 
     def __iter__(self):
+        return _Iter(len(self), self._iter())
+
+    def _iter(self):
         for i, k, v in self._impl._items:
             if self._version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
@@ -444,6 +464,9 @@ class _ValuesView(_ViewBase, abc.ValuesView):
         return False
 
     def __iter__(self):
+        return _Iter(len(self), self._iter())
+
+    def _iter(self):
         for item in self._impl._items:
             if self._version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
@@ -465,6 +488,9 @@ class _KeysView(_ViewBase, abc.KeysView):
         return False
 
     def __iter__(self):
+        return _Iter(len(self), self._iter())
+
+    def _iter(self):
         for item in self._impl._items:
             if self._version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
