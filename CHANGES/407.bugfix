@@ -1,1 +1,1 @@
-Explicitly call tp_free slot on deallocation.
+Explicitly call ``tp_free`` slot on deallocation.
