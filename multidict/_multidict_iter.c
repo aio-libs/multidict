@@ -183,60 +183,24 @@ static PyTypeObject multidict_values_iter_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "multidict._multidict_iter._valuesiter",         /* tp_name */
     sizeof(MultidictIter),                           /* tp_basicsize */
-    0,                                               /* tp_itemsize */
-    (destructor)multidict_iter_dealloc,              /* tp_dealloc */
-    0,                                               /* tp_vectorcall_offset */
-    0,                                               /* tp_getattr */
-    0,                                               /* tp_setattr */
-    0,                                               /* tp_reserved */
-    0,                                               /* tp_repr */
-    0,                                               /* tp_as_number */
-    0,                                               /* tp_as_sequence */
-    0,                                               /* tp_as_mapping */
-    0,                                               /* tp_hash */
-    0,                                               /* tp_call */
-    0,                                               /* tp_str */
-    0,                                               /* tp_getattro */
-    0,                                               /* tp_setattro */
-    0,                                               /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,         /* tp_flags */
-    0,                                               /* tp_doc */
-    (traverseproc)multidict_iter_traverse,           /* tp_traverse */
-    (inquiry)multidict_iter_clear,                   /* tp_clear */
-    0,                                               /* tp_richcompare */
-    0,                                               /* tp_weaklistoffset */
-    PyObject_SelfIter,                               /* tp_iter */
-    (iternextfunc)multidict_values_iter_iternext,    /* tp_iternext */
+    .tp_dealloc = (destructor)multidict_iter_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)multidict_iter_traverse,
+    .tp_clear = (inquiry)multidict_iter_clear,
+    .tp_iter = PyObject_SelfIter,
+    .tp_iternext = (iternextfunc)multidict_values_iter_iternext,
 };
 
 static PyTypeObject multidict_keys_iter_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "multidict._multidict_iter._keysiter",         /* tp_name */
     sizeof(MultidictIter),                         /* tp_basicsize */
-    0,                                             /* tp_itemsize */
-    (destructor)multidict_iter_dealloc,            /* tp_dealloc */
-    0,                                             /* tp_vectorcall_offset */
-    0,                                             /* tp_getattr */
-    0,                                             /* tp_setattr */
-    0,                                             /* tp_reserved */
-    0,                                             /* tp_repr */
-    0,                                             /* tp_as_number */
-    0,                                             /* tp_as_sequence */
-    0,                                             /* tp_as_mapping */
-    0,                                             /* tp_hash */
-    0,                                             /* tp_call */
-    0,                                             /* tp_str */
-    0,                                             /* tp_getattro */
-    0,                                             /* tp_setattro */
-    0,                                             /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,       /* tp_flags */
-    0,                                             /* tp_doc */
-    (traverseproc)multidict_iter_traverse,         /* tp_traverse */
-    (inquiry)multidict_iter_clear,                 /* tp_clear */
-    0,                                             /* tp_richcompare */
-    0,                                             /* tp_weaklistoffset */
-    PyObject_SelfIter,                             /* tp_iter */
-    (iternextfunc)multidict_keys_iter_iternext,    /* tp_iternext */
+    .tp_dealloc = (destructor)multidict_iter_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_traverse = (traverseproc)multidict_iter_traverse,
+    .tp_clear = (inquiry)multidict_iter_clear,
+    .tp_iter = PyObject_SelfIter,
+    .tp_iternext = (iternextfunc)multidict_keys_iter_iternext,
 };
 
 int
