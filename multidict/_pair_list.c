@@ -42,13 +42,16 @@ str_cmp(PyObject *s1, PyObject *s2)
 static inline PyObject *
 key_to_str(PyObject *key)
 {
+    PyObject *ret;
     PyTypeObject *type = Py_TYPE(key);
+    if ((PyObject *)type == _istr_type) {
+        ret = ((istrobject*)key)->canonical;
+        Py_INCREF(ret);
+        return ret;
+    }
     if (PyUnicode_CheckExact(key)) {
         Py_INCREF(key);
         return key;
-    }
-    if ((PyObject *)type == _istr_type) {
-        return PyObject_Str(key);
     }
     if (PyUnicode_Check(key)) {
         return PyObject_Str(key);

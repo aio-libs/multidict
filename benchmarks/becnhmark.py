@@ -1,23 +1,23 @@
 import functools
 import textwrap
 
-import perf
+import pyperf
 
 
 IMPLEMENTATIONS = {
     'dict': """\
     cls = dict
     """,
-    'multidict_cython': """\
+    'multidict_c': """\
     from multidict._multidict import MultiDict as cls, istr
     """,
-    'multidict_python': """\
-    from multidict._multidict_py import MultiDict as cls, istr
-    """,
-    'cimultidict_cython': """\
+    'cimultidict_c': """\
     from multidict._multidict import CIMultiDict as cls, istr
     """,
-    'cimultidict_python': """\
+    'multidict_py': """\
+    from multidict._multidict_py import MultiDict as cls, istr
+    """,
+    'cimultidict_py': """\
     from multidict._multidict_py import CIMultiDict as cls, istr
     """
 }
@@ -101,7 +101,7 @@ def add_impl_option(cmd, args):
 
 
 if __name__ == '__main__':
-    runner = perf.Runner(add_cmdline_args=add_impl_option)
+    runner = pyperf.Runner(add_cmdline_args=add_impl_option)
 
     parser = runner.argparser
     parser.description = ('Allows to measure performance of MultiMapping and '
@@ -111,8 +111,10 @@ if __name__ == '__main__':
 
     options = parser.parse_args()
     implementations = (options.impl,) if options.impl else IMPLEMENTATIONS
+    inner_loops = 50
 
     for impl in implementations:
+        # print("=======================", impl, "======================")
         imports = textwrap.dedent(IMPLEMENTATIONS[impl])
         name = functools.partial(benchmark_name, ctx=dict(impl=impl),
                                  prefix='(impl = %(impl)s) ',
@@ -120,10 +122,10 @@ if __name__ == '__main__':
 
         runner.timeit(name('setitem str'),
                       SET_ITEM, imports + INIT + FILL,
-                      inner_loops=30)
+                      inner_loops=inner_loops)
         runner.timeit(name('getitem str'),
                       GET_ITEM, imports + INIT + FILL,
-                      inner_loops=30)
+                      inner_loops=inner_loops)
 
         # MultiDict specific
         if impl == 'dict':
@@ -131,10 +133,10 @@ if __name__ == '__main__':
 
         runner.timeit(name('setitem istr'),
                       SET_ITEM, imports + INIT + FILL,
-                      inner_loops=30)
+                      inner_loops=inner_loops)
         runner.timeit(name('getitem istr'),
                       GET_ITEM, imports + INIT + FILL,
-                      inner_loops=30)
+                      inner_loops=inner_loops)
         runner.timeit(name('add str'),
                       ADD, imports + INIT + FILL + SETUP_ADD,
-                      inner_loops=30)
+                      inner_loops=inner_loops)
