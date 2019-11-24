@@ -158,7 +158,7 @@ multidict_itemsview_new(PyObject *md)
 static PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_items_iter_new(((MultiDictObject*)self->md));
+    return multidict_items_iter_new((MultiDictObject*)self->md);
 }
 
 static PyObject *
