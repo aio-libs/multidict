@@ -13,25 +13,11 @@ PyDoc_STRVAR(istr__doc__, "istr class implementation");
 #define DEFERRED_ADDRESS(ADDR) 0
 
 
-typedef struct {
-    PyObject *lower;
-    PyObject *emptystr;
-} ModData;
+_Py_IDENTIFIER(lower);
 
-static struct PyModuleDef _istrmodule;
+
 static PyTypeObject istr_type;
 
-static ModData *
-modstate(PyObject *mod)
-{
-    return (ModData*)PyModule_GetState(mod);
-}
-
-static ModData *
-global_state(void)
-{
-    return modstate(PyState_FindModule(&_istrmodule));
-}
 
 void istr_dealloc(istrobject *self)
 {
@@ -49,16 +35,11 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *s = NULL;
     PyObject * ret = NULL;
 
-    ModData * state = global_state();
-
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OOO:str",
-                                     kwlist, &x, &encoding, &errors))
+                                     kwlist, &x, &encoding, &errors)) {
         return NULL;
-    if (x == NULL) {
-        s = state->emptystr;
-        Py_INCREF(s);
     }
-    else if (PyObject_IsInstance(x, (PyObject*)&istr_type)) {
+    if (x != NULL && Py_TYPE(x) == &istr_type) {
         Py_INCREF(x);
         return x;
     }
@@ -66,7 +47,7 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (!ret) {
         goto fail;
     }
-    s = PyObject_CallMethodObjArgs(ret, state->lower, NULL);
+    s =_PyObject_CallMethodId(ret, &PyId_lower, NULL);
     if (!s) {
         goto fail;
     }
@@ -80,71 +61,25 @@ fail:
 
 static PyTypeObject istr_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "multidict._istr.istr",
+    "multidict._multidict.istr",
     sizeof(istrobject),
     .tp_dealloc = (destructor)istr_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT
               | Py_TPFLAGS_BASETYPE
               | Py_TPFLAGS_UNICODE_SUBCLASS,
+    .tp_doc = istr__doc__,
     .tp_base = DEFERRED_ADDRESS(&PyUnicode_Type),
     .tp_new = (newfunc)istr_new,
 };
 
 
-static int mod_clear(PyObject *m)
+PyObject* istr_init(void)
 {
-  Py_CLEAR(modstate(m)->lower);
-  Py_CLEAR(modstate(m)->emptystr);
-  return 0;
-}
-
-
-static struct PyModuleDef _istrmodule = {
-    PyModuleDef_HEAD_INIT,
-    "multidict._istr",
-    istr__doc__,
-    sizeof(ModData),
-    .m_clear = mod_clear,
-};
-
-
-PyObject* PyInit__istr(void)
-{
-    PyObject * tmp;
-    PyObject *mod;
-
-    mod = PyState_FindModule(&_istrmodule);
-    if (mod) {
-        Py_INCREF(mod);
-        return mod;
-    }
-
     istr_type.tp_base = &PyUnicode_Type;
     if (PyType_Ready(&istr_type) < 0) {
         return NULL;
     }
 
-    mod = PyModule_Create(&_istrmodule);
-    if (!mod) {
-        return NULL;
-    }
-    tmp = PyUnicode_FromString("lower");
-    if (!tmp) {
-        goto err;
-    }
-    modstate(mod)->lower = tmp;
-    tmp = PyUnicode_New(0, 0);
-    if (!tmp) {
-        goto err;
-    }
-    modstate(mod)->emptystr = tmp;
-
     Py_INCREF(&istr_type);
-    if (PyModule_AddObject(mod, "istr", (PyObject *)&istr_type) < 0)
-        goto err;
-
-    return mod;
-err:
-    Py_DECREF(mod);
-    return NULL;
+    return (PyObject *)&istr_type;
 }

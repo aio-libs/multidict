@@ -42,10 +42,10 @@ extensions = [
             "multidict/_pair_list.c",
             "multidict/_multidict_iter.c",
             "multidict/_multidict_views.c",
+            "multidict/_istr.c",
         ],
         extra_compile_args=CFLAGS,
     ),
-    Extension("multidict._istr", ["multidict/_istr.c"], extra_compile_args=CFLAGS,),
 ]
 
 

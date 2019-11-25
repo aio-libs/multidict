@@ -12,6 +12,9 @@ typedef struct {
     PyObject * canonical;
 } istrobject;
 
+
+PyObject* istr_init(void);
+
 #ifdef __cplusplus
 }
 #endif
