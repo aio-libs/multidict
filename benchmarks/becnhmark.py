@@ -132,11 +132,14 @@ if __name__ == '__main__':
             continue
 
         runner.timeit(name('setitem istr'),
-                      SET_ITEM, imports + INIT + FILL,
+                      SET_ITEM, imports + INIT + FILL_ISTR,
                       inner_loops=inner_loops)
         runner.timeit(name('getitem istr'),
-                      GET_ITEM, imports + INIT + FILL,
+                      GET_ITEM, imports + INIT + FILL_ISTR,
                       inner_loops=inner_loops)
         runner.timeit(name('add str'),
                       ADD, imports + INIT + FILL + SETUP_ADD,
+                      inner_loops=inner_loops)
+        runner.timeit(name('add istr'),
+                      ADD, imports + INIT + FILL_ISTR + SETUP_ADD,
                       inner_loops=inner_loops)

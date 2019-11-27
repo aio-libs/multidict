@@ -244,7 +244,7 @@ static PySequenceMethods multidict_itemsview_as_sequence = {
 
 static PyTypeObject multidict_itemsview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "_ItemsView",                                   /* tp_name */
+    "multidict._multidict._ItemsView",              /* tp_name */
     sizeof(_Multidict_ViewObject),                  /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_view_dealloc,
     .tp_repr = (reprfunc)multidict_itemsview_repr,
@@ -326,7 +326,7 @@ static PySequenceMethods multidict_keysview_as_sequence = {
 
 static PyTypeObject multidict_keysview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "_KeysView",                                   /* tp_name */
+    "multidict._multidict._KeysView",              /* tp_name */
     sizeof(_Multidict_ViewObject),                 /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_view_dealloc,
     .tp_repr = (reprfunc)multidict_keysview_repr,
@@ -378,7 +378,7 @@ static PySequenceMethods multidict_valuesview_as_sequence = {
 
 static PyTypeObject multidict_valuesview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "_ValuesView",                                   /* tp_name */
+    "multidict._multidict._ValuesView",              /* tp_name */
     sizeof(_Multidict_ViewObject),                   /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_view_dealloc,
     .tp_repr = (reprfunc)multidict_valuesview_repr,

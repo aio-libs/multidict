@@ -1,0 +1,1 @@
+Merge `multidict._istr` back with `multidict._multidict`.

@@ -1,6 +1,7 @@
 #include "_multidict.h"
 #include "_pair_list.h"
 #include "_multidict_views.h"
+#include "_istr.h"
 
 #include <structmember.h>
 
@@ -1418,8 +1419,10 @@ PyInit__multidict()
         goto fail;                              \
     }
 
-    WITH_MOD("multidict._istr");
-    GET_MOD_ATTR(istr, "istr");
+    istr = istr_init();
+    if (istr == NULL) {
+        goto fail;
+    }
 
     WITH_MOD("collections.abc");
     GET_MOD_ATTR(collections_abc_mapping, "Mapping");

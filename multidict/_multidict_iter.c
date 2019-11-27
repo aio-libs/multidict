@@ -159,7 +159,7 @@ multidict_iter_clear(MultidictIter *self)
 static PyObject *
 multidict_iter_len(MultidictIter *self)
 {
-    return PyLong_FromSize_t(pair_list_len(&self->md->pairs));
+    return PyLong_FromLong(pair_list_len(&self->md->pairs));
 }
 
 PyDoc_STRVAR(length_hint_doc,
@@ -191,7 +191,7 @@ static PyMethodDef multidict_iter_methods[] = {
 
 static PyTypeObject multidict_items_iter_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "multidict._multidict_iter._itemsiter",         /* tp_name */
+    "multidict._multidict._itemsiter",         /* tp_name */
     sizeof(MultidictIter),                          /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_iter_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
@@ -204,7 +204,7 @@ static PyTypeObject multidict_items_iter_type = {
 
 static PyTypeObject multidict_values_iter_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "multidict._multidict_iter._valuesiter",         /* tp_name */
+    "multidict._multidict._valuesiter",         /* tp_name */
     sizeof(MultidictIter),                           /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_iter_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
@@ -217,7 +217,7 @@ static PyTypeObject multidict_values_iter_type = {
 
 static PyTypeObject multidict_keys_iter_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "multidict._multidict_iter._keysiter",         /* tp_name */
+    "multidict._multidict._keysiter",         /* tp_name */
     sizeof(MultidictIter),                         /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_iter_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
