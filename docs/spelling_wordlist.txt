@@ -25,6 +25,7 @@ eof
 fallback
 fastpath
 filename
+getitem
 github
 google
 gunicorn
@@ -63,6 +64,7 @@ regex
 regexs
 repo
 runtime
+subclassing
 subprotocol
 subprotocols
 Svetlov
