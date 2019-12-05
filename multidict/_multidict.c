@@ -803,7 +803,8 @@ PyDoc_STRVAR(multidict_update_doc,
 static PyObject *
 multidict_class_getitem(PyObject *self, PyObject *args)
 {
-    Py_RETURN_NONE;
+    Py_INCREF(self);
+    return self;
 }
 
 static PySequenceMethods multidict_sequence = {
@@ -922,7 +923,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "__class_getitem__",
         multidict_class_getitem,
-        METH_VARARGS | METH_STATIC,
+        METH_VARARGS | METH_CLASS,
         NULL
     },
     {
@@ -1251,7 +1252,7 @@ static PyMethodDef multidict_proxy_methods[] = {
     {
         "__class_getitem__",
         multidict_class_getitem,
-        METH_VARARGS | METH_STATIC,
+        METH_VARARGS | METH_CLASS,
         NULL
     },
     {

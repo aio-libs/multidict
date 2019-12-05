@@ -75,8 +75,7 @@ def test_proxy_copy(dict_cls, proxy_cls):
     indirect=True,
 )
 def test_class_getitem(cls):
-    # should not fail
-    cls[str]
+    assert cls[str] is cls
 
 
 class BaseMultiDictTest:
