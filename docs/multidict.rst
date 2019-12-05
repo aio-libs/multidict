@@ -405,3 +405,18 @@ The module provides two ABCs: ``MultiMapping`` and
 :class:`collections.abc.MutableMapping` and inherited from them.
 
 .. versionadded:: 3.3
+
+
+Typing
+======
+
+The library is shipped with embedded type annotations, mypy just picks the annotations
+by default.
+
+:class:`MultiDict`, :class:`CIMultiDict`, :class:`MultiDictProxy`, and
+:class:`CIMultiDictProxy` are *generic* types; please use the corresponding notation for
+multidict value types, e.g. ``md: MultiDict[str] = MultiDict()``.
+
+The type of multidict keys is always :class:`str` or a class derived from a string.
+
+.. versionadded:: 3.7
