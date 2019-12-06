@@ -801,7 +801,7 @@ PyDoc_STRVAR(multidict_update_doc,
 "Update the dictionary from *other*, overwriting existing keys.");
 
 static PyObject *
-multidict_class_getitem(PyObject *self, PyObject *args)
+multidict_class_getitem(PyObject *self)
 {
     Py_INCREF(self);
     return self;
@@ -923,7 +923,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "__class_getitem__",
         multidict_class_getitem,
-        METH_VARARGS | METH_CLASS,
+        METH_O | METH_CLASS,
         NULL
     },
     {
@@ -1252,7 +1252,7 @@ static PyMethodDef multidict_proxy_methods[] = {
     {
         "__class_getitem__",
         multidict_class_getitem,
-        METH_VARARGS | METH_CLASS,
+        METH_O | METH_CLASS,
         NULL
     },
     {
