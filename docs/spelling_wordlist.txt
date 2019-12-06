@@ -25,6 +25,7 @@ eof
 fallback
 fastpath
 filename
+getitem
 github
 google
 gunicorn
@@ -50,6 +51,7 @@ multidicts
 Multidicts
 multipart
 Multipart
+mypy
 Nikolay
 param
 params
@@ -63,6 +65,7 @@ regex
 regexs
 repo
 runtime
+subclassing
 subprotocol
 subprotocols
 Svetlov
