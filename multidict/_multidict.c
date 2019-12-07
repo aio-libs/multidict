@@ -801,7 +801,7 @@ PyDoc_STRVAR(multidict_update_doc,
 "Update the dictionary from *other*, overwriting existing keys.");
 
 static PyObject *
-multidict_class_getitem(PyObject *self)
+multidict_class_getitem(PyObject *self, PyObject *arg)
 {
     Py_INCREF(self);
     return self;
