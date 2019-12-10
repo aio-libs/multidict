@@ -1,1 +1,0 @@
-Embed multidict pairs for small dictionaries to amortize the memory usage.

@@ -1,1 +1,0 @@
-Support weak references to C Extension classes.

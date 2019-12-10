@@ -1,1 +1,0 @@
-Implement __length_hint__() for iterators

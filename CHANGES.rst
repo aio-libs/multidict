@@ -14,6 +14,42 @@ Changelog
 
 .. towncrier release notes start
 
+4.7.0 (2019-12-10)
+==================
+
+Features
+--------
+
+- Replace Cython optimization with pure C
+  `#249 <https://github.com/aio-libs/multidict/issues/249>`_
+- Implement ``__length_hint__()`` for iterators
+  `#310 <https://github.com/aio-libs/multidict/issues/310>`_
+- Support the MultiDict[str] generic specialization in the runtime.
+  `#392 <https://github.com/aio-libs/multidict/issues/392>`_
+- Embed pair_list_t structure into MultiDict Python object
+  `#395 <https://github.com/aio-libs/multidict/issues/395>`_
+- Embed multidict pairs for small dictionaries to amortize the memory usage.
+  `#396 <https://github.com/aio-libs/multidict/issues/396>`_
+- Support weak references to C Extension classes.
+  `#399 <https://github.com/aio-libs/multidict/issues/399>`_
+- Add docstrings to provided classes.
+  `#400 <https://github.com/aio-libs/multidict/issues/400>`_
+- Merge ``multidict._istr`` back with ``multidict._multidict``.
+  `#409 <https://github.com/aio-libs/multidict/issues/409>`_
+
+
+Bugfixes
+--------
+
+- Explicitly call ``tp_free`` slot on deallocation.
+  `#407 <https://github.com/aio-libs/multidict/issues/407>`_
+- Return class from __class_getitem__ to simplify subclassing
+  `#413 <https://github.com/aio-libs/multidict/issues/413>`_
+
+
+----
+
+
 4.6.1 (2019-11-21)
 ====================
 
