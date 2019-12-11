@@ -65,6 +65,7 @@ regex
 regexs
 repo
 runtime
+subclassable
 subclassing
 subprotocol
 subprotocols
