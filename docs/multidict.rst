@@ -345,17 +345,13 @@ istr
 ====
 
 :class:`CIMultiDict` accepts :class:`str` as *key* argument for dict
-lookups but converts it to title case internally.
-
-Title case means every word in key will be capitalized,
-e.g. ``istr('content-length')`` internally will be converted to
-``'Content-Length'``.
+lookups but uses case-folded (lower-cased) strings for the comparison internally.
 
 For more effective processing it should know if the *key* is already
-title cased.
+case-folded to skip the :meth:`~str.lower()` call.
 
-To skip the :meth:`~str.title()` call you may want to create title
-cased strings by hand, e.g::
+The performant code may create
+case-folded string keys explicitly hand, e.g::
 
    >>> key = istr('Key')
    >>> key
@@ -366,13 +362,13 @@ cased strings by hand, e.g::
    >>> mdict[key]
    'value'
 
-For performance you should create :class:`istr` strings once and
-store them globally, like :mod:`aiohttp.hdrs` does.
+For performance :class:`istr` strings should be created once and
+stored somewhere for the later usage, see :mod:`aiohttp.hdrs` for example.
 
 .. class:: istr(object='')
            istr(bytes_or_buffer[, encoding[, errors]])
 
-      Create a new **title cased** string object from the given
+      Create a new **case-folded** string object from the given
       *object*. If *encoding* or *errors* are specified, then the
       object must expose a data buffer that will be decoded using the
       given encoding and error handler.
@@ -389,11 +385,12 @@ store them globally, like :mod:`aiohttp.hdrs` does.
 
 .. versionchanged:: 2.0
 
-   ``upstr`` has renamed to ``istr`` with keeping ``upstr`` alias.
+   ``upstr`` is a deprecated alias for ``istr``.
 
-   The behavior remains the same with the only exception:
-   ``repr('Content-Length')`` and ``str('Content-Length')`` now
-   returns ``'Content-Length'`` instead of ``'CONTENT-LENGTH'``.
+.. versionchanged:: 3.7
+
+   ``istr`` doesn't title-case its argument anymore but uses internal lower-cased data
+   for fast case-insensitive comparison.
 
 
 Abstract Base Classes

@@ -1,0 +1,1 @@
+Document the fact that ``istr`` preserves the casing of argument untouched but uses internal lower-cased copy for keys comparison.
