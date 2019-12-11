@@ -327,6 +327,11 @@ class TestCIMutableMultiDict:
         assert 3 == len(d)
         assert d.getall("foo") == ["bar"]
 
+        d.add(key='test', value='test')
+        assert ("test", "bar") in d.items()
+        assert 4 == len(d)
+        assert d.getall("test") == ["test"]
+
     def test_extend(self, cls):
         d = cls()
         assert d == {}
