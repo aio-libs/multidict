@@ -328,7 +328,7 @@ class TestCIMutableMultiDict:
         assert d.getall("foo") == ["bar"]
 
         d.add(key='test', value='test')
-        assert ("test", "bar") in d.items()
+        assert ("test", "test") in d.items()
         assert 4 == len(d)
         assert d.getall("test") == ["test"]
 
