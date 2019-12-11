@@ -20,6 +20,8 @@ Changelog
 Bugfixes
 --------
 
+- `CIMultiDictProxy.copy` return object type `multidict._multidict.CIMultiDict`
+  `#427 <https://github.com/aio-libs/multidict/issues/427>`_
 - Make `CIMultiDict` subclassable again
   `#416 <https://github.com/aio-libs/multidict/issues/416>`_
 - Fix regression, multidict can be constructed from arbitrary iterable of pairs again.
