@@ -389,6 +389,29 @@ fail:
     return NULL;
 }
 
+static inline PyObject *
+_multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
+{
+    PyObject *new_multidict = PyType_GenericNew(type, NULL, NULL);
+    if (new_multidict == NULL) {
+        goto fail;
+    }
+    if (type->tp_init(new_multidict, NULL, NULL) < 0) {
+        goto fail;
+    }
+    if (_multidict_extend_with_args(
+        (MultiDictObject*)new_multidict, (PyObject*)self, NULL, "copy", 1) < 0)
+    {
+        goto fail;
+    }
+
+    return new_multidict;
+
+fail:
+    Py_XDECREF(new_multidict);
+    return NULL;
+}
+
 /******************** Base Methods ********************/
 
 static PyObject *
@@ -1132,24 +1155,7 @@ multidict_proxy_values(MultiDictProxyObject *self)
 static PyObject *
 multidict_proxy_copy(MultiDictProxyObject *self)
 {
-    PyObject *new_multidict = PyType_GenericNew(&multidict_type, NULL, NULL);
-    if (new_multidict == NULL) {
-        goto fail;
-    }
-    if (multidict_tp_init((MultiDictObject*)new_multidict, NULL, NULL) < 0) {
-        goto fail;
-    }
-    if (_multidict_extend_with_args(
-        (MultiDictObject*)new_multidict, (PyObject*)self, NULL, "copy", 1) < 0)
-    {
-        goto fail;
-    }
-
-    return new_multidict;
-
-fail:
-    Py_XDECREF(new_multidict);
-    return NULL;
+    return _multidict_proxy_copy(self, &multidict_type);
 }
 
 static PyObject *
@@ -1358,10 +1364,31 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     return 0;
 }
 
+static PyObject * 
+cimultidict_proxy_copy(MultiDictProxyObject *self)
+{
+    return _multidict_proxy_copy(self, &cimultidict_type);
+}
+
 
 PyDoc_STRVAR(CIMultDictProxy_doc,
 "Read-only proxy for CIMultiDict instance.");
 
+PyDoc_STRVAR(cimultidict_proxy_copy_doc,
+"Return copy of itself");
+
+static PyMethodDef cimultidict_proxy_methods[] = {
+    {
+        "copy",
+        (PyCFunction)cimultidict_proxy_copy,
+        METH_NOARGS,
+        cimultidict_proxy_copy_doc
+    },
+    {
+        NULL,
+        NULL
+    }   /* sentinel */
+};
 
 static PyTypeObject cimultidict_proxy_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -1374,7 +1401,7 @@ static PyTypeObject cimultidict_proxy_type = {
     .tp_clear = (inquiry)multidict_proxy_tp_clear,
     .tp_richcompare = (richcmpfunc)multidict_proxy_tp_richcompare,
     .tp_weaklistoffset = offsetof(MultiDictProxyObject, weaklist),
-    .tp_methods = multidict_proxy_methods,
+    .tp_methods = cimultidict_proxy_methods,
     .tp_base = &multidict_proxy_type,
     .tp_init = (initproc)cimultidict_proxy_tp_init,
     .tp_alloc = PyType_GenericAlloc,
