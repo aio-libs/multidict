@@ -80,6 +80,16 @@ def test_class_getitem(cls):
     assert cls[str] is cls
 
 
+@pytest.mark.parametrize(
+    "cls",
+    ["MultiDict", "CIMultiDict", "MultiDictProxy", "CIMultiDictProxy"],
+    indirect=True,
+)
+def test_subclassing(cls):
+    class MyClass(cls):
+        pass
+
+
 class BaseMultiDictTest:
     def test_instantiate__empty(self, cls):
         d = cls()
