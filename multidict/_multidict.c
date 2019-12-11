@@ -665,12 +665,15 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-multidict_add(MultiDictObject *self, PyObject *args)
+multidict_add(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key = NULL,
              *val = NULL;
 
-    if (!PyArg_UnpackTuple(args, "set", 2, 2, &key, &val)) {
+    static char *kwlist[] = {"key", "value", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO:add",
+                                     kwlist, &key, &val))
+    {
         return NULL;
     }
 
@@ -883,7 +886,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "add",
         (PyCFunction)multidict_add,
-        METH_VARARGS,
+        METH_VARARGS | METH_KEYWORDS,
         multidict_add_doc
     },
     {
