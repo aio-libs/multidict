@@ -1,6 +1,5 @@
 import codecs
 import os
-import pathlib
 import platform
 import re
 import sys
@@ -11,14 +10,6 @@ NO_EXTENSIONS = bool(os.environ.get("MULTIDICT_NO_EXTENSIONS"))
 
 if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
-
-PROFILE_BUILD = bool(os.environ.get("PROFILE_BUILD"))
-"""Flag whether extensions should be built with profiling enabled."""
-
-
-here = pathlib.Path(__file__).parent
-"""Current folder (containing setup.py)."""
-
 
 CFLAGS = ["-O2"]
 # CFLAGS = ['-g']
