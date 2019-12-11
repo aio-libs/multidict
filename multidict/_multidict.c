@@ -645,7 +645,7 @@ multidict_add(MultiDictObject *self, PyObject *args, PyObject *kwds)
              *val = NULL;
 
     static char *kwlist[] = {"key", "value", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO:set",
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO:add",
                                      kwlist, &key, &val))
     {
         return NULL;
