@@ -384,9 +384,6 @@ _multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
 fail:
     Py_XDECREF(new_multidict);
     return NULL;
-
-
-
 }
 
 /******************** Base Methods ********************/
