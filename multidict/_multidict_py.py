@@ -405,7 +405,7 @@ class CIMultiDict(MultiDict):
 
 
 class _Iter:
-    __slots__ = ('_size', '_iter')
+    __slots__ = ("_size", "_iter")
 
     def __init__(self, size, iterator):
         self._size = size

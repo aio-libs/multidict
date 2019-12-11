@@ -69,8 +69,10 @@ def test_proxy_copy(dict_cls, proxy_cls):
     assert d1 is not d2
 
 
-@pytest.mark.skipif(sys.version_info < (3, 7),
-                    reason="__class_getitem__ is supported started from Python 3.7")
+@pytest.mark.skipif(
+    sys.version_info < (3, 7),
+    reason="__class_getitem__ is supported started from Python 3.7",
+)
 @pytest.mark.parametrize(
     "cls",
     ["MultiDict", "CIMultiDict", "MultiDictProxy", "CIMultiDictProxy"],
@@ -130,6 +132,26 @@ class BaseMultiDictTest:
         assert sorted(d.keys()) == ["0", "1"]
         assert sorted(d.values()) == [0, 1]
         assert sorted(d.items()) == [("0", 0), ("1", 1)]
+
+    def test_instantiate__from_list_of_lists(self, cls):
+        d = cls([["key", "value1"]])
+        assert d == {"key": "value1"}
+
+    def test_instantiate__from_list_of_custom_pairs(self, cls):
+        class Pair:
+            def __len__(self):
+                return 2
+
+            def __getitem__(self, pos):
+                if pos == 0:
+                    return "key"
+                elif pos == 1:
+                    return "value1"
+                else:
+                    raise IndexError
+
+        d = cls([Pair()])
+        assert d == {"key": "value1"}
 
     def test_getone(self, cls):
         d = cls([("key", "value1")], key="value2")

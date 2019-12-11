@@ -135,28 +135,40 @@ _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
     }
 
     while ((item = PyIter_Next(iter)) != NULL) {
-        if (PyObject_Length(item) != 2) {
-            PyErr_Format(
-                PyExc_TypeError,
-                "%s takes either dict or list of (key, value) tuples",
-                name,
-                NULL
-            );
-            Py_DECREF(item);
-            Py_DECREF(iter);
-            return -1;
+        if (PyTuple_CheckExact(item)) {
+            if (PyTuple_GET_SIZE(item) != 2) {
+                goto invalid_type;
+            }
+            key = PyTuple_GET_ITEM(item, 0);
+            Py_INCREF(key);
+            value = PyTuple_GET_ITEM(item, 1);
+            Py_INCREF(value);
         }
-
-        key   = PyTuple_GET_ITEM(item, 0);
-        value = PyTuple_GET_ITEM(item, 1);
+        else if (PyList_CheckExact(item)) {
+            if (PyList_GET_SIZE(item) != 2) {
+                goto invalid_type;
+            }
+            key = PyList_GET_ITEM(item, 0);
+            Py_INCREF(key);
+            value = PyList_GET_ITEM(item, 1);
+            Py_INCREF(value);
+        }
+        else if (PySequence_Check(item)) {
+            if (PySequence_Size(item) != 2) {
+                goto invalid_type;
+            }
+            key = PySequence_GetItem(item, 0);
+            value = PySequence_GetItem(item, 1);
+        } else {
+            goto invalid_type;
+        }
 
         if (pair_list_add(&self->pairs, key, value) < 0) {
-            Py_DECREF(item);
-            Py_DECREF(iter);
-            return -1;
+            goto fail;
         }
-
-        Py_DECREF(item);
+        Py_CLEAR(key);
+        Py_CLEAR(value);
+        Py_CLEAR(item);
     }
 
     Py_DECREF(iter);
@@ -166,6 +178,20 @@ _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
     }
 
     return 0;
+invalid_type:
+    PyErr_Format(
+        PyExc_TypeError,
+        "%s takes either dict or list of (key, value) pairs",
+        name,
+        NULL
+    );
+    goto fail;
+fail:
+    Py_XDECREF(key);
+    Py_XDECREF(value);
+    Py_XDECREF(item);
+    Py_DECREF(iter);
+    return -1;
 }
 
 static int

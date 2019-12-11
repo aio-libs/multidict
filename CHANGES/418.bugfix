@@ -1,0 +1,1 @@
+Fix regression, multidict can be constructed from arbitrary iterable of pairs again.
