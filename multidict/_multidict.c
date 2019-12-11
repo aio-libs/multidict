@@ -139,7 +139,7 @@ _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
             if (PyTuple_GET_SIZE(item) != 2) {
                 goto invalid_type;
             }
-            key   = PyTuple_GET_ITEM(item, 0);
+            key = PyTuple_GET_ITEM(item, 0);
             Py_INCREF(key);
             value = PyTuple_GET_ITEM(item, 1);
             Py_INCREF(value);
@@ -148,7 +148,7 @@ _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
             if (PyList_GET_SIZE(item) != 2) {
                 goto invalid_type;
             }
-            key   = PyList_GET_ITEM(item, 0);
+            key = PyList_GET_ITEM(item, 0);
             Py_INCREF(key);
             value = PyList_GET_ITEM(item, 1);
             Py_INCREF(value);
