@@ -1004,7 +1004,7 @@ static PyTypeObject cimultidict_type = {
     "multidict._multidict.CIMultiDict",              /* tp_name */
     sizeof(MultiDictObject),                         /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_tp_dealloc,
-    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC,
     .tp_doc = CIMultDict_doc,
     .tp_traverse = (traverseproc)multidict_tp_traverse,
     .tp_clear = (inquiry)multidict_tp_clear,
@@ -1339,7 +1339,7 @@ static PyTypeObject cimultidict_proxy_type = {
     "multidict._multidict.CIMultiDictProxy",         /* tp_name */
     sizeof(MultiDictProxyObject),                    /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_proxy_tp_dealloc,
-    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC,
     .tp_doc = CIMultDictProxy_doc,
     .tp_traverse = (traverseproc)multidict_proxy_tp_traverse,
     .tp_clear = (inquiry)multidict_proxy_tp_clear,
