@@ -58,6 +58,21 @@ Library Installation
 
 The library is Python 3 only!
 
+PyPI contains binary wheels for Linux, Windows and MacOS.  If you want to install
+``multidict`` on another operation system (or *Alpine Linux* inside a Docker) the
+Tarball will be used to compile the library from sources.  It requires C compiler and
+Python headers installed.
+
+To skip the compilation please use `MULTIDICT_NO_EXTENSIONS` environment variable,
+e.g.:
+
+.. code-block:: bash
+
+   $ MULTIDICT_NO_EXTENSIONS=1 pip install multidict
+
+Please note, Pure Python (uncompiled) version is about 20-50 times slower depending on
+the usage scenario!!!
+
 
 Source code
 -----------
