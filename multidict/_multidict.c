@@ -1,9 +1,14 @@
-#include "_multidict.h"
-#include "_pair_list.h"
-#include "_multidict_views.h"
-#include "_istr.h"
 
-#include <structmember.h>
+#include "Python.h"
+#include "structmember.h"
+
+// Include order important
+#include "_multilib/defs.h"
+#include "_multilib/istr.h"
+#include "_multilib/pair_list.h"
+#include "_multilib/dict.h"
+#include "_multilib/iter.h"
+#include "_multilib/views.h"
 
 static PyObject *collections_abc_mapping;
 static PyObject *collections_abc_mut_mapping;

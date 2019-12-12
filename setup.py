@@ -30,10 +30,6 @@ extensions = [
         "multidict._multidict",
         [
             "multidict/_multidict.c",
-            "multidict/_pair_list.c",
-            "multidict/_multidict_iter.c",
-            "multidict/_multidict_views.c",
-            "multidict/_istr.c",
         ],
         extra_compile_args=CFLAGS,
     ),

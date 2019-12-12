@@ -1,7 +1,9 @@
-#include "_pair_list.h"
-#include "_multidict.h"
+#ifndef _MULTIDICT_ITER_H
+#define _MULTIDICT_ITER_H
 
-#include <Python.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static PyTypeObject multidict_items_iter_type;
 static PyTypeObject multidict_values_iter_type;
@@ -180,15 +182,6 @@ static PyMethodDef multidict_iter_methods[] = {
 
 /***********************************************************************/
 
-/* We link this module statically for convenience.  If compiled as a shared
-   library instead, some compilers don't allow addresses of Python objects
-   defined in other libraries to be used in static initializers here.  The
-   DEFERRED_ADDRESS macro is used to tag the slots where such addresses
-   appear; the module init function must fill in the tagged slots at runtime.
-   The argument is for documentation -- the macro ignores it.
-*/
-#define DEFERRED_ADDRESS(ADDR) 0
-
 static PyTypeObject multidict_items_iter_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "multidict._multidict._itemsiter",         /* tp_name */
@@ -238,3 +231,8 @@ multidict_iter_init()
     }
     return 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
+#endif
