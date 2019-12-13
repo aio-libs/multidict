@@ -1,17 +1,16 @@
-from collections import abc
-from collections.abc import Iterable, Set
+from collections.abc import ItemsView, Iterable, KeysView, Set, ValuesView
 
 
 def _abc_itemsview_register(view_cls):
-    abc.ItemsView.register(view_cls)
+    ItemsView.register(view_cls)
 
 
 def _abc_keysview_register(view_cls):
-    abc.KeysView.register(view_cls)
+    KeysView.register(view_cls)
 
 
 def _abc_valuesview_register(view_cls):
-    abc.ValuesView.register(view_cls)
+    ValuesView.register(view_cls)
 
 
 def _viewbaseset_richcmp(view, other, op):
