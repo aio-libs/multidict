@@ -1592,10 +1592,6 @@ fail:
     Py_XDECREF(collections_abc_mut_mapping);
     Py_XDECREF(collections_abc_mut_multi_mapping);
     Py_XDECREF(istr);
-    Py_XDECREF(&multidict_type);
-    Py_XDECREF(&cimultidict_type);
-    Py_XDECREF(&multidict_proxy_type);
-    Py_XDECREF(&cimultidict_proxy_type);
 
     return NULL;
 

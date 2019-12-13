@@ -7,6 +7,7 @@ several values for the same key.
 
 from ._abc import MultiMapping, MutableMultiMapping
 from ._compat import USE_CYTHON_EXTENSIONS
+from ._multidict_base import _mdrepr
 
 __all__ = (
     "MultiMapping",
@@ -17,6 +18,7 @@ __all__ = (
     "CIMultiDict",
     "upstr",
     "istr",
+    "_mdrepr",
 )
 
 __version__ = "4.7.1"
