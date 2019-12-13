@@ -15,7 +15,7 @@ all: test
                       $(shell find tests -type f)
 	flake8 multidict tests
 	@if ! isort -c -rc multidict tests; then \
-            echo "Import sort errors, run 'make isort' to fix them!!!"; \
+            echo "Import sort errors, run 'make fmt' to fix them!!!"; \
             isort --diff -rc multidict tests; \
             false; \
 	fi
