@@ -1,16 +1,9 @@
-#include "_multidict.h"
-#include "_multidict_views.h"
-#include "_multidict_iter.h"
-#include "_pair_list.h"
+#ifndef _MULTIDICT_VIEWS_H
+#define _MULTIDICT_VIEWS_H
 
-/* We link this module statically for convenience.  If compiled as a shared
-   library instead, some compilers don't allow addresses of Python objects
-   defined in other libraries to be used in static initializers here.  The
-   DEFERRED_ADDRESS macro is used to tag the slots where such addresses
-   appear; the module init function must fill in the tagged slots at runtime.
-   The argument is for documentation -- the macro ignores it.
-*/
-#define DEFERRED_ADDRESS(ADDR) 0
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static PyTypeObject multidict_itemsview_type;
 static PyTypeObject multidict_valuesview_type;
@@ -467,3 +460,8 @@ fail:
 
 #undef GET_MOD_ATTR
 }
+
+#ifdef __cplusplus
+}
+#endif
+#endif

@@ -1,17 +1,56 @@
-#include <string.h>
-#include "_istr.h"
-#include "_pair_list.h"
+#ifndef _MULTIDICT_PAIR_LIST_H
+#define _MULTIDICT_PAIR_LIST_H
 
-#include <Python.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <string.h>
+#include <stddef.h>
+#include <stdint.h>
+
+typedef PyObject * (*calc_identity_func)(PyObject *key);
+
+typedef struct pair {
+    PyObject  *identity;  // 8
+    PyObject  *key;       // 8
+    PyObject  *value;     // 8
+    Py_hash_t  hash;      // 8
+} pair_t;
+
+/* Note about the structure size
+With 29 pairs the MultiDict object size is slightly less than 1KiB
+(1000-1008 bytes depending on Python version,
+plus extra 12 bytes for memory allocator internal structures).
+As the result the max reserved size is 1020 bytes at most.
+
+To fit into 512 bytes, the structure can contain only 13 pairs
+which is too small, e.g. https://www.python.org returns 16 headers
+(9 of them are caching proxy information though).
+
+The embedded buffer intention is to fit the vast majority of possible
+HTTP headers into the buffer without allocating an extra memory block.
+*/
+
+#if (PY_VERSION_HEX < 0x03080000)
+#define EMBEDDED_CAPACITY 28
+#else
+#define EMBEDDED_CAPACITY 29
+#endif
+
+typedef struct pair_list {  // 40
+    Py_ssize_t  capacity;   // 8
+    Py_ssize_t  size;       // 8
+    uint64_t  version;      // 8
+    calc_identity_func calc_identity;  // 8
+    pair_t *pairs;          // 8
+    pair_t buffer[EMBEDDED_CAPACITY];
+} pair_list_t;
 
 #define MIN_CAPACITY 63
 #define CAPACITY_STEP 64
 
 static PyObject * _istr_type;
-
-
-_Py_IDENTIFIER(lower);
-
 
 /* Global counter used to set ma_version_tag field of dictionary.
  * It is incremented each time that a dictionary is created and each
@@ -431,7 +470,7 @@ _pair_list_next(pair_list_t *list, Py_ssize_t *ppos, PyObject **pidentity,
 }
 
 
-inline int
+static inline int
 pair_list_next(pair_list_t *list, Py_ssize_t *ppos, PyObject **pidentity,
                PyObject **pkey, PyObject **pvalue)
 {
@@ -1208,3 +1247,8 @@ pair_list_global_init(PyObject *istr_type)
     _istr_type = istr_type;
     return 0;
 }
+
+#ifdef __cplusplus
+}
+#endif
+#endif
