@@ -13,7 +13,6 @@
 static PyObject *collections_abc_mapping;
 static PyObject *collections_abc_mut_mapping;
 static PyObject *collections_abc_mut_multi_mapping;
-static PyObject *istr;
 
 static PyTypeObject multidict_type;
 static PyTypeObject cimultidict_type;
@@ -1436,7 +1435,6 @@ getversion(PyObject *self, PyObject *md)
 static void
 module_free(void *m)
 {
-    Py_CLEAR(istr);
     Py_CLEAR(collections_abc_mapping);
     Py_CLEAR(collections_abc_mut_mapping);
     Py_CLEAR(collections_abc_mut_multi_mapping);
@@ -1481,8 +1479,7 @@ PyInit__multidict()
         goto fail;                              \
     }
 
-    istr = istr_init();
-    if (istr == NULL) {
+    if (istr_init() < 0) {
         goto fail;
     }
 
@@ -1498,8 +1495,7 @@ PyInit__multidict()
     WITH_MOD("multidict._multidict_base");
     GET_MOD_ATTR(repr_func, "_mdrepr");
 
-    if (pair_list_global_init(istr) < 0 ||
-        multidict_views_init() < 0) {
+    if (multidict_views_init() < 0) {
         goto fail;
     }
 
@@ -1555,9 +1551,9 @@ PyInit__multidict()
     /* Instantiate this module */
     module = PyModule_Create(&multidict_module);
 
-    Py_INCREF(istr);
+    Py_INCREF(&istr_type);
     if (PyModule_AddObject(
-            module, "istr", (PyObject*)istr) < 0)
+            module, "istr", (PyObject*)&istr_type) < 0)
     {
         goto fail;
     }
@@ -1596,11 +1592,6 @@ fail:
     Py_XDECREF(collections_abc_mapping);
     Py_XDECREF(collections_abc_mut_mapping);
     Py_XDECREF(collections_abc_mut_multi_mapping);
-    Py_XDECREF(istr);
-    Py_XDECREF(&multidict_type);
-    Py_XDECREF(&cimultidict_type);
-    Py_XDECREF(&multidict_proxy_type);
-    Py_XDECREF(&cimultidict_proxy_type);
 
     return NULL;
 

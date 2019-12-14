@@ -68,15 +68,13 @@ static PyTypeObject istr_type = {
 };
 
 
-PyObject* istr_init(void)
+static int istr_init(void)
 {
     istr_type.tp_base = &PyUnicode_Type;
     if (PyType_Ready(&istr_type) < 0) {
-        return NULL;
+        return -1;
     }
-
-    Py_INCREF(&istr_type);
-    return (PyObject *)&istr_type;
+    return 0;
 }
 
 #ifdef __cplusplus

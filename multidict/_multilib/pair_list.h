@@ -50,8 +50,6 @@ typedef struct pair_list {  // 40
 #define MIN_CAPACITY 63
 #define CAPACITY_STEP 64
 
-static PyObject * _istr_type;
-
 /* Global counter used to set ma_version_tag field of dictionary.
  * It is incremented each time that a dictionary is created and each
  * time that a dictionary is modified. */
@@ -83,7 +81,7 @@ key_to_str(PyObject *key)
 {
     PyObject *ret;
     PyTypeObject *type = Py_TYPE(key);
-    if ((PyObject *)type == _istr_type) {
+    if (type == &istr_type) {
         ret = ((istrobject*)key)->canonical;
         Py_INCREF(ret);
         return ret;
@@ -107,7 +105,7 @@ ci_key_to_str(PyObject *key)
 {
     PyObject *ret;
     PyTypeObject *type = Py_TYPE(key);
-    if ((PyObject *)type == _istr_type) {
+    if (type == &istr_type) {
         ret = ((istrobject*)key)->canonical;
         Py_INCREF(ret);
         return ret;
@@ -1238,15 +1236,6 @@ pair_list_clear(pair_list_t *list)
     return 0;
 }
 
-
-
-int
-pair_list_global_init(PyObject *istr_type)
-{
-    Py_INCREF(istr_type);
-    _istr_type = istr_type;
-    return 0;
-}
 
 #ifdef __cplusplus
 }
