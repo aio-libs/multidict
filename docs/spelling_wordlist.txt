@@ -60,6 +60,7 @@ pickable
 pre
 proxied
 pyenv
+pyinstaller
 refactor
 refactored
 regex
