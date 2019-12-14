@@ -1479,7 +1479,23 @@ PyInit__multidict()
         goto fail;                              \
     }
 
+    if (multidict_views_init() < 0) {
+        goto fail;
+    }
+
+    if (multidict_iter_init() < 0) {
+        goto fail;
+    }
+
     if (istr_init() < 0) {
+        goto fail;
+    }
+
+    if (PyType_Ready(&multidict_type) < 0 ||
+        PyType_Ready(&cimultidict_type) < 0 ||
+        PyType_Ready(&multidict_proxy_type) < 0 ||
+        PyType_Ready(&cimultidict_proxy_type) < 0)
+    {
         goto fail;
     }
 
@@ -1494,18 +1510,6 @@ PyInit__multidict()
 
     WITH_MOD("multidict._multidict_base");
     GET_MOD_ATTR(repr_func, "_mdrepr");
-
-    if (multidict_views_init() < 0) {
-        goto fail;
-    }
-
-    if (PyType_Ready(&multidict_type) < 0 ||
-        PyType_Ready(&cimultidict_type) < 0 ||
-        PyType_Ready(&multidict_proxy_type) < 0 ||
-        PyType_Ready(&cimultidict_proxy_type) < 0)
-    {
-        goto fail;
-    }
 
     /* Register in _abc mappings (CI)MultiDict and (CI)MultiDictProxy */
     reg_func_call_result = PyObject_CallMethod(

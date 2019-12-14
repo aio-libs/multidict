@@ -383,7 +383,8 @@ static PyTypeObject multidict_valuesview_type = {
     .tp_iter = (getiterfunc)multidict_valuesview_iter,
 };
 
-int
+
+static int
 multidict_views_init()
 {
     PyObject *reg_func_call_result = NULL;
@@ -415,10 +416,6 @@ multidict_views_init()
     GET_MOD_ATTR(keysview_isdisjoint_func, "_keysview_isdisjoint");
 
     GET_MOD_ATTR(valuesview_repr_func, "_valuesview_repr");
-
-    if (multidict_iter_init() < 0) {
-        goto fail;
-    }
 
     if (PyType_Ready(&multidict_itemsview_type) < 0 ||
         PyType_Ready(&multidict_valuesview_type) < 0 ||

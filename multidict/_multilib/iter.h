@@ -221,7 +221,7 @@ static PyTypeObject multidict_keys_iter_type = {
     .tp_methods = multidict_iter_methods,
 };
 
-int
+static int
 multidict_iter_init()
 {
     if (PyType_Ready(&multidict_items_iter_type) < 0 ||
