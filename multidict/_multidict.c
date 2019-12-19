@@ -1,4 +1,3 @@
-
 #include "Python.h"
 #include "structmember.h"
 
@@ -1370,7 +1369,7 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     return 0;
 }
 
-static PyObject * 
+static PyObject *
 cimultidict_proxy_copy(MultiDictProxyObject *self)
 {
     return _multidict_proxy_copy(self, &cimultidict_type);
