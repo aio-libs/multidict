@@ -42,7 +42,7 @@ _init_view(_Multidict_ViewObject *self, PyObject *md)
     self->md = md;
 }
 
-static void
+static inline void
 multidict_view_dealloc(_Multidict_ViewObject *self)
 {
     PyObject_GC_UnTrack(self);
@@ -50,27 +50,27 @@ multidict_view_dealloc(_Multidict_ViewObject *self)
     PyObject_GC_Del(self);
 }
 
-static int
+static inline int
 multidict_view_traverse(_Multidict_ViewObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->md);
     return 0;
 }
 
-static int
+static inline int
 multidict_view_clear(_Multidict_ViewObject *self)
 {
     Py_CLEAR(self->md);
     return 0;
 }
 
-static Py_ssize_t
+static inline Py_ssize_t
 multidict_view_len(_Multidict_ViewObject *self)
 {
     return pair_list_len(&((MultiDictObject*)self->md)->pairs);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_view_richcompare(PyObject *self, PyObject *other, int op)
 {
     PyObject *ret;
@@ -84,28 +84,28 @@ multidict_view_richcompare(PyObject *self, PyObject *other, int op)
     return ret;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_view_and(PyObject *self, PyObject *other)
 {
     return PyObject_CallFunctionObjArgs(
         viewbaseset_and_func, self, other, NULL);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_view_or(PyObject *self, PyObject *other)
 {
     return PyObject_CallFunctionObjArgs(
         viewbaseset_or_func, self, other, NULL);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_view_sub(PyObject *self, PyObject *other)
 {
     return PyObject_CallFunctionObjArgs(
         viewbaseset_sub_func, self, other, NULL);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_view_xor(PyObject *self, PyObject *other)
 {
     return PyObject_CallFunctionObjArgs(
@@ -121,7 +121,7 @@ static PyNumberMethods multidict_view_as_number = {
 
 /********** Items **********/
 
-PyObject *
+static inline PyObject *
 multidict_itemsview_new(PyObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
@@ -136,20 +136,20 @@ multidict_itemsview_new(PyObject *md)
     return (PyObject *)mv;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
     return multidict_items_iter_new((MultiDictObject*)self->md);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_itemsview_repr(_Multidict_ViewObject *self)
 {
     return PyObject_CallFunctionObjArgs(
         itemsview_repr_func, self, NULL);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 {
     return PyObject_CallFunctionObjArgs(
@@ -172,7 +172,7 @@ static PyMethodDef multidict_itemsview_methods[] = {
     }   /* sentinel */
 };
 
-static int
+static inline int
 multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
 {
     PyObject *akey  = NULL,
@@ -255,7 +255,7 @@ static PyTypeObject multidict_itemsview_type = {
 
 /********** Keys **********/
 
-PyObject *
+static inline PyObject *
 multidict_keysview_new(PyObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
@@ -270,20 +270,20 @@ multidict_keysview_new(PyObject *md)
     return (PyObject *)mv;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_keysview_iter(_Multidict_ViewObject *self)
 {
     return multidict_keys_iter_new(((MultiDictObject*)self->md));
 }
 
-static PyObject *
+static inline PyObject *
 multidict_keysview_repr(_Multidict_ViewObject *self)
 {
     return PyObject_CallFunctionObjArgs(
         keysview_repr_func, self, NULL);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_keysview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 {
     return PyObject_CallFunctionObjArgs(
@@ -306,7 +306,7 @@ static PyMethodDef multidict_keysview_methods[] = {
     }   /* sentinel */
 };
 
-static int
+static inline int
 multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
 {
     return pair_list_contains(&((MultiDictObject*)self->md)->pairs, key);
@@ -337,7 +337,7 @@ static PyTypeObject multidict_keysview_type = {
 
 /********** Values **********/
 
-PyObject *
+static inline PyObject *
 multidict_valuesview_new(PyObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
@@ -352,13 +352,13 @@ multidict_valuesview_new(PyObject *md)
     return (PyObject *)mv;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
     return multidict_values_iter_new(((MultiDictObject*)self->md));
 }
 
-static PyObject *
+static inline PyObject *
 multidict_valuesview_repr(_Multidict_ViewObject *self)
 {
     return PyObject_CallFunctionObjArgs(
@@ -383,7 +383,8 @@ static PyTypeObject multidict_valuesview_type = {
     .tp_iter = (getiterfunc)multidict_valuesview_iter,
 };
 
-int
+
+static inline int
 multidict_views_init()
 {
     PyObject *reg_func_call_result = NULL;
@@ -415,10 +416,6 @@ multidict_views_init()
     GET_MOD_ATTR(keysview_isdisjoint_func, "_keysview_isdisjoint");
 
     GET_MOD_ATTR(valuesview_repr_func, "_valuesview_repr");
-
-    if (multidict_iter_init() < 0) {
-        goto fail;
-    }
 
     if (PyType_Ready(&multidict_itemsview_type) < 0 ||
         PyType_Ready(&multidict_valuesview_type) < 0 ||

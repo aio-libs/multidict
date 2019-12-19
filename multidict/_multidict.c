@@ -12,7 +12,6 @@
 static PyObject *collections_abc_mapping;
 static PyObject *collections_abc_mut_mapping;
 static PyObject *collections_abc_mut_multi_mapping;
-static PyObject *istr;
 
 static PyTypeObject multidict_type;
 static PyTypeObject cimultidict_type;
@@ -55,7 +54,7 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
     return val;
 }
 
-static int
+static inline int
 _multidict_eq(MultiDictObject *self, MultiDictObject *other)
 {
     Py_ssize_t pos1 = 0,
@@ -108,7 +107,7 @@ _multidict_update_items(MultiDictObject *self, pair_list_t *pairs)
     return pair_list_update(&self->pairs, pairs);
 }
 
-static int
+static inline int
 _multidict_append_items(MultiDictObject *self, pair_list_t *pairs)
 {
     PyObject *key   = NULL,
@@ -125,7 +124,7 @@ _multidict_append_items(MultiDictObject *self, pair_list_t *pairs)
     return 0;
 }
 
-static int
+static inline int
 _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
                             const char *name)
 {
@@ -198,7 +197,7 @@ fail:
     return -1;
 }
 
-static int
+static inline int
 _multidict_list_extend(PyObject *list, PyObject *target_list)
 {
     PyObject *item = NULL,
@@ -226,7 +225,7 @@ _multidict_list_extend(PyObject *list, PyObject *target_list)
     return 0;
 }
 
-static int
+static inline int
 _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
                             PyObject *kwds, const char *name, int do_add)
 {
@@ -309,7 +308,7 @@ _multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
     return err;
 }
 
-static int
+static inline int
 _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
                   const char *name, int do_add)
 {
@@ -419,7 +418,7 @@ fail:
 
 /******************** Base Methods ********************/
 
-static PyObject *
+static inline PyObject *
 multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *list     = NULL,
@@ -448,7 +447,7 @@ multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
     return list;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_getone(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
@@ -465,7 +464,7 @@ multidict_getone(MultiDictObject *self, PyObject *args, PyObject *kwds)
     return _multidict_getone(self, key, _default);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_get(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
@@ -485,25 +484,25 @@ multidict_get(MultiDictObject *self, PyObject *args, PyObject *kwds)
     return ret;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_keys(MultiDictObject *self)
 {
     return multidict_keysview_new((PyObject*)self);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_items(MultiDictObject *self)
 {
     return multidict_itemsview_new((PyObject*)self);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_values(MultiDictObject *self)
 {
     return multidict_valuesview_new((PyObject*)self);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_reduce(MultiDictObject *self)
 {
     PyObject *items      = NULL,
@@ -536,26 +535,26 @@ ret:
     return result;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_repr(PyObject *self)
 {
     return PyObject_CallFunctionObjArgs(
         repr_func, self, NULL);
 }
 
-static Py_ssize_t
+static inline Py_ssize_t
 multidict_mp_len(MultiDictObject *self)
 {
     return pair_list_len(&self->pairs);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_mp_subscript(MultiDictObject *self, PyObject *key)
 {
     return _multidict_getone(self, key, NULL);
 }
 
-static int
+static inline int
 multidict_mp_as_subscript(MultiDictObject *self, PyObject *key, PyObject *val)
 {
     if (val == NULL) {
@@ -565,19 +564,19 @@ multidict_mp_as_subscript(MultiDictObject *self, PyObject *key, PyObject *val)
     }
 }
 
-static int
+static inline int
 multidict_sq_contains(MultiDictObject *self, PyObject *key)
 {
     return pair_list_contains(&self->pairs, key);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_tp_iter(MultiDictObject *self)
 {
     return PyObject_GetIter(multidict_keysview_new((PyObject*)self));
 }
 
-static PyObject *
+static inline PyObject *
 multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
 {
     // TODO: refactoring me with love
@@ -635,7 +634,7 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
     Py_RETURN_NOTIMPLEMENTED;
 }
 
-static void
+static inline void
 multidict_tp_dealloc(MultiDictObject *self)
 {
     PyObject_GC_UnTrack(self);
@@ -648,13 +647,13 @@ multidict_tp_dealloc(MultiDictObject *self)
     Py_TRASHCAN_SAFE_END(self);
 }
 
-static int
+static inline int
 multidict_tp_traverse(MultiDictObject *self, visitproc visit, void *arg)
 {
     return pair_list_traverse(&self->pairs, visit, arg);
 }
 
-static int
+static inline int
 multidict_tp_clear(MultiDictObject *self)
 {
     return pair_list_clear(&self->pairs);
@@ -680,7 +679,7 @@ PyDoc_STRVAR(multidict_values_doc,
 
 /******************** MultiDict ********************/
 
-static int
+static inline int
 multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     if (pair_list_init(&self->pairs) < 0) {
@@ -692,7 +691,7 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     return 0;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_add(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key = NULL,
@@ -712,13 +711,13 @@ multidict_add(MultiDictObject *self, PyObject *args, PyObject *kwds)
     Py_RETURN_NONE;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_copy(MultiDictObject *self)
 {
     return _multidict_copy(self, &multidict_type);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     if (_multidict_extend(self, args, kwds, "extend", 1) < 0) {
@@ -728,7 +727,7 @@ multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
     Py_RETURN_NONE;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_clear(MultiDictObject *self)
 {
     if (pair_list_clear(&self->pairs) < 0) {
@@ -738,7 +737,7 @@ multidict_clear(MultiDictObject *self)
     Py_RETURN_NONE;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_setdefault(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
@@ -754,7 +753,7 @@ multidict_setdefault(MultiDictObject *self, PyObject *args, PyObject *kwds)
     return pair_list_set_default(&self->pairs, key, _default);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_popone(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
@@ -782,7 +781,7 @@ multidict_popone(MultiDictObject *self, PyObject *args, PyObject *kwds)
     return ret_val;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *key      = NULL,
@@ -810,13 +809,13 @@ multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
     return ret_val;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_popitem(MultiDictObject *self)
 {
     return pair_list_pop_item(&self->pairs);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     if (_multidict_extend(self, args, kwds, "update", 0) < 0) {
@@ -857,7 +856,7 @@ PyDoc_STRVAR(multidict_popitem_doc,
 PyDoc_STRVAR(multidict_update_doc,
 "Update the dictionary from *other*, overwriting existing keys.");
 
-static PyObject *
+static inline PyObject *
 multidict_class_getitem(PyObject *self, PyObject *arg)
 {
     Py_INCREF(self);
@@ -1018,7 +1017,7 @@ static PyTypeObject multidict_type = {
 
 /******************** CIMultiDict ********************/
 
-static int
+static inline int
 cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     if (ci_pair_list_init(&self->pairs) < 0) {
@@ -1030,7 +1029,7 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     return 0;
 }
 
-static PyObject *
+static inline PyObject *
 cimultidict_copy(MultiDictObject *self)
 {
     return _multidict_copy(self, &cimultidict_type);
@@ -1076,7 +1075,7 @@ static PyTypeObject cimultidict_type = {
 
 /******************** MultiDictProxy ********************/
 
-static int
+static inline int
 multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
                         PyObject *kwds)
 {
@@ -1118,52 +1117,52 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     return 0;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_getall(MultiDictProxyObject *self, PyObject *args,
                        PyObject *kwds)
 {
     return multidict_getall(self->md, args, kwds);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_getone(MultiDictProxyObject *self, PyObject *args,
                        PyObject *kwds)
 {
     return multidict_getone(self->md, args, kwds);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_get(MultiDictProxyObject *self, PyObject *args,
                        PyObject *kwds)
 {
     return multidict_get(self->md, args, kwds);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_keys(MultiDictProxyObject *self)
 {
     return multidict_keys(self->md);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_items(MultiDictProxyObject *self)
 {
     return multidict_items(self->md);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_values(MultiDictProxyObject *self)
 {
     return multidict_values(self->md);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_copy(MultiDictProxyObject *self)
 {
     return _multidict_proxy_copy(self, &multidict_type);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_reduce(MultiDictProxyObject *self)
 {
     PyErr_Format(
@@ -1174,38 +1173,38 @@ multidict_proxy_reduce(MultiDictProxyObject *self)
     return NULL;
 }
 
-static Py_ssize_t
+static inline Py_ssize_t
 multidict_proxy_mp_len(MultiDictProxyObject *self)
 {
     return multidict_mp_len(self->md);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_mp_subscript(MultiDictProxyObject *self, PyObject *key)
 {
     return multidict_mp_subscript(self->md, key);
 }
 
-static int
+static inline int
 multidict_proxy_sq_contains(MultiDictProxyObject *self, PyObject *key)
 {
     return multidict_sq_contains(self->md, key);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_tp_iter(MultiDictProxyObject *self)
 {
     return multidict_tp_iter(self->md);
 }
 
-static PyObject *
+static inline PyObject *
 multidict_proxy_tp_richcompare(MultiDictProxyObject *self, PyObject *other,
                                int op)
 {
     return multidict_tp_richcompare((PyObject*)self->md, other, op);
 }
 
-static void
+static inline void
 multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
 {
     PyObject_GC_UnTrack(self);
@@ -1216,7 +1215,7 @@ multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-static int
+static inline int
 multidict_proxy_tp_traverse(MultiDictProxyObject *self, visitproc visit,
                             void *arg)
 {
@@ -1224,7 +1223,7 @@ multidict_proxy_tp_traverse(MultiDictProxyObject *self, visitproc visit,
     return 0;
 }
 
-static int
+static inline int
 multidict_proxy_tp_clear(MultiDictProxyObject *self)
 {
     Py_CLEAR(self->md);
@@ -1330,7 +1329,7 @@ static PyTypeObject multidict_proxy_type = {
 
 /******************** CIMultiDictProxy ********************/
 
-static int
+static inline int
 cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
                           PyObject *kwds)
 {
@@ -1369,7 +1368,7 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     return 0;
 }
 
-static PyObject *
+static inline PyObject *
 cimultidict_proxy_copy(MultiDictProxyObject *self)
 {
     return _multidict_proxy_copy(self, &cimultidict_type);
@@ -1416,7 +1415,7 @@ static PyTypeObject cimultidict_proxy_type = {
 
 /******************** Other functions ********************/
 
-static PyObject *
+static inline PyObject *
 getversion(PyObject *self, PyObject *md)
 {
     pair_list_t *pairs = NULL;
@@ -1433,10 +1432,9 @@ getversion(PyObject *self, PyObject *md)
 
 /******************** Module ********************/
 
-static void
+static inline void
 module_free(void *m)
 {
-    Py_CLEAR(istr);
     Py_CLEAR(collections_abc_mapping);
     Py_CLEAR(collections_abc_mut_mapping);
     Py_CLEAR(collections_abc_mut_multi_mapping);
@@ -1481,8 +1479,23 @@ PyInit__multidict()
         goto fail;                              \
     }
 
-    istr = istr_init();
-    if (istr == NULL) {
+    if (multidict_views_init() < 0) {
+        goto fail;
+    }
+
+    if (multidict_iter_init() < 0) {
+        goto fail;
+    }
+
+    if (istr_init() < 0) {
+        goto fail;
+    }
+
+    if (PyType_Ready(&multidict_type) < 0 ||
+        PyType_Ready(&cimultidict_type) < 0 ||
+        PyType_Ready(&multidict_proxy_type) < 0 ||
+        PyType_Ready(&cimultidict_proxy_type) < 0)
+    {
         goto fail;
     }
 
@@ -1497,19 +1510,6 @@ PyInit__multidict()
 
     WITH_MOD("multidict._multidict_base");
     GET_MOD_ATTR(repr_func, "_mdrepr");
-
-    if (pair_list_global_init(istr) < 0 ||
-        multidict_views_init() < 0) {
-        goto fail;
-    }
-
-    if (PyType_Ready(&multidict_type) < 0 ||
-        PyType_Ready(&cimultidict_type) < 0 ||
-        PyType_Ready(&multidict_proxy_type) < 0 ||
-        PyType_Ready(&cimultidict_proxy_type) < 0)
-    {
-        goto fail;
-    }
 
     /* Register in _abc mappings (CI)MultiDict and (CI)MultiDictProxy */
     reg_func_call_result = PyObject_CallMethod(
@@ -1555,9 +1555,9 @@ PyInit__multidict()
     /* Instantiate this module */
     module = PyModule_Create(&multidict_module);
 
-    Py_INCREF(istr);
+    Py_INCREF(&istr_type);
     if (PyModule_AddObject(
-            module, "istr", (PyObject*)istr) < 0)
+            module, "istr", (PyObject*)&istr_type) < 0)
     {
         goto fail;
     }
@@ -1596,11 +1596,6 @@ fail:
     Py_XDECREF(collections_abc_mapping);
     Py_XDECREF(collections_abc_mut_mapping);
     Py_XDECREF(collections_abc_mut_multi_mapping);
-    Py_XDECREF(istr);
-    Py_XDECREF(&multidict_type);
-    Py_XDECREF(&cimultidict_type);
-    Py_XDECREF(&multidict_proxy_type);
-    Py_XDECREF(&cimultidict_proxy_type);
 
     return NULL;
 

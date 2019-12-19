@@ -26,7 +26,7 @@ _init_iter(MultidictIter *it, MultiDictObject *md)
     it->version = pair_list_version(&md->pairs);
 }
 
-PyObject *
+static inline PyObject *
 multidict_items_iter_new(MultiDictObject *md)
 {
     MultidictIter *it = PyObject_GC_New(
@@ -41,7 +41,7 @@ multidict_items_iter_new(MultiDictObject *md)
     return (PyObject *)it;
 }
 
-PyObject *
+static inline PyObject *
 multidict_keys_iter_new(MultiDictObject *md)
 {
     MultidictIter *it = PyObject_GC_New(
@@ -56,7 +56,7 @@ multidict_keys_iter_new(MultiDictObject *md)
     return (PyObject *)it;
 }
 
-PyObject *
+static inline PyObject *
 multidict_values_iter_new(MultiDictObject *md)
 {
     MultidictIter *it = PyObject_GC_New(
@@ -71,7 +71,7 @@ multidict_values_iter_new(MultiDictObject *md)
     return (PyObject *)it;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_items_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
@@ -96,7 +96,7 @@ multidict_items_iter_iternext(MultidictIter *self)
     return ret;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_values_iter_iternext(MultidictIter *self)
 {
     PyObject *value = NULL;
@@ -116,7 +116,7 @@ multidict_values_iter_iternext(MultidictIter *self)
     return value;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_keys_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
@@ -136,7 +136,7 @@ multidict_keys_iter_iternext(MultidictIter *self)
     return key;
 }
 
-static void
+static inline void
 multidict_iter_dealloc(MultidictIter *self)
 {
     PyObject_GC_UnTrack(self);
@@ -144,21 +144,21 @@ multidict_iter_dealloc(MultidictIter *self)
     PyObject_GC_Del(self);
 }
 
-static int
+static inline int
 multidict_iter_traverse(MultidictIter *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->md);
     return 0;
 }
 
-static int
+static inline int
 multidict_iter_clear(MultidictIter *self)
 {
     Py_CLEAR(self->md);
     return 0;
 }
 
-static PyObject *
+static inline PyObject *
 multidict_iter_len(MultidictIter *self)
 {
     return PyLong_FromLong(pair_list_len(&self->md->pairs));
@@ -185,7 +185,7 @@ static PyMethodDef multidict_iter_methods[] = {
 static PyTypeObject multidict_items_iter_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "multidict._multidict._itemsiter",         /* tp_name */
-    sizeof(MultidictIter),                          /* tp_basicsize */
+    sizeof(MultidictIter),                     /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_iter_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     .tp_traverse = (traverseproc)multidict_iter_traverse,
@@ -198,7 +198,7 @@ static PyTypeObject multidict_items_iter_type = {
 static PyTypeObject multidict_values_iter_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "multidict._multidict._valuesiter",         /* tp_name */
-    sizeof(MultidictIter),                           /* tp_basicsize */
+    sizeof(MultidictIter),                      /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_iter_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     .tp_traverse = (traverseproc)multidict_iter_traverse,
@@ -211,7 +211,7 @@ static PyTypeObject multidict_values_iter_type = {
 static PyTypeObject multidict_keys_iter_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "multidict._multidict._keysiter",         /* tp_name */
-    sizeof(MultidictIter),                         /* tp_basicsize */
+    sizeof(MultidictIter),                    /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_iter_dealloc,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
     .tp_traverse = (traverseproc)multidict_iter_traverse,
@@ -221,7 +221,7 @@ static PyTypeObject multidict_keys_iter_type = {
     .tp_methods = multidict_iter_methods,
 };
 
-int
+static inline int
 multidict_iter_init()
 {
     if (PyType_Ready(&multidict_items_iter_type) < 0 ||

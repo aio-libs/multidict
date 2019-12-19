@@ -14,13 +14,14 @@ PyDoc_STRVAR(istr__doc__, "istr class implementation");
 
 static PyTypeObject istr_type;
 
-void istr_dealloc(istrobject *self)
+static inline void
+istr_dealloc(istrobject *self)
 {
     Py_XDECREF(self->canonical);
     PyUnicode_Type.tp_dealloc((PyObject*)self);
 }
 
-static PyObject *
+static inline PyObject *
 istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyObject *x = NULL;
@@ -68,15 +69,14 @@ static PyTypeObject istr_type = {
 };
 
 
-PyObject* istr_init(void)
+static inline int
+istr_init(void)
 {
     istr_type.tp_base = &PyUnicode_Type;
     if (PyType_Ready(&istr_type) < 0) {
-        return NULL;
+        return -1;
     }
-
-    Py_INCREF(&istr_type);
-    return (PyObject *)&istr_type;
+    return 0;
 }
 
 #ifdef __cplusplus
