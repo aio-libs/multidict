@@ -100,7 +100,7 @@ key_to_str(PyObject *key)
 }
 
 
-static PyObject *
+static inline PyObject *
 ci_key_to_str(PyObject *key)
 {
     PyObject *ret;
@@ -209,21 +209,21 @@ _pair_list_init(pair_list_t *list, calc_identity_func calc_identity)
     return 0;
 }
 
-int
+static inline int
 pair_list_init(pair_list_t *list)
 {
     return _pair_list_init(list, key_to_str);
 }
 
 
-int
+static inline int
 ci_pair_list_init(pair_list_t *list)
 {
     return _pair_list_init(list, ci_key_to_str);
 }
 
 
-void
+static inline void
 pair_list_dealloc(pair_list_t *list)
 {
     pair_t *pair;
@@ -255,7 +255,7 @@ pair_list_dealloc(pair_list_t *list)
 }
 
 
-Py_ssize_t
+static inline Py_ssize_t
 pair_list_len(pair_list_t *list)
 {
     return list->size;
@@ -295,7 +295,7 @@ _pair_list_add_with_hash(pair_list_t *list,
 }
 
 
-int
+static inline int
 pair_list_add(pair_list_t *list,
               PyObject *key,
               PyObject *value)
@@ -321,7 +321,7 @@ fail:
 }
 
 
-static int
+static inline int
 pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
 {
     // return 1 on success, -1 on failure
@@ -351,7 +351,7 @@ pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
 }
 
 
-int
+static inline int
 _pair_list_drop_tail(pair_list_t *list, PyObject *identity, Py_hash_t hash,
                      Py_ssize_t pos)
 {
@@ -385,7 +385,7 @@ _pair_list_drop_tail(pair_list_t *list, PyObject *identity, Py_hash_t hash,
     return found;
 }
 
-static int
+static inline int
 _pair_list_del_hash(pair_list_t *list, PyObject *identity,
                     PyObject *key, Py_hash_t hash)
 {
@@ -405,7 +405,7 @@ _pair_list_del_hash(pair_list_t *list, PyObject *identity,
 }
 
 
-int
+static inline int
 pair_list_del(pair_list_t *list, PyObject *key)
 {
     PyObject *identity = NULL;
@@ -431,14 +431,14 @@ fail:
 }
 
 
-uint64_t
+static inline uint64_t
 pair_list_version(pair_list_t *list)
 {
     return list->version;
 }
 
 
-inline int
+static inline int
 _pair_list_next(pair_list_t *list, Py_ssize_t *ppos, PyObject **pidentity,
                 PyObject **pkey, PyObject **pvalue, Py_hash_t *phash)
 {
@@ -477,7 +477,7 @@ pair_list_next(pair_list_t *list, Py_ssize_t *ppos, PyObject **pidentity,
 }
 
 
-int
+static inline int
 pair_list_contains(pair_list_t *list, PyObject *key)
 {
     Py_hash_t hash1, hash2;
@@ -518,7 +518,7 @@ fail:
 }
 
 
-PyObject *
+static inline PyObject *
 pair_list_get_one(pair_list_t *list, PyObject *key)
 {
     Py_hash_t hash1, hash2;
@@ -562,7 +562,7 @@ fail:
 }
 
 
-PyObject *
+static inline PyObject *
 pair_list_get_all(pair_list_t *list, PyObject *key)
 {
     Py_hash_t hash1, hash2;
@@ -621,7 +621,7 @@ fail:
 }
 
 
-PyObject *
+static inline PyObject *
 pair_list_set_default(pair_list_t *list, PyObject *key, PyObject *value)
 {
     Py_hash_t hash1, hash2;
@@ -669,7 +669,7 @@ fail:
 }
 
 
-PyObject *
+static inline PyObject *
 pair_list_pop_one(pair_list_t *list, PyObject *key)
 {
     pair_t *pair;
@@ -720,7 +720,7 @@ fail:
 }
 
 
-PyObject *
+static inline PyObject *
 pair_list_pop_all(pair_list_t *list, PyObject *key)
 {
     Py_hash_t hash;
@@ -788,7 +788,7 @@ fail:
 }
 
 
-PyObject *
+static inline PyObject *
 pair_list_pop_item(pair_list_t *list)
 {
     PyObject *ret;
@@ -814,7 +814,7 @@ pair_list_pop_item(pair_list_t *list)
 }
 
 
-int
+static inline int
 pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
 {
     pair_t *pair;
@@ -879,7 +879,7 @@ fail:
 }
 
 
-static int
+static inline int
 _dict_set_number(PyObject *dict, PyObject *key, Py_ssize_t num)
 {
     PyObject *tmp = PyLong_FromSsize_t(num);
@@ -896,7 +896,7 @@ _dict_set_number(PyObject *dict, PyObject *key, Py_ssize_t num)
 }
 
 
-static int
+static inline int
 _pair_list_post_update(pair_list_t *list, PyObject* used_keys, Py_ssize_t pos)
 {
     pair_t *pair;
@@ -1000,7 +1000,7 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 }
 
 
-int
+static inline int
 pair_list_update(pair_list_t *list, pair_list_t *other)
 {
     PyObject *used_keys = NULL;
@@ -1038,7 +1038,7 @@ fail:
 }
 
 
-int
+static inline int
 pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
 {
     PyObject *it = NULL; // iter(seq)
@@ -1143,7 +1143,7 @@ fail_2:
     return -1;
 }
 
-int
+static inline int
 pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
 {
     PyObject *key = NULL;
@@ -1193,7 +1193,7 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
 
 /***********************************************************************/
 
-int
+static inline int
 pair_list_traverse(pair_list_t *list, visitproc visit, void *arg)
 {
     pair_t *pair = NULL;
@@ -1210,7 +1210,7 @@ pair_list_traverse(pair_list_t *list, visitproc visit, void *arg)
 }
 
 
-int
+static inline int
 pair_list_clear(pair_list_t *list)
 {
     pair_t *pair = NULL;
