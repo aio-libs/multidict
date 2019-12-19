@@ -372,6 +372,7 @@ _multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
         goto fail;
     }
 
+    Py_INCREF(items);
     PyTuple_SET_ITEM(arg_items, 0, items);
 
     if (_multidict_extend(
