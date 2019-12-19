@@ -1,4 +1,3 @@
-
 #include "Python.h"
 #include "structmember.h"
 
@@ -371,6 +370,7 @@ _multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
         goto fail;
     }
 
+    Py_INCREF(items);
     PyTuple_SET_ITEM(arg_items, 0, items);
 
     if (_multidict_extend(
@@ -1368,7 +1368,7 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
     return 0;
 }
 
-static PyObject * 
+static PyObject *
 cimultidict_proxy_copy(MultiDictProxyObject *self)
 {
     return _multidict_proxy_copy(self, &cimultidict_type);
