@@ -14,6 +14,23 @@ Changelog
 
 .. towncrier release notes start
 
+4.7.2 (2019-12-20)
+==================
+
+Bugfixes
+--------
+
+- Fix crashing when multidict is used pyinstaller
+  `#432 <https://github.com/aio-libs/multidict/issues/432>`_
+- Fix typing for `CIMultiDict.copy`
+  `#434 <https://github.com/aio-libs/multidict/issues/434>`_
+- Fix memory leak in ``MultiDict.copy()``
+  `#443 <https://github.com/aio-libs/multidict/issues/443>`_
+
+
+----
+
+
 4.7.1 (2019-12-12)
 ==================
 
