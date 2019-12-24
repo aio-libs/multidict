@@ -1,6 +1,6 @@
+import sys
 from array import array
 from collections import abc
-import sys
 
 from ._abc import MultiMapping, MutableMultiMapping
 

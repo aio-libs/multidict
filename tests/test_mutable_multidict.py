@@ -472,3 +472,7 @@ class TestCIMutableMultiDict:
         # multidict should be resized
         s2 = sys.getsizeof(md)
         assert s2 > s1
+
+    def test_min_sizeof(self, cls):
+        md = cls()
+        assert sys.getsizeof(md) < 1024
