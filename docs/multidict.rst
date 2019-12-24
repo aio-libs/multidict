@@ -74,14 +74,19 @@ MultiDict
    .. method:: extend([other])
 
       Extend the dictionary with the key/value pairs from *other*,
-      overwriting existing keys.
-      Return ``None``.
+      appending the pairs to this dictionary. For existing keys,
+      values are added.
+      Returns ``None``.
 
       :meth:`extend` accepts either another dictionary object or an
       iterable of key/value pairs (as tuples or other iterables of
       length two). If keyword arguments are specified, the dictionary
       is then extended with those key/value pairs:
       ``d.extend(red=1, blue=2)``.
+
+      Effectively the same as calling :meth:`add` for every
+      ``(key, value)`` pair. Also see :meth:`update`, for a version
+      that replaces existing keys.
 
    .. method:: getone(key[, default])
 
@@ -179,13 +184,16 @@ MultiDict
       Update the dictionary with the key/value pairs from *other*,
       overwriting existing keys.
 
-      Return ``None``.
+      Returns ``None``.
 
       :meth:`update` accepts either another dictionary object or an
       iterable of key/value pairs (as tuples or other iterables
       of length two). If keyword arguments are specified, the
       dictionary is then updated with those key/value pairs:
       ``d.update(red=1, blue=2)``.
+
+      Also see :meth:`extend` for a method that adds to existing keys rather
+      than update them.
 
    .. seealso::
 
