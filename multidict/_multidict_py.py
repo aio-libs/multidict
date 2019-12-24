@@ -1,5 +1,6 @@
 from array import array
 from collections import abc
+import sys
 
 from ._abc import MultiMapping, MutableMultiMapping
 
@@ -37,6 +38,9 @@ class _Impl:
         v = _version
         v[0] += 1
         self._version = v[0]
+
+    def __sizeof__(self):
+        return object.__sizeof__(self) + sys.getsizeof(self._items)
 
 
 class _Base:
@@ -172,6 +176,9 @@ class MultiDict(_Base, MutableMultiMapping):
         self._impl = _Impl()
 
         self._extend(args, kwargs, self.__class__.__name__, self._extend_items)
+
+    def __sizeof__(self):
+        return object.__sizeof__(self) + sys.getsizeof(self._impl)
 
     def __reduce__(self):
         return (self.__class__, (list(self.items()),))

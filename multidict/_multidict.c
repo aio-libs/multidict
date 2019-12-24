@@ -416,6 +416,7 @@ fail:
     return NULL;
 }
 
+
 /******************** Base Methods ********************/
 
 static inline PyObject *
@@ -863,6 +864,22 @@ multidict_class_getitem(PyObject *self, PyObject *arg)
     return self;
 }
 
+
+PyDoc_STRVAR(sizeof__doc__,
+"D.__sizeof__() -> size of D in memory, in bytes");
+
+static inline PyObject *
+_multidict_sizeof(PyObject *self)
+{
+    MultiDictObject *md = (MultiDictObject *)self;
+    Py_ssize_t size = sizeof(MultiDictObject);
+    if (md->pairs.pairs != md->pairs.buffer) {
+        size += sizeof(pair_t) * md->pairs.capacity;
+    }
+    return PyLong_FromSsize_t(size);
+}
+
+
 static PySequenceMethods multidict_sequence = {
     .sq_contains = (objobjproc)multidict_sq_contains,
 };
@@ -981,6 +998,12 @@ static PyMethodDef multidict_methods[] = {
         multidict_class_getitem,
         METH_O | METH_CLASS,
         NULL
+    },
+    {
+        "__sizeof__",
+        _multidict_sizeof,
+        METH_NOARGS,
+        sizeof__doc__,
     },
     {
         NULL,
