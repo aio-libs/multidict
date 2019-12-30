@@ -1,3 +1,6 @@
+import string
+import sys
+
 import pytest
 
 
@@ -459,3 +462,21 @@ class TestCIMutableMultiDict:
         d2 = cls(KEY="val")
 
         assert d1 == d2
+
+    @pytest.mark.skipif(sys.implementation.name == "pypy",
+                        reason="getsizeof() is not implemented on PyPy")
+    def test_sizeof(self, cls):
+        md = cls()
+        s1 = sys.getsizeof(md)
+        for i in string.ascii_lowercase:
+            for j in string.ascii_uppercase:
+                md[i + j] = i + j
+        # multidict should be resized
+        s2 = sys.getsizeof(md)
+        assert s2 > s1
+
+    @pytest.mark.skipif(sys.implementation.name == "pypy",
+                        reason="getsizeof() is not implemented on PyPy")
+    def test_min_sizeof(self, cls):
+        md = cls()
+        assert sys.getsizeof(md) < 1024
