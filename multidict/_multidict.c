@@ -869,12 +869,11 @@ PyDoc_STRVAR(sizeof__doc__,
 "D.__sizeof__() -> size of D in memory, in bytes");
 
 static inline PyObject *
-_multidict_sizeof(PyObject *self)
+_multidict_sizeof(MultiDictObject *self)
 {
-    MultiDictObject *md = (MultiDictObject *)self;
     Py_ssize_t size = sizeof(MultiDictObject);
-    if (md->pairs.pairs != md->pairs.buffer) {
-        size += sizeof(pair_t) * md->pairs.capacity;
+    if (self->pairs.pairs != self->pairs.buffer) {
+        size += (Py_ssize_t)sizeof(pair_t) * self->pairs.capacity;
     }
     return PyLong_FromSsize_t(size);
 }
@@ -995,13 +994,13 @@ static PyMethodDef multidict_methods[] = {
     },
     {
         "__class_getitem__",
-        multidict_class_getitem,
+        (PyCFunction)multidict_class_getitem,
         METH_O | METH_CLASS,
         NULL
     },
     {
         "__sizeof__",
-        _multidict_sizeof,
+        (PyCFunction)_multidict_sizeof,
         METH_NOARGS,
         sizeof__doc__,
     },
@@ -1313,7 +1312,7 @@ static PyMethodDef multidict_proxy_methods[] = {
     },
     {
         "__class_getitem__",
-        multidict_class_getitem,
+        (PyCFunction)multidict_class_getitem,
         METH_O | METH_CLASS,
         NULL
     },
