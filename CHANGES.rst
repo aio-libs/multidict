@@ -14,6 +14,35 @@ Changelog
 
 .. towncrier release notes start
 
+4.7.3 (2019-12-30)
+==================
+
+Features
+--------
+
+- Implement ``__sizeof__`` function to correctly calculate all internal structures size.
+  `#444 <https://github.com/aio-libs/multidict/issues/444>`_
+- Expose ``getversion()`` function.
+  `#451 <https://github.com/aio-libs/multidict/issues/451>`_
+
+
+Bugfixes
+--------
+
+- Fix crashes in ``popone``/``popall`` when default is returned.
+  `#450 <https://github.com/aio-libs/multidict/issues/450>`_
+
+
+Improved Documentation
+----------------------
+
+- Corrected the documentation for ``MultiDict.extend()``
+  `#446 <https://github.com/aio-libs/multidict/issues/446>`_
+
+
+----
+
+
 4.7.2 (2019-12-20)
 ==================
 

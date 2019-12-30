@@ -1,1 +1,0 @@
-Expose ``getversion()`` function.

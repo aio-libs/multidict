@@ -1,1 +1,0 @@
-Implement ``__sizeof__`` function to correctly calculate all internal structures size.
