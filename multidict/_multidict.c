@@ -802,6 +802,7 @@ multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
         _default != NULL)
     {
         PyErr_Clear();
+        Py_INCREF(_default);
         return _default;
     }
 
