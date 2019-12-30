@@ -17,6 +17,7 @@ __all__ = (
     "CIMultiDict",
     "upstr",
     "istr",
+    "getversion"
 )
 
 __version__ = "4.7.2"
@@ -31,6 +32,7 @@ try:
         MultiDict,
         CIMultiDict,
         istr,
+        getversion,
     )
 except ImportError:  # pragma: no cover
     from ._multidict_py import (
@@ -39,6 +41,7 @@ except ImportError:  # pragma: no cover
         MultiDict,
         CIMultiDict,
         istr,
+        getversion,
     )
 
 
