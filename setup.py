@@ -27,7 +27,7 @@ if platform.system() != "Windows":
 
 extensions = [
     Extension(
-        "multidict._multidict", ["multidict/_multidict.c",], extra_compile_args=CFLAGS,
+        "multidict._multidict", ["multidict/_multidict.c"], extra_compile_args=CFLAGS,
     ),
 ]
 
