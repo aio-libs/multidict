@@ -463,6 +463,8 @@ class TestCIMutableMultiDict:
 
         assert d1 == d2
 
+    @pytest.mark.skipif(sys.implementation.name == "pypy",
+                        reason="getsizeof() is not implemented on PyPy")
     def test_sizeof(self, cls):
         md = cls()
         s1 = sys.getsizeof(md)
@@ -473,6 +475,8 @@ class TestCIMutableMultiDict:
         s2 = sys.getsizeof(md)
         assert s2 > s1
 
+    @pytest.mark.skipif(sys.implementation.name == "pypy",
+                        reason="getsizeof() is not implemented on PyPy")
     def test_min_sizeof(self, cls):
         md = cls()
         assert sys.getsizeof(md) < 1024
