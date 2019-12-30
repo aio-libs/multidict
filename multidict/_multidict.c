@@ -479,9 +479,7 @@ multidict_get(MultiDictObject *self, PyObject *args, PyObject *kwds)
     {
         return NULL;
     }
-    Py_INCREF(Py_None);  // incref the default if not set
     ret = _multidict_getone(self, key, _default);
-    Py_DECREF(Py_None);
     return ret;
 }
 
@@ -776,6 +774,7 @@ multidict_popone(MultiDictObject *self, PyObject *args, PyObject *kwds)
         _default != NULL)
     {
         PyErr_Clear();
+        Py_INCREF(_default);
         return _default;
     }
 
@@ -804,6 +803,7 @@ multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
         _default != NULL)
     {
         PyErr_Clear();
+        Py_INCREF(_default);
         return _default;
     }
 
