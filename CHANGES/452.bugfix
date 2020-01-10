@@ -1,0 +1,1 @@
+``MultiDict.iter`` fix memory leak when used iterator over `multidict` instance.
