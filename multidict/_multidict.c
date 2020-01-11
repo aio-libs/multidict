@@ -572,7 +572,7 @@ multidict_sq_contains(MultiDictObject *self, PyObject *key)
 static inline PyObject *
 multidict_tp_iter(MultiDictObject *self)
 {
-    return PyObject_GetIter(multidict_keysview_new((PyObject*)self));
+    return multidict_keys_iter_new(self);
 }
 
 static inline PyObject *
