@@ -14,6 +14,19 @@ Changelog
 
 .. towncrier release notes start
 
+4.7.4 (2020-01-11)
+==================
+
+Bugfixes
+--------
+
+- ``MultiDict.iter`` fix memory leak when used iterator over `multidict` instance.
+  `#452 <https://github.com/aio-libs/multidict/issues/452>`_
+
+
+----
+
+
 4.7.3 (2019-12-30)
 ==================
 
