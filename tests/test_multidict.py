@@ -2,6 +2,7 @@ import gc
 import operator
 import sys
 import weakref
+from collections import deque
 from functools import reduce
 
 import pytest
@@ -367,6 +368,24 @@ class BaseMultiDictTest:
         md = cls(a=1, b=2)
         it = iter(md.values())
         assert it.__length_hint__() == 2
+
+    def test_ctor_list_arg_and_kwds(self, cls):
+        arg = [("a", 1)]
+        obj = cls(arg, b=2)
+        assert list(obj.items()) == [("a", 1), ("b", 2)]
+        assert arg == [("a", 1)]
+
+    def test_ctor_tuple_arg_and_kwds(self, cls):
+        arg = (("a", 1),)
+        obj = cls(arg, b=2)
+        assert list(obj.items()) == [("a", 1), ("b", 2)]
+        assert arg == (("a", 1),)
+
+    def test_ctor_deque_arg_and_kwds(self, cls):
+        arg = deque([("a", 1)])
+        obj = cls(arg, b=2)
+        assert list(obj.items()) == [("a", 1), ("b", 2)]
+        assert arg == deque([("a", 1)])
 
 
 class TestMultiDict(BaseMultiDictTest):

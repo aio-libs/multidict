@@ -235,6 +235,10 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
 
     int err = 0;
 
+    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
+        return -1;
+    }
+
     // TODO: mb can be refactored more clear
     if (_MultiDict_Check(arg) && kwds == NULL) {
         if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
@@ -264,8 +268,19 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
         Py_INCREF(arg_items);
     }
 
-    if (kwds && PyArg_ValidateKeywordArguments(kwds)) {
+    if (kwds) {
+        PyObject *tmp = PySequence_List(arg_items);
+        Py_DECREF(arg_items);
+        arg_items = tmp;
+        if (arg_items == NULL) {
+            return -1;
+        }
+
         kwds_items = PyDict_Items(kwds);
+        if (kwds_items == NULL) {
+            Py_DECREF(arg_items);
+            return -1;
+        }
         err = _multidict_list_extend(arg_items, kwds_items);
         Py_DECREF(kwds_items);
         if (err < 0) {

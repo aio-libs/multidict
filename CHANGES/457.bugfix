@@ -1,0 +1,1 @@
+Fixed creating and updating of MultiDict from a sequence of pairs and keyword arguments. Previously passing a list argument modified it inplace, and other sequences caused an error.
