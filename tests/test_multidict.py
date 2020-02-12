@@ -3,6 +3,7 @@ import operator
 import sys
 import weakref
 from collections import deque
+from collections.abc import Mapping
 from functools import reduce
 
 import pytest
@@ -262,6 +263,38 @@ class BaseMultiDictTest:
         d2 = dict(foo="bar", bar="baz")
 
         assert d1 != d2
+
+    def test_eq_bad_mapping_len(self, cls):
+        class BadMapping(Mapping):
+            def __getitem__(self, key):
+                return 1
+
+            def __iter__(self):
+                yield "a"
+
+            def __len__(self):
+                1 / 0
+
+        d1 = cls(a=1)
+        d2 = BadMapping()
+        with pytest.raises(ZeroDivisionError):
+            d1 == d2
+
+    def test_eq_bad_mapping_getitem(self, cls):
+        class BadMapping(Mapping):
+            def __getitem__(self, key):
+                1 / 0
+
+            def __iter__(self):
+                yield "a"
+
+            def __len__(self):
+                return 1
+
+        d1 = cls(a=1)
+        d2 = BadMapping()
+        with pytest.raises(ZeroDivisionError):
+            d1 == d2
 
     def test_ne(self, cls):
         d = cls([("key", "value1")])

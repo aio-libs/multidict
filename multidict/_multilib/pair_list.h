@@ -1148,11 +1148,11 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
 {
     PyObject *key = NULL;
     PyObject *avalue = NULL;
-    PyObject *bvalue = NULL;
+    PyObject *bvalue;
 
-    Py_ssize_t pos;
+    Py_ssize_t pos, other_len;
 
-    int cmp;
+    int eq;
 
     if (!PyMapping_Check(other)) {
         PyErr_Format(PyExc_TypeError,
@@ -1161,7 +1161,11 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
         return -1;
     }
 
-    if (pair_list_len(list) != PyMapping_Length(other)) {
+    other_len = PyMapping_Size(other);
+    if (other_len < 0) {
+        return -1;
+    }
+    if (pair_list_len(list) != other_len) {
         return 0;
     }
 
@@ -1169,21 +1173,18 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
     while (pair_list_next(list, &pos, NULL, &key, &avalue)) {
         bvalue = PyObject_GetItem(other, key);
         if (bvalue == NULL) {
-            PyErr_Clear();
-            return 0;
-        }
-
-        cmp = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
-        Py_DECREF(bvalue);
-
-        if (cmp < 0) {
+            if (PyErr_ExceptionMatches(PyExc_KeyError)) {
+                PyErr_Clear();
+                return 0;
+            }
             return -1;
         }
-        else if (cmp > 0) {
-            continue;
-        }
-        else {
-            return 0;
+
+        eq = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
+        Py_DECREF(bvalue);
+
+        if (eq <= 0) {
+            return eq;
         }
     }
 
