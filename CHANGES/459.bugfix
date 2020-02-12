@@ -1,0 +1,1 @@
+Fixed comparing with mapping: an exception raised in the `__len__` method caused raising a SyntaxError.
