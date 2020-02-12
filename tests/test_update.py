@@ -1,3 +1,5 @@
+from collections import deque
+
 import pytest
 
 from multidict._compat import USE_CYTHON
@@ -119,3 +121,27 @@ def test_update_ci_md(ci_md_cls):
     d.update(Key="val")
 
     assert [("Key", "val"), ("key2", "val3")] == list(d.items())
+
+
+def test_update_list_arg_and_kwds(cls):
+    obj = cls()
+    arg = [("a", 1)]
+    obj.update(arg, b=2)
+    assert list(obj.items()) == [("a", 1), ("b", 2)]
+    assert arg == [("a", 1)]
+
+
+def test_update_tuple_arg_and_kwds(cls):
+    obj = cls()
+    arg = (("a", 1),)
+    obj.update(arg, b=2)
+    assert list(obj.items()) == [("a", 1), ("b", 2)]
+    assert arg == (("a", 1),)
+
+
+def test_update_deque_arg_and_kwds(cls):
+    obj = cls()
+    arg = deque([("a", 1)])
+    obj.update(arg, b=2)
+    assert list(obj.items()) == [("a", 1), ("b", 2)]
+    assert arg == deque([("a", 1)])
