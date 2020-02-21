@@ -1,1 +1,0 @@
-Fixed comparing with mapping: all exceptions raised in the `__getitem__` method were silenced.

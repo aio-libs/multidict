@@ -14,6 +14,23 @@ Changelog
 
 .. towncrier release notes start
 
+4.7.5 (2020-02-21)
+==================
+
+Bugfixes
+--------
+
+- Fixed creating and updating of MultiDict from a sequence of pairs and keyword arguments. Previously passing a list argument modified it inplace, and other sequences caused an error.
+  `#457 <https://github.com/aio-libs/multidict/issues/457>`_
+- Fixed comparing with mapping: an exception raised in the `__len__` method caused raising a SyntaxError.
+  `#459 <https://github.com/aio-libs/multidict/issues/459>`_
+- Fixed comparing with mapping: all exceptions raised in the `__getitem__` method were silenced.
+  `#460 <https://github.com/aio-libs/multidict/issues/460>`_
+
+
+----
+
+
 4.7.4 (2020-01-11)
 ==================
 
