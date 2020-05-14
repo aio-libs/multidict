@@ -63,7 +63,7 @@ PyPI contains binary wheels for Linux, Windows and MacOS.  If you want to instal
 Tarball will be used to compile the library from sources.  It requires C compiler and
 Python headers installed.
 
-To skip the compilation please use `MULTIDICT_NO_EXTENSIONS` environment variable,
+To skip the compilation please use :data:`MULTIDICT_NO_EXTENSIONS` environment variable,
 e.g.:
 
 .. code-block:: bash
