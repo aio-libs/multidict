@@ -14,6 +14,20 @@ Changelog
 
 .. towncrier release notes start
 
+4.7.6 (2020-05-15)
+==================
+
+Bugfixes
+--------
+
+- Fixed an issue with some versions of the ``wheel`` dist
+  failing because of being unable to detect the license file.
+  `#481 <https://github.com/aio-libs/multidict/issues/481>`_
+
+
+----
+
+
 4.7.5 (2020-02-21)
 ==================
 
