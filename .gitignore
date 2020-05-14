@@ -84,3 +84,6 @@ TAGS
 .history/
 .vscode/
 .venv/
+
+# pyenv
+.python-version
