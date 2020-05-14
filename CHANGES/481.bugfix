@@ -1,0 +1,2 @@
+Fixed an issue with some versions of the ``wheel`` dist
+failing because of being unable to detect the license file.
