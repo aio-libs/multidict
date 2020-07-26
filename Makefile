@@ -14,18 +14,18 @@ all: test
 .flake: .install-deps $(shell find multidict -type f) \
                       $(shell find tests -type f)
 	flake8 multidict tests
-	@if ! isort -c -rc multidict tests; then \
+	@if ! isort --check multidict tests; then \
             echo "Import sort errors, run 'make fmt' to fix them!!!"; \
-            isort --diff -rc multidict tests; \
+            isort --diff --check multidict tests; \
             false; \
 	fi
 	@touch .flake
 
 
 isort-check:
-	@if ! isort -c -rc $(SRC); then \
+	@if ! isort --check $(SRC); then \
             echo "Import sort errors, run 'make fmt' to fix them!!!"; \
-            isort --diff -c -rc $(SRC); \
+            isort --diff --check $(SRC); \
             false; \
 	fi
 
@@ -33,7 +33,7 @@ flake8:
 	flake8 $(SRC)
 
 black-check:
-	@if ! isort -c -rc $(SRC); then \
+	@if ! isort --check $(SRC); then \
             echo "black errors, run 'make fmt' to fix them!!!"; \
 	    black -t py35 --diff --check $(SRC); \
             false; \
@@ -46,7 +46,7 @@ lint: flake8 black-check mypy isort-check
 
 fmt:
 	black -t py35 $(SRC)
-	isort -rc $(SRC)
+	isort $(SRC)
 
 check_changes:
 	./tools/check_changes.py

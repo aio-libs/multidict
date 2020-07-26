@@ -7,7 +7,7 @@ from multidict._multidict_py import CIMultiDict as PyCIMultiDict
 from multidict._multidict_py import MultiDict as PyMultiDict  # noqa: E402
 
 if USE_CYTHON:
-    from multidict._multidict import MultiDict, CIMultiDict
+    from multidict._multidict import CIMultiDict, MultiDict
 
 
 @pytest.fixture(
