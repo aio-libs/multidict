@@ -5,7 +5,7 @@ from multidict._multidict_py import CIMultiDict as PyCIMultiDict  # noqa
 from multidict._multidict_py import MultiDict as PyMultiDict  # noqa
 
 try:
-    from multidict._multidict import MultiDict, CIMultiDict  # noqa
+    from multidict._multidict import CIMultiDict, MultiDict  # noqa
 except ImportError:
     pass
 

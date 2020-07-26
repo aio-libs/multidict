@@ -40,6 +40,7 @@ class _Impl:
         self._version = v[0]
 
     if sys.implementation.name != "pypy":
+
         def __sizeof__(self):
             return object.__sizeof__(self) + sys.getsizeof(self._items)
 
@@ -179,6 +180,7 @@ class MultiDict(_Base, MutableMultiMapping):
         self._extend(args, kwargs, self.__class__.__name__, self._extend_items)
 
     if sys.implementation.name != "pypy":
+
         def __sizeof__(self):
             return object.__sizeof__(self) + sys.getsizeof(self._impl)
 

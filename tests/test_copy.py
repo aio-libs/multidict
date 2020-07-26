@@ -10,10 +10,10 @@ from multidict._multidict_py import MultiDictProxy as PyMultiDictProxy
 
 if USE_CYTHON:
     from multidict._multidict import (
-        MultiDict,
         CIMultiDict,
-        MultiDictProxy,
         CIMultiDictProxy,
+        MultiDict,
+        MultiDictProxy,
     )
 
 

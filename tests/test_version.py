@@ -6,7 +6,7 @@ from multidict._multidict_py import MultiDict as _MultiDict  # noqa: E402
 from multidict._multidict_py import getversion as _getversion
 
 if USE_CYTHON:
-    from multidict._multidict import MultiDict, CIMultiDict, getversion
+    from multidict._multidict import CIMultiDict, MultiDict, getversion
 
 
 class VersionMixin:
