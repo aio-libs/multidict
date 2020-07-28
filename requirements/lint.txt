@@ -2,4 +2,4 @@ mypy==0.782; implementation_name=="cpython"
 flake8==3.8.3
 flake8-pyi==20.5.0; python_version >= "3.6"
 black==19.10b0; python_version >= "3.6"
-isort==5.1.4
+isort==5.2.0
