@@ -25,6 +25,10 @@ stages:
 
 - template: stage-test.yml
 
+- template: templates/stage-test-aarch64.yml@templates
+  parameters:
+    steps: $PYTHON setup.py install && $PYTHON -m pip install -r requirements/pytest.txt && \
+
 - stage: build
   displayName: 'Build'
 
@@ -150,6 +154,8 @@ stages:
             - script: |
                 python setup.py bdist_wheel
               displayName: 'Make wheel'
+
+- template: templates/stage-deploy-aarch64.yml@templates
 
 - template: templates/stage-publish.yml@templates
   parameters:
