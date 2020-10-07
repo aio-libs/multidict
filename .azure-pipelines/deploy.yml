@@ -58,6 +58,9 @@ stages:
         py38 x64:
           python.code: 'cp38-cp38'
           manylinux: 'manylinux_64'
+        py39 x64:
+          python.code: 'cp39-cp39'
+          manylinux: 'manylinux_64'
     pool:
       vmImage: 'ubuntu-latest'
     container: manylinux
@@ -107,6 +110,10 @@ stages:
           python.version: '3.8'
           python.architecture: 'x64'
           image: 'windows-latest'
+        Win py39 x64:
+          python.version: '3.9'
+          python.architecture: 'x64'
+          image: 'windows-latest'
         Win py35 x86:
           python.version: '3.5'
           python.architecture: 'x86'
@@ -123,6 +130,10 @@ stages:
           python.version: '3.8'
           python.architecture: 'x86'
           image: 'windows-latest'
+        Win py39 x86:
+          python.version: '3.9'
+          python.architecture: 'x86'
+          image: 'windows-latest'
         Mac py35:
           python.version: '3.5'
           image: 'macos-latest'
@@ -137,6 +148,10 @@ stages:
           python.architecture: 'x64'
         Mac py38:
           python.version: '3.8'
+          image: 'macos-latest'
+          python.architecture: 'x64'
+        Mac py39:
+          python.version: '3.9'
           image: 'macos-latest'
           python.architecture: 'x64'
     pool:

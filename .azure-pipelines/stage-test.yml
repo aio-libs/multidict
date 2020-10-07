@@ -22,6 +22,10 @@ stages:
           python.version: '3.8'
           no_extensions: ''
           image: 'ubuntu-latest'
+        Py39-C-Linux:
+          python.version: '3.9'
+          no_extensions: ''
+          image: 'ubuntu-latest'
         Py35-Pure-Linux:
           python.version: '3.5'
           no_extensions: 'Y'
@@ -36,6 +40,10 @@ stages:
           image: 'ubuntu-latest'
         Py38-Pure-Linux:
           python.version: '3.8'
+          no_extensions: 'Y'
+          image: 'ubuntu-latest'
+        Py39-Pure-Linux:
+          python.version: '3.9'
           no_extensions: 'Y'
           image: 'ubuntu-latest'
         PyPy3-Linux:
@@ -58,6 +66,10 @@ stages:
           python.version: '3.8'
           no_extensions: ''
           image: 'windows-latest'
+        Py39-C-Win:
+          python.version: '3.9'
+          no_extensions: ''
+          image: 'windows-latest'
         Py35-C-Mac:
           python.version: '3.5'
           no_extensions: ''
@@ -72,6 +84,10 @@ stages:
           image: 'macos-latest'
         Py38-C-Mac:
           python.version: '3.8'
+          no_extensions: ''
+          image: 'macos-latest'
+        Py39-C-Mac:
+          python.version: '3.9'
           no_extensions: ''
           image: 'macos-latest'
     pool:
