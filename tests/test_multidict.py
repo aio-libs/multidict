@@ -170,7 +170,8 @@ class BaseMultiDictTest:
         assert d.getone("key2", "default") == "default"
 
     def test__iter__(
-        self, cls,
+        self,
+        cls,
     ):
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
         assert list(d) == ["key", "key2", "key"]

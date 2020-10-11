@@ -1,5 +1,6 @@
 import gc
 import sys
+from typing import Type
 
 import pytest
 
@@ -15,7 +16,7 @@ IMPLEMENTATION = getattr(sys, "implementation")  # to suppress mypy error
 
 class IStrMixin:
 
-    cls = NotImplemented
+    cls = Type[istr]
 
     def test_ctor(self):
         s = self.cls()

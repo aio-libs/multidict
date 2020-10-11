@@ -40,7 +40,7 @@ black-check:
 	fi
 
 mypy:
-	mypy multidict tests
+	mypy --show-error-codes multidict tests
 
 lint: flake8 black-check mypy isort-check check_changes
 

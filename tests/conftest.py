@@ -11,10 +11,10 @@ OPTIONAL_CYTHON = (
 )
 
 
-@pytest.fixture(
+@pytest.fixture(  # type: ignore[call-overload]
     scope="session",
     params=[
-        pytest.param("multidict._multidict", marks=OPTIONAL_CYTHON),
+        pytest.param("multidict._multidict", marks=OPTIONAL_CYTHON),  # type: ignore
         "multidict._multidict_py",
     ],
 )
