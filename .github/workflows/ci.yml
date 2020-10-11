@@ -97,7 +97,7 @@ jobs:
       with:
         path: requirements/ci.txt
       env:
-        MULTIDICT_NO_EXTENSIONS: ${{ no-extensions }}
+        MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
     - name: Run unittests
       env:
         COLOR: 'yes'
