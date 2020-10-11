@@ -121,9 +121,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - name: Dummy
-        run: |
-            echo "Predeploy step"
+      # manylinux containers don't work with git checkout
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Save sources
+      uses: actions/upload-artifact@v2
+      with:
+        name: src
+        path: ${{ github.workspace }}
 
   build-tarball:
     name: Tarball
@@ -157,8 +162,10 @@ jobs:
       image: quay.io/pypa/manylinux2014_${{ matrix.arch }}
     needs: pre-deploy
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+    - name: Download
+      uses: uses: actions/download-artifact@v2
+      with:
+        name: src
     - name: Setup venv
       run: |
         /opt/python/${{ matrix.pyver }}/bin/python -m venv .build-venv
