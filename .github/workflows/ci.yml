@@ -47,7 +47,7 @@ jobs:
         pip install -r requirements/doc.txt
     - name: Run docs spelling
       run: |
-        make api-doc-spelling
+        make doc-spelling
     - name: Prepare twine checker
       run: |
         pip install -U twine wheel
