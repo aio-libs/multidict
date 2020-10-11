@@ -159,9 +159,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Setup venv
-      run: |
-        /opt/python/${{ matrix.pyver }}/bin/python -m venv .build-venv
     - name: Install tools
       run: |
         docker run --rm ${{ env.img }} -v ${{ github.workspace }}:/ws:rw --workdir=/ws ${{ env.py }} -m pip install -U setuptools wheel
