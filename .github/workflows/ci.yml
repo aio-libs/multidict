@@ -150,8 +150,7 @@ jobs:
     strategy:
       matrix:
         pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
-        # arch: [x86_64, aarch64, i686, ppc64le, s390x]
-        arch: [x86_64]
+        arch: [x86_64] # , aarch64, i686, ppc64le, s390x]
       fail-fast: false
     runs-on: ubuntu-latest
     container:
@@ -165,16 +164,13 @@ jobs:
         /opt/python/${{ matrix.pyver }}/bin/python -m venv .build-venv
     - name: Install tools
       run: |
-        source .build-venv/bin/activate
-        pip install -U setuptools wheel
+        docker run --rm ${{ env.img }} -v ${{ github.workspace }}:/ws:rw --workdir=/ws ${{ env.py }} -m pip install -U setuptools wheel
     - name: Make wheel
       run: |
-        source .build-venv/bin/activate
-        python setup.py bdist_wheel
+        docker run --rm ${{ env.img }} -v ${{ github.workspace }}:/ws:rw --workdir=/ws ${{ env.py }} setup.py bdist_wheel
     - name: Repair wheel wheel
       run: |
-        source .build-venv/bin/activate
-        auditwheel repair dist/*.whl --wheel-dir wheelhouse/
+        docker run --rm ${{ env.img }} -v ${{ github.workspace }}:/ws:rw --workdir=/ws auditwheel repair dist/*.whl --wheel-dir wheelhouse/
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
