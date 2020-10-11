@@ -118,7 +118,7 @@ jobs:
     needs: test
     steps:
       - name: Dummy
-        runs: |
+        run: |
             echo "Predeploy step"
 
   build-tarball:
@@ -133,7 +133,7 @@ jobs:
       with:
         python-version: 3.8
     - name: Make sdist
-      runs:
+      run:
         python setup.py sdist
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
@@ -152,18 +152,18 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Setup venv
-      runs: |
+      run: |
         /opt/python/${{ python.code }}/bin/python -m venv .build-venv
     - name: Install tools
-      runs: |
+      run: |
         source .build-venv/bin/activate
         pip install -U setuptools wheel
     - name: Make wheel
-      runs: |
+      run: |
         source .build-venv/bin/activate
         python setup.py bdist_wheel
     - name: Repair wheel wheel
-      runs: |
+      run: |
         source .build-venv/bin/activate
         auditwheel repair dist/*.whl --wheel-dir wheelhouse/
     - name: Upload artifacts
