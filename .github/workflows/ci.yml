@@ -66,6 +66,11 @@ jobs:
         python-version: [3.6, 3.7, 3.8, 3.9]
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
+        exclude:
+          - os: macos
+            no-extensions: 'Y'
+          - os: windows
+            no-extensions: 'Y'
         include:
           - python-version: pypy3
             no-extensions: 'Y'
