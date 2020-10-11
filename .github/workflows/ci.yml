@@ -153,8 +153,9 @@ jobs:
         arch: [x86_64] # , aarch64, i686, ppc64le, s390x]
       fail-fast: false
     runs-on: ubuntu-latest
-    container:
-      image: quay.io/pypa/manylinux2014_${{ matrix.arch }}
+    env:
+      py: /opt/python/${{ matrix.pyver }}/bin/python
+      img: quay.io/pypa/manylinux2014_${{ matrix.arch }}
     needs: pre-deploy
     steps:
     - name: Checkout
