@@ -63,7 +63,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        pyver: [3.6, 3.7, 3.8, 3.9]
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -72,7 +72,7 @@ jobs:
           - os: windows
             no-extensions: 'Y'
         include:
-          - python-version: pypy3
+          - pyver: pypy3
             no-extensions: 'Y'
             os: ubuntu
       fail-fast: false
@@ -81,10 +81,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Setup Python ${{ matrix.python-version }}
+    - name: Setup Python ${{ matrix.pyver }}
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
       id: pip-cache
       run: |
@@ -92,10 +92,10 @@ jobs:
     - name: Cache PyPI
       uses: actions/cache@v2
       with:
-        key: pip-ci-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements/*.txt') }}
+        key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
-            pip-ci-${{ runner.os }}-${{ matrix.python-version }}-
+            pip-ci-${{ runner.os }}-${{ matrix.pyver }}-
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v2
       with:
@@ -167,19 +167,46 @@ jobs:
       run: echo ${{ steps.qemu.outputs.platforms }}
     - name: Install tools
       run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws ${{ env.img }} ${{ env.py }} -m pip install -U setuptools wheel
+        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
+          ${{ env.img }} ${{ env.py }} -m pip install -U setuptools wheel
     - name: Make wheel
       run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws ${{ env.img }} ${{ env.py }} setup.py bdist_wheel
+        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
+          ${{ env.img }} ${{ env.py }} setup.py bdist_wheel
     - name: Repair wheel wheel
       run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws ${{ env.img }} auditwheel repair dist/*.whl --wheel-dir wheelhouse/
+        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
+          ${{ env.img }} auditwheel repair dist/*.whl --wheel-dir wheelhouse/
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
         name: dist
         path: dist
     
+  build-binary:
+    name: Binary wheels
+      matrix:
+        pyver: [3.6, 3.7, 3.8, 3.9]
+        os: [macos, windows]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}-latest
+    needs: pre-deploy
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.pyver }}
+    - name: Make wheel
+      run:
+        python setup.py bdist_wheel
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist
+
         
 
   # deploy:
