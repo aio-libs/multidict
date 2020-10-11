@@ -121,14 +121,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      # manylinux containers don't work with git checkout
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Save sources
-        uses: actions/upload-artifact@v2
-        with:
-          name: src
-          path: ${{ github.workspace }}
+      - name: Dummy
+        run: |
+            echo "Predeploy step"
 
   build-tarball:
     name: Tarball
@@ -158,29 +153,22 @@ jobs:
         arch: [x86_64, aarch64, i686, ppc64le, s390x]
       fail-fast: false
     runs-on: ubuntu-latest
-    container:
-      image: quay.io/pypa/manylinux2014_${{ matrix.arch }}
     needs: pre-deploy
+    env:
+      py: /opt/python/${{ matrix.pyver }}/bin/python
+      img: quay.io/pypa/manylinux2014_${{ matrix.arch }}
     steps:
-    - name: Download
-      uses: actions/download-artifact@v2
-      with:
-        name: src
-    - name: Setup venv
-      run: |
-        /opt/python/${{ matrix.pyver }}/bin/python -m venv .build-venv
+    - name: Checkout
+      uses: actions/checkout@v2
     - name: Install tools
       run: |
-        source .build-venv/bin/activate
-        pip install -U setuptools wheel
+        docker run ${{ env.img }} ${{ env.py }} -m pip install -U setuptools wheel
     - name: Make wheel
       run: |
-        source .build-venv/bin/activate
-        python setup.py bdist_wheel
+        docker run ${{ env.img }} ${{ env.py }} setup.py bdist_wheel
     - name: Repair wheel wheel
       run: |
-        source .build-venv/bin/activate
-        auditwheel repair dist/*.whl --wheel-dir wheelhouse/
+        docker run ${{ env.img }} auditwheel repair dist/*.whl --wheel-dir wheelhouse/
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
