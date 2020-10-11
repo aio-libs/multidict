@@ -23,10 +23,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Setup Python 3.7
+    - name: Setup Python 3.8
       uses: actions/setup-python@v2
       with:
-        python-version: 3.7
+        python-version: 3.8
     - name: Cache PyPI
       uses: actions/cache@v2
       with:
@@ -58,8 +58,8 @@ jobs:
       run: |
         twine check dist/*
 
-  unit:
-    name: Unit
+  test:
+    name: Unit tests
     needs: lint
     strategy:
       matrix:
@@ -112,6 +112,68 @@ jobs:
         flags: unit
         fail_ci_if_error: false
 
+  pre-deploy:
+    name: Pre-Deploy
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Dummy
+        runs: |
+            echo "Predeploy step"
+
+  build-tarball:
+    name: Build Tarball
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Make sdist
+      runs:
+        python setup.py sdist
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist
+
+  build-linux:
+    name: Build manylinux
+    strategy:
+      matrix:
+        python.code: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
+    container: manylinux
+    needs: pre-deploy
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup venv
+      runs: |
+        /opt/python/${{ python.code }}/bin/python -m venv .build-venv
+    - name: Install tools
+      runs: |
+        source .build-venv/bin/activate
+        pip install -U setuptools wheel
+    - name: Make wheel
+      runs: |
+        source .build-venv/bin/activate
+        python setup.py bdist_wheel
+    - name: Repair wheel wheel
+      runs: |
+        source .build-venv/bin/activate
+        auditwheel repair dist/*.whl --wheel-dir wheelhouse/
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist
+    
+        
+
   # deploy:
   #   name: Deploy
   #   needs: e2e
@@ -121,10 +183,10 @@ jobs:
   #   steps:
   #   - name: Checkout
   #     uses: actions/checkout@v2
-  #   - name: Setup Python 3.7
+  #   - name: Setup Python 3.8
   #     uses: actions/setup-python@v2
   #     with:
-  #       python-version: 3.7
+  #       python-version: 3.8
   #   - name: Install dependencies
   #     run: |
   #       make setup
