@@ -145,7 +145,7 @@ jobs:
     name: Build manylinux
     strategy:
       matrix:
-        python.code: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
+        pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
     container: manylinux
     needs: pre-deploy
     steps:
@@ -153,7 +153,7 @@ jobs:
       uses: actions/checkout@v2
     - name: Setup venv
       run: |
-        /opt/python/${{ python.code }}/bin/python -m venv .build-venv
+        /opt/python/${{ matrix.pyver }}/bin/python -m venv .build-venv
     - name: Install tools
       run: |
         source .build-venv/bin/activate
