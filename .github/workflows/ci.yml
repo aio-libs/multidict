@@ -152,7 +152,8 @@ jobs:
       matrix:
         pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
     runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux1_x86_64
+    container:
+      image: quay.io/pypa/manylinux2014_x86_64
     needs: pre-deploy
     steps:
     - name: Checkout
