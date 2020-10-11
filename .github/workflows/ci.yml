@@ -125,10 +125,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Save sources
-      uses: actions/upload-artifact@v2
-      with:
-        name: src
-        path: ${{ github.workspace }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: src
+          path: ${{ github.workspace }}
 
   build-tarball:
     name: Tarball
