@@ -59,7 +59,7 @@ jobs:
         twine check dist/*
 
   test:
-    name: Unit tests
+    name: Test
     needs: lint
     strategy:
       matrix:
@@ -142,12 +142,12 @@ jobs:
         path: dist
 
   build-linux:
-    name: Build manylinux
+    name: Build ManyLinux
     strategy:
       matrix:
         pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
     runs-on: ubuntu-latest
-    container: manylinux
+    container: quay.io/pypa/manylinux1_x86_64
     needs: pre-deploy
     steps:
     - name: Checkout
