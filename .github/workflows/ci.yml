@@ -150,7 +150,7 @@ jobs:
     strategy:
       matrix:
         pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
-        arch: [x86_64] # , aarch64, i686, ppc64le, s390x]
+        arch: [x86_64, aarch64, i686, ppc64le, s390x]
       fail-fast: false
     runs-on: ubuntu-latest
     env:
@@ -160,6 +160,11 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+    - name: Set up QEMU
+      id: qemu
+      uses: docker/setup-qemu-action@v1
+    - name: Available platforms
+      run: echo ${{ steps.qemu.outputs.platforms }}
     - name: Install tools
       run: |
         docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws ${{ env.img }} ${{ env.py }} -m pip install -U setuptools wheel
