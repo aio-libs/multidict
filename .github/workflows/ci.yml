@@ -199,6 +199,9 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.pyver }}
+    - name: Install dependencies
+      run: |
+        python -m pip install -U setuptools wheel          
     - name: Make wheel
       run:
         python setup.py bdist_wheel
