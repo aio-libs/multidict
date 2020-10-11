@@ -42,7 +42,7 @@ black-check:
 mypy:
 	mypy multidict tests
 
-lint: flake8 black-check mypy isort-check
+lint: flake8 black-check mypy isort-check check_changes
 
 fmt:
 	black -t py35 $(SRC)

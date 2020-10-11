@@ -1,0 +1,199 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - ?.?*  # matches to backport branches, e.g. 3.6
+    tags: [ 'v*' ]
+  pull_request:
+    branches:
+      - master
+      - ?.?*
+  schedule:
+    - cron:  '0 6 * * *'  # Daily 6AM UTC build
+  
+
+jobs:
+
+  lint:
+    name: Linter
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - name: Cache PyPI
+      uses: actions/cache@v2
+      with:
+        key: pip-lint-${{ hashFiles('requirements/*.txt') }}
+        path: ~/.cache/pip
+        restore-keys: |
+            pip-lint-
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v2
+      with:
+        path: requirements/lint.txt
+    - name: Run linters
+      run: |
+        make lint
+    - name: Install spell checker
+      run: |
+        sudo apt install libenchant-dev
+        pip install -r requirements/doc.txt
+    - name: Run docs spelling
+      run: |
+        make api-doc-spelling
+    - name: Prepare twine checker
+      run: |
+        pip install -U twine wheel
+        python setup.py sdist bdist_wheel
+      env:
+        MULTIDICT_NO_EXTENSIONS: 1
+    - name: Run twine checker
+      run: |
+        twine check dist/*
+
+  # unit:
+  #   name: Unit
+  #   needs: lint
+  #   strategy:
+  #     matrix:
+  #       python-version: [3.6, 3.7, 3.8]
+  #       os: [ubuntu, macos, windows]
+  #     fail-fast:
+  #       false
+  #   runs-on: ${{ matrix.os }}-latest
+  #   timeout-minutes: 15
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v2
+  #   - name: Setup Python ${{ matrix.python-version }}
+  #     uses: actions/setup-python@v2
+  #     with:
+  #       python-version: ${{ matrix.python-version }}
+  #   - name: Get pip cache dir
+  #     id: pip-cache
+  #     run: |
+  #       echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
+  #   - name: Cache PyPI
+  #     uses: actions/cache@v2
+  #     with:
+  #       key: pip-ci-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements/*.txt') }}
+  #       path: ${{ steps.pip-cache.outputs.dir }}
+  #       restore-keys: |
+  #           pip-ci-${{ runner.os }}-${{ matrix.python-version }}-
+  #   - name: Install dependencies
+  #     uses: py-actions/py-dependency-install@v2
+  #     with:
+  #       path: requirements/ci.txt
+  #   - name: Run unittests
+  #     env:
+  #       COLOR: 'yes'
+  #     run: |
+  #       make .test
+  #   - name: Upload coverage
+  #     uses: codecov/codecov-action@v1
+  #     with:
+  #       token: ${{ secrets.CODECOV_TOKEN }}
+  #       file: ./coverage.xml
+  #       flags: unit
+  #       fail_ci_if_error: false
+
+  # e2e:
+  #   name: E2E
+  #   needs: unit
+  #   strategy:
+  #     matrix:
+  #       python-version: [3.6, 3.7, 3.8]
+  #       os: [ubuntu, macos, windows]
+  #       exclude:
+  #       - os: macos
+  #         python-version: 3.6
+  #     fail-fast:
+  #       false
+  #   runs-on: ${{ matrix.os }}-latest
+  #   timeout-minutes: 45
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v2
+  #   - name: Setup Python ${{ matrix.python-version }}
+  #     uses: actions/setup-python@v2
+  #     with:
+  #       python-version: ${{ matrix.python-version }}
+  #   - name: Get pip cache dir
+  #     id: pip-cache
+  #     run: |
+  #       echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
+  #   - name: Cache PyPI
+  #     uses: actions/cache@v2
+  #     with:
+  #       key: pip-ci-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements/*.txt') }}
+  #       path: ${{ steps.pip-cache.outputs.dir }}
+  #       restore-keys: |
+  #           pip-ci-${{ runner.os }}-${{ matrix.python-version }}-
+  #   - name: Install dependencies
+  #     uses: py-actions/py-dependency-install@v2
+  #     with:
+  #       path: requirements/ci.txt
+  #   - name: Run E2E tests
+  #     timeout-minutes: 30
+  #     env:
+  #       E2E_TOKEN: ${{ secrets.E2E_TOKEN }}
+  #       E2E_USER_TOKEN: ${{ secrets.E2E_USER_TOKEN }}
+  #       PYTEST_XDIST_NUM_THREADS: 16
+  #       COLOR: 'yes'
+  #     run: |
+  #       make .e2e
+  #   - name: Upload coverage
+  #     uses: codecov/codecov-action@v1
+  #     with:
+  #       token: ${{ secrets.CODECOV_TOKEN }}
+  #       file: ./coverage.xml
+  #       flags: e2e
+  #       fail_ci_if_error: false
+
+  # trigger-e2e:
+  #   name: Trigger external E2E tests
+  #   needs: e2e
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'push' && contains(github.ref, 'refs/heads/master')
+  #   steps:
+  #   - name: Trigger E2E CircleCI test suite
+  #     env:
+  #       E2E_CIRCLECI_TOKEN: ${{ secrets.E2E_CIRCLECI_TOKEN }}
+  #     run: |
+  #       curl -X POST --header "Content-Type: application/json" \
+  #          -d '{"branch":"master"}' \
+  #          https://circleci.com/api/v1.1/project/github/neuromation/platform-e2e/build\?circle-token\=${E2E_CIRCLECI_TOKEN}  
+
+  # deploy:
+  #   name: Deploy
+  #   needs: e2e
+  #   runs-on: ubuntu-latest
+  #   # Run only on pushing a tag
+  #   if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v2
+  #   - name: Setup Python 3.7
+  #     uses: actions/setup-python@v2
+  #     with:
+  #       python-version: 3.7
+  #   - name: Install dependencies
+  #     run: |
+  #       make setup
+  #       python -m pip install twine
+  #   - name: Make dists
+  #     run: |
+  #       python setup.py sdist bdist_wheel
+  #   - name: PyPI upload
+  #     env:
+  #       TWINE_USERNAME: __token__
+  #       TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+  #     run: |
+  #       twine upload dist/*
