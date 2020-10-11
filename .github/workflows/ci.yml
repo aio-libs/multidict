@@ -216,10 +216,8 @@ jobs:
     needs: [build-linux, build-binary, build-tarball]
     runs-on: ubuntu-latest
     # Run only on pushing a tag
-    #if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
     - name: Setup Python 3.8
       uses: actions/setup-python@v2
       with:
@@ -237,5 +235,4 @@ jobs:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
       run: |
-        # twine upload dist/*
-        ls -R dist
+        twine upload dist/*
