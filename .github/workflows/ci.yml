@@ -150,25 +150,31 @@ jobs:
     strategy:
       matrix:
         pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
-        arch: [x86_64, aarch64, i686, ppc64le, s390x]
+        # arch: [x86_64, aarch64, i686, ppc64le, s390x]
+        arch: [x86_64]
       fail-fast: false
     runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux2014_${{ matrix.arch }}
     needs: pre-deploy
-    env:
-      py: /opt/python/${{ matrix.pyver }}/bin/python
-      img: quay.io/pypa/manylinux2014_${{ matrix.arch }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+    - name: Setup venv
+      run: |
+        /opt/python/${{ matrix.pyver }}/bin/python -m venv .build-venv
     - name: Install tools
       run: |
-        docker run ${{ env.img }} ${{ env.py }} -m pip install -U setuptools wheel
+        source .build-venv/bin/activate
+        pip install -U setuptools wheel
     - name: Make wheel
       run: |
-        docker run ${{ env.img }} ${{ env.py }} setup.py bdist_wheel
+        source .build-venv/bin/activate
+        python setup.py bdist_wheel
     - name: Repair wheel wheel
       run: |
-        docker run ${{ env.img }} auditwheel repair dist/*.whl --wheel-dir wheelhouse/
+        source .build-venv/bin/activate
+        auditwheel repair dist/*.whl --wheel-dir wheelhouse/
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
