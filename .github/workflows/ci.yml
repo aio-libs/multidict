@@ -120,6 +120,8 @@ jobs:
     name: Pre-Deploy
     runs-on: ubuntu-latest
     needs: test
+    # Run only on pushing a tag
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     steps:
       - name: Dummy
         run: |
@@ -215,8 +217,6 @@ jobs:
     name: Deploy
     needs: [build-linux, build-binary, build-tarball]
     runs-on: ubuntu-latest
-    # Run only on pushing a tag
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     steps:
     - name: Setup Python 3.8
       uses: actions/setup-python@v2
