@@ -1,2 +1,0 @@
-Removed pip as a PEP 518 build dependency
-which was not required to build multidict.

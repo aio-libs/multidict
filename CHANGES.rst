@@ -14,6 +14,32 @@ Changelog
 
 .. towncrier release notes start
 
+5.0.0 (2020-10-12)
+==================
+
+Features
+--------
+
+- Provide wheels for aarch64, i686, ppc64le, s390x architectures on Linux
+  as well as x86_64.
+  `#500 <https://github.com/aio-libs/multidict/issues/500>`_
+- Provide wheels for Python 3.9.
+  `#534 <https://github.com/aio-libs/multidict/issues/534>`_
+
+Removal
+-------
+
+- Drop Python 3.5 support; Python 3.6 is the minimal supported Python version.
+
+Misc
+----
+
+- `#503 <https://github.com/aio-libs/multidict/issues/503>`_
+
+
+----
+
+
 4.7.6 (2020-05-15)
 ==================
 
@@ -34,7 +60,9 @@ Bugfixes
 Bugfixes
 --------
 
-- Fixed creating and updating of MultiDict from a sequence of pairs and keyword arguments. Previously passing a list argument modified it inplace, and other sequences caused an error.
+- Fixed creating and updating of MultiDict from a sequence of pairs and keyword
+  arguments. Previously passing a list argument modified it inplace, and other sequences
+  caused an error.
   `#457 <https://github.com/aio-libs/multidict/issues/457>`_
 - Fixed comparing with mapping: an exception raised in the
   :py:func:`~object.__len__` method caused raising a SyntaxError.
