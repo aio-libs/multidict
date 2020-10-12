@@ -9,6 +9,8 @@ from multidict._multidict_py import istr as _istr  # noqa: E402
 
 if USE_CYTHON:
     from multidict._multidict import istr
+else:
+    from multidict import istr
 
 
 IMPLEMENTATION = getattr(sys, "implementation")  # to suppress mypy error
