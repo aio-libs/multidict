@@ -1,4 +1,8 @@
 aarch64
+i686
+ppc64le
+s390x
+x86_64
 aiohttp
 args
 async
@@ -30,7 +34,6 @@ github
 google
 gunicorn
 Gunicorn
-i686
 Indices
 inplace
 IP
@@ -59,7 +62,6 @@ param
 params
 performant
 pickable
-ppc64le
 pre
 proxied
 pyenv
@@ -70,7 +72,6 @@ regex
 regexs
 repo
 runtime
-s390x
 subclassable
 subclassing
 subprotocol
@@ -92,4 +93,3 @@ Websockets
 wildcard
 Workflow
 wsgi
-x86_64

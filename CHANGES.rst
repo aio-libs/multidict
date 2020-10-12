@@ -20,8 +20,8 @@ Changelog
 Features
 --------
 
-- Provide wheels for aarch64, i686, ppc64le, s390x architectures on Linux
-  as well as x86_64.
+- Provide wheels for ``aarch64``, ``i686``, ``ppc64le``, ``s390x`` architectures on Linux
+  as well as ``x86_64``.
   `#500 <https://github.com/aio-libs/multidict/issues/500>`_
 - Provide wheels for Python 3.9.
   `#534 <https://github.com/aio-libs/multidict/issues/534>`_
