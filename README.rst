@@ -2,9 +2,9 @@
 multidict
 =========
 
-.. image:: https://dev.azure.com/aio-libs/multidict/_apis/build/status/CI?branchName=master
-   :target: https://dev.azure.com/aio-libs/multidict/_build
-   :alt: Azure Pipelines status for master branch
+.. image:: https://github.com/aio-libs/multidict/workflows/CI/badge.svg
+   :target: https://github.com/aio-libs/multidict/actions?query=workflow%3ACI
+   :alt: GitHub status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/aio-libs/multidict
