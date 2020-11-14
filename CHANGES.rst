@@ -14,6 +14,19 @@ Changelog
 
 .. towncrier release notes start
 
+5.0.1 (2020-11-14)
+==================
+
+Bugfixes
+--------
+
+- Provide x86 Windows wheels
+  `#550 <https://github.com/aio-libs/multidict/issues/550>`_
+
+
+----
+
+
 5.0.0 (2020-10-12)
 ==================
 
