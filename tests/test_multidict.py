@@ -71,19 +71,6 @@ def test_proxy_copy(dict_cls, proxy_cls):
     assert d1 is not d2
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 7),
-    reason="__class_getitem__ is supported started from Python 3.7",
-)
-@pytest.mark.parametrize(
-    "cls",
-    ["MultiDict", "CIMultiDict", "MultiDictProxy", "CIMultiDictProxy"],
-    indirect=True,
-)
-def test_class_getitem(cls):
-    assert cls[str] is cls
-
-
 @pytest.mark.parametrize(
     "cls",
     ["MultiDict", "CIMultiDict", "MultiDictProxy", "CIMultiDictProxy"],
