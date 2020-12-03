@@ -872,12 +872,17 @@ PyDoc_STRVAR(multidict_popitem_doc,
 PyDoc_STRVAR(multidict_update_doc,
 "Update the dictionary from *other*, overwriting existing keys.");
 
+
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
+#define multidict_class_getitem Py_GenericAlias
+#else
 static inline PyObject *
 multidict_class_getitem(PyObject *self, PyObject *arg)
 {
     Py_INCREF(self);
     return self;
 }
+#endif
 
 
 PyDoc_STRVAR(sizeof__doc__,

@@ -1,4 +1,6 @@
 import abc
+import sys
+import types
 from collections.abc import Mapping, MutableMapping
 
 
@@ -7,8 +9,15 @@ class _TypingMeta(abc.ABCMeta):
     # basically MultiMapping[str] and other generic-like type instantiations
     # are emulated.
     # Note: real type hints are provided by __init__.pyi stub file
-    def __getitem__(self, key):
-        return self
+    if sys.version_info >= (3, 9):
+
+        def __getitem__(self, key):
+            return types.GenericAlias(self, key)
+
+    else:
+
+        def __getitem__(self, key):
+            return self
 
 
 class MultiMapping(Mapping, metaclass=_TypingMeta):
