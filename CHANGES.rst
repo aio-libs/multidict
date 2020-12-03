@@ -14,6 +14,26 @@ Changelog
 
 .. towncrier release notes start
 
+5.1.0 (2020-12-03)
+==================
+
+Features
+--------
+
+- Support ``GenericAliases`` (``MultiDict[str]``) for Python 3.9+
+  `#553 <https://github.com/aio-libs/multidict/issues/553>`_
+
+
+Bugfixes
+--------
+
+- Synchronize the declared supported Python versions in ``setup.py`` with actually supported and tested ones.
+  `#552 <https://github.com/aio-libs/multidict/issues/552>`_
+
+
+----
+
+
 5.0.1 (2020-11-14)
 ==================
 

@@ -1,1 +1,0 @@
-Synchronize the declared supported Python versions in ``setup.py`` with actually supported and tested ones.
