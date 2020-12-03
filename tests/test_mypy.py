@@ -23,6 +23,10 @@ def test_classes_not_abstract() -> None:
     sys.version_info >= (3, 9),
     reason="Python 3.9 GenericAlias cannot be used in isinstance()/issubclass() checks",
 )
+@pytest.mark.skipif(
+    sys.version_info < (3, 7),
+    reason="Python 3.5 and 3.6 has no __class_getitem__ method",
+)
 def test_class_getitem(_multidict) -> None:
     assert issubclass(_multidict.MultiDict[str], _multidict.MultiDict)
     assert issubclass(_multidict.MultiDictProxy[str], _multidict.MultiDictProxy)
