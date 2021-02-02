@@ -89,7 +89,6 @@ inputs:
   attributes:
     label: Code of Conduct
     description:
-    all-required: true
     choices:
     - label: I agree to follow the aio-libs Code of Conduct
       required: true
