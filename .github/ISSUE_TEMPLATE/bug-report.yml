@@ -8,12 +8,10 @@ inputs:
 - type: description
   attributes:
     value: >-
-      Thanks for taking a minute to file a bug report!
+      **Thanks for taking a minute to file a bug report!**
+      _Please fill out the form below with as many precise
+      details as possible._
 
-- type: description
-  attributes:
-    value: >-
-      **Describe the bug**
 - type: textarea
   attributes:
     label: Describe the bug
@@ -21,10 +19,6 @@ inputs:
       A clear and concise description of what the bug is.
     required: true
 
-- type: description
-  attributes:
-    value: >-
-      **How to Reproduce**
 - type: textarea
   attributes:
     label: To Reproduce
@@ -36,10 +30,6 @@ inputs:
       3. See some behavior described
     required: true
 
-- type: description
-  attributes:
-    value: >-
-      **Expected behavior**
 - type: textarea
   attributes:
     label: Description
@@ -47,10 +37,6 @@ inputs:
       A clear and concise description of what you expected to happen.
     required: true
 
-- type: description
-  attributes:
-    value: >-
-      **Logs/tracebacks**
 - type: textarea
   attributes:
     label: Logs/tracebacks
