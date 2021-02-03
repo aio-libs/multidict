@@ -76,6 +76,9 @@ inputs:
     label: Code of Conduct
     description:
     choices:
-    - label: I agree to follow the aio-libs Code of Conduct
+    - label: |
+        I agree to follow the [aio-libs Code of Conduct][CoC]
+
+        [CoC]: https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md
       required: true
 ...
