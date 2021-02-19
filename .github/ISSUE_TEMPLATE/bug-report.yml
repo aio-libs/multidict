@@ -4,8 +4,8 @@ about: Create a report to help us improve
 title: '[Bug]: '
 labels: bug
 issue_body: false  # default: true
-inputs:
-- type: description
+body:
+- type: markdown
   attributes:
     value: >-
       **Thanks for taking a minute to file a bug report!**
@@ -17,6 +17,7 @@ inputs:
     label: Describe the bug
     description: >-
       A clear and concise description of what the bug is.
+  validations:
     required: true
 
 - type: textarea
@@ -28,6 +29,7 @@ inputs:
       1. Have certain environment
       2. Run given code snippet in a certain way
       3. See some behavior described
+  validations:
     required: true
 
 - type: textarea
@@ -35,6 +37,7 @@ inputs:
     label: Description
     description: >-
       A clear and concise description of what you expected to happen.
+  validations:
     required: true
 
 - type: textarea
@@ -49,6 +52,7 @@ inputs:
       ```console
 
       ```
+  validations:
     required: true
 
 - type: input
@@ -57,12 +61,14 @@ inputs:
       Your version of the Python
     description: >-
       Attach your version of the Python.
+  validations:
     required: true
 - type: input
   attributes:
     label: Your version of the multidict distribution
     description: >-
       Attach your version of the multidict distribution.
+  validations:
     required: true
 
 - type: textarea
@@ -78,7 +84,7 @@ inputs:
       Read the [aio-libs Code of Conduct][CoC] first.
 
       [CoC]: https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md
-    choices:
+    options:
     - label: I agree to follow the aio-libs Code of Conduct
       required: true
 ...
