@@ -24,7 +24,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Setup Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.9
     - name: Cache PyPI
@@ -82,7 +82,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Setup Python ${{ matrix.pyver }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
@@ -135,7 +135,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
     - name: Make sdist
@@ -202,7 +202,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: ${{ matrix.pyver }}
         architecture: ${{ matrix.arch }}
@@ -224,7 +224,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
     - name: Install twine
