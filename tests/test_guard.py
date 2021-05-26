@@ -4,7 +4,7 @@ from multidict._compat import USE_CYTHON
 from multidict._multidict_py import MultiDict as PyMultiDict  # noqa: E402
 
 if USE_CYTHON:
-    from multidict._multidict import MultiDict
+    from multidict._multidict import MultiDict  # type: ignore
 
 
 @pytest.fixture(

@@ -10,7 +10,7 @@ from multidict._multidict_py import MultiDict as PyMultiDict  # noqa: E402
 from multidict._multidict_py import MultiDictProxy as PyMultiDictProxy
 
 if USE_CYTHON:
-    from multidict._multidict import (
+    from multidict._multidict import (  # type: ignore
         CIMultiDict,
         CIMultiDictProxy,
         MultiDict,
