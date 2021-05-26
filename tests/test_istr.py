@@ -8,7 +8,7 @@ from multidict._compat import USE_CYTHON
 from multidict._multidict_py import istr as _istr  # noqa: E402
 
 if USE_CYTHON:
-    from multidict._multidict import istr
+    from multidict._multidict import istr  # type: ignore
 else:
     from multidict import istr
 
