@@ -166,7 +166,7 @@ jobs:
     - name: Available platforms
       run: echo ${{ steps.qemu.outputs.platforms }}
     - name: Build wheels
-      run: pipx run cibuildwheel==v2.2.0a1
+      uses: pypa/cibuildwheel@v2.2.0a1
       env:
         # configure cibuildwheel to build native archs ('auto'), and some
         # emulated ones
@@ -194,6 +194,8 @@ jobs:
       with:
         name: dist
         path: dist
+    - name: Count dists
+      run: echo "$(ls dist|wc -l) distributions to upload"
     - name: PyPI upload
       env:
         TWINE_USERNAME: __token__
