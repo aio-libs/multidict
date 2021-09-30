@@ -12,7 +12,7 @@ issue_format = "`#{issue} <https://github.com/aio-libs/multidict/issues/{issue}>
 
 
 [tool.cibuildwheel]
-test-requires = "pytest"
+test-requires = "-r requirements/ci.txt"
 test-command = "pytest {project}/tests"
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
