@@ -515,10 +515,3 @@ class TestCIMultiDict(BaseMultiDictTest):
     def test_values__repr__(self, cls):
         d = cls([("KEY", "value1")], key="value2")
         assert repr(d.values()) == "_ValuesView('value1', 'value2')"
-
-    def test_mutate_multidict(self, cls):
-        d = cls({"a": "123, 456", "b": "789"})
-        before_mutation_items = d.items()
-        d["c"] = "000"
-        # This causes an error on pypy.
-        list(before_mutation_items)

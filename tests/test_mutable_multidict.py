@@ -484,3 +484,27 @@ class TestCIMutableMultiDict:
     def test_min_sizeof(self, cls):
         md = cls()
         assert sys.getsizeof(md) < 1024
+
+    def test_issue_620_items(self, cls):
+        # https://github.com/aio-libs/multidict/issues/620
+        d = cls({"a": "123, 456", "b": "789"})
+        before_mutation_items = d.items()
+        d["c"] = "000"
+        # This causes an error on pypy.
+        list(before_mutation_items)
+
+    def test_issue_620_keys(self, cls):
+        # https://github.com/aio-libs/multidict/issues/620
+        d = cls({"a": "123, 456", "b": "789"})
+        before_mutation_keys = d.keys()
+        d["c"] = "000"
+        # This causes an error on pypy.
+        list(before_mutation_keys)
+
+    def test_issue_620_values(self, cls):
+        # https://github.com/aio-libs/multidict/issues/620
+        d = cls({"a": "123, 456", "b": "789"})
+        before_mutation_values = d.values()
+        d["c"] = "000"
+        # This causes an error on pypy.
+        list(before_mutation_values)
