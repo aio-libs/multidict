@@ -1,1 +1,1 @@
-Support Python 3.10, build Linux Alpine images
+Added support for Python 3.10 and started shipping platform-specific wheels with the ``musl`` tag targeting typical Alpine Linux runtimes.
