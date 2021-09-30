@@ -435,7 +435,6 @@ class _Iter:
 class _ViewBase:
     def __init__(self, impl):
         self._impl = impl
-        self._version = impl._version
 
     def __len__(self):
         return len(self._impl._items)
@@ -451,11 +450,11 @@ class _ItemsView(_ViewBase, abc.ItemsView):
         return False
 
     def __iter__(self):
-        return _Iter(len(self), self._iter())
+        return _Iter(len(self), self._iter(self._impl._version))
 
-    def _iter(self):
+    def _iter(self, version):
         for i, k, v in self._impl._items:
-            if self._version != self._impl._version:
+            if version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield k, v
 
@@ -475,11 +474,11 @@ class _ValuesView(_ViewBase, abc.ValuesView):
         return False
 
     def __iter__(self):
-        return _Iter(len(self), self._iter())
+        return _Iter(len(self), self._iter(self._impl._version))
 
-    def _iter(self):
+    def _iter(self, version):
         for item in self._impl._items:
-            if self._version != self._impl._version:
+            if version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield item[2]
 
@@ -499,11 +498,11 @@ class _KeysView(_ViewBase, abc.KeysView):
         return False
 
     def __iter__(self):
-        return _Iter(len(self), self._iter())
+        return _Iter(len(self), self._iter(self._impl._version))
 
-    def _iter(self):
+    def _iter(self, version):
         for item in self._impl._items:
-            if self._version != self._impl._version:
+            if version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield item[1]
 
