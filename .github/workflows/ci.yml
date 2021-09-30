@@ -181,6 +181,7 @@ jobs:
 
   deploy:
     name: Deploy
+    environment: release
     needs: [build-tarball, build-wheels]
     runs-on: ubuntu-latest
     steps:
@@ -201,6 +202,6 @@ jobs:
     - name: PyPI upload
       env:
         TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         twine upload dist/*
