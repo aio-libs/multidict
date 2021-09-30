@@ -164,6 +164,9 @@ jobs:
       with:
         platforms: all
       id: qemu
+    - name: Available platforms
+      if: runner.os == 'Linux'
+      run: echo "${{ steps.qemu.outputs.platforms }}"
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.2.0a1
       env:
