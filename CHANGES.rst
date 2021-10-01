@@ -14,7 +14,7 @@ Changelog
 
 .. towncrier release notes start
 
-Multidict 5.2.0a7 (2021-10-01)
+Multidict 5.2.0a8 (2021-10-01)
 ==============================
 
 Features

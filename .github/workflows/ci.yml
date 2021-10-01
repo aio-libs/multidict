@@ -150,24 +150,31 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, windows-2019, macos-10.15]
+        qemu: ['false']
+        include:
+          # Split ubuntu job in two for the sake of speed-up
+        - os: ubuntu-20.04
+          qemu: 'true'
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
     - name: Set up QEMU
-      if: runner.os == 'Linux'
+      if: ${{ matrix.qemu }}
       uses: docker/setup-qemu-action@v1
       with:
         platforms: all
       id: qemu
-    - name: Available platforms
-      if: runner.os == 'Linux'
-      run: echo "${{ steps.qemu.outputs.platforms }}"
+    - name: Prepare emulation
+      run: |
+        if [[ ${{ matrix.qemu }} == 'true' ]]; then
+          echo "Supported platforms: ${{ steps.qemu.outputs.platforms }}"
+          # Build emulated archit4ectures only if QEMU is set,
+          # use default "auto" otherwise
+          echo "CIBW_ARCHS_LINUX=aarch64 ppc64le s390x" >> $GITHUB_ENV
+        fi
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.2.0a1
       env:
-        # configure cibuildwheel to build native archs ('auto'), and some
-        # emulated ones
-        CIBW_ARCHS_LINUX: auto aarch64 ppc64le s390x
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v2
       with:
