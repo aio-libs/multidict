@@ -172,6 +172,7 @@ jobs:
           # use default "auto" otherwise
           echo "CIBW_ARCHS_LINUX=aarch64 ppc64le s390x" >> $GITHUB_ENV
         fi
+      shell: bash
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.2.0a1
       env:
