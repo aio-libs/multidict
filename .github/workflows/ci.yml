@@ -144,30 +144,41 @@ jobs:
         path: dist
 
   build-wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
+    runs-on: ${{ matrix.os }}-latest
     needs: pre-deploy
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2019, macos-10.15]
+        os: [ubuntu, windows, macos]
+        qemu: ['']
+        include:
+          # Split ubuntu job for the sake of speed-up
+        - os: ubuntu
+          qemu: aarch64
+        - os: ubuntu
+          qemu: ppc64le
+        - os: ubuntu
+          qemu: s390x
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
     - name: Set up QEMU
-      if: runner.os == 'Linux'
+      if: ${{ matrix.qemu }}
       uses: docker/setup-qemu-action@v1
       with:
         platforms: all
       id: qemu
-    - name: Available platforms
-      if: runner.os == 'Linux'
-      run: echo "${{ steps.qemu.outputs.platforms }}"
+    - name: Prepare emulation
+      run: |
+        if [[ -n "${{ matrix.qemu }}" ]]; then
+          # Build emulated architectures only if QEMU is set,
+          # use default "auto" otherwise
+          echo "CIBW_ARCHS_LINUX=${{ matrix.qemu }}" >> $GITHUB_ENV
+        fi
+      shell: bash
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.2.0a1
       env:
-        # configure cibuildwheel to build native archs ('auto'), and some
-        # emulated ones
-        CIBW_ARCHS_LINUX: auto aarch64 ppc64le s390x
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v2
       with:
