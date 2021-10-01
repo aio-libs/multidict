@@ -79,7 +79,7 @@ Features
 Removal
 -------
 
-- Droped Python 3.5 support; Python 3.6 is the minimal supported Python version.
+- Dropped Python 3.5 support; Python 3.6 is the minimal supported Python version.
 
 Misc
 ----
