@@ -180,14 +180,14 @@ jobs:
     needs: [build-tarball, build-wheels]
     runs-on: ubuntu-latest
     steps:
-    - name: Download dists
-      uses: actions/download-artifact@v2
+    - name: Make Release
+      uses: aio-libs/create-release@v1.0.0
       with:
-        name: dist
-        path: dist
-    - name: Count dists
-      run: echo "$(ls dist|wc -l) distributions to upload"
-    - name: Publish a Python distribution to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
+        changes_file: CHANGES.rst
+        name: multidict
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+        artifact: dist
+        version_file: multidict/__init__.py
+        fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/multidict/issues/\\1>`"
+        fix_issue_repl: "(#\\1)"
