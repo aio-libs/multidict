@@ -4,15 +4,15 @@ on:
   push:
     branches:
       - master
-      - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6 
+      - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
     tags: [ 'v*' ]
   pull_request:
     branches:
       - master
-      - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6 
+      - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
   schedule:
     - cron:  '0 6 * * *'  # Daily 6AM UTC build
-  
+
 
 jobs:
 
@@ -23,10 +23,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
-    - name: Setup Python 3.9
+    - name: Setup Python
       uses: actions/setup-python@v2.2.2
-      with:
-        python-version: 3.9
     - name: Cache PyPI
       uses: actions/cache@v2.1.6
       with:
@@ -63,7 +61,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        pyver: [3.6, 3.7, 3.8, 3.9]
+        pyver: [3.6, 3.7, 3.8, 3.9, 3.10.0-rc.2]
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -134,10 +132,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
-    - name: Setup Python 3.8
+    - name: Setup Python
       uses: actions/setup-python@v2.2.2
-      with:
-        python-version: 3.8
     - name: Make sdist
       run:
         python setup.py sdist
@@ -147,97 +143,51 @@ jobs:
         name: dist
         path: dist
 
-  build-linux:
-    name: Linux
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: pre-deploy
     strategy:
       matrix:
-        pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
-        arch: [x86_64, aarch64, i686, ppc64le, s390x]
-      fail-fast: false
-    runs-on: ubuntu-latest
-    env:
-      py: /opt/python/${{ matrix.pyver }}/bin/python
-      img: quay.io/pypa/manylinux2014_${{ matrix.arch }}
-    needs: pre-deploy
+        os: [ubuntu-20.04, windows-2019, macos-10.15]
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
     - name: Set up QEMU
-      id: qemu
+      if: runner.os == 'Linux'
       uses: docker/setup-qemu-action@v1
+      with:
+        platforms: all
+      id: qemu
     - name: Available platforms
-      run: echo ${{ steps.qemu.outputs.platforms }}
-    - name: Install tools
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
-          ${{ env.img }} ${{ env.py }} -m pip install -U setuptools wheel
-    - name: Make wheel
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
-          ${{ env.img }} ${{ env.py }} setup.py bdist_wheel
-    - name: Repair wheel wheel
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
-          ${{ env.img }} auditwheel repair dist/*.whl --wheel-dir wheelhouse/
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      if: runner.os == 'Linux'
+      run: echo "${{ steps.qemu.outputs.platforms }}"
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v2.2.0a1
+      env:
+        # configure cibuildwheel to build native archs ('auto'), and some
+        # emulated ones
+        CIBW_ARCHS_LINUX: auto aarch64 ppc64le s390x
+        CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+    - uses: actions/upload-artifact@v2
       with:
         name: dist
-        path: wheelhouse/*
-    
-  build-binary:
-    name: Binary wheels
-    strategy:
-      matrix:
-        pyver: [3.6, 3.7, 3.8, 3.9]
-        os: [macos, windows]
-        arch: [x86, x64]
-        exclude:
-        - os: macos
-          arch: x86
-      fail-fast: false
-    runs-on: ${{ matrix.os }}-latest
-    needs: pre-deploy
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2.3.4
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2.2.2
-      with:
-        python-version: ${{ matrix.pyver }}
-        architecture: ${{ matrix.arch }}
-    - name: Install dependencies
-      run: |
-        python -m pip install -U setuptools wheel          
-    - name: Make wheel
-      run:
-        python setup.py bdist_wheel
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: dist
-        path: dist
+        path: ./wheelhouse/*.whl
 
   deploy:
     name: Deploy
-    needs: [build-linux, build-binary, build-tarball]
+    environment: release
+    needs: [build-tarball, build-wheels]
     runs-on: ubuntu-latest
     steps:
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2.2.2
-      with:
-        python-version: 3.8
-    - name: Install twine
-      run: |
-        python -m pip install twine
     - name: Download dists
       uses: actions/download-artifact@v2
       with:
         name: dist
         path: dist
-    - name: PyPI upload
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-      run: |
-        twine upload dist/*
+    - name: Count dists
+      run: echo "$(ls dist|wc -l) distributions to upload"
+    - name: Publish a Python distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
