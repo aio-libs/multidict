@@ -14,8 +14,8 @@ Changelog
 
 .. towncrier release notes start
 
-Multidict 5.2.0a13 (2021-10-01)
-===============================
+5.2.0a14 (2021-10-01)
+=====================
 
 Features
 --------
@@ -31,8 +31,8 @@ Bugfixes
 - Fixed pure-python implementation that used to raise "Dictionary changed during iteration" error when iterated view (``.keys()``, ``.values()`` or ``.items()``) was created before the dictionary's content change. (`#620 <https://github.com/aio-libs/multidict/issues/620>`_)
 
 
-Multidict 5.1.0 (2020-12-03)
-============================
+5.1.0 (2020-12-03)
+==================
 
 Features
 --------
@@ -51,8 +51,8 @@ Bugfixes
 ----
 
 
-Multidict 5.0.1 (2020-11-14)
-============================
+5.0.1 (2020-11-14)
+==================
 
 Bugfixes
 --------
@@ -64,8 +64,8 @@ Bugfixes
 ----
 
 
-Multidict 5.0.0 (2020-10-12)
-============================
+5.0.0 (2020-10-12)
+==================
 
 Features
 --------
