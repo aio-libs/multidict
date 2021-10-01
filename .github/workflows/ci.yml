@@ -159,7 +159,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2.3.4
     - name: Set up QEMU
-      if: ${{ matrix.qemu }}
+      if: ${{ matrix.qemu == 'true' }}
       uses: docker/setup-qemu-action@v1
       with:
         platforms: all
