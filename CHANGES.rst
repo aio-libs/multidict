@@ -14,8 +14,25 @@ Changelog
 
 .. towncrier release notes start
 
-5.1.0 (2020-12-03)
-==================
+Multidict 5.2.0a7 (2021-10-01)
+==============================
+
+Features
+--------
+
+- 1. Support Python 3.10
+  2. Start shipping platform-specific wheels with the ``musl`` tag targeting typical Alpine Linux runtimes.
+  3. Start shipping platform-specific arm64 wheels for Apple Silicon. (`#629 <https://github.com/aio-libs/multidict/issues/629>`_)
+
+
+Bugfixes
+--------
+
+- Fix pure-python implementation that used to raise "Dictionary changed during iteration" error when iterated view (``.keys()``, ``.values()`` or ``.items()``) was created before the dictionary's content change. (`#620 <https://github.com/aio-libs/multidict/issues/620>`_)
+
+
+Multidict 5.1.0 (2020-12-03)
+============================
 
 Features
 --------
@@ -34,8 +51,8 @@ Bugfixes
 ----
 
 
-5.0.1 (2020-11-14)
-==================
+Multidict 5.0.1 (2020-11-14)
+============================
 
 Bugfixes
 --------
@@ -47,8 +64,8 @@ Bugfixes
 ----
 
 
-5.0.0 (2020-10-12)
-==================
+Multidict 5.0.0 (2020-10-12)
+============================
 
 Features
 --------
@@ -73,8 +90,8 @@ Misc
 ----
 
 
-4.7.6 (2020-05-15)
-==================
+Multidict 4.7.6 (2020-05-15)
+============================
 
 Bugfixes
 --------
@@ -87,8 +104,8 @@ Bugfixes
 ----
 
 
-4.7.5 (2020-02-21)
-==================
+Multidict 4.7.5 (2020-02-21)
+============================
 
 Bugfixes
 --------
@@ -108,8 +125,8 @@ Bugfixes
 ----
 
 
-4.7.4 (2020-01-11)
-==================
+Multidict 4.7.4 (2020-01-11)
+============================
 
 Bugfixes
 --------
@@ -122,8 +139,8 @@ Bugfixes
 ----
 
 
-4.7.3 (2019-12-30)
-==================
+Multidict 4.7.3 (2019-12-30)
+============================
 
 Features
 --------
@@ -151,8 +168,8 @@ Improved Documentation
 ----
 
 
-4.7.2 (2019-12-20)
-==================
+Multidict 4.7.2 (2019-12-20)
+============================
 
 Bugfixes
 --------
@@ -168,8 +185,8 @@ Bugfixes
 ----
 
 
-4.7.1 (2019-12-12)
-==================
+Multidict 4.7.1 (2019-12-12)
+============================
 
 Bugfixes
 --------
@@ -197,8 +214,8 @@ Improved Documentation
 ----
 
 
-4.7.0 (2019-12-10)
-==================
+Multidict 4.7.0 (2019-12-10)
+============================
 
 Features
 --------
@@ -233,8 +250,8 @@ Bugfixes
 ----
 
 
-4.6.1 (2019-11-21)
-====================
+Multidict 4.6.1 (2019-11-21)
+============================
 
 Bugfixes
 --------
@@ -242,8 +259,8 @@ Bugfixes
 - Fix PyPI link for GitHub Issues badge.
   `#391 <https://github.com/aio-libs/aiohttp/issues/391>`_
 
-4.6.0 (2019-11-20)
-====================
+Multidict 4.6.0 (2019-11-20)
+============================
 
 Bugfixes
 --------
