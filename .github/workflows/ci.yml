@@ -23,10 +23,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
-    - name: Setup Python 3.9
+    - name: Setup Python
       uses: actions/setup-python@v2.2.2
       with:
-        python-version: 3.9
+        python-version: 3.x
     - name: Cache PyPI
       uses: actions/cache@v2.1.6
       with:
@@ -134,10 +134,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
-    - name: Setup Python 3.9
+    - name: Setup Python
       uses: actions/setup-python@v2.2.2
       with:
-        python-version: 3.9
+        python-version: 3.x
     - name: Make sdist
       run:
         python setup.py sdist
@@ -154,7 +154,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, windows-2019, macos-10.15]
-      fail-fast: false
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.4
