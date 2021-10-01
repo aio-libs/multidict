@@ -171,7 +171,7 @@ jobs:
     - name: Prepare emulation
       run: |
         if [[ -n "${{ matrix.qemu }}" ]]; then
-          # Build emulated archit4ectures only if QEMU is set,
+          # Build emulated architectures only if QEMU is set,
           # use default "auto" otherwise
           echo "CIBW_ARCHS_LINUX=${{ matrix.qemu }}" >> $GITHUB_ENV
         fi
