@@ -5,21 +5,21 @@ import pyperf
 
 
 IMPLEMENTATIONS = {
-    'dict': """\
+    "dict": """\
     cls = dict
     """,
-    'multidict_c': """\
+    "multidict_c": """\
     from multidict._multidict import MultiDict as cls, istr
     """,
-    'cimultidict_c': """\
+    "cimultidict_c": """\
     from multidict._multidict import CIMultiDict as cls, istr
     """,
-    'multidict_py': """\
+    "multidict_py": """\
     from multidict._multidict_py import MultiDict as cls, istr
     """,
-    'cimultidict_py': """\
+    "cimultidict_py": """\
     from multidict._multidict_py import CIMultiDict as cls, istr
-    """
+    """,
 }
 
 INIT = """\
@@ -43,7 +43,8 @@ key = istr('key10')
 """
 
 
-SET_ITEM = """\
+SET_ITEM = (
+    """\
 dct[key] = '1'
 dct[key] = '2'
 dct[key] = '3'
@@ -54,10 +55,13 @@ dct[key] = '7'
 dct[key] = '8'
 dct[key] = '9'
 dct[key] = '10'
-""" * 10
+"""
+    * 10
+)
 
 
-GET_ITEM = """\
+GET_ITEM = (
+    """\
 dct[key]
 dct[key]
 dct[key]
@@ -68,10 +72,13 @@ dct[key]
 dct[key]
 dct[key]
 dct[key]
-""" * 10
+"""
+    * 10
+)
 
 
-ADD = """\
+ADD = (
+    """\
 add(key, '1')
 add(key, '2')
 add(key, '3')
@@ -82,32 +89,40 @@ add(key, '7')
 add(key, '8')
 add(key, '9')
 add(key, '10')
-""" * 10
+"""
+    * 10
+)
 
 SETUP_ADD = """\
 add = dct.add
 """
 
+
 def benchmark_name(name, ctx, prefix=None, use_prefix=False):
     if use_prefix:
-        return '%s%s' % (prefix % ctx, name)
+        return "%s%s" % (prefix % ctx, name)
 
     return name
 
 
 def add_impl_option(cmd, args):
     if args.impl:
-        cmd.extend(['--impl', args.impl])
+        cmd.extend(["--impl", args.impl])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     runner = pyperf.Runner(add_cmdline_args=add_impl_option)
 
     parser = runner.argparser
-    parser.description = ('Allows to measure performance of MultiMapping and '
-                          'MutableMultiMapping implementations')
-    parser.add_argument('--impl', choices=sorted(IMPLEMENTATIONS),
-                        help='specific implementation to benchmark')
+    parser.description = (
+        "Allows to measure performance of MultiMapping and "
+        "MutableMultiMapping implementations"
+    )
+    parser.add_argument(
+        "--impl",
+        choices=sorted(IMPLEMENTATIONS),
+        help="specific implementation to benchmark",
+    )
 
     options = parser.parse_args()
     implementations = (options.impl,) if options.impl else IMPLEMENTATIONS
@@ -116,30 +131,51 @@ if __name__ == '__main__':
     for impl in implementations:
         # print("=======================", impl, "======================")
         imports = textwrap.dedent(IMPLEMENTATIONS[impl])
-        name = functools.partial(benchmark_name, ctx=dict(impl=impl),
-                                 prefix='(impl = %(impl)s) ',
-                                 use_prefix=len(implementations) > 1)
+        name = functools.partial(
+            benchmark_name,
+            ctx=dict(impl=impl),
+            prefix="(impl = %(impl)s) ",
+            use_prefix=len(implementations) > 1,
+        )
 
-        runner.timeit(name('setitem str'),
-                      SET_ITEM, imports + INIT + FILL,
-                      inner_loops=inner_loops)
-        runner.timeit(name('getitem str'),
-                      GET_ITEM, imports + INIT + FILL,
-                      inner_loops=inner_loops)
+        runner.timeit(
+            name("setitem str"),
+            SET_ITEM,
+            imports + INIT + FILL,
+            inner_loops=inner_loops,
+        )
+        runner.timeit(
+            name("getitem str"),
+            GET_ITEM,
+            imports + INIT + FILL,
+            inner_loops=inner_loops,
+        )
 
         # MultiDict specific
-        if impl == 'dict':
+        if impl == "dict":
             continue
 
-        runner.timeit(name('setitem istr'),
-                      SET_ITEM, imports + INIT + FILL_ISTR,
-                      inner_loops=inner_loops)
-        runner.timeit(name('getitem istr'),
-                      GET_ITEM, imports + INIT + FILL_ISTR,
-                      inner_loops=inner_loops)
-        runner.timeit(name('add str'),
-                      ADD, imports + INIT + FILL + SETUP_ADD,
-                      inner_loops=inner_loops)
-        runner.timeit(name('add istr'),
-                      ADD, imports + INIT + FILL_ISTR + SETUP_ADD,
-                      inner_loops=inner_loops)
+        runner.timeit(
+            name("setitem istr"),
+            SET_ITEM,
+            imports + INIT + FILL_ISTR,
+            inner_loops=inner_loops,
+        )
+        runner.timeit(
+            name("getitem istr"),
+            GET_ITEM,
+            imports + INIT + FILL_ISTR,
+            inner_loops=inner_loops,
+        )
+        runner.timeit(
+            name("add str"),
+            ADD,
+            imports + INIT + FILL + SETUP_ADD,
+            inner_loops=inner_loops,
+        )
+        runner.timeit(
+            name("add istr"),
+            ADD,
+            imports + INIT + FILL_ISTR + SETUP_ADD,
+            inner_loops=inner_loops,
+        )

@@ -72,6 +72,7 @@ regex
 regexs
 repo
 runtime
+runtimes
 subclassable
 subclassing
 subprotocol

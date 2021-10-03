@@ -73,7 +73,7 @@ args = dict(
     url="https://github.com/aio-libs/multidict",
     project_urls={
         "Chat: Gitter": "https://gitter.im/aio-libs/Lobby",
-        "CI: Azure Pipelines": "https://dev.azure.com/aio-libs/multidict/_build",
+        "CI: GitHub": "https://github.com/aio-libs/multidict/actions",
         "Coverage: codecov": "https://codecov.io/github/aio-libs/multidict",
         "Docs: RTD": "https://multidict.readthedocs.io",
         "GitHub: issues": "https://github.com/aio-libs/multidict/issues",
