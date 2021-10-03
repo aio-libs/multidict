@@ -79,7 +79,7 @@ File :file:`CHANGES/553.feature.rst`:
 
 .. code-block:: rst
 
-    Supported ``GenericAliases`` (``MultiDict[str]``) for Python 3.9+
+    Added support for ``GenericAliases`` (``MultiDict[str]``) under Python 3.9 and higher.
 
 
 .. _Towncrier philosophy:
