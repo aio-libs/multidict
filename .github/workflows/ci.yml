@@ -203,6 +203,7 @@ jobs:
       with:
         changes_file: CHANGES.rst
         name: multidict
+        version_file: multidict/__init__.py
         github_token: ${{ secrets.GITHUB_TOKEN }}
         pypi_token: ${{ secrets.PYPI_API_TOKEN }}
         artifact: dist
