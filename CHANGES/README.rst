@@ -73,7 +73,7 @@ File :file:`CHANGES/550.bugfix.rst`:
 
 .. code-block:: rst
 
-    Provided x86 Windows wheels
+    Started shipping Windows wheels for the x86 architecture.
 
 File :file:`CHANGES/553.feature.rst`:
 
