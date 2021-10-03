@@ -20,7 +20,7 @@ __all__ = (
     "getversion",
 )
 
-__version__ = "5.2.0a19"
+__version__ = "5.2.0a20"
 
 
 try:
