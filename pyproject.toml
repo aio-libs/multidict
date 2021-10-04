@@ -6,6 +6,7 @@ requires = ["setuptools>=40", "wheel"]
 package = "multidict"
 filename = "CHANGES.rst"
 directory = "CHANGES/"
+title_format = "{version} ({project_date})"
 issue_format = "`#{issue} <https://github.com/aio-libs/multidict/issues/{issue}>`_"
 
 
