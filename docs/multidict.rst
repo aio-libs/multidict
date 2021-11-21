@@ -144,7 +144,7 @@ MultiDict
 
    .. method:: pop(key[, default])
 
-      An alias to :meth:`pop`
+      An alias to :meth:`popone`
 
       .. versionchanged:: 3.0
 
