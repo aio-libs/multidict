@@ -83,17 +83,6 @@ Please file an issue on the `bug tracker
 <https://github.com/aio-libs/multidict/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
-The library uses `Azure Pipelines <https://dev.azure.com/aio-libs/multidict/_build>`_
-for Continuous Integration.
-
-Discussion list
----------------
-
-*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
-
-Feel free to post your questions and ideas here.
-
-
 Authors and License
 -------------------
 
