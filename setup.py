@@ -83,6 +83,7 @@ args = dict(
     packages=["multidict"],
     python_requires=">=3.6",
     include_package_data=True,
+    exclude_package_data={"": ["*.c", "*.h"]},
 )
 
 if not NO_EXTENSIONS:
