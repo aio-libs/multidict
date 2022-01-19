@@ -26,7 +26,7 @@ def main(argv):
         if fname.name in (".gitignore", ".TEMPLATE.rst", "README.rst"):
             continue
         if fname.suffix == ".rst":
-            test_name = fname.stem
+            test_name = Path(fname.stem)
         else:
             test_name = fname
         if test_name.suffix not in ALLOWED_SUFFIXES:
