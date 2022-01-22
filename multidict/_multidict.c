@@ -451,7 +451,7 @@ multidict_getall(MultiDictObject *self, PyObject *const *args,
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"O|O:getall", _keywords, 0};
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default, &timeout)) {
+        &key, &_default)) {
         return NULL;
     }
 #else
@@ -496,7 +496,7 @@ multidict_getone(MultiDictObject *self, PyObject *const *args,
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"O|O:getone", _keywords, 0};
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default, &timeout)) {
+        &key, &_default)) {
         return NULL;
     }
 #else
@@ -531,7 +531,7 @@ multidict_get(MultiDictObject *self, PyObject *const *args,
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"O|O:get", _keywords, 0};
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default, &timeout)) {
+        &key, &_default)) {
         return NULL;
     }
 #else
@@ -773,7 +773,7 @@ multidict_add(MultiDictObject *self, PyObject *const *args,
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"OO:add", _keywords, 0};
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default, &timeout)) {
+        &key, &_default)) {
         return NULL;
     }
 #else
@@ -832,7 +832,7 @@ multidict_setdefault(MultiDictObject *self, PyObject *const *args,
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"O|O:setdefault", _keywords, 0};
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default, &timeout)) {
+        &key, &_default)) {
         return NULL;
     }
 #else
@@ -868,7 +868,7 @@ multidict_popone(MultiDictObject *self, PyObject *const *args,
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"O|O:popone", _keywords, 0};
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default, &timeout)) {
+        &key, &_default)) {
         return NULL;
     }
 #else
@@ -915,7 +915,7 @@ multidict_pop(MultiDictObject *self, PyObject *const *args,
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"O|O:pop", _keywords, 0};
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default, &timeout)) {
+        &key, &_default)) {
         return NULL;
     }
 #else
@@ -963,7 +963,7 @@ multidict_popall(MultiDictObject *self, PyObject *const *args,
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"O|O:popall", _keywords, 0};
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default, &timeout)) {
+        &key, &_default)) {
         return NULL;
     }
 #else
