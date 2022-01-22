@@ -58,7 +58,6 @@ jobs:
 
   test:
     name: Test
-    needs: lint
     strategy:
       matrix:
         pyver: ['3.7', '3.8', '3.9', '3.10', '3.11-dev']
@@ -105,11 +104,11 @@ jobs:
         COLOR: 'yes'
       run: |
         python -m pytest tests -vv
-        python -m coverage xml
     - name: Prepare coverage artifact
-      uses: aio-libs/prepare-coverage@v22.1.0
-      with:
-        key: ${{ matrix.pyver }}-${{ matrix.os }}-${{ matrix.no-extensions }}
+      # combining Linux and Windows paths is tricky, left this excercise for others
+      # multidict has no Winows or MacOS specific code paths anyway
+      if: ${{ matrix.os == 'ubuntu' }}
+      uses: aio-libs/prepare-coverage@v22.1.2
 
   test-summary:
     name: Tests status
@@ -121,8 +120,10 @@ jobs:
       uses: re-actors/alls-green@release/v1
       with:
         jobs: ${{ toJSON(needs) }}
+    - name: Checkout
+      uses: actions/checkout@v2.4.0
     - name: Upload coverage
-      uses: aio-libs/upload-coverage@v21.9.4
+      uses: aio-libs/upload-coverage@v22.1.4
 
   pre-deploy:
     name: Pre-Deploy

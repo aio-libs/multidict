@@ -6,7 +6,7 @@ several values for the same key.
 """
 
 from ._abc import MultiMapping, MutableMultiMapping
-from ._compat import USE_CYTHON_EXTENSIONS
+from ._compat import USE_EXTENSIONS
 
 __all__ = (
     "MultiMapping",
@@ -24,7 +24,7 @@ __version__ = "5.2.0"
 
 
 try:
-    if not USE_CYTHON_EXTENSIONS:
+    if not USE_EXTENSIONS:
         raise ImportError
     from ._multidict import (
         CIMultiDict,

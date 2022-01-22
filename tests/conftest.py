@@ -2,12 +2,12 @@ import pickle
 
 import pytest
 
-from multidict._compat import USE_CYTHON_EXTENSIONS
+from multidict._compat import USE_EXTENSIONS
 
 OPTIONAL_CYTHON = (
     ()
-    if USE_CYTHON_EXTENSIONS
-    else pytest.mark.skip(reason="No Cython extensions available")
+    if USE_EXTENSIONS
+    else pytest.mark.skip(reason="No extensions available")
 )
 
 

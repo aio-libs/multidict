@@ -1,10 +1,17 @@
 import sys
+import types
 from array import array
 from collections import abc
 
 from ._abc import MultiMapping, MutableMultiMapping
 
 _marker = object()
+
+if sys.version_info >= (3, 9):
+    GenericAlias = types.GenericAlias
+else:
+    def GenericAlias(cls):
+        return cls
 
 
 class istr(str):
@@ -129,6 +136,8 @@ class _Base:
     def __repr__(self):
         body = ", ".join("'{}': {!r}".format(k, v) for k, v in self.items())
         return "<{}({})>".format(self.__class__.__name__, body)
+
+    __class_getitem__ = classmethod(GenericAlias)
 
 
 class MultiDictProxy(_Base, MultiMapping):

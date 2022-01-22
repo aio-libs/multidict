@@ -3,13 +3,13 @@ from collections.abc import Mapping, MutableMapping
 import pytest
 
 from multidict import MultiMapping, MutableMultiMapping
-from multidict._compat import USE_CYTHON
+from multidict._compat import USE_EXTENSIONS
 from multidict._multidict_py import CIMultiDict as PyCIMultiDict
 from multidict._multidict_py import CIMultiDictProxy as PyCIMultiDictProxy
 from multidict._multidict_py import MultiDict as PyMultiDict  # noqa: E402
 from multidict._multidict_py import MultiDictProxy as PyMultiDictProxy
 
-if USE_CYTHON:
+if USE_EXTENSIONS:
     from multidict._multidict import (  # type: ignore
         CIMultiDict,
         CIMultiDictProxy,
@@ -19,9 +19,9 @@ if USE_CYTHON:
 
 
 @pytest.fixture(
-    params=([MultiDict, CIMultiDict] if USE_CYTHON else [])
+    params=([MultiDict, CIMultiDict] if USE_EXTENSIONS else [])
     + [PyMultiDict, PyCIMultiDict],
-    ids=(["MultiDict", "CIMultiDict"] if USE_CYTHON else [])
+    ids=(["MultiDict", "CIMultiDict"] if USE_EXTENSIONS else [])
     + ["PyMultiDict", "PyCIMultiDict"],
 )
 def cls(request):
@@ -31,11 +31,11 @@ def cls(request):
 @pytest.fixture(
     params=(
         [(MultiDictProxy, MultiDict), (CIMultiDictProxy, CIMultiDict)]
-        if USE_CYTHON
+        if USE_EXTENSIONS
         else []
     )
     + [(PyMultiDictProxy, PyMultiDict), (PyCIMultiDictProxy, PyCIMultiDict)],
-    ids=(["MultiDictProxy", "CIMultiDictProxy"] if USE_CYTHON else [])
+    ids=(["MultiDictProxy", "CIMultiDictProxy"] if USE_EXTENSIONS else [])
     + ["PyMultiDictProxy", "PyCIMultiDictProxy"],
 )
 def proxy_classes(request):
