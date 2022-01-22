@@ -1,0 +1,1 @@
+Fixed type annotations for keys of multidict mapping classes.
