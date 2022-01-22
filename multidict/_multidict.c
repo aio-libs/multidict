@@ -499,19 +499,29 @@ skip_optional_pos:
 }
 
 static inline PyObject *
-multidict_get(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_get(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key      = NULL,
              *_default = Py_None,
              *ret;
 
-    static char *getone_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getone",
-                                     getone_keywords, &key, &_default))
-    {
+    static const char *_keywords[] = {"key", "default", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "get", 0};
+    PyObject *argsbuf[2];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
         return NULL;
     }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+
+    _default = args[1];
+skip_optional_pos:
     ret = _multidict_getone(self, key, _default);
     return ret;
 }
@@ -724,17 +734,23 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static inline PyObject *
-multidict_add(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_add(MultiDictObject *self, PyObject *const *args,
+              Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key = NULL,
              *val = NULL;
 
-    static char *kwlist[] = {"key", "value", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO:add",
-                                     kwlist, &key, &val))
-    {
+    static const char * const _keywords[] = {"key", "value", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "add", 0};
+    PyObject *argsbuf[2];
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 2, 2, 0, argsbuf);
+    if (!args) {
         return NULL;
     }
+    key = args[0];
+    val = args[1];
 
     if (pair_list_add(&self->pairs, key, val) < 0) {
         return NULL;
@@ -943,7 +959,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "get",
         (PyCFunction)multidict_get,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_get_doc
     },
     {
@@ -967,7 +983,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "add",
         (PyCFunction)multidict_add,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_add_doc
     },
     {
@@ -1192,10 +1208,10 @@ multidict_proxy_getone(MultiDictProxyObject *self, PyObject *const *args,
 }
 
 static inline PyObject *
-multidict_proxy_get(MultiDictProxyObject *self, PyObject *args,
-                       PyObject *kwds)
+multidict_proxy_get(MultiDictProxyObject *self, PyObject *const *args,
+                       Py_ssize_t nargs, PyObject *kwnames)
 {
-    return multidict_get(self->md, args, kwds);
+    return multidict_get(self->md, args, nargs, kwnames);
 }
 
 static inline PyObject *
@@ -1315,7 +1331,7 @@ static PyMethodDef multidict_proxy_methods[] = {
     {
         "get",
         (PyCFunction)multidict_proxy_get,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_get_doc
     },
     {
