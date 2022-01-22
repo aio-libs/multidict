@@ -773,7 +773,7 @@ multidict_add(MultiDictObject *self, PyObject *const *args,
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"OO:add", _keywords, 0};
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default)) {
+        &key, &val)) {
         return NULL;
     }
 #else
