@@ -20,6 +20,16 @@ def test_classes_not_abstract() -> None:
 
 
 @pytest.mark.skipif(
+    sys.version_info >= (3, 9), reason="Python 3.9 uses GenericAlias which is different"
+)
+def test_generic_exists(_multidict) -> None:
+    assert _multidict.MultiDict[int] is _multidict.MultiDict
+    assert _multidict.MultiDictProxy[int] is _multidict.MultiDictProxy
+    assert _multidict.CIMultiDict[int] is _multidict.CIMultiDict
+    assert _multidict.CIMultiDictProxy[int] is _multidict.CIMultiDictProxy
+
+
+@pytest.mark.skipif(
     sys.version_info < (3, 9), reason="Python 3.9 is required for GenericAlias"
 )
 def test_generic_alias(_multidict) -> None:
