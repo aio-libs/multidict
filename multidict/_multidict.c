@@ -442,7 +442,7 @@ multidict_getall(MultiDictObject *self, PyObject *const *args,
              *key      = NULL,
              *_default = NULL;
 
-    static const char *_keywords[] = {"key", "default", NULL};
+    static const char * const _keywords[] = {"key", "default", NULL};
     static _PyArg_Parser _parser = {NULL, _keywords, "getall", 0};
     PyObject *argsbuf[2];
     Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
@@ -479,7 +479,7 @@ multidict_getone(MultiDictObject *self, PyObject *const *args,
     PyObject *key      = NULL,
              *_default = NULL;
 
-    static const char *_keywords[] = {"key", "default", NULL};
+    static const char * const _keywords[] = {"key", "default", NULL};
     static _PyArg_Parser _parser = {NULL, _keywords, "getone", 0};
     PyObject *argsbuf[2];
     Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
@@ -506,7 +506,7 @@ multidict_get(MultiDictObject *self, PyObject *const *args,
              *_default = Py_None,
              *ret;
 
-    static const char *_keywords[] = {"key", "default", NULL};
+    static const char * const _keywords[] = {"key", "default", NULL};
     static _PyArg_Parser _parser = {NULL, _keywords, "get", 0};
     PyObject *argsbuf[2];
     Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
@@ -786,18 +786,29 @@ multidict_clear(MultiDictObject *self)
 }
 
 static inline PyObject *
-multidict_setdefault(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_setdefault(MultiDictObject *self, PyObject *const *args,
+                     Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key      = NULL,
              *_default = NULL;
 
-    static char *setdefault_keywords[] = {"key", "default", NULL};
+    static const char *_keywords[] = {"key", "default", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:setdefault",
-                                     setdefault_keywords, &key, &_default))
-    {
+    static _PyArg_Parser _parser = {NULL, _keywords, "put", 0};
+    PyObject *argsbuf[3];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
         return NULL;
     }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    _default = args[1];
+skip_optional_pos:
     return pair_list_set_default(&self->pairs, key, _default);
 }
 
@@ -1007,7 +1018,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "setdefault",
         (PyCFunction)multidict_setdefault,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_setdefault_doc
     },
     {
