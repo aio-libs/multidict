@@ -435,20 +435,29 @@ fail:
 /******************** Base Methods ********************/
 
 static inline PyObject *
-multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_getall(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *list     = NULL,
              *key      = NULL,
              *_default = NULL;
 
-    static char *getall_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getall",
-                                     getall_keywords, &key, &_default))
-    {
+    static const char *_keywords[] = {"key", "default", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "getall", 0};
+    PyObject *argsbuf[2];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
         return NULL;
     }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
 
+    _default = args[1];
+skip_optional_pos:
     list = pair_list_get_all(&self->pairs, key);
 
     if (list == NULL &&
@@ -464,19 +473,28 @@ multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static inline PyObject *
-multidict_getone(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_getone(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key      = NULL,
              *_default = NULL;
 
-    static char *getone_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getone",
-                                     getone_keywords, &key, &_default))
-    {
+    static const char *_keywords[] = {"key", "default", NULL};
+    static _PyArg_Parser _parser = {NULL, _keywords, "getone", 0};
+    PyObject *argsbuf[2];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
         return NULL;
     }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
 
+    _default = args[1];
+skip_optional_pos:
     return _multidict_getone(self, key, _default);
 }
 
@@ -913,13 +931,13 @@ static PyMethodDef multidict_methods[] = {
     {
         "getall",
         (PyCFunction)multidict_getall,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getall_doc
     },
     {
         "getone",
         (PyCFunction)multidict_getone,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getone_doc
     },
     {
@@ -1160,17 +1178,17 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
 }
 
 static inline PyObject *
-multidict_proxy_getall(MultiDictProxyObject *self, PyObject *args,
-                       PyObject *kwds)
+multidict_proxy_getall(MultiDictProxyObject *self, PyObject *const *args,
+                       Py_ssize_t nargs, PyObject *kwnames)
 {
-    return multidict_getall(self->md, args, kwds);
+    return multidict_getall(self->md, args, nargs, kwnames);
 }
 
 static inline PyObject *
-multidict_proxy_getone(MultiDictProxyObject *self, PyObject *args,
-                       PyObject *kwds)
+multidict_proxy_getone(MultiDictProxyObject *self, PyObject *const *args,
+                       Py_ssize_t nargs, PyObject *kwnames)
 {
-    return multidict_getone(self->md, args, kwds);
+    return multidict_getone(self->md, args, nargs, kwnames);
 }
 
 static inline PyObject *
@@ -1285,13 +1303,13 @@ static PyMethodDef multidict_proxy_methods[] = {
     {
         "getall",
         (PyCFunction)multidict_proxy_getall,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getall_doc
     },
     {
         "getone",
         (PyCFunction)multidict_proxy_getone,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getone_doc
     },
     {
