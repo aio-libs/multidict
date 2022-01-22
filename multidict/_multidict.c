@@ -9,6 +9,12 @@
 #include "_multilib/iter.h"
 #include "_multilib/views.h"
 
+#ifndef _PyArg_UnpackKeywords
+// Python 3.7 has no _PyArg_UnpackKeywords helper
+#include "_multilib/fastcall.h"
+#endif
+
+
 static PyObject *collections_abc_mapping;
 static PyObject *collections_abc_mut_mapping;
 static PyObject *collections_abc_mut_multi_mapping;
