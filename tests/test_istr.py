@@ -4,10 +4,10 @@ from typing import Type
 
 import pytest
 
-from multidict._compat import USE_CYTHON
+from multidict._compat import USE_EXTENSIONS
 from multidict._multidict_py import istr as _istr  # noqa: E402
 
-if USE_CYTHON:
+if USE_EXTENSIONS:
     from multidict._multidict import istr  # type: ignore
 else:
     from multidict import istr
@@ -77,7 +77,7 @@ class TestPyIStr(IStrMixin):
         assert abs(cnt - cnt2) < 10  # on PyPy these numbers are not equal
 
 
-if USE_CYTHON:
+if USE_EXTENSIONS:
 
     class TestIStr(IStrMixin):
         cls = istr

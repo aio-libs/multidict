@@ -1,15 +1,15 @@
 import pytest
 
-from multidict._compat import USE_CYTHON
+from multidict._compat import USE_EXTENSIONS
 from multidict._multidict_py import MultiDict as PyMultiDict  # noqa: E402
 
-if USE_CYTHON:
+if USE_EXTENSIONS:
     from multidict._multidict import MultiDict  # type: ignore
 
 
 @pytest.fixture(
-    params=([MultiDict] if USE_CYTHON else []) + [PyMultiDict],
-    ids=(["MultiDict"] if USE_CYTHON else []) + ["PyMultiDict"],
+    params=([MultiDict] if USE_EXTENSIONS else []) + [PyMultiDict],
+    ids=(["MultiDict"] if USE_EXTENSIONS else []) + ["PyMultiDict"],
 )
 def cls(request):
     return request.param
