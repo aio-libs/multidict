@@ -61,7 +61,6 @@ args = dict(
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
@@ -81,7 +80,7 @@ args = dict(
     },
     license="Apache 2",
     packages=["multidict"],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     include_package_data=True,
     exclude_package_data={"": ["*.c", "*.h"]},
 )
