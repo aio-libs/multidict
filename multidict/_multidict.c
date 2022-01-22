@@ -9,6 +9,11 @@
 #include "_multilib/iter.h"
 #include "_multilib/views.h"
 
+#ifndef _PyArg_UnpackKeywords
+#define FASTCALL_OLD
+#endif
+
+
 static PyObject *collections_abc_mapping;
 static PyObject *collections_abc_mut_mapping;
 static PyObject *collections_abc_mut_multi_mapping;
@@ -435,20 +440,37 @@ fail:
 /******************** Base Methods ********************/
 
 static inline PyObject *
-multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_getall(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *list     = NULL,
              *key      = NULL,
              *_default = NULL;
 
-    static char *getall_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getall",
-                                     getall_keywords, &key, &_default))
-    {
+    static const char * const _keywords[] = {"key", "default", NULL};
+#ifdef FASTCALL_OLD
+    static _PyArg_Parser _parser = {"O|O:getall", _keywords, 0};
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &key, &_default)) {
         return NULL;
     }
+#else
+    static _PyArg_Parser _parser = {NULL, _keywords, "getall", 0};
+    PyObject *argsbuf[2];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
+        return NULL;
+    }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
 
+    _default = args[1];
+skip_optional_pos:
+#endif
     list = pair_list_get_all(&self->pairs, key);
 
     if (list == NULL &&
@@ -464,36 +486,71 @@ multidict_getall(MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static inline PyObject *
-multidict_getone(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_getone(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key      = NULL,
              *_default = NULL;
 
-    static char *getone_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getone",
-                                     getone_keywords, &key, &_default))
-    {
+    static const char * const _keywords[] = {"key", "default", NULL};
+#ifdef FASTCALL_OLD
+    static _PyArg_Parser _parser = {"O|O:getone", _keywords, 0};
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &key, &_default)) {
         return NULL;
     }
+#else
+    static _PyArg_Parser _parser = {NULL, _keywords, "getone", 0};
+    PyObject *argsbuf[2];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
+        return NULL;
+    }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
 
+    _default = args[1];
+skip_optional_pos:
+#endif
     return _multidict_getone(self, key, _default);
 }
 
 static inline PyObject *
-multidict_get(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_get(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key      = NULL,
              *_default = Py_None,
              *ret;
 
-    static char *getone_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getone",
-                                     getone_keywords, &key, &_default))
-    {
+    static const char * const _keywords[] = {"key", "default", NULL};
+#ifdef FASTCALL_OLD
+    static _PyArg_Parser _parser = {"O|O:get", _keywords, 0};
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &key, &_default)) {
         return NULL;
     }
+#else
+    static _PyArg_Parser _parser = {NULL, _keywords, "get", 0};
+    PyObject *argsbuf[2];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
+        return NULL;
+    }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+
+    _default = args[1];
+skip_optional_pos:
+#endif
     ret = _multidict_getone(self, key, _default);
     return ret;
 }
@@ -706,18 +763,31 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static inline PyObject *
-multidict_add(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_add(MultiDictObject *self, PyObject *const *args,
+              Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key = NULL,
              *val = NULL;
 
-    static char *kwlist[] = {"key", "value", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO:add",
-                                     kwlist, &key, &val))
-    {
+    static const char * const _keywords[] = {"key", "value", NULL};
+#ifdef FASTCALL_OLD
+    static _PyArg_Parser _parser = {"OO:add", _keywords, 0};
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &key, &val)) {
         return NULL;
     }
+#else
+    static _PyArg_Parser _parser = {NULL, _keywords, "add", 0};
+    PyObject *argsbuf[2];
 
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 2, 2, 0, argsbuf);
+    if (!args) {
+        return NULL;
+    }
+    key = args[0];
+    val = args[1];
+#endif
     if (pair_list_add(&self->pairs, key, val) < 0) {
         return NULL;
     }
@@ -752,36 +822,73 @@ multidict_clear(MultiDictObject *self)
 }
 
 static inline PyObject *
-multidict_setdefault(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_setdefault(MultiDictObject *self, PyObject *const *args,
+                     Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key      = NULL,
              *_default = NULL;
 
-    static char *setdefault_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:setdefault",
-                                     setdefault_keywords, &key, &_default))
-    {
+    static const char * const _keywords[] = {"key", "default", NULL};
+#ifdef FASTCALL_OLD
+    static _PyArg_Parser _parser = {"O|O:setdefault", _keywords, 0};
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &key, &_default)) {
         return NULL;
     }
+#else
+    static _PyArg_Parser _parser = {NULL, _keywords, "setdefault", 0};
+    PyObject *argsbuf[3];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
+        return NULL;
+    }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    _default = args[1];
+
+skip_optional_pos:
+#endif
     return pair_list_set_default(&self->pairs, key, _default);
 }
 
 static inline PyObject *
-multidict_popone(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_popone(MultiDictObject *self, PyObject *const *args,
+                     Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key      = NULL,
              *_default = NULL,
              *ret_val  = NULL;
 
-    static char *popone_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popone",
-                                     popone_keywords, &key, &_default))
-    {
+    static const char * const _keywords[] = {"key", "default", NULL};
+#ifdef FASTCALL_OLD
+    static _PyArg_Parser _parser = {"O|O:popone", _keywords, 0};
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &key, &_default)) {
         return NULL;
     }
+#else
+    static _PyArg_Parser _parser = {NULL, _keywords, "popone", 0};
+    PyObject *argsbuf[3];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
 
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
+        return NULL;
+    }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    _default = args[1];
+
+skip_optional_pos:
+#endif
     ret_val = pair_list_pop_one(&self->pairs, key);
 
     if (ret_val == NULL &&
@@ -797,20 +904,86 @@ multidict_popone(MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static inline PyObject *
-multidict_popall(MultiDictObject *self, PyObject *args, PyObject *kwds)
+multidict_pop(MultiDictObject *self, PyObject *const *args,
+                     Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *key      = NULL,
              *_default = NULL,
              *ret_val  = NULL;
 
-    static char *popall_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popall",
-                                     popall_keywords, &key, &_default))
-    {
+    static const char * const _keywords[] = {"key", "default", NULL};
+#ifdef FASTCALL_OLD
+    static _PyArg_Parser _parser = {"O|O:pop", _keywords, 0};
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &key, &_default)) {
         return NULL;
     }
+#else
+    static _PyArg_Parser _parser = {NULL, _keywords, "pop", 0};
+    PyObject *argsbuf[3];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
 
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
+        return NULL;
+    }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    _default = args[1];
+
+skip_optional_pos:
+#endif
+    ret_val = pair_list_pop_one(&self->pairs, key);
+
+    if (ret_val == NULL &&
+        PyErr_ExceptionMatches(PyExc_KeyError) &&
+        _default != NULL)
+    {
+        PyErr_Clear();
+        Py_INCREF(_default);
+        return _default;
+    }
+
+    return ret_val;
+}
+
+static inline PyObject *
+multidict_popall(MultiDictObject *self, PyObject *const *args,
+                     Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *key      = NULL,
+             *_default = NULL,
+             *ret_val  = NULL;
+
+
+    static const char * const _keywords[] = {"key", "default", NULL};
+#ifdef FASTCALL_OLD
+    static _PyArg_Parser _parser = {"O|O:popall", _keywords, 0};
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        &key, &_default)) {
+        return NULL;
+    }
+#else
+    static _PyArg_Parser _parser = {NULL, _keywords, "popall", 0};
+    PyObject *argsbuf[3];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
+                                 &_parser, 1, 2, 0, argsbuf);
+    if (!args) {
+        return NULL;
+    }
+    key = args[0];
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    _default = args[1];
+
+skip_optional_pos:
+#endif
     ret_val = pair_list_pop_all(&self->pairs, key);
 
     if (ret_val == NULL &&
@@ -857,6 +1030,11 @@ PyDoc_STRVAR(multidict_setdefault_doc,
 "Return value for key, set value to default if key is not present.");
 
 PyDoc_STRVAR(multidict_popone_doc,
+"Remove the last occurrence of key and return the corresponding value.\n\n\
+If key is not found, default is returned if given, otherwise KeyError is \
+raised.\n");
+
+PyDoc_STRVAR(multidict_pop_doc,
 "Remove the last occurrence of key and return the corresponding value.\n\n\
 If key is not found, default is returned if given, otherwise KeyError is \
 raised.\n");
@@ -913,19 +1091,19 @@ static PyMethodDef multidict_methods[] = {
     {
         "getall",
         (PyCFunction)multidict_getall,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getall_doc
     },
     {
         "getone",
         (PyCFunction)multidict_getone,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getone_doc
     },
     {
         "get",
         (PyCFunction)multidict_get,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_get_doc
     },
     {
@@ -949,7 +1127,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "add",
         (PyCFunction)multidict_add,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_add_doc
     },
     {
@@ -973,25 +1151,25 @@ static PyMethodDef multidict_methods[] = {
     {
         "setdefault",
         (PyCFunction)multidict_setdefault,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_setdefault_doc
     },
     {
         "popone",
         (PyCFunction)multidict_popone,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_popone_doc
     },
     {
         "pop",
-        (PyCFunction)multidict_popone,
-        METH_VARARGS | METH_KEYWORDS,
-        multidict_popone_doc
+        (PyCFunction)multidict_pop,
+        METH_FASTCALL | METH_KEYWORDS,
+        multidict_pop_doc
     },
     {
         "popall",
         (PyCFunction)multidict_popall,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_popall_doc
     },
     {
@@ -1160,24 +1338,24 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
 }
 
 static inline PyObject *
-multidict_proxy_getall(MultiDictProxyObject *self, PyObject *args,
-                       PyObject *kwds)
+multidict_proxy_getall(MultiDictProxyObject *self, PyObject *const *args,
+                       Py_ssize_t nargs, PyObject *kwnames)
 {
-    return multidict_getall(self->md, args, kwds);
+    return multidict_getall(self->md, args, nargs, kwnames);
 }
 
 static inline PyObject *
-multidict_proxy_getone(MultiDictProxyObject *self, PyObject *args,
-                       PyObject *kwds)
+multidict_proxy_getone(MultiDictProxyObject *self, PyObject *const *args,
+                       Py_ssize_t nargs, PyObject *kwnames)
 {
-    return multidict_getone(self->md, args, kwds);
+    return multidict_getone(self->md, args, nargs, kwnames);
 }
 
 static inline PyObject *
-multidict_proxy_get(MultiDictProxyObject *self, PyObject *args,
-                       PyObject *kwds)
+multidict_proxy_get(MultiDictProxyObject *self, PyObject *const *args,
+                       Py_ssize_t nargs, PyObject *kwnames)
 {
-    return multidict_get(self->md, args, kwds);
+    return multidict_get(self->md, args, nargs, kwnames);
 }
 
 static inline PyObject *
@@ -1285,19 +1463,19 @@ static PyMethodDef multidict_proxy_methods[] = {
     {
         "getall",
         (PyCFunction)multidict_proxy_getall,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getall_doc
     },
     {
         "getone",
         (PyCFunction)multidict_proxy_getone,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getone_doc
     },
     {
         "get",
         (PyCFunction)multidict_proxy_get,
-        METH_VARARGS | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_get_doc
     },
     {
