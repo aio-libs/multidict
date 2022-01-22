@@ -105,11 +105,8 @@ jobs:
         COLOR: 'yes'
       run: |
         python -m pytest tests -vv
-        python -m coverage xml
     - name: Prepare coverage artifact
-      uses: aio-libs/prepare-coverage@v22.1.0
-      with:
-        key: ${{ matrix.pyver }}-${{ matrix.os }}-${{ matrix.no-extensions }}
+      uses: aio-libs/prepare-coverage@v22.1.1
 
   test-summary:
     name: Tests status
@@ -122,7 +119,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Upload coverage
-      uses: aio-libs/upload-coverage@v21.9.4
+      uses: aio-libs/upload-coverage@v22.1.0
 
   pre-deploy:
     name: Pre-Deploy
