@@ -787,7 +787,7 @@ multidict_add(MultiDictObject *self, PyObject *const *args,
     }
     key = args[0];
     val = args[1];
-#enif
+#endif
     if (pair_list_add(&self->pairs, key, val) < 0) {
         return NULL;
     }
