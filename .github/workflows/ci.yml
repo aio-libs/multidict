@@ -106,6 +106,9 @@ jobs:
       run: |
         python -m pytest tests -vv
     - name: Prepare coverage artifact
+      # combining Linux and Windows paths is tricky, left this excercise for others
+      # multidict has no Winows or MacOS specific code paths anyway
+      if: ${{ matrix.os == 'linux' }}
       uses: aio-libs/prepare-coverage@v22.1.2
 
   test-summary:
