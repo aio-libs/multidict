@@ -6,7 +6,7 @@ Bugfixes
 
 - Fixed an issue with some versions of the ``wheel`` dist
   failing because of being unable to detect the license file.
-  `#481 <https://github.com/aio-libs/multidict/issues/481>`_
+  :issue:`481`
 
 
 4.7.5 (2020-02-21)
@@ -18,13 +18,13 @@ Bugfixes
 - Fixed creating and updating of MultiDict from a sequence of pairs and keyword
   arguments. Previously passing a list argument modified it inplace, and other sequences
   caused an error.
-  `#457 <https://github.com/aio-libs/multidict/issues/457>`_
+  :issue:`457`
 - Fixed comparing with mapping: an exception raised in the
   :py:func:`~object.__len__` method caused raising a SyntaxError.
-  `#459 <https://github.com/aio-libs/multidict/issues/459>`_
+  :issue:`459`
 - Fixed comparing with mapping: all exceptions raised in the
   :py:func:`~object.__getitem__` method were silenced.
-  `#460 <https://github.com/aio-libs/multidict/issues/460>`_
+  :issue:`460`
 
 
 4.7.4 (2020-01-11)
@@ -35,7 +35,7 @@ Bugfixes
 
 - ``MultiDict.iter`` fix memory leak when used iterator over
   :py:mod:`multidict` instance.
-  `#452 <https://github.com/aio-libs/multidict/issues/452>`_
+  :issue:`452`
 
 
 Multidict 4.7.3 (2019-12-30)
@@ -45,23 +45,23 @@ Features
 ^^^^^^^^
 
 - Implement ``__sizeof__`` function to correctly calculate all internal structures size.
-  `#444 <https://github.com/aio-libs/multidict/issues/444>`_
+  :issue:`444`
 - Expose ``getversion()`` function.
-  `#451 <https://github.com/aio-libs/multidict/issues/451>`_
+  :issue:`451`
 
 
 Bugfixes
 ^^^^^^^^
 
 - Fix crashes in ``popone``/``popall`` when default is returned.
-  `#450 <https://github.com/aio-libs/multidict/issues/450>`_
+  :issue:`450`
 
 
 Improved Documentation
 ^^^^^^^^^^^^^^^^^^^^^^
 
 - Corrected the documentation for ``MultiDict.extend()``
-  `#446 <https://github.com/aio-libs/multidict/issues/446>`_
+  :issue:`446`
 
 
 
@@ -72,11 +72,11 @@ Bugfixes
 ^^^^^^^^
 
 - Fix crashing when multidict is used pyinstaller
-  `#432 <https://github.com/aio-libs/multidict/issues/432>`_
+  :issue:`432`
 - Fix typing for :py:meth:`CIMultiDict.copy`
-  `#434 <https://github.com/aio-libs/multidict/issues/434>`_
+  :issue:`434`
 - Fix memory leak in ``MultiDict.copy()``
-  `#443 <https://github.com/aio-libs/multidict/issues/443>`_
+  :issue:`443`
 
 
 4.7.1 (2019-12-12)
@@ -87,22 +87,22 @@ Bugfixes
 
 - :py:meth:`CIMultiDictProxy.copy` return object type
   :py:class:`multidict._multidict.CIMultiDict`
-  `#427 <https://github.com/aio-libs/multidict/issues/427>`_
+  :issue:`427`
 - Make :py:class:`CIMultiDict` subclassable again
-  `#416 <https://github.com/aio-libs/multidict/issues/416>`_
+  :issue:`416`
 - Fix regression, multidict can be constructed from arbitrary iterable of pairs again.
-  `#418 <https://github.com/aio-libs/multidict/issues/418>`_
+  :issue:`418`
 - :py:meth:`CIMultiDict.add` may be called with keyword arguments
-  `#421 <https://github.com/aio-libs/multidict/issues/421>`_
+  :issue:`421`
 
 
 Improved Documentation
 ^^^^^^^^^^^^^^^^^^^^^^
 
 - Mention ``MULTIDICT_NO_EXTENSIONS`` environment variable in docs.
-  `#393 <https://github.com/aio-libs/multidict/issues/393>`_
+  :issue:`393`
 - Document the fact that ``istr`` preserves the casing of argument untouched but uses internal lower-cased copy for keys comparison.
-  `#419 <https://github.com/aio-libs/multidict/issues/419>`_
+  :issue:`419`
 
 
 4.7.0 (2019-12-10)
@@ -112,30 +112,30 @@ Features
 ^^^^^^^^
 
 - Replace Cython optimization with pure C
-  `#249 <https://github.com/aio-libs/multidict/issues/249>`_
+  :issue:`249`
 - Implement ``__length_hint__()`` for iterators
-  `#310 <https://github.com/aio-libs/multidict/issues/310>`_
+  :issue:`310`
 - Support the MultiDict[str] generic specialization in the runtime.
-  `#392 <https://github.com/aio-libs/multidict/issues/392>`_
+  :issue:`392`
 - Embed pair_list_t structure into MultiDict Python object
-  `#395 <https://github.com/aio-libs/multidict/issues/395>`_
+  :issue:`395`
 - Embed multidict pairs for small dictionaries to amortize the memory usage.
-  `#396 <https://github.com/aio-libs/multidict/issues/396>`_
+  :issue:`396`
 - Support weak references to C Extension classes.
-  `#399 <https://github.com/aio-libs/multidict/issues/399>`_
+  :issue:`399`
 - Add docstrings to provided classes.
-  `#400 <https://github.com/aio-libs/multidict/issues/400>`_
+  :issue:`400`
 - Merge ``multidict._istr`` back with ``multidict._multidict``.
-  `#409 <https://github.com/aio-libs/multidict/issues/409>`_
+  :issue:`409`
 
 
 Bugfixes
 ^^^^^^^^
 
 - Explicitly call ``tp_free`` slot on deallocation.
-  `#407 <https://github.com/aio-libs/multidict/issues/407>`_
+  :issue:`407`
 - Return class from __class_getitem__ to simplify subclassing
-  `#413 <https://github.com/aio-libs/multidict/issues/413>`_
+  :issue:`413`
 
 
 4.6.1 (2019-11-21)
@@ -145,7 +145,7 @@ Bugfixes
 ^^^^^^^^
 
 - Fix PyPI link for GitHub Issues badge.
-  `#391 <https://github.com/aio-libs/aiohttp/issues/391>`_
+  :issue:`391`
 
 4.6.0 (2019-11-20)
 ------------------
@@ -154,9 +154,9 @@ Bugfixes
 ^^^^^^^^
 
 - Fix GC object tracking.
-  `#314 <https://github.com/aio-libs/aiohttp/issues/314>`_
+  :issue:`314`
 - Preserve the case of `istr` strings.
-  `#374 <https://github.com/aio-libs/aiohttp/issues/374>`_
+  :issue:`374`
 - Generate binary wheels for Python 3.8.
 
 
@@ -164,36 +164,36 @@ Bugfixes
 ------------------
 
 * Fix another memory leak introduced by 4.5.0 release
-  `#307 <https://github.com/aio-libs/multidict/issues/307>`_
+  :issue:`307`
 
 4.5.1 (2018-11-22)
 ------------------
 
 * Fix a memory leak introduced by 4.5.0 release
-  `#306 <https://github.com/aio-libs/multidict/issues/306>`_
+  :issue:`306`
 
 4.5.0 (2018-11-19)
 ------------------
 
 * Multidict views ported from Cython to C extension
-  `#275 <https://github.com/aio-libs/multidict/issues/275>`_
+  :issue:`275`
 
 
 4.4.2 (2018-09-19)
 ------------------
 
 * Restore Python 3.4 support
-  `#289 <https://github.com/aio-libs/multidict/issues/289>`_
+  :issue:`289`
 
 
 4.4.1 (2018-09-17)
 ------------------
 
 * Fix type annotations
-  `#283 <https://github.com/aio-libs/multidict/issues/283>`_)
+  :issue:`283`)
 
 * Allow to install the library on systems without compilation toolset
-  `#281 <https://github.com/aio-libs/multidict/issues/281>`_
+  :issue:`281`
 
 
 4.4.0 (2018-07-04)
@@ -224,14 +224,14 @@ Bugfixes
 
 * Fix key casing in Pure Python implementation of
   :py:class:`CIMultiDict`
-  `#202 <https://github.com/aio-libs/multidict/issues/202>`_
+  :issue:`202`
 
 4.0.0 (2018-01-14)
 ------------------
 
 * Accept multiple keys in :py:meth:`MultiDict.update` and
   :py:meth:`CIMultiDict.update`
-  `#199 <https://github.com/aio-libs/multidict/issues/199>`_
+  :issue:`199`
 
 3.3.2 (2017-11-02)
 ------------------
@@ -243,30 +243,30 @@ Bugfixes
 ------------------
 
 * Include .c files in tarball
-  `#181 <https://github.com/aio-libs/multidict/issues/181>`_
+  :issue:`181`
 
 
 3.3.0 (2017-10-15)
 ------------------
 
 * Introduce abstract base classes
-  `#102 <https://github.com/aio-libs/multidict/issues/102>`_
+  :issue:`102`
 
 * Publish OSX binary wheels
-  `#153 <https://github.com/aio-libs/multidict/issues/153>`_
+  :issue:`153`
 
 
 3.2.0 (2017-09-17)
 ------------------
 
 * Fix pickling
-  `#134 <https://github.com/aio-libs/multidict/issues/134>`_
+  :issue:`134`
 
 * Fix equality check when other contains more keys
-  `#124 <https://github.com/aio-libs/multidict/issues/124>`_
+  :issue:`124`
 
 * Fix :py:class:`CIMultiDict <multidict.CIMultiDict>` copy
-  `#107 <https://github.com/aio-libs/multidict/issues/107>`_
+  :issue:`107`
 
 3.1.3 (2017-07-14)
 ------------------
@@ -282,7 +282,7 @@ Bugfixes
 ------------------
 
 * Remove memory leak in :py:func:`istr <multidict.istr>` implementation
-  `#105 <https://github.com/aio-libs/multidict/issues/105>`_
+  :issue:`105`
 
 3.1.0 (2017-06-25)
 ------------------
@@ -306,35 +306,35 @@ Bugfixes
 
   If key is not present in dictionary the pair is added to the end
 
-  `#68 <https://github.com/aio-libs/multidict/issues/68>`_
+  :issue:`68`
 
 * Force keys to :py:class:`str` instances
-  `#88 <https://github.com/aio-libs/multidict/issues/88>`_
+  :issue:`88`
 
 * Implement :py:func:`.popall(key[, default]) <multidict.MultiDict.popall>`
-  `#84 <https://github.com/aio-libs/multidict/issues/84>`_
+  :issue:`84`
 
 * :py:func:`.pop() <multidict.MultiDict.pop>` removes only first occurrence,
   :py:func:`.popone() <multidict.MultiDict.popone>` added
-  `#92 <https://github.com/aio-libs/multidict/issues/92>`_
+  :issue:`92`
 
 * Implement dict's version
-  `#86 <https://github.com/aio-libs/multidict/issues/86>`_
+  :issue:`86`
 
 * Proxies are not pickable anymore
-  `#77 <https://github.com/aio-libs/multidict/issues/77>`_
+  :issue:`77`
 
 2.1.7 (2017-05-29)
 ------------------
 
 * Fix import warning on Python 3.6
-  `#79 <https://github.com/aio-libs/multidict/issues/79>`_
+  :issue:`79`
 
 2.1.6 (2017-05-27)
 ------------------
 
 * Rebuild the library for fixing missing ``__spec__`` attribute
-  `#79 <https://github.com/aio-libs/multidict/issues/79>`_
+  :issue:`79`
 
 2.1.5 (2017-05-13)
 ------------------
@@ -345,7 +345,7 @@ Bugfixes
 ------------------
 
 * Remove ``LICENSE`` filename extension @ ``MANIFEST.in`` file
-  `#31 <https://github.com/aio-libs/multidict/issues/31>`_
+  :issue:`31`
 
 2.1.3 (2016-11-26)
 ------------------
@@ -380,7 +380,7 @@ Bugfixes
 ------------------
 
 * Don't crash on ``{} - MultiDict().keys()`` and similar operations
-  `#6 <https://github.com/aio-libs/multidict/issues/6>`_
+  :issue:`6`
 
 
 2.0.0 (2016-07-28)
@@ -388,7 +388,7 @@ Bugfixes
 
 * Switch from uppercase approach for case-insensitive string to
   :py:func:`str.title() <str.title>`
-  `#5 <https://github.com/aio-libs/multidict/issues/5>`_
+  :issue:`5`
 
 * Deprecate :py:func:`upstr <multidict.upstr>` class in favor of :py:func:`istr <multidict.istr>` alias.
 
@@ -396,7 +396,7 @@ Bugfixes
 ------------------
 
 * Don't crash on ``{} - MultiDict().keys()`` and similar operations
-  `#6 <https://github.com/aio-libs/multidict/issues/6>`_
+  :issue:`6`
 
 1.2.1 (2016-07-21)
 ------------------
@@ -414,10 +414,10 @@ Bugfixes
 ------------------
 
 * Don't double-iterate during :py:class:`MultiDict <multidict.MultiDict>` initialization
-  `#3 <https://github.com/aio-libs/multidict/issues/3>`_
+  :issue:`3`
 
 * Fix :py:func:`CIMultiDict.pop <multidict.CIMultiDict.pop>`: it is case insensitive now
-  `#1 <https://github.com/aio-libs/multidict/issues/1>`_
+  :issue:`1`
 
 * Provide manylinux wheels as well as Windows ones
 

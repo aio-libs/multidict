@@ -22,13 +22,13 @@ Features
 
 - 1. Added support Python 3.10
   2. Started shipping platform-specific wheels with the ``musl`` tag targeting typical Alpine Linux runtimes.
-  3. Started shipping platform-specific arm64 wheels for Apple Silicon. (`#629 <https://github.com/aio-libs/multidict/issues/629>`_)
+  3. Started shipping platform-specific arm64 wheels for Apple Silicon. (:issue:`629`)
 
 
 Bugfixes
 --------
 
-- Fixed pure-python implementation that used to raise "Dictionary changed during iteration" error when iterated view (``.keys()``, ``.values()`` or ``.items()``) was created before the dictionary's content change. (`#620 <https://github.com/aio-libs/multidict/issues/620>`_)
+- Fixed pure-python implementation that used to raise "Dictionary changed during iteration" error when iterated view (``.keys()``, ``.values()`` or ``.items()``) was created before the dictionary's content change. (:issue:`620`)
 
 
 5.1.0 (2020-12-03)
@@ -38,14 +38,14 @@ Features
 --------
 
 - Supported ``GenericAliases`` (``MultiDict[str]``) for Python 3.9+
-  `#553 <https://github.com/aio-libs/multidict/issues/553>`_
+  :issue:`553`
 
 
 Bugfixes
 --------
 
 - Synchronized the declared supported Python versions in ``setup.py`` with actually supported and tested ones.
-  `#552 <https://github.com/aio-libs/multidict/issues/552>`_
+  :issue:`552`
 
 
 ----
@@ -58,7 +58,7 @@ Bugfixes
 --------
 
 - Provided x86 Windows wheels
-  `#550 <https://github.com/aio-libs/multidict/issues/550>`_
+  :issue:`550`
 
 
 ----
@@ -72,9 +72,9 @@ Features
 
 - Provided wheels for ``aarch64``, ``i686``, ``ppc64le``, ``s390x`` architectures on Linux
   as well as ``x86_64``.
-  `#500 <https://github.com/aio-libs/multidict/issues/500>`_
+  :issue:`500`
 - Provided wheels for Python 3.9.
-  `#534 <https://github.com/aio-libs/multidict/issues/534>`_
+  :issue:`534`
 
 Removal
 -------
@@ -84,7 +84,7 @@ Removal
 Misc
 ----
 
-- `#503 <https://github.com/aio-libs/multidict/issues/503>`_
+- :issue:`503`
 
 
 ----
