@@ -124,7 +124,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2.4.0
     - name: Upload coverage
-      uses: aio-libs/upload-coverage@v22.1.3
+      uses: aio-libs/upload-coverage@v22.1.4
 
   pre-deploy:
     name: Pre-Deploy
