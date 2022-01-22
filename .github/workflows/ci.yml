@@ -119,7 +119,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Upload coverage
-      uses: aio-libs/upload-coverage@v22.1.1
+      uses: aio-libs/upload-coverage@v22.1.2
 
   pre-deploy:
     name: Pre-Deploy
