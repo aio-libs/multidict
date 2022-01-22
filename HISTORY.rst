@@ -364,8 +364,7 @@ Bugfixes
 ------------------
 
 * Fix :py:class:`CIMultiDict <multidict.CIMultiDict>` constructor for case of accepting
-  :py:func:`istr <multidict.istr>` `#11
-  <https://github.com/aio-libs/multidict/issues/11>`_
+  :py:func:`istr <multidict.istr>` :issue:`11`
 
 
 2.1.0 (2016-09-18)
