@@ -3,12 +3,12 @@ from typing import Type
 import pytest
 
 from multidict import MultiMapping
-from multidict._compat import USE_CYTHON
+from multidict._compat import USE_EXTENSIONS
 from multidict._multidict_py import CIMultiDict as _CIMultiDict
 from multidict._multidict_py import MultiDict as _MultiDict  # noqa: E402
 from multidict._multidict_py import getversion as _getversion
 
-if USE_CYTHON:
+if USE_EXTENSIONS:
     from multidict._multidict import (  # type: ignore
         CIMultiDict,
         MultiDict,
@@ -163,7 +163,7 @@ class VersionMixin:
         assert self.getver(m) == v
 
 
-if USE_CYTHON:
+if USE_EXTENSIONS:
 
     class TestMultiDict(VersionMixin):
 
@@ -173,7 +173,7 @@ if USE_CYTHON:
             return getversion(md)
 
 
-if USE_CYTHON:
+if USE_EXTENSIONS:
 
     class TestCIMultiDict(VersionMixin):
 
