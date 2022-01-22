@@ -1,2 +1,0 @@
-Support Multidict[int] for pure-python version.
-``__class_getitem__`` is already provided by C Extension, making it work with the pure-extension too.

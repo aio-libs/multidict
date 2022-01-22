@@ -14,6 +14,38 @@ Changelog
 
 .. towncrier release notes start
 
+6.0.0 (2022-01-22)
+==================
+
+Features
+--------
+
+- Use ``METH_FASTCALL`` where it makes sense.
+
+  ``MultiDict.add()`` is 2.2 times faster now, ``CIMultiDict.add()`` is 1.5 times faster.
+  The same boost is applied to ``get*()``, ``setdefault()``, and ``pop*()`` methods. (:issue:`681`)
+
+
+Bugfixes
+--------
+
+- Fixed type annotations for keys of multidict mapping classes. (:issue:`644`)
+- Support Multidict[int] for pure-python version.
+  ``__class_getitem__`` is already provided by C Extension, making it work with the pure-extension too. (:issue:`678`)
+
+
+Deprecations and Removals
+-------------------------
+
+- Dropped Python 3.6 support (:issue:`680`)
+
+
+Misc
+----
+
+- :issue:`659`
+
+
 5.2.0 (2021-10-03)
 =====================
 
