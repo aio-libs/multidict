@@ -108,7 +108,7 @@ jobs:
     - name: Prepare coverage artifact
       # combining Linux and Windows paths is tricky, left this excercise for others
       # multidict has no Winows or MacOS specific code paths anyway
-      if: ${{ matrix.os == 'linux' }}
+      if: ${{ matrix.os == 'ubuntu' }}
       uses: aio-libs/prepare-coverage@v22.1.2
 
   test-summary:
