@@ -21,7 +21,7 @@ Bugfixes
 --------
 
 - Restored back ``MultiDict``, ``CIMultiDict``, ``MultiDictProxy``, and
-  ``CIMutiDictProxy`` generic type arguments; they are parametrized by value type, but the
+  ``CIMutiDictProxy`` generic type arguments; they are parameterized by value type, but the
   key type is fixed by container class.
 
   ``MultiDict[int]`` means ``MutableMultiMapping[str, int]``. The key type of
