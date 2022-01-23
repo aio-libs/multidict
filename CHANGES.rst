@@ -14,6 +14,24 @@ Changelog
 
 .. towncrier release notes start
 
+6.0.1 (2022-01-23)
+==================
+
+Bugfixes
+--------
+
+- Restored back ``MultiDict``, ``CIMultiDict``, ``MultiDictProxy``, and
+  ``CIMutiDictProxy`` generic type arguments; they are parametrized by value type, but the
+  key type is fixed by container class.
+
+  ``MultiDict[int]`` means ``MutableMultiMapping[str, int]``. The key type of
+  ``MultiDict`` is always ``str``, while all str-like keys are accepted by API and
+  converted to ``str`` internally.
+
+  The same is true for ``CIMultiDict[int]`` which means ``MutableMultiMapping[istr,
+  int]``. str-like keys are accepted but converted to ``istr`` internally. (:issue:`682`)
+
+
 6.0.0 (2022-01-22)
 ==================
 
