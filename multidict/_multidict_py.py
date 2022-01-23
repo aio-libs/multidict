@@ -421,7 +421,11 @@ class CIMultiDict(MultiDict):
     """Dictionary with the support for duplicate case-insensitive keys."""
 
     def _title(self, key):
-        return key.title()
+        cached = _static_cache.get(key)
+        if cached is not None:
+            return cached
+        else:
+            return key.title()
 
 
 class _Iter:
@@ -521,3 +525,20 @@ class _KeysView(_ViewBase, abc.KeysView):
             lst.append("{!r}".format(item[1]))
         body = ", ".join(lst)
         return "{}({})".format(self.__class__.__name__, body)
+
+
+_static_cache = {}
+
+
+def get_static_cache():
+    return types.MappingProxyType(_static_cache)
+
+
+def add_static_cache(from_, to):
+    if not isinstance(to, istr):
+        raise TypeError(f"Cache target should have 'istr' type, got {type(to)}")
+    _static_cache[from_] = to
+
+
+def reset_static_cache():
+    _static_cache.clear()
