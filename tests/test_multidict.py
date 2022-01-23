@@ -5,17 +5,37 @@ import weakref
 from collections import deque
 from collections.abc import Mapping
 from functools import reduce
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Set, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import pytest
 
 import multidict
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, MultiMapping
+from multidict import (
+    CIMultiDict,
+    CIMultiDictProxy,
+    MultiDict,
+    MultiDictProxy,
+    MultiMapping,
+)
 
 _MultiDictClasses = Union[Type[MultiDict[str, str]], Type[CIMultiDict[str, str]]]
 
 
-def chained_callable(module: object, callables: Union[str, Iterable[str]]) -> Callable[..., Any]:
+def chained_callable(
+    module: object, callables: Union[str, Iterable[str]]
+) -> Callable[..., Any]:
     """
     Returns callable that will get and call all given objects in module in
     exact order. If `names` is a single object's name function will return
@@ -43,7 +63,9 @@ def classes(request: Any, _multidict: Any) -> Any:
 
 
 @pytest.mark.parametrize("cls", ["MultiDict", "CIMultiDict"], indirect=True)
-def test_exposed_names(cls: Union[Type[MultiDict[object]], Type[CIMultiDict[object]]]) -> None:
+def test_exposed_names(
+    cls: Union[Type[MultiDict[object]], Type[CIMultiDict[object]]]
+) -> None:
     name = cls.__name__
 
     while name.startswith("_"):
@@ -68,8 +90,9 @@ def test__iter__types(
 _ClsPair = TypeVar(
     "_ClsPair",
     Tuple[Type[MultiDict[str]], Type[MultiDictProxy[str]]],
-    Tuple[Type[CIMultiDict[str]], Type[CIMultiDictProxy[str]]]
+    Tuple[Type[CIMultiDict[str]], Type[CIMultiDictProxy[str]]],
 )
+
 
 @pytest.mark.parametrize(
     "classes",
@@ -146,7 +169,9 @@ class BaseMultiDictTest:
         d = cls([["key", "value1"]])
         assert d == {"key": "value1"}
 
-    def test_instantiate__from_list_of_custom_pairs(self, cls: _MultiDictClasses) -> None:
+    def test_instantiate__from_list_of_custom_pairs(
+        self, cls: _MultiDictClasses
+    ) -> None:
         class Pair:
             def __len__(self) -> int:
                 return 2
@@ -347,7 +372,9 @@ class BaseMultiDictTest:
         assert {"key", "key3"} == {"key2", "key3"} ^ d.keys()
 
     @pytest.mark.parametrize("_set, expected", [({"key2"}, True), ({"key"}, False)])
-    def test_isdisjoint(self, cls: _MultiDictClasses, _set: Set[str], expected: bool) -> None:
+    def test_isdisjoint(
+        self, cls: _MultiDictClasses, _set: Set[str], expected: bool
+    ) -> None:
         d = cls([("key", "value1")])
 
         assert d.keys().isdisjoint(_set) == expected
@@ -368,7 +395,10 @@ class BaseMultiDictTest:
     )
     @pytest.mark.parametrize("other", [{"other"}])
     def test_op_issue_410(
-        self, cls: _MultiDictClasses, op: Callable[[object, object], object], other: Set[str]
+        self,
+        cls: _MultiDictClasses,
+        op: Callable[[object, object], object],
+        other: Set[str],
     ) -> None:
         d = cls([("key", "value")])
 
@@ -457,7 +487,9 @@ class TestMultiDict(BaseMultiDictTest):
         default = object()
         assert d.getall("some_key", default) is default
 
-    def test_preserve_stable_ordering(self, cls: Type[MultiDict[Union[str, int]]]) -> None:
+    def test_preserve_stable_ordering(
+        self, cls: Type[MultiDict[Union[str, int]]]
+    ) -> None:
         d = cls([("a", 1), ("b", "2"), ("a", 3)])
         s = "&".join("{}={}".format(k, v) for k, v in d.items())
 
