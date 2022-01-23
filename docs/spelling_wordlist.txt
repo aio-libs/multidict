@@ -74,6 +74,7 @@ regexs
 repo
 runtime
 runtimes
+str
 subclassable
 subclassing
 subprotocol
