@@ -22,13 +22,7 @@ from typing import (
 import pytest
 
 import multidict
-from multidict import (
-    CIMultiDict,
-    CIMultiDictProxy,
-    MultiDict,
-    MultiDictProxy,
-    MultiMapping,
-)
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 _MultiDictClasses = Union[Type[MultiDict[str, str]], Type[CIMultiDict[str, str]]]
 
