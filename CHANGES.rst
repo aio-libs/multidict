@@ -14,6 +14,15 @@ Changelog
 
 .. towncrier release notes start
 
+6.0.2 (2022-01-24)
+==================
+
+Bugfixes
+--------
+
+- Revert :issue:`644`, restore type annotations to as-of 5.2.0 version. (:issue:`688`)
+
+
 6.0.1 (2022-01-23)
 ==================
 
