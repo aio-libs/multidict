@@ -17,7 +17,7 @@ if USE_EXTENSIONS:
 
 
 class VersionMixin:
-    cls: Type[MultiMapping[str, str]]
+    cls: Type[MultiMapping[str]]
 
     def getver(self, md):
         raise NotImplementedError

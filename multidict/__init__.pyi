@@ -39,7 +39,10 @@ class MultiMapping(Mapping[_S, _T_co]):
     @abc.abstractmethod
     def getone(self, key: _S, default: _D) -> Union[_T_co, _D]: ...
 
-_Arg = Union[Mapping[_S, _T], Dict[_S, _T], MultiMapping[_T], Iterable[Tuple[_S, _T]]]
+_Arg = Union[Mapping[str, _T], Mapping[istr, _T],
+             Dict[str, _T], Dict[istr, _T],
+             MultiMapping[_T],
+             Iterable[Tuple[str, _T]], Iterable[Tuple[istr, _T]]]
 
 class MutableMultiMapping(MultiMapping[_T], MutableMapping[_S, _T], Generic[_T]):
     @abc.abstractmethod
