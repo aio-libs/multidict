@@ -82,10 +82,7 @@ class _Base:
         return self.getone(key)
 
     def get(self, key, default=None):
-        """Get first value matching the key.
-
-        The method is alias for .getone().
-        """
+        """Get first value matching the key."""
         return self.getone(key, default)
 
     def __iter__(self):
