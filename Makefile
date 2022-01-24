@@ -12,21 +12,21 @@ all: test
 	@touch .install-deps
 
 .flake: .install-deps $(shell find multidict -type f) \
-                      $(shell find tests -type f)
+		      $(shell find tests -type f)
 	flake8 multidict tests
 	@if ! isort --check multidict tests; then \
-            echo "Import sort errors, run 'make fmt' to fix them!!!"; \
-            isort --diff --check multidict tests; \
-            false; \
+	    echo "Import sort errors, run 'make fmt' to fix them!!!"; \
+	    isort --diff --check multidict tests; \
+	    false; \
 	fi
 	@touch .flake
 
 
 isort-check:
 	@if ! isort --check $(SRC); then \
-            echo "Import sort errors, run 'make fmt' to fix them!!!"; \
-            isort --diff --check $(SRC); \
-            false; \
+	    echo "Import sort errors, run 'make fmt' to fix them!!!"; \
+	    isort --diff --check $(SRC); \
+	    false; \
 	fi
 
 flake8:
@@ -34,13 +34,14 @@ flake8:
 
 black-check:
 	@if ! isort --check $(SRC); then \
-            echo "black errors, run 'make fmt' to fix them!!!"; \
+	    echo "black errors, run 'make fmt' to fix them!!!"; \
 	    black -t py35 --diff --check $(SRC); \
-            false; \
+	    false; \
 	fi
 
 mypy:
 	mypy --show-error-codes multidict tests
+	mypy --show-error-codes tests/test_mypy.py --strict
 
 lint: flake8 black-check mypy isort-check check_changes
 
