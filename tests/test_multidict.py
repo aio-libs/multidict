@@ -10,6 +10,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Iterator,
     List,
     Mapping,
     Set,
@@ -24,7 +25,7 @@ import pytest
 import multidict
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
-_MultiDictClasses = Union[Type[MultiDict[str, str]], Type[CIMultiDict[str, str]]]
+_MultiDictClasses = Union[Type[MultiDict[str]], Type[CIMultiDict[str]]]
 
 
 def chained_callable(
@@ -125,7 +126,7 @@ class BaseMultiDictTest:
 
         assert cls() != list()  # type: ignore[comparison-overlap]
         with pytest.raises(TypeError, match=r"(2 given)"):
-            cls(("key1", "value1"), ("key2", "value2"))  # type: ignore[call-arg]
+            cls(("key1", "value1"), ("key2", "value2"))  # type: ignore[arg-type,call-arg]
 
     @pytest.mark.parametrize("arg0", [[("key", "value1")], {"key": "value1"}])
     def test_instantiate__from_arg0(
@@ -150,7 +151,9 @@ class BaseMultiDictTest:
         assert sorted(d.values()) == ["value1", "value2"]
         assert sorted(d.items()) == [("key", "value1"), ("key2", "value2")]
 
-    def test_instantiate__from_generator(self, cls: _MultiDictClasses) -> None:
+    def test_instantiate__from_generator(
+        self, cls: Union[Type[MultiDict[int]], Type[CIMultiDict[int]]]
+    ) -> None:
         d = cls((str(i), i) for i in range(2))
 
         assert d == {"0": 0, "1": 1}
@@ -160,7 +163,8 @@ class BaseMultiDictTest:
         assert sorted(d.items()) == [("0", 0), ("1", 1)]
 
     def test_instantiate__from_list_of_lists(self, cls: _MultiDictClasses) -> None:
-        d = cls([["key", "value1"]])
+        # Should work at runtime, but won't type check.
+        d = cls([["key", "value1"]])  # type: ignore[list-item]
         assert d == {"key": "value1"}
 
     def test_instantiate__from_list_of_custom_pairs(
@@ -178,7 +182,8 @@ class BaseMultiDictTest:
                 else:
                     raise IndexError
 
-        d = cls([Pair()])
+        # Works at runtime, but won't type check.
+        d = cls([Pair()])  # type: ignore[list-item]
         assert d == {"key": "value1"}
 
     def test_getone(self, cls: _MultiDictClasses) -> None:
@@ -195,11 +200,17 @@ class BaseMultiDictTest:
 
         assert d.getone("key2", "default") == "default"
 
-    def test__iter__(self, cls: _MultiDictClasses) -> None:
+    def test__iter__(
+        self,
+        cls: Union[Type[MultiDict[Union[str, int]]], Type[CIMultiDict[Union[str, int]]]]
+    ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
         assert list(d) == ["key", "key2", "key"]
 
-    def test_keys__contains(self, cls: _MultiDictClasses) -> None:
+    def test_keys__contains(
+        self,
+        cls: Union[Type[MultiDict[Union[str, int]]], Type[CIMultiDict[Union[str, int]]]]
+    ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
 
         assert list(d.keys()) == ["key", "key2", "key"]
@@ -209,7 +220,10 @@ class BaseMultiDictTest:
 
         assert "foo" not in d.keys()
 
-    def test_values__contains(self, cls: _MultiDictClasses) -> None:
+    def test_values__contains(
+        self,
+        cls: Union[Type[MultiDict[Union[str, int]]], Type[CIMultiDict[Union[str, int]]]]
+    ) -> None:
         d = cls([("key", "one"), ("key", "two"), ("key", 3)])
 
         assert list(d.values()) == ["one", "two", 3]
@@ -220,7 +234,10 @@ class BaseMultiDictTest:
 
         assert "foo" not in d.values()
 
-    def test_items__contains(self, cls: _MultiDictClasses) -> None:
+    def test_items__contains(
+        self,
+        cls: Union[Type[MultiDict[Union[str, int]]], Type[CIMultiDict[Union[str, int]]]]
+    ) -> None:
         d = cls([("key", "one"), ("key", "two"), ("key", 3)])
 
         assert list(d.items()) == [("key", "one"), ("key", "two"), ("key", 3)]
@@ -288,15 +305,17 @@ class BaseMultiDictTest:
 
         assert d1 != d2
 
-    def test_eq_bad_mapping_len(self, cls: _MultiDictClasses) -> None:
+    def test_eq_bad_mapping_len(
+        self, cls: Union[Type[MultiDict[int]], Type[CIMultiDict[int]]]
+    ) -> None:
         class BadMapping(Mapping[str, int]):
-            def __getitem__(self, key):
+            def __getitem__(self, key: str) -> int:
                 return 1
 
-            def __iter__(self):
+            def __iter__(self) -> Iterator[str]:
                 yield "a"
 
-            def __len__(self):
+            def __len__(self) -> int:  # type: ignore[return]
                 1 / 0
 
         d1 = cls(a=1)
@@ -304,15 +323,18 @@ class BaseMultiDictTest:
         with pytest.raises(ZeroDivisionError):
             d1 == d2
 
-    def test_eq_bad_mapping_getitem(self, cls: _MultiDictClasses) -> None:
+    def test_eq_bad_mapping_getitem(
+        self,
+        cls: Union[Type[MultiDict[int]], Type[CIMultiDict[int]]]
+    ) -> None:
         class BadMapping(Mapping[str, int]):
-            def __getitem__(self, key):
+            def __getitem__(self, key: str) -> int:  # type: ignore[return]
                 1 / 0
 
-            def __iter__(self):
+            def __iter__(self) -> Iterator[str]:
                 yield "a"
 
-            def __len__(self):
+            def __len__(self) -> int:
                 return 1
 
         d1 = cls(a=1)
@@ -418,34 +440,52 @@ class BaseMultiDictTest:
         assert called
         del wr
 
-    def test_iter_length_hint_keys(self, cls: _MultiDictClasses) -> None:
+    def test_iter_length_hint_keys(
+        self,
+        cls: Union[Type[MultiDict[int]], Type[CIMultiDict[int]]]
+    ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.keys())
         assert it.__length_hint__() == 2  # type: ignore[attr-defined]
 
-    def test_iter_length_hint_items(self, cls: _MultiDictClasses) -> None:
+    def test_iter_length_hint_items(
+        self,
+        cls: Union[Type[MultiDict[int]], Type[CIMultiDict[int]]]
+    ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.items())
         assert it.__length_hint__() == 2  # type: ignore[attr-defined]
 
-    def test_iter_length_hint_values(self, cls: _MultiDictClasses) -> None:
+    def test_iter_length_hint_values(
+        self,
+        cls: Union[Type[MultiDict[int]], Type[CIMultiDict[int]]]
+    ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.values())
         assert it.__length_hint__() == 2  # type: ignore[attr-defined]
 
-    def test_ctor_list_arg_and_kwds(self, cls: _MultiDictClasses) -> None:
+    def test_ctor_list_arg_and_kwds(
+        self,
+        cls: Union[Type[MultiDict[int]], Type[CIMultiDict[int]]]
+    ) -> None:
         arg = [("a", 1)]
         obj = cls(arg, b=2)
         assert list(obj.items()) == [("a", 1), ("b", 2)]
         assert arg == [("a", 1)]
 
-    def test_ctor_tuple_arg_and_kwds(self, cls: _MultiDictClasses) -> None:
+    def test_ctor_tuple_arg_and_kwds(
+        self,
+        cls: Union[Type[MultiDict[int]], Type[CIMultiDict[int]]]
+    ) -> None:
         arg = (("a", 1),)
         obj = cls(arg, b=2)
         assert list(obj.items()) == [("a", 1), ("b", 2)]
         assert arg == (("a", 1),)
 
-    def test_ctor_deque_arg_and_kwds(self, cls: _MultiDictClasses) -> None:
+    def test_ctor_deque_arg_and_kwds(
+        self,
+        cls: Union[Type[MultiDict[int]], Type[CIMultiDict[int]]]
+    ) -> None:
         arg = deque([("a", 1)])
         obj = cls(arg, b=2)
         assert list(obj.items()) == [("a", 1), ("b", 2)]
