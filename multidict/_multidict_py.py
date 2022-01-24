@@ -68,7 +68,7 @@ class _Base:
 
     def getone(self, key, default=_marker):
         """Get first value matching the key.
-        
+
         Raises KeyError if the key is not found and no default is provided.
         """
         identity = self._title(key)
@@ -86,7 +86,7 @@ class _Base:
 
     def get(self, key, default=None):
         """Get first value matching the key.
-       
+
         If the key is not found, returns the default (or None if no default is provided)
         """
         return self.getone(key, default)
