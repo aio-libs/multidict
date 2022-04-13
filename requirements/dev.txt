@@ -2,4 +2,4 @@
 -r lint.txt
 -r towncrier.txt
 -r doc.txt
-pyperformance==1.0.4
+pyperformance==1.0.5
