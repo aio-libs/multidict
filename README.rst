@@ -27,7 +27,7 @@ multidict
    :alt: Chat on Gitter
 
 Multidict is dict-like collection of *key-value pairs* where key
-might be occurred more than once in the container.
+might occur more than once in the container.
 
 Introduction
 ------------
