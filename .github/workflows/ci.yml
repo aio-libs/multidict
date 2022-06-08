@@ -24,7 +24,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
     - name: Setup Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
     - name: Cache PyPI
       uses: actions/cache@v3
       with:
@@ -79,7 +79,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
     - name: Setup Python ${{ matrix.pyver }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
@@ -144,7 +144,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
     - name: Setup Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
     - name: Make sdist
       run:
         python setup.py sdist
