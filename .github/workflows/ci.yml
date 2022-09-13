@@ -210,7 +210,7 @@ jobs:
     - name: Download dists
       uses: actions/download-artifact@v3
     - name: Make Release
-      uses: aio-libs/create-release@v1.6.4
+      uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.rst
         name: multidict
