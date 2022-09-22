@@ -67,7 +67,10 @@ class _Base:
         raise KeyError("Key not found: %r" % key)
 
     def getone(self, key, default=_marker):
-        """Get first value matching the key."""
+        """Get first value matching the key.
+
+        Raises KeyError if the key is not found and no default is provided.
+        """
         identity = self._title(key)
         for i, k, v in self._impl._items:
             if i == identity:
@@ -82,7 +85,10 @@ class _Base:
         return self.getone(key)
 
     def get(self, key, default=None):
-        """Get first value matching the key."""
+        """Get first value matching the key.
+
+        If the key is not found, returns the default (or None if no default is provided)
+        """
         return self.getone(key, default)
 
     def __iter__(self):
