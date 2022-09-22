@@ -323,9 +323,17 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
 
-github_repo_url = f"https://github.com/{org}/{project}"
+github_url = "https://github.com"
+github_repo_org = org
+github_repo_name = project
+github_repo_slug = f"{github_repo_org}/{github_repo_name}"
+github_repo_url = f"{github_url}/{github_repo_slug}"
+github_sponsors_url = f"{github_url}/sponsors"
 
 extlinks = {
     "issue": (f"{github_repo_url}/issues/%s", "#%s"),
     "pr": (f"{github_repo_url}/pull/%s", "PR #%s"),
+    "commit": (f"{github_repo_url}/commit/%s", "%s"),
+    "gh": (f"{github_url}/%s", "GitHub: %s"),
+    "user": (f"{github_sponsors_url}/%s", "@%s"),
 }
