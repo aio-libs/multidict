@@ -28,9 +28,9 @@ class MultiMapping(Mapping[_S, _T_co]):
     @abc.abstractmethod
     def getone(self, key: _S, default: _D) -> _T_co | _D: ...
 
-_Arg: TypeAlias = (Mapping[str, _T] | Mapping[istr, _T] |
-                   dict[str, _T] | dict[istr, _T] | MultiMapping[_T] |
-                   Iterable[tuple[str, _T]] | Iterable[tuple[istr, _T]])
+_Arg: TypeAlias = (Mapping[str, _T] | Mapping[istr, _T] | dict[str, _T]
+                   | dict[istr, _T] | MultiMapping[_T]
+                   | Iterable[tuple[str, _T]] | Iterable[tuple[istr, _T]])
 
 class MutableMultiMapping(MultiMapping[_T], MutableMapping[_S, _T], Generic[_T]):
     @abc.abstractmethod
