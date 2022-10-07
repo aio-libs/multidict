@@ -22,11 +22,13 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
     - name: Setup Python
-      uses: actions/setup-python@v2.3.1
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.x
     - name: Cache PyPI
-      uses: actions/cache@v2.1.7
+      uses: actions/cache@v3
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -77,9 +79,9 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
     - name: Setup Python ${{ matrix.pyver }}
-      uses: actions/setup-python@v2.3.1
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
@@ -87,7 +89,7 @@ jobs:
       run: |
         echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
     - name: Cache PyPI
-      uses: actions/cache@v2.1.7
+      uses: actions/cache@v3
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-{{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -105,7 +107,7 @@ jobs:
       run: |
         python -m pytest tests -vv
     - name: Prepare coverage artifact
-      # combining Linux and Windows paths is tricky, left this excercise for others
+      # combining Linux and Windows paths is tricky, left this exercise for others
       # multidict has no Winows or MacOS specific code paths anyway
       if: ${{ matrix.os == 'ubuntu' }}
       uses: aio-libs/prepare-coverage@v22.1.2
@@ -121,7 +123,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
     - name: Upload coverage
       uses: aio-libs/upload-coverage@v22.1.4
 
@@ -142,14 +144,16 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
     - name: Setup Python
-      uses: actions/setup-python@v2.3.1
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.x
     - name: Make sdist
       run:
         python setup.py sdist
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: dist
         path: dist
@@ -172,10 +176,10 @@ jobs:
           qemu: s390x
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
     - name: Set up QEMU
       if: ${{ matrix.qemu }}
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v2
       with:
         platforms: all
       id: qemu
@@ -188,10 +192,10 @@ jobs:
         fi
       shell: bash
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.3.1
+      uses: pypa/cibuildwheel@v2.10.2
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: dist
         path: ./wheelhouse/*.whl
@@ -203,14 +207,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Download dists
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
     - name: Make Release
-      uses: aio-libs/create-release@v1.4.0
+      uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.rst
         name: multidict

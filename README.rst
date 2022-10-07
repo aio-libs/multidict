@@ -27,7 +27,7 @@ multidict
    :alt: Chat on Gitter
 
 Multidict is dict-like collection of *key-value pairs* where key
-might be occurred more than once in the container.
+might occur more than once in the container.
 
 Introduction
 ------------
@@ -48,12 +48,12 @@ proxied multidict, the view reflects underlying collection changes. They
 implement the ``collections.abc.Mapping`` interface.
 
 Regular mutable (``MultiDict`` and ``CIMultiDict``) classes
-implement ``collections.abc.MutableMapping`` and allows to change
+implement ``collections.abc.MutableMapping`` and allows them to change
 their own content.
 
 
 *Case insensitive* (``CIMultiDict`` and
-``CIMultiDictProxy``) ones assume the *keys* are case
+``CIMultiDictProxy``) assume the *keys* are case
 insensitive, e.g.::
 
    >>> dct = CIMultiDict(key='val')
@@ -64,7 +64,7 @@ insensitive, e.g.::
 
 *Keys* should be ``str`` or ``istr`` instances.
 
-The library has optional C Extensions for sake of speed.
+The library has optional C Extensions for speed.
 
 
 License
@@ -82,18 +82,18 @@ Library Installation
 The library is Python 3 only!
 
 PyPI contains binary wheels for Linux, Windows and MacOS.  If you want to install
-``multidict`` on another operation system (or *Alpine Linux* inside a Docker) the
-Tarball will be used to compile the library from sources.  It requires C compiler and
-Python headers installed.
+``multidict`` on another operating system (or *Alpine Linux* inside a Docker) the
+tarball will be used to compile the library from source.  It requires a C compiler and
+Python headers to be installed.
 
-To skip the compilation please use `MULTIDICT_NO_EXTENSIONS` environment variable,
+To skip the compilation, please use the `MULTIDICT_NO_EXTENSIONS` environment variable,
 e.g.:
 
 .. code-block:: bash
 
    $ MULTIDICT_NO_EXTENSIONS=1 pip install multidict
 
-Please note, Pure Python (uncompiled) version is about 20-50 times slower depending on
+Please note, the pure Python (uncompiled) version is about 20-50 times slower depending on
 the usage scenario!!!
 
 

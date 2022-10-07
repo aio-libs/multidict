@@ -81,8 +81,15 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-org = "aio-libs"
-project = "multidict"
+
+github_url = "https://github.com"
+github_repo_org = "aio-libs"
+github_repo_name = "multidict"
+github_repo_slug = f"{github_repo_org}/{github_repo_name}"
+github_repo_url = f"{github_url}/{github_repo_slug}"
+github_sponsors_url = f"{github_url}/sponsors"
+
+project = github_repo_name
 copyright = "2016‒{end_year}, Andrew Svetlov".format(
     end_year=datetime.date.today().year
 )
@@ -138,6 +145,17 @@ highlight_language = "python"
 # keep_warnings = False
 
 
+# -- Extension configuration -------------------------------------------------
+
+# -- Options for extlinks extension ---------------------------------------
+extlinks = {
+    "issue": (f"{github_repo_url}/issues/%s", "#%s"),
+    "pr": (f"{github_repo_url}/pull/%s", "PR #%s"),
+    "commit": (f"{github_repo_url}/commit/%s", "%s"),
+    "gh": (f"{github_url}/%s", "GitHub: %s"),
+    "user": (f"{github_sponsors_url}/%s", "@%s"),
+}
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -150,8 +168,8 @@ html_theme = "alabaster"
 html_theme_options = {
     # 'logo': 'aiohttp-icon-128x128.png',
     "description": project,
-    "github_user": org,
-    "github_repo": project,
+    "github_user": github_repo_org,
+    "github_repo": github_repo_name,
     "github_button": True,
     "github_type": "star",
     "github_banner": True,
@@ -322,10 +340,3 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
-
-github_repo_url = f"https://github.com/{org}/{project}"
-
-extlinks = {
-    "issue": (f"{github_repo_url}/issues/%s", "#"),
-    "pr": (f"{github_repo_url}/pull/%s", "PR #"),
-}
