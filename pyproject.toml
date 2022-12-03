@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=40", "wheel"]
+requires = ["setuptools >= 40"]
 
 
 [tool.towncrier]
