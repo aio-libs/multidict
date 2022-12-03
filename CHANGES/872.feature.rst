@@ -1,1 +1,0 @@
-Declared the official support for Python 3.11 — by :user:`mlegner`.
