@@ -324,7 +324,7 @@ CIMultiDictProxy
 
    Case insensitive version of :class:`MultiDictProxy`.
 
-   Raises :exc:`TypeError` is *multidict* is not :class:`CIMultiDict` instance.
+   Raises :exc:`TypeError` if *multidict* is not :class:`CIMultiDict` instance.
 
    The class is inherited from :class:`MultiDict`.
 
