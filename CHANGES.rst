@@ -14,6 +14,15 @@ Changelog
 
 .. towncrier release notes start
 
+6.0.3 (2022-12-03)
+==================
+
+Features
+--------
+
+- Declared the official support for Python 3.11 — by :user:`mlegner`. (:issue:`872`)
+
+
 6.0.2 (2022-01-24)
 ==================
 

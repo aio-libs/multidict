@@ -1,7 +1,7 @@
 -r ci.txt
 
-mypy==0.990; implementation_name=="cpython"
-flake8==5.0.4
-flake8-pyi==22.10.0
+mypy==0.991; implementation_name=="cpython"
+flake8==6.0.0
+flake8-pyi==22.11.0
 black==22.10.0
 isort==5.10.1
