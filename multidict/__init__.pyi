@@ -5,7 +5,6 @@ from typing import (
     Iterator,
     Mapping,
     MutableMapping,
-    TypeAlias,
     TypeVar,
     overload,
 )
@@ -14,7 +13,7 @@ class istr(str): ...
 
 upstr = istr
 
-_S: TypeAlias = str | istr
+_S = str | istr
 
 _T = TypeVar("_T")
 
@@ -36,7 +35,7 @@ class MultiMapping(Mapping[_S, _T_co]):
     @abc.abstractmethod
     def getone(self, key: _S, default: _D) -> _T_co | _D: ...
 
-_Arg: TypeAlias = (Mapping[str, _T] | Mapping[istr, _T] | dict[str, _T]
+_Arg = (Mapping[str, _T] | Mapping[istr, _T] | dict[str, _T]
                    | dict[istr, _T] | MultiMapping[_T]
                    | Iterable[tuple[str, _T]] | Iterable[tuple[istr, _T]])
 
