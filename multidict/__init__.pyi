@@ -5,6 +5,7 @@ from typing import (
     Iterator,
     Mapping,
     MutableMapping,
+    TypeAlias,
     TypeVar,
     overload,
 )
