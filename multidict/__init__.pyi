@@ -1,6 +1,17 @@
 import abc
-from collections.abc import Iterable, Iterator, Mapping, MutableMapping
-from typing import Generic, TypeAlias, TypeVar, overload
+from typing import (
+    Dict,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    MutableMapping,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 class istr(str): ...
 
