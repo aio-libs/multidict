@@ -1,1 +1,0 @@
-Fixed a type annotations regression introduced in v6.0.2 under Python versions <3.10. It was caused by importing certain types only available in newer versions.

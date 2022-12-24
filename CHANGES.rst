@@ -14,6 +14,15 @@ Changelog
 
 .. towncrier release notes start
 
+6.0.4 (2022-12-24)
+==================
+
+Bugfixes
+--------
+
+- Fixed a type annotations regression introduced in v6.0.2 under Python versions <3.10. It was caused by importing certain types only available in newer versions. (:issue:`798`)
+
+
 6.0.3 (2022-12-03)
 ==================
 
