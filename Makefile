@@ -42,7 +42,7 @@ black-check:
 mypy:
 	mypy
 
-lint: flake8 black-check mypy isort-check check_changes
+lint: mypy flake8 black-check isort-check check_changes
 
 fmt:
 	black -t py35 $(SRC)
