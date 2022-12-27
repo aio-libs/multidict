@@ -1,3 +1,3 @@
-Switch from setuptools's legacy backend (``setuptools.build_meta:__legacy__``)
+Switched from setuptools's legacy backend (``setuptools.build_meta:__legacy__``)
 to the modern one (``setuptools.build_meta``) by actually specifying the
 the ``build-system.build-backend`` option in ``pyproject.toml``.
