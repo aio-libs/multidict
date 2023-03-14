@@ -2,6 +2,6 @@
 
 mypy==0.991; implementation_name=="cpython"
 flake8==6.0.0
-flake8-pyi==22.11.0
+flake8-pyi==23.3.0
 black==23.1.0
 isort==5.12.0
