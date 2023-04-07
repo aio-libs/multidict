@@ -80,7 +80,7 @@ args = dict(
         "GitHub: repo": "https://github.com/aio-libs/multidict",
     },
     license="Apache 2",
-    packages=["multidict"],
+    packages=["multidict", "multidict._multilib"],
     python_requires=">=3.7",
     include_package_data=True,
     exclude_package_data={"": ["*.c", "*.h"]},
