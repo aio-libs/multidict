@@ -1695,7 +1695,7 @@ static PyModuleDef multidict_module = {
 };
 
 PyMODINIT_FUNC
-PyInit__multidict()
+PyInit__multidict(void)
 {
 #if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     multidict_str_lower = PyUnicode_InternFromString("lower");
