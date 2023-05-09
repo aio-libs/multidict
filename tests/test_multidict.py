@@ -298,7 +298,13 @@ class BaseMultiDictTest:
         d2 = cls()
 
         assert d1 != d2
-
+        
+    def test_eq4(self, cls: _MultiDictClasses) -> None:
+        d1 = cls({"a": "A", "b": "B"})
+        d2 = cls({"b": "B", "a": "A"})
+        
+        assert d2 == d1
+ 
     def test_eq_other_mapping_contains_more_keys(self, cls: _MultiDictClasses) -> None:
         d1 = cls(foo="bar")
         d2 = dict(foo="bar", bar="baz")

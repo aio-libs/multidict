@@ -117,6 +117,8 @@ class _Base:
             rht = other._impl._items
             if len(lft) != len(rht):
                 return False
+            lft.sort()
+            rht.sort()
             for (i1, k2, v1), (i2, k2, v2) in zip(lft, rht):
                 if i1 != i2 or v1 != v2:
                     return False
