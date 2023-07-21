@@ -709,13 +709,21 @@ static inline void
 multidict_tp_dealloc(MultiDictObject *self)
 {
     PyObject_GC_UnTrack(self);
+#if PY_VERSION_HEX < 0x03090000
     Py_TRASHCAN_SAFE_BEGIN(self);
+#else
+    Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
+#endif
     if (self->weaklist != NULL) {
         PyObject_ClearWeakRefs((PyObject *)self);
     };
     pair_list_dealloc(&self->pairs);
     Py_TYPE(self)->tp_free((PyObject *)self);
+#if PY_VERSION_HEX < 0x03090000
     Py_TRASHCAN_SAFE_END(self);
+#else
+    Py_TRASHCAN_END // there should be no code after this
+#endif
 }
 
 static inline int
@@ -777,9 +785,12 @@ multidict_add(MultiDictObject *self, PyObject *const *args,
         return NULL;
     }
 #else
-    static _PyArg_Parser _parser = {NULL, _keywords, "add", 0};
+    static _PyArg_Parser _parser = {
+        .keywords = _keywords,
+        .fname = "add",
+        .kwtuple = NULL,
+    };
     PyObject *argsbuf[2];
-
     args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
                                  &_parser, 2, 2, 0, argsbuf);
     if (!args) {

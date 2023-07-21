@@ -5,7 +5,9 @@
 extern "C" {
 #endif
 
+#if PY_VERSION_HEX < 0x0309000
 _Py_IDENTIFIER(lower);
+#endif
 
 /* We link this module statically for convenience.  If compiled as a shared
    library instead, some compilers don't allow addresses of Python objects
