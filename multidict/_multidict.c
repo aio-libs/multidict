@@ -709,20 +709,20 @@ static inline void
 multidict_tp_dealloc(MultiDictObject *self)
 {
     PyObject_GC_UnTrack(self);
-#if PY_VERSION_HEX < 0x03090000
-    Py_TRASHCAN_SAFE_BEGIN(self);
-#else
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
+#else
+    Py_TRASHCAN_SAFE_BEGIN(self);
 #endif
     if (self->weaklist != NULL) {
         PyObject_ClearWeakRefs((PyObject *)self);
     };
     pair_list_dealloc(&self->pairs);
     Py_TYPE(self)->tp_free((PyObject *)self);
-#if PY_VERSION_HEX < 0x03090000
-    Py_TRASHCAN_SAFE_END(self);
-#else
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     Py_TRASHCAN_END // there should be no code after this
+#else
+    Py_TRASHCAN_SAFE_END(self);
 #endif
 }
 

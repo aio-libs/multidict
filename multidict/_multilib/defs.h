@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#if PY_VERSION_HEX < 0x0309000
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 9
 _Py_IDENTIFIER(lower);
 #endif
 

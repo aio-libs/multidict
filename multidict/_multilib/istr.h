@@ -43,10 +43,10 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (!ret) {
         goto fail;
     }
-#if PY_VERSION_HEX < 0x03090000
-    s =_PyObject_CallMethodId(ret, &PyId_lower, NULL);
-#else
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     s = PyObject_CallMethod(ret, "lower", NULL);
+#else
+    s =_PyObject_CallMethodId(ret, &PyId_lower, NULL);
 #endif
     if (!s) {
         goto fail;
