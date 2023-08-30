@@ -62,7 +62,14 @@ jobs:
     name: Test
     strategy:
       matrix:
-        pyver: ['3.7', '3.8', '3.9', '3.10', '3.11']
+        pyver:
+        - 3.7
+        - 3.8
+        - 3.9
+        - >-
+          3.10
+        - 3.11
+        - 3.12
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
