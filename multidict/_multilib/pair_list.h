@@ -42,7 +42,6 @@ typedef struct pair_list {
     Py_ssize_t size;
     uint64_t version;
     bool calc_ci_indentity;
-    PyObject *str_lower;
     pair_t *pairs;
     pair_t buffer[EMBEDDED_CAPACITY];
 } pair_list_t;
@@ -101,7 +100,7 @@ key_to_str(PyObject *key)
 
 
 static inline PyObject *
-ci_key_to_str(PyObject *str_lower, PyObject *key)
+ci_key_to_str(PyObject *key)
 {
     PyObject *ret;
     PyTypeObject *type = Py_TYPE(key);
@@ -114,7 +113,7 @@ ci_key_to_str(PyObject *str_lower, PyObject *key)
 #if PY_VERSION_HEX < 0x03090000
         return _PyObject_CallMethodId(key, &PyId_lower, NULL);
 #else
-        return PyObject_CallMethodNoArgs(key, str_lower);
+        return PyObject_CallMethodNoArgs(key, multidict_str_lower);
 #endif
     }
     PyErr_SetString(PyExc_TypeError,
@@ -205,11 +204,6 @@ pair_list_shrink(pair_list_t *list)
 static inline int
 _pair_list_init(pair_list_t *list, bool calc_ci_identity)
 {
-    PyObject *str_lower = PyUnicode_InternFromString("lower");
-    if (str_lower == NULL) {
-        return -1;
-    }
-    list->str_lower = str_lower;
     list->calc_ci_indentity = calc_ci_identity;
     list->pairs = list->buffer;
     list->capacity = EMBEDDED_CAPACITY;
@@ -236,7 +230,7 @@ static inline PyObject *
 pair_list_calc_identity(pair_list_t *list, PyObject *key)
 {
     if (list->calc_ci_indentity)
-        return ci_key_to_str(list->str_lower, key);
+        return ci_key_to_str(key);
     return key_to_str(key);
 }
 
@@ -269,8 +263,6 @@ pair_list_dealloc(pair_list_t *list)
         list->pairs = list->buffer;
         list->capacity = EMBEDDED_CAPACITY;
     }
-
-    Py_CLEAR(list->str_lower);
 }
 
 

@@ -1666,6 +1666,7 @@ getversion(PyObject *self, PyObject *md)
 static inline void
 module_free(void *m)
 {
+    Py_CLEAR(multidict_str_lower);
     Py_CLEAR(collections_abc_mapping);
     Py_CLEAR(collections_abc_mut_mapping);
     Py_CLEAR(collections_abc_mut_multi_mapping);
@@ -1694,6 +1695,11 @@ static PyModuleDef multidict_module = {
 PyMODINIT_FUNC
 PyInit__multidict()
 {
+    multidict_str_lower = PyUnicode_InternFromString("lower");
+    if (multidict_str_lower == NULL) {
+        goto fail;
+    }
+
     PyObject *module = NULL,
              *reg_func_call_result = NULL;
 
@@ -1824,6 +1830,7 @@ PyInit__multidict()
     return module;
 
 fail:
+    Py_XDECREF(multidict_str_lower);
     Py_XDECREF(collections_abc_mapping);
     Py_XDECREF(collections_abc_mut_mapping);
     Py_XDECREF(collections_abc_mut_multi_mapping);

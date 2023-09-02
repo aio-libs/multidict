@@ -5,7 +5,9 @@
 extern "C" {
 #endif
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 9
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
+static PyObject *multidict_str_lower = NULL;
+#else
 _Py_IDENTIFIER(lower);
 #endif
 
