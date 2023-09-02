@@ -1666,7 +1666,9 @@ getversion(PyObject *self, PyObject *md)
 static inline void
 module_free(void *m)
 {
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     Py_CLEAR(multidict_str_lower);
+#endif
     Py_CLEAR(collections_abc_mapping);
     Py_CLEAR(collections_abc_mut_mapping);
     Py_CLEAR(collections_abc_mut_multi_mapping);
@@ -1695,10 +1697,12 @@ static PyModuleDef multidict_module = {
 PyMODINIT_FUNC
 PyInit__multidict()
 {
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     multidict_str_lower = PyUnicode_InternFromString("lower");
     if (multidict_str_lower == NULL) {
         goto fail;
     }
+#endif
 
     PyObject *module = NULL,
              *reg_func_call_result = NULL;
@@ -1830,7 +1834,9 @@ PyInit__multidict()
     return module;
 
 fail:
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     Py_XDECREF(multidict_str_lower);
+#endif
     Py_XDECREF(collections_abc_mapping);
     Py_XDECREF(collections_abc_mut_mapping);
     Py_XDECREF(collections_abc_mut_multi_mapping);
