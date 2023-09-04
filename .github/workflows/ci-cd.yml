@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -79,7 +79,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Setup Python ${{ matrix.pyver }}
       uses: actions/setup-python@v4
       with:
@@ -123,7 +123,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Upload coverage
       uses: aio-libs/upload-coverage@v22.1.4
 
@@ -144,7 +144,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -176,7 +176,7 @@ jobs:
           qemu: s390x
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Set up QEMU
       if: ${{ matrix.qemu }}
       uses: docker/setup-qemu-action@v2
@@ -215,7 +215,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
