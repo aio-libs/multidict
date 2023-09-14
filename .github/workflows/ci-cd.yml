@@ -173,8 +173,11 @@ jobs:
       matrix:
         os: [ubuntu, windows, macos]
         qemu: ['']
+        noextensions: ['0']
         include:
-          # Split ubuntu job for the sake of speed-up
+          # Add a pure python build and qemu builds
+        - os: ubuntu
+          noextensions: '1'
         - os: ubuntu
           qemu: aarch64
         - os: ubuntu
@@ -202,6 +205,7 @@ jobs:
       uses: pypa/cibuildwheel@v2.16.1
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+        CIBW_ENVIRONMENT: MULTIDICT_NO_EXTENSIONS=${{ matrix.noextensions }}
     - uses: actions/upload-artifact@v3
       with:
         name: dist
