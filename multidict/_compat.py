@@ -1,7 +1,7 @@
 import os
 import platform
 
-NO_EXTENSIONS = bool(os.environ.get("MULTIDICT_NO_EXTENSIONS"))
+NO_EXTENSIONS = os.environ.get("MULTIDICT_NO_EXTENSIONS", "0") == "1"
 
 PYPY = platform.python_implementation() == "PyPy"
 

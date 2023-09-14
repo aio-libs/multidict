@@ -6,7 +6,7 @@ import sys
 
 from setuptools import Extension, setup
 
-NO_EXTENSIONS = bool(os.environ.get("MULTIDICT_NO_EXTENSIONS"))
+NO_EXTENSIONS = os.environ.get("MULTIDICT_NO_EXTENSIONS", "0") == "1"
 
 if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
