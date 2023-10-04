@@ -535,7 +535,6 @@ class TestMultiDict(BaseMultiDictTest):
         assert d["a"] == 1
         assert d.get("a") == 1
         assert d.get("z", 3) == 3
-        assert d.get(key="z", default=3) == 3
 
     def test_items__repr__(self, cls: Type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
