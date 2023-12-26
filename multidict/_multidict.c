@@ -709,13 +709,21 @@ static inline void
 multidict_tp_dealloc(MultiDictObject *self)
 {
     PyObject_GC_UnTrack(self);
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
+    Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
+#else
     Py_TRASHCAN_SAFE_BEGIN(self);
+#endif
     if (self->weaklist != NULL) {
         PyObject_ClearWeakRefs((PyObject *)self);
     };
     pair_list_dealloc(&self->pairs);
     Py_TYPE(self)->tp_free((PyObject *)self);
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
+    Py_TRASHCAN_END // there should be no code after this
+#else
     Py_TRASHCAN_SAFE_END(self);
+#endif
 }
 
 static inline int
@@ -777,9 +785,12 @@ multidict_add(MultiDictObject *self, PyObject *const *args,
         return NULL;
     }
 #else
-    static _PyArg_Parser _parser = {NULL, _keywords, "add", 0};
+    static _PyArg_Parser _parser = {
+        .keywords = _keywords,
+        .fname = "add",
+        .kwtuple = NULL,
+    };
     PyObject *argsbuf[2];
-
     args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
                                  &_parser, 2, 2, 0, argsbuf);
     if (!args) {
@@ -1655,6 +1666,9 @@ getversion(PyObject *self, PyObject *md)
 static inline void
 module_free(void *m)
 {
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
+    Py_CLEAR(multidict_str_lower);
+#endif
     Py_CLEAR(collections_abc_mapping);
     Py_CLEAR(collections_abc_mut_mapping);
     Py_CLEAR(collections_abc_mut_multi_mapping);
@@ -1683,6 +1697,13 @@ static PyModuleDef multidict_module = {
 PyMODINIT_FUNC
 PyInit__multidict()
 {
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
+    multidict_str_lower = PyUnicode_InternFromString("lower");
+    if (multidict_str_lower == NULL) {
+        goto fail;
+    }
+#endif
+
     PyObject *module = NULL,
              *reg_func_call_result = NULL;
 
@@ -1813,6 +1834,9 @@ PyInit__multidict()
     return module;
 
 fail:
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
+    Py_XDECREF(multidict_str_lower);
+#endif
     Py_XDECREF(collections_abc_mapping);
     Py_XDECREF(collections_abc_mut_mapping);
     Py_XDECREF(collections_abc_mut_multi_mapping);
