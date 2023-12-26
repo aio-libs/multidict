@@ -3,11 +3,11 @@ requires = ["setuptools >= 40"]
 
 
 [tool.towncrier]
-package = "multidict"
-filename = "CHANGES.rst"
-directory = "CHANGES/"
-title_format = "{version} ({project_date})"
-issue_format = ":issue:`{issue}`"
+  package = "multidict"
+  filename = "CHANGES.rst"
+  directory = "CHANGES/"
+  title_format = "{version} ({project_date})"
+  issue_format = ":issue:`{issue}`"
 
 
 [tool.cibuildwheel]
