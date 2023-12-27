@@ -1,0 +1,1 @@
+Allow ``.packaging`` suffix in CHANGES -- :user:`edgarrmondragon`.
