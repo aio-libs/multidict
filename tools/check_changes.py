@@ -4,7 +4,14 @@ import sys
 from pathlib import Path
 
 
-ALLOWED_SUFFIXES = [".feature", ".bugfix", ".doc", ".removal", ".misc"]
+ALLOWED_SUFFIXES = [
+    ".feature",
+    ".bugfix",
+    ".doc",
+    ".removal",
+    ".misc",
+    ".packaging",
+]
 
 
 def get_root(script_path):
