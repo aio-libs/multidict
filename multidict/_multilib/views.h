@@ -385,7 +385,7 @@ static PyTypeObject multidict_valuesview_type = {
 
 
 static inline int
-multidict_views_init()
+multidict_views_init(void)
 {
     PyObject *reg_func_call_result = NULL;
     PyObject *module = PyImport_ImportModule("multidict._multidict_base");
