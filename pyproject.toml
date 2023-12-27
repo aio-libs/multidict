@@ -73,7 +73,7 @@ requires = ["setuptools >= 40"]
 
 
 [tool.cibuildwheel]
-test-requires = "-r requirements/ci.txt"
+test-requires = "-r requirements/pytest.txt"
 test-command = "pytest {project}/tests"
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
