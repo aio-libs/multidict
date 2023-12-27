@@ -26,6 +26,7 @@ Deprecations
 deallocation
 dict
 docstrings
+downstreams
 eof
 fallback
 fastpath
