@@ -49,7 +49,7 @@ fmt:
 	isort $(SRC)
 
 check_changes:
-	./tools/check_changes.py
+	python -Im pre_commit run --all-files --show-diff-on-failure
 
 .develop: .install-deps $(shell find multidict -type f) .flake check_changes mypy
 	pip install -e .
