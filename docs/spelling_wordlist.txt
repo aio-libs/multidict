@@ -49,6 +49,7 @@ json
 keepalive
 keepalives
 keepaliving
+lockfile
 lookups
 manylinux
 middleware
