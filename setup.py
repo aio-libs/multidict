@@ -56,6 +56,7 @@ args = dict(
     version=version,
     description=("multidict implementation"),
     long_description=read("README.rst"),
+    long_description_content_type="text/x-rst",
     classifiers=[
         "License :: OSI Approved :: Apache Software License",
         "Intended Audience :: Developers",

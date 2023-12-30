@@ -56,7 +56,7 @@ jobs:
         MULTIDICT_NO_EXTENSIONS: 1
     - name: Run twine checker
       run: |
-        twine check dist/*
+        twine check --strict dist/*
 
   test:
     name: Test
