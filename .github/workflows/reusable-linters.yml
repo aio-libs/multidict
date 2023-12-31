@@ -24,6 +24,16 @@ jobs:
         path: ~/.cache/pip
         restore-keys: |
             pip-lint-
+    - name: Cache pre-commit.com virtualenvs
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pre-commit
+        key: >-
+          ${{
+            runner.os
+          }}-pre-commit-${{
+            hashFiles('.pre-commit-config.yaml')
+          }}
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v4
       with:
