@@ -1,0 +1,50 @@
+name: Linters
+
+on:
+  workflow_call:
+
+
+jobs:
+
+  lint:
+    name: Linter
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
+    - name: Cache PyPI
+      uses: actions/cache@v3
+      with:
+        key: pip-lint-${{ hashFiles('requirements/*.txt') }}
+        path: ~/.cache/pip
+        restore-keys: |
+            pip-lint-
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4
+      with:
+        path: requirements/lint.txt
+    - name: Run linters
+      run: |
+        make lint
+    - name: Install spell checker
+      run: |
+        sudo apt install libenchant-2-dev
+        pip install -r requirements/doc.txt
+    - name: Run docs spelling
+      run: |
+        make doc-spelling
+    - name: Prepare twine checker
+      run: |
+        pip install -U twine wheel
+        python setup.py sdist bdist_wheel
+      env:
+        MULTIDICT_NO_EXTENSIONS: 1
+    - name: Run twine checker
+      run: |
+        twine check --strict dist/*
+
