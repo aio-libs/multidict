@@ -119,7 +119,8 @@ jobs:
         python-version: 3.x
     - name: Make sdist
       run:
-        python setup.py sdist
+        pip install -U build
+        python -m build --sdist
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:

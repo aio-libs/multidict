@@ -50,8 +50,8 @@ jobs:
         make doc-spelling
     - name: Prepare twine checker
       run: |
-        pip install -U twine wheel
-        python setup.py sdist bdist_wheel
+        pip install -U build twine
+        python -m build
       env:
         MULTIDICT_NO_EXTENSIONS: 1
     - name: Run twine checker
