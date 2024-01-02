@@ -15,6 +15,22 @@ on:
     - cron:  '0 6 * * *'  # Daily 6AM UTC build
 
 
+env:
+  COLOR: >-  # Supposedly, pytest or coveragepy use this
+    yes
+  FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
+  MYPY_FORCE_COLOR: 1  # MyPy's color enforcement
+  PIP_DISABLE_PIP_VERSION_CHECK: 1
+  PIP_NO_PYTHON_VERSION_WARNING: 1
+  PIP_NO_WARN_SCRIPT_LOCATION: 1
+  PRE_COMMIT_COLOR: always
+  PROJECT_NAME: multidict
+  PY_COLORS: 1  # Recognized by the `py` package, dependency of `pytest`
+  PYTHONIOENCODING: utf-8
+  PYTHONUTF8: 1
+  PYTHON_LATEST: 3.x
+
+
 jobs:
 
   build-pure-python-dists:
@@ -23,10 +39,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Setup Python
+    - name: Set up Python ${{ env.PYTHON_LATEST }}
       uses: actions/setup-python@v5
       with:
-        python-version: 3.x
+        python-version: ${{ env.PYTHON_LATEST }}
     - name: Install core libraries for build
       run: python -Im pip install build
     - name: Build sdists and pure-python wheel
@@ -93,8 +109,6 @@ jobs:
       env:
         MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
     - name: Run unittests
-      env:
-        COLOR: 'yes'
       run: |
         python -m pytest tests -vv
     - name: Prepare coverage artifact
