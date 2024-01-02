@@ -17,6 +17,28 @@ on:
 
 jobs:
 
+  build-pure-python-dists:
+    name: 📦 Build distribution packages
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.x
+    - name: Install core libraries for build
+      run: python -Im pip install build
+    - name: Build sdists and pure-python wheel
+      env:
+        MULTIDICT_NO_EXTENSIONS: Y
+      run: python -Im build
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist
+
   lint:
     uses: ./.github/workflows/reusable-linters.yml
 
@@ -106,29 +128,6 @@ jobs:
       - name: Dummy
         run: |
             echo "Predeploy step"
-
-  build-pure-python-dists:
-    name: 📦 Build distribution packages
-    runs-on: ubuntu-latest
-    needs: pre-deploy
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.x
-    - name: Install core libraries for build
-      run: python -Im pip install build
-    - name: Build sdists and pure-python wheel
-      env:
-        MULTIDICT_NO_EXTENSIONS: Y
-      run: python -Im build
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: dist
-        path: dist
 
   build-wheels:
     name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
