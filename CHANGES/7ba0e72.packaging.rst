@@ -1,0 +1,2 @@
+Started publishing pure-python wheels to be installed
+as a fallback -- by :user:`webknjaz`.
