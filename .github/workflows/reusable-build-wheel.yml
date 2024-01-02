@@ -1,0 +1,74 @@
+---
+
+name: Build wheel
+
+on:
+  workflow_call:
+    inputs:
+      dists-artifact-name:
+        description: Workflow artifact name containing dists
+        required: true
+        type: string
+      os:
+        description: VM OS to use, without version suffix
+        default: ubuntu
+        required: false
+        type: string
+      qemu:
+        description: Emulated QEMU architecture
+        default: ''
+        required: false
+        type: string
+      wheel-tags-to-skip:
+        description: Wheel tags to skip building
+        default: ''
+        required: false
+        type: string
+
+env:
+  FORCE_COLOR: "1"  # Make tools pretty.
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_PYTHON_VERSION_WARNING: "1"
+
+jobs:
+
+  build-wheel:
+    name: Build wheels on ${{ inputs.os }} ${{ inputs.qemu }}
+    runs-on: ${{ inputs.os }}-latest
+    timeout-minutes: ${{ inputs.qemu && 47 || 14 }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up QEMU
+      if: inputs.qemu
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: all
+      id: qemu
+    - name: Prepare emulation
+      if: inputs.qemu
+      run: |
+        # Build emulated architectures only if QEMU is set,
+        # use default "auto" otherwise
+        echo "CIBW_ARCHS_LINUX=${{ inputs.qemu }}" >> "${GITHUB_ENV}"
+      shell: bash
+
+    - name: Skip building some wheel tags
+      if: inputs.wheel-tags-to-skip
+      run: |
+        echo "CIBW_SKIP=${{ inputs.wheel-tags-to-skip }}" >> "${GITHUB_ENV}"
+      shell: bash
+
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v2.16.2
+      env:
+        CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+
+    - name: Upload built artifacts for testing and publishing
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.dists-artifact-name }}
+        path: ./wheelhouse/*.whl
+
+...
