@@ -19,6 +19,10 @@ on:
         default: ''
         required: false
         type: string
+      source-tarball-name:
+        description: Sdist filename wildcard
+        required: true
+        type: string
       wheel-tags-to-skip:
         description: Wheel tags to skip building
         default: ''
@@ -37,8 +41,11 @@ jobs:
     runs-on: ${{ inputs.os }}-latest
     timeout-minutes: ${{ inputs.qemu && 47 || 14 }}
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v1
+      with:
+        source-tarball-name: ${{ inputs.source-tarball-name }}
+        workflow-artifact-name: ${{ inputs.dists-artifact-name }}
 
     - name: Set up QEMU
       if: inputs.qemu

@@ -60,6 +60,8 @@ jobs:
 
   test:
     name: Test
+    needs:
+    - build-pure-python-dists
     strategy:
       matrix:
         pyver:
@@ -85,8 +87,11 @@ jobs:
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 15
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v1
+      with:
+        source-tarball-name: ${{ env.PROJECT_NAME }}-*.tar.gz
+        workflow-artifact-name: dist
     - name: Setup Python ${{ matrix.pyver }}
       uses: actions/setup-python@v5
       with:
@@ -127,8 +132,6 @@ jobs:
       uses: re-actors/alls-green@release/v1
       with:
         jobs: ${{ toJSON(needs) }}
-    - name: Checkout
-      uses: actions/checkout@v4
     - name: Upload coverage
       uses: aio-libs/upload-coverage@v22.1.4
 
@@ -146,7 +149,9 @@ jobs:
   build-wheels:
     name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
     runs-on: ${{ matrix.os }}-latest
-    needs: pre-deploy
+    needs:
+    - build-pure-python-dists
+    - pre-deploy
     strategy:
       matrix:
         os: [ubuntu, windows, macos]
@@ -163,6 +168,7 @@ jobs:
     with:
       os: ${{ matrix.os }}
       qemu: ${{ matrix.qemu }}
+      source-tarball-name: ${{ env.PROJECT_NAME }}-*.tar.gz
       dists-artifact-name: dist
 
   deploy:
@@ -181,8 +187,11 @@ jobs:
       url: https://pypi.org/p/multidict
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v1
+      with:
+        source-tarball-name: ${{ env.PROJECT_NAME }}-*.tar.gz
+        workflow-artifact-name: dist
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
