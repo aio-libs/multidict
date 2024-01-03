@@ -148,7 +148,6 @@ jobs:
 
   build-wheels:
     name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
-    runs-on: ${{ matrix.os }}-latest
     needs:
     - build-pure-python-dists
     - pre-deploy
