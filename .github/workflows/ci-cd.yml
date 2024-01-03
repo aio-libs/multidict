@@ -1,18 +1,23 @@
+---
+
 name: CI/CD
 
 on:
   merge_group:
   push:
     branches:
-      - master
-      - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
-    tags: [ 'v*' ]
+    - master
+    - >-
+      [0-9].[0-9]+
+    tags:
+    - v*
   pull_request:
     branches:
-      - master
-      - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
+    - master
+    - >-
+      [0-9].[0-9]+
   schedule:
-    - cron:  '0 6 * * *'  # Daily 6AM UTC build
+  - cron: 0 6 * * *  # Daily 6AM UTC build
 
 
 env:
@@ -124,14 +129,14 @@ jobs:
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
-          - os: macos
-            no-extensions: 'Y'
-          - os: windows
-            no-extensions: 'Y'
+        - os: macos
+          no-extensions: Y
+        - os: windows
+          no-extensions: Y
         include:
-          - pyver: pypy-3.8
-            no-extensions: 'Y'
-            os: ubuntu
+        - pyver: pypy-3.8
+          no-extensions: Y
+          os: ubuntu
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 15
@@ -154,10 +159,25 @@ jobs:
     - name: Cache PyPI
       uses: actions/cache@v3
       with:
-        key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-{{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
+        key: >-
+          pip-ci-${{
+            runner.os
+          }}-${{
+            matrix.pyver
+          }}-{{
+            matrix.no-extensions
+          }}-${{
+            hashFiles('requirements/*.txt')
+          }}
         path: ${{ steps.pip-cache.outputs.dir }}
-        restore-keys: |
-            pip-ci-${{ runner.os }}-${{ matrix.pyver }}-{{ matrix.no-extensions }}-
+        restore-keys: >-
+          pip-ci-${{
+            runner.os
+          }}-${{
+            matrix.pyver
+          }}-{{
+            matrix.no-extensions
+          }}-
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v4
       with:
@@ -168,8 +188,8 @@ jobs:
       run: |
         python -m pytest tests -vv
     - name: Prepare coverage artifact
-      # combining Linux and Windows paths is tricky, left this exercise for others
-      # multidict has no Winows or MacOS specific code paths anyway
+      # combining Linux and Windows paths is tricky, left this exercise for
+      # others multidict has no Windows or macOS specific code paths anyway
       if: ${{ matrix.os == 'ubuntu' }}
       uses: aio-libs/prepare-coverage@v22.1.2
 
@@ -195,9 +215,9 @@ jobs:
     # Run only on pushing a tag
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     steps:
-      - name: Dummy
-        run: |
-            echo "Predeploy step"
+    - name: Dummy
+      run: |
+        echo "Predeploy step"
 
   build-wheels:
     name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
@@ -210,7 +230,7 @@ jobs:
         os: [ubuntu, windows, macos]
         qemu: ['']
         include:
-          # Split ubuntu job for the sake of speed-up
+        # Split ubuntu job for the sake of speed-up
         - os: ubuntu
           qemu: aarch64
         - os: ubuntu
@@ -287,3 +307,5 @@ jobs:
         # dist/ contains the built packages, which smoketest-artifacts/
         # contains the signatures and certificates.
         files: dist/**
+
+...

@@ -22,6 +22,13 @@ repos:
     - yaml
   - id: check-readthedocs
 
+- repo: https://github.com/adrienverge/yamllint.git
+  rev: v1.33.0
+  hooks:
+  - id: yamllint
+    args:
+    - --strict
+
 - repo: local
   hooks:
   - id: changelogs-rst
