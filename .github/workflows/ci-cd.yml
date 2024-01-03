@@ -111,10 +111,29 @@ jobs:
   lint:
     uses: ./.github/workflows/reusable-linters.yml
 
+  build-wheels-for-tested-arches:
+    name: Build wheels on ${{ matrix.os }}
+    needs:
+    - build-pure-python-dists
+    - pre-setup  # transitive, for accessing settings
+    strategy:
+      matrix:
+        os:
+        - ubuntu
+        - windows
+        - macos
+    uses: ./.github/workflows/reusable-build-wheel.yml
+    with:
+      os: ${{ matrix.os }}
+      source-tarball-name: >-
+        ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+      dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+
   test:
     name: Test
     needs:
     - build-pure-python-dists  # transitive, for accessing settings
+    - build-wheels-for-tested-arches
     - pre-setup  # transitive, for accessing settings
     strategy:
       matrix:
@@ -181,9 +200,48 @@ jobs:
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v4
       with:
-        path: requirements/ci.txt
+        path: requirements/pytest.txt
+    - name: Determine pre-compiled compatible wheel
       env:
-        MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        # NOTE: When `pip` is forced to colorize output piped into `jq`,
+        # NOTE: the latter can't parse it. So we're overriding the color
+        # NOTE: preference here via https://no-color.org.
+        # NOTE: Setting `FORCE_COLOR` to any value (including 0, an empty
+        # NOTE: string, or a "YAML null" `~`) doesn't have any effect and
+        # NOTE: `pip` (through its verndored copy of `rich`) treats the
+        # NOTE: presence of the variable as "force-color" regardless.
+        #
+        # NOTE: This doesn't actually work either, so we'll resort to unsetting
+        # NOTE: in the Bash script.
+        # NOTE: Ref: https://github.com/Textualize/rich/issues/2622
+        NO_COLOR: 1
+      id: wheel-file
+      run: >
+        echo -n path= | tee -a "${GITHUB_OUTPUT}"
+
+
+        unset FORCE_COLOR
+
+
+        python
+        -X utf8
+        -u -I
+        -m pip install
+        --find-links=./dist
+        --no-index
+        '${{ env.PROJECT_NAME }}'
+        --force-reinstall
+        --no-color
+        --no-deps
+        --only-binary=:all:
+        --dry-run
+        --report=-
+        --quiet
+        | jq --raw-output .install[].download_info.url
+        | tee -a "${GITHUB_OUTPUT}"
+      shell: bash
+    - name: Self-install
+      run: python -Im pip install '${{ steps.wheel-file.outputs.path }}'
     - name: Run unittests
       run: |
         python -m pytest tests -vv
@@ -230,7 +288,7 @@ jobs:
       run: |
         echo "Predeploy step"
 
-  build-wheels:
+  build-wheels-for-odd-archs:
     name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
     needs:
     - build-pure-python-dists
@@ -238,19 +296,12 @@ jobs:
     - pre-setup  # transitive, for accessing settings
     strategy:
       matrix:
-        os: [ubuntu, windows, macos]
-        qemu: ['']
-        include:
-        # Split ubuntu job for the sake of speed-up
-        - os: ubuntu
-          qemu: aarch64
-        - os: ubuntu
-          qemu: ppc64le
-        - os: ubuntu
-          qemu: s390x
+        qemu:
+        - aarch64
+        - ppc64le
+        - s390x
     uses: ./.github/workflows/reusable-build-wheel.yml
     with:
-      os: ${{ matrix.os }}
       qemu: ${{ matrix.qemu }}
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
@@ -260,7 +311,8 @@ jobs:
     name: Deploy
     needs:
     - build-pure-python-dists
-    - build-wheels
+    - build-wheels-for-odd-archs
+    - build-wheels-for-tested-arches
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 5
