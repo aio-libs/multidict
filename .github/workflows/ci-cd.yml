@@ -178,6 +178,12 @@ jobs:
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
+    - name: Download distributions
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+        path: dist
+
     - name: Setup Python ${{ matrix.pyver }}
       uses: actions/setup-python@v5
       with:
