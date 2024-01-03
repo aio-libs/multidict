@@ -198,12 +198,23 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 1
-    needs: [lint, test]
+    needs:
+    - build-pure-python-dists  # transitive, for accessing settings
+    - lint
+    - pre-setup  # transitive, for accessing settings
+    - test
     steps:
     - name: Decide whether the needed jobs succeeded or failed
       uses: re-actors/alls-green@release/v1
       with:
         jobs: ${{ toJSON(needs) }}
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v1
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Upload coverage
       uses: aio-libs/upload-coverage@v22.1.4
 
