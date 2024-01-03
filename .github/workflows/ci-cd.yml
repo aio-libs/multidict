@@ -184,7 +184,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/multidict
+      url: https://pypi.org/p/${{ env.PROJECT_NAME }}
 
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
