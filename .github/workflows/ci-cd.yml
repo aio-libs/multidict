@@ -185,6 +185,7 @@ jobs:
         path: dist
 
     - name: Setup Python ${{ matrix.pyver }}
+      id: python-install
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyver }}
@@ -260,8 +261,15 @@ jobs:
     - name: Self-install
       run: python -Im pip install '${{ steps.wheel-file.outputs.path }}'
     - name: Run unittests
-      run: |
+      run: >-
         python -m pytest tests -vv
+        --junitxml=.test-results/pytest/test.xml
+    - name: Produce markdown test summary from JUnit
+      if: >-
+        !cancelled()
+      uses: test-summary/action@v2.2
+      with:
+        paths: .test-results/pytest/test.xml
     - name: Prepare coverage artifact
       # combining Linux and Windows paths is tricky, left this exercise for
       # others multidict has no Windows or macOS specific code paths anyway
