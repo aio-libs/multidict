@@ -33,9 +33,34 @@ env:
 
 jobs:
 
+  pre-setup:
+    name: ⚙️ Pre-set global build settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    defaults:
+      run:
+        shell: python
+    outputs:
+      # NOTE: These aren't env vars because the `${{ env }}` context is
+      # NOTE: inaccessible when passing inputs to reusable workflows.
+      dists-artifact-name: python-package-distributions
+      sdist-name: ${{ env.PROJECT_NAME }}-*.tar.gz
+      wheel-name: ${{ env.PROJECT_NAME }}-*.whl
+    steps:
+    - run: >-
+        print('No-op')
+
+
   build-pure-python-dists:
     name: 📦 Build distribution packages
+    needs:
+    - pre-setup
     runs-on: ubuntu-latest
+    outputs:
+      sdist-filename: >-
+        ${{ steps.dist-filenames-detection.outputs.sdist-filename }}
+      wheel-filename: >-
+        ${{ steps.dist-filenames-detection.outputs.wheel-filename }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -49,11 +74,33 @@ jobs:
       env:
         MULTIDICT_NO_EXTENSIONS: Y
       run: python -Im build
-    - name: Upload artifacts
+    - name: Determine actual created filenames
+      id: dist-filenames-detection
+      run: >-
+        {
+        echo -n sdist-filename=
+        ;
+        basename "$(ls -1 dist/${{ needs.pre-setup.outputs.sdist-name }})"
+        ;
+        echo -n wheel-filename=
+        ;
+        basename "$(ls -1 dist/${{ needs.pre-setup.outputs.wheel-name }})"
+        ;
+        }
+        >> "${GITHUB_OUTPUT}"
+    - name: Upload built artifacts for testing
       uses: actions/upload-artifact@v3
       with:
-        name: dist
-        path: dist
+        if-no-files-found: error
+        name: ${{ needs.pre-setup.outputs.dists-artifact-name  }}
+        # NOTE: Exact expected file names are specified here
+        # NOTE: as a safety measure — if anything weird ends
+        # NOTE: up being in this dir or not all dists will be
+        # NOTE: produced, this will fail the workflow.
+        path: |
+          dist/${{ steps.dist-filenames-detection.outputs.sdist-filename }}
+          dist/${{ steps.dist-filenames-detection.outputs.wheel-filename }}
+        retention-days: 15
 
   lint:
     uses: ./.github/workflows/reusable-linters.yml
@@ -61,7 +108,8 @@ jobs:
   test:
     name: Test
     needs:
-    - build-pure-python-dists
+    - build-pure-python-dists  # transitive, for accessing settings
+    - pre-setup  # transitive, for accessing settings
     strategy:
       matrix:
         pyver:
@@ -90,8 +138,10 @@ jobs:
     - name: Retrieve the project source from an sdist inside the GHA artifact
       uses: re-actors/checkout-python-sdist@release/v1
       with:
-        source-tarball-name: ${{ env.PROJECT_NAME }}-*.tar.gz
-        workflow-artifact-name: dist
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Setup Python ${{ matrix.pyver }}
       uses: actions/setup-python@v5
       with:
@@ -151,6 +201,7 @@ jobs:
     needs:
     - build-pure-python-dists
     - pre-deploy
+    - pre-setup  # transitive, for accessing settings
     strategy:
       matrix:
         os: [ubuntu, windows, macos]
@@ -167,14 +218,16 @@ jobs:
     with:
       os: ${{ matrix.os }}
       qemu: ${{ matrix.qemu }}
-      source-tarball-name: ${{ env.PROJECT_NAME }}-*.tar.gz
-      dists-artifact-name: dist
+      source-tarball-name: >-
+        ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+      dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
 
   deploy:
     name: Deploy
     needs:
     - build-pure-python-dists
     - build-wheels
+    - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
 
     permissions:
@@ -189,8 +242,10 @@ jobs:
     - name: Retrieve the project source from an sdist inside the GHA artifact
       uses: re-actors/checkout-python-sdist@release/v1
       with:
-        source-tarball-name: ${{ env.PROJECT_NAME }}-*.tar.gz
-        workflow-artifact-name: dist
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
@@ -200,10 +255,11 @@ jobs:
       uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.rst
-        name: multidict
-        version_file: multidict/__init__.py
+        name: ${{ env.PROJECT_NAME }}
+        version_file: ${{ env.PROJECT_NAME }}/__init__.py
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        artifact: dist
+        artifact: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
         fix_issue_regex: ":issue:`(\\d+)`"
         fix_issue_repl: "(#\\1)"
 
@@ -215,7 +271,7 @@ jobs:
       uses: sigstore/gh-action-sigstore-python@v2.1.0
       with:
         inputs: >-
-          ./dist/*.tar.gz
+          ./dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
           ./dist/*.whl
 
     - name: Upload artifact signatures to GitHub Release
