@@ -263,6 +263,7 @@ jobs:
     - name: Run unittests
       run: >-
         python -m pytest tests -vv
+        --cov-report xml
         --junitxml=.test-results/pytest/test.xml
     - name: Produce markdown test summary from JUnit
       if: >-
@@ -270,6 +271,13 @@ jobs:
       uses: test-summary/action@v2.2
       with:
         paths: .test-results/pytest/test.xml
+    - name: Append coverage results to Job Summary
+      if: >-
+        !cancelled()
+      run: >-
+        python -Im coverage report --format=markdown
+        >> "${GITHUB_STEP_SUMMARY}"
+      shell: bash
     - name: Prepare coverage artifact
       # combining Linux and Windows paths is tricky, left this exercise for
       # others multidict has no Windows or macOS specific code paths anyway
