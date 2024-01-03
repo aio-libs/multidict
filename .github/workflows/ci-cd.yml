@@ -56,6 +56,7 @@ jobs:
     needs:
     - pre-setup
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     outputs:
       sdist-filename: >-
         ${{ steps.dist-filenames-detection.outputs.sdist-filename }}
@@ -176,6 +177,7 @@ jobs:
     name: Tests status
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     needs: [lint, test]
     steps:
     - name: Decide whether the needed jobs succeeded or failed
@@ -188,6 +190,7 @@ jobs:
   pre-deploy:
     name: Pre-Deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     needs: test-summary
     # Run only on pushing a tag
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
@@ -229,6 +232,7 @@ jobs:
     - build-wheels
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases

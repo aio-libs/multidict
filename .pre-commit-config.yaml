@@ -4,6 +4,24 @@ ci:
   autoupdate_schedule: quarterly
 
 repos:
+- repo: https://github.com/python-jsonschema/check-jsonschema.git
+  rev: 0.27.3
+  hooks:
+  - id: check-github-workflows
+    files: ^\.github/workflows/[^/]+$
+    types:
+    - yaml
+  - id: check-jsonschema
+    alias: check-github-workflows-timeout
+    name: Check GitHub Workflows set timeout-minutes
+    args:
+    - --builtin-schema
+    - github-workflows-require-timeout
+    files: ^\.github/workflows/[^/]+$
+    types:
+    - yaml
+  - id: check-readthedocs
+
 - repo: local
   hooks:
   - id: changelogs-rst
