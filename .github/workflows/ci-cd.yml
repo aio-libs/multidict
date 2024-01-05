@@ -149,6 +149,7 @@ jobs:
     strategy:
       matrix:
         pyver:
+        - 3.13-dev
         - 3.12
         - 3.7
         - 3.11
@@ -170,6 +171,14 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 15
+
+    continue-on-error: >-
+      ${{
+        endsWith(matrix.pyver, '-dev')
+        && true
+        || false
+      }}
+
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
       uses: re-actors/checkout-python-sdist@release/v1
@@ -179,6 +188,7 @@ jobs:
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
+      if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
       uses: actions/download-artifact@v3
       with:
         name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
@@ -189,6 +199,12 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyver }}
+        allow-prereleases: >-
+          ${{
+            endsWith(matrix.pyver, '-dev')
+            && true
+            || false
+          }}
     - name: Get pip cache dir
       id: pip-cache
       run: |
@@ -220,6 +236,7 @@ jobs:
       with:
         path: requirements/pytest.txt
     - name: Determine pre-compiled compatible wheel
+      if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
       env:
         # NOTE: When `pip` is forced to colorize output piped into `jq`,
         # NOTE: the latter can't parse it. So we're overriding the color
@@ -258,8 +275,21 @@ jobs:
         | jq --raw-output .install[].download_info.url
         | tee -a "${GITHUB_OUTPUT}"
       shell: bash
-    - name: Self-install
-      run: python -Im pip install '${{ steps.wheel-file.outputs.path }}'
+    - name: >-
+        Self-install (from ${{
+          endsWith(matrix.pyver, '-dev')
+          && 'source'
+          || 'wheel'
+        }})
+      env:
+        MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+      run: >-
+        python -Im
+        pip install '${{
+          endsWith(matrix.pyver, '-dev')
+          && '.'
+          || steps.wheel-file.outputs.path
+        }}'
     - name: Run unittests
       run: >-
         python -Im pytest tests -v
