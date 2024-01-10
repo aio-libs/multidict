@@ -1,31 +1,24 @@
 import pickle
 
-from multidict._compat import USE_EXTENSIONS
-from multidict._multidict_py import CIMultiDict as PyCIMultiDict  # noqa
-from multidict._multidict_py import MultiDict as PyMultiDict  # noqa
-
-try:
-    from multidict._multidict import (  # type: ignore # noqa
-        CIMultiDict,
-        MultiDict,
-    )
-except ImportError:
-    pass
+import multidict
 
 
-def write(name, proto):
-    cls = globals()[name]
+def write(tag, cls, proto):
     d = cls([("a", 1), ("a", 2)])
-    with open("{}.pickle.{}".format(name.lower(), proto), "wb") as f:
+    file_basename = f"{cls.__name__.lower()}-{tag}"
+    with open(f"{file_basename}.pickle.{proto}", "wb") as f:
         pickle.dump(d, f, proto)
 
 
 def generate():
-    if not USE_EXTENSIONS:
-        raise RuntimeError("C Extension is required")
+    _impl_map = {
+        "c-extension": multidict._multidict,
+        "pure-python": multidict._multidict_py,
+    }
     for proto in range(pickle.HIGHEST_PROTOCOL + 1):
-        for name in ("MultiDict", "CIMultiDict", "PyMultiDict", "PyCIMultiDict"):
-            write(name, proto)
+        for tag, impl in _impl_map.items():
+            for cls in impl.CIMultiDict, impl.MultiDict:
+                write(tag, cls, proto)
 
 
 if __name__ == "__main__":
