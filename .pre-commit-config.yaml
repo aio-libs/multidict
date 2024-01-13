@@ -86,9 +86,13 @@ repos:
     alias: mypy-py38
     name: MyPy, for Python 3.8
     additional_dependencies:
+    - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
     args:
     - --python-version=3.8
+    - --txt-report=.tox/.tmp/.mypy/python-3.8
+    - --cobertura-xml-report=.tox/.tmp/.mypy/python-3.8
+    - --html-report=.tox/.tmp/.mypy/python-3.8
     pass_filenames: false
 
 ...
