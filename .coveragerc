@@ -6,4 +6,10 @@ source =
   */Lib/site-packages/multidict
 
 [run]
-relative_files = True
+branch = true
+cover_pylib = false
+relative_files = true
+source =
+  tests
+source_pkgs =
+  multidict
