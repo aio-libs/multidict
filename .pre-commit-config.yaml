@@ -31,6 +31,21 @@ repos:
 
 - repo: local
   hooks:
+  - id: top-level-tests-init-py
+    name: changelog filenames
+    language: fail
+    entry: >-
+      The `tests/__init__.py` module must not exist so `pytest` doesn't add the
+      project root to `sys.path` / `$PYTHONPATH`
+    files: >-
+      (?x)
+      ^
+        tests/__init__\.py
+      $
+    types: []
+    types_or:
+    - file
+    - symlink
   - id: changelogs-rst
     name: changelog filenames
     language: fail
