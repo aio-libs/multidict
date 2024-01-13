@@ -1,8 +1,9 @@
-[run]
-relative_files = True
-
-
 [paths]
 source =
-    multidict/
-    multidict\
+  multidict
+  */lib/pypy*/site-packages/multidict
+  */lib/python*/site-packages/multidict
+  */Lib/site-packages/multidict
+
+[run]
+relative_files = True
