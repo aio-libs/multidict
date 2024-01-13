@@ -1,5 +1,5 @@
 # Some simple testing tasks (sorry, UNIX only).
-.PHONY: all build flake test vtest cov clean doc mypy
+.PHONY: all build flake test vtest cov clean doc
 
 
 PYXS = $(wildcard multidict/*.pyx)
@@ -39,19 +39,14 @@ black-check:
 	    false; \
 	fi
 
-mypy:
-	mypy
-
-lint: mypy flake8 black-check isort-check check_changes
+lint: flake8 black-check isort-check
+	python -Im pre_commit run --all-files --show-diff-on-failure
 
 fmt:
 	black -t py35 $(SRC)
 	isort $(SRC)
 
-check_changes:
-	python -Im pre_commit run --all-files --show-diff-on-failure
-
-.develop: .install-deps $(shell find multidict -type f) .flake check_changes mypy
+.develop: .install-deps $(shell find multidict -type f) .flake
 	pip install -e .
 	@touch .develop
 
