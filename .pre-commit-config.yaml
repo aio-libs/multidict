@@ -79,4 +79,16 @@ repos:
     - file
     - rst
 
+- repo: https://github.com/pre-commit/mirrors-mypy.git
+  rev: v0.991
+  hooks:
+  - id: mypy
+    alias: mypy-py38
+    name: MyPy, for Python 3.8
+    additional_dependencies:
+    - pytest
+    args:
+    - --python-version=3.8
+    pass_filenames: false
+
 ...
