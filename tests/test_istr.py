@@ -17,7 +17,6 @@ IMPLEMENTATION = getattr(sys, "implementation")  # to suppress mypy error
 
 
 class IStrMixin:
-
     cls = Type[istr]
 
     def test_ctor(self):
