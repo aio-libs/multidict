@@ -262,7 +262,7 @@ jobs:
       run: python -Im pip install '${{ steps.wheel-file.outputs.path }}'
     - name: Run unittests
       run: >-
-        python -Im pytest tests -vv
+        python -Im pytest tests -v
         --cov-report xml
         --junitxml=.test-results/pytest/test.xml
         --${{ matrix.no-extensions == 'Y' && 'no-' || '' }}c-extensions
