@@ -214,8 +214,7 @@ def pytest_configure(config: pytest.Config) -> None:
     """Declare the C-extension marker in config."""
     config.addinivalue_line(
         "markers",
-        f"{C_EXT_MARK.name}: "
-        "tests running against the C-extension implementation.",
+        f"{C_EXT_MARK.name}: tests running against the C-extension implementation.",
     )
 
 
