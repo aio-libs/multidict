@@ -189,12 +189,7 @@ class BaseMultiDictTest:
                 return 2
 
             def __getitem__(self, pos: int) -> str:
-                if pos == 0:
-                    return "key"
-                elif pos == 1:
-                    return "value1"
-                else:
-                    raise IndexError
+                return ("key", "value1")[pos]
 
         # Works at runtime, but won't type check.
         d = cls([Pair()])
@@ -345,10 +340,10 @@ class BaseMultiDictTest:
     ) -> None:
         class BadMapping(Mapping[str, int]):
             def __getitem__(self, key: str) -> int:
-                return 1
+                return 1  # pragma: no cover  # `len()` fails earlier
 
             def __iter__(self) -> Iterator[str]:
-                yield "a"
+                yield "a"  # pragma: no cover  # `len()` fails earlier
 
             def __len__(self) -> int:  # type: ignore[return]
                 1 / 0
@@ -367,7 +362,7 @@ class BaseMultiDictTest:
                 1 / 0
 
             def __iter__(self) -> Iterator[str]:
-                yield "a"
+                yield "a"  # pragma: no cover  # foreign objects no iterated
 
             def __len__(self) -> int:
                 return 1
