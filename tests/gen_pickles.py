@@ -2,7 +2,6 @@ import pickle
 from importlib import import_module
 from pathlib import Path
 
-
 TESTS_DIR = Path(__file__).parent.resolve()
 
 

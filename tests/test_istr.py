@@ -4,7 +4,6 @@ from typing import Callable, Type
 
 import pytest
 
-
 IMPLEMENTATION = getattr(sys, "implementation")  # to suppress mypy error
 
 
