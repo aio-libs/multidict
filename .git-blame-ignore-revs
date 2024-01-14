@@ -77,3 +77,6 @@
 
 # 👺 Please the formatter @ `tests/conftest.py`
 568144732ac023f8629510939c5470fec3440e68
+
+# 👺 Format `gen_pickles.py` and `test_istr.py`
+0a27de369f963cf4b233d2f898ebb7898267acf7
