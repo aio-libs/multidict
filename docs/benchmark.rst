@@ -25,18 +25,18 @@ To run benchmarks next command can be executed:
     $ python benchmarks/benchmark.py
 
 This would run benchmarks for both classes (:class:`~multidict.MultiDict`
-and :class:`~multidict.CIMultiDict`) of both implementations (``Python``
-and ``Cython``).
+and :class:`~multidict.CIMultiDict`) of both implementations (pure-Python
+and C).
 
 To run benchmarks for a specific class of specific implementation
 please use ``--impl`` option:
 
 .. code-block:: bash
 
-    $ python benchmarks/benchmark.py --impl multidict_cython
+    $ python benchmarks/benchmark.py --impl multidict_c
 
 would run benchmarks only for :class:`~multidict.MultiDict` implemented
-in ``Cython``.
+in C.
 
 Please use ``--help`` to see all available options. Most of the options are
 described at :doc:`perf's Runner <pyperf:runner>` documentation.
@@ -50,6 +50,6 @@ class. Combined with the :ref:`compare_to <pyperf:compare_to_cmd>` command of
 
 .. code-block:: bash
 
-    $ python benchmarks/benchmark.py --impl multidict_cython -o multidict_cy.json
-    $ python benchmarks/benchmark.py --impl multidict_python -o multidict_py.json
+    $ python benchmarks/benchmark.py --impl multidict_c -o multidict_cy.json
+    $ python benchmarks/benchmark.py --impl multidict_py -o multidict_py.json
     $ python -m perf compare_to multidict_cy.json multidict_py.json

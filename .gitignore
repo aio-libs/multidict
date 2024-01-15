@@ -63,7 +63,6 @@ target/
 
 .develop
 .flake
-.install-cython
 .install-deps
 .idea
 
