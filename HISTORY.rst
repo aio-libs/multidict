@@ -72,11 +72,11 @@ Improved Documentation
 Bugfixes
 ^^^^^^^^
 
-- Fix crashing when multidict is used pyinstaller
+- Fixed crashing when multidict is used pyinstaller
   :issue:`432`
-- Fix typing for :py:meth:`CIMultiDict.copy`
+- Fixed typing for :py:meth:`CIMultiDict.copy() <multidict.MultiDict.copy>`
   :issue:`434`
-- Fix memory leak in ``MultiDict.copy()``
+- Fixed a memory leak in :py:meth:`MultiDict.copy() <multidict.MultiDict.copy>`
   :issue:`443`
 
 
@@ -86,14 +86,17 @@ Bugfixes
 Bugfixes
 ^^^^^^^^
 
-- :py:meth:`CIMultiDictProxy.copy` return object type
-  :py:class:`multidict._multidict.CIMultiDict`
+- :py:meth:`CIMultiDictProxy.copy() <multidict.MultiDictProxy.copy>` fixed to
+  return a case-insensitive :py:class:`multidict._multidict.CIMultiDict()
+  <multidict.MultiDict>` object.
   :issue:`427`
-- Make :py:class:`CIMultiDict` subclassable again
+- Made :py:class:`~multidict.CIMultiDict` subclassable again.
   :issue:`416`
-- Fix regression, multidict can be constructed from arbitrary iterable of pairs again.
+- Fixed a regression, :class:`multidict.MultiDict` can be constructed
+  from an arbitrary iterable of pairs again.
   :issue:`418`
-- :py:meth:`CIMultiDict.add` may be called with keyword arguments
+- :py:meth:`CIMultiDict.add() <multidict.MultiDict.add>` may be called
+  with keyword arguments now.
   :issue:`421`
 
 
@@ -230,8 +233,9 @@ Bugfixes
 4.0.0 (2018-01-14)
 ------------------
 
-* Accept multiple keys in :py:meth:`MultiDict.update()
-  <multidict.MultiDict.update>` and :py:meth:`CIMultiDict.update`
+* Started accepting multiple keys in :py:meth:`MultiDict.update()
+  <multidict.MultiDict.update>` and :py:meth:`CIMultiDict.update()
+  <multidict.MultiDict.update>`.
   :issue:`199`
 
 3.3.2 (2017-11-02)
@@ -357,7 +361,7 @@ Bugfixes
 2.1.2 (2016-09-25)
 ------------------
 
-* Fixed :py:func:`CIMultiDict.update() <multidict.CIMultiDict.update>` for
+* Fixed :py:func:`CIMultiDict.update() <multidict.MultiDict.update>` for
   case of accepting :py:class:`~multidict.istr`.
 
 
@@ -418,7 +422,8 @@ Bugfixes
 * Don't double-iterate during :py:class:`MultiDict <multidict.MultiDict>` initialization
   :issue:`3`
 
-* Fix :py:func:`CIMultiDict.pop <multidict.CIMultiDict.pop>`: it is case insensitive now
+* Fixed :py:meth:`CIMultiDict.pop() <multidict.MultiDict.pop>`:
+  it is case insensitive now.
   :issue:`1`
 
 * Provide manylinux wheels as well as Windows ones
