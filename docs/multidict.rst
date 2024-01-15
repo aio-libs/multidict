@@ -393,12 +393,12 @@ stored somewhere for the later usage, see :mod:`aiohttp.hdrs` for example.
 
 .. versionchanged:: 2.0
 
-   ``upstr`` is a deprecated alias for ``istr``.
+   ``upstr()`` is a deprecated alias for :class:`istr`.
 
 .. versionchanged:: 3.7
 
-   ``istr`` doesn't title-case its argument anymore but uses internal lower-cased data
-   for fast case-insensitive comparison.
+   :class:`istr` doesn't title-case its argument anymore but uses
+   internal lower-cased data for fast case-insensitive comparison.
 
 
 Abstract Base Classes

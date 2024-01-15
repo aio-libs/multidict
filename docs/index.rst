@@ -18,26 +18,27 @@ Introduction
 *multidict*. It behaves mostly like a regular :class:`dict` but it may have
 several *values* for the same *key* and *preserves insertion ordering*.
 
-The *key* is :class:`str` (or :class:`istr` for case-insensitive
+The *key* is :class:`str` (or :class:`~multidict.istr` for case-insensitive
 dictionaries).
 
 :mod:`multidict` has four multidict classes:
-:class:`MultiDict`, :class:`MultiDictProxy`, :class:`CIMultiDict`
-and :class:`CIMultiDictProxy`.
+:class:`~multidict.MultiDict`, :class:`~multidict.MultiDictProxy`,
+:class:`~multidict.CIMultiDict` and :class:`~multidict.CIMultiDictProxy`.
 
-Immutable proxies (:class:`MultiDictProxy` and
-:class:`CIMultiDictProxy`) provide a dynamic view for the
+Immutable proxies (:class:`~multidict.MultiDictProxy` and
+:class:`~multidict.CIMultiDictProxy`) provide a dynamic view for the
 proxied multidict, the view reflects underlying collection changes. They
 implement the :class:`~collections.abc.Mapping` interface.
 
-Regular mutable (:class:`MultiDict` and :class:`CIMultiDict`) classes
-implement :class:`~collections.abc.MutableMapping` and allows to change
+Regular mutable (:class:`~multidict.MultiDict` and
+:class:`~multidict.CIMultiDict`) classes implement
+:class:`~collections.abc.MutableMapping` and allows to change
 their own content.
 
 
-*Case insensitive* (:class:`CIMultiDict` and
-:class:`CIMultiDictProxy`) ones assume the *keys* are case
-insensitive, e.g.::
+*Case insensitive* (:class:`~multidict.CIMultiDict` and
+:class:`~multidict.CIMultiDictProxy`) ones assume the *keys*
+are case insensitive, e.g.::
 
    >>> dct = CIMultiDict(key='val')
    >>> 'Key' in dct
@@ -45,7 +46,8 @@ insensitive, e.g.::
    >>> dct['Key']
    'val'
 
-*Keys* should be either :class:`str` or :class:`istr` instance.
+*Keys* should be either :class:`str` or :class:`~multidict.istr`
+instance.
 
 The library has optional C Extensions for sake of speed.
 

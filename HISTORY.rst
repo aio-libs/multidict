@@ -15,9 +15,10 @@ Bugfixes
 Bugfixes
 ^^^^^^^^
 
-- Fixed creating and updating of MultiDict from a sequence of pairs and keyword
-  arguments. Previously passing a list argument modified it inplace, and other sequences
-  caused an error.
+- Fixed creating and updating of :class:`~multidict.MultiDict`
+  from a sequence of pairs and keyword arguments. Previously passing
+  a list argument modified it inplace, and other sequences caused an
+  error.
   :issue:`457`
 - Fixed comparing with mapping: an exception raised in the
   :py:func:`~object.__len__` method caused raising a SyntaxError.
@@ -34,7 +35,7 @@ Bugfixes
 ^^^^^^^^
 
 - ``MultiDict.iter`` fix memory leak when used iterator over
-  :py:mod:`multidict` instance.
+  :py:class:`~multidict.MultiDict` instance.
   :issue:`452`
 
 
@@ -223,14 +224,14 @@ Bugfixes
 ------------------
 
 * Fix key casing in Pure Python implementation of
-  :py:class:`CIMultiDict`
+  :py:class:`~multidict.CIMultiDict`
   :issue:`202`
 
 4.0.0 (2018-01-14)
 ------------------
 
-* Accept multiple keys in :py:meth:`MultiDict.update` and
-  :py:meth:`CIMultiDict.update`
+* Accept multiple keys in :py:meth:`MultiDict.update()
+  <multidict.MultiDict.update>` and :py:meth:`CIMultiDict.update`
   :issue:`199`
 
 3.3.2 (2017-11-02)
@@ -356,15 +357,16 @@ Bugfixes
 2.1.2 (2016-09-25)
 ------------------
 
-* Fix :py:func:`CIMultiDict.update <multidict.CIMultiDict.update>` for case of accepting
-  :py:func:`istr <multidict.istr>`
+* Fixed :py:func:`CIMultiDict.update() <multidict.CIMultiDict.update>` for
+  case of accepting :py:class:`~multidict.istr`.
 
 
 2.1.1 (2016-09-22)
 ------------------
 
-* Fix :py:class:`CIMultiDict <multidict.CIMultiDict>` constructor for case of accepting
-  :py:func:`istr <multidict.istr>` :issue:`11`
+* Fixed the :py:class:`CIMultiDict <multidict.CIMultiDict>` constructor for the
+  case of accepting :py:class:`~multidict.istr`.
+  :issue:`11`
 
 
 2.1.0 (2016-09-18)
@@ -389,7 +391,8 @@ Bugfixes
   :py:func:`str.title() <str.title>`
   :issue:`5`
 
-* Deprecate :py:func:`upstr <multidict.upstr>` class in favor of :py:func:`istr <multidict.istr>` alias.
+* Deprecate ``multidict.upstr()`` class in favor of
+  :py:class:`~multidict.istr` alias.
 
 1.2.2 (2016-08-02)
 ------------------
