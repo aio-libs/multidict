@@ -425,3 +425,20 @@ multidict value types, e.g. ``md: MultiDict[str] = MultiDict()``.
 The type of multidict keys is always :class:`str` or a class derived from a string.
 
 .. versionadded:: 3.7
+
+
+Environment variables
+=====================
+
+.. envvar:: MULTIDICT_NO_EXTENSIONS
+
+   An environment variable that instructs the packaging scripts to skip
+   compiling the C-extension based variant of :mod:`multidict`.
+   When used in runtime, it instructs the pure-Python variant to be imported
+   from the top-level :mod:`multidict` entry-point package, even when the
+   C-extension implementation is available.
+
+   .. caution::
+
+      The pure-Python (uncompiled) version is roughly 20-50 times slower than
+      its C counterpart, depending on the way it's used.
