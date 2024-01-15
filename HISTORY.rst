@@ -21,10 +21,10 @@ Bugfixes
   error.
   :issue:`457`
 - Fixed comparing with mapping: an exception raised in the
-  :py:func:`~object.__len__` method caused raising a SyntaxError.
+  :py:meth:`~object.__len__` method caused raising a SyntaxError.
   :issue:`459`
 - Fixed comparing with mapping: all exceptions raised in the
-  :py:func:`~object.__getitem__` method were silenced.
+  :py:meth:`~object.__getitem__` method were silenced.
   :issue:`460`
 
 
