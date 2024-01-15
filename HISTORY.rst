@@ -388,7 +388,7 @@ Bugfixes
 ------------------
 
 * Switch from uppercase approach for case-insensitive string to
-  :py:func:`str.title() <str.title>`
+  :py:meth:`str.title`.
   :issue:`5`
 
 * Deprecate ``multidict.upstr()`` class in favor of
