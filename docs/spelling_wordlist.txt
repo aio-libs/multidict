@@ -25,6 +25,7 @@ Ctrl
 cython
 Deprecations
 deallocation
+dev
 dict
 docstrings
 downstreams
