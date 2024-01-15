@@ -13,7 +13,6 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import datetime
 import os
 import re
 from pathlib import Path
@@ -101,9 +100,7 @@ github_repo_url = f"{github_url}/{github_repo_slug}"
 github_sponsors_url = f"{github_url}/sponsors"
 
 project = github_repo_name
-copyright = "2016‒{end_year}, Andrew Svetlov".format(
-    end_year=datetime.date.today().year
-)
+copyright = "2016, Andrew Svetlov"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
