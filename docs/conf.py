@@ -74,6 +74,7 @@ except ImportError:
     pass
 
 intersphinx_mapping = {
+    "pyperf": ("https://pyperf.readthedocs.io/en/latest", None),
     "python": ("http://docs.python.org/3", None),
     "aiohttp": ("https://aiohttp.readthedocs.io/en/stable/", None),
 }
