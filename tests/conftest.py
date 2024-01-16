@@ -67,7 +67,7 @@ class MultidictImplementation:
     ),
     ids=str,
 )
-def multidict_implementation(request) -> MultidictImplementation:
+def multidict_implementation(request: pytest.FixtureRequest) -> MultidictImplementation:
     """Return a multidict variant facade."""
     return request.param
 
