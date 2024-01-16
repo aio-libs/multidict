@@ -60,7 +60,7 @@ def chained_callable(
     return chained_call
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def cls(  # type: ignore[misc]
     request: pytest.FixtureRequest,
     multidict_module: ModuleType,
@@ -75,13 +75,13 @@ def test_exposed_names(any_multidict_class_name: str) -> None:
 
 @pytest.mark.parametrize(
     ("cls", "key_cls"),
-    [
+    (
         (("MultiDict",), str),
         (
             ("MultiDict", "MultiDictProxy"),
             str,
         ),
-    ],
+    ),
     indirect=["cls"],
 )
 def test__iter__types(
@@ -135,7 +135,7 @@ class BaseMultiDictTest:
         with pytest.raises(TypeError, match=r"(2 given)"):
             cls(("key1", "value1"), ("key2", "value2"))  # type: ignore[call-arg]  # noqa: E501
 
-    @pytest.mark.parametrize("arg0", [[("key", "value1")], {"key": "value1"}])
+    @pytest.mark.parametrize("arg0", ([("key", "value1")], {"key": "value1"}))
     def test_instantiate__from_arg0(
         self,
         cls: Type[MutableMultiMapping[str]],
@@ -417,15 +417,15 @@ class BaseMultiDictTest:
 
         assert {"key", "key3"} == {"key2", "key3"} ^ d.keys()
 
-    @pytest.mark.parametrize("_set, expected", [({"key2"}, True), ({"key"}, False)])
+    @pytest.mark.parametrize(("set_", "expected"), (({"key2"}, True), ({"key"}, False)))
     def test_isdisjoint(
-        self, cls: Type[MutableMultiMapping[str]], _set: Set[str], expected: bool
+        self, cls: Type[MutableMultiMapping[str]], set_: Set[str], expected: bool
     ) -> None:
         d = cls([("key", "value1")])
 
-        assert d.keys().isdisjoint(_set) == expected
+        assert d.keys().isdisjoint(set_) == expected
 
-    def test_repr_issue_410(self, cls: Type[MutableMultiMapping[str]]) -> None:
+    def test_repr_aiohttp_issue_410(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls()
 
         try:
@@ -434,13 +434,14 @@ class BaseMultiDictTest:
         except Exception as e:
             repr(d)
 
-            assert sys.exc_info()[1] == e
+            assert sys.exc_info()[1] == e  # noqa: PT017
 
     @pytest.mark.parametrize(
-        "op", [operator.or_, operator.and_, operator.sub, operator.xor]
+        "op",
+        (operator.or_, operator.and_, operator.sub, operator.xor),
     )
-    @pytest.mark.parametrize("other", [{"other"}])
-    def test_op_issue_410(
+    @pytest.mark.parametrize("other", ({"other"},))
+    def test_op_issue_aiohttp_issue_410(
         self,
         cls: Type[MutableMultiMapping[str]],
         op: Callable[[object, object], object],
@@ -454,7 +455,7 @@ class BaseMultiDictTest:
         except Exception as e:
             op(d.keys(), other)
 
-            assert sys.exc_info()[1] == e
+            assert sys.exc_info()[1] == e  # noqa: PT017
 
     def test_weakref(self, cls: Type[MutableMultiMapping[str]]) -> None:
         called = False

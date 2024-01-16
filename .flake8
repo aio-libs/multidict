@@ -2,3 +2,14 @@
 # Y026,Y027: Incompatible with Python 3.7 (https://github.com/aio-libs/multidict/pull/798)
 ignore = E302,E701,E305,E704,F811,N811,W503,Y026,Y027
 max-line-length=88
+
+# flake8-pytest-style
+# PT001:
+pytest-fixture-no-parentheses = true
+# PT006:
+pytest-parametrize-names-type = tuple
+# PT007:
+pytest-parametrize-values-type = tuple
+pytest-parametrize-values-row-type = tuple
+# PT023:
+pytest-mark-no-parentheses = true

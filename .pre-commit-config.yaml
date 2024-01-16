@@ -37,6 +37,7 @@ repos:
     name: flake8 WPS-excluded
     additional_dependencies:
     - flake8-pyi ~= 22.11.0
+    - flake8-pytest-style ~= 1.7.2
 
 - repo: local
   hooks:
