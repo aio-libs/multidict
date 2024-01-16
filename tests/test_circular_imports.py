@@ -4,7 +4,7 @@ This ensures all internal packages can be imported right away without
 any need to import some other module before doing so.
 
 This module is based on the idea that pytest uses for self-testing:
-* https://github.com/sanitizers/octomachinery/blob/be18b54/tests/circular_imports_test.py
+* https://github.com/sanitizers/octomachinery/blob/be18b54/tests/circular_imports_test.py  # noqa: E501
 * https://github.com/pytest-dev/pytest/blob/d18c75b/testing/test_meta.py
 * https://twitter.com/codewithanthony/status/1229445110510735361
 """
