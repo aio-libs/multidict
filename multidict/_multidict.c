@@ -831,12 +831,22 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 }
 
 static inline PyObject *
+multidict_add(
+    MultiDictObject *self,
 #if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 13
-multidict_add(MultiDictObject *self, PyObject *args, PyObject *kwds)
+    PyObject *args,
+    PyObject *kwds
+#else
+    PyObject *const *args,
+    Py_ssize_t nargs,
+    PyObject *kwnames
+#endif
+)
 {
     PyObject *key = NULL,
              *val = NULL;
 
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 13
     static char *kwlist[] = {"key", "value", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO:add",
                                      kwlist, &key, &val))
@@ -844,12 +854,6 @@ multidict_add(MultiDictObject *self, PyObject *args, PyObject *kwds)
         return NULL;
     }
 #else
-multidict_add(MultiDictObject *self, PyObject *const *args,
-              Py_ssize_t nargs, PyObject *kwnames)
-{
-    PyObject *key = NULL,
-             *val = NULL;
-
     static const char * const _keywords[] = {"key", "value", NULL};
 #ifdef FASTCALL_OLD
     static _PyArg_Parser _parser = {"OO:add", _keywords, 0};
@@ -1040,12 +1044,17 @@ skip_optional_pos:
 }
 
 static inline PyObject *
+multidict_pop(
+    MultiDictObject *self,
 #if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 13
-multidict_pop(MultiDictObject *self, PyObject *args, PyObject *kwds)
+    PyObject *args,
+    PyObject *kwds
 #else
-multidict_pop(MultiDictObject *self, PyObject *const *args,
-                     Py_ssize_t nargs, PyObject *kwnames)
+    PyObject *const *args,
+    Py_ssize_t nargs,
+    PyObject *kwnames
 #endif
+)
 {
     PyObject *key      = NULL,
              *_default = NULL,
@@ -1060,18 +1069,6 @@ multidict_pop(MultiDictObject *self, PyObject *const *args,
         return NULL;
     }
 
-    ret_val = pair_list_pop_one(&self->pairs, key);
-
-    if (ret_val == NULL &&
-        PyErr_ExceptionMatches(PyExc_KeyError) &&
-        _default != NULL)
-    {
-        PyErr_Clear();
-        Py_INCREF(_default);
-        return _default;
-    }
-
-    return ret_val;
 #else
     static const char * const _keywords[] = {"key", "default", NULL};
 #ifdef FASTCALL_OLD
@@ -1098,6 +1095,7 @@ multidict_pop(MultiDictObject *self, PyObject *const *args,
 
 skip_optional_pos:
 #endif
+#endif
     ret_val = pair_list_pop_one(&self->pairs, key);
 
     if (ret_val == NULL &&
@@ -1110,7 +1108,6 @@ skip_optional_pos:
     }
 
     return ret_val;
-#endif
 }
 
 static inline PyObject *
