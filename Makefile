@@ -68,11 +68,11 @@ cov-dev-full: cov-ci-run
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 doc:
-	@make -C docs html SPHINXOPTS="-W -E"
+	@make -C docs html SPHINXOPTS="-W -n --keep-going -E"
 	@echo "open file://`pwd`/docs/_build/html/index.html"
 
 doc-spelling:
-	@make -C docs spelling SPHINXOPTS="-W -E"
+	@make -C docs spelling SPHINXOPTS="-W -n --keep-going -E"
 
 install:
 	@pip install -U 'pip'
