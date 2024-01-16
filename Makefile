@@ -1,5 +1,5 @@
 # Some simple testing tasks (sorry, UNIX only).
-.PHONY: all build flake test vtest cov clean doc
+.PHONY: all build test vtest cov clean doc
 
 
 PYXS = $(wildcard multidict/*.pyx)
@@ -11,16 +11,6 @@ all: test
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
-.flake: .install-deps $(shell find multidict -type f) \
-		      $(shell find tests -type f)
-	flake8 multidict tests
-	@if ! isort --check multidict tests; then \
-	    echo "Import sort errors, run 'make fmt' to fix them!!!"; \
-	    isort --diff --check multidict tests; \
-	    false; \
-	fi
-	@touch .flake
-
 
 isort-check:
 	@if ! isort --check $(SRC); then \
@@ -29,9 +19,6 @@ isort-check:
 	    false; \
 	fi
 
-flake8:
-	flake8 $(SRC)
-
 black-check:
 	@if ! isort --check $(SRC); then \
 	    echo "black errors, run 'make fmt' to fix them!!!"; \
@@ -39,14 +26,14 @@ black-check:
 	    false; \
 	fi
 
-lint: flake8 black-check isort-check
+lint: black-check isort-check
 	python -Im pre_commit run --all-files --show-diff-on-failure
 
 fmt:
 	black -t py35 $(SRC)
 	isort $(SRC)
 
-.develop: .install-deps $(shell find multidict -type f) .flake
+.develop: .install-deps $(shell find multidict -type f)
 	pip install -e .
 	@touch .develop
 

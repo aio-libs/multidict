@@ -29,6 +29,15 @@ repos:
     args:
     - --strict
 
+- repo: https://github.com/PyCQA/flake8.git
+  rev: 6.1.0
+  hooks:
+  - id: flake8
+    alias: flake8-no-wps
+    name: flake8 WPS-excluded
+    additional_dependencies:
+    - flake8-pyi ~= 22.11.0
+
 - repo: local
   hooks:
   - id: top-level-tests-init-py

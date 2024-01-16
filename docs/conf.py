@@ -20,6 +20,7 @@ import re
 from contextlib import suppress
 from pathlib import Path
 
+import alabaster
 from sphinx.addnodes import pending_xref
 from sphinx.application import Sphinx
 from sphinx.environment import BuildEnvironment
@@ -59,9 +60,6 @@ with _version_path.open(encoding="utf-8") as fp:
         _version_info = _version_search_result.groupdict()
     except IndexError:
         raise RuntimeError("Unable to determine version.")
-
-
-import alabaster
 
 # -- General configuration ------------------------------------------------
 
