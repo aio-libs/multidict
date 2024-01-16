@@ -363,6 +363,10 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
 
+# -- Strictness options --------------------------------------------------
+nitpicky = True
+nitpick_ignore = []
+
 # -- Options for towncrier_draft extension -----------------------------------
 
 towncrier_draft_autoversion_mode = "draft"  # or: 'sphinx-version', 'sphinx-release'
