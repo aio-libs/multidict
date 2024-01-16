@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import re
+from contextlib import suppress
 from pathlib import Path
 
 from sphinx.addnodes import pending_xref
@@ -81,12 +82,11 @@ extensions = [
 ]
 
 
-try:
-    import sphinxcontrib.spelling
+with suppress(ImportError):
+    # spelling extension is optional, only add it when installed
+    import sphinxcontrib.spelling  # noqa
 
     extensions.append("sphinxcontrib.spelling")
-except ImportError:
-    pass
 
 intersphinx_mapping = {
     "pyperf": ("https://pyperf.readthedocs.io/en/latest", None),
