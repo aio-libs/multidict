@@ -68,7 +68,7 @@ def _discover_path_importables(
 @pytest.fixture(params=_find_all_importables(multidict))
 def import_path(request: pytest.FixtureRequest) -> str:
     """Return an importable from the multidict package."""
-    importable_module = request.param
+    importable_module: str = request.param
     if importable_module == "multidict._multidict":
         request.applymarker(pytest.mark.c_extension)
 
