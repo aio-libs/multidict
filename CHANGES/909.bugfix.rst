@@ -1,0 +1,3 @@
+Revert to using the public argument parsing API
+:c:func:`PyArg_ParseTupleAndKeywords` under Python 3.13
+-- :user:`webknjaz`.
