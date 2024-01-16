@@ -103,6 +103,7 @@ repos:
     additional_dependencies:
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - Sphinx >= 5.3.0
     args:
     - --install-types
     - --non-interactive
@@ -117,6 +118,7 @@ repos:
     additional_dependencies:
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - Sphinx >= 5.3.0
     args:
     - --install-types
     - --non-interactive
@@ -131,6 +133,7 @@ repos:
     additional_dependencies:
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - Sphinx >= 5.3.0
     args:
     - --install-types
     - --non-interactive
@@ -145,6 +148,7 @@ repos:
     additional_dependencies:
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - Sphinx >= 5.3.0, < 6
     args:
     - --install-types
     - --non-interactive

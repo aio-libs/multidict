@@ -13,18 +13,20 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+from __future__ import annotations
+
 import os
 import re
 from pathlib import Path
-from typing import Dict, Union
 
+from sphinx.addnodes import pending_xref
 from sphinx.application import Sphinx
 from sphinx.environment import BuildEnvironment
 
 # isort: split
 
 
-from docutils.nodes import Node, reference
+from docutils.nodes import literal, reference
 
 PROJECT_ROOT_DIR = Path(__file__).parents[1].resolve()
 IS_RELEASE_ON_RTD = (
@@ -32,6 +34,7 @@ IS_RELEASE_ON_RTD = (
     and os.environ["READTHEDOCS_VERSION_TYPE"] == "tag"
 )
 if IS_RELEASE_ON_RTD:
+    tags: set[str]
     tags.add("is_release")
 
 
@@ -40,16 +43,19 @@ _version_path = _docs_path / ".." / "multidict" / "__init__.py"
 
 
 with _version_path.open(encoding="utf-8") as fp:
+    _version_search_result = re.search(
+        r'^__version__ = "'
+        r"(?P<major>\d+)"
+        r"\.(?P<minor>\d+)"
+        r"\.(?P<patch>\d+)"
+        r'(?P<tag>.*)?"$',
+        fp.read(),
+        re.M,
+    )
+    if _version_search_result is None:
+        raise RuntimeError("Unable to determine version.")
     try:
-        _version_info = re.search(
-            r'^__version__ = "'
-            r"(?P<major>\d+)"
-            r"\.(?P<minor>\d+)"
-            r"\.(?P<patch>\d+)"
-            r'(?P<tag>.*)?"$',
-            fp.read(),
-            re.M,
-        ).groupdict()
+        _version_info = _version_search_result.groupdict()
     except IndexError:
         raise RuntimeError("Unable to determine version.")
 
@@ -287,7 +293,7 @@ htmlhelp_basename = "multidictdoc"
 
 # -- Options for LaTeX output ---------------------------------------------
 
-latex_elements = {
+latex_elements: dict[str, str] = {
     # The paper size ('letterpaper' or 'a4paper').
     # 'papersize': 'letterpaper',
     # The font size ('10pt', '11pt' or '12pt').
@@ -365,7 +371,7 @@ texinfo_documents = [
 
 # -- Strictness options --------------------------------------------------
 nitpicky = True
-nitpick_ignore = []
+nitpick_ignore: list[str] = []
 
 # -- Options for towncrier_draft extension -----------------------------------
 
@@ -378,9 +384,9 @@ towncrier_draft_config_path = "pyproject.toml"  # relative to cwd
 def _replace_missing_aiohttp_hdrs_reference(
     app: Sphinx,
     env: BuildEnvironment,
-    node: Node,
-    contnode: Node,
-):
+    node: pending_xref,
+    contnode: literal,
+) -> reference:
     if (node.get('refdomain'), node.get('reftype')) != ("py", "mod"):
         return None
 
@@ -398,7 +404,7 @@ def _replace_missing_aiohttp_hdrs_reference(
     )
 
 
-def setup(app: Sphinx) -> Dict[str, Union[bool, str]]:
+def setup(app: Sphinx) -> dict[str, bool | str]:
     app.connect('missing-reference', _replace_missing_aiohttp_hdrs_reference)
 
     return {
