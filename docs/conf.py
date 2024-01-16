@@ -16,6 +16,15 @@
 import os
 import re
 from pathlib import Path
+from typing import Dict, Union
+
+from sphinx.application import Sphinx
+from sphinx.environment import BuildEnvironment
+
+# isort: split
+
+
+from docutils.nodes import Node, reference
 
 PROJECT_ROOT_DIR = Path(__file__).parents[1].resolve()
 IS_RELEASE_ON_RTD = (
@@ -360,3 +369,36 @@ towncrier_draft_autoversion_mode = "draft"  # or: 'sphinx-version', 'sphinx-rele
 towncrier_draft_include_empty = True
 towncrier_draft_working_directory = PROJECT_ROOT_DIR
 towncrier_draft_config_path = "pyproject.toml"  # relative to cwd
+
+
+def _replace_missing_aiohttp_hdrs_reference(
+    app: Sphinx,
+    env: BuildEnvironment,
+    node: Node,
+    contnode: Node,
+):
+    if (node.get('refdomain'), node.get('reftype')) != ("py", "mod"):
+        return None
+
+    ref_target = node.get("reftarget", "")
+    if ref_target != "aiohttp:aiohttp.hdrs":
+        return None
+
+    normalized_ref_target = "aiohttp:aiohttp.hdrs".split(":", 1)[-1]
+
+    return reference(
+        normalized_ref_target,
+        normalized_ref_target,
+        internal=False,
+        refuri="https://github.com/aio-libs/aiohttp/blob/43f3e23/aiohttp/hdrs.py",
+    )
+
+
+def setup(app: Sphinx) -> Dict[str, Union[bool, str]]:
+    app.connect('missing-reference', _replace_missing_aiohttp_hdrs_reference)
+
+    return {
+        "version": "builtin",
+        "parallel_read_safe": True,
+        "parallel_write_safe": True,
+    }

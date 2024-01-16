@@ -371,7 +371,7 @@ case-folded string keys explicitly hand, e.g::
    'value'
 
 For performance :class:`istr` strings should be created once and
-stored somewhere for the later usage, see :mod:`aiohttp.hdrs` for example.
+stored somewhere for the later usage, see :mod:`aiohttp:aiohttp.hdrs` for example.
 
 .. class:: istr(object='')
            istr(bytes_or_buffer[, encoding[, errors]])
