@@ -76,7 +76,7 @@ def import_path(request: pytest.FixtureRequest) -> str:
 
 
 def test_no_warnings(import_path: str) -> None:
-    """Verify that exploding importables doesn't explode.
+    """Verify that importing modules and packages doesn't explode.
 
     This is seeking for any import errors including ones caused
     by circular imports.
@@ -87,6 +87,25 @@ def test_no_warnings(import_path: str) -> None:
         "-I",
         "-W", "error",
         "-c", f"import {import_path!s}",
+        # fmt: on
+    )
+
+    subprocess.check_call(imp_cmd)
+
+
+@pytest.mark.c_extension
+def test_c_extension_preferred_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify that the C-extension is exposed by default."""
+    monkeypatch.delenv("MULTIDICT_NO_EXTENSIONS", raising=False)
+
+    imp_cmd = (
+        # fmt: off
+        sys.executable,
+        "-I",
+        "-W", "error",
+        "-c", "import multidict; raise SystemExit(int("
+        "multidict.istr.__module__ != 'multidict._multidict' "
+        "or multidict.USE_EXTENSIONS is not True))",
         # fmt: on
     )
 
