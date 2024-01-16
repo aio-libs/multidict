@@ -123,7 +123,7 @@ copyright = "2016, Andrew Svetlov and aio-libs contributors"
 # The short X.Y version.
 version = "{major}.{minor}".format(**_version_info)
 # The full version, including alpha/beta/rc tags.
-release = "{major}.{minor}.{patch}-{tag}".format(**_version_info)
+release = "{major}.{minor}.{patch}{tag}".format_map(_version_info)
 
 rst_epilog = f"""
 .. |project| replace:: {project}
