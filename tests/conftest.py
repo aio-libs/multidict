@@ -165,7 +165,7 @@ def write(cls, proto):
 
 @pytest.fixture(scope="function")
 def in_memory_pickle_classes(multidict_module: ModuleType) -> Callable:
-    """Return a ``getversion()`` function for current implementation."""
+    """Generates a dict for in-memory storage of pickled classes"""
     pickle_dict = {}
     _impl_map = {
         "c-extension": "_multidict",
