@@ -158,13 +158,13 @@ def multidict_getversion_callable(multidict_module: ModuleType) -> Callable:
     return multidict_module.getversion
 
 
-def write(cls: Any, proto: int) -> str:
+def write(cls: Any, proto: int) -> bytes:
     d = cls([("a", 1), ("a", 2)])
     return pickle.dumps(d, proto)
 
 
 @pytest.fixture
-def in_memory_pickle_classes(multidict_module: ModuleType) -> dict[str, str]:
+def in_memory_pickle_classes(multidict_module: ModuleType) -> dict[str, bytes]:
     """Generates a dict for in-memory storage of pickled classes"""
     pickle_dict = {}
     _impl_map = {
@@ -175,9 +175,8 @@ def in_memory_pickle_classes(multidict_module: ModuleType) -> dict[str, str]:
         for tag, impl_name in _impl_map.items():
             impl = import_module(f"multidict.{impl_name}")
             for cls in impl.CIMultiDict, impl.MultiDict:
-                pickle_dict[f"{cls.__name__.lower()}-{tag}.pickle.{proto}"] = write(
-                    cls, proto
-                )
+                file_key = f"{cls.__name__.lower()}-{tag}.pickle.{proto}"
+                pickle_dict[file_key] = write(cls, proto)
     return pickle_dict
 
 
