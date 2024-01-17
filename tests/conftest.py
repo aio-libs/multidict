@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from sys import version_info as _version_info
 from types import ModuleType
-from typing import Callable, Type
+from typing import Any, Callable, Type
 
 try:
     from functools import cached_property  # Python 3.8+
