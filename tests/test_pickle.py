@@ -21,7 +21,12 @@ def test_pickle_proxy(any_multidict_class, any_multidict_proxy_class):
         pickle.dumps(proxy)
 
 
-def test_load_from_file(any_multidict_class, multidict_implementation, in_memory_pickle_classes, pickle_protocol):
+def test_load_from_file(
+    any_multidict_class,
+    multidict_implementation,
+    in_memory_pickle_classes,
+    pickle_protocol,
+):
     multidict_class_name = any_multidict_class.__name__
     pickle_file_basename = "-".join(
         (
