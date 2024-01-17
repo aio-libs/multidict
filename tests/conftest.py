@@ -158,12 +158,12 @@ def multidict_getversion_callable(multidict_module: ModuleType) -> Callable:
     return multidict_module.getversion
 
 
-def write(cls, proto):
+def write(cls: Any, proto: int) -> str:
     d = cls([("a", 1), ("a", 2)])
     return pickle.dumps(d, proto)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def in_memory_pickle_classes(multidict_module: ModuleType) -> dict[str, str]:
     """Generates a dict for in-memory storage of pickled classes"""
     pickle_dict = {}
