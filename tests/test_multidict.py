@@ -417,13 +417,16 @@ class BaseMultiDictTest:
 
         assert {"key", "key3"} == {"key2", "key3"} ^ d.keys()
 
-    @pytest.mark.parametrize(("set_", "expected"), (({"key2"}, True), ({"key"}, False)))
+    @pytest.mark.parametrize(
+        ("key", "value", "expected"),
+        (("key2", "v", True), ("key", "value1", False)),
+    )
     def test_isdisjoint(
-        self, cls: Type[MutableMultiMapping[str]], set_: Set[str], expected: bool
+        self, cls: Type[MutableMultiMapping[str]], key: str, value: str, expected: bool
     ) -> None:
         d = cls([("key", "value1")])
-
-        assert d.keys().isdisjoint(set_) == expected
+        assert d.items().isdisjoint({(key, value)}) is expected
+        assert d.keys().isdisjoint({key}) is expected
 
     def test_repr_aiohttp_issue_410(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls()
