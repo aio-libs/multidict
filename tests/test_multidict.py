@@ -209,6 +209,10 @@ class BaseMultiDictTest:
 
         assert d.getone("key2", "default") == "default"
 
+    def test_call_with_kwargs(self, cls: Type[MultiDict[str]]) -> None:
+        d = cls([("present", "value")])
+        assert d.getall(default="missing", key="notfound") == "missing"
+
     def test__iter__(
         self,
         cls: Union[

@@ -33,6 +33,7 @@ eof
 fallback
 fastpath
 filename
+gcc
 getitem
 github
 google
