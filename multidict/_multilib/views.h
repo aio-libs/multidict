@@ -409,7 +409,7 @@ multidict_views_init(void)
     GET_MOD_ATTR(abc_keysview_register_func, "_abc_keysview_register");
     GET_MOD_ATTR(abc_valuesview_register_func, "_abc_valuesview_register");
 
-    GET_MOD_ATTR(itemsview_repr_func, "_itemsview_isdisjoint");
+    GET_MOD_ATTR(itemsview_isdisjoint_func, "_itemsview_isdisjoint");
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_repr");
 
     GET_MOD_ATTR(keysview_repr_func, "_keysview_repr");
