@@ -46,6 +46,8 @@ def _viewbaseset_richcmp(view, other, op):
             if elem not in view:
                 return False
         return True
+    else:  # pragma: no cover
+        return NotImplemented
 
 
 def _viewbaseset_and(view, other):
