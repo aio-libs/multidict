@@ -158,10 +158,7 @@ def multidict_getversion_callable(multidict_module: ModuleType) -> Callable:
     return multidict_module.getversion
 
 
-@pytest.fixture(
-    scope="function",
-    params=list(range(pickle.HIGHEST_PROTOCOL + 1)),
-)
+@pytest.fixture(params=list(range(pickle.HIGHEST_PROTOCOL + 1)))
 def in_memory_pickle_object(
     request: pytest.FixtureRequest,
     any_multidict_class: Type[MutableMultiMapping[str]],
