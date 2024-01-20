@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from sys import version_info as _version_info
 from types import ModuleType
-from typing import Any, Callable, Type
+from typing import Callable, Type
 
 try:
     from functools import cached_property  # Python 3.8+
@@ -158,26 +158,18 @@ def multidict_getversion_callable(multidict_module: ModuleType) -> Callable:
     return multidict_module.getversion
 
 
-def write(cls: Any, proto: int) -> bytes:
-    d = cls([("a", 1), ("a", 2)])
+@pytest.fixture(
+    scope="function",
+    params=list(range(pickle.HIGHEST_PROTOCOL + 1)),
+)
+def in_memory_pickle_object(
+    request: pytest.FixtureRequest,
+    any_multidict_class: Type[MutableMultiMapping[str]],
+) -> bytes:
+    """Generate an in-memory pickle of the multi-dict object."""
+    proto = request.param
+    d = any_multidict_class([("a", 1), ("a", 2)])
     return pickle.dumps(d, proto)
-
-
-@pytest.fixture
-def in_memory_pickle_classes(multidict_module: ModuleType) -> dict[str, bytes]:
-    """Generates a dict for in-memory storage of pickled classes"""
-    pickle_dict = {}
-    _impl_map = {
-        "c-extension": "_multidict",
-        "pure-python": "_multidict_py",
-    }
-    for proto in range(pickle.HIGHEST_PROTOCOL + 1):
-        for tag, impl_name in _impl_map.items():
-            impl = import_module(f"multidict.{impl_name}")
-            for cls in impl.CIMultiDict, impl.MultiDict:
-                file_key = f"{cls.__name__.lower()}-{tag}.pickle.{proto}"
-                pickle_dict[file_key] = write(cls, proto)
-    return pickle_dict
 
 
 def pytest_addoption(
