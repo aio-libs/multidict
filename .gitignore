@@ -87,5 +87,3 @@ TAGS
 # pyenv
 .python-version
 
-# .pkl files in tests folder
-tests/*.pickle.*
