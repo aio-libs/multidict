@@ -25,7 +25,6 @@ def test_load_from_file(
     any_multidict_class,
     multidict_implementation,
     in_memory_pickle_object,
-    pickle_protocol,
 ):
     d = any_multidict_class([("a", 1), ("a", 2)])
     obj = pickle.loads(in_memory_pickle_object)
