@@ -303,7 +303,8 @@ class BaseMultiDictTest:
     ) -> None:
         d = cls(contents)
 
-        assert (d.keys() <= {"key", "key2"}) == expected
+        result = d.keys() <= {"key", "key2"}
+        assert result is expected
 
     def test_keys_is_set_equal(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
@@ -329,7 +330,8 @@ class BaseMultiDictTest:
     ) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
-        assert (d.keys() >= set_) == expected
+        result = d.keys() >= set_
+        assert result is expected
 
     @pytest.mark.parametrize("op", (operator.le, operator.lt, operator.ge, operator.gt))
     def test_keys_compare_type_error(
@@ -337,7 +339,12 @@ class BaseMultiDictTest:
     ) -> None:
         d = cls([("key", "value1")])
 
-        with pytest.raises(TypeError):
+        with pytest.raises(
+            TypeError,
+            match=(
+                "^'.+' not supported between instances of '.*_KeysView' and 'NoneType'$"
+            ),
+        ):
             op(d.keys(), None)
 
     def test_keys_is_set_not_equal(self, cls: Type[MutableMultiMapping[str]]) -> None:

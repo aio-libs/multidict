@@ -1,0 +1,1 @@
+Added tests to have full code coverage of the ``_viewbaseset_richcmp`` function -- by :user:`skinnyBat`

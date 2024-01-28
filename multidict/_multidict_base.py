@@ -1,4 +1,13 @@
+import sys
 from collections.abc import ItemsView, Iterable, KeysView, Set, ValuesView
+
+if sys.version_info >= (3, 11):
+    from typing import assert_never
+else:
+    from typing import Any, NoReturn
+
+    def assert_never(value: Any) -> NoReturn:
+        raise AssertionError(f"Expected code to be unreachable, but got: {value!r}")
 
 
 def _abc_itemsview_register(view_cls):
@@ -47,7 +56,7 @@ def _viewbaseset_richcmp(view, other, op):
                 return False
         return True
     else:  # pragma: no cover
-        return NotImplemented
+        assert_never(op)
 
 
 def _viewbaseset_and(view, other):
