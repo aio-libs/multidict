@@ -387,6 +387,17 @@ class BaseMultiDictTest:
 
         assert {"key"} == {"key", "key2"} & d.keys()
 
+    def test_and_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1")])
+
+        with pytest.raises(TypeError):
+            operator.and_(d.keys(), 1)
+
+    def test_and_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1")])
+
+        assert {"key"} == d.keys() & ["key", "key2"]
+
     def test_or(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
 
@@ -396,6 +407,17 @@ class BaseMultiDictTest:
         d = cls([("key", "value1")])
 
         assert {"key", "key2"} == {"key2"} | d.keys()
+
+    def test_or_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1")])
+
+        with pytest.raises(TypeError):
+            operator.or_(d.keys(), 1)
+
+    def test_or_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1")])
+
+        assert {"key", "key2"} == d.keys() | ["key2"]
 
     def test_sub(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
@@ -407,6 +429,17 @@ class BaseMultiDictTest:
 
         assert {"key3"} == {"key", "key2", "key3"} - d.keys()
 
+    def test_sub_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1"), ("key2", "value2")])
+
+        with pytest.raises(TypeError):
+            operator.sub(d.keys(), 1)
+
+    def test_sub_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1"), ("key2", "value2")])
+
+        assert {"key"} == d.keys() - ["key2"]
+
     def test_xor(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
@@ -416,6 +449,17 @@ class BaseMultiDictTest:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         assert {"key", "key3"} == {"key2", "key3"} ^ d.keys()
+
+    def test_xor_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1"), ("key2", "value2")])
+
+        with pytest.raises(TypeError):
+            operator.xor(d.keys(), 1)
+
+    def test_xor_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1"), ("key2", "value2")])
+
+        assert {"key", "key3"} == d.keys() ^ ["key2", "key3"]
 
     @pytest.mark.parametrize(
         ("key", "value", "expected"),
