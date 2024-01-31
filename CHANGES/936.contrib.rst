@@ -1,0 +1,2 @@
+Add test coverage for _multidict_base.py 
+`NotImplemented`` and `Iterable-but-not-Set` for `and, or, sub, xor` operators
