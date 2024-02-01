@@ -12,6 +12,7 @@ from typing import (
     Dict,
     Iterable,
     Iterator,
+    KeysView,
     List,
     Mapping,
     Set,
@@ -390,8 +391,14 @@ class BaseMultiDictTest:
     def test_and_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
 
-        with pytest.raises(TypeError, match=r"unsupported operand type(\(s\))? for \&"):
-            d.keys() & 1
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __rand__(self, other):
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert d.keys() & RightOperand() is sentinel_operation_result
 
     def test_and_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
@@ -411,8 +418,14 @@ class BaseMultiDictTest:
     def test_or_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
 
-        with pytest.raises(TypeError, match=r"unsupported operand type(\(s\))? for \|"):
-            d.keys() | 1
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __ror__(self, other):
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert d.keys() | RightOperand() is sentinel_operation_result
 
     def test_or_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
@@ -432,8 +445,14 @@ class BaseMultiDictTest:
     def test_sub_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
-        with pytest.raises(TypeError, match=r"unsupported operand type(\(s\))? for -"):
-            d.keys() - 1
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __rsub__(self, other):
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert d.keys() - RightOperand() is sentinel_operation_result
 
     def test_sub_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
@@ -453,8 +472,14 @@ class BaseMultiDictTest:
     def test_xor_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
-        with pytest.raises(TypeError, match=r"unsupported operand type(\(s\))? for \^"):
-            d.keys() ^ 1
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __rxor__(self, other):
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert d.keys() ^ RightOperand() is sentinel_operation_result
 
     def test_xor_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
