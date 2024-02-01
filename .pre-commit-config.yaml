@@ -42,7 +42,7 @@ repos:
 - repo: local
   hooks:
   - id: top-level-tests-init-py
-    name: changelog filenames
+    name: there must be not top-level `__init__.py` in `tests/`
     language: fail
     entry: >-
       The `tests/__init__.py` module must not exist so `pytest` doesn't add the
