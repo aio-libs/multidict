@@ -155,7 +155,7 @@ repos:
     additional_dependencies:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
-    - pytest
+    - pytest < 8
     - Sphinx >= 5.3.0, < 6
     args:
     - --python-version=3.7
