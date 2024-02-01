@@ -1,0 +1,3 @@
+Type annotation for the
+``_replace_missing_aiohttp_hdrs_reference``
+function has been fixed.

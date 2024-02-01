@@ -19,6 +19,7 @@ import os
 import re
 from contextlib import suppress
 from pathlib import Path
+from typing import Optional
 
 import alabaster
 from sphinx.addnodes import pending_xref
@@ -384,7 +385,7 @@ def _replace_missing_aiohttp_hdrs_reference(
     env: BuildEnvironment,
     node: pending_xref,
     contnode: literal,
-) -> reference:
+) -> Optional[reference]:
     if (node.get('refdomain'), node.get('reftype')) != ("py", "mod"):
         return None
 
