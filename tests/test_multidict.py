@@ -12,6 +12,7 @@ from typing import (
     Dict,
     Iterable,
     Iterator,
+    KeysView,
     List,
     Mapping,
     Set,
@@ -391,6 +392,27 @@ class BaseMultiDictTest:
 
         assert {"key"} == {"key", "key2"} & d.keys()
 
+    def test_bitwise_and_not_implemented(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
+        d = cls([("key", "value1")])
+
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __rand__(self, other: KeysView[str]) -> object:
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert d.keys() & RightOperand() is sentinel_operation_result
+
+    def test_bitwise_and_iterable_not_set(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
+        d = cls([("key", "value1")])
+
+        assert {"key"} == d.keys() & ["key", "key2"]
+
     def test_or(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
 
@@ -400,6 +422,27 @@ class BaseMultiDictTest:
         d = cls([("key", "value1")])
 
         assert {"key", "key2"} == {"key2"} | d.keys()
+
+    def test_bitwise_or_not_implemented(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
+        d = cls([("key", "value1")])
+
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __ror__(self, other: KeysView[str]) -> object:
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert d.keys() | RightOperand() is sentinel_operation_result
+
+    def test_bitwise_or_iterable_not_set(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
+        d = cls([("key", "value1")])
+
+        assert {"key", "key2"} == d.keys() | ["key2"]
 
     def test_sub(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
@@ -411,6 +454,23 @@ class BaseMultiDictTest:
 
         assert {"key3"} == {"key", "key2", "key3"} - d.keys()
 
+    def test_sub_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1"), ("key2", "value2")])
+
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __rsub__(self, other: KeysView[str]) -> object:
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert d.keys() - RightOperand() is sentinel_operation_result
+
+    def test_sub_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1"), ("key2", "value2")])
+
+        assert {"key"} == d.keys() - ["key2"]
+
     def test_xor(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
@@ -420,6 +480,23 @@ class BaseMultiDictTest:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         assert {"key", "key3"} == {"key2", "key3"} ^ d.keys()
+
+    def test_xor_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1"), ("key2", "value2")])
+
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __rxor__(self, other: KeysView[str]) -> object:
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert d.keys() ^ RightOperand() is sentinel_operation_result
+
+    def test_xor_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
+        d = cls([("key", "value1"), ("key2", "value2")])
+
+        assert {"key", "key3"} == d.keys() ^ ["key2", "key3"]
 
     @pytest.mark.parametrize(
         ("key", "value", "expected"),
