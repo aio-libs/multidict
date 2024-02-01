@@ -388,19 +388,23 @@ class BaseMultiDictTest:
 
         assert {"key"} == {"key", "key2"} & d.keys()
 
-    def test_bitwise_and_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
+    def test_bitwise_and_not_implemented(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
         d = cls([("key", "value1")])
 
         sentinel_operation_result = object()
 
         class RightOperand:
-            def __rand__(self, other: KeysView) -> object:
+            def __rand__(self, other: KeysView[str]) -> object:
                 assert isinstance(other, KeysView)
                 return sentinel_operation_result
 
         assert d.keys() & RightOperand() is sentinel_operation_result
 
-    def test_bitwise_and_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
+    def test_bitwise_and_iterable_not_set(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
         d = cls([("key", "value1")])
 
         assert {"key"} == d.keys() & ["key", "key2"]
@@ -423,7 +427,7 @@ class BaseMultiDictTest:
         sentinel_operation_result = object()
 
         class RightOperand:
-            def __ror__(self, other: KeysView) -> object:
+            def __ror__(self, other: KeysView[str]) -> object:
                 assert isinstance(other, KeysView)
                 return sentinel_operation_result
 
@@ -452,7 +456,7 @@ class BaseMultiDictTest:
         sentinel_operation_result = object()
 
         class RightOperand:
-            def __rsub__(self, other: KeysView) -> object:
+            def __rsub__(self, other: KeysView[str]) -> object:
                 assert isinstance(other, KeysView)
                 return sentinel_operation_result
 
@@ -479,7 +483,7 @@ class BaseMultiDictTest:
         sentinel_operation_result = object()
 
         class RightOperand:
-            def __rxor__(self, other: KeysView) -> object:
+            def __rxor__(self, other: KeysView[str]) -> object:
                 assert isinstance(other, KeysView)
                 return sentinel_operation_result
 
