@@ -9,7 +9,7 @@ end-users. This is why we enforce collection of the change
 fragment files in pull requests as per `Towncrier philosophy`_.
 
 The idea is that when somebody makes a change, they must record
-the bits that would affect end-users only including information
+the bits that would affect end-users, only including information
 that would be useful to them. Then, when the maintainers publish
 a new release, they'll automatically use these records to compose
 a change log for the respective version. It is important to
