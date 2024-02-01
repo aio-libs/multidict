@@ -1,5 +1,0 @@
-Stopped marking all files as installable package data
--- by :user:`webknjaz`.
-
-This change helps ``setuptools`` understand that C-headers are
-not to be installed under :file:`lib/python3.{x}/site-packages/`.

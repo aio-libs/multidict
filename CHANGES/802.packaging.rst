@@ -1,4 +1,0 @@
-Switched from ``setuptools``' legacy backend (``setuptools.build_meta:__legacy__``)
-to the modern one (``setuptools.build_meta``) by actually specifying the
-the ``[build-system] build-backend`` option in :file:`pyproject.toml`
--- by :user:`Jackenmen`.

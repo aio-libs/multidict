@@ -1,8 +1,0 @@
-Added an explicit ``void`` for arguments in C-function signatures
-which addresses the following compiler warning:
-
-.. code-block:: console
-
-   warning: a function declaration without a prototype is deprecated in all versions of C [-Wstrict-prototypes]
-
--- by :user:`hoodmane`

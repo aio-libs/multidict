@@ -1,2 +1,0 @@
-Updated the test pins lockfile used in the
-``cibuildwheel`` test stage -- by :user:`hoodmane`.

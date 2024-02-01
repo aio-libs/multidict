@@ -1,9 +1,0 @@
-Added test coverage for the :ref:`and <python:and>`, :ref:`or
-<python:or>`, :py:obj:`sub <python:object.__sub__>`, and
-:py:obj:`xor <python:object.__xor__>` operators in the
-:file:`multidict/_multidict_base.py` module. It also covers
-:py:data:`NotImplemented` and
-":py:class:`~typing.Iterable`-but-not-:py:class:`~typing.Set`"
-cases there.
-
--- by :user:`a5r0n`

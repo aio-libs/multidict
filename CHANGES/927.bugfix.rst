@@ -1,2 +1,0 @@
-Fixed a ``SystemError: null argument to internal routine`` error on
-a ``MultiDict.items().isdisjoint()`` call when using C Extensions.
