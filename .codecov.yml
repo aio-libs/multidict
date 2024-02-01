@@ -11,7 +11,7 @@ comment:
   require_changes: true
 
 coverage:
-  range: 96.05..100
+  range: 97.87..100
   status:
     project:
       default:
@@ -19,7 +19,7 @@ coverage:
       lib:
         paths:
         - multidict/**/*.py
-        target: 88.89%
+        target: 94.05%
       tests:
         paths:
         - tests/
