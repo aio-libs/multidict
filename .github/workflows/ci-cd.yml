@@ -347,8 +347,29 @@ jobs:
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
-    - name: Upload coverage
-      uses: aio-libs/upload-coverage@v22.1.4
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: coverage
+        path: ${{ runner.temp }}/coverage
+    - name: Install coverage
+      run: |
+        pip install coverage
+      shell: bash
+    - name: Combine coverage reports
+      run: |
+        coverage combine '${{ runner.temp }}/coverage'
+      shell: bash
+    - name: Generate XML coverage report
+      run: |
+        coverage xml
+      shell: bash
+    - name: Send coverage data to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: coverage.xml
+        flags: CI-GHA
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   pre-deploy:
     name: Pre-Deploy
