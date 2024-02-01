@@ -1,2 +1,0 @@
-An experimental Python 3.13 job now runs in the CI
--- :user:`webknjaz`.

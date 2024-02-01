@@ -1,2 +1,0 @@
-Upgraded the C-API macros that have been deprecated in Python 3.9
-and later removed in 3.13 -- by :user:`iemelyanov`.

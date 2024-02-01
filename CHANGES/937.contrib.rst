@@ -1,3 +1,0 @@
-The version of pytest is now capped below 8, when running MyPy
-against Python 3.7. This pytest release dropped support for
-said runtime.
