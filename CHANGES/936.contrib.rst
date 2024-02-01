@@ -1,2 +1,2 @@
-Add test coverage for _multidict_base.py 
-`NotImplemented`` and `Iterable-but-not-Set` for `and, or, sub, xor` operators
+Added test coverage for the :ref:`and <python:and>`, :ref:`or <python:or>`, :ref:`sub <python:sub>`, and :ref:`xor <python:xor>` operators in the :file:`multidict/_multidict_base.py` module. It also covers  
+:py:data:`NotImplemented` and ":py:class:`~typing.Iterable`-but-not-:py:class:`~Set`" cases there.
