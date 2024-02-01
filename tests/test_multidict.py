@@ -415,7 +415,9 @@ class BaseMultiDictTest:
 
         assert {"key", "key2"} == {"key2"} | d.keys()
 
-    def test_or_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
+    def test_bitwise_or_not_implemented(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
         d = cls([("key", "value1")])
 
         sentinel_operation_result = object()
@@ -427,7 +429,9 @@ class BaseMultiDictTest:
 
         assert d.keys() | RightOperand() is sentinel_operation_result
 
-    def test_or_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
+    def test_bitwise_or_iterable_not_set(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
         d = cls([("key", "value1")])
 
         assert {"key", "key2"} == d.keys() | ["key2"]
