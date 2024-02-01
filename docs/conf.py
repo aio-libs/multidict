@@ -384,7 +384,7 @@ def _replace_missing_aiohttp_hdrs_reference(
     env: BuildEnvironment,
     node: pending_xref,
     contnode: literal,
-) -> reference:
+) -> "reference | None":
     if (node.get('refdomain'), node.get('reftype')) != ("py", "mod"):
         return None
 
