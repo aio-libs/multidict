@@ -71,6 +71,7 @@ pre
 proxied
 pyenv
 pyinstaller
+pytest
 refactor
 refactored
 regex
