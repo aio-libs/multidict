@@ -394,7 +394,7 @@ class BaseMultiDictTest:
         sentinel_operation_result = object()
 
         class RightOperand:
-            def __rand__(self, other):
+            def __rand__(self, other: KeysView) -> object:
                 assert isinstance(other, KeysView)
                 return sentinel_operation_result
 
@@ -423,7 +423,7 @@ class BaseMultiDictTest:
         sentinel_operation_result = object()
 
         class RightOperand:
-            def __ror__(self, other):
+            def __ror__(self, other: KeysView) -> object:
                 assert isinstance(other, KeysView)
                 return sentinel_operation_result
 
@@ -452,7 +452,7 @@ class BaseMultiDictTest:
         sentinel_operation_result = object()
 
         class RightOperand:
-            def __rsub__(self, other):
+            def __rsub__(self, other: KeysView) -> object:
                 assert isinstance(other, KeysView)
                 return sentinel_operation_result
 
@@ -479,7 +479,7 @@ class BaseMultiDictTest:
         sentinel_operation_result = object()
 
         class RightOperand:
-            def __rxor__(self, other):
+            def __rxor__(self, other: KeysView) -> object:
                 assert isinstance(other, KeysView)
                 return sentinel_operation_result
 
