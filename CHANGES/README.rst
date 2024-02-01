@@ -34,7 +34,7 @@ for the users to understand what it means.
 combined with others, it will be a part of the "news digest"
 telling the readers **what changed** in a specific version of
 the library *since the previous version*. You should also use
-reStructuredText syntax for highlighting code (inline or block),
+*reStructuredText* syntax for highlighting code (inline or block),
 linking parts of the docs or external sites.
 
 Finally, name your file following the convention that Towncrier
