@@ -56,6 +56,19 @@ jobs:
     - name: Run linters
       run: |
         make lint
+    - name: Send coverage data to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: >-
+          .tox/.tmp/.mypy/python-3.13/cobertura.xml,
+          .tox/.tmp/.mypy/python-3.11/cobertura.xml,
+          .tox/.tmp/.mypy/python-3.9/cobertura.xml
+          .tox/.tmp/.mypy/python-3.7/cobertura.xml
+        flags: >-
+          CI-GHA,
+          MyPy
+        fail_ci_if_error: false
     - name: Install spell checker
       run: |
         sudo apt install libenchant-2-dev
