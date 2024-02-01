@@ -390,8 +390,8 @@ class BaseMultiDictTest:
     def test_and_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
 
-        with pytest.raises(TypeError):
-            operator.and_(d.keys(), 1)
+        with pytest.raises(TypeError, match=r"unsupported operand type(\(s\))? for \&"):
+            d.keys() & 1
 
     def test_and_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
@@ -411,8 +411,8 @@ class BaseMultiDictTest:
     def test_or_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
 
-        with pytest.raises(TypeError):
-            operator.or_(d.keys(), 1)
+        with pytest.raises(TypeError, match=r"unsupported operand type(\(s\))? for \|"):
+            d.keys() | 1
 
     def test_or_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
@@ -432,8 +432,8 @@ class BaseMultiDictTest:
     def test_sub_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
-        with pytest.raises(TypeError):
-            operator.sub(d.keys(), 1)
+        with pytest.raises(TypeError, match=r"unsupported operand type(\(s\))? for -"):
+            d.keys() - 1
 
     def test_sub_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
@@ -453,8 +453,8 @@ class BaseMultiDictTest:
     def test_xor_not_implemented(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
-        with pytest.raises(TypeError):
-            operator.xor(d.keys(), 1)
+        with pytest.raises(TypeError, match=r"unsupported operand type(\(s\))? for \^"):
+            d.keys() ^ 1
 
     def test_xor_iterable_not_set(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
