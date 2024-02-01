@@ -39,6 +39,9 @@ linking parts of the docs or external sites.
 However, you do not need to reference the issue or PR numbers here
 as *towncrier* will automatically add a reference to all of the
 affected issues when rendering the news file.
+If you wish to sign your change, feel free to add ``-- by
+:user:`github-username``` at the end (replace ``github-username``
+with your own!).
 
 Finally, name your file following the convention that Towncrier
 understands: it should start with the number of an issue or a
