@@ -430,11 +430,17 @@ jobs:
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
+
+    - name: Download distributions
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+        path: dist
+    - run: |
+        tree
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-    - name: Download dists
-      uses: actions/download-artifact@v3
     - name: Make Release
       uses: aio-libs/create-release@v1.6.6
       with:
