@@ -1,0 +1,4 @@
+`The deprecated <https://hynek.me/til/set-output-deprecation-github-actions/>`_
+``::set-output`` workflow command has been replaced
+by the ``$GITHUB_OUTPUT`` environment variable
+in the GitHub Actions CI/CD workflow definition.
