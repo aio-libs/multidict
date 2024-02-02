@@ -4,10 +4,7 @@ from collections.abc import ItemsView, Iterable, KeysView, Set, ValuesView
 if sys.version_info >= (3, 11):
     from typing import assert_never
 else:
-    from typing import Any, NoReturn
-
-    def assert_never(value: Any) -> NoReturn:
-        raise AssertionError(f"Expected code to be unreachable, but got: {value!r}")
+    from typing_extensions import assert_never
 
 
 def _abc_itemsview_register(view_cls):

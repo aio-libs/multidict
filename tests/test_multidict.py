@@ -333,19 +333,61 @@ class BaseMultiDictTest:
         result = d.keys() >= set_
         assert result is expected
 
-    @pytest.mark.parametrize("op", (operator.le, operator.lt, operator.ge, operator.gt))
-    def test_keys_compare_type_error(
-        self, cls: Type[MutableMultiMapping[str]], op: Callable[[object, object], bool]
+    def test_keys_less_than_not_implemented(
+        self, cls: Type[MutableMultiMapping[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
-        with pytest.raises(
-            TypeError,
-            match=(
-                "^'.+' not supported between instances of '.*_KeysView' and 'NoneType'$"
-            ),
-        ):
-            op(d.keys(), None)
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __gt__(self, other: KeysView[str]) -> object:
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert (d.keys() < RightOperand()) is sentinel_operation_result
+
+    def test_keys_less_than_or_equal_not_implemented(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
+        d = cls([("key", "value1")])
+
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __ge__(self, other: KeysView[str]) -> object:
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert (d.keys() <= RightOperand()) is sentinel_operation_result
+
+    def test_keys_greater_than_not_implemented(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
+        d = cls([("key", "value1")])
+
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __lt__(self, other: KeysView[str]) -> object:
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert (d.keys() > RightOperand()) is sentinel_operation_result
+
+    def test_keys_greater_than_or_equal_not_implemented(
+        self, cls: Type[MutableMultiMapping[str]]
+    ) -> None:
+        d = cls([("key", "value1")])
+
+        sentinel_operation_result = object()
+
+        class RightOperand:
+            def __le__(self, other: KeysView[str]) -> object:
+                assert isinstance(other, KeysView)
+                return sentinel_operation_result
+
+        assert (d.keys() >= RightOperand()) is sentinel_operation_result
 
     def test_keys_is_set_not_equal(self, cls: Type[MutableMultiMapping[str]]) -> None:
         d = cls([("key", "value1")])
