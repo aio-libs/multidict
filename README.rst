@@ -15,8 +15,8 @@ multidict
    :alt: PyPI
 
 .. image:: https://readthedocs.org/projects/multidict/badge/?version=latest
-   :target: http://multidict.aio-libs.org/en/latest/?badge=latest
-   :alt: Documentation
+   :target: https://multidict.aio-libs.org
+   :alt: Read The Docs build status badge
 
 .. image:: https://img.shields.io/pypi/pyversions/multidict.svg
    :target: https://pypi.org/project/multidict
