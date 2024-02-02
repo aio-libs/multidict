@@ -2,8 +2,8 @@
 multidict
 =========
 
-.. image:: https://github.com/aio-libs/multidict/workflows/CI/badge.svg
-   :target: https://github.com/aio-libs/multidict/actions?query=workflow%3ACI
+.. image:: https://github.com/aio-libs/multidict/actions/workflows/ci-cd.yml/badge.svg
+   :target: https://github.com/aio-libs/multidict/actions
    :alt: GitHub status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg
