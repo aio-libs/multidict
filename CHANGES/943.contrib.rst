@@ -1,0 +1,3 @@
+``pip`` cache keys rendering has been
+fixed by adding missing ``$`` signs
+in the GitHub Actions CI/CD workflow definition.
