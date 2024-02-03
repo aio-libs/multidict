@@ -219,7 +219,7 @@ jobs:
             runner.os
           }}-${{
             matrix.pyver
-          }}-{{
+          }}-${{
             matrix.no-extensions
           }}-${{
             hashFiles('requirements/*.txt')
@@ -230,7 +230,7 @@ jobs:
             runner.os
           }}-${{
             matrix.pyver
-          }}-{{
+          }}-${{
             matrix.no-extensions
           }}-
     - name: Install dependencies

@@ -1,0 +1,3 @@
+Interpolation of the ``pip`` cache keys has been
+fixed by adding missing ``$`` syntax
+in the GitHub Actions CI/CD workflow definition.
