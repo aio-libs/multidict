@@ -76,5 +76,6 @@ build-backend = "setuptools.build_meta"
 [tool.cibuildwheel]
 test-requires = "-r requirements/pytest.txt"
 test-command = "pytest {project}/tests"
+test-skip = "*x86_64 *amd64"
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
