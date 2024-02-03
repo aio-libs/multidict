@@ -1,0 +1,3 @@
+Added tests to have full code coverage of the
+``multidict._multidict_base._viewbaseset_richcmp()`` function
+-- by :user:`skinnyBat`.
