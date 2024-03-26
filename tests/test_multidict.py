@@ -8,6 +8,7 @@ from collections import deque
 from collections.abc import Mapping
 from types import ModuleType
 from typing import (
+    Any,
     Callable,
     Dict,
     Iterable,
@@ -742,8 +743,8 @@ class TestMultiDict(BaseMultiDictTest):
 
         assert s == "a=1&b=2&a=3"
 
-    def test_get(self, cls: Type[MultiDict[int]]) -> None:
-        d = cls([("a", 1), ("a", 2)])
+    def test_get(self, cls: Type[MultiDict[int]], dict_data: Any) -> None:
+        d = cls(dict_data)
         assert d["a"] == 1
 
     def test_items__repr__(self, cls: Type[MultiDict[str]]) -> None:
