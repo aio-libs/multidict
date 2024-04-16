@@ -1,4 +1,4 @@
-sphinx==7.2.6
+sphinx==7.3.0
 pyenchant==3.2.2
 sphinxcontrib-spelling==8.0.0
 sphinxcontrib-towncrier
