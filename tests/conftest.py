@@ -4,9 +4,10 @@ import argparse
 import pickle
 from dataclasses import dataclass
 from importlib import import_module
+from pathlib import Path
 from sys import version_info as _version_info
 from types import ModuleType
-from typing import Callable, Type
+from typing import Any, Callable, Type
 
 try:
     from functools import cached_property  # Python 3.8+
@@ -23,6 +24,7 @@ from multidict import MultiMapping, MutableMultiMapping
 
 C_EXT_MARK = pytest.mark.c_extension
 PY_38_AND_BELOW = _version_info < (3, 9)
+TESTS_DIR = Path(__file__).parent.resolve()
 
 
 @dataclass(frozen=True)
@@ -139,7 +141,7 @@ def any_multidict_proxy_class(
 @pytest.fixture(scope="session")
 def case_sensitive_multidict_proxy_class(
     multidict_module: ModuleType,
-) -> Type[MutableMultiMapping[str]]:
+) -> Type[MultiMapping[str]]:
     """Return a case-sensitive immutable multidict class."""
     return multidict_module.MultiDictProxy
 
@@ -147,7 +149,7 @@ def case_sensitive_multidict_proxy_class(
 @pytest.fixture(scope="session")
 def case_insensitive_multidict_proxy_class(
     multidict_module: ModuleType,
-) -> Type[MutableMultiMapping[str]]:
+) -> Type[MultiMapping[str]]:
     """Return a case-insensitive immutable multidict class."""
     return multidict_module.CIMultiDictProxy
 
@@ -156,6 +158,34 @@ def case_insensitive_multidict_proxy_class(
 def multidict_getversion_callable(multidict_module: ModuleType) -> Callable:
     """Return a ``getversion()`` function for current implementation."""
     return multidict_module.getversion
+
+
+@pytest.fixture
+def dict_data() -> Any:
+    return [("a", 1), ("a", 2)]
+
+
+@pytest.fixture
+def pickled_data(
+    any_multidict_class,
+    pickle_protocol: int,
+    dict_data: Any,
+) -> bytes:
+    """Generates a pickled representation of the test data"""
+    d = any_multidict_class(dict_data)
+    return pickle.dumps(d, pickle_protocol)
+
+
+@pytest.fixture
+def pickle_file_path(
+    any_multidict_class_name: str,
+    multidict_implementation: MultidictImplementation,
+    pickle_protocol: int,
+) -> Path:
+    return TESTS_DIR / (
+        f"{any_multidict_class_name.lower()}-{multidict_implementation.tag}"
+        f".pickle.{pickle_protocol}"
+    )
 
 
 def pytest_addoption(
