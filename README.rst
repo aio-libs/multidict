@@ -30,6 +30,10 @@ multidict
    :target: https://matrix.to/#/%23aio-libs-space:matrix.org
    :alt: Matrix Space — #aio-libs-space:matrix.org
 
+.. image:: https://assets.piptrends.com/get-last-month-downloads-badge/multidict.svg
+    :alt: multidict Downloads Last Month by pip Trends
+    :target: https://piptrends.com/package/multidict
+
 Multidict is dict-like collection of *key-value pairs* where key
 might occur more than once in the container.
 
