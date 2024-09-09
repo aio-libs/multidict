@@ -1,5 +1,0 @@
-In the GitHub Actions CI/CD workflow definition,
-the ``Get pip cache dir`` step has been fixed for
-Windows runners by adding ``shell: bash``.
-See `actions/runner#2224 <https://github.com/actions/runner/issues/2224>`_
-for more details.

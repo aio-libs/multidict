@@ -14,6 +14,111 @@ Changelog
 
 .. towncrier release notes start
 
+6.1.0 (2024-09-09)
+==================
+
+Bug fixes
+---------
+
+- Covered the unreachable code path in
+  ``multidict._multidict_base._abc_itemsview_register()``
+  with typing -- by :user:`skinnyBat`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`928`.
+  
+  
+  
+
+Features
+--------
+
+- Added support for Python 3.13 -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1002`.
+  
+  
+  
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Removed Python 3.7 support -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`997`.
+  
+  
+  
+
+Contributor-facing changes
+--------------------------
+
+- Added tests to have full code coverage of the
+  ``multidict._multidict_base._viewbaseset_richcmp()`` function
+  -- by :user:`skinnyBat`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`928`.
+  
+  
+  
+- `The deprecated <https://hynek.me/til/set-output-deprecation-github-actions/>`_
+  ``::set-output`` workflow command has been replaced
+  by the ``$GITHUB_OUTPUT`` environment variable
+  in the GitHub Actions CI/CD workflow definition.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`940`.
+  
+  
+  
+- `codecov-action <https://github.com/codecov/codecov-action>`_
+  has been temporarily downgraded to ``v3``
+  in the GitHub Actions CI/CD workflow definitions
+  in order to fix uploading coverage to
+  `Codecov <https://app.codecov.io/gh/aio-libs/multidict>`_.
+  See `this issue <https://github.com/codecov/codecov-action/issues/1252>`_
+  for more details.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`941`.
+  
+  
+  
+- In the GitHub Actions CI/CD workflow definition,
+  the ``Get pip cache dir`` step has been fixed for
+  Windows runners by adding ``shell: bash``.
+  See `actions/runner#2224 <https://github.com/actions/runner/issues/2224>`_
+  for more details.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`942`.
+  
+  
+  
+- Interpolation of the ``pip`` cache keys has been
+  fixed by adding missing ``$`` syntax
+  in the GitHub Actions CI/CD workflow definition.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`943`.
+  
+  
+  
+
+----
+
+
 6.0.5 (2024-02-01)
 ==================
 
