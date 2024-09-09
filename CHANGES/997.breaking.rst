@@ -1,0 +1,1 @@
+Remove Python 3.7 support -- by :user:`bdraco`.

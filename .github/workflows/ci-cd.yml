@@ -134,7 +134,6 @@ jobs:
         *-macosx_universal2
         *-musllinux_*
         *-win32
-        *_arm64
         pp*'
         || ''
         }}
@@ -153,7 +152,6 @@ jobs:
         pyver:
         - 3.13-dev
         - 3.12
-        - 3.7
         - 3.11
         - >-
           3.10
@@ -305,7 +303,7 @@ jobs:
     - name: Produce markdown test summary from JUnit
       if: >-
         !cancelled()
-      uses: test-summary/action@v2.3
+      uses: test-summary/action@v2.4
       with:
         paths: .test-results/pytest/test.xml
     - name: Append coverage results to Job Summary
@@ -466,7 +464,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v2.1.1
+      uses: sigstore/gh-action-sigstore-python@v3.0.0
       with:
         inputs: >-
           ./dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}

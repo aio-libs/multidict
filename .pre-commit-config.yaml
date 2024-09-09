@@ -5,7 +5,7 @@ ci:
 
 repos:
 - repo: https://github.com/python-jsonschema/check-jsonschema.git
-  rev: 0.27.3
+  rev: 0.28.6
   hooks:
   - id: check-github-workflows
     files: ^\.github/workflows/[^/]+$
@@ -23,14 +23,14 @@ repos:
   - id: check-readthedocs
 
 - repo: https://github.com/adrienverge/yamllint.git
-  rev: v1.33.0
+  rev: v1.35.1
   hooks:
   - id: yamllint
     args:
     - --strict
 
 - repo: https://github.com/PyCQA/flake8.git
-  rev: 7.0.0
+  rev: 7.1.0
   hooks:
   - id: flake8
     alias: flake8-no-wps
@@ -105,7 +105,7 @@ repos:
     - rst
 
 - repo: https://github.com/pre-commit/mirrors-mypy.git
-  rev: v1.7.1
+  rev: v1.10.1
   hooks:
   - id: mypy
     alias: mypy-py313
@@ -150,18 +150,18 @@ repos:
     - --html-report=.tox/.tmp/.mypy/python-3.9
     pass_filenames: false
   - id: mypy
-    alias: mypy-py37
-    name: MyPy, for Python 3.7
+    alias: mypy-py38
+    name: MyPy, for Python 3.8
     additional_dependencies:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest < 8
     - Sphinx >= 5.3.0, < 6
     args:
-    - --python-version=3.7
-    - --txt-report=.tox/.tmp/.mypy/python-3.7
-    - --cobertura-xml-report=.tox/.tmp/.mypy/python-3.7
-    - --html-report=.tox/.tmp/.mypy/python-3.7
+    - --python-version=3.8
+    - --txt-report=.tox/.tmp/.mypy/python-3.8
+    - --cobertura-xml-report=.tox/.tmp/.mypy/python-3.8
+    - --html-report=.tox/.tmp/.mypy/python-3.8
     pass_filenames: false
 
 ...
