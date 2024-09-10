@@ -3,11 +3,12 @@ from __future__ import annotations
 import argparse
 import pickle
 from dataclasses import dataclass
+from functools import cached_property
 from importlib import import_module
 from sys import version_info as _version_info
 from types import ModuleType
 from typing import Callable, Type
-from functools import cached_property
+
 import pytest
 
 from multidict import MultiMapping, MutableMultiMapping
