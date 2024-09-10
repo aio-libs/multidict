@@ -6,6 +6,7 @@ include CHANGES.rst
 include README.rst
 include Makefile
 graft multidict
+graft packaging
 graft docs
 graft CHANGES
 graft requirements
