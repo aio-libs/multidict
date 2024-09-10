@@ -37,7 +37,7 @@ IS_RELEASE_ON_RTD = (
 )
 if IS_RELEASE_ON_RTD:
     tags: set[str]
-    tags.add("is_release")
+    tags.add("is_release")  # noqa: F821
 
 
 _docs_path = Path(__file__).parent
