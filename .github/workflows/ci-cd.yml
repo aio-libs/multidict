@@ -366,7 +366,7 @@ jobs:
         files: coverage.xml
         flags: >-
           CI-GHA,
-          unit
+          pytest
         token: ${{ secrets.CODECOV_TOKEN }}
 
   pre-deploy:
