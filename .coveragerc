@@ -20,6 +20,8 @@ show_missing = true
 [run]
 branch = true
 cover_pylib = false
+# https://coverage.rtfd.io/en/latest/contexts.html#dynamic-contexts
+# dynamic_context = test_function  # conflicts with `pytest-cov` if set here
 parallel = true
 relative_files = true
 source =
