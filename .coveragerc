@@ -12,6 +12,7 @@ source =
 [report]
 exclude_also =
   pass
+  ^\s*@pytest\.mark\.xfail
 skip_covered = true
 skip_empty = true
 show_missing = true
