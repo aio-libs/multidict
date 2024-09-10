@@ -39,12 +39,5 @@ coverage:
         flags:
         - MyPy
         target: 100%
-      typing-stubs:
-        flags:
-        - MyPy
-        paths:
-        - >-
-          **/*.pyi
-        target: 100%
 
 ...
