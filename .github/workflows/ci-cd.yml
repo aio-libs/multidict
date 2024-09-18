@@ -196,14 +196,14 @@ jobs:
         path: dist
 
     - name: Setup Python ${{ matrix.pyver }}
-      if: ${{ !endsWith(matrix.pyver, "-freethreading") }}
+      if: ${{ !endsWith(matrix.pyver, '-freethreading') }}
       id: python-install
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyver }}
         allow-prereleases: true
     - name: Setup Python ${{ matrix.pyver }}
-      if: endsWith(matrix.pyver, "-freethreading")
+      if: endsWith(matrix.pyver, '-freethreading')
       id: python-install
       uses: deadsnakes/action@v3.2.0
       with:
