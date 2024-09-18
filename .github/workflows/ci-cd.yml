@@ -204,7 +204,7 @@ jobs:
         allow-prereleases: true
     - name: Setup Python ${{ matrix.pyver }}
       if: endsWith(matrix.pyver, '-freethreading')
-      id: python-install
+      id: python-install-freethreading
       uses: deadsnakes/action@v3.2.0
       with:
         python-version: 3.13-dev
