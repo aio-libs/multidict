@@ -1144,7 +1144,19 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
 
 #ifdef Py_GIL_DISABLED
         key = PySequence_ITEM(item, 0);
+        if (key == NULL) {
+            PyErr_Format(PyExc_ValueError,
+                         "multidict update sequence element #%zd's "
+                         "key could not be fetched", i);
+            goto fail_1;
+        }
         value = PySequence_ITEM(item, 1);
+        if (value == NULL) {
+            PyErr_Format(PyExc_ValueError,
+                         "multidict update sequence element #%zd's "
+                         "value could not be fetched", i);
+            goto fail_1;
+        }
 #else
         key = PySequence_Fast_GET_ITEM(fast, 0);
         value = PySequence_Fast_GET_ITEM(fast, 1);
