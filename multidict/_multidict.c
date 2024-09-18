@@ -1,6 +1,8 @@
 #include "Python.h"
 #include "structmember.h"
 
+#include "_multilib/pythoncapi_compat.h"
+
 // Include order important
 #include "_multilib/defs.h"
 #include "_multilib/istr.h"
@@ -155,13 +157,11 @@ _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
             Py_INCREF(value);
         }
         else if (PyList_CheckExact(item)) {
-            if (PyList_GET_SIZE(item) != 2) {
+            if (PyList_Size(item) != 2) {
                 goto invalid_type;
             }
-            key = PyList_GET_ITEM(item, 0);
-            Py_INCREF(key);
-            value = PyList_GET_ITEM(item, 1);
-            Py_INCREF(value);
+            key = PyList_GetItemRef(item, 0);
+            value = PyList_GetItemRef(item, 1);
         }
         else if (PySequence_Check(item)) {
             if (PySequence_Size(item) != 2) {
@@ -2070,6 +2070,13 @@ PyInit__multidict(void)
 
     /* Instantiate this module */
     module = PyModule_Create(&multidict_module);
+    if (module == NULL) {
+        goto fail;
+    }
+
+#ifdef Py_GIL_DISABLED
+    PyUnstable_Module_SetGIL(module, Py_MOD_GIL_NOT_USED);
+#endif
 
     Py_INCREF(&istr_type);
     if (PyModule_AddObject(
