@@ -161,7 +161,13 @@ _multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
                 goto invalid_type;
             }
             key = PyList_GetItemRef(item, 0);
+            if (key == NULL) {
+                goto invalid_type;
+            }
             value = PyList_GetItemRef(item, 1);
+            if (value == NULL) {
+                goto invalid_type;
+            }
         }
         else if (PySequence_Check(item)) {
             if (PySequence_Size(item) != 2) {
