@@ -180,17 +180,18 @@ jobs:
 
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@187f55296b0f54d88259aaaf99af32ad3647d3bc  # Current main that uses download-artifact@v4
+      uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
-      if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
+      if: ${{ !endsWith(matrix.pyver, '-dev') }}
       uses: actions/download-artifact@v4
       with:
-        name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+        pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
+        merge-multiple: true
         path: dist
 
     - name: Setup Python ${{ matrix.pyver }}
@@ -336,7 +337,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@187f55296b0f54d88259aaaf99af32ad3647d3bc  # Current main that uses download-artifact@v4
+      uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
@@ -420,7 +421,7 @@ jobs:
 
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@187f55296b0f54d88259aaaf99af32ad3647d3bc  # Current main that uses download-artifact@v4
+      uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
@@ -430,7 +431,8 @@ jobs:
     - name: Download distributions
       uses: actions/download-artifact@v4
       with:
-        name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+        pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
+        merge-multiple: true
         path: dist
     - run: |
         tree
