@@ -319,7 +319,7 @@ jobs:
       # combining Linux and Windows paths is tricky, left this exercise for
       # others multidict has no Windows or macOS specific code paths anyway
       if: ${{ matrix.os == 'ubuntu' }}
-      uses: aio-libs/prepare-coverage@v22.1.2
+      uses: aio-libs/prepare-coverage@v24.9.2
 
   test-summary:
     name: Tests status
@@ -346,7 +346,8 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
-        name: coverage
+        pattern: coverage*
+        merge-multiple: true
         path: ${{ runner.temp }}/coverage
     - name: Install coverage
       run: |
