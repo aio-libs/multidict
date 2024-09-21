@@ -187,7 +187,7 @@ jobs:
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
-      if: ${{ !endsWith(matrix.pyver, '-dev') }}
+      if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
       uses: actions/download-artifact@v4
       with:
         pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
