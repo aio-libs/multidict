@@ -95,7 +95,7 @@ jobs:
         }
         >> "${GITHUB_OUTPUT}"
     - name: Upload built artifacts for testing
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         if-no-files-found: error
         name: ${{ needs.pre-setup.outputs.dists-artifact-name  }}
@@ -180,7 +180,7 @@ jobs:
 
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@release/v1
+      uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
@@ -188,9 +188,10 @@ jobs:
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
       if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+        pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
+        merge-multiple: true
         path: dist
 
     - name: Setup Python ${{ matrix.pyver }}
@@ -318,7 +319,7 @@ jobs:
       # combining Linux and Windows paths is tricky, left this exercise for
       # others multidict has no Windows or macOS specific code paths anyway
       if: ${{ matrix.os == 'ubuntu' }}
-      uses: aio-libs/prepare-coverage@v22.1.2
+      uses: aio-libs/prepare-coverage@v24.9.2
 
   test-summary:
     name: Tests status
@@ -336,16 +337,17 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@release/v1
+      uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: coverage
+        pattern: coverage*
+        merge-multiple: true
         path: ${{ runner.temp }}/coverage
     - name: Install coverage
       run: |
@@ -420,7 +422,7 @@ jobs:
 
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@release/v1
+      uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
@@ -428,9 +430,10 @@ jobs:
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
 
     - name: Download distributions
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+        pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
+        merge-multiple: true
         path: dist
     - run: |
         tree
