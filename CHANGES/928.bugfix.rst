@@ -1,3 +1,0 @@
-Covered the unreachable code path in
-``multidict._multidict_base._abc_itemsview_register()``
-with typing -- by :user:`skinnyBat`.

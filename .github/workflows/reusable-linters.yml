@@ -21,7 +21,7 @@ env:
   PY_COLORS: 1  # Recognized by the `py` package, dependency of `pytest`
   PYTHONIOENCODING: utf-8
   PYTHONUTF8: 1
-  PYTHON_LATEST: 3.9
+  PYTHON_LATEST: 3.12
 
 jobs:
 
@@ -61,7 +61,7 @@ jobs:
       run: |
         make lint
     - name: Send coverage data to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.codecov-token }}
         files: >-
@@ -72,7 +72,7 @@ jobs:
         flags: >-
           CI-GHA,
           MyPy
-        fail_ci_if_error: false
+        fail_ci_if_error: true
     - name: Install spell checker
       run: |
         sudo apt install libenchant-2-dev

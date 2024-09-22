@@ -3,19 +3,11 @@ from __future__ import annotations
 import argparse
 import pickle
 from dataclasses import dataclass
+from functools import cached_property
 from importlib import import_module
 from sys import version_info as _version_info
 from types import ModuleType
 from typing import Callable, Type
-
-try:
-    from functools import cached_property  # Python 3.8+
-except ImportError:
-    from functools import lru_cache as _lru_cache
-
-    def cached_property(func):
-        return property(_lru_cache()(func))
-
 
 import pytest
 

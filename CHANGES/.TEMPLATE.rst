@@ -12,9 +12,11 @@
 
 {% if definitions[category]['showcontent'] %}
 {% for text, change_note_refs in sections[section][category].items() %}
-- {{ text + '\n' }}
+- {{ text }}
 
-  {#
+  {{- '\n' * 2 -}}
+
+  {#-
       NOTE: Replacing 'e' with 'f' is a hack that prevents Jinja's `int`
       NOTE: filter internal implementation from treating the input as an
       NOTE: infinite float when it looks like a scientific notation (with a
@@ -45,20 +47,23 @@
     {%- endfor -%}
   {%- endwith -%}
 
-  {% if pr_issue_numbers -%}
+  {% if pr_issue_numbers %}
   *Related issues and pull requests on GitHub:*
   :issue:`{{ pr_issue_numbers | join('`, :issue:`') }}`.
-  {% endif %}
+  {{- '\n' * 2 -}}
+  {%- endif -%}
 
-  {% if commit_refs -%}
+  {% if commit_refs %}
   *Related commits on GitHub:*
   :commit:`{{ commit_refs | join('`, :commit:`') }}`.
-  {% endif %}
+  {{- '\n' * 2 -}}
+  {%- endif -%}
 
-  {% if arbitrary_refs -%}
+  {% if arbitrary_refs %}
   *Unlinked references:*
-  {{ arbitrary_refs | join(', ') }}`.
-  {% endif %}
+  {{ arbitrary_refs | join(', ') }}.
+  {{- '\n' * 2 -}}
+  {%- endif -%}
 
 {% endfor %}
 {% else %}
