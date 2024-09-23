@@ -164,6 +164,10 @@ jobs:
           no-extensions: Y
         - os: windows
           no-extensions: Y
+        - os: macos
+          pyver: "3.13-freethreading"
+        - os: windows
+          pyver: "3.13-freethreading"
         include:
         - pyver: pypy-3.8
           no-extensions: Y
