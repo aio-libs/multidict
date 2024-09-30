@@ -1,55 +1,89 @@
-.. _benchmarking-reference:
+# Benchmarks
 
-==========
-Benchmarks
-==========
+## Introduction
 
-Introduction
-------------
+Benchmarks are essential for tracking performance across releases and ensuring that recent changes haven't significantly impacted it. The multidict library uses [pyperf](https://pyperf.readthedocs.io/en/latest/) for benchmarking.
 
-Benchmarks allow to track performance from release to release and verify
-that latest changes haven not affected it drastically. Benchmarks are based on
-the :doc:`pyperf:index`.
+## Prerequisites
 
-How to run
-----------
+Before running benchmarks:
 
-``requirements/dev.txt`` should be installed before we can proceed
-with benchmarks. Please also make sure that you have :doc:`configured
-<pyperf:system>` your OS to have reliable results.
+1. Install the development requirements:
+   ```
+   pip install -r requirements/dev.txt
+   ```
 
-To run benchmarks next command can be executed:
+2. Configure your OS for reliable benchmark results as described in the [pyperf system configuration guide](https://pyperf.readthedocs.io/en/latest/system.html).
 
-.. code-block:: bash
+## Running Benchmarks
 
-    $ python benchmarks/benchmark.py
+### Basic Usage
 
-This would run benchmarks for both classes (:class:`~multidict.MultiDict`
-and :class:`~multidict.CIMultiDict`) of both implementations (pure-Python
-and C).
+To run all benchmarks:
 
-To run benchmarks for a specific class of specific implementation
-please use ``--impl`` option:
+```bash
+python benchmarks/benchmark.py
+```
 
-.. code-block:: bash
+This command runs benchmarks for both `MultiDict` and `CIMultiDict` classes in both pure-Python and C implementations.
 
-    $ python benchmarks/benchmark.py --impl multidict_c
+### Specific Implementation
 
-would run benchmarks only for :class:`~multidict.MultiDict` implemented
-in C.
+To benchmark a specific class implementation, use the `--impl` option:
 
-Please use ``--help`` to see all available options. Most of the options are
-described at :doc:`perf's Runner <pyperf:runner>` documentation.
+```bash
+python benchmarks/benchmark.py --impl multidict_c
+```
 
-How to compare implementations
-------------------------------
+This runs benchmarks only for the C implementation of `MultiDict`.
 
-``--impl`` option allows to run benchmarks for a specific implementation of
-class. Combined with the :ref:`compare_to <pyperf:compare_to_cmd>` command of
-:doc:`pyperf:index` we can get a good picture of how implementation performs:
+### Additional Options
 
-.. code-block:: bash
+Run `python benchmarks/benchmark.py --help` to see all available options. Most options are described in the [pyperf Runner documentation](https://pyperf.readthedocs.io/en/latest/runner.html).
 
-    $ python benchmarks/benchmark.py --impl multidict_c -o multidict_cy.json
-    $ python benchmarks/benchmark.py --impl multidict_py -o multidict_py.json
-    $ python -m perf compare_to multidict_cy.json multidict_py.json
+## Comparing Implementations
+
+To compare different implementations:
+
+1. Run benchmarks for each implementation:
+   ```bash
+   python benchmarks/benchmark.py --impl multidict_c -o multidict_c.json
+   python benchmarks/benchmark.py --impl multidict_py -o multidict_py.json
+   ```
+
+2. Compare the results:
+   ```bash
+   python -m perf compare_to multidict_c.json multidict_py.json
+   ```
+
+This comparison provides insights into the performance differences between implementations.
+
+## Best Practices
+
+1. Run benchmarks on a quiet system to minimize interference from other processes.
+2. Perform multiple runs to account for system variability.
+3. Use the same hardware and system configuration when comparing benchmarks over time.
+4. Document the system specifications and configuration used for each benchmark run.
+
+## Interpreting Results
+
+When analyzing benchmark results:
+
+1. Look for significant changes in performance metrics.
+2. Consider the context of changes (e.g., new features, optimizations).
+3. Investigate any unexpected performance regressions.
+4. Use statistical measures provided by pyperf to assess the reliability of results.
+
+## Continuous Integration
+
+Consider integrating benchmark runs into your CI/CD pipeline to catch performance regressions early. Set up alerts for significant changes in benchmark results.
+
+## Contributing
+
+When contributing performance improvements:
+
+1. Run benchmarks before and after your changes.
+2. Include benchmark results in your pull request.
+3. Explain the performance impact of your changes.
+
+By following these guidelines, you can maintain and improve the performance of the multidict library over time.
