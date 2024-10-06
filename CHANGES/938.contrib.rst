@@ -1,0 +1,3 @@
+Pickle tests have been refactored in order
+to make ``test_pickle.py`` more readable
+and eliminate ``get_pickles.py``.
