@@ -18,6 +18,7 @@ cChardet
 changelog
 charset
 charsetdetect
+CPython
 criterias
 css
 ctor
