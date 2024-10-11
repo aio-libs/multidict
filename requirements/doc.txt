@@ -1,5 +1,5 @@
 -r towncrier.txt
-sphinx==8.1.0
+sphinx==8.1.1
 pyenchant==3.2.2
 sphinxcontrib-spelling==8.0.0
 sphinxcontrib-towncrier
