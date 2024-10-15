@@ -150,7 +150,7 @@ jobs:
     strategy:
       matrix:
         pyver:
-        - "3.13-freethreading"
+        - 3.13-freethreading
         - 3.13
         - 3.12
         - 3.11
@@ -165,9 +165,9 @@ jobs:
         - os: windows
           no-extensions: Y
         - os: macos
-          pyver: "3.13-freethreading"
+          pyver: 3.13-freethreading  # this is still tested within cibuildwheel
         - os: windows
-          pyver: "3.13-freethreading"
+          pyver: 3.13-freethreading  # this is still tested within cibuildwheel
         include:
         - pyver: pypy-3.8
           no-extensions: Y
@@ -200,15 +200,14 @@ jobs:
         path: dist
 
     - name: Setup Python ${{ matrix.pyver }}
-      if: ${{ !endsWith(matrix.pyver, '-freethreading') }}
-      id: python-install
+      if: >-
+        !endsWith(matrix.pyver, '-freethreading')
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyver }}
         allow-prereleases: true
     - name: Setup Python ${{ matrix.pyver }}
       if: endsWith(matrix.pyver, '-freethreading')
-      id: python-install-freethreading
       uses: deadsnakes/action@v3.2.0
       with:
         python-version: 3.13-dev
