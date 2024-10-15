@@ -53,22 +53,8 @@ typedef struct pair_list {
  * It is incremented each time that a dictionary is created and each
  * time that a dictionary is modified. */
 static uint64_t pair_list_global_version = 0;
-#ifdef Py_GIL_DISABLED
-static PyMutex global_version_mutex;
-#endif
 
-#ifdef Py_GIL_DISABLED
-static inline
-uint64_t NEXT_VERSION(void)
-{
-    PyMutex_Lock(&global_version_mutex);
-    ++pair_list_global_version;
-    PyMutex_Unlock(&global_version_mutex);
-    return pair_list_global_version;
-}
-#else
 #define NEXT_VERSION() (++pair_list_global_version)
-#endif
 
 
 static inline int
