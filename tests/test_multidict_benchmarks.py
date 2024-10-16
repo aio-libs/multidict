@@ -1,7 +1,9 @@
 """codspeed benchmarks for multidict."""
 
+from typing import Dict, Union
+
 from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
-from typing import Union, Dict
+
 from multidict import CIMultiDict, MultiDict, istr
 
 # Note that this benchmark should not be refactored to use pytest.mark.parametrize
