@@ -71,49 +71,54 @@ def test_cimultidict_add_istr_performance(benchmark: BenchmarkFixture) -> None:
 
 
 def test_multidict_pop_str_performance(benchmark: BenchmarkFixture) -> None:
-    md: MultiDict[str] = MultiDict((str(i), str(i)) for i in range(100))
+    md_base: MultiDict[str] = MultiDict((str(i), str(i)) for i in range(100))
     items = [str(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
+        md = md_base.copy()
         for i in items:
             md.pop(i)
 
 
 def test_cimultidict_pop_str_performance(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
+    md_base: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
     items = [str(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
+        md = md_base.copy()
         for i in items:
             md.pop(i)
 
 
 def test_cimultidict_pop_istr_performance(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[istr] = CIMultiDict((istr(i), istr(i)) for i in range(100))
+    md_base: CIMultiDict[istr] = CIMultiDict((istr(i), istr(i)) for i in range(100))
     items = [istr(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
+        md = md_base.copy()
         for i in items:
             md.pop(i)
 
 
 def test_multidict_popitem_str_performance(benchmark: BenchmarkFixture) -> None:
-    md: MultiDict[str] = MultiDict((str(i), str(i)) for i in range(100))
+    md_base: MultiDict[str] = MultiDict((str(i), str(i)) for i in range(100))
 
     @benchmark
     def _run() -> None:
+        md = md_base.copy()
         for _ in range(100):
             md.popitem()
 
 
 def test_cimultidict_popitem_str_performance(benchmark: BenchmarkFixture) -> None:
-    md: MultiDict[str] = MultiDict((str(i), str(i)) for i in range(100))
+    md_base: MultiDict[str] = MultiDict((str(i), str(i)) for i in range(100))
 
     @benchmark
     def _run() -> None:
+        md = md_base.copy()
         for _ in range(100):
             md.popitem()
 
@@ -189,31 +194,34 @@ def test_cimultidict_extend_istr_performance(benchmark: BenchmarkFixture) -> Non
 
 
 def test_multidict_delitem_str_performance(benchmark: BenchmarkFixture) -> None:
-    md: MultiDict[str] = MultiDict((str(i), str(i)) for i in range(100))
+    md_base: MultiDict[str] = MultiDict((str(i), str(i)) for i in range(100))
     items = [str(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
+        md = md_base.copy()
         for i in items:
             del md[i]
 
 
 def test_cimultidict_delitem_str_performance(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
+    md_base: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
     items = [str(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
+        md = md_base.copy()
         for i in items:
             del md[i]
 
 
 def test_cimultidict_delitem_istr_performance(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[istr] = CIMultiDict((istr(i), istr(i)) for i in range(100))
+    md_base: CIMultiDict[istr] = CIMultiDict((istr(i), istr(i)) for i in range(100))
     items = [istr(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
+        md = md_base.copy()
         for i in items:
             del md[i]
 
