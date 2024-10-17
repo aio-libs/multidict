@@ -9,6 +9,8 @@ from multidict import CIMultiDict, MultiDict, istr
 # Note that this benchmark should not be refactored to use pytest.mark.parametrize
 # since each benchmark name should be unique.
 
+_SENTINEL = object()
+
 
 def test_multidict_insert_str_performance(benchmark: BenchmarkFixture) -> None:
     md: MultiDict[str] = MultiDict()
@@ -339,3 +341,51 @@ def test_cimultidict_get_istr_miss_performance(benchmark: BenchmarkFixture) -> N
     def _run() -> None:
         for i in items:
             md.get(i)
+
+
+def test_cimultidict_get_hit_with_default_performance(
+    benchmark: BenchmarkFixture,
+) -> None:
+    md: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
+    items = [str(i) for i in range(100)]
+
+    @benchmark
+    def _run() -> None:
+        for i in items:
+            md.get(i, _SENTINEL)
+
+
+def test_cimultidict_get_miss_with_default_performance(
+    benchmark: BenchmarkFixture,
+) -> None:
+    md: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
+    items = [str(i) for i in range(100, 200)]
+
+    @benchmark
+    def _run() -> None:
+        for i in items:
+            md.get(i, _SENTINEL)
+
+
+def test_cimultidict_get_istr_hit_with_default_performance(
+    benchmark: BenchmarkFixture,
+) -> None:
+    md: CIMultiDict[istr] = CIMultiDict((istr(i), istr(i)) for i in range(100))
+    items = [istr(i) for i in range(100)]
+
+    @benchmark
+    def _run() -> None:
+        for i in items:
+            md.get(i, _SENTINEL)
+
+
+def test_cimultidict_get_istr_with_default_miss_performance(
+    benchmark: BenchmarkFixture,
+) -> None:
+    md: CIMultiDict[istr] = CIMultiDict((istr(i), istr(i)) for i in range(100))
+    items = [istr(i) for i in range(100, 200)]
+
+    @benchmark
+    def _run() -> None:
+        for i in items:
+            md.get(i, _SENTINEL)
