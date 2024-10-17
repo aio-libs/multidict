@@ -114,6 +114,7 @@ repos:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - pytest_codspeed
     - Sphinx >= 5.3.0
     args:
     - --python-version=3.13
@@ -128,6 +129,7 @@ repos:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - pytest_codspeed
     - Sphinx >= 5.3.0
     args:
     - --python-version=3.11
@@ -142,6 +144,7 @@ repos:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - pytest_codspeed
     - Sphinx >= 5.3.0
     args:
     - --python-version=3.9
@@ -156,6 +159,7 @@ repos:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - pytest_codspeed
     - Sphinx >= 5.3.0
     args:
     - --python-version=3.8
