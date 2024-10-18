@@ -212,6 +212,31 @@ jobs:
       with:
         python-version: 3.13-dev
         nogil: true
+    - name: Compute runtime Python version
+      id: python-install
+      run: |
+        import sys
+        from os import environ
+        from pathlib import Path
+
+        FILE_APPEND_MODE = 'a'
+
+        python_version_str = ".".join(
+            map(str, sys.version_info[:3]),
+        )
+        freethreading_suffix = (
+            '' if sys.version_info < (3, 13) or sys._is_gil_enabled()
+            else 't'
+        )
+
+        with Path(environ['GITHUB_OUTPUT']).open(
+                mode=FILE_APPEND_MODE,
+        ) as outputs_file:
+            print(
+                f'python-version={python_version_str}{freethreading_suffix}',
+                file=outputs_file,
+            )
+      shell: python
 
     - name: Get pip cache dir
       id: pip-cache
