@@ -76,7 +76,9 @@ build-backend = "setuptools.build_meta"
 [tool.cibuildwheel]
 test-requires = "-r requirements/pytest.txt"
 test-command = "pytest {project}/tests"
-before-all-linux = "yum install -y libffi-devel || apk add --upgrade libffi-dev || apt-get install libffi-dev"
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
 free-threaded-support = true
+
+[tool.cibuildwheel.linux]
+before-all = "yum install -y libffi-devel || apk add --upgrade libffi-dev || apt-get install libffi-dev"
