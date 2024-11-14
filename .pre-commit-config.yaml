@@ -5,7 +5,7 @@ ci:
 
 repos:
 - repo: https://github.com/python-jsonschema/check-jsonschema.git
-  rev: 0.28.6
+  rev: 0.29.3
   hooks:
   - id: check-github-workflows
     files: ^\.github/workflows/[^/]+$
@@ -30,7 +30,7 @@ repos:
     - --strict
 
 - repo: https://github.com/PyCQA/flake8.git
-  rev: 7.1.0
+  rev: 7.1.1
   hooks:
   - id: flake8
     alias: flake8-no-wps
@@ -105,7 +105,7 @@ repos:
     - rst
 
 - repo: https://github.com/pre-commit/mirrors-mypy.git
-  rev: v1.10.1
+  rev: v1.11.2
   hooks:
   - id: mypy
     alias: mypy-py313
@@ -114,6 +114,7 @@ repos:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - pytest_codspeed
     - Sphinx >= 5.3.0
     args:
     - --python-version=3.13
@@ -128,6 +129,7 @@ repos:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - pytest_codspeed
     - Sphinx >= 5.3.0
     args:
     - --python-version=3.11
@@ -142,6 +144,7 @@ repos:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - pytest_codspeed
     - Sphinx >= 5.3.0
     args:
     - --python-version=3.9
@@ -156,6 +159,7 @@ repos:
     - types-docutils
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest
+    - pytest_codspeed
     - Sphinx >= 5.3.0
     args:
     - --python-version=3.8

@@ -95,7 +95,7 @@ jobs:
         }
         >> "${GITHUB_OUTPUT}"
     - name: Upload built artifacts for testing
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         if-no-files-found: error
         name: ${{ needs.pre-setup.outputs.dists-artifact-name  }}
@@ -150,6 +150,7 @@ jobs:
     strategy:
       matrix:
         pyver:
+        - 3.13-freethreading
         - 3.13
         - 3.12
         - 3.11
@@ -163,6 +164,10 @@ jobs:
           no-extensions: Y
         - os: windows
           no-extensions: Y
+        - os: macos
+          pyver: 3.13-freethreading  # this is still tested within cibuildwheel
+        - os: windows
+          pyver: 3.13-freethreading  # this is still tested within cibuildwheel
         include:
         - pyver: pypy-3.8
           no-extensions: Y
@@ -180,7 +185,7 @@ jobs:
 
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@release/v1
+      uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
@@ -188,17 +193,51 @@ jobs:
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
       if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+        pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
+        merge-multiple: true
         path: dist
 
     - name: Setup Python ${{ matrix.pyver }}
-      id: python-install
+      if: >-
+        !endsWith(matrix.pyver, '-freethreading')
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.pyver }}
         allow-prereleases: true
+    - name: Setup Python ${{ matrix.pyver }}
+      if: endsWith(matrix.pyver, '-freethreading')
+      uses: deadsnakes/action@v3.2.0
+      with:
+        python-version: 3.13-dev
+        nogil: true
+    - name: Compute runtime Python version
+      id: python-install
+      run: |
+        import sys
+        from os import environ
+        from pathlib import Path
+
+        FILE_APPEND_MODE = 'a'
+
+        python_version_str = ".".join(
+            map(str, sys.version_info[:3]),
+        )
+        freethreading_suffix = (
+            '' if sys.version_info < (3, 13) or sys._is_gil_enabled()
+            else 't'
+        )
+
+        with Path(environ['GITHUB_OUTPUT']).open(
+                mode=FILE_APPEND_MODE,
+        ) as outputs_file:
+            print(
+                f'python-version={python_version_str}{freethreading_suffix}',
+                file=outputs_file,
+            )
+      shell: python
+
     - name: Get pip cache dir
       id: pip-cache
       run: |
@@ -318,7 +357,90 @@ jobs:
       # combining Linux and Windows paths is tricky, left this exercise for
       # others multidict has no Windows or macOS specific code paths anyway
       if: ${{ matrix.os == 'ubuntu' }}
-      uses: aio-libs/prepare-coverage@v22.1.2
+      uses: aio-libs/prepare-coverage@v24.9.2
+
+  benchmark:
+    name: Benchmark
+    needs:
+    - build-pure-python-dists  # transitive, for accessing settings
+    - build-wheels-for-tested-arches
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v4
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v2
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
+    - name: Download distributions
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
+        merge-multiple: true
+
+    - name: Setup Python 3.12
+      id: python-install
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
+        cache: pip
+        cache-dependency-path: requirements/*.txt
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4
+      with:
+        path: requirements/pytest.txt
+    - name: Determine pre-compiled compatible wheel
+      env:
+        # NOTE: When `pip` is forced to colorize output piped into `jq`,
+        # NOTE: the latter can't parse it. So we're overriding the color
+        # NOTE: preference here via https://no-color.org.
+        # NOTE: Setting `FORCE_COLOR` to any value (including 0, an empty
+        # NOTE: string, or a "YAML null" `~`) doesn't have any effect and
+        # NOTE: `pip` (through its verndored copy of `rich`) treats the
+        # NOTE: presence of the variable as "force-color" regardless.
+        #
+        # NOTE: This doesn't actually work either, so we'll resort to unsetting
+        # NOTE: in the Bash script.
+        # NOTE: Ref: https://github.com/Textualize/rich/issues/2622
+        NO_COLOR: 1
+      id: wheel-file
+      run: >
+        echo -n path= | tee -a "${GITHUB_OUTPUT}"
+
+
+        unset FORCE_COLOR
+
+
+        python
+        -X utf8
+        -u -I
+        -m pip install
+        --find-links=./dist
+        --no-index
+        '${{ env.PROJECT_NAME }}'
+        --force-reinstall
+        --no-color
+        --no-deps
+        --only-binary=:all:
+        --dry-run
+        --report=-
+        --quiet
+        | jq --raw-output .install[].download_info.url
+        | tee -a "${GITHUB_OUTPUT}"
+      shell: bash
+    - name: Self-install
+      run: python -Im pip install '${{ steps.wheel-file.outputs.path }}'
+    - name: Run benchmarks
+      uses: CodSpeedHQ/action@v3
+      with:
+        token: ${{ secrets.CODSPEED_TOKEN }}
+        run: python -Im pytest --no-cov -vvvvv --codspeed
 
   test-summary:
     name: Tests status
@@ -336,16 +458,17 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@release/v1
+      uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: coverage
+        pattern: coverage*
+        merge-multiple: true
         path: ${{ runner.temp }}/coverage
     - name: Install coverage
       run: |
@@ -366,7 +489,7 @@ jobs:
         files: coverage.xml
         flags: >-
           CI-GHA,
-          unit
+          pytest
         token: ${{ secrets.CODECOV_TOKEN }}
 
   pre-deploy:
@@ -420,7 +543,7 @@ jobs:
 
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@release/v1
+      uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
@@ -428,9 +551,10 @@ jobs:
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
 
     - name: Download distributions
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+        pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
+        merge-multiple: true
         path: dist
     - run: |
         tree

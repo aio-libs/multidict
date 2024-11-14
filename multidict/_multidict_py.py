@@ -16,7 +16,6 @@ else:
 
 
 class istr(str):
-
     """Case insensitive str."""
 
     __is_istr__ = True

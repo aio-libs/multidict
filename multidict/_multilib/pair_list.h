@@ -916,13 +916,18 @@ _pair_list_post_update(pair_list_t *list, PyObject* used_keys, Py_ssize_t pos)
 
     for (; pos < list->size; pos++) {
         pair = pair_list_get(list, pos);
-        tmp = PyDict_GetItem(used_keys, pair->identity);
-        if (tmp == NULL) {
+        int status = PyDict_GetItemRef(used_keys, pair->identity, &tmp);
+        if (status == -1) {
+            // exception set
+            return -1;
+        }
+        else if (status == 0) {
             // not found
             continue;
         }
 
         num = PyLong_AsSsize_t(tmp);
+        Py_DECREF(tmp);
         if (num == -1) {
             if (!PyErr_Occurred()) {
                 PyErr_SetString(PyExc_RuntimeError, "invalid internal state");
@@ -955,12 +960,18 @@ _pair_list_update(pair_list_t *list, PyObject *key,
     int found;
     int ident_cmp_res;
 
-    item = PyDict_GetItem(used_keys, identity);
-    if (item == NULL) {
+    int status = PyDict_GetItemRef(used_keys, identity, &item);
+    if (status == -1) {
+        // exception set
+        return -1;
+    }
+    else if (status == 0) {
+        // not found
         pos = 0;
     }
     else {
         pos = PyLong_AsSsize_t(item);
+        Py_DECREF(item);
         if (pos == -1) {
             if (!PyErr_Occurred()) {
                 PyErr_SetString(PyExc_RuntimeError, "invalid internal state");
@@ -1087,18 +1098,28 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
         }
 
         // Convert item to sequence, and verify length 2.
+#ifdef Py_GIL_DISABLED
+        if (!PySequence_Check(item)) {
+#else
         fast = PySequence_Fast(item, "");
         if (fast == NULL) {
             if (PyErr_ExceptionMatches(PyExc_TypeError)) {
+#endif
                 PyErr_Format(PyExc_TypeError,
                              "multidict cannot convert sequence element #%zd"
                              " to a sequence",
                              i);
+#ifndef Py_GIL_DISABLED
             }
+#endif
             goto fail_1;
         }
 
+#ifdef Py_GIL_DISABLED
+        n = PySequence_Size(item);
+#else
         n = PySequence_Fast_GET_SIZE(fast);
+#endif
         if (n != 2) {
             PyErr_Format(PyExc_ValueError,
                          "multidict update sequence element #%zd "
@@ -1107,10 +1128,27 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
             goto fail_1;
         }
 
+#ifdef Py_GIL_DISABLED
+        key = PySequence_ITEM(item, 0);
+        if (key == NULL) {
+            PyErr_Format(PyExc_ValueError,
+                         "multidict update sequence element #%zd's "
+                         "key could not be fetched", i);
+            goto fail_1;
+        }
+        value = PySequence_ITEM(item, 1);
+        if (value == NULL) {
+            PyErr_Format(PyExc_ValueError,
+                         "multidict update sequence element #%zd's "
+                         "value could not be fetched", i);
+            goto fail_1;
+        }
+#else
         key = PySequence_Fast_GET_ITEM(fast, 0);
         value = PySequence_Fast_GET_ITEM(fast, 1);
         Py_INCREF(key);
         Py_INCREF(value);
+#endif
 
         identity = pair_list_calc_identity(list, key);
         if (identity == NULL) {
@@ -1128,7 +1166,9 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
 
         Py_DECREF(key);
         Py_DECREF(value);
+#ifndef Py_GIL_DISABLED
         Py_DECREF(fast);
+#endif
         Py_DECREF(item);
         Py_DECREF(identity);
     }

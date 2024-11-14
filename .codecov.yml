@@ -15,31 +15,29 @@ comment:
 coverage:
   range: 97.87..100
   status:
+    patch:
+      default:
+        target: 100%
+        flags:
+        - pytest
     project:
       default:
         target: 100%
       lib:
         flags:
-        - unit
+        - pytest
         paths:
         - multidict/**/*.py
         target: 94.05%
       tests:
         flags:
-        - unit
+        - pytest
         paths:
         - tests/
         target: 100%
       typing:
         flags:
         - MyPy
-        target: 100%
-      typing-stubs:
-        flags:
-        - MyPy
-        paths:
-        - >-
-          **/*.pyi
         target: 100%
 
 ...
