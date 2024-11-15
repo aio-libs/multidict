@@ -324,6 +324,9 @@ jobs:
           && '.'
           || steps.wheel-file.outputs.path
         }}'
+    - name: Set WRITE_PICKLE_FILES env variable
+      if: ${{ matrix.os == 'ubuntu' && endsWith(matrix.pyver, '-dev') }}
+      run: echo "WRITE_PICKLE_FILES=1" >> $GITHUB_ENV
     - name: Run unittests
       run: >-
         python -Im pytest tests -v
