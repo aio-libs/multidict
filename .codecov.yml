@@ -27,7 +27,7 @@ coverage:
         flags:
         - pytest
         paths:
-        - multidict/**/*.py
+        - multidict/
         target: 94.05%
       tests:
         flags:
