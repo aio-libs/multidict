@@ -7,13 +7,6 @@ from ._abc import MultiMapping, MutableMultiMapping
 
 _marker = object()
 
-if sys.version_info >= (3, 9):
-    GenericAlias = types.GenericAlias
-else:
-
-    def GenericAlias(cls):
-        return cls
-
 
 class istr(str):
     """Case insensitive str."""
@@ -140,7 +133,7 @@ class _Base:
         body = ", ".join("'{}': {!r}".format(k, v) for k, v in self.items())
         return "<{}({})>".format(self.__class__.__name__, body)
 
-    __class_getitem__ = classmethod(GenericAlias)
+    __class_getitem__ = classmethod(types.GenericAlias)
 
 
 class MultiDictProxy(_Base, MultiMapping):
