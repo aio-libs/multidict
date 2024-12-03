@@ -823,3 +823,14 @@ class TestCIMultiDict(BaseMultiDictTest):
     def test_values__repr__(self, cls: Type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "value1")], key="value2")
         assert repr(d.values()) == "_ValuesView('value1', 'value2')"
+
+    @pytest.mark.xfail(reason="CI sets are not implemented yet")
+    def test_keys_case_insensitive_union(
+        self,
+        cls: Type[CIMultiDict[str]],
+    ) -> None:
+        d = cls([("KEY", "one"),])
+
+        assert "key" in d.keys()
+        assert d.keys().isdisjoint({"key"})
+        assert {"key"} & d.keys() == {"KEY"}
