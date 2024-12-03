@@ -833,4 +833,4 @@ class TestCIMultiDict(BaseMultiDictTest):
 
         assert "key" in d.keys()
         assert d.keys().isdisjoint({"key"})
-        assert {"key"} & d.keys() == {"KEY"}
+        assert {"key"} & d.keys() == {"key"}
