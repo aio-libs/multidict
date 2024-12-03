@@ -156,7 +156,6 @@ jobs:
         - 3.11
         - "3.10"
         - 3.9
-        - 3.8
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -169,7 +168,7 @@ jobs:
         - os: windows
           pyver: 3.13-freethreading  # this is still tested within cibuildwheel
         include:
-        - pyver: pypy-3.8
+        - pyver: pypy-3.9
           no-extensions: Y
           os: ubuntu
       fail-fast: false
