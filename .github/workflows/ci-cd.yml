@@ -570,6 +570,8 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         artifact: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
+        head_line: >-
+          {version}\n=+\n\n\*\({date}\)\*\n
         fix_issue_regex: >-
           :issue:`(\d+)`
         fix_issue_repl: >-
