@@ -59,24 +59,32 @@ def _viewbaseset_richcmp(view, other, op):
 def _viewbaseset_and(view, other):
     if not isinstance(other, Iterable):
         return NotImplemented
+    if not isinstance(other, Set):
+        other = set(iter(other))
     return view & other
 
 
 def _viewbaseset_or(view, other):
     if not isinstance(other, Iterable):
         return NotImplemented
+    if not isinstance(other, Set):
+        other = set(iter(other))
     return view | other
 
 
 def _viewbaseset_sub(view, other):
     if not isinstance(other, Iterable):
         return NotImplemented
+    if not isinstance(other, Set):
+        other = set(iter(other))
     return view - other
 
 
 def _viewbaseset_xor(view, other):
     if not isinstance(other, Iterable):
         return NotImplemented
+    if not isinstance(other, Set):
+        other = set(iter(other))
     return view ^ other
 
 
