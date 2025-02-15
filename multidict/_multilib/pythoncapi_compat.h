@@ -71,37 +71,6 @@ static inline PyObject* _Py_XNewRef(PyObject *obj)
 #endif
 
 
-// bpo-39573 added Py_SET_REFCNT() to Python 3.9.0a4
-#if PY_VERSION_HEX < 0x030900A4 && !defined(Py_SET_REFCNT)
-static inline void _Py_SET_REFCNT(PyObject *ob, Py_ssize_t refcnt)
-{
-    ob->ob_refcnt = refcnt;
-}
-#define Py_SET_REFCNT(ob, refcnt) _Py_SET_REFCNT(_PyObject_CAST(ob), refcnt)
-#endif
-
-
-// Py_SETREF() and Py_XSETREF() were added to Python 3.5.2.
-// It is excluded from the limited C API.
-#if (PY_VERSION_HEX < 0x03050200 && !defined(Py_SETREF)) && !defined(Py_LIMITED_API)
-#define Py_SETREF(dst, src)                                     \
-    do {                                                        \
-        PyObject **_tmp_dst_ptr = _Py_CAST(PyObject**, &(dst)); \
-        PyObject *_tmp_dst = (*_tmp_dst_ptr);                   \
-        *_tmp_dst_ptr = _PyObject_CAST(src);                    \
-        Py_DECREF(_tmp_dst);                                    \
-    } while (0)
-
-#define Py_XSETREF(dst, src)                                    \
-    do {                                                        \
-        PyObject **_tmp_dst_ptr = _Py_CAST(PyObject**, &(dst)); \
-        PyObject *_tmp_dst = (*_tmp_dst_ptr);                   \
-        *_tmp_dst_ptr = _PyObject_CAST(src);                    \
-        Py_XDECREF(_tmp_dst);                                   \
-    } while (0)
-#endif
-
-
 // bpo-43753 added Py_Is(), Py_IsNone(), Py_IsTrue() and Py_IsFalse()
 // to Python 3.10.0b1.
 #if PY_VERSION_HEX < 0x030A00B1 && !defined(Py_Is)
@@ -118,28 +87,7 @@ static inline void _Py_SET_REFCNT(PyObject *ob, Py_ssize_t refcnt)
 #endif
 
 
-// bpo-39573 added Py_SET_TYPE() to Python 3.9.0a4
-#if PY_VERSION_HEX < 0x030900A4 && !defined(Py_SET_TYPE)
-static inline void _Py_SET_TYPE(PyObject *ob, PyTypeObject *type)
-{
-    ob->ob_type = type;
-}
-#define Py_SET_TYPE(ob, type) _Py_SET_TYPE(_PyObject_CAST(ob), type)
-#endif
-
-
-// bpo-39573 added Py_SET_SIZE() to Python 3.9.0a4
-#if PY_VERSION_HEX < 0x030900A4 && !defined(Py_SET_SIZE)
-static inline void _Py_SET_SIZE(PyVarObject *ob, Py_ssize_t size)
-{
-    ob->ob_size = size;
-}
-#define Py_SET_SIZE(ob, size) _Py_SET_SIZE((PyVarObject*)(ob), size)
-#endif
-
-
-// bpo-40421 added PyFrame_GetCode() to Python 3.9.0b1
-#if PY_VERSION_HEX < 0x030900B1 || defined(PYPY_VERSION)
+#if defined(PYPY_VERSION)
 static inline PyCodeObject* PyFrame_GetCode(PyFrameObject *frame)
 {
     assert(frame != _Py_NULL);
@@ -155,16 +103,6 @@ static inline PyCodeObject* _PyFrame_GetCodeBorrow(PyFrameObject *frame)
     return code;
 }
 
-
-// bpo-40421 added PyFrame_GetBack() to Python 3.9.0b1
-#if PY_VERSION_HEX < 0x030900B1 && !defined(PYPY_VERSION)
-static inline PyFrameObject* PyFrame_GetBack(PyFrameObject *frame)
-{
-    assert(frame != _Py_NULL);
-    return _Py_CAST(PyFrameObject*, Py_XNewRef(frame->f_back));
-}
-#endif
-
 #if !defined(PYPY_VERSION)
 static inline PyFrameObject* _PyFrame_GetBackBorrow(PyFrameObject *frame)
 {
@@ -179,13 +117,9 @@ static inline PyFrameObject* _PyFrame_GetBackBorrow(PyFrameObject *frame)
 #if PY_VERSION_HEX < 0x030B00A7 && !defined(PYPY_VERSION)
 static inline PyObject* PyFrame_GetLocals(PyFrameObject *frame)
 {
-#if PY_VERSION_HEX >= 0x030400B1
     if (PyFrame_FastToLocalsWithError(frame) < 0) {
         return NULL;
     }
-#else
-    PyFrame_FastToLocals(frame);
-#endif
     return Py_NewRef(frame->f_locals);
 }
 #endif
@@ -238,22 +172,14 @@ static inline PyObject* PyFrame_GetVar(PyFrameObject *frame, PyObject *name)
     if (locals == NULL) {
         return NULL;
     }
-#if PY_VERSION_HEX >= 0x03000000
     value = PyDict_GetItemWithError(locals, name);
-#else
-    value = _PyDict_GetItemWithError(locals, name);
-#endif
     Py_DECREF(locals);
 
     if (value == NULL) {
         if (PyErr_Occurred()) {
             return NULL;
         }
-#if PY_VERSION_HEX >= 0x03000000
         PyErr_Format(PyExc_NameError, "variable %R does not exist", name);
-#else
-        PyErr_SetString(PyExc_NameError, "variable does not exist");
-#endif
         return NULL;
     }
     return Py_NewRef(value);
@@ -267,11 +193,7 @@ static inline PyObject*
 PyFrame_GetVarString(PyFrameObject *frame, const char *name)
 {
     PyObject *name_obj, *value;
-#if PY_VERSION_HEX >= 0x03000000
     name_obj = PyUnicode_FromString(name);
-#else
-    name_obj = PyString_FromString(name);
-#endif
     if (name_obj == NULL) {
         return NULL;
     }
@@ -282,23 +204,12 @@ PyFrame_GetVarString(PyFrameObject *frame, const char *name)
 #endif
 
 
-// bpo-39947 added PyThreadState_GetInterpreter() to Python 3.9.0a5
-#if PY_VERSION_HEX < 0x030900A5 || defined(PYPY_VERSION)
+#if defined(PYPY_VERSION)
 static inline PyInterpreterState *
 PyThreadState_GetInterpreter(PyThreadState *tstate)
 {
     assert(tstate != _Py_NULL);
     return tstate->interp;
-}
-#endif
-
-
-// bpo-40429 added PyThreadState_GetFrame() to Python 3.9.0b1
-#if PY_VERSION_HEX < 0x030900B1 && !defined(PYPY_VERSION)
-static inline PyFrameObject* PyThreadState_GetFrame(PyThreadState *tstate)
-{
-    assert(tstate != _Py_NULL);
-    return _Py_CAST(PyFrameObject *, Py_XNewRef(tstate->frame));
 }
 #endif
 
@@ -313,8 +224,7 @@ _PyThreadState_GetFrameBorrow(PyThreadState *tstate)
 #endif
 
 
-// bpo-39947 added PyInterpreterState_Get() to Python 3.9.0a5
-#if PY_VERSION_HEX < 0x030900A5 || defined(PYPY_VERSION)
+#if defined(PYPY_VERSION)
 static inline PyInterpreterState* PyInterpreterState_Get(void)
 {
     PyThreadState *tstate;
@@ -329,16 +239,6 @@ static inline PyInterpreterState* PyInterpreterState_Get(void)
         Py_FatalError("no current interpreter");
     }
     return interp;
-}
-#endif
-
-
-// bpo-39947 added PyInterpreterState_Get() to Python 3.9.0a6
-#if 0x030700A1 <= PY_VERSION_HEX && PY_VERSION_HEX < 0x030900A6 && !defined(PYPY_VERSION)
-static inline uint64_t PyThreadState_GetID(PyThreadState *tstate)
-{
-    assert(tstate != _Py_NULL);
-    return tstate->id;
 }
 #endif
 
@@ -371,27 +271,6 @@ static inline void PyThreadState_LeaveTracing(PyThreadState *tstate)
 #endif
 
 
-// bpo-37194 added PyObject_CallNoArgs() to Python 3.9.0a1
-// PyObject_CallNoArgs() added to PyPy 3.9.16-v7.3.11
-#if !defined(PyObject_CallNoArgs) && PY_VERSION_HEX < 0x030900A1
-static inline PyObject* PyObject_CallNoArgs(PyObject *func)
-{
-    return PyObject_CallFunctionObjArgs(func, NULL);
-}
-#endif
-
-
-// bpo-39245 made PyObject_CallOneArg() public (previously called
-// _PyObject_CallOneArg) in Python 3.9.0a4
-// PyObject_CallOneArg() added to PyPy 3.9.16-v7.3.11
-#if !defined(PyObject_CallOneArg) && PY_VERSION_HEX < 0x030900A4
-static inline PyObject* PyObject_CallOneArg(PyObject *func, PyObject *arg)
-{
-    return PyObject_CallFunctionObjArgs(func, arg, NULL);
-}
-#endif
-
-
 // bpo-1635741 added PyModule_AddObjectRef() to Python 3.10.0a3
 #if PY_VERSION_HEX < 0x030A00A3
 static inline int
@@ -417,63 +296,10 @@ PyModule_AddObjectRef(PyObject *module, const char *name, PyObject *value)
 #endif
 
 
-// bpo-40024 added PyModule_AddType() to Python 3.9.0a5
-#if PY_VERSION_HEX < 0x030900A5
-static inline int PyModule_AddType(PyObject *module, PyTypeObject *type)
-{
-    const char *name, *dot;
-
-    if (PyType_Ready(type) < 0) {
-        return -1;
-    }
-
-    // inline _PyType_Name()
-    name = type->tp_name;
-    assert(name != _Py_NULL);
-    dot = strrchr(name, '.');
-    if (dot != _Py_NULL) {
-        name = dot + 1;
-    }
-
-    return PyModule_AddObjectRef(module, name, _PyObject_CAST(type));
-}
-#endif
-
-
-// bpo-40241 added PyObject_GC_IsTracked() to Python 3.9.0a6.
-// bpo-4688 added _PyObject_GC_IS_TRACKED() to Python 2.7.0a2.
-#if PY_VERSION_HEX < 0x030900A6 && !defined(PYPY_VERSION)
-static inline int PyObject_GC_IsTracked(PyObject* obj)
-{
-    return (PyObject_IS_GC(obj) && _PyObject_GC_IS_TRACKED(obj));
-}
-#endif
-
-// bpo-40241 added PyObject_GC_IsFinalized() to Python 3.9.0a6.
-// bpo-18112 added _PyGCHead_FINALIZED() to Python 3.4.0 final.
-#if PY_VERSION_HEX < 0x030900A6 && PY_VERSION_HEX >= 0x030400F0 && !defined(PYPY_VERSION)
-static inline int PyObject_GC_IsFinalized(PyObject *obj)
-{
-    PyGC_Head *gc = _Py_CAST(PyGC_Head*, obj) - 1;
-    return (PyObject_IS_GC(obj) && _PyGCHead_FINALIZED(gc));
-}
-#endif
-
-
-// bpo-39573 added Py_IS_TYPE() to Python 3.9.0a4
-#if PY_VERSION_HEX < 0x030900A4 && !defined(Py_IS_TYPE)
-static inline int _Py_IS_TYPE(PyObject *ob, PyTypeObject *type) {
-    return Py_TYPE(ob) == type;
-}
-#define Py_IS_TYPE(ob, type) _Py_IS_TYPE(_PyObject_CAST(ob), type)
-#endif
-
-
 // bpo-46906 added PyFloat_Pack2() and PyFloat_Unpack2() to Python 3.11a7.
-// bpo-11734 added _PyFloat_Pack2() and _PyFloat_Unpack2() to Python 3.6.0b1.
 // Python 3.11a2 moved _PyFloat_Pack2() and _PyFloat_Unpack2() to the internal
 // C API: Python 3.11a2-3.11a6 versions are not supported.
-#if 0x030600B1 <= PY_VERSION_HEX && PY_VERSION_HEX <= 0x030B00A1 && !defined(PYPY_VERSION)
+#if PY_VERSION_HEX <= 0x030B00A1 && !defined(PYPY_VERSION)
 static inline int PyFloat_Pack2(double x, char *p, int le)
 { return _PyFloat_Pack2(x, (unsigned char*)p, le); }
 
@@ -536,16 +362,6 @@ static inline PyObject* PyCode_GetCellvars(PyCodeObject *code)
 #endif
 
 
-// Py_UNUSED() was added to Python 3.4.0b2.
-#if PY_VERSION_HEX < 0x030400B2 && !defined(Py_UNUSED)
-#  if defined(__GNUC__) || defined(__clang__)
-#    define Py_UNUSED(name) _unused_ ## name __attribute__((unused))
-#  else
-#    define Py_UNUSED(name) _unused_ ## name
-#  endif
-#endif
-
-
 // gh-105922 added PyImport_AddModuleRef() to Python 3.13.0a1
 #if PY_VERSION_HEX < 0x030D00A0
 static inline PyObject* PyImport_AddModuleRef(const char *name)
@@ -581,118 +397,13 @@ static inline int PyWeakref_GetRef(PyObject *ref, PyObject **pobj)
 #endif
 
 
-// bpo-36974 added PY_VECTORCALL_ARGUMENTS_OFFSET to Python 3.8b1
-#ifndef PY_VECTORCALL_ARGUMENTS_OFFSET
-#  define PY_VECTORCALL_ARGUMENTS_OFFSET (_Py_CAST(size_t, 1) << (8 * sizeof(size_t) - 1))
-#endif
-
-// bpo-36974 added PyVectorcall_NARGS() to Python 3.8b1
-#if PY_VERSION_HEX < 0x030800B1
-static inline Py_ssize_t PyVectorcall_NARGS(size_t n)
-{
-    return n & ~PY_VECTORCALL_ARGUMENTS_OFFSET;
-}
-#endif
-
-
-// gh-105922 added PyObject_Vectorcall() to Python 3.9.0a4
-#if PY_VERSION_HEX < 0x030900A4
-static inline PyObject*
-PyObject_Vectorcall(PyObject *callable, PyObject *const *args,
-                     size_t nargsf, PyObject *kwnames)
-{
-#if PY_VERSION_HEX >= 0x030800B1 && !defined(PYPY_VERSION)
-    // bpo-36974 added _PyObject_Vectorcall() to Python 3.8.0b1
-    return _PyObject_Vectorcall(callable, args, nargsf, kwnames);
-#else
-    PyObject *posargs = NULL, *kwargs = NULL;
-    PyObject *res;
-    Py_ssize_t nposargs, nkwargs, i;
-
-    if (nargsf != 0 && args == NULL) {
-        PyErr_BadInternalCall();
-        goto error;
-    }
-    if (kwnames != NULL && !PyTuple_Check(kwnames)) {
-        PyErr_BadInternalCall();
-        goto error;
-    }
-
-    nposargs = (Py_ssize_t)PyVectorcall_NARGS(nargsf);
-    if (kwnames) {
-        nkwargs = PyTuple_GET_SIZE(kwnames);
-    }
-    else {
-        nkwargs = 0;
-    }
-
-    posargs = PyTuple_New(nposargs);
-    if (posargs == NULL) {
-        goto error;
-    }
-    if (nposargs) {
-        for (i=0; i < nposargs; i++) {
-            PyTuple_SET_ITEM(posargs, i, Py_NewRef(*args));
-            args++;
-        }
-    }
-
-    if (nkwargs) {
-        kwargs = PyDict_New();
-        if (kwargs == NULL) {
-            goto error;
-        }
-
-        for (i = 0; i < nkwargs; i++) {
-            PyObject *key = PyTuple_GET_ITEM(kwnames, i);
-            PyObject *value = *args;
-            args++;
-            if (PyDict_SetItem(kwargs, key, value) < 0) {
-                goto error;
-            }
-        }
-    }
-    else {
-        kwargs = NULL;
-    }
-
-    res = PyObject_Call(callable, posargs, kwargs);
-    Py_DECREF(posargs);
-    Py_XDECREF(kwargs);
-    return res;
-
-error:
-    Py_DECREF(posargs);
-    Py_XDECREF(kwargs);
-    return NULL;
-#endif
-}
-#endif
-
-
 // gh-106521 added PyObject_GetOptionalAttr() and
 // PyObject_GetOptionalAttrString() to Python 3.13.0a1
 #if PY_VERSION_HEX < 0x030D00A1
 static inline int
 PyObject_GetOptionalAttr(PyObject *obj, PyObject *attr_name, PyObject **result)
 {
-    // bpo-32571 added _PyObject_LookupAttr() to Python 3.7.0b1
-#if PY_VERSION_HEX >= 0x030700B1 && !defined(PYPY_VERSION)
     return _PyObject_LookupAttr(obj, attr_name, result);
-#else
-    *result = PyObject_GetAttr(obj, attr_name);
-    if (*result != NULL) {
-        return 1;
-    }
-    if (!PyErr_Occurred()) {
-        return 0;
-    }
-    if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
-        PyErr_Clear();
-        return 0;
-    }
-    return -1;
-#endif
 }
 
 static inline int
@@ -700,11 +411,7 @@ PyObject_GetOptionalAttrString(PyObject *obj, const char *attr_name, PyObject **
 {
     PyObject *name_obj;
     int rc;
-#if PY_VERSION_HEX >= 0x03000000
     name_obj = PyUnicode_FromString(attr_name);
-#else
-    name_obj = PyString_FromString(attr_name);
-#endif
     if (name_obj == NULL) {
         *result = NULL;
         return -1;
@@ -738,11 +445,7 @@ PyMapping_GetOptionalItemString(PyObject *obj, const char *key, PyObject **resul
 {
     PyObject *key_obj;
     int rc;
-#if PY_VERSION_HEX >= 0x03000000
     key_obj = PyUnicode_FromString(key);
-#else
-    key_obj = PyString_FromString(key);
-#endif
     if (key_obj == NULL) {
         *result = NULL;
         return -1;
@@ -805,11 +508,7 @@ PyObject_HasAttrStringWithError(PyObject *obj, const char *attr)
 static inline int
 PyDict_GetItemRef(PyObject *mp, PyObject *key, PyObject **result)
 {
-#if PY_VERSION_HEX >= 0x03000000
     PyObject *item = PyDict_GetItemWithError(mp, key);
-#else
-    PyObject *item = _PyDict_GetItemWithError(mp, key);
-#endif
     if (item != NULL) {
         *result = Py_NewRef(item);
         return 1;  // found
@@ -826,11 +525,7 @@ static inline int
 PyDict_GetItemStringRef(PyObject *mp, const char *key, PyObject **result)
 {
     int res;
-#if PY_VERSION_HEX >= 0x03000000
     PyObject *key_obj = PyUnicode_FromString(key);
-#else
-    PyObject *key_obj = PyString_FromString(key);
-#endif
     if (key_obj == NULL) {
         *result = NULL;
         return -1;
@@ -1202,9 +897,8 @@ static inline int PyTime_PerfCounter(PyTime_t *result)
 // gh-111389 added hash constants to Python 3.13.0a5. These constants were
 // added first as private macros to Python 3.4.0b1 and PyPy 7.3.9.
 #if (!defined(PyHASH_BITS) \
-     && ((!defined(PYPY_VERSION) && PY_VERSION_HEX >= 0x030400B1) \
-         || (defined(PYPY_VERSION) && PY_VERSION_HEX >= 0x03070000 \
-             && PYPY_VERSION_NUM >= 0x07090000)))
+     && (!defined(PYPY_VERSION) \
+         || (defined(PYPY_VERSION) && PYPY_VERSION_NUM >= 0x07090000)))
 #  define PyHASH_BITS _PyHASH_BITS
 #  define PyHASH_MODULUS _PyHASH_MODULUS
 #  define PyHASH_INF _PyHASH_INF

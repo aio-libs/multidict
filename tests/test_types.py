@@ -85,19 +85,6 @@ def test_create_ci_multidict_proxy_from_multidict(multidict_module):
         multidict_module.CIMultiDictProxy(d)
 
 
-@pytest.mark.skipif(
-    sys.version_info >= (3, 9), reason="Python 3.9 uses GenericAlias which is different"
-)
-def test_generic_exists(multidict_module) -> None:
-    assert multidict_module.MultiDict[int] is multidict_module.MultiDict
-    assert multidict_module.MultiDictProxy[int] is multidict_module.MultiDictProxy
-    assert multidict_module.CIMultiDict[int] is multidict_module.CIMultiDict
-    assert multidict_module.CIMultiDictProxy[int] is multidict_module.CIMultiDictProxy
-
-
-@pytest.mark.skipif(
-    sys.version_info < (3, 9), reason="Python 3.9 is required for GenericAlias"
-)
 def test_generic_alias(multidict_module) -> None:
     assert multidict_module.MultiDict[int] == types.GenericAlias(
         multidict_module.MultiDict, (int,)
