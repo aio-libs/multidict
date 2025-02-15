@@ -1,5 +1,4 @@
 import abc
-import sys
 from collections.abc import Mapping, MutableMapping
 from types import GenericAlias
 
