@@ -498,7 +498,7 @@ pair_list_contains(pair_list_t *list, PyObject *key)
     int tmp;
 
     if (!PyUnicode_Check(key)) {
-        Py_RETURN_NOTIMPLEMENTED;
+        return 0;
     }
 
     ident = pair_list_calc_identity(list, key);
