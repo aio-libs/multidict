@@ -1,1 +1,1 @@
-Fixed ``__contains__`` throwing an exception for non strings.
+Fixed ``in`` checks throwing an exception instead of returning ``False`` when testing non-strings.
