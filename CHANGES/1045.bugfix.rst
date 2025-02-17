@@ -1,1 +1,1 @@
-Fixed `__contains__` throwing an exception for non strings.
+Fixed ``__contains__`` throwing an exception for non strings.
