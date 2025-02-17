@@ -1,0 +1,2 @@
+Duplicated test runs have been disabled when
+building wheels for the ``x86_64`` architecture.
