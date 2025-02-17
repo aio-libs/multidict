@@ -5,7 +5,7 @@ ci:
 
 repos:
 - repo: https://github.com/python-jsonschema/check-jsonschema.git
-  rev: 0.29.3
+  rev: 0.30.0
   hooks:
   - id: check-github-workflows
     files: ^\.github/workflows/[^/]+$
@@ -105,7 +105,7 @@ repos:
     - rst
 
 - repo: https://github.com/pre-commit/mirrors-mypy.git
-  rev: v1.11.2
+  rev: v1.14.1
   hooks:
   - id: mypy
     alias: mypy-py313
