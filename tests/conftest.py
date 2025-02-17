@@ -148,6 +148,17 @@ def multidict_getversion_callable(multidict_module: ModuleType) -> Callable:
     return multidict_module.getversion
 
 
+@pytest.fixture(params=list(range(pickle.HIGHEST_PROTOCOL + 1)))
+def in_memory_pickle_object(
+    request: pytest.FixtureRequest,
+    any_multidict_class: Type[MutableMultiMapping[str]],
+) -> bytes:
+    """Generate an in-memory pickle of the multi-dict object."""
+    proto = request.param
+    d = any_multidict_class([("a", 1), ("a", 2)])
+    return pickle.dumps(d, proto)
+
+
 def pytest_addoption(
     parser: pytest.Parser,
     pluginmanager: pytest.PytestPluginManager,

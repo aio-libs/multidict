@@ -21,18 +21,12 @@ def test_pickle_proxy(any_multidict_class, any_multidict_proxy_class):
         pickle.dumps(proxy)
 
 
-def test_load_from_file(any_multidict_class, multidict_implementation, pickle_protocol):
-    multidict_class_name = any_multidict_class.__name__
-    pickle_file_basename = "-".join(
-        (
-            multidict_class_name.lower(),
-            multidict_implementation.tag,
-        )
-    )
+def test_load_from_file(
+    any_multidict_class,
+    multidict_implementation,
+    in_memory_pickle_object,
+):
     d = any_multidict_class([("a", 1), ("a", 2)])
-    fname = f"{pickle_file_basename}.pickle.{pickle_protocol}"
-    p = here / fname
-    with p.open("rb") as f:
-        obj = pickle.load(f)
+    obj = pickle.loads(in_memory_pickle_object)
     assert d == obj
     assert isinstance(obj, any_multidict_class)
