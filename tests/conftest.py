@@ -41,7 +41,7 @@ class MultidictImplementation:
         importable_module = "_multidict_py" if self.is_pure_python else "_multidict"
         return import_module(f"multidict.{importable_module}")
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Render the implementation facade instance as a string."""
         return f"{self.tag}-module"
 
@@ -92,7 +92,7 @@ def any_multidict_class(
 @pytest.fixture(scope="session")
 def case_sensitive_multidict_class(
     multidict_module: ModuleType,
-) -> Type[MutableMultiMapping[str]]:
+) -> Type[MultiDict[str]]:
     """Return a case-sensitive mutable multidict class."""
     return multidict_module.MultiDict
 
@@ -100,7 +100,7 @@ def case_sensitive_multidict_class(
 @pytest.fixture(scope="session")
 def case_insensitive_multidict_class(
     multidict_module: ModuleType,
-) -> Type[MutableMultiMapping[str]]:
+) -> Type[CIMultiDict[str]]:
     """Return a case-insensitive mutable multidict class."""
     return multidict_module.CIMultiDict
 

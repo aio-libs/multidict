@@ -1,16 +1,15 @@
 import string
 import sys
-from typing import Type
 
 import pytest
 
-from multidict import MultiMapping, MutableMultiMapping
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 
 
 class TestMutableMultiDict:
     def test_copy(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d1 = case_sensitive_multidict_class(key="value", a="b")
 
@@ -20,7 +19,7 @@ class TestMutableMultiDict:
 
     def test__repr__(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         assert str(d) == "<%s()>" % case_sensitive_multidict_class.__name__
@@ -35,7 +34,7 @@ class TestMutableMultiDict:
 
     def test_getall(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class([("key", "value1")], key="value2")
         assert len(d) == 2
@@ -50,7 +49,7 @@ class TestMutableMultiDict:
 
     def test_add(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
 
@@ -73,19 +72,19 @@ class TestMutableMultiDict:
 
     def test_extend(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         assert d == {}
 
-        d.extend([("key", "one"), ("key", "two")], key=3, foo="bar")
+        d.extend([("key", "one"), ("key", "two")], key="3", foo="bar")
         assert d != {"key": "one", "foo": "bar"}
         assert 4 == len(d)
         itms = d.items()
         # we can't guarantee order of kwargs
         assert ("key", "one") in itms
         assert ("key", "two") in itms
-        assert ("key", 3) in itms
+        assert ("key", "3") in itms
         assert ("foo", "bar") in itms
 
         other = case_sensitive_multidict_class(bar="baz")
@@ -101,12 +100,12 @@ class TestMutableMultiDict:
         assert 6 == len(d)
 
         with pytest.raises(TypeError):
-            d.extend("foo", "bar")
+            d.extend("foo", "bar")  # type: ignore[arg-type, call-arg]
 
     def test_extend_from_proxy(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
-        case_sensitive_multidict_proxy_class: Type[MultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
+        case_sensitive_multidict_proxy_class: type[MultiDictProxy[str]],
     ) -> None:
         d = case_sensitive_multidict_class([("a", "a"), ("b", "b")])
         proxy = case_sensitive_multidict_proxy_class(d)
@@ -118,7 +117,7 @@ class TestMutableMultiDict:
 
     def test_clear(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class([("key", "one")], key="two", foo="bar")
 
@@ -128,7 +127,7 @@ class TestMutableMultiDict:
 
     def test_del(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class([("key", "one"), ("key", "two")], foo="bar")
         assert list(d.keys()) == ["key", "key", "foo"]
@@ -142,7 +141,7 @@ class TestMutableMultiDict:
 
     def test_set_default(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class([("key", "one"), ("key", "two")], foo="bar")
         assert "one" == d.setdefault("key", "three")
@@ -152,7 +151,7 @@ class TestMutableMultiDict:
 
     def test_popitem(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         d.add("key", "val1")
@@ -163,7 +162,7 @@ class TestMutableMultiDict:
 
     def test_popitem_empty_multidict(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
 
@@ -172,7 +171,7 @@ class TestMutableMultiDict:
 
     def test_pop(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         d.add("key", "val1")
@@ -183,7 +182,7 @@ class TestMutableMultiDict:
 
     def test_pop2(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         d.add("key", "val1")
@@ -195,7 +194,7 @@ class TestMutableMultiDict:
 
     def test_pop_default(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class(other="val")
 
@@ -204,7 +203,7 @@ class TestMutableMultiDict:
 
     def test_pop_raises(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class(other="val")
 
@@ -215,7 +214,7 @@ class TestMutableMultiDict:
 
     def test_replacement_order(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         d.add("key1", "val1")
@@ -231,16 +230,16 @@ class TestMutableMultiDict:
 
     def test_nonstr_key(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         with pytest.raises(TypeError):
-            d[1] = "val"
+            d[1] = "val"  # type: ignore[index]
 
     def test_istr_key(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
-        case_insensitive_str_class: Type[str],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
+        case_insensitive_str_class: type[str],
     ) -> None:
         d = case_sensitive_multidict_class()
         d[case_insensitive_str_class("1")] = "val"
@@ -248,7 +247,7 @@ class TestMutableMultiDict:
 
     def test_str_derived_key(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         class A(str):
             pass
@@ -259,8 +258,8 @@ class TestMutableMultiDict:
 
     def test_istr_key_add(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
-        case_insensitive_str_class: Type[str],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
+        case_insensitive_str_class: type[str],
     ) -> None:
         d = case_sensitive_multidict_class()
         d.add(case_insensitive_str_class("1"), "val")
@@ -268,7 +267,7 @@ class TestMutableMultiDict:
 
     def test_str_derived_key_add(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         class A(str):
             pass
@@ -279,7 +278,7 @@ class TestMutableMultiDict:
 
     def test_popall(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         d.add("key1", "val1")
@@ -291,14 +290,14 @@ class TestMutableMultiDict:
 
     def test_popall_default(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         assert "val" == d.popall("key", "val")
 
     def test_popall_key_error(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
         with pytest.raises(KeyError, match="key"):
@@ -306,7 +305,7 @@ class TestMutableMultiDict:
 
     def test_large_multidict_resizing(
         self,
-        case_sensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[int]],
     ) -> None:
         SIZE = 1024
         d = case_sensitive_multidict_class()
@@ -322,7 +321,7 @@ class TestMutableMultiDict:
 class TestCIMutableMultiDict:
     def test_getall(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class([("KEY", "value1")], KEY="value2")
 
@@ -336,7 +335,7 @@ class TestCIMutableMultiDict:
 
     def test_ctor(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class(k1="v1")
         assert "v1" == d["K1"]
@@ -344,7 +343,7 @@ class TestCIMutableMultiDict:
 
     def test_setitem(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
         d["k1"] = "v1"
@@ -353,7 +352,7 @@ class TestCIMutableMultiDict:
 
     def test_delitem(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
         d["k1"] = "v1"
@@ -363,7 +362,7 @@ class TestCIMutableMultiDict:
 
     def test_copy(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d1 = case_insensitive_multidict_class(key="KEY", a="b")
 
@@ -374,7 +373,7 @@ class TestCIMutableMultiDict:
 
     def test__repr__(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
         assert str(d) == "<%s()>" % case_insensitive_multidict_class.__name__
@@ -389,7 +388,7 @@ class TestCIMutableMultiDict:
 
     def test_add(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
 
@@ -421,18 +420,18 @@ class TestCIMutableMultiDict:
 
     def test_extend(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
         assert d == {}
 
-        d.extend([("KEY", "one"), ("key", "two")], key=3, foo="bar")
+        d.extend([("KEY", "one"), ("key", "two")], key="3", foo="bar")
         assert 4 == len(d)
         itms = d.items()
         # we can't guarantee order of kwargs
         assert ("KEY", "one") in itms
         assert ("key", "two") in itms
-        assert ("key", 3) in itms
+        assert ("key", "3") in itms
         assert ("foo", "bar") in itms
 
         other = case_insensitive_multidict_class(Bar="baz")
@@ -450,12 +449,12 @@ class TestCIMutableMultiDict:
         assert 6 == len(d)
 
         with pytest.raises(TypeError):
-            d.extend("foo", "bar")
+            d.extend("foo", "bar")  # type: ignore[arg-type, call-arg]
 
     def test_extend_from_proxy(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
-        case_insensitive_multidict_proxy_class: Type[MultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
+        case_insensitive_multidict_proxy_class: type[CIMultiDictProxy[str]],
     ) -> None:
         d = case_insensitive_multidict_class([("a", "a"), ("b", "b")])
         proxy = case_insensitive_multidict_proxy_class(d)
@@ -467,7 +466,7 @@ class TestCIMutableMultiDict:
 
     def test_clear(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class([("KEY", "one")], key="two", foo="bar")
 
@@ -477,7 +476,7 @@ class TestCIMutableMultiDict:
 
     def test_del(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class(
             [("KEY", "one"), ("key", "two")],
@@ -493,7 +492,7 @@ class TestCIMutableMultiDict:
 
     def test_set_default(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class(
             [("KEY", "one"), ("key", "two")],
@@ -507,7 +506,7 @@ class TestCIMutableMultiDict:
 
     def test_popitem(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
         d.add("KEY", "val1")
@@ -520,7 +519,7 @@ class TestCIMutableMultiDict:
 
     def test_popitem_empty_multidict(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
 
@@ -529,7 +528,7 @@ class TestCIMutableMultiDict:
 
     def test_pop(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
         d.add("KEY", "val1")
@@ -540,7 +539,7 @@ class TestCIMutableMultiDict:
 
     def test_pop_lowercase(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
         d.add("KEY", "val1")
@@ -551,7 +550,7 @@ class TestCIMutableMultiDict:
 
     def test_pop_default(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class(OTHER="val")
 
@@ -560,7 +559,7 @@ class TestCIMutableMultiDict:
 
     def test_pop_raises(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class(OTHER="val")
 
@@ -571,8 +570,8 @@ class TestCIMutableMultiDict:
 
     def test_extend_with_istr(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
-        case_insensitive_str_class: Type[str],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
+        case_insensitive_str_class: type[istr],
     ) -> None:
         us = case_insensitive_str_class("aBc")
         d = case_insensitive_multidict_class()
@@ -582,8 +581,8 @@ class TestCIMutableMultiDict:
 
     def test_copy_istr(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
-        case_insensitive_str_class: Type[str],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
+        case_insensitive_str_class: type[istr],
     ) -> None:
         d = case_insensitive_multidict_class({case_insensitive_str_class("Foo"): "bar"})
         d2 = d.copy()
@@ -591,7 +590,7 @@ class TestCIMutableMultiDict:
 
     def test_eq(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d1 = case_insensitive_multidict_class(Key="val")
         d2 = case_insensitive_multidict_class(KEY="val")
@@ -604,7 +603,7 @@ class TestCIMutableMultiDict:
     )
     def test_sizeof(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         md = case_insensitive_multidict_class()
         s1 = sys.getsizeof(md)
@@ -621,14 +620,14 @@ class TestCIMutableMultiDict:
     )
     def test_min_sizeof(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         md = case_insensitive_multidict_class()
         assert sys.getsizeof(md) < 1024
 
     def test_issue_620_items(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         # https://github.com/aio-libs/multidict/issues/620
         d = case_insensitive_multidict_class({"a": "123, 456", "b": "789"})
@@ -639,7 +638,7 @@ class TestCIMutableMultiDict:
 
     def test_issue_620_keys(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         # https://github.com/aio-libs/multidict/issues/620
         d = case_insensitive_multidict_class({"a": "123, 456", "b": "789"})
@@ -650,7 +649,7 @@ class TestCIMutableMultiDict:
 
     def test_issue_620_values(
         self,
-        case_insensitive_multidict_class: Type[MutableMultiMapping[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         # https://github.com/aio-libs/multidict/issues/620
         d = case_insensitive_multidict_class({"a": "123, 456", "b": "789"})
