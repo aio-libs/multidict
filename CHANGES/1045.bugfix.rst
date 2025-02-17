@@ -1,0 +1,1 @@
+Fixed ``in`` checks throwing an exception instead of returning :data:`False` when testing non-strings.

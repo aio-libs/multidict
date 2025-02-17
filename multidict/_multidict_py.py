@@ -123,6 +123,8 @@ class _Base:
         return True
 
     def __contains__(self, key):
+        if not isinstance(key, str):
+            return False
         identity = self._title(key)
         for i, k, v in self._impl._items:
             if i == identity:
@@ -447,8 +449,8 @@ class _ViewBase:
 
 class _ItemsView(_ViewBase, abc.ItemsView):
     def __contains__(self, item):
-        assert isinstance(item, tuple) or isinstance(item, list)
-        assert len(item) == 2
+        if not isinstance(item, (tuple, list)) or len(item) != 2:
+            return False
         for i, k, v in self._impl._items:
             if item[0] == k and item[1] == v:
                 return True
