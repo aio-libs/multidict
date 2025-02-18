@@ -49,6 +49,23 @@ class _Impl(Generic[_V]):
             return object.__sizeof__(self) + sys.getsizeof(self._items)
 
 
+class _Iter(Generic[_T]):
+    __slots__ = ("_size", "_iter")
+
+    def __init__(self, size: int, iterator: Iterator[_T]):
+        self._size = size
+        self._iter = iterator
+
+    def __iter__(self) -> Self:
+        return self
+
+    def __next__(self) -> _T:
+        return next(self._iter)
+
+    def __length_hint__(self) -> int:
+        return self._size
+
+
 class _ViewBase(Generic[_V]):
     def __init__(self, impl: _Impl[_V]):
         self._impl = impl
@@ -544,23 +561,6 @@ class CIMultiDict(MultiDict[_V]):
 
     def _title(self, key: str) -> str:
         return key.title()
-
-
-class _Iter(Generic[_T]):
-    __slots__ = ("_size", "_iter")
-
-    def __init__(self, size: int, iterator: Iterator[_T]):
-        self._size = size
-        self._iter = iterator
-
-    def __iter__(self) -> Self:
-        return self
-
-    def __next__(self) -> _T:
-        return next(self._iter)
-
-    def __length_hint__(self) -> int:
-        return self._size
 
 
 def getversion(md: Union[MultiDict[object], MultiDictProxy[object]]) -> int:
