@@ -126,7 +126,7 @@ class BaseMultiDictTest:
         assert list(d.items()) == []
 
         assert cls() != list()  # type: ignore[comparison-overlap]
-        with pytest.raises(TypeError, match=r"(3 given)"):
+        with pytest.raises(TypeError, match=r"3 were given"):
             cls(("key1", "value1"), ("key2", "value2"))  # type: ignore[call-arg]  # noqa: E501
 
     @pytest.mark.parametrize("arg0", ([("key", "value1")], {"key": "value1"}))
