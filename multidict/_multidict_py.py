@@ -14,7 +14,12 @@ from collections.abc import (
 from types import GenericAlias
 from typing import Generic, NoReturn, TypeVar, Union, cast, overload
 
-from ._abc import MDArg, MultiMapping, MutableMultiMapping, SupportsKeysAndGetItem
+from ._abc import (
+    MDArg,
+    MultiMapping,
+    MutableMultiMapping,
+    SupportsKeysAndGetItem,
+)
 
 if sys.version_info >= (3, 11):
     from typing import Self
