@@ -11,7 +11,7 @@
 #include "_multilib/iter.h"
 #include "_multilib/views.h"
 
-#if PY_MAJOR_VERSION < 3 || PY_MINOR_VERSION < 12
+#if PY_MINOR_VERSION < 12
 #ifndef _PyArg_UnpackKeywords
 #define FASTCALL_OLD
 #endif
@@ -775,21 +775,13 @@ static inline void
 multidict_tp_dealloc(MultiDictObject *self)
 {
     PyObject_GC_UnTrack(self);
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
-#else
-    Py_TRASHCAN_SAFE_BEGIN(self);
-#endif
     if (self->weaklist != NULL) {
         PyObject_ClearWeakRefs((PyObject *)self);
     };
     pair_list_dealloc(&self->pairs);
     Py_TYPE(self)->tp_free((PyObject *)self);
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     Py_TRASHCAN_END // there should be no code after this
-#else
-    Py_TRASHCAN_SAFE_END(self);
-#endif
 }
 
 static inline int
@@ -1236,16 +1228,7 @@ PyDoc_STRVAR(multidict_update_doc,
 "Update the dictionary from *other*, overwriting existing keys.");
 
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
 #define multidict_class_getitem Py_GenericAlias
-#else
-static inline PyObject *
-multidict_class_getitem(PyObject *self, PyObject *arg)
-{
-    Py_INCREF(self);
-    return self;
-}
-#endif
 
 
 PyDoc_STRVAR(sizeof__doc__,
@@ -1947,9 +1930,7 @@ getversion(PyObject *self, PyObject *md)
 static inline void
 module_free(void *m)
 {
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     Py_CLEAR(multidict_str_lower);
-#endif
     Py_CLEAR(collections_abc_mapping);
     Py_CLEAR(collections_abc_mut_mapping);
     Py_CLEAR(collections_abc_mut_multi_mapping);
@@ -1978,12 +1959,10 @@ static PyModuleDef multidict_module = {
 PyMODINIT_FUNC
 PyInit__multidict(void)
 {
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     multidict_str_lower = PyUnicode_InternFromString("lower");
     if (multidict_str_lower == NULL) {
         goto fail;
     }
-#endif
 
     PyObject *module = NULL,
              *reg_func_call_result = NULL;
@@ -2122,9 +2101,7 @@ PyInit__multidict(void)
     return module;
 
 fail:
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 9
     Py_XDECREF(multidict_str_lower);
-#endif
     Py_XDECREF(collections_abc_mapping);
     Py_XDECREF(collections_abc_mut_mapping);
     Py_XDECREF(collections_abc_mut_multi_mapping);
