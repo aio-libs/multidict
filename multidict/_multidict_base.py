@@ -1,5 +1,13 @@
 import sys
-from collections.abc import Container, ItemsView, Iterable, Mapping, KeysView, Set, ValuesView
+from collections.abc import (
+    Container,
+    ItemsView,
+    Iterable,
+    Mapping,
+    KeysView,
+    Set,
+    ValuesView,
+)
 from typing import Literal, Union
 
 if sys.version_info >= (3, 10):
@@ -25,7 +33,9 @@ def _abc_valuesview_register(view_cls: type[object]) -> None:
     ValuesView.register(view_cls)
 
 
-def _viewbaseset_richcmp(view: set[object], other: object, op: Literal[0, 1, 2, 3, 4, 5]) -> Union[bool, NotImplementedType]:
+def _viewbaseset_richcmp(
+    view: set[object], other: object, op: Literal[0, 1, 2, 3, 4, 5]
+) -> Union[bool, NotImplementedType]:
     if op == 0:  # <
         if not isinstance(other, Set):
             return NotImplemented  # type: ignore[no-any-return]
@@ -62,7 +72,9 @@ def _viewbaseset_richcmp(view: set[object], other: object, op: Literal[0, 1, 2, 
         assert_never(op)
 
 
-def _viewbaseset_and(view: set[object], other: object) -> Union[set[object], NotImplementedType]:
+def _viewbaseset_and(
+    view: set[object], other: object
+) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
     if isinstance(view, Set):
@@ -74,7 +86,9 @@ def _viewbaseset_and(view: set[object], other: object) -> Union[set[object], Not
     return view & other
 
 
-def _viewbaseset_or(view: set[object], other: object) -> Union[set[object], NotImplementedType]:
+def _viewbaseset_or(
+    view: set[object], other: object
+) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
     if isinstance(view, Set):
@@ -86,7 +100,9 @@ def _viewbaseset_or(view: set[object], other: object) -> Union[set[object], NotI
     return view | other
 
 
-def _viewbaseset_sub(view: set[object], other: object) -> Union[set[object], NotImplementedType]:
+def _viewbaseset_sub(
+    view: set[object], other: object
+) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
     if isinstance(view, Set):
@@ -98,7 +114,9 @@ def _viewbaseset_sub(view: set[object], other: object) -> Union[set[object], Not
     return view - other
 
 
-def _viewbaseset_xor(view: set[object], other: object) -> Union[set[object], NotImplementedType]:
+def _viewbaseset_xor(
+    view: set[object], other: object
+) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
     if isinstance(view, Set):

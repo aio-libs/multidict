@@ -10,7 +10,13 @@ from typing import Callable, Type, Union
 
 import pytest
 
-from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping, MutableMultiMapping
+from multidict import (
+    CIMultiDict,
+    MultiDict,
+    MultiDictProxy,
+    MultiMapping,
+    MutableMultiMapping,
+)
 
 C_EXT_MARK = pytest.mark.c_extension
 
@@ -143,7 +149,9 @@ def case_insensitive_multidict_proxy_class(
 
 
 @pytest.fixture(scope="session")
-def multidict_getversion_callable(multidict_module: ModuleType) -> Callable[[Union[MultiDict[object], MultiDictProxy[object]]], int]:
+def multidict_getversion_callable(
+    multidict_module: ModuleType,
+) -> Callable[[Union[MultiDict[object], MultiDictProxy[object]]], int]:
     """Return a ``getversion()`` function for current implementation."""
     return multidict_module.getversion  # type: ignore[no-any-return]
 

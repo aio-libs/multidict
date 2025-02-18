@@ -12,7 +12,13 @@ from typing import Union, cast
 import pytest
 
 import multidict
-from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping, MutableMultiMapping
+from multidict import (
+    CIMultiDict,
+    MultiDict,
+    MultiDictProxy,
+    MultiMapping,
+    MutableMultiMapping,
+)
 
 
 def chained_callable(
@@ -340,9 +346,7 @@ class BaseMultiDictTest:
         result = d.keys() >= set_
         assert result is expected
 
-    def test_keys_less_than_not_implemented(
-        self, cls: type[MultiDict[str]]
-    ) -> None:
+    def test_keys_less_than_not_implemented(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         sentinel_operation_result = object()
@@ -368,9 +372,7 @@ class BaseMultiDictTest:
 
         assert (d.keys() <= RightOperand()) is sentinel_operation_result
 
-    def test_keys_greater_than_not_implemented(
-        self, cls: type[MultiDict[str]]
-    ) -> None:
+    def test_keys_greater_than_not_implemented(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         sentinel_operation_result = object()
@@ -401,9 +403,7 @@ class BaseMultiDictTest:
 
         assert d.keys() != {"key2"}
 
-    def test_keys_not_equal_unrelated_type(
-        self, cls: type[MultiDict[str]]
-    ) -> None:
+    def test_keys_not_equal_unrelated_type(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert d.keys() != "other"  # type: ignore[comparison-overlap]
@@ -486,9 +486,7 @@ class BaseMultiDictTest:
 
         assert {"key"} == {"key", "key2"} & d.keys()
 
-    def test_bitwise_and_not_implemented(
-        self, cls: type[MultiDict[str]]
-    ) -> None:
+    def test_bitwise_and_not_implemented(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         sentinel_operation_result = object()
@@ -500,9 +498,7 @@ class BaseMultiDictTest:
 
         assert d.keys() & RightOperand() is sentinel_operation_result
 
-    def test_bitwise_and_iterable_not_set(
-        self, cls: type[MultiDict[str]]
-    ) -> None:
+    def test_bitwise_and_iterable_not_set(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert {"key"} == d.keys() & ["key", "key2"]
@@ -517,9 +513,7 @@ class BaseMultiDictTest:
 
         assert {"key", "key2"} == {"key2"} | d.keys()
 
-    def test_bitwise_or_not_implemented(
-        self, cls: type[MultiDict[str]]
-    ) -> None:
+    def test_bitwise_or_not_implemented(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         sentinel_operation_result = object()
@@ -531,9 +525,7 @@ class BaseMultiDictTest:
 
         assert d.keys() | RightOperand() is sentinel_operation_result
 
-    def test_bitwise_or_iterable_not_set(
-        self, cls: type[MultiDict[str]]
-    ) -> None:
+    def test_bitwise_or_iterable_not_set(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert {"key", "key2"} == d.keys() | ["key2"]

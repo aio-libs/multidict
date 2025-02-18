@@ -17,7 +17,9 @@ def test_multidict_inheritance(any_multidict_class: type[MultiDict[str]]) -> Non
     assert issubclass(any_multidict_class, MutableMultiMapping)
 
 
-def test_proxy_inheritance(any_multidict_proxy_class: type[MultiDictProxy[str]]) -> None:
+def test_proxy_inheritance(
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+) -> None:
     assert issubclass(any_multidict_proxy_class, MultiMapping)
     assert not issubclass(any_multidict_proxy_class, MutableMultiMapping)
 

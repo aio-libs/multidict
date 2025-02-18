@@ -2,7 +2,15 @@ import abc
 import enum
 import sys
 from array import array
-from collections.abc import Callable, ItemsView, Iterable, Iterator, KeysView, Mapping, ValuesView
+from collections.abc import (
+    Callable,
+    ItemsView,
+    Iterable,
+    Iterator,
+    KeysView,
+    Mapping,
+    ValuesView,
+)
 from types import GenericAlias
 from typing import Generic, NoReturn, TypeVar, Union, cast, overload
 
@@ -155,12 +163,12 @@ class _Base(MultiMapping[_V]):
         return key
 
     @overload
-    def getall(self, key: str) -> list[_V]:
-        ...
+    def getall(self, key: str) -> list[_V]: ...
     @overload
-    def getall(self, key: str, default: _T) -> Union[list[_V], _T]:
-        ...
-    def getall(self, key: str, default: Union[_T, _SENTINEL] = sentinel) -> Union[list[_V], _T]:
+    def getall(self, key: str, default: _T) -> Union[list[_V], _T]: ...
+    def getall(
+        self, key: str, default: Union[_T, _SENTINEL] = sentinel
+    ) -> Union[list[_V], _T]:
         """Return a list of all values matching the key."""
         identity = self._title(key)
         res = [v for i, k, v in self._impl._items if i == identity]
@@ -171,12 +179,12 @@ class _Base(MultiMapping[_V]):
         raise KeyError("Key not found: %r" % key)
 
     @overload
-    def getone(self, key: str) -> _V:
-        ...
+    def getone(self, key: str) -> _V: ...
     @overload
-    def getone(self, key: str, default: _T) -> Union[_V, _T]:
-        ...
-    def getone(self, key: str, default: Union[_T, _SENTINEL] = sentinel) -> Union[_V, _T]:
+    def getone(self, key: str, default: _T) -> Union[_V, _T]: ...
+    def getone(
+        self, key: str, default: Union[_T, _SENTINEL] = sentinel
+    ) -> Union[_V, _T]:
         """Get first value matching the key.
 
         Raises KeyError if the key is not found and no default is provided.
@@ -195,11 +203,9 @@ class _Base(MultiMapping[_V]):
         return self.getone(key)
 
     @overload
-    def get(self, key: str, /) -> Union[_V, None]:
-        ...
+    def get(self, key: str, /) -> Union[_V, None]: ...
     @overload
-    def get(self, key: str, /, default: _T) -> Union[_V, _T]:
-        ...
+    def get(self, key: str, /, default: _T) -> Union[_V, _T]: ...
     def get(self, key: str, default: Union[_T, None] = None) -> Union[_V, _T, None]:
         """Get first value matching the key.
 
@@ -282,9 +288,7 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
         if isinstance(key, str):
             return key
         else:
-            raise TypeError(
-                "MultiDict keys should be either str or subclasses of str"
-            )
+            raise TypeError("MultiDict keys should be either str or subclasses of str")
 
     def add(self, key: str, value: _V) -> None:
         identity = self._title(key)
@@ -368,11 +372,11 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
             self._impl.incr_version()
 
     @overload
-    def setdefault(self: "MultiDict[Union[_T, None]]", key: str, default: None = None) -> Union[_T, None]:
-        ...
+    def setdefault(
+        self: "MultiDict[Union[_T, None]]", key: str, default: None = None
+    ) -> Union[_T, None]: ...
     @overload
-    def setdefault(self, key: str, default: _V) -> _V:
-        ...
+    def setdefault(self, key: str, default: _V) -> _V: ...
     def setdefault(self, key: str, default: Union[_V, None] = None) -> Union[_V, None]:  # type: ignore[misc]
         """Return value for key, set value to default if key is not present."""
         identity = self._title(key)
@@ -383,12 +387,12 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
         return default
 
     @overload
-    def popone(self, key: str) -> _V:
-        ...
+    def popone(self, key: str) -> _V: ...
     @overload
-    def popone(self, key: str, default: _T) -> Union[_V, _T]:
-        ...
-    def popone(self, key: str, default: Union[_T, _SENTINEL] = sentinel) -> Union[_V, _T]:
+    def popone(self, key: str, default: _T) -> Union[_V, _T]: ...
+    def popone(
+        self, key: str, default: Union[_T, _SENTINEL] = sentinel
+    ) -> Union[_V, _T]:
         """Remove specified key and return the corresponding value.
 
         If key is not found, d is returned if given, otherwise
@@ -410,12 +414,12 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
     pop = popone  # type: ignore[assignment]
 
     @overload
-    def popall(self, key: str) -> list[_V]:
-        ...
+    def popall(self, key: str) -> list[_V]: ...
     @overload
-    def popall(self, key: str, default: _T) -> Union[list[_V], _T]:
-        ...
-    def popall(self, key: str, default: Union[_T, _SENTINEL] = sentinel) -> Union[list[_V], _T]:
+    def popall(self, key: str, default: _T) -> Union[list[_V], _T]: ...
+    def popall(
+        self, key: str, default: Union[_T, _SENTINEL] = sentinel
+    ) -> Union[list[_V], _T]:
         """Remove all occurrences of key and return the list of corresponding
         values.
 

@@ -12,7 +12,9 @@ if TYPE_CHECKING:
 here = Path(__file__).resolve().parent
 
 
-def test_pickle(any_multidict_class: type[MultiDict[int]], pickle_protocol: int) -> None:
+def test_pickle(
+    any_multidict_class: type[MultiDict[int]], pickle_protocol: int
+) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     pbytes = pickle.dumps(d, pickle_protocol)
     obj = pickle.loads(pbytes)
@@ -20,14 +22,21 @@ def test_pickle(any_multidict_class: type[MultiDict[int]], pickle_protocol: int)
     assert isinstance(obj, any_multidict_class)
 
 
-def test_pickle_proxy(any_multidict_class: type[MultiDict[int]], any_multidict_proxy_class: type[MultiDictProxy[int]]) -> None:
+def test_pickle_proxy(
+    any_multidict_class: type[MultiDict[int]],
+    any_multidict_proxy_class: type[MultiDictProxy[int]],
+) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     proxy = any_multidict_proxy_class(d)
     with pytest.raises(TypeError):
         pickle.dumps(proxy)
 
 
-def test_load_from_file(any_multidict_class: type[MultiDict[int]], multidict_implementation: "MultidictImplementation", pickle_protocol: int) -> None:
+def test_load_from_file(
+    any_multidict_class: type[MultiDict[int]],
+    multidict_implementation: "MultidictImplementation",
+    pickle_protocol: int,
+) -> None:
     multidict_class_name = any_multidict_class.__name__
     pickle_file_basename = "-".join(
         (

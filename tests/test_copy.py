@@ -17,8 +17,7 @@ def test_copy(any_multidict_class: _MD_Classes) -> None:
 
 
 def test_copy_proxy(
-    any_multidict_class: _MD_Classes,
-    any_multidict_proxy_class: _MDP_Classes
+    any_multidict_class: _MD_Classes, any_multidict_proxy_class: _MDP_Classes
 ) -> None:
     d = any_multidict_class()
     d["foo"] = 6
