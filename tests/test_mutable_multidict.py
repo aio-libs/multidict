@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDictProxy, istr
 
 
 class TestMutableMultiDict:
