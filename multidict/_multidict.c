@@ -345,8 +345,8 @@ _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
     if (args && PyObject_Length(args) > 1)  {
         PyErr_Format(
             PyExc_TypeError,
-            "%s takes at most 1 positional argument (%zd given)",
-            name, PyObject_Length(args), NULL
+            "%s takes at most 2 positional arguments (%zd given)",
+            name, PyObject_Length(args) + 1, NULL
         );
         return -1;
     }
