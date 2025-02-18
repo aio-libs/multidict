@@ -2,7 +2,7 @@ from collections.abc import Mapping, MutableMapping
 
 import pytest
 
-from multidict import MultiDict, MultiDictProxy, MultiMapping, MutableMultiMapping
+from multidict import MultiDict, MultiDictProxy, MutableMultiMapping, MultiMapping
 
 
 def test_abc_inheritance() -> None:

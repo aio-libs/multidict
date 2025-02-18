@@ -3,7 +3,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Union
 
-from multidict import MultiDict, CIMultiDict
+from multidict import CIMultiDict, MultiDict
 
 TESTS_DIR = Path(__file__).parent.resolve()
 _MD_Classes = Union[type[MultiDict[int]], type[CIMultiDict[int]]]

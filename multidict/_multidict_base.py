@@ -1,12 +1,6 @@
 import sys
 from collections.abc import (
-    Container,
-    ItemsView,
-    Iterable,
-    Mapping,
-    KeysView,
-    Set,
-    ValuesView,
+    Container, ItemsView, Iterable, Mapping, KeysView, Set, ValuesView
 )
 from typing import Literal, Union
 

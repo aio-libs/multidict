@@ -3,7 +3,7 @@ from typing import TypeVar, Union
 
 import pytest
 
-from multidict import MultiDict, MultiDictProxy, CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 _T = TypeVar("_T")
 _MD_Types = Union[

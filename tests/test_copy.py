@@ -1,7 +1,7 @@
 import copy
 from typing import Union
 
-from multidict import MultiDict, MultiDictProxy, CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 _MD_Classes = Union[type[MultiDict[int]], type[CIMultiDict[int]]]
 _MDP_Classes = Union[type[MultiDictProxy[int]], type[CIMultiDictProxy[int]]]
