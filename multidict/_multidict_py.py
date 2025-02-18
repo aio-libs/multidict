@@ -49,6 +49,88 @@ class _Impl(Generic[_V]):
             return object.__sizeof__(self) + sys.getsizeof(self._items)
 
 
+class _ViewBase(Generic[_V]):
+    def __init__(self, impl: _Impl[_V]):
+        self._impl = impl
+
+    def __len__(self) -> int:
+        return len(self._impl._items)
+
+
+class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
+    def __contains__(self, item: object) -> bool:
+        if not isinstance(item, (tuple, list)) or len(item) != 2:
+            return False
+        for i, k, v in self._impl._items:
+            if item[0] == k and item[1] == v:
+                return True
+        return False
+
+    def __iter__(self) -> _Iter[tuple[str, _V]]:
+        return _Iter(len(self), self._iter(self._impl._version))
+
+    def _iter(self, version: int) -> Iterator[tuple[str, _V]]:
+        for i, k, v in self._impl._items:
+            if version != self._impl._version:
+                raise RuntimeError("Dictionary changed during iteration")
+            yield k, v
+
+    def __repr__(self) -> str:
+        lst = []
+        for item in self._impl._items:
+            lst.append("{!r}: {!r}".format(item[1], item[2]))
+        body = ", ".join(lst)
+        return "{}({})".format(self.__class__.__name__, body)
+
+
+class _ValuesView(_ViewBase[_V], ValuesView[_V]):
+    def __contains__(self, value: object) -> bool:
+        for item in self._impl._items:
+            if item[2] == value:
+                return True
+        return False
+
+    def __iter__(self) -> _Iter[_V]:
+        return _Iter(len(self), self._iter(self._impl._version))
+
+    def _iter(self, version: int) -> Iterator[_V]:
+        for item in self._impl._items:
+            if version != self._impl._version:
+                raise RuntimeError("Dictionary changed during iteration")
+            yield item[2]
+
+    def __repr__(self) -> str:
+        lst = []
+        for item in self._impl._items:
+            lst.append("{!r}".format(item[2]))
+        body = ", ".join(lst)
+        return "{}({})".format(self.__class__.__name__, body)
+
+
+class _KeysView(_ViewBase[_V], KeysView[str]):
+    def __contains__(self, key: object) -> bool:
+        for item in self._impl._items:
+            if item[1] == key:
+                return True
+        return False
+
+    def __iter__(self) -> _Iter[str]:
+        return _Iter(len(self), self._iter(self._impl._version))
+
+    def _iter(self, version: int) -> Iterator[str]:
+        for item in self._impl._items:
+            if version != self._impl._version:
+                raise RuntimeError("Dictionary changed during iteration")
+            yield item[1]
+
+    def __repr__(self) -> str:
+        lst = []
+        for item in self._impl._items:
+            lst.append("{!r}".format(item[1]))
+        body = ", ".join(lst)
+        return "{}({})".format(self.__class__.__name__, body)
+
+
 class _Base(MultiMapping[_V]):
     _impl: _Impl[_V]
 
@@ -479,88 +561,6 @@ class _Iter(Generic[_T]):
 
     def __length_hint__(self) -> int:
         return self._size
-
-
-class _ViewBase(Generic[_V]):
-    def __init__(self, impl: _Impl[_V]):
-        self._impl = impl
-
-    def __len__(self) -> int:
-        return len(self._impl._items)
-
-
-class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
-    def __contains__(self, item: object) -> bool:
-        if not isinstance(item, (tuple, list)) or len(item) != 2:
-            return False
-        for i, k, v in self._impl._items:
-            if item[0] == k and item[1] == v:
-                return True
-        return False
-
-    def __iter__(self) -> _Iter[tuple[str, _V]]:
-        return _Iter(len(self), self._iter(self._impl._version))
-
-    def _iter(self, version: int) -> Iterator[tuple[str, _V]]:
-        for i, k, v in self._impl._items:
-            if version != self._impl._version:
-                raise RuntimeError("Dictionary changed during iteration")
-            yield k, v
-
-    def __repr__(self) -> str:
-        lst = []
-        for item in self._impl._items:
-            lst.append("{!r}: {!r}".format(item[1], item[2]))
-        body = ", ".join(lst)
-        return "{}({})".format(self.__class__.__name__, body)
-
-
-class _ValuesView(_ViewBase[_V], ValuesView[_V]):
-    def __contains__(self, value: object) -> bool:
-        for item in self._impl._items:
-            if item[2] == value:
-                return True
-        return False
-
-    def __iter__(self) -> _Iter[_V]:
-        return _Iter(len(self), self._iter(self._impl._version))
-
-    def _iter(self, version: int) -> Iterator[_V]:
-        for item in self._impl._items:
-            if version != self._impl._version:
-                raise RuntimeError("Dictionary changed during iteration")
-            yield item[2]
-
-    def __repr__(self) -> str:
-        lst = []
-        for item in self._impl._items:
-            lst.append("{!r}".format(item[2]))
-        body = ", ".join(lst)
-        return "{}({})".format(self.__class__.__name__, body)
-
-
-class _KeysView(_ViewBase[_V], KeysView[str]):
-    def __contains__(self, key: object) -> bool:
-        for item in self._impl._items:
-            if item[1] == key:
-                return True
-        return False
-
-    def __iter__(self) -> _Iter[str]:
-        return _Iter(len(self), self._iter(self._impl._version))
-
-    def _iter(self, version: int) -> Iterator[str]:
-        for item in self._impl._items:
-            if version != self._impl._version:
-                raise RuntimeError("Dictionary changed during iteration")
-            yield item[1]
-
-    def __repr__(self) -> str:
-        lst = []
-        for item in self._impl._items:
-            lst.append("{!r}".format(item[1]))
-        body = ", ".join(lst)
-        return "{}({})".format(self.__class__.__name__, body)
 
 
 def getversion(md: Union[MultiDict[object], MultiDictProxy[object]]) -> int:
