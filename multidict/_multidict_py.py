@@ -108,7 +108,7 @@ class _Base(MultiMapping[_V]):
         """
         return self.getone(key, default)
 
-    def __iter__(self) -> Iterator[Union[str, istr]]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self.keys())
 
     def __len__(self) -> int:
@@ -563,7 +563,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         return "{}({})".format(self.__class__.__name__, body)
 
 
-def getversion(md: _Base[object]) -> int:
+def getversion(md: Union[MultiDict[object], MultiDictProxy[object]]) -> int:
     if not isinstance(md, _Base):
         raise TypeError("Parameter should be multidict or proxy")
     return md._impl._version
