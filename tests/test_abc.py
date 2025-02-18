@@ -1,7 +1,5 @@
 from collections.abc import Mapping, MutableMapping
 
-import pytest
-
 from multidict import (
     MultiDict,
     MultiDictProxy,

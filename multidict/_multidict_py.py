@@ -1,4 +1,3 @@
-import abc
 import enum
 import sys
 from array import array
@@ -11,7 +10,6 @@ from collections.abc import (
     Mapping,
     ValuesView,
 )
-from types import GenericAlias
 from typing import Generic, NoReturn, TypeVar, Union, cast, overload
 
 from ._abc import (
