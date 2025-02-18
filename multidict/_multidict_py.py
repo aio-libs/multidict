@@ -318,7 +318,7 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
             else:
                 if hasattr(arg, "keys"):
                     arg = cast(SupportsKeysAndGetItem[_V], arg)
-                    arg = ((k, arg[k]) for k in arg.keys())
+                    arg = [(k, arg[k]) for k in arg.keys()]
                 if kwargs:
                     arg = list(arg)
                     arg.extend(list(kwargs.items()))
