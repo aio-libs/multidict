@@ -224,6 +224,23 @@ class BaseMultiDictTest:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
         assert list(d) == ["key", "key2", "key"]
 
+    def test__contains(
+        self,
+        cls: Union[
+            Type[MultiDict[Union[str, int]]],
+            Type[CIMultiDict[Union[str, int]]],
+        ],
+    ) -> None:
+        d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
+
+        assert list(d) == ["key", "key2", "key"]
+
+        assert "key" in d
+        assert "key2" in d
+
+        assert "foo" not in d
+        assert 42 not in d
+
     def test_keys__contains(
         self,
         cls: Union[
@@ -239,6 +256,7 @@ class BaseMultiDictTest:
         assert "key2" in d.keys()
 
         assert "foo" not in d.keys()
+        assert 42 not in d.keys()
 
     def test_values__contains(
         self,
@@ -273,6 +291,8 @@ class BaseMultiDictTest:
         assert ("key", 3) in d.items()
 
         assert ("foo", "bar") not in d.items()
+        assert (42, 3) not in d.items()
+        assert 42 not in d.items()
 
     def test_cannot_create_from_unaccepted(
         self,

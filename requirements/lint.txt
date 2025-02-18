@@ -1,4 +1,5 @@
 -r ci.txt
+-r towncrier.txt
 
 black==24.10.0
 isort==5.13.2
