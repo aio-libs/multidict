@@ -178,7 +178,7 @@ class BaseMultiDictTest:
                 return ("key", "value1")[pos]
 
         # Works at runtime, but won't type check.
-        d = cls([Pair()])
+        d = cls([Pair()])  # type: ignore[list-item]
         assert d == {"key": "value1"}
 
     def test_getone(self, cls: type[MultiDict[str]]) -> None:
@@ -224,7 +224,7 @@ class BaseMultiDictTest:
         assert "key2" in d
 
         assert "foo" not in d
-        assert 42 not in d
+        assert 42 not in d  # type: ignore[comparison-overlap]
 
     def test_keys__contains(
         self,
@@ -241,7 +241,7 @@ class BaseMultiDictTest:
         assert "key2" in d.keys()
 
         assert "foo" not in d.keys()
-        assert 42 not in d.keys()
+        assert 42 not in d.keys()  # type: ignore[comparison-overlap]
 
     def test_values__contains(
         self,
@@ -276,8 +276,8 @@ class BaseMultiDictTest:
         assert ("key", 3) in d.items()
 
         assert ("foo", "bar") not in d.items()
-        assert (42, 3) not in d.items()
-        assert 42 not in d.items()
+        assert (42, 3) not in d.items()  # type: ignore[comparison-overlap]
+        assert 42 not in d.items()  # type: ignore[comparison-overlap]
 
     def test_cannot_create_from_unaccepted(
         self,
@@ -286,7 +286,7 @@ class BaseMultiDictTest:
         with pytest.raises(TypeError):
             cls([(1, 2, 3)])  # type: ignore[call-arg]
 
-    def test_keys_is_set_less(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_keys_is_set_less(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert d.keys() < {"key", "key2"}
@@ -302,7 +302,7 @@ class BaseMultiDictTest:
     )
     def test_keys_is_set_less_equal(
         self,
-        cls: type[MutableMultiMapping[str]],
+        cls: type[MultiDict[str]],
         contents: list[tuple[str, str]],
         expected: bool,
     ) -> None:
@@ -311,12 +311,12 @@ class BaseMultiDictTest:
         result = d.keys() <= {"key", "key2"}
         assert result is expected
 
-    def test_keys_is_set_equal(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_keys_is_set_equal(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert d.keys() == {"key"}
 
-    def test_keys_is_set_greater(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_keys_is_set_greater(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         assert d.keys() > {"key"}
@@ -331,7 +331,7 @@ class BaseMultiDictTest:
         ),
     )
     def test_keys_is_set_greater_equal(
-        self, cls: type[MutableMultiMapping[str]], set_: set[str], expected: bool
+        self, cls: type[MultiDict[str]], set_: set[str], expected: bool
     ) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
@@ -339,7 +339,7 @@ class BaseMultiDictTest:
         assert result is expected
 
     def test_keys_less_than_not_implemented(
-        self, cls: type[MutableMultiMapping[str]]
+        self, cls: type[MultiDict[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
@@ -353,7 +353,7 @@ class BaseMultiDictTest:
         assert (d.keys() < RightOperand()) is sentinel_operation_result
 
     def test_keys_less_than_or_equal_not_implemented(
-        self, cls: type[MutableMultiMapping[str]]
+        self, cls: type[MultiDict[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
@@ -367,7 +367,7 @@ class BaseMultiDictTest:
         assert (d.keys() <= RightOperand()) is sentinel_operation_result
 
     def test_keys_greater_than_not_implemented(
-        self, cls: type[MutableMultiMapping[str]]
+        self, cls: type[MultiDict[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
@@ -381,7 +381,7 @@ class BaseMultiDictTest:
         assert (d.keys() > RightOperand()) is sentinel_operation_result
 
     def test_keys_greater_than_or_equal_not_implemented(
-        self, cls: type[MutableMultiMapping[str]]
+        self, cls: type[MultiDict[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
@@ -394,30 +394,30 @@ class BaseMultiDictTest:
 
         assert (d.keys() >= RightOperand()) is sentinel_operation_result
 
-    def test_keys_is_set_not_equal(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_keys_is_set_not_equal(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert d.keys() != {"key2"}
 
     def test_keys_not_equal_unrelated_type(
-        self, cls: type[MutableMultiMapping[str]]
+        self, cls: type[MultiDict[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
-        assert d.keys() != "other"
+        assert d.keys() != "other"  # type: ignore[comparison-overlap]
 
-    def test_eq(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_eq(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert {"key": "value1"} == d
 
-    def test_eq2(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_eq2(self, cls: type[MultiDict[str]]) -> None:
         d1 = cls([("key", "value1")])
         d2 = cls([("key2", "value1")])
 
         assert d1 != d2
 
-    def test_eq3(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_eq3(self, cls: type[MultiDict[str]]) -> None:
         d1 = cls([("key", "value1")])
         d2 = cls()
 
@@ -425,7 +425,7 @@ class BaseMultiDictTest:
 
     def test_eq_other_mapping_contains_more_keys(
         self,
-        cls: type[MutableMultiMapping[str]],
+        cls: type[MultiDict[str]],
     ) -> None:
         d1 = cls(foo="bar")
         d2 = dict(foo="bar", bar="baz")
@@ -442,21 +442,21 @@ class BaseMultiDictTest:
             def __iter__(self) -> Iterator[str]:
                 yield "a"  # pragma: no cover  # `len()` fails earlier
 
-            def __len__(self) -> int:  # type: ignore[return]
-                1 / 0
+            def __len__(self) -> int:
+                return 1 // 0
 
         d1 = cls(a=1)
         d2 = BadMapping()
         with pytest.raises(ZeroDivisionError):
-            d1 == d2
+            d1 == d2  # type: ignore[comparison-overlap]
 
     def test_eq_bad_mapping_getitem(
         self,
         cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
     ) -> None:
         class BadMapping(Mapping[str, int]):
-            def __getitem__(self, key: str) -> int:  # type: ignore[return]
-                1 / 0
+            def __getitem__(self, key: str) -> int:
+                return 1 // 0
 
             def __iter__(self) -> Iterator[str]:
                 yield "a"  # pragma: no cover  # foreign objects no iterated
@@ -467,25 +467,25 @@ class BaseMultiDictTest:
         d1 = cls(a=1)
         d2 = BadMapping()
         with pytest.raises(ZeroDivisionError):
-            d1 == d2
+            d1 == d2  # type: ignore[comparison-overlap]
 
-    def test_ne(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_ne(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert d != {"key": "another_value"}
 
-    def test_and(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_and(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert {"key"} == d.keys() & {"key", "key2"}
 
-    def test_and2(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_and2(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert {"key"} == {"key", "key2"} & d.keys()
 
     def test_bitwise_and_not_implemented(
-        self, cls: type[MutableMultiMapping[str]]
+        self, cls: type[MultiDict[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
@@ -499,24 +499,24 @@ class BaseMultiDictTest:
         assert d.keys() & RightOperand() is sentinel_operation_result
 
     def test_bitwise_and_iterable_not_set(
-        self, cls: type[MutableMultiMapping[str]]
+        self, cls: type[MultiDict[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
         assert {"key"} == d.keys() & ["key", "key2"]
 
-    def test_or(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_or(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert {"key", "key2"} == d.keys() | {"key2"}
 
-    def test_or2(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_or2(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
         assert {"key", "key2"} == {"key2"} | d.keys()
 
     def test_bitwise_or_not_implemented(
-        self, cls: type[MutableMultiMapping[str]]
+        self, cls: type[MultiDict[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
@@ -530,23 +530,23 @@ class BaseMultiDictTest:
         assert d.keys() | RightOperand() is sentinel_operation_result
 
     def test_bitwise_or_iterable_not_set(
-        self, cls: type[MutableMultiMapping[str]]
+        self, cls: type[MultiDict[str]]
     ) -> None:
         d = cls([("key", "value1")])
 
         assert {"key", "key2"} == d.keys() | ["key2"]
 
-    def test_sub(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_sub(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         assert {"key"} == d.keys() - {"key2"}
 
-    def test_sub2(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_sub2(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         assert {"key3"} == {"key", "key2", "key3"} - d.keys()
 
-    def test_sub_not_implemented(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_sub_not_implemented(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         sentinel_operation_result = object()
@@ -558,22 +558,22 @@ class BaseMultiDictTest:
 
         assert d.keys() - RightOperand() is sentinel_operation_result
 
-    def test_sub_iterable_not_set(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_sub_iterable_not_set(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         assert {"key"} == d.keys() - ["key2"]
 
-    def test_xor(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_xor(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         assert {"key", "key3"} == d.keys() ^ {"key2", "key3"}
 
-    def test_xor2(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_xor2(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         assert {"key", "key3"} == {"key2", "key3"} ^ d.keys()
 
-    def test_xor_not_implemented(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_xor_not_implemented(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         sentinel_operation_result = object()
@@ -585,7 +585,7 @@ class BaseMultiDictTest:
 
         assert d.keys() ^ RightOperand() is sentinel_operation_result
 
-    def test_xor_iterable_not_set(self, cls: type[MutableMultiMapping[str]]) -> None:
+    def test_xor_iterable_not_set(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
         assert {"key", "key3"} == d.keys() ^ ["key2", "key3"]
@@ -595,7 +595,7 @@ class BaseMultiDictTest:
         (("key2", "v", True), ("key", "value1", False)),
     )
     def test_isdisjoint(
-        self, cls: type[MutableMultiMapping[str]], key: str, value: str, expected: bool
+        self, cls: type[MultiDict[str]], key: str, value: str, expected: bool
     ) -> None:
         d = cls([("key", "value1")])
         assert d.items().isdisjoint({(key, value)}) is expected
@@ -619,7 +619,7 @@ class BaseMultiDictTest:
     @pytest.mark.parametrize("other", ({"other"},))
     def test_op_issue_aiohttp_issue_410(
         self,
-        cls: type[MutableMultiMapping[str]],
+        cls: type[MultiDict[str]],
         op: Callable[[object, object], object],
         other: set[str],
     ) -> None:

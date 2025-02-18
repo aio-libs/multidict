@@ -19,20 +19,20 @@ MDArg = Union[SupportsKeysAndGetItem[_V], Iterable[tuple[str, _V]], None]
 
 class MultiMapping(Mapping[Union[str, istr], _V_co]):
     @overload
-    def getall(self, key: str, default: _T) -> Union[list[_V_co], _T]:
+    def getall(self, key: str) -> list[_V_co]:
         ...
     @overload
-    def getall(self, key: str) -> list[_V_co]:
+    def getall(self, key: str, default: _T) -> Union[list[_V_co], _T]:
         ...
     @abc.abstractmethod
     def getall(self, key: str, default: _T = ...) -> Union[list[_V_co], _T]:
         """Return all values for key."""
 
     @overload
-    def getone(self, key: str, default: _T) -> Union[_V_co, _T]:
+    def getone(self, key: str) -> _V_co:
         ...
     @overload
-    def getone(self, key: str) -> _V_co:
+    def getone(self, key: str, default: _T) -> Union[_V_co, _T]:
         ...
     @abc.abstractmethod
     def getone(self, key: str, default: _T = ...) -> Union[_V_co, _T]:
@@ -49,20 +49,20 @@ class MutableMultiMapping(MultiMapping[_V], MutableMapping[Union[str, istr], _V]
         """Add everything from arg and kwargs to the mapping."""
 
     @overload
-    def popone(self, key: str, default: _T) -> Union[_V, _T]:
+    def popone(self, key: str) -> _V:
         ...
     @overload
-    def popone(self, key: str) -> _V:
+    def popone(self, key: str, default: _T) -> Union[_V, _T]:
         ...
     @abc.abstractmethod
     def popone(self, key: str, default: _T = ...) -> Union[_V, _T]:
         """Remove specified key and return the corresponding value."""
 
     @overload
-    def popall(self, key: str, default: _T) -> Union[list[_V], _T]:
+    def popall(self, key: str) -> list[_V]:
         ...
     @overload
-    def popall(self, key: str) -> list[_V]:
+    def popall(self, key: str, default: _T) -> Union[list[_V], _T]:
         ...
     @abc.abstractmethod
     def popall(self, key: str, default: _T = ...) -> Union[list[_V], _T]:

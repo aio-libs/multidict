@@ -49,10 +49,10 @@ class _Base(MultiMapping[_V]):
         return key
 
     @overload
-    def getall(self, key: str, default: _T) -> Union[list[_V], _T]:
+    def getall(self, key: str) -> list[_V]:
         ...
     @overload
-    def getall(self, key: str) -> list[_V]:
+    def getall(self, key: str, default: _T) -> Union[list[_V], _T]:
         ...
     def getall(self, key: str, default: Union[_T, _SENTINEL] = sentinel) -> Union[list[_V], _T]:
         """Return a list of all values matching the key."""
@@ -65,10 +65,10 @@ class _Base(MultiMapping[_V]):
         raise KeyError("Key not found: %r" % key)
 
     @overload
-    def getone(self, key: str, default: _T) -> Union[_V, _T]:
+    def getone(self, key: str) -> _V:
         ...
     @overload
-    def getone(self, key: str) -> _V:
+    def getone(self, key: str, default: _T) -> Union[_V, _T]:
         ...
     def getone(self, key: str, default: Union[_T, _SENTINEL] = sentinel) -> Union[_V, _T]:
         """Get first value matching the key.
@@ -317,10 +317,10 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
         return default
 
     @overload
-    def popone(self, key: str, default: _T) -> Union[_V, _T]:
+    def popone(self, key: str) -> _V:
         ...
     @overload
-    def popone(self, key: str) -> _V:
+    def popone(self, key: str, default: _T) -> Union[_V, _T]:
         ...
     def popone(self, key: str, default: Union[_T, _SENTINEL] = sentinel) -> Union[_V, _T]:
         """Remove specified key and return the corresponding value.
@@ -344,10 +344,10 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
     pop = popone  # type: ignore[assignment]
 
     @overload
-    def popall(self, key: str, default: _T) -> Union[list[_V], _T]:
+    def popall(self, key: str) -> list[_V]:
         ...
     @overload
-    def popall(self, key: str) -> list[_V]:
+    def popall(self, key: str, default: _T) -> Union[list[_V], _T]:
         ...
     def popall(self, key: str, default: Union[_T, _SENTINEL] = sentinel) -> Union[list[_V], _T]:
         """Remove all occurrences of key and return the list of corresponding
