@@ -622,9 +622,8 @@ PyObject_ClearManagedDict(PyObject *obj)
 }
 #endif
 
-// gh-108867 added PyThreadState_GetUnchecked() to Python 3.13.0a1
-// Python 3.5.2 added _PyThreadState_UncheckedGet().
-#if PY_VERSION_HEX >= 0x03050200 && PY_VERSION_HEX < 0x030D00A1
+// gh-108867 added PyThreadState_GetUnchecked() to Python 3.13.0a1.
+#if PY_VERSION_HEX < 0x030D00A1
 static inline PyThreadState*
 PyThreadState_GetUnchecked(void)
 {
@@ -646,8 +645,6 @@ PyUnicode_EqualToUTF8AndSize(PyObject *unicode, const char *str, Py_ssize_t str_
     // API cannot report errors so save/restore the exception
     PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
 
-    // Python 3.3.0a1 added PyUnicode_AsUTF8AndSize()
-#if PY_VERSION_HEX >= 0x030300A1
     if (PyUnicode_IS_ASCII(unicode)) {
         utf8 = PyUnicode_DATA(unicode);
         len = PyUnicode_GET_LENGTH(unicode);
@@ -667,31 +664,6 @@ PyUnicode_EqualToUTF8AndSize(PyObject *unicode, const char *str, Py_ssize_t str_
         goto done;
     }
     res = (memcmp(utf8, str, (size_t)len) == 0);
-#else
-    PyObject *bytes = PyUnicode_AsUTF8String(unicode);
-    if (bytes == NULL) {
-        // Memory allocation failure. The API cannot report error,
-        // so ignore the exception and return 0.
-        res = 0;
-        goto done;
-    }
-
-#if PY_VERSION_HEX >= 0x03000000
-    len = PyBytes_GET_SIZE(bytes);
-    utf8 = PyBytes_AS_STRING(bytes);
-#else
-    len = PyString_GET_SIZE(bytes);
-    utf8 = PyString_AS_STRING(bytes);
-#endif
-    if (len != str_len) {
-        Py_DECREF(bytes);
-        res = 0;
-        goto done;
-    }
-
-    res = (memcmp(utf8, str, (size_t)len) == 0);
-    Py_DECREF(bytes);
-#endif
 
 done:
     PyErr_Restore(exc_type, exc_value, exc_tb);
@@ -736,13 +708,9 @@ PyDict_Pop(PyObject *dict, PyObject *key, PyObject **result)
         return -1;
     }
 
-    // bpo-16991 added _PyDict_Pop() to Python 3.5.0b2.
-    // Python 3.6.0b3 changed _PyDict_Pop() first argument type to PyObject*.
     // Python 3.13.0a1 removed _PyDict_Pop().
-#if defined(PYPY_VERSION) || PY_VERSION_HEX < 0x030500b2 || PY_VERSION_HEX >= 0x030D0000
+#if defined(PYPY_VERSION) || PY_VERSION_HEX >= 0x030D0000
     value = PyObject_CallMethod(dict, "pop", "O", key);
-#elif PY_VERSION_HEX < 0x030600b3
-    value = _PyDict_Pop(_Py_CAST(PyDictObject*, dict), key, NULL);
 #else
     value = _PyDict_Pop(dict, key, NULL);
 #endif
@@ -783,17 +751,11 @@ PyDict_PopString(PyObject *dict, const char *key, PyObject **result)
 #endif
 
 
-#if PY_VERSION_HEX < 0x030200A4
-// Python 3.2.0a4 added Py_hash_t type
-typedef Py_ssize_t Py_hash_t;
-#endif
-
-
 // gh-111545 added Py_HashPointer() to Python 3.13.0a3
 #if PY_VERSION_HEX < 0x030D00A3
 static inline Py_hash_t Py_HashPointer(const void *ptr)
 {
-#if PY_VERSION_HEX >= 0x030900A4 && !defined(PYPY_VERSION)
+#if !defined(PYPY_VERSION)
     return _Py_HashPointer(ptr);
 #else
     return _Py_HashPointer(_Py_CAST(void*, ptr));
@@ -803,8 +765,7 @@ static inline Py_hash_t Py_HashPointer(const void *ptr)
 
 
 // Python 3.13a4 added a PyTime API.
-// Use the private API added to Python 3.5.
-#if PY_VERSION_HEX < 0x030D00A4 && PY_VERSION_HEX  >= 0x03050000
+#if PY_VERSION_HEX < 0x030D00A4
 typedef _PyTime_t PyTime_t;
 #define PyTime_MIN _PyTime_MIN
 #define PyTime_MAX _PyTime_MAX
@@ -820,9 +781,9 @@ static inline int PyTime_Time(PyTime_t *result)
 
 static inline int PyTime_PerfCounter(PyTime_t *result)
 {
-#if PY_VERSION_HEX >= 0x03070000 && !defined(PYPY_VERSION)
+#if !defined(PYPY_VERSION)
     return _PyTime_GetPerfCounterWithInfo(result, NULL);
-#elif PY_VERSION_HEX >= 0x03070000
+#else
     // Call time.perf_counter_ns() and convert Python int object to PyTime_t.
     // Cache time.perf_counter_ns() function for best performance.
     static PyObject *func = NULL;
@@ -852,37 +813,6 @@ static inline int PyTime_PerfCounter(PyTime_t *result)
 
     Py_BUILD_ASSERT(sizeof(value) >= sizeof(PyTime_t));
     *result = (PyTime_t)value;
-    return 0;
-#else
-    // Call time.perf_counter() and convert C double to PyTime_t.
-    // Cache time.perf_counter() function for best performance.
-    static PyObject *func = NULL;
-    if (func == NULL) {
-        PyObject *mod = PyImport_ImportModule("time");
-        if (mod == NULL) {
-            return -1;
-        }
-
-        func = PyObject_GetAttrString(mod, "perf_counter");
-        Py_DECREF(mod);
-        if (func == NULL) {
-            return -1;
-        }
-    }
-
-    PyObject *res = PyObject_CallNoArgs(func);
-    if (res == NULL) {
-        return -1;
-    }
-    double d = PyFloat_AsDouble(res);
-    Py_DECREF(res);
-
-    if (d == -1.0 && PyErr_Occurred()) {
-        return -1;
-    }
-
-    // Avoid floor() to avoid having to link to libm
-    *result = (PyTime_t)(d * 1e9);
     return 0;
 #endif
 }
@@ -1037,7 +967,7 @@ PyDict_SetDefaultRef(PyObject *d, PyObject *key, PyObject *default_value,
 #  define Py_END_CRITICAL_SECTION2() }
 #endif
 
-#if PY_VERSION_HEX < 0x030E0000 && PY_VERSION_HEX >= 0x03060000 && !defined(PYPY_VERSION)
+#if PY_VERSION_HEX < 0x030E0000 && !defined(PYPY_VERSION)
 typedef struct PyUnicodeWriter PyUnicodeWriter;
 
 static inline void PyUnicodeWriter_Discard(PyUnicodeWriter *writer)

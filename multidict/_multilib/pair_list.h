@@ -31,11 +31,7 @@ The embedded buffer intention is to fit the vast majority of possible
 HTTP headers into the buffer without allocating an extra memory block.
 */
 
-#if (PY_VERSION_HEX < 0x03080000)
-#define EMBEDDED_CAPACITY 28
-#else
 #define EMBEDDED_CAPACITY 29
-#endif
 
 typedef struct pair_list {
     Py_ssize_t capacity;
@@ -110,11 +106,7 @@ ci_key_to_str(PyObject *key)
         return ret;
     }
     if (PyUnicode_Check(key)) {
-#if PY_VERSION_HEX < 0x03090000
-        return _PyObject_CallMethodId(key, &PyId_lower, NULL);
-#else
         return PyObject_CallMethodNoArgs(key, multidict_str_lower);
-#endif
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
