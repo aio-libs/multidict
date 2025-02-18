@@ -1,18 +1,28 @@
 import abc
 from collections.abc import Iterable, Mapping, MutableMapping
-from typing import Protocol, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Protocol, TypeVar, Union, overload
+
+if TYPE_CHECKING:
+    from ._multidict_py import istr
+else:
+    istr = str
 
 _V = TypeVar("_V")
 _V_co = TypeVar("_V_co", covariant=True)
 _T = TypeVar("_T")
 
 
-class SupportsKeysAndGetItem(Protocol[_V_co]):
+class SupportsKeys(Protocol[_V_co]):
     def keys(self) -> Iterable[str]: ...
     def __getitem__(self, key: str, /) -> _V_co: ...
 
 
-MDArg = Union[SupportsKeysAndGetItem[_V], Iterable[tuple[str, _V]], None]
+class SupportsIKeys(Protocol[_V_co]):
+    def keys(self) -> Iterable[istr]: ...
+    def __getitem__(self, key: istr, /) -> _V_co: ...
+
+
+MDArg = Union[SupportsKeys[_V], SupportsIKeys[_V], Iterable[tuple[str, _V]], None]
 
 
 class MultiMapping(Mapping[str, _V_co]):

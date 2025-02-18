@@ -21,6 +21,7 @@ env:
   PY_COLORS: 1  # Recognized by the `py` package, dependency of `pytest`
   PYTHONIOENCODING: utf-8
   PYTHONUTF8: 1
+  PYTHON_LATEST: 3.12
 
 jobs:
 
@@ -31,10 +32,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Setup Python
+    - name: Setup Python ${{ env.PYTHON_LATEST }}
       uses: actions/setup-python@v5
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_LATEST }}
     - name: Cache PyPI
       uses: actions/cache@v4
       with:
@@ -56,8 +57,6 @@ jobs:
       uses: py-actions/py-dependency-install@v4
       with:
         path: requirements/lint.txt
-    - name: Run mypy
-      run: mypy
     - name: Run linters
       run: |
         make lint

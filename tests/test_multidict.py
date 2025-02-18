@@ -64,7 +64,7 @@ def cls(  # type: ignore[misc]
 
 
 def test_exposed_names(any_multidict_class_name: str) -> None:
-    assert any_multidict_class_name in multidict.__all__  # type: ignore[attr-defined]
+    assert any_multidict_class_name in multidict.__all__
 
 
 @pytest.mark.parametrize(
@@ -450,7 +450,7 @@ class BaseMultiDictTest:
         d1 = cls(a=1)
         d2 = BadMapping()
         with pytest.raises(ZeroDivisionError):
-            d1 == d2  # type: ignore[comparison-overlap]
+            d1 == d2
 
     def test_eq_bad_mapping_getitem(
         self,
@@ -469,7 +469,7 @@ class BaseMultiDictTest:
         d1 = cls(a=1)
         d2 = BadMapping()
         with pytest.raises(ZeroDivisionError):
-            d1 == d2  # type: ignore[comparison-overlap]
+            d1 == d2
 
     def test_ne(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
@@ -647,7 +647,7 @@ class BaseMultiDictTest:
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.keys())
-        assert it.__length_hint__() == 2  # type: ignore[attr-defined]
+        assert it.__length_hint__() == 2
 
     def test_iter_length_hint_items(
         self,
@@ -655,7 +655,7 @@ class BaseMultiDictTest:
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.items())
-        assert it.__length_hint__() == 2  # type: ignore[attr-defined]
+        assert it.__length_hint__() == 2
 
     def test_iter_length_hint_values(
         self,
@@ -663,7 +663,7 @@ class BaseMultiDictTest:
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.values())
-        assert it.__length_hint__() == 2  # type: ignore[attr-defined]
+        assert it.__length_hint__() == 2
 
     def test_ctor_list_arg_and_kwds(
         self,

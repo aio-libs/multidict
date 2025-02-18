@@ -16,7 +16,7 @@ from ._abc import (
     MDArg,
     MultiMapping,
     MutableMultiMapping,
-    SupportsKeysAndGetItem,
+    SupportsKeys,
 )
 
 if sys.version_info >= (3, 11):
@@ -324,7 +324,7 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
                 items = arg._impl._items
             else:
                 if hasattr(arg, "keys"):
-                    arg = cast(SupportsKeysAndGetItem[_V], arg)
+                    arg = cast(SupportsKeys[_V], arg)
                     arg = [(k, arg[k]) for k in arg.keys()]
                 if kwargs:
                     arg = list(arg)
@@ -553,7 +553,7 @@ class MultiDictProxy(_Base[_V]):
 class CIMultiDictProxy(MultiDictProxy[_V]):
     """Read-only proxy for CIMultiDict instance."""
 
-    def __init__(self, arg: Union[CIMultiDict[_V], "CIMultiDictProxy[_V]"]):
+    def __init__(self, arg: Union[MultiDict[_V], MultiDictProxy[_V]]):
         if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
             raise TypeError(
                 "ctor requires CIMultiDict or CIMultiDictProxy instance"
