@@ -368,7 +368,7 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
             self._impl.incr_version()
 
     @overload
-    def setdefault(self: MultiDict[Union[_T, None]], key: str, default: None = None) -> Union[_T, None]:
+    def setdefault(self: "MultiDict[Union[_T, None]]", key: str, default: None = None) -> Union[_T, None]:
         ...
     @overload
     def setdefault(self, key: str, default: _V) -> _V:
