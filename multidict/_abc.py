@@ -1,12 +1,10 @@
 import abc
 from collections.abc import Iterable, Mapping, MutableMapping
-from typing import NewType, Protocol, TypeVar, Union, overload
+from typing import Protocol, TypeVar, Union, overload
 
 _V = TypeVar("_V")
 _V_co = TypeVar("_V_co", covariant=True)
 _T = TypeVar("_T")
-
-istr = NewType("istr", str)  # TODO
 
 
 class SupportsKeysAndGetItem(Protocol[_V_co]):
@@ -17,7 +15,7 @@ class SupportsKeysAndGetItem(Protocol[_V_co]):
 MDArg = Union[SupportsKeysAndGetItem[_V], Iterable[tuple[str, _V]], None]
 
 
-class MultiMapping(Mapping[Union[str, istr], _V_co]):
+class MultiMapping(Mapping[str, _V_co]):
     @overload
     def getall(self, key: str) -> list[_V_co]:
         ...
@@ -39,7 +37,7 @@ class MultiMapping(Mapping[Union[str, istr], _V_co]):
         """Return first value for key."""
 
 
-class MutableMultiMapping(MultiMapping[_V], MutableMapping[Union[str, istr], _V]):
+class MutableMultiMapping(MultiMapping[_V], MutableMapping[str, _V]):
     @abc.abstractmethod
     def add(self, key: str, value: _V) -> None:
         """Add value to list."""

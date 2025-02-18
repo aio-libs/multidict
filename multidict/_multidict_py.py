@@ -6,12 +6,19 @@ from collections.abc import Callable, ItemsView, Iterable, Iterator, KeysView, M
 from types import GenericAlias
 from typing import Generic, NoReturn, TypeVar, Union, cast, overload
 
-from ._abc import MDArg, MultiMapping, MutableMultiMapping, SupportsKeysAndGetItem, istr
+from ._abc import MDArg, MultiMapping, MutableMultiMapping, SupportsKeysAndGetItem
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
+
+
+class istr(str):
+    """Case insensitive str."""
+
+    __is_istr__ = True
+
 
 _K = TypeVar("_K")
 _V = TypeVar("_V")
