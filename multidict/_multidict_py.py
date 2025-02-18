@@ -259,46 +259,6 @@ class _Base(MultiMapping[_V]):
         return "<{}({})>".format(self.__class__.__name__, body)
 
 
-class MultiDictProxy(_Base[_V]):
-    """Read-only proxy for MultiDict instance."""
-
-    def __init__(self, arg: Union[MultiDict[_V], MultiDictProxy[_V]]):
-        if not isinstance(arg, (MultiDict, MultiDictProxy)):
-            raise TypeError(
-                "ctor requires MultiDict or MultiDictProxy instance"
-                ", not {}".format(type(arg))
-            )
-
-        self._impl = arg._impl
-
-    def __reduce__(self) -> NoReturn:
-        raise TypeError("can't pickle {} objects".format(self.__class__.__name__))
-
-    def copy(self) -> MultiDict[_V]:
-        """Return a copy of itself."""
-        return MultiDict(self.items())
-
-
-class CIMultiDictProxy(MultiDictProxy[_V]):
-    """Read-only proxy for CIMultiDict instance."""
-
-    def __init__(self, arg: Union[CIMultiDict[_V], CIMultiDictProxy[_V]]):
-        if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
-            raise TypeError(
-                "ctor requires CIMultiDict or CIMultiDictProxy instance"
-                ", not {}".format(type(arg))
-            )
-
-        self._impl = arg._impl
-
-    def _title(self, key: str) -> str:
-        return key.title()
-
-    def copy(self) -> CIMultiDict[_V]:
-        """Return a copy of itself."""
-        return CIMultiDict(self.items())
-
-
 class MultiDict(_Base[_V], MutableMultiMapping[_V]):
     """Dictionary with the support for duplicate keys."""
 
@@ -561,6 +521,46 @@ class CIMultiDict(MultiDict[_V]):
 
     def _title(self, key: str) -> str:
         return key.title()
+
+
+class MultiDictProxy(_Base[_V]):
+    """Read-only proxy for MultiDict instance."""
+
+    def __init__(self, arg: Union[MultiDict[_V], "MultiDictProxy[_V]"]):
+        if not isinstance(arg, (MultiDict, MultiDictProxy)):
+            raise TypeError(
+                "ctor requires MultiDict or MultiDictProxy instance"
+                ", not {}".format(type(arg))
+            )
+
+        self._impl = arg._impl
+
+    def __reduce__(self) -> NoReturn:
+        raise TypeError("can't pickle {} objects".format(self.__class__.__name__))
+
+    def copy(self) -> MultiDict[_V]:
+        """Return a copy of itself."""
+        return MultiDict(self.items())
+
+
+class CIMultiDictProxy(MultiDictProxy[_V]):
+    """Read-only proxy for CIMultiDict instance."""
+
+    def __init__(self, arg: Union[CIMultiDict[_V], "CIMultiDictProxy[_V]"]):
+        if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
+            raise TypeError(
+                "ctor requires CIMultiDict or CIMultiDictProxy instance"
+                ", not {}".format(type(arg))
+            )
+
+        self._impl = arg._impl
+
+    def _title(self, key: str) -> str:
+        return key.title()
+
+    def copy(self) -> CIMultiDict[_V]:
+        """Return a copy of itself."""
+        return CIMultiDict(self.items())
 
 
 def getversion(md: Union[MultiDict[object], MultiDictProxy[object]]) -> int:
