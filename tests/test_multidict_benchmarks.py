@@ -2,7 +2,7 @@
 
 from typing import Dict, Union
 
-from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
+from pytest_codspeed import BenchmarkFixture
 
 from multidict import CIMultiDict, MultiDict, istr
 
