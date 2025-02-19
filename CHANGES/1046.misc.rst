@@ -1,2 +1,2 @@
 Used stricter typing across the code base, resulting in improved typing accuracy across multidict classes.
-Funded by an NLnet grant.
+Funded by an ``NLnet`` grant.
