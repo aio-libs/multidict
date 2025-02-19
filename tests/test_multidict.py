@@ -324,6 +324,11 @@ class BaseMultiDictTest:
 
         assert d.keys() == {"key"}
 
+    def test_items_is_set_equal(self, cls: type[MultiDict[str]]) -> None:
+        d = cls([("key", "value1")])
+
+        assert d.items() == {("key", "value1")}
+
     def test_keys_is_set_greater(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1"), ("key2", "value2")])
 
@@ -647,7 +652,7 @@ class BaseMultiDictTest:
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.keys())
-        assert it.__length_hint__() == 2
+        assert it.__length_hint__() == 2  # type: ignore[attr-defined]
 
     def test_iter_length_hint_items(
         self,
@@ -655,7 +660,7 @@ class BaseMultiDictTest:
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.items())
-        assert it.__length_hint__() == 2
+        assert it.__length_hint__() == 2  # type: ignore[attr-defined]
 
     def test_iter_length_hint_values(
         self,

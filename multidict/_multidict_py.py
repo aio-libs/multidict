@@ -26,7 +26,6 @@ class istr(str):
     __is_istr__ = True
 
 
-_K = TypeVar("_K")
 _V = TypeVar("_V")
 _T = TypeVar("_T")
 
@@ -217,11 +216,11 @@ class _Base(MultiMapping[_V]):
     def __len__(self) -> int:
         return len(self._impl._items)
 
-    def keys(self) -> _KeysView[_V]:
+    def keys(self) -> KeysView[str]:
         """Return a new view of the dictionary's keys."""
         return _KeysView(self._impl)
 
-    def items(self) -> _ItemsView[_V]:
+    def items(self) -> ItemsView[str, _V]:
         """Return a new view of the dictionary's items *(key, value) pairs)."""
         return _ItemsView(self._impl)
 
