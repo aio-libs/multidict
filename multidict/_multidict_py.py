@@ -10,7 +10,7 @@ from collections.abc import (
     Mapping,
     ValuesView,
 )
-from typing import Generic, NoReturn, TypeVar, Union, cast, overload
+from typing import TYPE_CHECKING, Generic, NoReturn, TypeVar, Union, cast, overload
 
 from ._abc import MDArg, MultiMapping, MutableMultiMapping, SupportsKeys
 
@@ -409,7 +409,9 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
         else:
             return default
 
-    pop = popone  # type: ignore[assignment]
+    # Type checking will inherit signature for pop() if we don't confuse it here.
+    if not TYPE_CHECKING:
+        pop = popone
 
     @overload
     def popall(self, key: str) -> list[_V]: ...
