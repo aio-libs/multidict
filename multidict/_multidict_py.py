@@ -17,12 +17,6 @@ class istr(str):
 upstr = istr  # for relaxing backward compatibility problems
 
 
-def getversion(md):
-    if not isinstance(md, _Base):
-        raise TypeError("Parameter should be multidict or proxy")
-    return md._impl._version
-
-
 _version = array("Q", [0])
 
 
@@ -43,6 +37,105 @@ class _Impl:
 
         def __sizeof__(self):
             return object.__sizeof__(self) + sys.getsizeof(self._items)
+
+
+class _Iter:
+    __slots__ = ("_size", "_iter")
+
+    def __init__(self, size, iterator):
+        self._size = size
+        self._iter = iterator
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self._iter)
+
+    def __length_hint__(self):
+        return self._size
+
+
+class _ViewBase:
+    def __init__(self, impl):
+        self._impl = impl
+
+    def __len__(self):
+        return len(self._impl._items)
+
+
+class _ItemsView(_ViewBase, abc.ItemsView):
+    def __contains__(self, item):
+        if not isinstance(item, (tuple, list)) or len(item) != 2:
+            return False
+        for i, k, v in self._impl._items:
+            if item[0] == k and item[1] == v:
+                return True
+        return False
+
+    def __iter__(self):
+        return _Iter(len(self), self._iter(self._impl._version))
+
+    def _iter(self, version):
+        for i, k, v in self._impl._items:
+            if version != self._impl._version:
+                raise RuntimeError("Dictionary changed during iteration")
+            yield k, v
+
+    def __repr__(self):
+        lst = []
+        for item in self._impl._items:
+            lst.append("{!r}: {!r}".format(item[1], item[2]))
+        body = ", ".join(lst)
+        return "{}({})".format(self.__class__.__name__, body)
+
+
+class _ValuesView(_ViewBase, abc.ValuesView):
+    def __contains__(self, value):
+        for item in self._impl._items:
+            if item[2] == value:
+                return True
+        return False
+
+    def __iter__(self):
+        return _Iter(len(self), self._iter(self._impl._version))
+
+    def _iter(self, version):
+        for item in self._impl._items:
+            if version != self._impl._version:
+                raise RuntimeError("Dictionary changed during iteration")
+            yield item[2]
+
+    def __repr__(self):
+        lst = []
+        for item in self._impl._items:
+            lst.append("{!r}".format(item[2]))
+        body = ", ".join(lst)
+        return "{}({})".format(self.__class__.__name__, body)
+
+
+class _KeysView(_ViewBase, abc.KeysView):
+    def __contains__(self, key):
+        for item in self._impl._items:
+            if item[1] == key:
+                return True
+        return False
+
+    def __iter__(self):
+        return _Iter(len(self), self._iter(self._impl._version))
+
+    def _iter(self, version):
+        for item in self._impl._items:
+            if version != self._impl._version:
+                raise RuntimeError("Dictionary changed during iteration")
+            yield item[1]
+
+    def __repr__(self):
+        lst = []
+        for item in self._impl._items:
+            lst.append("{!r}".format(item[1]))
+        body = ", ".join(lst)
+        return "{}({})".format(self.__class__.__name__, body)
 
 
 class _Base:
@@ -136,46 +229,6 @@ class _Base:
         return "<{}({})>".format(self.__class__.__name__, body)
 
     __class_getitem__ = classmethod(GenericAlias)
-
-
-class MultiDictProxy(_Base, MultiMapping):
-    """Read-only proxy for MultiDict instance."""
-
-    def __init__(self, arg):
-        if not isinstance(arg, (MultiDict, MultiDictProxy)):
-            raise TypeError(
-                "ctor requires MultiDict or MultiDictProxy instance"
-                ", not {}".format(type(arg))
-            )
-
-        self._impl = arg._impl
-
-    def __reduce__(self):
-        raise TypeError("can't pickle {} objects".format(self.__class__.__name__))
-
-    def copy(self):
-        """Return a copy of itself."""
-        return MultiDict(self.items())
-
-
-class CIMultiDictProxy(MultiDictProxy):
-    """Read-only proxy for CIMultiDict instance."""
-
-    def __init__(self, arg):
-        if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
-            raise TypeError(
-                "ctor requires CIMultiDict or CIMultiDictProxy instance"
-                ", not {}".format(type(arg))
-            )
-
-        self._impl = arg._impl
-
-    def _title(self, key):
-        return key.title()
-
-    def copy(self):
-        """Return a copy of itself."""
-        return CIMultiDict(self.items())
 
 
 class MultiDict(_Base, MutableMultiMapping):
@@ -422,100 +475,47 @@ class CIMultiDict(MultiDict):
         return key.title()
 
 
-class _Iter:
-    __slots__ = ("_size", "_iter")
+class MultiDictProxy(_Base, MultiMapping):
+    """Read-only proxy for MultiDict instance."""
 
-    def __init__(self, size, iterator):
-        self._size = size
-        self._iter = iterator
+    def __init__(self, arg):
+        if not isinstance(arg, (MultiDict, MultiDictProxy)):
+            raise TypeError(
+                "ctor requires MultiDict or MultiDictProxy instance"
+                ", not {}".format(type(arg))
+            )
 
-    def __iter__(self):
-        return self
+        self._impl = arg._impl
 
-    def __next__(self):
-        return next(self._iter)
+    def __reduce__(self):
+        raise TypeError("can't pickle {} objects".format(self.__class__.__name__))
 
-    def __length_hint__(self):
-        return self._size
-
-
-class _ViewBase:
-    def __init__(self, impl):
-        self._impl = impl
-
-    def __len__(self):
-        return len(self._impl._items)
+    def copy(self):
+        """Return a copy of itself."""
+        return MultiDict(self.items())
 
 
-class _ItemsView(_ViewBase, abc.ItemsView):
-    def __contains__(self, item):
-        if not isinstance(item, (tuple, list)) or len(item) != 2:
-            return False
-        for i, k, v in self._impl._items:
-            if item[0] == k and item[1] == v:
-                return True
-        return False
+class CIMultiDictProxy(MultiDictProxy):
+    """Read-only proxy for CIMultiDict instance."""
 
-    def __iter__(self):
-        return _Iter(len(self), self._iter(self._impl._version))
+    def __init__(self, arg):
+        if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
+            raise TypeError(
+                "ctor requires CIMultiDict or CIMultiDictProxy instance"
+                ", not {}".format(type(arg))
+            )
 
-    def _iter(self, version):
-        for i, k, v in self._impl._items:
-            if version != self._impl._version:
-                raise RuntimeError("Dictionary changed during iteration")
-            yield k, v
+        self._impl = arg._impl
 
-    def __repr__(self):
-        lst = []
-        for item in self._impl._items:
-            lst.append("{!r}: {!r}".format(item[1], item[2]))
-        body = ", ".join(lst)
-        return "{}({})".format(self.__class__.__name__, body)
+    def _title(self, key):
+        return key.title()
+
+    def copy(self):
+        """Return a copy of itself."""
+        return CIMultiDict(self.items())
 
 
-class _ValuesView(_ViewBase, abc.ValuesView):
-    def __contains__(self, value):
-        for item in self._impl._items:
-            if item[2] == value:
-                return True
-        return False
-
-    def __iter__(self):
-        return _Iter(len(self), self._iter(self._impl._version))
-
-    def _iter(self, version):
-        for item in self._impl._items:
-            if version != self._impl._version:
-                raise RuntimeError("Dictionary changed during iteration")
-            yield item[2]
-
-    def __repr__(self):
-        lst = []
-        for item in self._impl._items:
-            lst.append("{!r}".format(item[2]))
-        body = ", ".join(lst)
-        return "{}({})".format(self.__class__.__name__, body)
-
-
-class _KeysView(_ViewBase, abc.KeysView):
-    def __contains__(self, key):
-        for item in self._impl._items:
-            if item[1] == key:
-                return True
-        return False
-
-    def __iter__(self):
-        return _Iter(len(self), self._iter(self._impl._version))
-
-    def _iter(self, version):
-        for item in self._impl._items:
-            if version != self._impl._version:
-                raise RuntimeError("Dictionary changed during iteration")
-            yield item[1]
-
-    def __repr__(self):
-        lst = []
-        for item in self._impl._items:
-            lst.append("{!r}".format(item[1]))
-        body = ", ".join(lst)
-        return "{}({})".format(self.__class__.__name__, body)
+def getversion(md):
+    if not isinstance(md, _Base):
+        raise TypeError("Parameter should be multidict or proxy")
+    return md._impl._version
