@@ -11,8 +11,10 @@ _site-packages-to-src-mapping =
 
 [report]
 exclude_also =
-  pass
-  ^\s*@pytest\.mark\.xfail
+    if TYPE_CHECKING
+    assert False
+    : \.\.\.(\s*#.*)?$
+    ^ +\.\.\.$
 # fail_under = 98.95
 skip_covered = true
 skip_empty = true
