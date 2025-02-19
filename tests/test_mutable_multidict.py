@@ -1,5 +1,6 @@
 import string
 import sys
+from typing import Union
 
 import pytest
 
@@ -72,19 +73,19 @@ class TestMutableMultiDict:
 
     def test_extend(
         self,
-        case_sensitive_multidict_class: type[CIMultiDict[str]],
+        case_sensitive_multidict_class: type[CIMultiDict[Union[str, int]]],
     ) -> None:
         d = case_sensitive_multidict_class()
         assert d == {}
 
-        d.extend([("key", "one"), ("key", "two")], key="3", foo="bar")
+        d.extend([("key", "one"), ("key", "two")], key=3, foo="bar")
         assert d != {"key": "one", "foo": "bar"}
         assert 4 == len(d)
         itms = d.items()
         # we can't guarantee order of kwargs
         assert ("key", "one") in itms
         assert ("key", "two") in itms
-        assert ("key", "3") in itms
+        assert ("key", 3) in itms
         assert ("foo", "bar") in itms
 
         other = case_sensitive_multidict_class(bar="baz")
@@ -420,18 +421,18 @@ class TestCIMutableMultiDict:
 
     def test_extend(
         self,
-        case_insensitive_multidict_class: type[CIMultiDict[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[Union[str, int]]],
     ) -> None:
         d = case_insensitive_multidict_class()
         assert d == {}
 
-        d.extend([("KEY", "one"), ("key", "two")], key="3", foo="bar")
+        d.extend([("KEY", "one"), ("key", "two")], key=3, foo="bar")
         assert 4 == len(d)
         itms = d.items()
         # we can't guarantee order of kwargs
         assert ("KEY", "one") in itms
         assert ("key", "two") in itms
-        assert ("key", "3") in itms
+        assert ("key", 3) in itms
         assert ("foo", "bar") in itms
 
         other = case_insensitive_multidict_class(Bar="baz")
