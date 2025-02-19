@@ -3,4 +3,4 @@
 
 black==25.1.0
 isort==5.13.2
-pre-commit==4.0.1
+pre-commit==4.1.0
