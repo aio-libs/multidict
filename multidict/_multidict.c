@@ -2004,8 +2004,6 @@ PyInit__multidict(void)
 
     WITH_MOD("multidict._abc");
     GET_MOD_ATTR(collections_abc_mut_mapping, "MultiMapping");
-
-    WITH_MOD("multidict._abc");
     GET_MOD_ATTR(collections_abc_mut_multi_mapping, "MutableMultiMapping");
 
     WITH_MOD("multidict._multidict_base");
