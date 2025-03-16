@@ -1,1 +1,0 @@
-Fix a leak when the last accessed module in ``PyInit__multidict`` init is not released.

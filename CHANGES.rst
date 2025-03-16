@@ -14,6 +14,57 @@ Changelog
 
 .. towncrier release notes start
 
+v6.2.0
+======
+
+*(2025-03-16)*
+
+
+Bug fixes
+---------
+
+- Fixed ``in`` checks throwing an exception instead of returning :data:`False` when testing non-strings.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1045`.
+
+- Fix a leak when the last accessed module in ``PyInit__multidict`` init is not released.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1061`.
+
+
+Features
+--------
+
+- Implemented support for the free-threaded build of CPython 3.13 -- by :user:`lysnikolaou`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1015`.
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Started publishing wheels made for the free-threaded build of CPython 3.13 -- by :user:`lysnikolaou`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1015`.
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Used stricter typing across the code base, resulting in improved typing accuracy across multidict classes.
+  Funded by an ``NLnet`` grant.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1046`.
+
+
+----
+
+
 6.1.0 (2024-09-09)
 ==================
 
@@ -27,9 +78,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`928`.
-  
-  
-  
+
+
+
 
 Features
 --------
@@ -39,9 +90,9 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`1002`.
-  
-  
-  
+
+
+
 
 Removals and backward incompatible breaking changes
 ---------------------------------------------------
@@ -51,9 +102,9 @@ Removals and backward incompatible breaking changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`997`.
-  
-  
-  
+
+
+
 
 Contributor-facing changes
 --------------------------
@@ -65,9 +116,9 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`928`.
-  
-  
-  
+
+
+
 - `The deprecated <https://hynek.me/til/set-output-deprecation-github-actions/>`_
   ``::set-output`` workflow command has been replaced
   by the ``$GITHUB_OUTPUT`` environment variable
@@ -76,9 +127,9 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`940`.
-  
-  
-  
+
+
+
 - `codecov-action <https://github.com/codecov/codecov-action>`_
   has been temporarily downgraded to ``v3``
   in the GitHub Actions CI/CD workflow definitions
@@ -90,9 +141,9 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`941`.
-  
-  
-  
+
+
+
 - In the GitHub Actions CI/CD workflow definition,
   the ``Get pip cache dir`` step has been fixed for
   Windows runners by adding ``shell: bash``.
@@ -102,9 +153,9 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`942`.
-  
-  
-  
+
+
+
 - Interpolation of the ``pip`` cache keys has been
   fixed by adding missing ``$`` syntax
   in the GitHub Actions CI/CD workflow definition.
@@ -112,9 +163,9 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`943`.
-  
-  
-  
+
+
+
 
 ----
 
