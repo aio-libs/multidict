@@ -21,13 +21,12 @@
 static PyObject *collections_abc_mapping;
 static PyObject *collections_abc_mut_mapping;
 static PyObject *collections_abc_mut_multi_mapping;
+static PyObject *repr_func;
 
 static PyTypeObject multidict_type;
 static PyTypeObject cimultidict_type;
 static PyTypeObject multidict_proxy_type;
 static PyTypeObject cimultidict_proxy_type;
-
-static PyObject *repr_func;
 
 #define MultiDict_CheckExact(o) (Py_TYPE(o) == &multidict_type)
 #define CIMultiDict_CheckExact(o) (Py_TYPE(o) == &cimultidict_type)
@@ -1967,19 +1966,6 @@ PyInit__multidict(void)
     PyObject *module = NULL,
              *reg_func_call_result = NULL;
 
-#define WITH_MOD(NAME)                      \
-    Py_CLEAR(module);                       \
-    module = PyImport_ImportModule(NAME);   \
-    if (module == NULL) {                   \
-        goto fail;                          \
-    }
-
-#define GET_MOD_ATTR(VAR, NAME)                 \
-    VAR = PyObject_GetAttrString(module, NAME); \
-    if (VAR == NULL) {                          \
-        goto fail;                              \
-    }
-
     if (multidict_views_init() < 0) {
         goto fail;
     }
@@ -2000,17 +1986,30 @@ PyInit__multidict(void)
         goto fail;
     }
 
+#define WITH_MOD(NAME)                      \
+    Py_CLEAR(module);                       \
+    module = PyImport_ImportModule(NAME);   \
+    if (module == NULL) {                   \
+        goto fail;                          \
+    }
+
+#define GET_MOD_ATTR(VAR, NAME)                 \
+    VAR = PyObject_GetAttrString(module, NAME); \
+    if (VAR == NULL) {                          \
+        goto fail;                              \
+    }
+
     WITH_MOD("collections.abc");
     GET_MOD_ATTR(collections_abc_mapping, "Mapping");
 
     WITH_MOD("multidict._abc");
     GET_MOD_ATTR(collections_abc_mut_mapping, "MultiMapping");
-
-    WITH_MOD("multidict._abc");
     GET_MOD_ATTR(collections_abc_mut_multi_mapping, "MutableMultiMapping");
 
     WITH_MOD("multidict._multidict_base");
     GET_MOD_ATTR(repr_func, "_mdrepr");
+
+    Py_CLEAR(module);                       \
 
     /* Register in _abc mappings (CI)MultiDict and (CI)MultiDictProxy */
     reg_func_call_result = PyObject_CallMethod(
