@@ -1,6 +1,8 @@
 #ifndef _MULTIDICT_ISTR_H
 #define _MULTIDICT_ISTR_H
 
+#include "state.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -11,8 +13,6 @@ typedef struct {
 } istrobject;
 
 PyDoc_STRVAR(istr__doc__, "istr class implementation");
-
-static PyTypeObject istr_type;
 
 static inline void
 istr_dealloc(istrobject *self)
@@ -35,7 +35,9 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
                                      kwlist, &x, &encoding, &errors)) {
         return NULL;
     }
-    if (x != NULL && Py_TYPE(x) == &istr_type) {
+    multidict_state *state = get_multidict_state_by_cls(type);
+
+    if (x != NULL && Py_TYPE(x) == state->IStrType) {
         Py_INCREF(x);
         return x;
     }
@@ -43,7 +45,7 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (!ret) {
         goto fail;
     }
-    s = PyObject_CallMethodNoArgs(ret, multidict_str_lower);
+    s = PyObject_CallMethodNoArgs(ret, state->str_lower);
     if (!s) {
         goto fail;
     }
@@ -55,29 +57,20 @@ fail:
     return NULL;
 }
 
-static PyTypeObject istr_type = {
-    PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "multidict._multidict.istr",
-    sizeof(istrobject),
-    .tp_dealloc = (destructor)istr_dealloc,
-    .tp_flags = Py_TPFLAGS_DEFAULT
-              | Py_TPFLAGS_BASETYPE
-              | Py_TPFLAGS_UNICODE_SUBCLASS,
-    .tp_doc = istr__doc__,
-    .tp_base = DEFERRED_ADDRESS(&PyUnicode_Type),
-    .tp_new = (newfunc)istr_new,
+static PyType_Slot IStrType_slots[] = {
+    {Py_tp_dealloc, istr_dealloc},
+    {Py_tp_doc, (void*)istr__doc__},
+    {Py_tp_new, istr_new},
+    {0, NULL},
 };
 
-
-static inline int
-istr_init(void)
-{
-    istr_type.tp_base = &PyUnicode_Type;
-    if (PyType_Ready(&istr_type) < 0) {
-        return -1;
-    }
-    return 0;
-}
+static PyType_Spec IStrType_spec = {
+    .name = "multidict._multidict.istr",
+    .basicsize = sizeof(istrobject),
+    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
+              Py_TPFLAGS_HEAPTYPE | Py_TPFLAGS_UNICODE_SUBCLASS),
+    .slots = IStrType_slots,
+};
 
 #ifdef __cplusplus
 }

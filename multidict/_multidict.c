@@ -4,7 +4,7 @@
 #include "_multilib/pythoncapi_compat.h"
 
 // Include order important
-#include "_multilib/defs.h"
+#include "_multilib/state.h"
 #include "_multilib/istr.h"
 #include "_multilib/pair_list.h"
 #include "_multilib/dict.h"
@@ -18,37 +18,15 @@
 #endif
 
 
-static PyObject *collections_abc_mapping;
-static PyObject *collections_abc_mut_mapping;
-static PyObject *collections_abc_mut_multi_mapping;
-static PyObject *repr_func;
-
-static PyTypeObject multidict_type;
-static PyTypeObject cimultidict_type;
-static PyTypeObject multidict_proxy_type;
-static PyTypeObject cimultidict_proxy_type;
-
-#define MultiDict_CheckExact(o) (Py_TYPE(o) == &multidict_type)
-#define CIMultiDict_CheckExact(o) (Py_TYPE(o) == &cimultidict_type)
-#define MultiDictProxy_CheckExact(o) (Py_TYPE(o) == &multidict_proxy_type)
-#define CIMultiDictProxy_CheckExact(o) (Py_TYPE(o) == &cimultidict_proxy_type)
-
-/* Helper macro for something like isinstance(obj, Base) */
-#define _MultiDict_Check(o)              \
-    ((MultiDict_CheckExact(o)) ||        \
-     (CIMultiDict_CheckExact(o)) ||      \
-     (MultiDictProxy_CheckExact(o)) ||   \
-     (CIMultiDictProxy_CheckExact(o)))
-
 /******************** Internal Methods ********************/
 
 /* Forward declaration */
 static PyObject *multidict_items(MultiDictObject *self);
 
 static inline PyObject *
-_multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
+_multidict_getone(multidict_state * state, MultiDictObject *self, PyObject *key, PyObject *_default)
 {
-    PyObject *val = pair_list_get_one(&self->pairs, key);
+    PyObject *val = pair_list_get_one(state, &self->pairs, key);
 
     if (val == NULL &&
         PyErr_ExceptionMatches(PyExc_KeyError) &&
@@ -1926,65 +1904,112 @@ getversion(PyObject *self, PyObject *md)
 
 /******************** Module ********************/
 
-static inline void
-module_free(void *m)
+static int
+module_traverse(PyObject *mod, visitproc visit, void *arg)
 {
-    Py_CLEAR(multidict_str_lower);
-    Py_CLEAR(collections_abc_mapping);
-    Py_CLEAR(collections_abc_mut_mapping);
-    Py_CLEAR(collections_abc_mut_multi_mapping);
+    multidict_state *state = get_multidict_state(mod);
+
+    Py_VISIT(state->IStrType);
+
+    Py_VISIT(state->ItemsViewType);
+    Py_VISIT(state->ValuesViewType);
+    Py_VISIT(state->KeysViewType);
+
+    Py_VISIT(state->MultidictType);
+    Py_VISIT(state->CIMultidictType);
+    Py_VISIT(state->MultidictProxyType);
+    Py_VISIT(state->CIMultidictProxyType);
+
+    Py_VISIT(state->collections_abc_mapping);
+    Py_VISIT(state->collections_abc_keys_view);
+    Py_VISIT(state->collections_abc_items_view);
+    Py_VISIT(state->collections_abc_values_view);
+    Py_VISIT(state->collections_abc_multi_mapping);
+    Py_VISIT(state->collections_abc_mut_multi_mapping);
+
+    Py_VISIT(state->str_lower);
+    Py_VISIT(state->multidict_repr_func);
+
+    Py_VISIT(state->viewbaseset_richcmp_func);
+    Py_VISIT(state->viewbaseset_and_func);
+    Py_VISIT(state->viewbaseset_or_func);
+    Py_VISIT(state->viewbaseset_sub_func);
+    Py_VISIT(state->viewbaseset_xor_func);
+
+    Py_VISIT(state->keysview_repr_func);
+    Py_VISIT(state->keysview_isdisjoint_func);
+    Py_VISIT(state->itemsview_isdisjoint_func);
+    Py_VISIT(state->itemsview_repr_func);
+    Py_VISIT(state->valuesview_repr_func);
+
+    return 0;
 }
 
-static PyMethodDef multidict_module_methods[] = {
-    {
-        "getversion",
-        (PyCFunction)getversion,
-        METH_O
-    },
-    {
-        NULL,
-        NULL
-    }   /* sentinel */
-};
-
-static PyModuleDef multidict_module = {
-    PyModuleDef_HEAD_INIT,      /* m_base */
-    "_multidict",               /* m_name */
-    .m_size = -1,
-    .m_methods = multidict_module_methods,
-    .m_free = (freefunc)module_free,
-};
-
-PyMODINIT_FUNC
-PyInit__multidict(void)
+static int
+module_clear(PyObject *mod)
 {
-    multidict_str_lower = PyUnicode_InternFromString("lower");
-    if (multidict_str_lower == NULL) {
+    multidict_state *state = get_multidict_state(mod);
+
+    Py_CLEAR(state->IStrType);
+
+    Py_CLEAR(state->ItemsViewType);
+    Py_CLEAR(state->ValuesViewType);
+    Py_CLEAR(state->KeysViewType);
+
+    Py_CLEAR(state->MultidictType);
+    Py_CLEAR(state->CIMultidictType);
+    Py_CLEAR(state->MultidictProxyType);
+    Py_CLEAR(state->CIMultidictProxyType);
+
+    Py_CLEAR(state->collections_abc_mapping);
+    Py_CLEAR(state->collections_abc_keys_view);
+    Py_CLEAR(state->collections_abc_items_view);
+    Py_CLEAR(state->collections_abc_values_view);
+    Py_CLEAR(state->collections_abc_multi_mapping);
+    Py_CLEAR(state->collections_abc_mut_multi_mapping);
+
+    Py_CLEAR(state->str_lower);
+    Py_CLEAR(state->multidict_repr_func);
+
+    Py_CLEAR(state->viewbaseset_richcmp_func);
+    Py_CLEAR(state->viewbaseset_and_func);
+    Py_CLEAR(state->viewbaseset_or_func);
+    Py_CLEAR(state->viewbaseset_sub_func);
+    Py_CLEAR(state->viewbaseset_xor_func);
+
+    Py_CLEAR(state->keysview_repr_func);
+    Py_CLEAR(state->keysview_isdisjoint_func);
+    Py_CLEAR(state->itemsview_isdisjoint_func);
+    Py_CLEAR(state->itemsview_repr_func);
+    Py_CLEAR(state->valuesview_repr_func);
+
+    return 0;
+}
+
+static void
+module_free(void *mod)
+{
+    (void)module_clear((PyObject *)mod);
+}
+
+static int
+module_init(asyncio_state *state)
+{
+    state->str_lower = PyUnicode_InternFromString("lower");
+    if (state->str_lower == NULL) {
         goto fail;
     }
 
-    PyObject *module = NULL,
-             *reg_func_call_result = NULL;
+    PyObject *module = NULL;
 
-    if (multidict_views_init() < 0) {
+    if (multidict_views_init(state) < 0) {
         goto fail;
     }
 
-    if (multidict_iter_init() < 0) {
+    if (multidict_iter_init(state) < 0) {
         goto fail;
     }
 
-    if (istr_init() < 0) {
-        goto fail;
-    }
-
-    if (PyType_Ready(&multidict_type) < 0 ||
-        PyType_Ready(&cimultidict_type) < 0 ||
-        PyType_Ready(&multidict_proxy_type) < 0 ||
-        PyType_Ready(&cimultidict_proxy_type) < 0)
-    {
-        goto fail;
-    }
 
 #define WITH_MOD(NAME)                      \
     Py_CLEAR(module);                       \
@@ -2000,113 +2025,177 @@ PyInit__multidict(void)
     }
 
     WITH_MOD("collections.abc");
-    GET_MOD_ATTR(collections_abc_mapping, "Mapping");
+    GET_MOD_ATTR(state->collections_abc_mapping, "Mapping");
+    GET_MOD_ATTR(state->collections_abc_keys_view, "KeysView");
+    GET_MOD_ATTR(state->collections_abc_items_view, "ItemsView");
+    GET_MOD_ATTR(state->collections_abc_values_view, "ValuesView");
 
     WITH_MOD("multidict._abc");
-    GET_MOD_ATTR(collections_abc_mut_mapping, "MultiMapping");
-    GET_MOD_ATTR(collections_abc_mut_multi_mapping, "MutableMultiMapping");
+    GET_MOD_ATTR(state->collections_abc_multi_mapping, "MultiMapping");
+    GET_MOD_ATTR(state->collections_abc_mut_multi_mapping, "MutableMultiMapping");
 
     WITH_MOD("multidict._multidict_base");
-    GET_MOD_ATTR(repr_func, "_mdrepr");
+    GET_MOD_ATTR(state->multidict_repr_func, "_mdrepr");
+
+    GET_MOD_ATTR(state->viewbaseset_richcmp_func, "_viewbaseset_richcmp");
+    GET_MOD_ATTR(state->viewbaseset_and_func, "_viewbaseset_and");
+    GET_MOD_ATTR(state->viewbaseset_or_func, "_viewbaseset_or");
+    GET_MOD_ATTR(state->viewbaseset_sub_func, "_viewbaseset_sub");
+    GET_MOD_ATTR(state->viewbaseset_xor_func, "_viewbaseset_xor");
+
+    GET_MOD_ATTR(state->keysview_repr_func, "_keysview_repr");
+    GET_MOD_ATTR(state->keysview_isdisjoint_func, "_keysview_isdisjoint");
+    GET_MOD_ATTR(state->itemsview_isdisjoint_func, "_itemsview_isdisjoint");
+    GET_MOD_ATTR(state->itemsview_repr_func, "_itemsview_repr");
+    GET_MOD_ATTR(state->valuesview_repr_func, "_valuesview_repr");
+
+
+#undef WITH_MOD
+#undef GET_MOD_ATTR
 
     Py_CLEAR(module);                       \
 
     /* Register in _abc mappings (CI)MultiDict and (CI)MultiDictProxy */
-    reg_func_call_result = PyObject_CallMethod(
-        collections_abc_mut_mapping,
-        "register", "O",
-        (PyObject*)&multidict_proxy_type
-    );
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
+#define REGISTER(ABC, TYPE)                                 \
+    do {                                                       \
+        PyObject *ret = PyObject_CallMethod(                \
+            ABC,                                            \
+            "register", "O",                                \
+            (PyObject*)TYPE,                                \
+        );                                                  \
+        if (ret == NULL) {                                  \
+            goto fail;                                      \
+        }                                                   \
+        Py_DECREF(ret);                                     \
+    } while (0)
 
-    reg_func_call_result = PyObject_CallMethod(
-        collections_abc_mut_mapping,
-        "register", "O",
-        (PyObject*)&cimultidict_proxy_type
-    );
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
+    REGISTER(state->collections_abc_multi_mapping, state->MultidictProxyType);
+    REGISTER(state->collections_abc_multi_mapping, state->CIMultidictProxyType);
+    REGISTER(state->collections_abc_mut_multi_mapping, state->MultidictType);
+    REGISTER(state->collections_abc_mut_multi_mapping, state->CIMultidictType);
 
-    reg_func_call_result = PyObject_CallMethod(
-        collections_abc_mut_multi_mapping,
-        "register", "O",
-        (PyObject*)&multidict_type
-    );
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
+    REGISTER(state->collections_abc_keys_view, state->KeysViewType);
+    REGISTER(state->collections_abc_items_view, state->ItemsViewType);
+    REGISTER(state->collections_abc_values_view, state->ValuesViewType);
+#undef REGISTER
 
-    reg_func_call_result = PyObject_CallMethod(
-        collections_abc_mut_multi_mapping,
-        "register", "O",
-        (PyObject*)&cimultidict_type
-    );
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
-
-    /* Instantiate this module */
-    module = PyModule_Create(&multidict_module);
-    if (module == NULL) {
-        goto fail;
-    }
-
-#ifdef Py_GIL_DISABLED
-    PyUnstable_Module_SetGIL(module, Py_MOD_GIL_NOT_USED);
-#endif
-
-    Py_INCREF(&istr_type);
-    if (PyModule_AddObject(
-            module, "istr", (PyObject*)&istr_type) < 0)
-    {
-        goto fail;
-    }
-
-    Py_INCREF(&multidict_type);
-    if (PyModule_AddObject(
-            module, "MultiDict", (PyObject*)&multidict_type) < 0)
-    {
-        goto fail;
-    }
-
-    Py_INCREF(&cimultidict_type);
-    if (PyModule_AddObject(
-            module, "CIMultiDict", (PyObject*)&cimultidict_type) < 0)
-    {
-        goto fail;
-    }
-
-    Py_INCREF(&multidict_proxy_type);
-    if (PyModule_AddObject(
-            module, "MultiDictProxy", (PyObject*)&multidict_proxy_type) < 0)
-    {
-        goto fail;
-    }
-
-    Py_INCREF(&cimultidict_proxy_type);
-    if (PyModule_AddObject(
-            module, "CIMultiDictProxy", (PyObject*)&cimultidict_proxy_type) < 0)
-    {
-        goto fail;
-    }
-
-    return module;
+    return 0;
 
 fail:
-    Py_XDECREF(multidict_str_lower);
-    Py_XDECREF(collections_abc_mapping);
-    Py_XDECREF(collections_abc_mut_mapping);
-    Py_XDECREF(collections_abc_mut_multi_mapping);
+    Py_CLEAR(module);
+    return -1;
+}
 
-    return NULL;
+PyDoc_STRVAR(module_doc, "Accelerator module for multidict");
 
-#undef WITH_MOD
-#undef GET_MOD_ATTR
+static PyMethodDef multidict_module_methods[] = {
+    {"getversion", (PyCFunction)getversion, METH_O},
+    {NULL, NULL}   /* sentinel */
+};
+
+static int
+module_exec(PyObject *mod)
+{
+    asyncio_state *state = get_asyncio_state(mod);
+
+#define CREATE_TYPE(m, tp, spec, base)                                  \
+    do {                                                                \
+        tp = (PyTypeObject *)PyType_FromModuleAndSpec(NULL, m, spec,    \
+                                                     (PyObject *)base); \
+        if (tp == NULL) {                                               \
+            return -1;                                                  \
+        }                                                               \
+    } while (0)
+
+    CREATE_TYPE(mod, state->IStrType, &IStrType_spec, PyUnicode_Type);
+    CREATE_TYPE(mod, state->MultidictType, &MultidictType_spec, NULL);
+    CREATE_TYPE(mod, state->CIMultidictType, &CIMultidictType_spec,
+                state->MultidictType);
+    CREATE_TYPE(mod, state->MultidictProxyType, &MultidictProxyType_spec, NULL);
+    CREATE_TYPE(mod, state->CIMultidictProxyType, &CIMultidictProxyType_spec,
+                state->MultidictProxyType);
+    CREATE_TYPE(mod, state->KeysViewType, &KeysViewType_spec, NULL);
+    CREATE_TYPE(mod, state->ItemsViewType, &ItemsViewType_spec, NULL);
+    CREATE_TYPE(mod, state->ValuesViewType, &ValuesViewType_spec, NULL);
+    CREATE_TYPE(mod, state->KeysIterType, &KeysIterType_spec, NULL);
+    CREATE_TYPE(mod, state->ItemsIterType, &ItemsIterType_spec, NULL);
+    CREATE_TYPE(mod, state->ValuesIterType, &ValuesIterType_spec, NULL);
+
+#undef CREATE_TYPE
+
+    if (PyModule_AddType(mod, state->IStrType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->MultidictType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->CIMultidictType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->MultidictProxyType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->CIMultidictProxyType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->KeysViewType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->ItemsViewType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->ValuesViewType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->KeysIterType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->ItemsIterType) < 0) {
+        return -1;
+    }
+
+    if (PyModule_AddType(mod, state->ValuesIterType) < 0) {
+        return -1;
+    }
+
+    // Must be done after types are added to avoid a circular dependency
+    if (module_init(state) < 0) {
+        return -1;
+    }
+
+}
+
+static struct PyModuleDef_Slot module_slots[] = {
+    {Py_mod_exec, module_exec},
+    {Py_mod_multiple_interpreters, Py_MOD_PER_INTERPRETER_GIL_SUPPORTED},
+    {Py_mod_gil, Py_MOD_GIL_NOT_USED},
+    {0, NULL},
+};
+
+static PyModuleDef _multidict_module = {
+    .m_base = PyModuleDef_HEAD_INIT,
+    .m_name = "_multidict",
+    .m_doc = module_doc,
+    .m_size = sizeof(multidict_state),
+    .m_methods = multidict_module_methods,
+    .m_slots = module_slots,
+    .m_traverse = module_traverse,
+    .m_clear = module_clear,
+    .m_free = (freefunc)module_free,
+};
+
+
+PyMODINIT_FUNC
+PyInit__multidict(void)
+{
+    return PyModuleDef_Init(&_multidict_module);
 }

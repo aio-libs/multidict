@@ -1,12 +1,9 @@
 import sys
 from collections.abc import (
     Container,
-    ItemsView,
     Iterable,
-    KeysView,
     Mapping,
     Set,
-    ValuesView,
 )
 from typing import Literal, Union
 
@@ -19,18 +16,6 @@ if sys.version_info >= (3, 11):
     from typing import assert_never
 else:
     from typing_extensions import assert_never
-
-
-def _abc_itemsview_register(view_cls: type[object]) -> None:
-    ItemsView.register(view_cls)
-
-
-def _abc_keysview_register(view_cls: type[object]) -> None:
-    KeysView.register(view_cls)
-
-
-def _abc_valuesview_register(view_cls: type[object]) -> None:
-    ValuesView.register(view_cls)
 
 
 def _viewbaseset_richcmp(

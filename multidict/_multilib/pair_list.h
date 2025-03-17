@@ -72,11 +72,11 @@ str_cmp(PyObject *s1, PyObject *s2)
 
 
 static inline PyObject *
-key_to_str(PyObject *key)
+key_to_str(multidict_state *state, PyObject *key)
 {
     PyObject *ret;
     PyTypeObject *type = Py_TYPE(key);
-    if (type == &istr_type) {
+    if (type == state->IStrType) {
         ret = ((istrobject*)key)->canonical;
         Py_INCREF(ret);
         return ret;
@@ -96,17 +96,17 @@ key_to_str(PyObject *key)
 
 
 static inline PyObject *
-ci_key_to_str(PyObject *key)
+ci_key_to_str(multidict_state *state, PyObject *key)
 {
     PyObject *ret;
     PyTypeObject *type = Py_TYPE(key);
-    if (type == &istr_type) {
+    if (type == state->IStrType) {
         ret = ((istrobject*)key)->canonical;
         Py_INCREF(ret);
         return ret;
     }
     if (PyUnicode_Check(key)) {
-        return PyObject_CallMethodNoArgs(key, multidict_str_lower);
+        return PyObject_CallMethodNoArgs(key, state->str_lower);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
@@ -219,11 +219,11 @@ ci_pair_list_init(pair_list_t *list)
 
 
 static inline PyObject *
-pair_list_calc_identity(pair_list_t *list, PyObject *key)
+pair_list_calc_identity(multidict_state * state, pair_list_t *list, PyObject *key)
 {
     if (list->calc_ci_indentity)
-        return ci_key_to_str(key);
-    return key_to_str(key);
+        return ci_key_to_str(state, key);
+    return key_to_str(state, key);
 }
 
 static inline void
@@ -299,7 +299,8 @@ _pair_list_add_with_hash(pair_list_t *list,
 
 
 static inline int
-pair_list_add(pair_list_t *list,
+pair_list_add(multidict_state *state,
+              pair_list_t *list,
               PyObject *key,
               PyObject *value)
 {
@@ -307,7 +308,7 @@ pair_list_add(pair_list_t *list,
     PyObject *identity = NULL;
     int ret;
 
-    identity = pair_list_calc_identity(list, key);
+    identity = pair_list_calc_identity(state, list, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -409,13 +410,13 @@ _pair_list_del_hash(pair_list_t *list, PyObject *identity,
 
 
 static inline int
-pair_list_del(pair_list_t *list, PyObject *key)
+pair_list_del(multidict_state *state, pair_list_t *list, PyObject *key)
 {
     PyObject *identity = NULL;
     Py_hash_t hash;
     int ret;
 
-    identity = pair_list_calc_identity(list, key);
+    identity = pair_list_calc_identity(state, list, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -481,7 +482,7 @@ pair_list_next(pair_list_t *list, Py_ssize_t *ppos, PyObject **pidentity,
 
 
 static inline int
-pair_list_contains(pair_list_t *list, PyObject *key)
+pair_list_contains(multidict_state *state, pair_list_t *list, PyObject *key)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
@@ -493,7 +494,7 @@ pair_list_contains(pair_list_t *list, PyObject *key)
         return 0;
     }
 
-    ident = pair_list_calc_identity(list, key);
+    ident = pair_list_calc_identity(state, list, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -526,7 +527,7 @@ fail:
 
 
 static inline PyObject *
-pair_list_get_one(pair_list_t *list, PyObject *key)
+pair_list_get_one(multidict_state *state, pair_list_t *list, PyObject *key)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
@@ -535,7 +536,7 @@ pair_list_get_one(pair_list_t *list, PyObject *key)
     PyObject *value = NULL;
     int tmp;
 
-    ident = pair_list_calc_identity(list, key);
+    ident = pair_list_calc_identity(state, list, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -570,7 +571,7 @@ fail:
 
 
 static inline PyObject *
-pair_list_get_all(pair_list_t *list, PyObject *key)
+pair_list_get_all(multidict_state *state, pair_list_t *list, PyObject *key)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
@@ -580,7 +581,7 @@ pair_list_get_all(pair_list_t *list, PyObject *key)
     PyObject *res = NULL;
     int tmp;
 
-    ident = pair_list_calc_identity(list, key);
+    ident = pair_list_calc_identity(state, list, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -629,7 +630,8 @@ fail:
 
 
 static inline PyObject *
-pair_list_set_default(pair_list_t *list, PyObject *key, PyObject *value)
+pair_list_set_default(multidict_state *state, pair_list_t *list,
+                      PyObject *key, PyObject *value)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
@@ -638,7 +640,7 @@ pair_list_set_default(pair_list_t *list, PyObject *key, PyObject *value)
     PyObject *value2 = NULL;
     int tmp;
 
-    ident = pair_list_calc_identity(list, key);
+    ident = pair_list_calc_identity(state, list, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -677,7 +679,7 @@ fail:
 
 
 static inline PyObject *
-pair_list_pop_one(pair_list_t *list, PyObject *key)
+pair_list_pop_one(multidict_state *state, pair_list_t *list, PyObject *key)
 {
     pair_t *pair;
 
@@ -687,7 +689,7 @@ pair_list_pop_one(pair_list_t *list, PyObject *key)
     int tmp;
     PyObject *ident = NULL;
 
-    ident = pair_list_calc_identity(list, key);
+    ident = pair_list_calc_identity(state, list, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -728,7 +730,7 @@ fail:
 
 
 static inline PyObject *
-pair_list_pop_all(pair_list_t *list, PyObject *key)
+pair_list_pop_all(multidict_state *state, pair_list_t *list, PyObject *key)
 {
     Py_hash_t hash;
     Py_ssize_t pos;
@@ -737,7 +739,7 @@ pair_list_pop_all(pair_list_t *list, PyObject *key)
     PyObject *res = NULL;
     PyObject *ident = NULL;
 
-    ident = pair_list_calc_identity(list, key);
+    ident = pair_list_calc_identity(state, list, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -822,7 +824,8 @@ pair_list_pop_item(pair_list_t *list)
 
 
 static inline int
-pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
+pair_list_replace(multidict_state *state, pair_list_t *list,
+                  PyObject * key, PyObject *value)
 {
     pair_t *pair;
 
@@ -833,7 +836,7 @@ pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
     PyObject *identity = NULL;
     Py_hash_t hash;
 
-    identity = pair_list_calc_identity(list, key);
+    identity = pair_list_calc_identity(state, list, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -1057,7 +1060,8 @@ fail:
 
 
 static inline int
-pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
+pair_list_update_from_seq(multidict_state *state, pair_list_t *list,
+                          PyObject *seq)
 {
     PyObject *it = NULL; // iter(seq)
     PyObject *fast = NULL; // item as a 2-tuple or 2-list
@@ -1146,7 +1150,7 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
         Py_INCREF(value);
 #endif
 
-        identity = pair_list_calc_identity(list, key);
+        identity = pair_list_calc_identity(state, list, key);
         if (identity == NULL) {
             goto fail_1;
         }
