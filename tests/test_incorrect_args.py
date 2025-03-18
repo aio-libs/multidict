@@ -1,6 +1,7 @@
 """Test passing invalid arguments to the methods of the MultiDict class."""
 
 import pytest
+
 from multidict import MultiDict
 
 
