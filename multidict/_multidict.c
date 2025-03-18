@@ -9,13 +9,8 @@
 #include "_multilib/pair_list.h"
 #include "_multilib/dict.h"
 #include "_multilib/iter.h"
+#include "_multilib/parser.h"
 #include "_multilib/views.h"
-
-#if PY_MINOR_VERSION < 12
-#ifndef _PyArg_UnpackKeywords
-#define FASTCALL_OLD
-#endif
-#endif
 
 
 static PyObject *collections_abc_mapping;
@@ -449,54 +444,19 @@ fail:
 static inline PyObject *
 multidict_getall(
     MultiDictObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     PyObject *list     = NULL,
              *key      = NULL,
              *_default = NULL;
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    static char *getall_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getall",
-                                     getall_keywords, &key, &_default))
-    {
+    if (parse2("getall", args, nargs, kwnames, 1,
+                "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-#else
-    static const char * const _keywords[] = {"key", "default", NULL};
-#ifdef FASTCALL_OLD
-    static _PyArg_Parser _parser = {"O|O:getall", _keywords, 0};
-    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default)) {
-        return NULL;
-    }
-#else
-    static _PyArg_Parser _parser = {NULL, _keywords, "getall", 0};
-    PyObject *argsbuf[2];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
-                                 &_parser, 1, 2, 0, argsbuf);
-    if (!args) {
-        return NULL;
-    }
-    key = args[0];
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-
-    _default = args[1];
-skip_optional_pos:
-#endif
-#endif
     list = pair_list_get_all(&self->pairs, key);
 
     if (list == NULL &&
@@ -514,108 +474,41 @@ skip_optional_pos:
 static inline PyObject *
 multidict_getone(
     MultiDictObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     PyObject *key      = NULL,
              *_default = NULL;
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    static char *getone_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getone",
-                                     getone_keywords, &key, &_default))
-    {
+    if (parse2("getone", args, nargs, kwnames, 1,
+                "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-
-#else
-    static const char * const _keywords[] = {"key", "default", NULL};
-#ifdef FASTCALL_OLD
-    static _PyArg_Parser _parser = {"O|O:getone", _keywords, 0};
-    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default)) {
-        return NULL;
-    }
-#else
-    static _PyArg_Parser _parser = {NULL, _keywords, "getone", 0};
-    PyObject *argsbuf[2];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
-                                 &_parser, 1, 2, 0, argsbuf);
-    if (!args) {
-        return NULL;
-    }
-    key = args[0];
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-
-    _default = args[1];
-skip_optional_pos:
-#endif
-#endif
     return _multidict_getone(self, key, _default);
 }
 
 static inline PyObject *
 multidict_get(
     MultiDictObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     PyObject *key      = NULL,
-             *_default = Py_None,
+             *_default = NULL,
              *ret;
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    static char *getone_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:getone",
-                                     getone_keywords, &key, &_default))
-    {
+    if (parse2("get", args, nargs, kwnames, 1,
+                "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-#else
-    static const char * const _keywords[] = {"key", "default", NULL};
-#ifdef FASTCALL_OLD
-    static _PyArg_Parser _parser = {"O|O:get", _keywords, 0};
-    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default)) {
-        return NULL;
+    if (_default == NULL) {
+        // fixme, _default is potentially dangerous borrowed ref here
+        _default = Py_None;
     }
-#else
-    static _PyArg_Parser _parser = {NULL, _keywords, "get", 0};
-    PyObject *argsbuf[2];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
-                                 &_parser, 1, 2, 0, argsbuf);
-    if (!args) {
-        return NULL;
-    }
-    key = args[0];
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-
-    _default = args[1];
-skip_optional_pos:
-#endif
-#endif
     ret = _multidict_getone(self, key, _default);
     return ret;
 }
@@ -830,50 +723,18 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 static inline PyObject *
 multidict_add(
     MultiDictObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     PyObject *key = NULL,
              *val = NULL;
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    static char *kwlist[] = {"key", "value", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO:add",
-                                     kwlist, &key, &val))
-    {
+    if (parse2("add", args, nargs, kwnames, 2,
+                "key", &key, "value", &val) < 0) {
         return NULL;
     }
-#else
-    static const char * const _keywords[] = {"key", "value", NULL};
-#ifdef FASTCALL_OLD
-    static _PyArg_Parser _parser = {"OO:add", _keywords, 0};
-    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &val)) {
-        return NULL;
-    }
-#else
-    static _PyArg_Parser _parser = {
-        .keywords = _keywords,
-        .fname = "add",
-        .kwtuple = NULL,
-    };
-    PyObject *argsbuf[2];
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
-                                 &_parser, 2, 2, 0, argsbuf);
-    if (!args) {
-        return NULL;
-    }
-    key = args[0];
-    val = args[1];
-#endif
-#endif
     if (pair_list_add(&self->pairs, key, val) < 0) {
         return NULL;
     }
@@ -910,83 +771,37 @@ multidict_clear(MultiDictObject *self)
 static inline PyObject *
 multidict_setdefault(
     MultiDictObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     PyObject *key      = NULL,
              *_default = NULL;
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    static char *setdefault_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:setdefault",
-                                     setdefault_keywords, &key, &_default))
-    {
+    if (parse2("setdefault", args, nargs, kwnames, 1,
+                "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-#else
-    static const char * const _keywords[] = {"key", "default", NULL};
-#ifdef FASTCALL_OLD
-    static _PyArg_Parser _parser = {"O|O:setdefault", _keywords, 0};
-    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default)) {
-        return NULL;
-    }
-#else
-    static _PyArg_Parser _parser = {NULL, _keywords, "setdefault", 0};
-    PyObject *argsbuf[3];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
-
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
-                                 &_parser, 1, 2, 0, argsbuf);
-    if (!args) {
-        return NULL;
-    }
-    key = args[0];
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    _default = args[1];
-
-skip_optional_pos:
-#endif
-#endif
     return pair_list_set_default(&self->pairs, key, _default);
 }
 
 static inline PyObject *
 multidict_popone(
     MultiDictObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     PyObject *key      = NULL,
              *_default = NULL,
              *ret_val  = NULL;
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    static char *popone_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popone",
-                                     popone_keywords, &key, &_default))
-    {
+    if (parse2("popone", args, nargs, kwnames, 1,
+                "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-
     ret_val = pair_list_pop_one(&self->pairs, key);
 
     if (ret_val == NULL &&
@@ -999,100 +814,24 @@ multidict_popone(
     }
 
     return ret_val;
-#else
-    static const char * const _keywords[] = {"key", "default", NULL};
-#ifdef FASTCALL_OLD
-    static _PyArg_Parser _parser = {"O|O:popone", _keywords, 0};
-    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default)) {
-        return NULL;
-    }
-#else
-    static _PyArg_Parser _parser = {NULL, _keywords, "popone", 0};
-    PyObject *argsbuf[3];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
-
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
-                                 &_parser, 1, 2, 0, argsbuf);
-    if (!args) {
-        return NULL;
-    }
-    key = args[0];
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    _default = args[1];
-
-skip_optional_pos:
-#endif
-    ret_val = pair_list_pop_one(&self->pairs, key);
-
-    if (ret_val == NULL &&
-        PyErr_ExceptionMatches(PyExc_KeyError) &&
-        _default != NULL)
-    {
-        PyErr_Clear();
-        Py_INCREF(_default);
-        return _default;
-    }
-
-    return ret_val;
-#endif
 }
 
 static inline PyObject *
 multidict_pop(
     MultiDictObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     PyObject *key      = NULL,
              *_default = NULL,
              *ret_val  = NULL;
 
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    static char *pop_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popone",
-                                     pop_keywords, &key, &_default))
-    {
+    if (parse2("pop", args, nargs, kwnames, 1,
+                "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-
-#else
-    static const char * const _keywords[] = {"key", "default", NULL};
-#ifdef FASTCALL_OLD
-    static _PyArg_Parser _parser = {"O|O:pop", _keywords, 0};
-    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default)) {
-        return NULL;
-    }
-#else
-    static _PyArg_Parser _parser = {NULL, _keywords, "pop", 0};
-    PyObject *argsbuf[3];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
-
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
-                                 &_parser, 1, 2, 0, argsbuf);
-    if (!args) {
-        return NULL;
-    }
-    key = args[0];
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    _default = args[1];
-
-skip_optional_pos:
-#endif
-#endif
     ret_val = pair_list_pop_one(&self->pairs, key);
 
     if (ret_val == NULL &&
@@ -1110,56 +849,19 @@ skip_optional_pos:
 static inline PyObject *
 multidict_popall(
     MultiDictObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     PyObject *key      = NULL,
              *_default = NULL,
              *ret_val  = NULL;
 
-
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    static char *popall_keywords[] = {"key", "default", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O:popall",
-                                     popall_keywords, &key, &_default))
-    {
+    if (parse2("popall", args, nargs, kwnames, 1,
+                "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-#else
-    static const char * const _keywords[] = {"key", "default", NULL};
-#ifdef FASTCALL_OLD
-    static _PyArg_Parser _parser = {"O|O:popall", _keywords, 0};
-    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &key, &_default)) {
-        return NULL;
-    }
-#else
-    static _PyArg_Parser _parser = {NULL, _keywords, "popall", 0};
-    PyObject *argsbuf[3];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 1;
-
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames,
-                                 &_parser, 1, 2, 0, argsbuf);
-    if (!args) {
-        return NULL;
-    }
-    key = args[0];
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    _default = args[1];
-
-skip_optional_pos:
-#endif
-#endif
     ret_val = pair_list_pop_all(&self->pairs, key);
 
     if (ret_val == NULL &&
@@ -1258,34 +960,19 @@ static PyMethodDef multidict_methods[] = {
     {
         "getall",
         (PyCFunction)multidict_getall,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getall_doc
     },
     {
         "getone",
         (PyCFunction)multidict_getone,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getone_doc
     },
     {
         "get",
         (PyCFunction)multidict_get,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_get_doc
     },
     {
@@ -1309,12 +996,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "add",
         (PyCFunction)multidict_add,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_add_doc
     },
     {
@@ -1338,45 +1020,25 @@ static PyMethodDef multidict_methods[] = {
     {
         "setdefault",
         (PyCFunction)multidict_setdefault,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_setdefault_doc
     },
     {
         "popone",
         (PyCFunction)multidict_popone,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_popone_doc
     },
     {
         "pop",
         (PyCFunction)multidict_pop,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_pop_doc
     },
     {
         "popall",
         (PyCFunction)multidict_popall,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_popall_doc
     },
     {
@@ -1547,73 +1209,46 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
 static inline PyObject *
 multidict_proxy_getall(
     MultiDictProxyObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     return multidict_getall(
         self->md,
         args,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        kwds
-#else
         nargs,
         kwnames
-#endif
     );
 }
 
 static inline PyObject *
 multidict_proxy_getone(
     MultiDictProxyObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     return multidict_getone(
         self->md, args,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        kwds
-#else
         nargs, kwnames
-#endif
     );
 }
 
 static inline PyObject *
 multidict_proxy_get(
     MultiDictProxyObject *self,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-    PyObject *args,
-    PyObject *kwds
-#else
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
-#endif
 )
 {
     return multidict_get(
         self->md,
         args,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        kwds
-#else
         nargs,
         kwnames
-#endif
     );
 }
 
@@ -1722,34 +1357,19 @@ static PyMethodDef multidict_proxy_methods[] = {
     {
         "getall",
         (PyCFunction)multidict_proxy_getall,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getall_doc
     },
     {
         "getone",
         (PyCFunction)multidict_proxy_getone,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getone_doc
     },
     {
         "get",
         (PyCFunction)multidict_proxy_get,
-#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 12
-        METH_VARARGS
-#else
-        METH_FASTCALL
-#endif
-        | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_get_doc
     },
     {
