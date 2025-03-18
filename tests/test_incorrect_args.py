@@ -1,5 +1,5 @@
-
 """Test passing invalid arguments to the methods of the MultiDict class."""
+
 import pytest
 from multidict import MultiDict
 
@@ -15,6 +15,7 @@ def test_getall_args(any_multidict_class: type[MultiDict[int]]) -> None:
     with pytest.raises(TypeError):
         d.getall("a", wrong=1)
 
+
 def test_getone_args(any_multidict_class: type[MultiDict[int]]) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
@@ -25,6 +26,7 @@ def test_getone_args(any_multidict_class: type[MultiDict[int]]) -> None:
         d.getone(wrong=1)
     with pytest.raises(TypeError):
         d.getone("a", wrong=1)
+
 
 def test_get_args(any_multidict_class: type[MultiDict[int]]) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
@@ -37,6 +39,7 @@ def test_get_args(any_multidict_class: type[MultiDict[int]]) -> None:
     with pytest.raises(TypeError):
         d.get("a", wrong=1)
 
+
 def test_setdefault_args(any_multidict_class: type[MultiDict[int]]) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
@@ -48,9 +51,8 @@ def test_setdefault_args(any_multidict_class: type[MultiDict[int]]) -> None:
     with pytest.raises(TypeError):
         d.setdefault("a", wrong=1)
 
-def test_popone_args(
-    any_multidict_class: type[MultiDict[int]]
-) -> None:
+
+def test_popone_args(any_multidict_class: type[MultiDict[int]]) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
         d.popone()
@@ -61,9 +63,8 @@ def test_popone_args(
     with pytest.raises(TypeError):
         d.popone("a", wrong=1)
 
-def test_pop_args(
-    any_multidict_class: type[MultiDict[int]]
-) -> None:
+
+def test_pop_args(any_multidict_class: type[MultiDict[int]]) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
         d.pop()
@@ -74,9 +75,8 @@ def test_pop_args(
     with pytest.raises(TypeError):
         d.pop("a", wrong=1)
 
-def test_popall_args(
-    any_multidict_class: type[MultiDict[int]]
-) -> None:
+
+def test_popall_args(any_multidict_class: type[MultiDict[int]]) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
         d.popall()
