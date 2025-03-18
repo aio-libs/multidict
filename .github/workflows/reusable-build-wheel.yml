@@ -39,7 +39,7 @@ jobs:
   build-wheel:
     name: Build wheels on ${{ inputs.os }} ${{ inputs.qemu }}
     runs-on: ${{ inputs.os }}-latest
-    timeout-minutes: ${{ inputs.qemu && 47 || 14 }}
+    timeout-minutes: ${{ inputs.qemu && 120 || 15 }}
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
       uses: re-actors/checkout-python-sdist@release/v2
@@ -68,7 +68,7 @@ jobs:
       shell: bash
 
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.23.0
+      uses: pypa/cibuildwheel@v2.23.1
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
 

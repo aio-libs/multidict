@@ -2,7 +2,7 @@
   package = "multidict"
   filename = "CHANGES.rst"
   directory = "CHANGES/"
-  title_format = "v{version}"
+  title_format = "{version}"
   template = "CHANGES/.TEMPLATE.rst"
   issue_format = "{issue}"
 
