@@ -38,6 +38,11 @@ repos:
     additional_dependencies:
     - flake8-pyi ~= 24.1.0
     - flake8-pytest-style ~= 1.7.2
+    exclude: >-
+      (?x)
+      ^
+        tools/upgrade_pythoncapi\.py
+      $
 
 - repo: local
   hooks:

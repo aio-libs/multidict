@@ -1,3 +1,5 @@
+#include "pythoncapi_compat.h"
+
 #ifndef _MULTIDICT_PAIR_LIST_H
 #define _MULTIDICT_PAIR_LIST_H
 
@@ -57,7 +59,7 @@ static inline int
 str_cmp(PyObject *s1, PyObject *s2)
 {
     PyObject *ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
-    if (ret == Py_True) {
+    if (Py_IsTrue(ret)) {
         Py_DECREF(ret);
         return 1;
     }
@@ -251,7 +253,7 @@ pair_list_dealloc(pair_list_t *list)
     */
     list->size = 0;
     if (list->pairs != list->buffer) {
-        PyMem_Del(list->pairs);
+        PyMem_Free(list->pairs);
         list->pairs = list->buffer;
         list->capacity = EMBEDDED_CAPACITY;
     }
@@ -1277,7 +1279,7 @@ pair_list_clear(pair_list_t *list)
     }
     list->size = 0;
     if (list->pairs != list->buffer) {
-        PyMem_Del(list->pairs);
+        PyMem_Free(list->pairs);
         list->pairs = list->buffer;
     }
 
