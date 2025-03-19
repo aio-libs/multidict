@@ -5,6 +5,7 @@ from collections.abc import (
     Iterable,
     KeysView,
     Mapping,
+    Sequence,
     Set,
     ValuesView,
 )
@@ -77,17 +78,17 @@ def _viewbaseset_richcmp(
 
 def _viewbaseset_and(
     view: _ViewArg, other: object
-) -> Union[set[object], NotImplementedType]:
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    lft: set[object] = set(iter(view))
+    lft = set(iter(view))
     rgt = set(iter(other))
     return lft & rgt
 
 
 def _viewbaseset_or(
     view: _ViewArg, other: object
-) -> Union[set[object], NotImplementedType]:
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
     lft = set(iter(view))
@@ -97,17 +98,17 @@ def _viewbaseset_or(
 
 def _viewbaseset_sub(
     view: _ViewArg, other: object
-) -> Union[set[object], NotImplementedType]:
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    lft: set[object] = set(iter(view))
+    lft = set(iter(view))
     rgt = set(iter(other))
     return lft - rgt
 
 
 def _viewbaseset_xor(
     view: _ViewArg, other: object
-) -> Union[set[object], NotImplementedType]:
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
     lft = set(iter(view))
