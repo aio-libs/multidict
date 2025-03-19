@@ -44,8 +44,8 @@ static int parse2(const char* fname,
                   PyObject **arg2
 )
 {
-    assert(maxargs>=1);
-    assert(maxargs<=2);
+    assert(minargs>=1);
+    assert(minargs<=2);
 
     if (kwnames != NULL) {
         Py_ssize_t kwsize = PyTuple_Size(kwnames);
