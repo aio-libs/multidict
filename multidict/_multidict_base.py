@@ -5,6 +5,7 @@ from collections.abc import (
     Iterable,
     KeysView,
     Mapping,
+    MappingView,
     Set,
     ValuesView,
 )
@@ -34,7 +35,7 @@ def _abc_valuesview_register(view_cls: type[object]) -> None:
 
 
 def _viewbaseset_richcmp(
-    view: set[object], other: object, op: Literal[0, 1, 2, 3, 4, 5]
+    view: MappingView[object], other: object, op: Literal[0, 1, 2, 3, 4, 5]
 ) -> Union[bool, NotImplementedType]:
     if op == 0:  # <
         if not isinstance(other, Set):
@@ -73,12 +74,11 @@ def _viewbaseset_richcmp(
 
 
 def _viewbaseset_and(
-    view: set[object], other: object
+    self: MappingView[object], other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    if isinstance(view, Set):
-        view = set(iter(view))
+    view = set(iter(self))
     if isinstance(other, Set):
         other = set(iter(other))
     if not isinstance(other, Set):
@@ -87,12 +87,11 @@ def _viewbaseset_and(
 
 
 def _viewbaseset_or(
-    view: set[object], other: object
+    self: MappingView[object], other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    if isinstance(view, Set):
-        view = set(iter(view))
+    view = set(iter(self))
     if isinstance(other, Set):
         other = set(iter(other))
     if not isinstance(other, Set):
@@ -101,12 +100,11 @@ def _viewbaseset_or(
 
 
 def _viewbaseset_sub(
-    view: set[object], other: object
+    self: MappingView[object], other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    if isinstance(view, Set):
-        view = set(iter(view))
+    view = set(iter(self))
     if isinstance(other, Set):
         other = set(iter(other))
     if not isinstance(other, Set):
@@ -115,12 +113,11 @@ def _viewbaseset_sub(
 
 
 def _viewbaseset_xor(
-    view: set[object], other: object
+    self: MappingView[object], other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    if isinstance(view, Set):
-        view = set(iter(view))
+    view = set(iter(self))
     if isinstance(other, Set):
         other = set(iter(other))
     if not isinstance(other, Set):
