@@ -33,3 +33,5 @@ source =
   .
 source_pkgs =
   multidict
+omit =
+  tests/gen_pickles.py
