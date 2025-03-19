@@ -13,7 +13,7 @@ static int raise_unexpected_kwarg(const char *fname, PyObject* argname)
     return -1;
 }
 
-static int raise_missing_posarg(const char *fname, char* argname)
+static int raise_missing_posarg(const char *fname, const char* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() missing 1 required positional argument: '%.150s'",

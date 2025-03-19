@@ -390,25 +390,6 @@ _pair_list_drop_tail(pair_list_t *list, PyObject *identity, Py_hash_t hash,
     return found;
 }
 
-static inline int
-_pair_list_del_hash(pair_list_t *list, PyObject *identity,
-                    PyObject *key, Py_hash_t hash)
-{
-    int ret = _pair_list_drop_tail(list, identity, hash, 0);
-
-    if (ret < 0) {
-        return -1;
-    }
-    else if (ret == 0) {
-        PyErr_SetObject(PyExc_KeyError, key);
-        return -1;
-    }
-    else {
-        list->version = NEXT_VERSION();
-        return 0;
-    }
-}
-
 
 static inline int
 pair_list_del(pair_list_t *list, PyObject *key)
@@ -427,9 +408,20 @@ pair_list_del(pair_list_t *list, PyObject *key)
         goto fail;
     }
 
-    ret = _pair_list_del_hash(list, identity, key, hash);
+    ret = _pair_list_drop_tail(list, identity, hash, 0);
+
+    if (ret < 0) {
+        goto fail;
+    }
+    else if (ret == 0) {
+        PyErr_SetObject(PyExc_KeyError, key);
+        goto fail;
+    }
+    else {
+        list->version = NEXT_VERSION();
+    }
     Py_DECREF(identity);
-    return ret;
+    return 0;
 fail:
     Py_XDECREF(identity);
     return -1;
@@ -527,8 +519,8 @@ fail:
 }
 
 
-static inline PyObject *
-pair_list_get_one(pair_list_t *list, PyObject *key)
+static inline int
+pair_list_get_one(pair_list_t *list, PyObject *key, PyObject **ret)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
@@ -555,7 +547,8 @@ pair_list_get_one(pair_list_t *list, PyObject *key)
         if (tmp > 0) {
             Py_INCREF(value);
             Py_DECREF(ident);
-            return value;
+            *ret = value;
+            return 0;
         }
         else if (tmp < 0) {
             goto fail;
@@ -563,16 +556,15 @@ pair_list_get_one(pair_list_t *list, PyObject *key)
     }
 
     Py_DECREF(ident);
-    PyErr_SetObject(PyExc_KeyError, key);
-    return NULL;
+    return 0;
 fail:
     Py_XDECREF(ident);
-    return NULL;
+    return -1;
 }
 
 
-static inline PyObject *
-pair_list_get_all(pair_list_t *list, PyObject *key)
+static inline int
+pair_list_get_all(pair_list_t *list, PyObject *key, PyObject **ret)
 {
     Py_hash_t hash1, hash2;
     Py_ssize_t pos = 0;
@@ -617,16 +609,16 @@ pair_list_get_all(pair_list_t *list, PyObject *key)
         }
     }
 
-    if (res == NULL) {
-        PyErr_SetObject(PyExc_KeyError, key);
+    if (res != NULL) {
+        *ret = res;
     }
     Py_DECREF(ident);
-    return res;
+    return 0;
 
 fail:
     Py_XDECREF(ident);
     Py_XDECREF(res);
-    return NULL;
+    return -1;
 }
 
 
@@ -678,8 +670,8 @@ fail:
 }
 
 
-static inline PyObject *
-pair_list_pop_one(pair_list_t *list, PyObject *key)
+static inline int
+pair_list_pop_one(pair_list_t *list, PyObject *key, PyObject **ret)
 {
     pair_t *pair;
 
@@ -712,31 +704,30 @@ pair_list_pop_one(pair_list_t *list, PyObject *key)
                 goto fail;
             }
             Py_DECREF(ident);
-            return value;
+            *ret = value;
+            return 0;
         }
         else if (tmp < 0) {
             goto fail;
         }
     }
 
-    PyErr_SetObject(PyExc_KeyError, key);
-    goto fail;
-
+    return 0;
 fail:
     Py_XDECREF(value);
     Py_XDECREF(ident);
-    return NULL;
+    return -1;
 }
 
 
-static inline PyObject *
-pair_list_pop_all(pair_list_t *list, PyObject *key)
+static inline int
+pair_list_pop_all(pair_list_t *list, PyObject *key, PyObject ** ret)
 {
     Py_hash_t hash;
     Py_ssize_t pos;
     pair_t *pair;
     int tmp;
-    PyObject *res = NULL;
+    PyObject *lst = NULL;
     PyObject *ident = NULL;
 
     ident = pair_list_calc_identity(list, key);
@@ -750,8 +741,8 @@ pair_list_pop_all(pair_list_t *list, PyObject *key)
     }
 
     if (list->size == 0) {
-        PyErr_SetObject(PyExc_KeyError, ident);
-        goto fail;
+        Py_DECREF(ident);
+        return 0;
     }
 
     for (pos = list->size - 1; pos >= 0; pos--) {
@@ -761,16 +752,16 @@ pair_list_pop_all(pair_list_t *list, PyObject *key)
         }
         tmp = str_cmp(ident, pair->identity);
         if (tmp > 0) {
-            if (res == NULL) {
-                res = PyList_New(1);
-                if (res == NULL) {
+            if (lst == NULL) {
+                lst = PyList_New(1);
+                if (lst == NULL) {
                     goto fail;
                 }
-                if (PyList_SetItem(res, 0, pair->value) < 0) {
+                if (PyList_SetItem(lst, 0, pair->value) < 0) {
                     goto fail;
                 }
                 Py_INCREF(pair->value);
-            } else if (PyList_Append(res, pair->value) < 0) {
+            } else if (PyList_Append(lst, pair->value) < 0) {
                 goto fail;
             }
             if (pair_list_del_at(list, pos) < 0) {
@@ -782,18 +773,18 @@ pair_list_pop_all(pair_list_t *list, PyObject *key)
         }
     }
 
-    if (res == NULL) {
-        PyErr_SetObject(PyExc_KeyError, key);
-    } else if (PyList_Reverse(res) < 0) {
-        goto fail;
+    if (lst != NULL) {
+        if (PyList_Reverse(lst) < 0) {
+            goto fail;
+        }
     }
+    *ret = lst;
     Py_DECREF(ident);
-    return res;
-
+    return 0;
 fail:
     Py_XDECREF(ident);
-    Py_XDECREF(res);
-    return NULL;
+    Py_XDECREF(lst);
+    return -1;
 }
 
 
