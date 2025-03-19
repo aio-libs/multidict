@@ -16,6 +16,7 @@ COMMON_ARGS = pytest.mark.parametrize(
     ids=["no_args", "too_many_args", "wrong_kwarg", "wrong_kwarg_and_too_many_args"],
 )
 
+
 @COMMON_ARGS
 def test_getall_args(
     any_multidict_class: type[MultiDict[int]],
