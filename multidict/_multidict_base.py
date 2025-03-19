@@ -35,7 +35,7 @@ def _abc_valuesview_register(view_cls: type[object]) -> None:
 
 
 def _viewbaseset_richcmp(
-    view: MappingView[object], other: object, op: Literal[0, 1, 2, 3, 4, 5]
+    view: MappingView, other: object, op: Literal[0, 1, 2, 3, 4, 5]
 ) -> Union[bool, NotImplementedType]:
     if op == 0:  # <
         if not isinstance(other, Set):
@@ -74,7 +74,7 @@ def _viewbaseset_richcmp(
 
 
 def _viewbaseset_and(
-    self: MappingView[object], other: object
+    self: MappingView, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
@@ -87,7 +87,7 @@ def _viewbaseset_and(
 
 
 def _viewbaseset_or(
-    self: MappingView[object], other: object
+    self: MappingView, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
@@ -100,7 +100,7 @@ def _viewbaseset_or(
 
 
 def _viewbaseset_sub(
-    self: MappingView[object], other: object
+    self: MappingView, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
@@ -113,7 +113,7 @@ def _viewbaseset_sub(
 
 
 def _viewbaseset_xor(
-    self: MappingView[object], other: object
+    self: MappingView, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
