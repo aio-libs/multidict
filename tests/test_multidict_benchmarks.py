@@ -389,3 +389,12 @@ def test_cimultidict_get_istr_with_default_miss(
     def _run() -> None:
         for i in items:
             md.get(i, _SENTINEL)
+
+
+def test_multidict_repr(benchmark: BenchmarkFixture) -> None:
+    items = [str(i) for i in range(100)]
+    md: MultiDict[str] = MultiDict([(i, i) for i in items])
+
+    @benchmark
+    def _run() -> None:
+        repr(md)
