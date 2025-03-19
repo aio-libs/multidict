@@ -1211,13 +1211,11 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
 
     pos = 0;
     while (pair_list_next(list, &pos, NULL, &key, &avalue)) {
-        bvalue = PyObject_GetItem(other, key);
-        if (bvalue == NULL) {
-            if (PyErr_ExceptionMatches(PyExc_KeyError)) {
-                PyErr_Clear();
-                return 0;
-            }
+        if (PyMapping_GetOptionalItem(other, key, &bvalue) < 0) {
             return -1;
+        }
+        if (bvalue == NULL) {
+            return 0;
         }
 
         eq = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
