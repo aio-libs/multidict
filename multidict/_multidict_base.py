@@ -76,55 +76,43 @@ def _viewbaseset_richcmp(
 
 
 def _viewbaseset_and(
-    self: _ViewArg, other: object
+    view: _ViewArg, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    view = set(iter(self))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view & other
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft & rgt
 
 
 def _viewbaseset_or(
-    self: _ViewArg, other: object
+    view: _ViewArg, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    view = set(iter(self))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view | other
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft | rgt
 
 
 def _viewbaseset_sub(
-    self: _ViewArg, other: object
+    view: _ViewArg, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    view = set(iter(self))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view - other
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft - rgt
 
 
 def _viewbaseset_xor(
-    self: _ViewArg, other: object
+    view: _ViewArg, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    view = set(iter(self))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view ^ other
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft ^ rgt
 
 
 def _itemsview_isdisjoint(view: Container[object], other: Iterable[object]) -> bool:
