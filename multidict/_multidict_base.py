@@ -4,7 +4,6 @@ from collections.abc import (
     ItemsView,
     Iterable,
     KeysView,
-    Mapping,
     Set,
     ValuesView,
 )
