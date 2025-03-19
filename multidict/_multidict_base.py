@@ -13,7 +13,7 @@ from typing import Literal, Union
 if sys.version_info >= (3, 10):
     from types import NotImplementedType
 else:
-    from typing import Any as NotImplementedType
+    NotImplementedType = type(NotImplemented)
 
 if sys.version_info >= (3, 11):
     from typing import assert_never
