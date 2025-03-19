@@ -7,7 +7,7 @@ import pytest
 from multidict import MultiDict
 
 COMMON_ARGS = pytest.mark.parametrize(
-    ("args", "kwargs"),
+    ("positional_args", "keyword_args"),
     (
         ((), {}),
         (("a", "b", "c"), {}),
@@ -21,75 +21,75 @@ COMMON_ARGS = pytest.mark.parametrize(
 @COMMON_ARGS
 def test_getall_args(
     any_multidict_class: type[MultiDict[int]],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    positional_args: tuple[Any, ...],
+    keyword_args: dict[str, Any],
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.getall(*args, **kwargs)
+        d.getall(*positional_args, **keyword_args)
 
 
 @COMMON_ARGS
 def test_getone_args(
     any_multidict_class: type[MultiDict[int]],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    positional_args: tuple[Any, ...],
+    keyword_args: dict[str, Any],
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.getone(*args, **kwargs)
+        d.getone(*positional_args, **keyword_args)
 
 
 @COMMON_ARGS
 def test_get_args(
     any_multidict_class: type[MultiDict[int]],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    positional_args: tuple[Any, ...],
+    keyword_args: dict[str, Any],
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.get(*args, **kwargs)
+        d.get(*positional_args, **keyword_args)
 
 
 @COMMON_ARGS
 def test_setdefault_args(
     any_multidict_class: type[MultiDict[int]],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    positional_args: tuple[Any, ...],
+    keyword_args: dict[str, Any],
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.setdefault(*args, **kwargs)
+        d.setdefault(*positional_args, **keyword_args)
 
 
 @COMMON_ARGS
 def test_popone_args(
     any_multidict_class: type[MultiDict[int]],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    positional_args: tuple[Any, ...],
+    keyword_args: dict[str, Any],
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.popone(*args, **kwargs)
+        d.popone(*positional_args, **keyword_args)
 
 
 @COMMON_ARGS
 def test_pop_args(
     any_multidict_class: type[MultiDict[int]],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    positional_args: tuple[Any, ...],
+    keyword_args: dict[str, Any],
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.pop(*args, **kwargs)
+        d.pop(*positional_args, **keyword_args)
 
 
 @COMMON_ARGS
 def test_popall_args(
     any_multidict_class: type[MultiDict[int]],
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
+    positional_args: tuple[Any, ...],
+    keyword_args: dict[str, Any],
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.popall(*args, **kwargs)
+        d.popall(*positional_args, **keyword_args)
