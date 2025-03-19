@@ -80,9 +80,9 @@ def _viewbaseset_and(
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    lft = set(iter(view))
+    lft: set[object] = set(iter(view))
     rgt = set(iter(other))
-    return lft & rgt  # type: ignore[return-value]
+    return lft & rgt
 
 
 def _viewbaseset_or(
