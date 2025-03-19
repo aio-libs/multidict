@@ -166,11 +166,3 @@ def _valuesview_repr(view: Iterable[object]) -> str:
         lst.append("{!r}".format(v))
     body = ", ".join(lst)
     return "{}({})".format(view.__class__.__name__, body)
-
-
-def _mdrepr(md: Mapping[object, object]) -> str:
-    lst = []
-    for k, v in md.items():
-        lst.append("'{}': {!r}".format(k, v))
-    body = ", ".join(lst)
-    return "<{}({})>".format(md.__class__.__name__, body)
