@@ -572,7 +572,8 @@ ret:
 }
 
 static inline PyObject *
-_do_multidict_repr(MultiDictObject *md, PyObject *name, bool show_keys, bool show_values)
+_do_multidict_repr(MultiDictObject *md, PyObject *name,
+                   bool show_keys, bool show_values)
 {
     PyObject *key = NULL,
              *value = NULL;
