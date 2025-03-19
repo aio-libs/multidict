@@ -40,13 +40,11 @@ def _abc_valuesview_register(view_cls: type[object]) -> None:
 def _viewbaseset_richcmp(
     view: _ViewArg, other: object, op: Literal[0, 1, 2, 3, 4, 5]
 ) -> Union[bool, NotImplementedType]:
+    if not isinstance(other, Set):
+        return NotImplemented  # type: ignore[no-any-return]
     if op == 0:  # <
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         return len(view) < len(other) and view <= other
     elif op == 1:  # <=
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         if len(view) > len(other):
             return False
         for elem in view:
@@ -54,18 +52,12 @@ def _viewbaseset_richcmp(
                 return False
         return True
     elif op == 2:  # ==
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         return len(view) == len(other) and view <= other
     elif op == 3:  # !=
         return not view == other
     elif op == 4:  # >
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         return len(view) > len(other) and view >= other
     elif op == 5:  # >=
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         if len(view) < len(other):
             return False
         for elem in other:
