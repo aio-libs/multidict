@@ -23,7 +23,7 @@ _site-packages-to-src-mapping = [
   ".",
   "*/lib/pypy*/site-packages",
   "*/lib/python*/site-packages",
-  "*\Lib\site-packages"
+  "*\\Lib\\site-packages"
 ]
 
 [tool.coverage.run]
@@ -44,8 +44,8 @@ source_pkgs = ['multidict']
 exclude_also = [
     "if TYPE_CHECKING",
     "assert False",
-    ": \.\.\.(\s*#.*)?$",
-    "^ +\.\.\.$"
+    ": \\.\\.\\.(\\s*#.*)?$",
+    "^ +\\.\\.\\.$"
 ]
 skip_covered = true
 skip_empty = true
