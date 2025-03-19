@@ -5,11 +5,10 @@ from collections.abc import (
     Iterable,
     KeysView,
     Mapping,
-    MappingView,
     Set,
     ValuesView,
 )
-from typing import Literal, Union
+from typing import Literal, TypeVar, Union
 
 if sys.version_info >= (3, 10):
     from types import NotImplementedType
@@ -20,6 +19,12 @@ if sys.version_info >= (3, 11):
     from typing import assert_never
 else:
     from typing_extensions import assert_never
+
+
+_KT_co = TypeVar("_KT_co", covariant=True)  # Key type covariant containers.
+_VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
+
+_ViewArg = Union[KeysView[_KT_co], ItemsView[_KT_co, _VT_co]]
 
 
 def _abc_itemsview_register(view_cls: type[object]) -> None:
@@ -35,7 +40,7 @@ def _abc_valuesview_register(view_cls: type[object]) -> None:
 
 
 def _viewbaseset_richcmp(
-    view: MappingView, other: object, op: Literal[0, 1, 2, 3, 4, 5]
+    view: _ViewArg, other: object, op: Literal[0, 1, 2, 3, 4, 5]
 ) -> Union[bool, NotImplementedType]:
     if op == 0:  # <
         if not isinstance(other, Set):
@@ -74,7 +79,7 @@ def _viewbaseset_richcmp(
 
 
 def _viewbaseset_and(
-    self: MappingView, other: object
+    self: _ViewArg, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
@@ -87,7 +92,7 @@ def _viewbaseset_and(
 
 
 def _viewbaseset_or(
-    self: MappingView, other: object
+    self: _ViewArg, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
@@ -100,7 +105,7 @@ def _viewbaseset_or(
 
 
 def _viewbaseset_sub(
-    self: MappingView, other: object
+    self: _ViewArg, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
@@ -113,7 +118,7 @@ def _viewbaseset_sub(
 
 
 def _viewbaseset_xor(
-    self: MappingView, other: object
+    self: _ViewArg, other: object
 ) -> Union[set[object], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
