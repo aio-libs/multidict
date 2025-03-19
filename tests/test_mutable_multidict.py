@@ -318,6 +318,37 @@ class TestMutableMultiDict:
 
         assert {"key" + str(SIZE - 1): SIZE - 1} == d
 
+    def test_update(
+        self,
+        case_sensitive_multidict_class: type[CIMultiDict[Union[str, int]]],
+    ) -> None:
+        d = case_sensitive_multidict_class()
+        assert d == {}
+
+        d.update([("key", "one"), ("key", "two")], key=3, foo="bar")
+        assert d != {"key": "one", "foo": "bar"}
+        assert 4 == len(d)
+        itms = d.items()
+        # we can't guarantee order of kwargs
+        assert ("key", "one") in itms
+        assert ("key", "two") in itms
+        assert ("key", 3) in itms
+        assert ("foo", "bar") in itms
+
+        other = case_sensitive_multidict_class(bar="baz")
+        assert other == {"bar": "baz"}
+
+        d.update(other)
+        assert ("bar", "baz") in d.items()
+
+        d.update({"foo": "moo"})
+        assert ("foo", "moo") in d.items()
+
+        d.update()
+        assert 5 == len(d)
+
+        with pytest.raises(TypeError):
+            d.update("foo", "bar")  # type: ignore[arg-type, call-arg]
 
 class TestCIMutableMultiDict:
     def test_getall(
