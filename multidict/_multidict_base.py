@@ -82,7 +82,7 @@ def _viewbaseset_and(
         return NotImplemented  # type: ignore[no-any-return]
     lft = set(iter(view))
     rgt = set(iter(other))
-    return lft & rgt
+    return lft & rgt  # type: ignore[return-value]
 
 
 def _viewbaseset_or(
@@ -102,7 +102,7 @@ def _viewbaseset_sub(
         return NotImplemented  # type: ignore[no-any-return]
     lft = set(iter(view))
     rgt = set(iter(other))
-    return lft - rgt
+    return lft - rgt  # type: ignore[return-value]
 
 
 def _viewbaseset_xor(
