@@ -12,3 +12,14 @@ free-threaded-support = true
 
 [tool.cibuildwheel.linux]
 before-all = "yum install -y libffi-devel || apk add --upgrade libffi-dev || apt-get install libffi-dev"
+
+
+[tool.coverage.run]
+branch = true
+source_pkgs = ['multidict']
+
+[tool.coverage.report]
+exclude_also = [
+    # @overload or protocol
+    ": ...$"
+]
