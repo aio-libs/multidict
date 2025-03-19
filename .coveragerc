@@ -34,4 +34,5 @@ source =
 source_pkgs =
   multidict
 omit =
+  # FIXME: migrate to a snapshotting plugin. See #922, #924 and #938.
   tests/gen_pickles.py
