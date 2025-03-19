@@ -28,7 +28,7 @@ the first arg is mandatory and the second one is optional.
 If the second arg is not passed it remains NULL pointer.
 
 The parser accepts three forms:
-1. all posiotional args,
+1. all positional args,
 2. fist positional, second keyword-arg
 3. all named keyword args.
 */
