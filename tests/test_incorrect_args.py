@@ -1,7 +1,7 @@
 """Test passing invalid arguments to the methods of the MultiDict class."""
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -21,9 +21,9 @@ class InvalidTestedMethodArgs:
         return self.test_id
 
 
-COMMON_ARGS = pytest.mark.parametrize(
-    "tested_method_args",
-    (
+@pytest.fixture(
+    scope="module",
+    params=(
         InvalidTestedMethodArgs("no_args", (), {}),
         InvalidTestedMethodArgs("too_many_args", ("a", "b", "c"), {}),
         InvalidTestedMethodArgs("wrong_kwarg", (), {"wrong": 1}),
@@ -35,9 +35,13 @@ COMMON_ARGS = pytest.mark.parametrize(
     ),
     ids=str,
 )
+def tested_method_args(
+    request: pytest.FixtureRequest,
+) -> InvalidTestedMethodArgs:
+    """Return an instance of a parameter set."""
+    return cast(InvalidTestedMethodArgs, request.param)
 
 
-@COMMON_ARGS
 def test_getall_args(
     any_multidict_class: type[MultiDict[int]],
     tested_method_args: InvalidTestedMethodArgs,
@@ -47,7 +51,6 @@ def test_getall_args(
         d.getall(*tested_method_args.positional, **tested_method_args.keyword)
 
 
-@COMMON_ARGS
 def test_getone_args(
     any_multidict_class: type[MultiDict[int]],
     tested_method_args: InvalidTestedMethodArgs,
@@ -57,7 +60,6 @@ def test_getone_args(
         d.getone(*tested_method_args.positional, **tested_method_args.keyword)
 
 
-@COMMON_ARGS
 def test_get_args(
     any_multidict_class: type[MultiDict[int]],
     tested_method_args: InvalidTestedMethodArgs,
@@ -67,7 +69,6 @@ def test_get_args(
         d.get(*tested_method_args.positional, **tested_method_args.keyword)
 
 
-@COMMON_ARGS
 def test_setdefault_args(
     any_multidict_class: type[MultiDict[int]],
     tested_method_args: InvalidTestedMethodArgs,
@@ -80,7 +81,6 @@ def test_setdefault_args(
         )
 
 
-@COMMON_ARGS
 def test_popone_args(
     any_multidict_class: type[MultiDict[int]],
     tested_method_args: InvalidTestedMethodArgs,
@@ -90,7 +90,6 @@ def test_popone_args(
         d.popone(*tested_method_args.positional, **tested_method_args.keyword)
 
 
-@COMMON_ARGS
 def test_pop_args(
     any_multidict_class: type[MultiDict[int]],
     tested_method_args: InvalidTestedMethodArgs,
@@ -100,7 +99,6 @@ def test_pop_args(
         d.pop(*tested_method_args.positional, **tested_method_args.keyword)
 
 
-@COMMON_ARGS
 def test_popall_args(
     any_multidict_class: type[MultiDict[int]],
     tested_method_args: InvalidTestedMethodArgs,
