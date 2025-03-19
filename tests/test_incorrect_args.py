@@ -1,7 +1,7 @@
 """Test passing invalid arguments to the methods of the MultiDict class."""
 
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import cast
 
 import pytest
 
@@ -13,8 +13,8 @@ class InvalidTestedMethodArgs:
     """A set of arguments passed to methods under test."""
 
     test_id: str
-    positional: tuple[Any, ...]
-    keyword: dict[str, Any]
+    positional: tuple[object, ...]
+    keyword: dict[str, object]
 
     def __str__(self) -> str:
         """Render a test identifier as a string."""
