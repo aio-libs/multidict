@@ -928,10 +928,6 @@ PyDoc_STRVAR(multidict_popitem_doc,
 PyDoc_STRVAR(multidict_update_doc,
 "Update the dictionary from *other*, overwriting existing keys.");
 
-
-#define multidict_class_getitem Py_GenericAlias
-
-
 PyDoc_STRVAR(sizeof__doc__,
 "D.__sizeof__() -> size of D in memory, in bytes");
 
@@ -1061,7 +1057,7 @@ static PyMethodDef multidict_methods[] = {
     },
     {
         "__class_getitem__",
-        (PyCFunction)multidict_class_getitem,
+        (PyCFunction)Py_GenericAlias,
         METH_O | METH_CLASS,
         NULL
     },
@@ -1404,7 +1400,7 @@ static PyMethodDef multidict_proxy_methods[] = {
     },
     {
         "__class_getitem__",
-        (PyCFunction)multidict_class_getitem,
+        (PyCFunction)Py_GenericAlias,
         METH_O | METH_CLASS,
         NULL
     },
