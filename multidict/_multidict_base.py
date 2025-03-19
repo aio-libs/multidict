@@ -135,14 +135,6 @@ def _itemsview_isdisjoint(view: Container[object], other: Iterable[object]) -> b
     return True
 
 
-def _itemsview_repr(view: Iterable[tuple[object, object]]) -> str:
-    lst = []
-    for k, v in view:
-        lst.append("{!r}: {!r}".format(k, v))
-    body = ", ".join(lst)
-    return "{}({})".format(view.__class__.__name__, body)
-
-
 def _keysview_isdisjoint(view: Container[object], other: Iterable[object]) -> bool:
     "Return True if two sets have a null intersection."
     for k in other:

@@ -523,19 +523,19 @@ multidict_get(
 static inline PyObject *
 multidict_keys(MultiDictObject *self)
 {
-    return multidict_keysview_new((PyObject*)self);
+    return multidict_keysview_new(self);
 }
 
 static inline PyObject *
 multidict_items(MultiDictObject *self)
 {
-    return multidict_itemsview_new((PyObject*)self);
+    return multidict_itemsview_new(self);
 }
 
 static inline PyObject *
 multidict_values(MultiDictObject *self)
 {
-    return multidict_valuesview_new((PyObject*)self);
+    return multidict_valuesview_new(self);
 }
 
 static inline PyObject *
@@ -572,12 +572,12 @@ ret:
 }
 
 static inline PyObject *
-_do_multidict_repr(MultiDictObject *md, PyObject *name)
+_do_multidict_repr(MultiDictObject *md, PyObject *name, bool show_keys, bool show_values)
 {
     PyObject *key = NULL,
              *value = NULL;
     Py_ssize_t current = 0;
-    int comma = 0;
+    bool comma = false;
 
     PyUnicodeWriter *writer = PyUnicodeWriter_Create(1024);
     if (writer == NULL)
@@ -598,20 +598,26 @@ _do_multidict_repr(MultiDictObject *md, PyObject *name)
             if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
                 goto fail;
         }
-        if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
-            goto fail;
-        if (PyUnicodeWriter_WriteStr(writer, key) <0)
-            goto fail;
-        if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
-            goto fail;
-        if (PyUnicodeWriter_WriteChar(writer, ':') <0)
-            goto fail;
-        if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
-            goto fail;
-        if (PyUnicodeWriter_WriteRepr(writer, value) <0)
-            goto fail;
+        if (show_keys) {
+            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteStr(writer, key) <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
+                goto fail;
+        }
+        if (show_keys && show_values) {
+            if (PyUnicodeWriter_WriteChar(writer, ':') <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
+                goto fail;
+        }
+        if (show_values) {
+            if (PyUnicodeWriter_WriteRepr(writer, value) <0)
+                goto fail;
+        }
 
-        comma = 1;
+        comma = true;
     }
 
     if (PyUnicodeWriter_WriteChar(writer, ')') <0)
@@ -629,7 +635,7 @@ multidict_repr(MultiDictObject *self)
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = _do_multidict_repr(self, name);
+    PyObject *ret = _do_multidict_repr(self, name, true, true);
     Py_CLEAR(name);
     return ret;
 }
@@ -1418,7 +1424,7 @@ multidict_proxy_repr(MultiDictProxyObject *self)
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = _do_multidict_repr(self->md, name);
+    PyObject *ret = _do_multidict_repr(self->md, name, true, true);
     Py_CLEAR(name);
     return ret;
 }
