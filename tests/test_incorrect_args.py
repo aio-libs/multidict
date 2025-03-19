@@ -53,7 +53,7 @@ def test_getall_args(
     multidict_object: MultiDict[int],
     tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.getall(
             *tested_method_args.positional,
             **tested_method_args.keyword,
@@ -64,7 +64,7 @@ def test_getone_args(
     multidict_object: MultiDict[int],
     tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.getone(
             *tested_method_args.positional,
             **tested_method_args.keyword,
@@ -75,7 +75,7 @@ def test_get_args(
     multidict_object: MultiDict[int],
     tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.get(
             *tested_method_args.positional,
             **tested_method_args.keyword,
@@ -86,7 +86,7 @@ def test_setdefault_args(
     multidict_object: MultiDict[int],
     tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.setdefault(
             *tested_method_args.positional,
             **tested_method_args.keyword,
@@ -97,7 +97,7 @@ def test_popone_args(
     multidict_object: MultiDict[int],
     tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.popone(
             *tested_method_args.positional,
             **tested_method_args.keyword,
@@ -108,7 +108,7 @@ def test_pop_args(
     multidict_object: MultiDict[int],
     tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.pop(
             *tested_method_args.positional,
             **tested_method_args.keyword,
@@ -119,7 +119,7 @@ def test_popall_args(
     multidict_object: MultiDict[int],
     tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.popall(
             *tested_method_args.positional,
             **tested_method_args.keyword,
