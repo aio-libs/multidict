@@ -141,19 +141,3 @@ def _keysview_isdisjoint(view: Container[object], other: Iterable[object]) -> bo
         if k in view:
             return False
     return True
-
-
-def _keysview_repr(view: Iterable[object]) -> str:
-    lst = []
-    for k in view:
-        lst.append("{!r}".format(k))
-    body = ", ".join(lst)
-    return "{}({})".format(view.__class__.__name__, body)
-
-
-def _valuesview_repr(view: Iterable[object]) -> str:
-    lst = []
-    for v in view:
-        lst.append("{!r}".format(v))
-    body = ", ".join(lst)
-    return "{}({})".format(view.__class__.__name__, body)
