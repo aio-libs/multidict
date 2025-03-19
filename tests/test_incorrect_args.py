@@ -1,95 +1,110 @@
 """Test passing invalid arguments to the methods of the MultiDict class."""
 
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
 
 from multidict import MultiDict
 
+
+@dataclass(frozen=True)
+class InvalidTestedMethodArgs:
+    """A set of arguments passed to methods under test."""
+
+    test_id: str
+    positional: tuple[Any, ...]
+    keyword: dict[str, Any]
+
+    def __str__(self) -> str:
+        """Render a test identifier as a string."""
+        return self.test_id
+
+
 COMMON_ARGS = pytest.mark.parametrize(
-    ("positional_args", "keyword_args"),
+    "tested_method_args",
     (
-        ((), {}),
-        (("a", "b", "c"), {}),
-        ((), {"wrong": 1}),
-        (("a",), {"wrong": 1}),
+        InvalidTestedMethodArgs("no_args", (), {}),
+        InvalidTestedMethodArgs("too_many_args", ("a", "b", "c"), {}),
+        InvalidTestedMethodArgs("wrong_kwarg", (), {"wrong": 1}),
+        InvalidTestedMethodArgs(
+            "wrong_kwarg_and_too_many_args",
+            ("a",),
+            {"wrong": 1},
+        ),
     ),
-    ids=["no_args", "too_many_args", "wrong_kwarg", "wrong_kwarg_and_too_many_args"],
+    ids=str,
 )
 
 
 @COMMON_ARGS
 def test_getall_args(
     any_multidict_class: type[MultiDict[int]],
-    positional_args: tuple[Any, ...],
-    keyword_args: dict[str, Any],
+    tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.getall(*positional_args, **keyword_args)
+        d.getall(*tested_method_args.positional, **tested_method_args.keyword)
 
 
 @COMMON_ARGS
 def test_getone_args(
     any_multidict_class: type[MultiDict[int]],
-    positional_args: tuple[Any, ...],
-    keyword_args: dict[str, Any],
+    tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.getone(*positional_args, **keyword_args)
+        d.getone(*tested_method_args.positional, **tested_method_args.keyword)
 
 
 @COMMON_ARGS
 def test_get_args(
     any_multidict_class: type[MultiDict[int]],
-    positional_args: tuple[Any, ...],
-    keyword_args: dict[str, Any],
+    tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.get(*positional_args, **keyword_args)
+        d.get(*tested_method_args.positional, **tested_method_args.keyword)
 
 
 @COMMON_ARGS
 def test_setdefault_args(
     any_multidict_class: type[MultiDict[int]],
-    positional_args: tuple[Any, ...],
-    keyword_args: dict[str, Any],
+    tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.setdefault(*positional_args, **keyword_args)
+        d.setdefault(
+            *tested_method_args.positional,
+            **tested_method_args.keyword,
+        )
 
 
 @COMMON_ARGS
 def test_popone_args(
     any_multidict_class: type[MultiDict[int]],
-    positional_args: tuple[Any, ...],
-    keyword_args: dict[str, Any],
+    tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.popone(*positional_args, **keyword_args)
+        d.popone(*tested_method_args.positional, **tested_method_args.keyword)
 
 
 @COMMON_ARGS
 def test_pop_args(
     any_multidict_class: type[MultiDict[int]],
-    positional_args: tuple[Any, ...],
-    keyword_args: dict[str, Any],
+    tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.pop(*positional_args, **keyword_args)
+        d.pop(*tested_method_args.positional, **tested_method_args.keyword)
 
 
 @COMMON_ARGS
 def test_popall_args(
     any_multidict_class: type[MultiDict[int]],
-    positional_args: tuple[Any, ...],
-    keyword_args: dict[str, Any],
+    tested_method_args: InvalidTestedMethodArgs,
 ) -> None:
     d = any_multidict_class([("a", 1), ("a", 2)])
     with pytest.raises(TypeError):
-        d.popall(*positional_args, **keyword_args)
+        d.popall(*tested_method_args.positional, **tested_method_args.keyword)
