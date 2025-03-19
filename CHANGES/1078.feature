@@ -1,4 +1,4 @@
-Don't create Python exception if key is not found but default value if provided.
+Don't create Python exception if *key* is not found but *default* value is provided.
 
 The PR affects ``MultiDict.getone()``, ``MultiDict.getall()``,
 ``MultiDict.get()``, ``MultiDict.pop()``, ``MultiDict.popone()``, and
