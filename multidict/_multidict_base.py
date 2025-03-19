@@ -8,7 +8,7 @@ from collections.abc import (
     Set,
     ValuesView,
 )
-from typing import Literal, TypeVar, Union
+from typing import Literal, Union
 
 if sys.version_info >= (3, 10):
     from types import NotImplementedType
@@ -21,10 +21,7 @@ else:
     from typing_extensions import assert_never
 
 
-_KT_co = TypeVar("_KT_co", covariant=True)  # Key type covariant containers.
-_VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
-
-_ViewArg = Union[KeysView[_KT_co], ItemsView[_KT_co, _VT_co]]
+_ViewArg = Union[KeysView[str], ItemsView[str, object]]
 
 
 def _abc_itemsview_register(view_cls: type[object]) -> None:
