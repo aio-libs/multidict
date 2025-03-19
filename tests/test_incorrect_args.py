@@ -3,6 +3,7 @@
 from typing import Any
 
 import pytest
+
 from multidict import MultiDict
 
 COMMON_ARGS = pytest.mark.parametrize(
