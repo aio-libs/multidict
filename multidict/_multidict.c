@@ -43,18 +43,23 @@ static PyObject *multidict_items(MultiDictObject *self);
 static inline PyObject *
 _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 {
-    PyObject *val = pair_list_get_one(&self->pairs, key);
+    PyObject *val = NULL;
 
-    if (val == NULL &&
-        PyErr_ExceptionMatches(PyExc_KeyError) &&
-        _default != NULL)
-    {
-        PyErr_Clear();
-        Py_INCREF(_default);
-        return _default;
+    if (pair_list_get_one(&self->pairs, key, &val) <0) {
+        return NULL;
     }
 
-    return val;
+    if (val == NULL) {
+        if (_default != NULL) {
+            Py_INCREF(_default);
+            return _default;
+        } else {
+            PyErr_SetObject(PyExc_KeyError, key);
+            return NULL;
+        }
+    } else {
+        return val;
+    }
 }
 
 static inline int
@@ -457,18 +462,21 @@ multidict_getall(
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    list = pair_list_get_all(&self->pairs, key);
-
-    if (list == NULL &&
-        PyErr_ExceptionMatches(PyExc_KeyError) &&
-        _default != NULL)
-    {
-        PyErr_Clear();
-        Py_INCREF(_default);
-        return _default;
+    if (pair_list_get_all(&self->pairs, key, &list) <0) {
+        return NULL;
     }
 
-    return list;
+    if (list == NULL) {
+        if (_default != NULL) {
+            Py_INCREF(_default);
+            return _default;
+        } else {
+            PyErr_SetObject(PyExc_KeyError, key);
+            return NULL;
+        }
+    } else {
+        return list;
+    }
 }
 
 static inline PyObject *
@@ -802,18 +810,21 @@ multidict_popone(
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    ret_val = pair_list_pop_one(&self->pairs, key);
-
-    if (ret_val == NULL &&
-        PyErr_ExceptionMatches(PyExc_KeyError) &&
-        _default != NULL)
-    {
-        PyErr_Clear();
-        Py_INCREF(_default);
-        return _default;
+    if (pair_list_pop_one(&self->pairs, key, &ret_val) < 0) {
+        return NULL;
     }
 
-    return ret_val;
+    if (ret_val == NULL) {
+        if (_default != NULL) {
+            Py_INCREF(_default);
+            return _default;
+        } else {
+            PyErr_SetObject(PyExc_KeyError, key);
+            return NULL;
+        }
+    } else {
+        return ret_val;
+    }
 }
 
 static inline PyObject *
@@ -832,18 +843,21 @@ multidict_pop(
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    ret_val = pair_list_pop_one(&self->pairs, key);
-
-    if (ret_val == NULL &&
-        PyErr_ExceptionMatches(PyExc_KeyError) &&
-        _default != NULL)
-    {
-        PyErr_Clear();
-        Py_INCREF(_default);
-        return _default;
+    if (pair_list_pop_one(&self->pairs, key, &ret_val) < 0) {
+        return NULL;
     }
 
-    return ret_val;
+    if (ret_val == NULL) {
+        if (_default != NULL) {
+            Py_INCREF(_default);
+            return _default;
+        } else {
+            PyErr_SetObject(PyExc_KeyError, key);
+            return NULL;
+        }
+    } else {
+        return ret_val;
+    }
 }
 
 static inline PyObject *
@@ -862,18 +876,21 @@ multidict_popall(
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    ret_val = pair_list_pop_all(&self->pairs, key);
-
-    if (ret_val == NULL &&
-        PyErr_ExceptionMatches(PyExc_KeyError) &&
-        _default != NULL)
-    {
-        PyErr_Clear();
-        Py_INCREF(_default);
-        return _default;
+    if (pair_list_pop_all(&self->pairs, key, &ret_val) < 0) {
+        return NULL;
     }
 
-    return ret_val;
+    if (ret_val == NULL) {
+        if (_default != NULL) {
+            Py_INCREF(_default);
+            return _default;
+        } else {
+            PyErr_SetObject(PyExc_KeyError, key);
+            return NULL;
+        }
+    } else {
+        return ret_val;
+    }
 }
 
 static inline PyObject *
