@@ -558,41 +558,39 @@ fail:
 static inline int
 pair_list_get_all(pair_list_t *list, PyObject *key, PyObject **ret)
 {
-    Py_hash_t hash1, hash2;
-    Py_ssize_t pos = 0;
-    PyObject *ident = NULL;
-    PyObject *identity = NULL;
-    PyObject *value = NULL;
+    Py_ssize_t pos;
     PyObject *res = NULL;
     int tmp;
 
-    ident = pair_list_calc_identity(list, key);
+    PyObject *ident = pair_list_calc_identity(list, key);
     if (ident == NULL) {
         goto fail;
     }
 
-    hash1 = PyObject_Hash(ident);
-    if (hash1 == -1) {
+    Py_hash_t hash = PyObject_Hash(ident);
+    if (hash == -1) {
         goto fail;
     }
 
-    while (_pair_list_next(list, &pos, &identity, NULL, &value, &hash2)) {
-        if (hash1 != hash2) {
+    Py_ssize_t size = pair_list_len(list);
+    for(pos = 0; pos < size; ++pos) {
+        pair_t *pair = list->pairs + pos;
+
+        if (hash != pair->hash) {
             continue;
         }
-        tmp = str_cmp(ident, identity);
+        tmp = str_cmp(ident, pair->identity);
         if (tmp > 0) {
             if (res == NULL) {
                 res = PyList_New(1);
                 if (res == NULL) {
                     goto fail;
                 }
-                if (PyList_SetItem(res, 0, value) < 0) {
+                if (PyList_SetItem(res, 0, Py_NewRef(pair->value)) < 0) {
                     goto fail;
                 }
-                Py_INCREF(value);
             }
-            else if (PyList_Append(res, value) < 0) {
+            else if (PyList_Append(res, pair->value) < 0) {
                 goto fail;
             }
         }
