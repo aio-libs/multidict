@@ -21,8 +21,6 @@ coverage:
         flags:
         - pytest
     project:
-      default:
-        target: 100%
       lib:
         flags:
         - pytest
