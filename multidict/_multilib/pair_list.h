@@ -466,11 +466,10 @@ _pair_list_next(pair_list_t *list, Py_ssize_t *ppos, PyObject **pidentity,
 
 
 static inline int
-pair_list_next(pair_list_t *list, Py_ssize_t *ppos, PyObject **pidentity,
+pair_list_next(pair_list_t *list, Py_ssize_t *ppos,
                PyObject **pkey, PyObject **pvalue)
 {
-    Py_hash_t hash;
-    return _pair_list_next(list, ppos, pidentity, pkey, pvalue, &hash);
+    return _pair_list_next(list, ppos, NULL, pkey, pvalue, NULL);
 }
 
 
@@ -1254,7 +1253,7 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
     }
 
     pos = 0;
-    while (pair_list_next(list, &pos, NULL, &key, &avalue)) {
+    while (pair_list_next(list, &pos, &key, &avalue)) {
         if (PyMapping_GetOptionalItem(other, key, &bvalue) < 0) {
             return -1;
         }

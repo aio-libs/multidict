@@ -83,7 +83,7 @@ multidict_items_iter_iternext(MultidictIter *self)
         return NULL;
     }
 
-    if (!_pair_list_next(&self->md->pairs, &self->current, NULL, &key, &value, NULL)) {
+    if (!pair_list_next(&self->md->pairs, &self->current, &key, &value)) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
@@ -106,7 +106,7 @@ multidict_values_iter_iternext(MultidictIter *self)
         return NULL;
     }
 
-    if (!pair_list_next(&self->md->pairs, &self->current, NULL, NULL, &value)) {
+    if (!pair_list_next(&self->md->pairs, &self->current, NULL, &value)) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
@@ -126,7 +126,7 @@ multidict_keys_iter_iternext(MultidictIter *self)
         return NULL;
     }
 
-    if (!pair_list_next(&self->md->pairs, &self->current, NULL, &key, NULL)) {
+    if (!pair_list_next(&self->md->pairs, &self->current, &key, NULL)) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }

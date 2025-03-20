@@ -76,7 +76,7 @@ _multidict_append_items(MultiDictObject *self, pair_list_t *pairs)
 
     Py_ssize_t pos = 0;
 
-    while (_pair_list_next(pairs, &pos, NULL, &key, &value, NULL)) {
+    while (pair_list_next(pairs, &pos, &key, &value)) {
         if (pair_list_add(&self->pairs, key, value) < 0) {
             return -1;
         }
