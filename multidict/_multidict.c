@@ -555,8 +555,18 @@ _do_multidict_repr(MultiDictObject *md, PyObject *name,
     if (PyUnicodeWriter_WriteChar(writer, '(') <0)
         goto fail;
 
-    while(_pair_list_next(&md->pairs, &current,
-                          NULL, &key, &value, NULL) > 0) {
+    pair_list_pos_t pos;
+    pair_list_init_pos(&md->pairs, &pos);
+
+    for (;;) {
+        int res = pair_list_next(&md->pairs, &pos, &key, &value);
+        if (res < 0) {
+            goto fail;
+        }
+        if (res == 0) {
+            break;
+        }
+
         if (comma) {
             if (PyUnicodeWriter_WriteChar(writer, ',') <0)
                 goto fail;
@@ -582,6 +592,8 @@ _do_multidict_repr(MultiDictObject *md, PyObject *name,
                 goto fail;
         }
 
+        Py_CLEAR(key);
+        Py_CLEAR(value);
         comma = true;
     }
 
@@ -591,6 +603,8 @@ _do_multidict_repr(MultiDictObject *md, PyObject *name,
         goto fail;
     return PyUnicodeWriter_Finish(writer);
 fail:
+    Py_CLEAR(key);
+    Py_CLEAR(value);
     PyUnicodeWriter_Discard(writer);
 }
 
