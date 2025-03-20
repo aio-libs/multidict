@@ -1,0 +1,2 @@
+
+Moved registering ABCs for C Extension classes from C to Python.
