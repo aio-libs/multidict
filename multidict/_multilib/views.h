@@ -81,6 +81,48 @@ multidict_view_and(PyObject *self, PyObject *other)
 {
     return PyObject_CallFunctionObjArgs(
         viewbaseset_and_func, self, other, NULL);
+/*
+    PyObject *md = NULL;
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        PyErr_Clear();
+        return Py_GetConstant(PY_CONSTANT_NOT_IMPLEMENTED);
+    }
+
+    md =
+    ret = PySet_New(NULL);
+    if (ret == NULL)
+        goto fail;
+
+    PyObject *key   = NULL,
+             *value = NULL;
+
+    pair_list_pos_t pos;
+    pair_list_init_pos(pairs, &pos);
+
+    for (;;) {
+        int ret = pair_list_next(pairs, &pos, &key, &value);
+        if (ret < 0) {
+            return -1;
+        }
+        if (ret == 0)
+            break;
+
+        ret = pair_list_add(&self->pairs, key, value);
+        Py_CLEAR(key);
+        Py_CLEAR(value);
+        if (ret < 0) {
+            return -1;
+        }
+    }
+
+    return 0;
+    return PyObject_CallFunctionObjArgs(
+        viewbaseset_and_func, self, other, NULL);
+fail:
+    Py_CLEAR(iter);
+    Py_CLEAR(md);
+    Py_CLEAR(ret);*/
 }
 
 static inline PyObject *
