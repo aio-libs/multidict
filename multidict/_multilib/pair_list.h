@@ -55,6 +55,12 @@ static uint64_t pair_list_global_version = 0;
 #define NEXT_VERSION() (++pair_list_global_version)
 
 
+typedef struct pair_list_pos {
+    Py_ssize_t pos;
+    uint64_t version;
+} pair_list_pos_t;
+
+
 static inline int
 str_cmp(PyObject *s1, PyObject *s2)
 {
@@ -403,15 +409,28 @@ pair_list_version(pair_list_t *list)
 }
 
 
+static inline void
+pair_list_init_pos(pair_list_t *list, pair_list_pos_t *pos)
+{
+    pos->pos = 0;
+    pos->version = list->version;
+}
+
 static inline int
-pair_list_next(pair_list_t *list, Py_ssize_t *ppos,
+pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
                PyObject **pkey, PyObject **pvalue)
 {
-    if (*ppos >= list->size) {
+    if (pos->pos >= list->size) {
         return 0;
     }
 
-    pair_t *pair = list->pairs + *ppos;
+    if (pos->version != list->version) {
+        PyErr_SetString(PyExc_RuntimeError, "MultiDict changed during iteration");
+        return -1;
+    }
+
+
+    pair_t *pair = list->pairs + pos->pos;
 
     if (pkey) {
         *pkey = pair->key;
@@ -420,7 +439,7 @@ pair_list_next(pair_list_t *list, Py_ssize_t *ppos,
         *pvalue = pair->value;
     }
 
-    *ppos += 1;
+    ++pos->pos;
     return 1;
 }
 
@@ -1139,7 +1158,7 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
     PyObject *avalue = NULL;
     PyObject *bvalue;
 
-    Py_ssize_t pos, other_len;
+    Py_ssize_t other_len;
 
     if (!PyMapping_Check(other)) {
         PyErr_Format(PyExc_TypeError,
@@ -1156,8 +1175,17 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
         return 0;
     }
 
-    pos = 0;
-    while (pair_list_next(list, &pos, &key, &avalue)) {
+    pair_list_pos_t pos;
+    pair_list_init_pos(list, &pos);
+
+    for(;;) {
+        int ret = pair_list_next(list, &pos, &key, &avalue);
+        if (ret < 0) {
+            return -1;
+        }
+        if (ret == 0)
+            break;
+
         if (PyMapping_GetOptionalItem(other, key, &bvalue) < 0) {
             return -1;
         }

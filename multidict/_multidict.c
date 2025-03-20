@@ -74,9 +74,16 @@ _multidict_append_items(MultiDictObject *self, pair_list_t *pairs)
     PyObject *key   = NULL,
              *value = NULL;
 
-    Py_ssize_t pos = 0;
+    pair_list_pos_t pos;
+    pair_list_init_pos(pairs, &pos);
 
-    while (pair_list_next(pairs, &pos, &key, &value)) {
+    for (;;) {
+        int ret = pair_list_next(pairs, &pos, &key, &value);
+        if (ret < 0) {
+            return -1;
+        }
+        if (ret == 0)
+            break;
         if (pair_list_add(&self->pairs, key, value) < 0) {
             return -1;
         }

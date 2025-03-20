@@ -12,8 +12,7 @@ static PyTypeObject multidict_keys_iter_type;
 typedef struct multidict_iter {
     PyObject_HEAD
     MultiDictObject *md;  // MultiDict or CIMultiDict
-    Py_ssize_t current;
-    uint64_t version;
+    pair_list_pos_t current;
 } MultidictIter;
 
 static inline void
@@ -22,8 +21,7 @@ _init_iter(MultidictIter *it, MultiDictObject *md)
     Py_INCREF(md);
 
     it->md = md;
-    it->current = 0;
-    it->version = pair_list_version(&md->pairs);
+    pair_list_init_pos(&md->pairs, &it->current);
 }
 
 static inline PyObject *
@@ -78,12 +76,11 @@ multidict_items_iter_iternext(MultidictIter *self)
     PyObject *value = NULL;
     PyObject *ret = NULL;
 
-    if (self->version != pair_list_version(&self->md->pairs)) {
-        PyErr_SetString(PyExc_RuntimeError, "Dictionary changed during iteration");
+    int res = pair_list_next(&self->md->pairs, &self->current, &key, &value);
+    if (res < 0) {
         return NULL;
     }
-
-    if (!pair_list_next(&self->md->pairs, &self->current, &key, &value)) {
+    if (res == 0) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
@@ -101,19 +98,16 @@ multidict_values_iter_iternext(MultidictIter *self)
 {
     PyObject *value = NULL;
 
-    if (self->version != pair_list_version(&self->md->pairs)) {
-        PyErr_SetString(PyExc_RuntimeError, "Dictionary changed during iteration");
+    int res = pair_list_next(&self->md->pairs, &self->current, NULL, &value);
+    if (res < 0) {
         return NULL;
     }
-
-    if (!pair_list_next(&self->md->pairs, &self->current, NULL, &value)) {
+    if (res == 0) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
 
-    Py_INCREF(value);
-
-    return value;
+    return Py_NewRef(value);
 }
 
 static inline PyObject *
@@ -121,19 +115,16 @@ multidict_keys_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
 
-    if (self->version != pair_list_version(&self->md->pairs)) {
-        PyErr_SetString(PyExc_RuntimeError, "Dictionary changed during iteration");
+    int res = pair_list_next(&self->md->pairs, &self->current, &key, NULL);
+    if (res < 0) {
         return NULL;
     }
-
-    if (!pair_list_next(&self->md->pairs, &self->current, &key, NULL)) {
+    if (res == 0) {
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
 
-    Py_INCREF(key);
-
-    return key;
+    return Py_NewRef(key);
 }
 
 static inline void
