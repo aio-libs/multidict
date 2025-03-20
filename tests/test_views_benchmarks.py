@@ -58,6 +58,7 @@ def test_keys_view_less_or_equal(benchmark: BenchmarkFixture) -> None:
     def _run() -> None:
         assert md.keys() <= s
 
+
 def test_keys_view_and(benchmark: BenchmarkFixture) -> None:
     md1: MultiDict[str] = MultiDict({str(i): str(i) for i in range(100)})
     md2: MultiDict[str] = MultiDict({str(i): str(i) for i in range(50, 150)})
