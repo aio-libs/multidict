@@ -43,33 +43,39 @@ def test_cimultidict_insert_istr(benchmark: BenchmarkFixture) -> None:
 
 
 def test_multidict_add_str(benchmark: BenchmarkFixture) -> None:
-    md: MultiDict[str] = MultiDict()
+    base_md: MultiDict[str] = MultiDict()
     items = [str(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
-        for i in items:
-            md.add(i, i)
+        for j in range(100):
+            md = base_md.copy()
+            for i in items:
+                md.add(i, i)
 
 
 def test_cimultidict_add_str(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[str] = CIMultiDict()
+    base_md: CIMultiDict[str] = CIMultiDict()
     items = [str(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
-        for i in items:
-            md.add(i, i)
+        for j in range(100):
+            md = base_md.copy()
+            for i in items:
+                md.add(i, i)
 
 
 def test_cimultidict_add_istr(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[istr] = CIMultiDict()
+    base_md: CIMultiDict[istr] = CIMultiDict()
     items = [istr(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
-        for i in items:
-            md.add(i, i)
+        for j in range(100):
+            md = base_md.copy()
+            for i in items:
+                md.add(i, i)
 
 
 def test_multidict_pop_str(benchmark: BenchmarkFixture) -> None:
@@ -169,30 +175,36 @@ def test_cimultidict_update_istr(benchmark: BenchmarkFixture) -> None:
 
 
 def test_multidict_extend_str(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
+    base_md: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
     items = {str(i): str(i) for i in range(200)}
 
     @benchmark
     def _run() -> None:
-        md.extend(items)
+        for j in range(100):
+            md = base_md.copy()
+            md.extend(items)
 
 
 def test_cimultidict_extend_str(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
+    base_md: CIMultiDict[str] = CIMultiDict((str(i), str(i)) for i in range(100))
     items = {str(i): str(i) for i in range(200)}
 
     @benchmark
     def _run() -> None:
-        md.extend(items)
+        for j in range(100):
+            md = base_md.copy()
+            md.extend(items)
 
 
 def test_cimultidict_extend_istr(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[istr] = CIMultiDict((istr(i), istr(i)) for i in range(100))
+    base_md: CIMultiDict[istr] = CIMultiDict((istr(i), istr(i)) for i in range(100))
     items = {istr(i): istr(i) for i in range(200)}
 
     @benchmark
     def _run() -> None:
-        md.extend(items)
+        for j in range(100):
+            md = base_md.copy()
+            md.extend(items)
 
 
 def test_multidict_delitem_str(benchmark: BenchmarkFixture) -> None:
