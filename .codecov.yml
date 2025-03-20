@@ -13,7 +13,7 @@ comment:
   require_changes: true
 
 coverage:
-  range: 97.87..100
+  range: 100..100
   status:
     patch:
       runtime:
