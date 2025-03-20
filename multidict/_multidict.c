@@ -13,8 +13,6 @@
 #include "_multilib/views.h"
 
 
-static PyObject *repr_func;
-
 static PyTypeObject multidict_type;
 static PyTypeObject cimultidict_type;
 static PyTypeObject multidict_proxy_type;
@@ -521,19 +519,19 @@ multidict_get(
 static inline PyObject *
 multidict_keys(MultiDictObject *self)
 {
-    return multidict_keysview_new((PyObject*)self);
+    return multidict_keysview_new(self);
 }
 
 static inline PyObject *
 multidict_items(MultiDictObject *self)
 {
-    return multidict_itemsview_new((PyObject*)self);
+    return multidict_itemsview_new(self);
 }
 
 static inline PyObject *
 multidict_values(MultiDictObject *self)
 {
-    return multidict_valuesview_new((PyObject*)self);
+    return multidict_valuesview_new(self);
 }
 
 static inline PyObject *
@@ -570,10 +568,73 @@ ret:
 }
 
 static inline PyObject *
-multidict_repr(PyObject *self)
+_do_multidict_repr(MultiDictObject *md, PyObject *name,
+                   bool show_keys, bool show_values)
 {
-    return PyObject_CallFunctionObjArgs(
-        repr_func, self, NULL);
+    PyObject *key = NULL,
+             *value = NULL;
+    Py_ssize_t current = 0;
+    bool comma = false;
+
+    PyUnicodeWriter *writer = PyUnicodeWriter_Create(1024);
+    if (writer == NULL)
+        return NULL;
+
+    if (PyUnicodeWriter_WriteChar(writer, '<') <0)
+        goto fail;
+    if (PyUnicodeWriter_WriteStr(writer, name) <0)
+        goto fail;
+    if (PyUnicodeWriter_WriteChar(writer, '(') <0)
+        goto fail;
+
+    while(_pair_list_next(&md->pairs, &current,
+                          NULL, &key, &value, NULL) > 0) {
+        if (comma) {
+            if (PyUnicodeWriter_WriteChar(writer, ',') <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
+                goto fail;
+        }
+        if (show_keys) {
+            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteStr(writer, key) <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
+                goto fail;
+        }
+        if (show_keys && show_values) {
+            if (PyUnicodeWriter_WriteChar(writer, ':') <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
+                goto fail;
+        }
+        if (show_values) {
+            if (PyUnicodeWriter_WriteRepr(writer, value) <0)
+                goto fail;
+        }
+
+        comma = true;
+    }
+
+    if (PyUnicodeWriter_WriteChar(writer, ')') <0)
+        goto fail;
+    if (PyUnicodeWriter_WriteChar(writer, '>') <0)
+        goto fail;
+    return PyUnicodeWriter_Finish(writer);
+fail:
+    PyUnicodeWriter_Discard(writer);
+}
+
+static inline PyObject *
+multidict_repr(MultiDictObject *self)
+{
+    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    if (name == NULL)
+        return NULL;
+    PyObject *ret = _do_multidict_repr(self, name, true, true);
+    Py_CLEAR(name);
+    return ret;
 }
 
 static inline Py_ssize_t
@@ -1343,6 +1404,18 @@ multidict_proxy_tp_clear(MultiDictProxyObject *self)
     return 0;
 }
 
+static inline PyObject *
+multidict_proxy_repr(MultiDictProxyObject *self)
+{
+    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    if (name == NULL)
+        return NULL;
+    PyObject *ret = _do_multidict_repr(self->md, name, true, true);
+    Py_CLEAR(name);
+    return ret;
+}
+
+
 static PySequenceMethods multidict_proxy_sequence = {
     .sq_contains = (objobjproc)multidict_proxy_sq_contains,
 };
@@ -1423,7 +1496,7 @@ static PyTypeObject multidict_proxy_type = {
     "multidict._multidict.MultiDictProxy",           /* tp_name */
     sizeof(MultiDictProxyObject),                    /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_proxy_tp_dealloc,
-    .tp_repr = (reprfunc)multidict_repr,
+    .tp_repr = (reprfunc)multidict_proxy_repr,
     .tp_as_sequence = &multidict_proxy_sequence,
     .tp_as_mapping = &multidict_proxy_mapping,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC,
@@ -1613,9 +1686,6 @@ PyInit__multidict(void)
     if (VAR == NULL) {                          \
         goto fail;                              \
     }
-
-    WITH_MOD("multidict._multidict_base");
-    GET_MOD_ATTR(repr_func, "_mdrepr");
 
     Py_CLEAR(module);                       \
 

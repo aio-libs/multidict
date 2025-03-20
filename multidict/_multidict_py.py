@@ -110,7 +110,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         for item in self._impl._items:
             lst.append("{!r}: {!r}".format(item[1], item[2]))
         body = ", ".join(lst)
-        return "{}({})".format(self.__class__.__name__, body)
+        return "<{}({})>".format(self.__class__.__name__, body)
 
 
 class _ValuesView(_ViewBase[_V], ValuesView[_V]):
@@ -134,7 +134,7 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
         for item in self._impl._items:
             lst.append("{!r}".format(item[2]))
         body = ", ".join(lst)
-        return "{}({})".format(self.__class__.__name__, body)
+        return "<{}({})>".format(self.__class__.__name__, body)
 
 
 class _KeysView(_ViewBase[_V], KeysView[str]):
@@ -158,7 +158,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         for item in self._impl._items:
             lst.append("{!r}".format(item[1]))
         body = ", ".join(lst)
-        return "{}({})".format(self.__class__.__name__, body)
+        return "<{}({})>".format(self.__class__.__name__, body)
 
 
 class _Base(MultiMapping[_V]):
