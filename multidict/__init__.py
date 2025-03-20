@@ -36,6 +36,9 @@ if TYPE_CHECKING or not USE_EXTENSIONS:
     )
 else:
     from ._multidict import (
+        _KeysView,
+        _ItemsView,
+        _ValuesView,
         CIMultiDict,
         CIMultiDictProxy,
         MultiDict,
@@ -43,6 +46,13 @@ else:
         getversion,
         istr,
     )
+    from collections.abc import KeysView, ItemsView, ValuesView
+
+    MultiMapping.register(MultiDictProxy)
+    MutableMultiMapping.register(MultiDict)
+    KeysView.register(_KeysView)
+    ItemsView.register(_ItemsView)
+    ValuesView.register(_ValuesView)
 
 
 upstr = istr

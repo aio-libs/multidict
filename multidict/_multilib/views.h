@@ -15,10 +15,6 @@ static PyObject *viewbaseset_or_func;
 static PyObject *viewbaseset_sub_func;
 static PyObject *viewbaseset_xor_func;
 
-static PyObject *abc_itemsview_register_func;
-static PyObject *abc_keysview_register_func;
-static PyObject *abc_valuesview_register_func;
-
 static PyObject *itemsview_isdisjoint_func;
 static PyObject *itemsview_repr_func;
 
@@ -387,7 +383,6 @@ static PyTypeObject multidict_valuesview_type = {
 static inline int
 multidict_views_init(void)
 {
-    PyObject *reg_func_call_result = NULL;
     PyObject *module = PyImport_ImportModule("multidict._multidict_base");
     if (module == NULL) {
         goto fail;
@@ -405,10 +400,6 @@ multidict_views_init(void)
     GET_MOD_ATTR(viewbaseset_sub_func, "_viewbaseset_sub");
     GET_MOD_ATTR(viewbaseset_xor_func, "_viewbaseset_xor");
 
-    GET_MOD_ATTR(abc_itemsview_register_func, "_abc_itemsview_register");
-    GET_MOD_ATTR(abc_keysview_register_func, "_abc_keysview_register");
-    GET_MOD_ATTR(abc_valuesview_register_func, "_abc_valuesview_register");
-
     GET_MOD_ATTR(itemsview_isdisjoint_func, "_itemsview_isdisjoint");
     GET_MOD_ATTR(itemsview_repr_func, "_itemsview_repr");
 
@@ -424,29 +415,6 @@ multidict_views_init(void)
         goto fail;
     }
 
-    // abc.ItemsView.register(_ItemsView)
-    reg_func_call_result = PyObject_CallFunctionObjArgs(
-        abc_itemsview_register_func, (PyObject*)&multidict_itemsview_type, NULL);
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
-
-    // abc.KeysView.register(_KeysView)
-    reg_func_call_result = PyObject_CallFunctionObjArgs(
-        abc_keysview_register_func, (PyObject*)&multidict_keysview_type, NULL);
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
-
-    // abc.ValuesView.register(_KeysView)
-    reg_func_call_result = PyObject_CallFunctionObjArgs(
-        abc_valuesview_register_func, (PyObject*)&multidict_valuesview_type, NULL);
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
 
     Py_DECREF(module);
     return 0;

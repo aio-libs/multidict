@@ -21,18 +21,6 @@ else:
     from typing_extensions import assert_never
 
 
-def _abc_itemsview_register(view_cls: type[object]) -> None:
-    ItemsView.register(view_cls)
-
-
-def _abc_keysview_register(view_cls: type[object]) -> None:
-    KeysView.register(view_cls)
-
-
-def _abc_valuesview_register(view_cls: type[object]) -> None:
-    ValuesView.register(view_cls)
-
-
 def _viewbaseset_richcmp(
     view: set[object], other: object, op: Literal[0, 1, 2, 3, 4, 5]
 ) -> Union[bool, NotImplementedType]:
