@@ -392,8 +392,9 @@ def test_create_cimultidict_with_items_istr(
 
 def test_create_empty_multidictproxy(
     benchmark: BenchmarkFixture,
+    any_multidict_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = MultiDict()
+    md = any_multidict_class()
 
     @benchmark
     def _run() -> None:
@@ -402,9 +403,10 @@ def test_create_empty_multidictproxy(
 
 def test_create_multidictproxy(
     benchmark: BenchmarkFixture,
+    any_multidict_class: Type[MultiDict[str]]
 ) -> None:
     items = [(str(i), str(i)) for i in range(100)]
-    md = MultiDict(items)
+    md = any_multidict_class(items)
 
     @benchmark
     def _run() -> None:
@@ -413,8 +415,9 @@ def test_create_multidictproxy(
 
 def test_create_empty_CIMultiDictProxy(
     benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
 ) -> None:
-    md: CIMultiDict[istr] = CIMultiDict()
+    md = case_insensitive_multidict_class()
 
     @benchmark
     def _run() -> None:
@@ -423,9 +426,10 @@ def test_create_empty_CIMultiDictProxy(
 
 def test_create_cimultidictproxy(
     benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
 ) -> None:
     items = [(istr(i), istr(i)) for i in range(100)]
-    md = CIMultiDict(items)
+    md = case_insensitive_multidict_class(items)
 
     @benchmark
     def _run() -> None:
