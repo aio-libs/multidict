@@ -1,5 +1,14 @@
 import sys
-from collections.abc import Container, Iterable, Mapping, Set
+from collections.abc import (
+    Container,
+    ItemsView,
+    Iterable,
+    KeysView,
+    Mapping,
+    Sequence,
+    Set,
+    ValuesView,
+)
 from typing import Literal, Union
 
 if sys.version_info >= (3, 10):
@@ -13,16 +22,17 @@ else:
     from typing_extensions import assert_never
 
 
+_ViewArg = Union[KeysView[str], ItemsView[str, object]]
+
+
 def _viewbaseset_richcmp(
-    view: set[object], other: object, op: Literal[0, 1, 2, 3, 4, 5]
+    view: _ViewArg, other: object, op: Literal[0, 1, 2, 3, 4, 5]
 ) -> Union[bool, NotImplementedType]:
+    if not isinstance(other, Set):
+        return NotImplemented  # type: ignore[no-any-return]
     if op == 0:  # <
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         return len(view) < len(other) and view <= other
     elif op == 1:  # <=
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         if len(view) > len(other):
             return False
         for elem in view:
@@ -30,18 +40,12 @@ def _viewbaseset_richcmp(
                 return False
         return True
     elif op == 2:  # ==
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         return len(view) == len(other) and view <= other
     elif op == 3:  # !=
         return not view == other
     elif op == 4:  # >
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         return len(view) > len(other) and view >= other
     elif op == 5:  # >=
-        if not isinstance(other, Set):
-            return NotImplemented  # type: ignore[no-any-return]
         if len(view) < len(other):
             return False
         for elem in other:
@@ -53,59 +57,43 @@ def _viewbaseset_richcmp(
 
 
 def _viewbaseset_and(
-    view: set[object], other: object
-) -> Union[set[object], NotImplementedType]:
+    view: _ViewArg, other: object
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    if isinstance(view, Set):
-        view = set(iter(view))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view & other
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft & rgt
 
 
 def _viewbaseset_or(
-    view: set[object], other: object
-) -> Union[set[object], NotImplementedType]:
+    view: _ViewArg, other: object
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    if isinstance(view, Set):
-        view = set(iter(view))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view | other
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft | rgt
 
 
 def _viewbaseset_sub(
-    view: set[object], other: object
-) -> Union[set[object], NotImplementedType]:
+    view: _ViewArg, other: object
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    if isinstance(view, Set):
-        view = set(iter(view))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view - other
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft - rgt
 
 
 def _viewbaseset_xor(
-    view: set[object], other: object
-) -> Union[set[object], NotImplementedType]:
+    view: _ViewArg, other: object
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
         return NotImplemented  # type: ignore[no-any-return]
-    if isinstance(view, Set):
-        view = set(iter(view))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view ^ other
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft ^ rgt
 
 
 def _itemsview_isdisjoint(view: Container[object], other: Iterable[object]) -> bool:
