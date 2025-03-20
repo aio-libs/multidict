@@ -1,10 +1,5 @@
 import sys
-from collections.abc import (
-    Container,
-    Iterable,
-    Mapping,
-    Set,
-)
+from collections.abc import Container, Iterable, Mapping, Set
 from typing import Literal, Union
 
 if sys.version_info >= (3, 10):

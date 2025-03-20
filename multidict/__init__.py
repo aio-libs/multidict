@@ -35,18 +35,19 @@ if TYPE_CHECKING or not USE_EXTENSIONS:
         istr,
     )
 else:
+    from collections.abc import ItemsView, KeysView, ValuesView
+
     from ._multidict import (
-        _KeysView,
-        _ItemsView,
-        _ValuesView,
         CIMultiDict,
         CIMultiDictProxy,
         MultiDict,
         MultiDictProxy,
+        _ItemsView,
+        _KeysView,
+        _ValuesView,
         getversion,
         istr,
     )
-    from collections.abc import KeysView, ItemsView, ValuesView
 
     MultiMapping.register(MultiDictProxy)
     MutableMultiMapping.register(MultiDict)
