@@ -752,16 +752,16 @@ class TestMultiDict(BaseMultiDictTest):
 
     def test_items__repr__(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
-        expected = "_ItemsView('key': 'value1', 'key': 'value2')"
+        expected = "<_ItemsView('key': 'value1', 'key': 'value2')>"
         assert repr(d.items()) == expected
 
     def test_keys__repr__(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
-        assert repr(d.keys()) == "_KeysView('key', 'key')"
+        assert repr(d.keys()) == "<_KeysView('key', 'key')>"
 
     def test_values__repr__(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
-        assert repr(d.values()) == "_ValuesView('value1', 'value2')"
+        assert repr(d.values()) == "<_ValuesView('value1', 'value2')>"
 
 
 class TestCIMultiDict(BaseMultiDictTest):
@@ -817,13 +817,13 @@ class TestCIMultiDict(BaseMultiDictTest):
 
     def test_items__repr__(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "value1")], key="value2")
-        expected = "_ItemsView('KEY': 'value1', 'key': 'value2')"
+        expected = "<_ItemsView('KEY': 'value1', 'key': 'value2')>"
         assert repr(d.items()) == expected
 
     def test_keys__repr__(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "value1")], key="value2")
-        assert repr(d.keys()) == "_KeysView('KEY', 'key')"
+        assert repr(d.keys()) == "<_KeysView('KEY', 'key')>"
 
     def test_values__repr__(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "value1")], key="value2")
-        assert repr(d.values()) == "_ValuesView('value1', 'value2')"
+        assert repr(d.values()) == "<_ValuesView('value1', 'value2')>"

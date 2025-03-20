@@ -20,23 +20,19 @@ static PyObject *abc_keysview_register_func;
 static PyObject *abc_valuesview_register_func;
 
 static PyObject *itemsview_isdisjoint_func;
-static PyObject *itemsview_repr_func;
 
-static PyObject *keysview_repr_func;
 static PyObject *keysview_isdisjoint_func;
-
-static PyObject *valuesview_repr_func;
 
 typedef struct {
     PyObject_HEAD
-    PyObject *md;
+    MultiDictObject *md;
 } _Multidict_ViewObject;
 
 
 /********** Base **********/
 
 static inline void
-_init_view(_Multidict_ViewObject *self, PyObject *md)
+_init_view(_Multidict_ViewObject *self, MultiDictObject *md)
 {
     Py_INCREF(md);
     self->md = md;
@@ -67,7 +63,7 @@ multidict_view_clear(_Multidict_ViewObject *self)
 static inline Py_ssize_t
 multidict_view_len(_Multidict_ViewObject *self)
 {
-    return pair_list_len(&((MultiDictObject*)self->md)->pairs);
+    return pair_list_len(&self->md->pairs);
 }
 
 static inline PyObject *
@@ -122,7 +118,7 @@ static PyNumberMethods multidict_view_as_number = {
 /********** Items **********/
 
 static inline PyObject *
-multidict_itemsview_new(PyObject *md)
+multidict_itemsview_new(MultiDictObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
         _Multidict_ViewObject, &multidict_itemsview_type);
@@ -139,14 +135,18 @@ multidict_itemsview_new(PyObject *md)
 static inline PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_items_iter_new((MultiDictObject*)self->md);
+    return multidict_items_iter_new(self->md);
 }
 
 static inline PyObject *
 multidict_itemsview_repr(_Multidict_ViewObject *self)
 {
-    return PyObject_CallFunctionObjArgs(
-        itemsview_repr_func, self, NULL);
+    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    if (name == NULL)
+        return NULL;
+    PyObject *ret = _do_multidict_repr(self->md, name, true, true);
+    Py_CLEAR(name);
+    return ret;
 }
 
 static inline PyObject *
@@ -256,7 +256,7 @@ static PyTypeObject multidict_itemsview_type = {
 /********** Keys **********/
 
 static inline PyObject *
-multidict_keysview_new(PyObject *md)
+multidict_keysview_new(MultiDictObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
         _Multidict_ViewObject, &multidict_keysview_type);
@@ -273,14 +273,18 @@ multidict_keysview_new(PyObject *md)
 static inline PyObject *
 multidict_keysview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_keys_iter_new(((MultiDictObject*)self->md));
+    return multidict_keys_iter_new(self->md);
 }
 
 static inline PyObject *
 multidict_keysview_repr(_Multidict_ViewObject *self)
 {
-    return PyObject_CallFunctionObjArgs(
-        keysview_repr_func, self, NULL);
+    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    if (name == NULL)
+        return NULL;
+    PyObject *ret = _do_multidict_repr(self->md, name, true, false);
+    Py_CLEAR(name);
+    return ret;
 }
 
 static inline PyObject *
@@ -309,7 +313,7 @@ static PyMethodDef multidict_keysview_methods[] = {
 static inline int
 multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
 {
-    return pair_list_contains(&((MultiDictObject*)self->md)->pairs, key);
+    return pair_list_contains(&self->md->pairs, key);
 }
 
 static PySequenceMethods multidict_keysview_as_sequence = {
@@ -338,7 +342,7 @@ static PyTypeObject multidict_keysview_type = {
 /********** Values **********/
 
 static inline PyObject *
-multidict_valuesview_new(PyObject *md)
+multidict_valuesview_new(MultiDictObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
         _Multidict_ViewObject, &multidict_valuesview_type);
@@ -355,14 +359,18 @@ multidict_valuesview_new(PyObject *md)
 static inline PyObject *
 multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_values_iter_new(((MultiDictObject*)self->md));
+    return multidict_values_iter_new(self->md);
 }
 
 static inline PyObject *
 multidict_valuesview_repr(_Multidict_ViewObject *self)
 {
-    return PyObject_CallFunctionObjArgs(
-        valuesview_repr_func, self, NULL);
+    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    if (name == NULL)
+        return NULL;
+    PyObject *ret = _do_multidict_repr(self->md, name, false, true);
+    Py_CLEAR(name);
+    return ret;
 }
 
 static PySequenceMethods multidict_valuesview_as_sequence = {
@@ -410,12 +418,9 @@ multidict_views_init(void)
     GET_MOD_ATTR(abc_valuesview_register_func, "_abc_valuesview_register");
 
     GET_MOD_ATTR(itemsview_isdisjoint_func, "_itemsview_isdisjoint");
-    GET_MOD_ATTR(itemsview_repr_func, "_itemsview_repr");
 
-    GET_MOD_ATTR(keysview_repr_func, "_keysview_repr");
     GET_MOD_ATTR(keysview_isdisjoint_func, "_keysview_isdisjoint");
 
-    GET_MOD_ATTR(valuesview_repr_func, "_valuesview_repr");
 
     if (PyType_Ready(&multidict_itemsview_type) < 0 ||
         PyType_Ready(&multidict_valuesview_type) < 0 ||

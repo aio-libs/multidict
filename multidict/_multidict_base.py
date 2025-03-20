@@ -4,7 +4,6 @@ from collections.abc import (
     ItemsView,
     Iterable,
     KeysView,
-    Mapping,
     Sequence,
     Set,
     ValuesView,
@@ -116,41 +115,9 @@ def _itemsview_isdisjoint(view: Container[object], other: Iterable[object]) -> b
     return True
 
 
-def _itemsview_repr(view: Iterable[tuple[object, object]]) -> str:
-    lst = []
-    for k, v in view:
-        lst.append("{!r}: {!r}".format(k, v))
-    body = ", ".join(lst)
-    return "{}({})".format(view.__class__.__name__, body)
-
-
 def _keysview_isdisjoint(view: Container[object], other: Iterable[object]) -> bool:
     "Return True if two sets have a null intersection."
     for k in other:
         if k in view:
             return False
     return True
-
-
-def _keysview_repr(view: Iterable[object]) -> str:
-    lst = []
-    for k in view:
-        lst.append("{!r}".format(k))
-    body = ", ".join(lst)
-    return "{}({})".format(view.__class__.__name__, body)
-
-
-def _valuesview_repr(view: Iterable[object]) -> str:
-    lst = []
-    for v in view:
-        lst.append("{!r}".format(v))
-    body = ", ".join(lst)
-    return "{}({})".format(view.__class__.__name__, body)
-
-
-def _mdrepr(md: Mapping[object, object]) -> str:
-    lst = []
-    for k, v in md.items():
-        lst.append("'{}': {!r}".format(k, v))
-    body = ", ".join(lst)
-    return "<{}({})>".format(md.__class__.__name__, body)
