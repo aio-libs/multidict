@@ -534,8 +534,7 @@ multidict_get(
     }
     if (_default == NULL) {
         clear_default = true;
-        // _default = Py_GetConstant(Py_CONSTANT_NONE);
-        _default = Py_NewRef(Py_None);
+        _default = Py_GetConstant(Py_CONSTANT_NONE);
         if (_default == NULL) {
             return NULL;
         }
