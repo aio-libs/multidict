@@ -1,10 +1,11 @@
 """codspeed benchmarks for multidict."""
 
-from typing import Dict, Union
+from typing import Dict, Type, Union
 
 from pytest_codspeed import BenchmarkFixture
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
+from multidict._abc import MutableMultiMapping
 
 # Note that this benchmark should not be refactored to use pytest.mark.parametrize
 # since each benchmark name should be unique.
@@ -412,32 +413,22 @@ def test_multidict_repr(benchmark: BenchmarkFixture) -> None:
         repr(md)
 
 
-def test_create_empty_multidict(benchmark: BenchmarkFixture) -> None:
+def test_create_empty_multidict(
+    benchmark: BenchmarkFixture, any_multidict_class: Type[MutableMultiMapping[str]]
+) -> None:
     @benchmark
     def _run() -> None:
-        MultiDict()
+        any_multidict_class()
 
 
-def test_create_empty_cimultidict(benchmark: BenchmarkFixture) -> None:
-    @benchmark
-    def _run() -> None:
-        CIMultiDict()
-
-
-def test_create_multidict_with_items(benchmark: BenchmarkFixture) -> None:
+def test_create_multidict_with_items(
+    benchmark: BenchmarkFixture, any_multidict_class: Type[MutableMultiMapping[str]]
+) -> None:
     items = [(str(i), str(i)) for i in range(100)]
 
     @benchmark
     def _run() -> None:
-        MultiDict(items)
-
-
-def test_create_cimultidict_with_items(benchmark: BenchmarkFixture) -> None:
-    items = [(str(i), str(i)) for i in range(100)]
-
-    @benchmark
-    def _run() -> None:
-        CIMultiDict(items)
+        any_multidict_class(items)  # type: ignore[call-arg]
 
 
 def test_create_cimultidict_with_items_istr(benchmark: BenchmarkFixture) -> None:
