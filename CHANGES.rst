@@ -28,7 +28,7 @@ Bug fixes
   *Related issues and pull requests on GitHub:*
   :issue:`1045`.
 
-- Fix a leak when the last accessed module in ``PyInit__multidict`` init is not released.
+- Fixed a leak when the last accessed module in ``PyInit__multidict()`` init is not released.
 
   *Related issues and pull requests on GitHub:*
   :issue:`1061`.
