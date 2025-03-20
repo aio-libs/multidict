@@ -84,7 +84,11 @@ _multidict_append_items(MultiDictObject *self, pair_list_t *pairs)
         }
         if (ret == 0)
             break;
-        if (pair_list_add(&self->pairs, key, value) < 0) {
+
+        ret = pair_list_add(&self->pairs, key, value);
+        Py_CLEAR(key);
+        Py_CLEAR(value);
+        if (ret < 0) {
             return -1;
         }
     }

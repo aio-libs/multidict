@@ -433,10 +433,10 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
     pair_t *pair = list->pairs + pos->pos;
 
     if (pkey) {
-        *pkey = pair->key;
+        *pkey = Py_NewRef(pair->key);
     }
     if (pvalue) {
-        *pvalue = pair->value;
+        *pvalue = Py_NewRef(pair->value);
     }
 
     ++pos->pos;
@@ -1183,18 +1183,24 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
         if (ret < 0) {
             return -1;
         }
-        if (ret == 0)
+        if (ret == 0) {
             break;
-
-        if (PyMapping_GetOptionalItem(other, key, &bvalue) < 0) {
+        }
+        ret = PyMapping_GetOptionalItem(other, key, &bvalue);
+        Py_CLEAR(key);
+        if (ret < 0) {
+            Py_CLEAR(avalue);
             return -1;
         }
+
         if (bvalue == NULL) {
+            Py_CLEAR(avalue);
             return 0;
         }
 
         int eq = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
-        Py_DECREF(bvalue);
+        Py_CLEAR(bvalue);
+        Py_CLEAR(avalue);
 
         if (eq <= 0) {
             return eq;

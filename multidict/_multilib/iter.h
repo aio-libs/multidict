@@ -86,6 +86,8 @@ multidict_items_iter_iternext(MultidictIter *self)
     }
 
     ret = PyTuple_Pack(2, key, value);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
     if (ret == NULL) {
         return NULL;
     }
@@ -107,7 +109,7 @@ multidict_values_iter_iternext(MultidictIter *self)
         return NULL;
     }
 
-    return Py_NewRef(value);
+    return value;
 }
 
 static inline PyObject *
@@ -124,7 +126,7 @@ multidict_keys_iter_iternext(MultidictIter *self)
         return NULL;
     }
 
-    return Py_NewRef(key);
+    return key;
 }
 
 static inline void
