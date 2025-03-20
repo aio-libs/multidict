@@ -352,21 +352,21 @@ def test_create_cimultidict_with_items_istr(benchmark: BenchmarkFixture) -> None
         CIMultiDict(items)
 
 
-def test_create_empty_multidictproxy(benchmark: BenchmarkFixture) -> None:
+def test_create_empty_multidictproxy(benchmark: BenchmarkFixture, any_multidict_proxy_class_name: Type[MultiDictProxy[str]]) -> None:
     md: MultiDict[str] = MultiDict()
 
     @benchmark
     def _run() -> None:
-        MultiDictProxy(md)
+        any_multidict_proxy_class_name(md)
 
 
-def test_create_multidictproxy(benchmark: BenchmarkFixture) -> None:
+def test_create_multidictproxy(benchmark: BenchmarkFixture, any_multidict_proxy_class_name: Type[MultiDictProxy[str]]) -> None:
     items = [(str(i), str(i)) for i in range(100)]
     md = MultiDict(items)
 
     @benchmark
     def _run() -> None:
-        MultiDictProxy(md)
+        any_multidict_proxy_class_name(md)
 
 
 def test_create_from_existing_cimultidict(benchmark: BenchmarkFixture) -> None:
