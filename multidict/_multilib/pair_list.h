@@ -448,13 +448,13 @@ _pair_list_next(pair_list_t *list, Py_ssize_t *ppos, PyObject **pidentity,
     pair = pair_list_get(list, *ppos);
 
     if (pidentity) {
-        *pidentity = pair->identity;
+        *pidentity = Py_NewRef(pair->identity);
     }
     if (pkey) {
-        *pkey = pair->key;
+        *pkey = Py_NewRef(pair->key);
     }
     if (pvalue) {
-        *pvalue = pair->value;
+        *pvalue = Py_NewRef(pair->value);
     }
     if (phash) {
         *phash = pair->hash;
@@ -502,6 +502,7 @@ pair_list_contains(pair_list_t *list, PyObject *key)
             continue;
         }
         tmp = str_cmp(ident, identity);
+        Py_CLEAR(identity);
         if (tmp > 0) {
             Py_DECREF(ident);
             return 1;
@@ -544,8 +545,8 @@ pair_list_get_one(pair_list_t *list, PyObject *key, PyObject **ret)
             continue;
         }
         tmp = str_cmp(ident, identity);
+        Py_CLEAR(identity);
         if (tmp > 0) {
-            Py_INCREF(value);
             Py_DECREF(ident);
             *ret = value;
             return 0;
@@ -553,12 +554,14 @@ pair_list_get_one(pair_list_t *list, PyObject *key, PyObject **ret)
         else if (tmp < 0) {
             goto fail;
         }
+        Py_CLEAR(value);
     }
 
     Py_DECREF(ident);
     return 0;
 fail:
     Py_XDECREF(ident);
+    Py_CLEAR(value);
     return -1;
 }
 
@@ -589,16 +592,16 @@ pair_list_get_all(pair_list_t *list, PyObject *key, PyObject **ret)
             continue;
         }
         tmp = str_cmp(ident, identity);
+        Py_CLEAR(identity);
         if (tmp > 0) {
             if (res == NULL) {
                 res = PyList_New(1);
                 if (res == NULL) {
                     goto fail;
                 }
-                if (PyList_SetItem(res, 0, value) < 0) {
+                if (PyList_SetItem(res, 0, Py_NewRef(value)) < 0) {
                     goto fail;
                 }
-                Py_INCREF(value);
             }
             else if (PyList_Append(res, value) < 0) {
                 goto fail;
@@ -607,12 +610,14 @@ pair_list_get_all(pair_list_t *list, PyObject *key, PyObject **ret)
         else if (tmp < 0) {
             goto fail;
         }
+        Py_CLEAR(value);
     }
 
     if (res != NULL) {
         *ret = res;
     }
     Py_DECREF(ident);
+    Py_CLEAR(value);
     return 0;
 
 fail:
@@ -647,14 +652,15 @@ pair_list_set_default(pair_list_t *list, PyObject *key, PyObject *value)
             continue;
         }
         tmp = str_cmp(ident, identity);
+        Py_CLEAR(identity);
         if (tmp > 0) {
-            Py_INCREF(value2);
             Py_DECREF(ident);
             return value2;
         }
         else if (tmp < 0) {
             goto fail;
         }
+        Py_CLEAR(value2);
     }
 
     if (_pair_list_add_with_hash(list, ident, key, value, hash1) < 0) {
@@ -666,6 +672,7 @@ pair_list_set_default(pair_list_t *list, PyObject *key, PyObject *value)
     return value;
 fail:
     Py_XDECREF(ident);
+    Py_CLEAR(value2);
     return NULL;
 }
 
@@ -1212,14 +1219,19 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
     pos = 0;
     while (pair_list_next(list, &pos, NULL, &key, &avalue)) {
         if (PyMapping_GetOptionalItem(other, key, &bvalue) < 0) {
+            Py_CLEAR(key);
+            Py_CLEAR(avalue);
             return -1;
         }
+        Py_CLEAR(key);
         if (bvalue == NULL) {
+            Py_CLEAR(avalue);
             return 0;
         }
 
         eq = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
-        Py_DECREF(bvalue);
+        Py_CLEAR(avalue);
+        Py_CLEAR(bvalue);
 
         if (eq <= 0) {
             return eq;

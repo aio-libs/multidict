@@ -79,6 +79,8 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
     int cmp_identity = 0,
         cmp_value    = 0;
 
+    int ret = 1;
+
     if (self == other) {
         return 1;
     }
@@ -91,22 +93,34 @@ _multidict_eq(MultiDictObject *self, MultiDictObject *other)
            _pair_list_next(&other->pairs, &pos2, &identity2, NULL, &value2, &h2))
     {
         if (h1 != h2) {
-            return 0;
+            ret = 0;
+            goto exit;
         }
         cmp_identity = PyObject_RichCompareBool(identity1, identity2, Py_NE);
         if (cmp_identity < 0) {
-            return -1;
+            ret = -1;
+            goto exit;
         }
         cmp_value = PyObject_RichCompareBool(value1, value2, Py_NE);
         if (cmp_value < 0) {
-            return -1;
+            ret = -1;
+            goto exit;
         }
         if (cmp_identity || cmp_value) {
-            return 0;
+            ret = 0;
+            goto exit;
         }
+        Py_CLEAR(identity1);
+        Py_CLEAR(identity2);
+        Py_CLEAR(value1);
+        Py_CLEAR(value2);
     }
-
-    return 1;
+exit:
+    Py_CLEAR(identity1);
+    Py_CLEAR(identity2);
+    Py_CLEAR(value1);
+    Py_CLEAR(value2);
+    return ret;
 }
 
 static inline int
@@ -125,8 +139,12 @@ _multidict_append_items(MultiDictObject *self, pair_list_t *pairs)
 
     while (_pair_list_next(pairs, &pos, NULL, &key, &value, NULL)) {
         if (pair_list_add(&self->pairs, key, value) < 0) {
+            Py_CLEAR(key);
+            Py_CLEAR(value);
             return -1;
         }
+        Py_CLEAR(key);
+        Py_CLEAR(value);
     }
 
     return 0;
@@ -508,16 +526,22 @@ multidict_get(
     PyObject *key      = NULL,
              *_default = NULL,
              *ret;
+    bool clear_default = false;
 
     if (parse2("get", args, nargs, kwnames, 1,
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
     if (_default == NULL) {
-        // fixme, _default is potentially dangerous borrowed ref here
-        _default = Py_None;
+        clear_default = true;
+        _default = Py_GetConstant(Py_CONSTANT_NONE);
+        if (_default == NULL) {
+            return NULL;
+        }
     }
     ret = _multidict_getone(self, key, _default);
+    if (clear_default)
+        Py_CLEAR(_default);
     return ret;
 }
 

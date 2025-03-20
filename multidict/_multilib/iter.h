@@ -89,6 +89,8 @@ multidict_items_iter_iternext(MultidictIter *self)
     }
 
     ret = PyTuple_Pack(2, key, value);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
     if (ret == NULL) {
         return NULL;
     }
@@ -111,8 +113,6 @@ multidict_values_iter_iternext(MultidictIter *self)
         return NULL;
     }
 
-    Py_INCREF(value);
-
     return value;
 }
 
@@ -130,8 +130,6 @@ multidict_keys_iter_iternext(MultidictIter *self)
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
-
-    Py_INCREF(key);
 
     return key;
 }
