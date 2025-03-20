@@ -299,8 +299,11 @@ def test_cimultidict_get_istr_hit(
             md.get(i)
 
 
-def test_cimultidict_get_istr_miss(benchmark: BenchmarkFixture) -> None:
-    md: CIMultiDict[istr] = CIMultiDict((istr(i), istr(i)) for i in range(100))
+def test_cimultidict_get_istr_miss(
+    benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+) -> None:
+    md = case_insensitive_multidict_class((istr(i), istr(i)) for i in range(100))
     items = [istr(i) for i in range(100, 200)]
 
     @benchmark
@@ -411,7 +414,8 @@ def test_create_multidictproxy(
 
 
 def test_create_from_existing_cimultidict(
-    benchmark: BenchmarkFixture, case_insensitive_multidict_class: Type[CIMultiDict[istr]]
+    benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
 ) -> None:
     existing = case_insensitive_multidict_class((istr(i), istr(i)) for i in range(5))
 
@@ -421,7 +425,8 @@ def test_create_from_existing_cimultidict(
 
 
 def test_copy_from_existing_cimultidict(
-    benchmark: BenchmarkFixture, case_insensitive_multidict_class: Type[CIMultiDict[istr]]
+    benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
 ) -> None:
     existing = case_insensitive_multidict_class((istr(i), istr(i)) for i in range(5))
 
