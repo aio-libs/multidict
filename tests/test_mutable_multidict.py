@@ -350,6 +350,7 @@ class TestMutableMultiDict:
         with pytest.raises(TypeError):
             d.update("foo", "bar")  # type: ignore[arg-type, call-arg]
 
+
 class TestCIMutableMultiDict:
     def test_getall(
         self,

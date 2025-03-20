@@ -13,10 +13,6 @@
 #include "_multilib/views.h"
 
 
-static PyObject *collections_abc_mapping;
-static PyObject *collections_abc_mut_mapping;
-static PyObject *collections_abc_mut_multi_mapping;
-
 static PyTypeObject multidict_type;
 static PyTypeObject cimultidict_type;
 static PyTypeObject multidict_proxy_type;
@@ -541,7 +537,6 @@ _do_multidict_repr(MultiDictObject *md, PyObject *name,
 {
     PyObject *key = NULL,
              *value = NULL;
-    Py_ssize_t current = 0;
     bool comma = false;
 
     PyUnicodeWriter *writer = PyUnicodeWriter_Create(1024);
@@ -656,9 +651,7 @@ multidict_tp_iter(MultiDictObject *self)
 static inline PyObject *
 multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
 {
-    // TODO: refactoring me with love
-
-    int cmp = 0;
+    int cmp;
 
     if (op != Py_EQ && op != Py_NE) {
         Py_RETURN_NOTIMPLEMENTED;
@@ -677,46 +670,37 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
             &((MultiDictObject*)self)->pairs,
             &((MultiDictObject*)other)->pairs
         );
-        if (cmp < 0) {
-            return NULL;
-        }
-        if (op == Py_NE) {
-            cmp = !cmp;
-        }
-        return PyBool_FromLong(cmp);
-    }
-
-    if (MultiDictProxy_CheckExact(other) || CIMultiDictProxy_CheckExact(other)) {
+    } else if (MultiDictProxy_CheckExact(other) || CIMultiDictProxy_CheckExact(other)) {
         cmp = pair_list_eq(
             &((MultiDictObject*)self)->pairs,
             &((MultiDictProxyObject*)other)->md->pairs
         );
-        if (cmp < 0) {
-            return NULL;
+    } else {
+        bool fits = false;
+        fits = PyDict_Check(other);
+        if (!fits) {
+            PyObject *keys = PyMapping_Keys(other);
+            if (keys != NULL) {
+                fits = true;
+            } else {
+                // reset AttributeError exception
+                PyErr_Clear();
+            }
+            Py_CLEAR(keys);
         }
-        if (op == Py_NE) {
-            cmp = !cmp;
+        if (fits) {
+            cmp = pair_list_eq_to_mapping(&((MultiDictObject*)self)->pairs, other);
+        } else {
+            cmp = 0; // e.g., multidict is not equal to a list
         }
-        return PyBool_FromLong(cmp);
     }
-
-    cmp = PyObject_IsInstance(other, (PyObject*)collections_abc_mapping);
     if (cmp < 0) {
         return NULL;
     }
-
-    if (cmp) {
-        cmp = pair_list_eq_to_mapping(&((MultiDictObject*)self)->pairs, other);
-        if (cmp < 0) {
-            return NULL;
-        }
-        if (op == Py_NE) {
-            cmp = !cmp;
-        }
-        return PyBool_FromLong(cmp);
+    if (op == Py_NE) {
+        cmp = !cmp;
     }
-
-    Py_RETURN_NOTIMPLEMENTED;
+    return PyBool_FromLong(cmp);
 }
 
 static inline void
@@ -1623,9 +1607,6 @@ static inline void
 module_free(void *m)
 {
     Py_CLEAR(multidict_str_lower);
-    Py_CLEAR(collections_abc_mapping);
-    Py_CLEAR(collections_abc_mut_mapping);
-    Py_CLEAR(collections_abc_mut_multi_mapping);
 }
 
 static PyMethodDef multidict_module_methods[] = {
@@ -1656,8 +1637,7 @@ PyInit__multidict(void)
         goto fail;
     }
 
-    PyObject *module = NULL,
-             *reg_func_call_result = NULL;
+    PyObject *module = NULL;
 
     if (multidict_views_init() < 0) {
         goto fail;
@@ -1692,54 +1672,7 @@ PyInit__multidict(void)
         goto fail;                              \
     }
 
-    WITH_MOD("collections.abc");
-    GET_MOD_ATTR(collections_abc_mapping, "Mapping");
-
-    WITH_MOD("multidict._abc");
-    GET_MOD_ATTR(collections_abc_mut_mapping, "MultiMapping");
-    GET_MOD_ATTR(collections_abc_mut_multi_mapping, "MutableMultiMapping");
     Py_CLEAR(module);                       \
-
-    /* Register in _abc mappings (CI)MultiDict and (CI)MultiDictProxy */
-    reg_func_call_result = PyObject_CallMethod(
-        collections_abc_mut_mapping,
-        "register", "O",
-        (PyObject*)&multidict_proxy_type
-    );
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
-
-    reg_func_call_result = PyObject_CallMethod(
-        collections_abc_mut_mapping,
-        "register", "O",
-        (PyObject*)&cimultidict_proxy_type
-    );
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
-
-    reg_func_call_result = PyObject_CallMethod(
-        collections_abc_mut_multi_mapping,
-        "register", "O",
-        (PyObject*)&multidict_type
-    );
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
-
-    reg_func_call_result = PyObject_CallMethod(
-        collections_abc_mut_multi_mapping,
-        "register", "O",
-        (PyObject*)&cimultidict_type
-    );
-    if (reg_func_call_result == NULL) {
-        goto fail;
-    }
-    Py_DECREF(reg_func_call_result);
 
     /* Instantiate this module */
     module = PyModule_Create(&multidict_module);
@@ -1786,13 +1719,31 @@ PyInit__multidict(void)
         goto fail;
     }
 
+    Py_INCREF(&multidict_keysview_type);
+    if (PyModule_AddObject(
+            module, "_KeysView", (PyObject*)&multidict_keysview_type) < 0)
+    {
+        goto fail;
+    }
+
+    Py_INCREF(&multidict_itemsview_type);
+    if (PyModule_AddObject(
+            module, "_ItemsView", (PyObject*)&multidict_itemsview_type) < 0)
+    {
+        goto fail;
+    }
+
+    Py_INCREF(&multidict_valuesview_type);
+    if (PyModule_AddObject(
+            module, "_ValuesView", (PyObject*)&multidict_valuesview_type) < 0)
+    {
+        goto fail;
+    }
+
     return module;
 
 fail:
     Py_XDECREF(multidict_str_lower);
-    Py_XDECREF(collections_abc_mapping);
-    Py_XDECREF(collections_abc_mut_mapping);
-    Py_XDECREF(collections_abc_mut_multi_mapping);
 
     return NULL;
 

@@ -6,7 +6,6 @@ from collections.abc import (
     KeysView,
     Sequence,
     Set,
-    ValuesView,
 )
 from typing import Literal, Union
 
@@ -22,18 +21,6 @@ else:
 
 
 _ViewArg = Union[KeysView[str], ItemsView[str, object]]
-
-
-def _abc_itemsview_register(view_cls: type[object]) -> None:
-    ItemsView.register(view_cls)
-
-
-def _abc_keysview_register(view_cls: type[object]) -> None:
-    KeysView.register(view_cls)
-
-
-def _abc_valuesview_register(view_cls: type[object]) -> None:
-    ValuesView.register(view_cls)
 
 
 def _viewbaseset_richcmp(
