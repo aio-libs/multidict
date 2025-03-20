@@ -1183,6 +1183,50 @@ fail_2:
     return -1;
 }
 
+
+static inline int
+pair_list_eq(pair_list_t *list, pair_list_t *other)
+{
+    Py_ssize_t cmp, pos;
+
+    if (list == other) {
+        return 1;
+    }
+
+    Py_ssize_t size = pair_list_len(list);
+
+    if (size != pair_list_len(other)) {
+        return 0;
+    }
+
+    for(pos = 0; pos < size; ++pos) {
+        pair_t *p1 = &list->pairs[pos];
+        pair_t *p2 = &other->pairs[pos];
+
+        if (p1->hash != p2->hash) {
+            return 0;
+        }
+
+        cmp = PyObject_RichCompareBool(p1->identity, p2->identity, Py_EQ);
+        if (cmp < 0) {
+            return -1;
+        };
+        if (cmp == 0) {
+            return 0;
+        }
+
+        cmp = PyObject_RichCompareBool(p1->value, p2->value, Py_EQ);
+        if (cmp < 0) {
+            return -1;
+        };
+        if (cmp == 0) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 static inline int
 pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
 {
