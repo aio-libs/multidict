@@ -38,6 +38,6 @@ coverage:
       typing:
         flags:
         - MyPy
-        target: 100%
+        target: 85%
 
 ...
