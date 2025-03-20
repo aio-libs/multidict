@@ -16,7 +16,7 @@ coverage:
   range: 97.87..100
   status:
     patch:
-      default:
+      runtime:
         target: 100%
         flags:
         - pytest
