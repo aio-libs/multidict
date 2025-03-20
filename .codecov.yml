@@ -20,6 +20,9 @@ coverage:
         target: 100%
         flags:
         - pytest
+      typing:
+        flags:
+        - MyPy
     project:
       lib:
         flags:
