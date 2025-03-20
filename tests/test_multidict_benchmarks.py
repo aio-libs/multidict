@@ -184,6 +184,16 @@ def test_multidict_getall_str_hit(
         md.getall("all")
 
 
+def test_multidict_getall_str_miss(
+    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+) -> None:
+    md = any_multidict_class(("all", str(i)) for i in range(100))
+
+    @benchmark
+    def _run() -> None:
+        md.getall("miss", ())
+
+
 def test_cimultidict_getall_istr_hit(benchmark: BenchmarkFixture) -> None:
     all_istr = istr("all")
     md: CIMultiDict[istr] = CIMultiDict((all_istr, istr(i)) for i in range(100))
@@ -191,6 +201,16 @@ def test_cimultidict_getall_istr_hit(benchmark: BenchmarkFixture) -> None:
     @benchmark
     def _run() -> None:
         md.getall(all_istr)
+
+
+def test_cimultidict_getall_istr_miss(benchmark: BenchmarkFixture) -> None:
+    all_istr = istr("all")
+    miss_istr = istr("miss")
+    md: CIMultiDict[istr] = CIMultiDict((all_istr, istr(i)) for i in range(100))
+
+    @benchmark
+    def _run() -> None:
+        md.getall(miss_istr, ())
 
 
 def test_multidict_fetch(
