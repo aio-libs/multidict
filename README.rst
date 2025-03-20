@@ -6,8 +6,8 @@ multidict
    :target: https://github.com/aio-libs/multidict/actions
    :alt: GitHub status for master branch
 
-.. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/aio-libs/multidict
+.. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg?flag=pytest
+   :target: https://codecov.io/gh/aio-libs/multidict?flags[]=pytest
    :alt: Coverage metrics
 
 .. image:: https://img.shields.io/pypi/v/multidict.svg

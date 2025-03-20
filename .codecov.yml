@@ -7,28 +7,30 @@ codecov:
 
   require_ci_to_pass: false
 
-  token: 796e466d-bf08-4b98-8d5b-0e9c442aef06  # repo-scoped
+  token: >-  # notsecret  # repo-scoped, upload-only, stability in fork PRs
+    796e466d-bf08-4b98-8d5b-0e9c442aef06
 
 comment:
   require_changes: true
 
 coverage:
-  range: 97.87..100
+  range: 100..100
   status:
     patch:
-      default:
+      runtime:
         target: 100%
         flags:
         - pytest
+      typing:
+        flags:
+        - MyPy
     project:
-      default:
-        target: 100%
       lib:
         flags:
         - pytest
         paths:
         - multidict/
-        target: 94.05%
+        target: 100%
       tests:
         flags:
         - pytest
@@ -39,5 +41,8 @@ coverage:
         flags:
         - MyPy
         target: 85%
+
+github_checks:
+  annotations: false
 
 ...
