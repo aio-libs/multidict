@@ -463,3 +463,19 @@ def test_create_multidictproxy(benchmark: BenchmarkFixture) -> None:
     @benchmark
     def _run() -> None:
         MultiDictProxy(md)
+
+
+def test_create_from_existing_cimultidict(benchmark: BenchmarkFixture) -> None:
+    existing = CIMultiDict((istr(i), istr(i)) for i in range(5))
+
+    @benchmark
+    def _run() -> None:
+        CIMultiDict(existing)
+
+
+def test_copy_from_existing_cimultidict(benchmark: BenchmarkFixture) -> None:
+    existing = CIMultiDict((istr(i), istr(i)) for i in range(5))
+
+    @benchmark
+    def _run() -> None:
+        existing.copy()
