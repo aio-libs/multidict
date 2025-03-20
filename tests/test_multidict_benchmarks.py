@@ -4,7 +4,7 @@ from typing import Dict, Union
 
 from pytest_codspeed import BenchmarkFixture
 
-from multidict import CIMultiDict, MultiDict, istr
+from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 
 # Note that this benchmark should not be refactored to use pytest.mark.parametrize
 # since each benchmark name should be unique.
@@ -410,3 +410,56 @@ def test_multidict_repr(benchmark: BenchmarkFixture) -> None:
     @benchmark
     def _run() -> None:
         repr(md)
+
+
+def test_create_empty_multidict(benchmark: BenchmarkFixture) -> None:
+    @benchmark
+    def _run() -> None:
+        MultiDict()
+
+
+def test_create_empty_cimultidict(benchmark: BenchmarkFixture) -> None:
+    @benchmark
+    def _run() -> None:
+        CIMultiDict()
+
+
+def test_create_multidict_with_items(benchmark: BenchmarkFixture) -> None:
+    items = [(str(i), str(i)) for i in range(100)]
+
+    @benchmark
+    def _run() -> None:
+        MultiDict(items)
+
+
+def test_create_cimultidict_with_items(benchmark: BenchmarkFixture) -> None:
+    items = [(str(i), str(i)) for i in range(100)]
+
+    @benchmark
+    def _run() -> None:
+        CIMultiDict(items)
+
+
+def test_create_cimultidict_with_items_istr(benchmark: BenchmarkFixture) -> None:
+    items = [(istr(i), istr(i)) for i in range(100)]
+
+    @benchmark
+    def _run() -> None:
+        CIMultiDict(items)
+
+
+def test_create_empty_multidictproxy(benchmark: BenchmarkFixture) -> None:
+    md: MultiDict[str] = MultiDict()
+
+    @benchmark
+    def _run() -> None:
+        MultiDictProxy(md)
+
+
+def test_create_multidictproxy(benchmark: BenchmarkFixture) -> None:
+    items = [(str(i), str(i)) for i in range(100)]
+    md = MultiDict(items)
+
+    @benchmark
+    def _run() -> None:
+        MultiDictProxy(md)
