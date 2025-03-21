@@ -9,15 +9,11 @@ static PyTypeObject multidict_itemsview_type;
 static PyTypeObject multidict_valuesview_type;
 static PyTypeObject multidict_keysview_type;
 
-static PyObject *viewbaseset_richcmp_func;
 static PyObject *viewbaseset_and_func;
 static PyObject *viewbaseset_or_func;
 static PyObject *viewbaseset_sub_func;
 static PyObject *viewbaseset_xor_func;
 
-static PyObject *itemsview_isdisjoint_func;
-
-static PyObject *keysview_isdisjoint_func;
 
 typedef struct {
     PyObject_HEAD
@@ -65,15 +61,89 @@ multidict_view_len(_Multidict_ViewObject *self)
 static inline PyObject *
 multidict_view_richcompare(PyObject *self, PyObject *other, int op)
 {
-    PyObject *ret;
-    PyObject *op_obj = PyLong_FromLong(op);
-    if (op_obj == NULL) {
+    int tmp;
+    Py_ssize_t self_size = PyObject_Length(self);
+    if (self_size < 0) {
         return NULL;
     }
-    ret = PyObject_CallFunctionObjArgs(
-        viewbaseset_richcmp_func, self, other, op_obj, NULL);
-    Py_DECREF(op_obj);
-    return ret;
+    Py_ssize_t size = PyObject_Length(other);
+    if (size < 0) {
+        PyErr_Clear();
+        Py_RETURN_NOTIMPLEMENTED;;
+    }
+    PyObject *iter = NULL;
+    PyObject *item = NULL;
+    switch(op) {
+        case Py_LT:
+            if (self_size >= size)
+                Py_RETURN_FALSE;
+            return PyObject_RichCompare(self, other, Py_LE);
+        case Py_LE:
+            if (self_size > size) {
+                Py_RETURN_FALSE;
+            }
+            iter = PyObject_GetIter(self);
+            if (iter == NULL) {
+                goto fail;
+            }
+            while ((item = PyIter_Next(iter))) {
+                tmp = PySequence_Contains(other, item);
+                if (tmp < 0) {
+                    goto fail;
+                }
+                Py_CLEAR(item);
+                if (tmp == 0) {
+                    Py_CLEAR(iter);
+                    Py_RETURN_FALSE;
+                }
+            }
+            Py_CLEAR(iter);
+            if (PyErr_Occurred()) {
+                goto fail;
+            }
+            Py_RETURN_TRUE;
+        case Py_EQ:
+            if (self_size != size)
+                Py_RETURN_FALSE;
+            return PyObject_RichCompare(self, other, Py_LE);
+        case Py_NE:
+            tmp = PyObject_RichCompareBool(self, other, Py_EQ);
+            if (tmp < 0)
+                goto fail;
+            return PyBool_FromLong(!tmp);
+        case Py_GT:
+            if (self_size <= size)
+                Py_RETURN_FALSE;
+            return PyObject_RichCompare(self, other, Py_GE);
+        case Py_GE:
+            if (self_size < size) {
+                Py_RETURN_FALSE;
+            }
+            iter = PyObject_GetIter(other);
+            if (iter == NULL) {
+                goto fail;
+            }
+            while ((item = PyIter_Next(iter))) {
+                tmp = PySequence_Contains(self, item);
+                if (tmp < 0) {
+                    goto fail;
+                }
+                Py_CLEAR(item);
+                if (tmp == 0) {
+                    Py_CLEAR(iter);
+                    Py_RETURN_FALSE;
+                }
+            }
+            Py_CLEAR(iter);
+            if (PyErr_Occurred()) {
+                goto fail;
+            }
+            Py_RETURN_TRUE;
+    }
+fail:
+    Py_CLEAR(item);
+    Py_CLEAR(iter);
+    return NULL;
 }
 
 static inline PyObject *
@@ -153,6 +223,44 @@ static PyNumberMethods multidict_view_as_number = {
     .nb_or = (binaryfunc)multidict_view_or,
 };
 
+
+static inline PyObject *
+multidict_view_isdisjoint(PyObject *self, PyObject *other)
+{
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        return NULL;
+    }
+    PyObject *next = NULL;
+    while ((next = PyIter_Next(iter))) {
+        int tmp = PySequence_Contains(self, next);
+        Py_CLEAR(next);
+        if (tmp < 0) {
+            Py_CLEAR(iter);
+            return NULL;
+        }
+        if (tmp > 0) {
+            Py_CLEAR(iter);
+            Py_RETURN_FALSE;
+        }
+    }
+    if (PyErr_Occurred()) {
+        Py_CLEAR(iter);
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+PyDoc_STRVAR(view_isdisjoint_doc,
+             "Return True if two sets have a null intersection.");
+
+
+static PyMethodDef multidict_view_methods[] = {
+    {"isdisjoint", multidict_view_isdisjoint, METH_O, view_isdisjoint_doc},
+    {NULL, NULL}   /* sentinel */
+};
+
+
 /********** Items **********/
 
 static inline PyObject *
@@ -186,29 +294,6 @@ multidict_itemsview_repr(_Multidict_ViewObject *self)
     Py_CLEAR(name);
     return ret;
 }
-
-static inline PyObject *
-multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
-{
-    return PyObject_CallFunctionObjArgs(
-        itemsview_isdisjoint_func, self, other, NULL);
-}
-
-PyDoc_STRVAR(itemsview_isdisjoint_doc,
-             "Return True if two sets have a null intersection.");
-
-static PyMethodDef multidict_itemsview_methods[] = {
-    {
-        "isdisjoint",
-        (PyCFunction)multidict_itemsview_isdisjoint,
-        METH_O,
-        itemsview_isdisjoint_doc
-    },
-    {
-        NULL,
-        NULL
-    }   /* sentinel */
-};
 
 static inline int
 multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
@@ -287,7 +372,7 @@ static PyTypeObject multidict_itemsview_type = {
     .tp_clear = (inquiry)multidict_view_clear,
     .tp_richcompare = multidict_view_richcompare,
     .tp_iter = (getiterfunc)multidict_itemsview_iter,
-    .tp_methods = multidict_itemsview_methods,
+    .tp_methods = multidict_view_methods,
 };
 
 
@@ -325,28 +410,6 @@ multidict_keysview_repr(_Multidict_ViewObject *self)
     return ret;
 }
 
-static inline PyObject *
-multidict_keysview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
-{
-    return PyObject_CallFunctionObjArgs(
-        keysview_isdisjoint_func, self, other, NULL);
-}
-
-PyDoc_STRVAR(keysview_isdisjoint_doc,
-             "Return True if two sets have a null intersection.");
-
-static PyMethodDef multidict_keysview_methods[] = {
-    {
-        "isdisjoint",
-        (PyCFunction)multidict_keysview_isdisjoint,
-        METH_O,
-        keysview_isdisjoint_doc
-    },
-    {
-        NULL,
-        NULL
-    }   /* sentinel */
-};
 
 static inline int
 multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
@@ -373,7 +436,7 @@ static PyTypeObject multidict_keysview_type = {
     .tp_clear = (inquiry)multidict_view_clear,
     .tp_richcompare = multidict_view_richcompare,
     .tp_iter = (getiterfunc)multidict_keysview_iter,
-    .tp_methods = multidict_keysview_methods,
+    .tp_methods = multidict_view_methods,
 };
 
 
@@ -444,16 +507,12 @@ multidict_views_init(void)
         goto fail;                              \
     }
 
-    GET_MOD_ATTR(viewbaseset_richcmp_func, "_viewbaseset_richcmp");
     GET_MOD_ATTR(viewbaseset_and_func, "_viewbaseset_and");
     GET_MOD_ATTR(viewbaseset_or_func, "_viewbaseset_or");
     GET_MOD_ATTR(viewbaseset_sub_func, "_viewbaseset_sub");
     GET_MOD_ATTR(viewbaseset_xor_func, "_viewbaseset_xor");
 
-    GET_MOD_ATTR(itemsview_isdisjoint_func, "_itemsview_isdisjoint");
-
-    GET_MOD_ATTR(keysview_isdisjoint_func, "_keysview_isdisjoint");
-
+    Py_CLEAR(module);
 
     if (PyType_Ready(&multidict_itemsview_type) < 0 ||
         PyType_Ready(&multidict_valuesview_type) < 0 ||
@@ -462,10 +521,7 @@ multidict_views_init(void)
         goto fail;
     }
 
-
-    Py_DECREF(module);
     return 0;
-
 fail:
     Py_CLEAR(module);
     return -1;

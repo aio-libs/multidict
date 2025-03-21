@@ -23,37 +23,6 @@ else:
 _ViewArg = Union[KeysView[str], ItemsView[str, object]]
 
 
-def _viewbaseset_richcmp(
-    view: _ViewArg, other: object, op: Literal[0, 1, 2, 3, 4, 5]
-) -> Union[bool, NotImplementedType]:
-    if not isinstance(other, Set):
-        return NotImplemented  # type: ignore[no-any-return]
-    if op == 0:  # <
-        return len(view) < len(other) and view <= other
-    elif op == 1:  # <=
-        if len(view) > len(other):
-            return False
-        for elem in view:
-            if elem not in other:
-                return False
-        return True
-    elif op == 2:  # ==
-        return len(view) == len(other) and view <= other
-    elif op == 3:  # !=
-        return not view == other
-    elif op == 4:  # >
-        return len(view) > len(other) and view >= other
-    elif op == 5:  # >=
-        if len(view) < len(other):
-            return False
-        for elem in other:
-            if elem not in view:
-                return False
-        return True
-    else:  # pragma: no cover
-        assert_never(op)
-
-
 def _viewbaseset_and(
     view: _ViewArg, other: object
 ) -> Union[set[Sequence[object]], NotImplementedType]:

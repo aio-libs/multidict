@@ -1579,18 +1579,15 @@ static inline void
 module_free(void *m)
 {
     Py_CLEAR(multidict_str_lower);
+    Py_CLEAR(viewbaseset_and_func);
+    Py_CLEAR(viewbaseset_or_func);
+    Py_CLEAR(viewbaseset_sub_func);
+    Py_CLEAR(viewbaseset_xor_func);
 }
 
 static PyMethodDef multidict_module_methods[] = {
-    {
-        "getversion",
-        (PyCFunction)getversion,
-        METH_O
-    },
-    {
-        NULL,
-        NULL
-    }   /* sentinel */
+    {"getversion", (PyCFunction)getversion, METH_O},
+    {NULL, NULL}   /* sentinel */
 };
 
 static PyModuleDef multidict_module = {
@@ -1630,21 +1627,6 @@ PyInit__multidict(void)
     {
         goto fail;
     }
-
-#define WITH_MOD(NAME)                      \
-    Py_CLEAR(module);                       \
-    module = PyImport_ImportModule(NAME);   \
-    if (module == NULL) {                   \
-        goto fail;                          \
-    }
-
-#define GET_MOD_ATTR(VAR, NAME)                 \
-    VAR = PyObject_GetAttrString(module, NAME); \
-    if (VAR == NULL) {                          \
-        goto fail;                              \
-    }
-
-    Py_CLEAR(module);                       \
 
     /* Instantiate this module */
     module = PyModule_Create(&multidict_module);
@@ -1718,7 +1700,4 @@ fail:
     Py_XDECREF(multidict_str_lower);
 
     return NULL;
-
-#undef WITH_MOD
-#undef GET_MOD_ATTR
 }
