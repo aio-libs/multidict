@@ -1,5 +1,18 @@
 import sys
-from collections.abc import ItemsView, Iterable, KeysView, Set, ValuesView
+from collections.abc import (
+    Container,
+    ItemsView,
+    Iterable,
+    KeysView,
+    Sequence,
+    Set,
+)
+from typing import Literal, Union
+
+if sys.version_info >= (3, 10):
+    from types import NotImplementedType
+else:
+    from typing import Any as NotImplementedType
 
 if sys.version_info >= (3, 11):
     from typing import assert_never
@@ -7,26 +20,17 @@ else:
     from typing_extensions import assert_never
 
 
-def _abc_itemsview_register(view_cls):
-    ItemsView.register(view_cls)
+_ViewArg = Union[KeysView[str], ItemsView[str, object]]
 
 
-def _abc_keysview_register(view_cls):
-    KeysView.register(view_cls)
-
-
-def _abc_valuesview_register(view_cls):
-    ValuesView.register(view_cls)
-
-
-def _viewbaseset_richcmp(view, other, op):
+def _viewbaseset_richcmp(
+    view: _ViewArg, other: object, op: Literal[0, 1, 2, 3, 4, 5]
+) -> Union[bool, NotImplementedType]:
+    if not isinstance(other, Set):
+        return NotImplemented  # type: ignore[no-any-return]
     if op == 0:  # <
-        if not isinstance(other, Set):
-            return NotImplemented
         return len(view) < len(other) and view <= other
     elif op == 1:  # <=
-        if not isinstance(other, Set):
-            return NotImplemented
         if len(view) > len(other):
             return False
         for elem in view:
@@ -34,18 +38,12 @@ def _viewbaseset_richcmp(view, other, op):
                 return False
         return True
     elif op == 2:  # ==
-        if not isinstance(other, Set):
-            return NotImplemented
         return len(view) == len(other) and view <= other
     elif op == 3:  # !=
         return not view == other
     elif op == 4:  # >
-        if not isinstance(other, Set):
-            return NotImplemented
         return len(view) > len(other) and view >= other
     elif op == 5:  # >=
-        if not isinstance(other, Set):
-            return NotImplemented
         if len(view) < len(other):
             return False
         for elem in other:
@@ -56,55 +54,47 @@ def _viewbaseset_richcmp(view, other, op):
         assert_never(op)
 
 
-def _viewbaseset_and(view, other):
+def _viewbaseset_and(
+    view: _ViewArg, other: object
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
-        return NotImplemented
-    if isinstance(view, Set):
-        view = set(iter(view))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view & other
+        return NotImplemented  # type: ignore[no-any-return]
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft & rgt
 
 
-def _viewbaseset_or(view, other):
+def _viewbaseset_or(
+    view: _ViewArg, other: object
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
-        return NotImplemented
-    if isinstance(view, Set):
-        view = set(iter(view))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view | other
+        return NotImplemented  # type: ignore[no-any-return]
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft | rgt
 
 
-def _viewbaseset_sub(view, other):
+def _viewbaseset_sub(
+    view: _ViewArg, other: object
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
-        return NotImplemented
-    if isinstance(view, Set):
-        view = set(iter(view))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view - other
+        return NotImplemented  # type: ignore[no-any-return]
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft - rgt
 
 
-def _viewbaseset_xor(view, other):
+def _viewbaseset_xor(
+    view: _ViewArg, other: object
+) -> Union[set[Sequence[object]], NotImplementedType]:
     if not isinstance(other, Iterable):
-        return NotImplemented
-    if isinstance(view, Set):
-        view = set(iter(view))
-    if isinstance(other, Set):
-        other = set(iter(other))
-    if not isinstance(other, Set):
-        other = set(iter(other))
-    return view ^ other
+        return NotImplemented  # type: ignore[no-any-return]
+    lft = set(iter(view))
+    rgt = set(iter(other))
+    return lft ^ rgt
 
 
-def _itemsview_isdisjoint(view, other):
+def _itemsview_isdisjoint(view: Container[object], other: Iterable[object]) -> bool:
     "Return True if two sets have a null intersection."
     for v in other:
         if v in view:
@@ -112,41 +102,9 @@ def _itemsview_isdisjoint(view, other):
     return True
 
 
-def _itemsview_repr(view):
-    lst = []
-    for k, v in view:
-        lst.append("{!r}: {!r}".format(k, v))
-    body = ", ".join(lst)
-    return "{}({})".format(view.__class__.__name__, body)
-
-
-def _keysview_isdisjoint(view, other):
+def _keysview_isdisjoint(view: Container[object], other: Iterable[object]) -> bool:
     "Return True if two sets have a null intersection."
     for k in other:
         if k in view:
             return False
     return True
-
-
-def _keysview_repr(view):
-    lst = []
-    for k in view:
-        lst.append("{!r}".format(k))
-    body = ", ".join(lst)
-    return "{}({})".format(view.__class__.__name__, body)
-
-
-def _valuesview_repr(view):
-    lst = []
-    for v in view:
-        lst.append("{!r}".format(v))
-    body = ", ".join(lst)
-    return "{}({})".format(view.__class__.__name__, body)
-
-
-def _mdrepr(md):
-    lst = []
-    for k, v in md.items():
-        lst.append("'{}': {!r}".format(k, v))
-    body = ", ".join(lst)
-    return "<{}({})>".format(md.__class__.__name__, body)
