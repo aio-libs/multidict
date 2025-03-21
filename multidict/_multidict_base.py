@@ -1,10 +1,5 @@
 import sys
-from collections.abc import (
-    ItemsView,
-    Iterable,
-    KeysView,
-    Sequence,
-)
+from collections.abc import ItemsView, Iterable, KeysView, Sequence
 from typing import Union
 
 if sys.version_info >= (3, 10):

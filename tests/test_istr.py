@@ -7,6 +7,7 @@ import pytest
 IMPLEMENTATION = getattr(sys, "implementation")  # to suppress mypy error
 GIL_ENABLED = getattr(sys, "_is_gil_enabled", lambda: True)()
 
+
 def test_ctor(case_insensitive_str_class: Type[str]) -> None:
     s = case_insensitive_str_class()
     assert "" == s
