@@ -133,10 +133,12 @@ Contributor-facing changes
 - `codecov-action <https://github.com/codecov/codecov-action>`_
   has been temporarily downgraded to ``v3``
   in the GitHub Actions CI/CD workflow definitions
-  in order to fix uploading coverage to
-  `Codecov <https://app.codecov.io/gh/aio-libs/multidict>`_.
+  in order to fix uploading coverage to Codecov_.
   See `this issue <https://github.com/codecov/codecov-action/issues/1252>`_
   for more details.
+
+
+  .. _Codecov: https://codecov.io/gh/aio-libs/multidict?flags[]=pytest
 
 
   *Related issues and pull requests on GitHub:*
