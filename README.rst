@@ -18,6 +18,10 @@ multidict
    :target: https://multidict.aio-libs.org
    :alt: Read The Docs build status badge
 
+.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
+   :target: https://codspeed.io/aio-libs/multidict
+   :alt: CodSpeed
+
 .. image:: https://img.shields.io/pypi/pyversions/multidict.svg
    :target: https://pypi.org/project/multidict
    :alt: Python versions
