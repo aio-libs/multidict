@@ -25,6 +25,10 @@ branch = true
 cover_pylib = false
 # https://coverage.rtfd.io/en/latest/contexts.html#dynamic-contexts
 # dynamic_context = test_function  # conflicts with `pytest-cov` if set here
+omit =
+  setup.py
+  # FIXME: migrate to a snapshotting plugin. See #922, #924 and #938.
+  tests/gen_pickles.py
 parallel = true
 # plugins =
 #   covdefaults
@@ -33,6 +37,3 @@ source =
   .
 source_pkgs =
   multidict
-omit =
-  # FIXME: migrate to a snapshotting plugin. See #922, #924 and #938.
-  tests/gen_pickles.py
