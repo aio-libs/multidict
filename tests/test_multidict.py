@@ -831,7 +831,7 @@ class TestCIMultiDict(BaseMultiDictTest):
     @pytest.mark.xfail(reason="CI sets are not implemented yet")
     def test_keys_case_insensitive_union(
         self,
-        cls: Type[CIMultiDict[str]],
+        cls: type[CIMultiDict[str]],
     ) -> None:
         d = cls([("KEY", "one"),])
 
