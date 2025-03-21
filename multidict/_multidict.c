@@ -326,7 +326,7 @@ _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
 }
 
 static inline PyObject *
-_multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
+multidict_copy(MultiDictObject *self)
 {
     MultiDictObject *new_multidict = NULL;
 
@@ -334,12 +334,12 @@ _multidict_copy(MultiDictObject *self, PyTypeObject *multidict_tp_object)
              *items     = NULL;
 
     new_multidict = (MultiDictObject*)PyType_GenericNew(
-        multidict_tp_object, NULL, NULL);
+        Py_TYPE(self), NULL, NULL);
     if (new_multidict == NULL) {
         return NULL;
     }
 
-    if (multidict_tp_object->tp_init(
+    if (Py_TYPE(self)->tp_init(
         (PyObject*)new_multidict, NULL, NULL) < 0)
     {
         return NULL;
@@ -783,12 +783,6 @@ multidict_add(
 }
 
 static inline PyObject *
-multidict_copy(MultiDictObject *self)
-{
-    return _multidict_copy(self, &multidict_type);
-}
-
-static inline PyObject *
 multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     if (_multidict_extend(self, args, kwds, "extend", 1) < 0) {
@@ -1163,27 +1157,6 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     return 0;
 }
 
-static inline PyObject *
-cimultidict_copy(MultiDictObject *self)
-{
-    return _multidict_copy(self, &cimultidict_type);
-}
-
-PyDoc_STRVAR(cimultidict_copy_doc,
-"Return a copy of itself.");
-
-static PyMethodDef cimultidict_methods[] = {
-    {
-        "copy",
-        (PyCFunction)cimultidict_copy,
-        METH_NOARGS,
-        cimultidict_copy_doc
-    },
-    {
-        NULL,
-        NULL
-    }   /* sentinel */
-};
 
 PyDoc_STRVAR(CIMultDict_doc,
 "Dictionary with the support for duplicate case-insensitive keys.");
@@ -1199,7 +1172,6 @@ static PyTypeObject cimultidict_type = {
     .tp_traverse = (traverseproc)multidict_tp_traverse,
     .tp_clear = (inquiry)multidict_tp_clear,
     .tp_weaklistoffset = offsetof(MultiDictObject, weaklist),
-    .tp_methods = cimultidict_methods,
     .tp_base = &multidict_type,
     .tp_init = (initproc)cimultidict_tp_init,
     .tp_alloc = PyType_GenericAlloc,
@@ -1607,18 +1579,15 @@ static inline void
 module_free(void *m)
 {
     Py_CLEAR(multidict_str_lower);
+    Py_CLEAR(viewbaseset_and_func);
+    Py_CLEAR(viewbaseset_or_func);
+    Py_CLEAR(viewbaseset_sub_func);
+    Py_CLEAR(viewbaseset_xor_func);
 }
 
 static PyMethodDef multidict_module_methods[] = {
-    {
-        "getversion",
-        (PyCFunction)getversion,
-        METH_O
-    },
-    {
-        NULL,
-        NULL
-    }   /* sentinel */
+    {"getversion", (PyCFunction)getversion, METH_O},
+    {NULL, NULL}   /* sentinel */
 };
 
 static PyModuleDef multidict_module = {
@@ -1658,21 +1627,6 @@ PyInit__multidict(void)
     {
         goto fail;
     }
-
-#define WITH_MOD(NAME)                      \
-    Py_CLEAR(module);                       \
-    module = PyImport_ImportModule(NAME);   \
-    if (module == NULL) {                   \
-        goto fail;                          \
-    }
-
-#define GET_MOD_ATTR(VAR, NAME)                 \
-    VAR = PyObject_GetAttrString(module, NAME); \
-    if (VAR == NULL) {                          \
-        goto fail;                              \
-    }
-
-    Py_CLEAR(module);                       \
 
     /* Instantiate this module */
     module = PyModule_Create(&multidict_module);
@@ -1746,7 +1700,4 @@ fail:
     Py_XDECREF(multidict_str_lower);
 
     return NULL;
-
-#undef WITH_MOD
-#undef GET_MOD_ATTR
 }
