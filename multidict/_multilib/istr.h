@@ -69,6 +69,26 @@ static PyTypeObject istr_type = {
 };
 
 
+static inline PyObject *
+IStr_New(PyObject *str)
+{
+    PyObject *args = PyTuple_Pack(1, str);
+    if (args == NULL) {
+        return NULL;
+    }
+
+    PyObject *kwds = PyDict_New();
+    if (kwds == NULL) {
+        Py_CLEAR(args);
+        return NULL;
+    }
+
+    PyObject *ret = istr_new(&istr_type, args, kwds);
+    Py_CLEAR(args);
+    Py_CLEAR(kwds);
+    return ret;
+}
+
 static inline int
 istr_init(void)
 {

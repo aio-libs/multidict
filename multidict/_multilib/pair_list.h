@@ -12,6 +12,18 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Implementation note.
+identity always has exact PyUnicode_Type type, not a subclass.
+It guarantees that identity hashing and comparison never calls
+Python code back, and these operations has no weird side effects,
+e.g. deletion the key from multidict.
+
+Taking into account the fact that all multidict operations except
+repr(md), repr(md_proxy), or repr(view) never access to the key
+itself but identity instead, borrowed references during iteration
+over pair_list for, e.g., md.get() or md.pop() is safe.
+*/
+
 typedef struct pair {
     PyObject  *identity;  // 8
     PyObject  *key;       // 8
@@ -80,15 +92,14 @@ str_cmp(PyObject *s1, PyObject *s2)
 
 
 static inline PyObject *
-key_to_str(PyObject *key)
+_key_to_ident(PyObject *key)
 {
     PyTypeObject *type = Py_TYPE(key);
     if (type == &istr_type) {
         return Py_NewRef(((istrobject*)key)->canonical);
     }
     if (PyUnicode_CheckExact(key)) {
-        Py_INCREF(key);
-        return key;
+        return Py_NewRef(key);
     }
     if (PyUnicode_Check(key)) {
         return PyObject_Str(key);
@@ -101,7 +112,7 @@ key_to_str(PyObject *key)
 
 
 static inline PyObject *
-ci_key_to_str(PyObject *key)
+_ci_key_to_ident(PyObject *key)
 {
     PyTypeObject *type = Py_TYPE(key);
     if (type == &istr_type) {
@@ -109,6 +120,36 @@ ci_key_to_str(PyObject *key)
     }
     if (PyUnicode_Check(key)) {
         return PyObject_CallMethodNoArgs(key, multidict_str_lower);
+    }
+    PyErr_SetString(PyExc_TypeError,
+                    "CIMultiDict keys should be either str "
+                    "or subclasses of str");
+    return NULL;
+}
+
+
+static inline PyObject *
+_arg_to_key(PyObject *key)
+{
+    if (PyUnicode_Check(key)) {
+        return Py_NewRef(key);
+    }
+    PyErr_SetString(PyExc_TypeError,
+                    "MultiDict keys should be either str "
+                    "or subclasses of str");
+    return NULL;
+}
+
+
+static inline PyObject *
+_ci_arg_to_key(PyObject *key)
+{
+    PyTypeObject *type = Py_TYPE(key);
+    if (type == &istr_type) {
+        return Py_NewRef(key);
+    }
+    if (PyUnicode_Check(key)) {
+        return IStr_New(key);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
@@ -217,8 +258,16 @@ static inline PyObject *
 pair_list_calc_identity(pair_list_t *list, PyObject *key)
 {
     if (list->calc_ci_indentity)
-        return ci_key_to_str(key);
-    return key_to_str(key);
+        return _ci_key_to_ident(key);
+    return _key_to_ident(key);
+}
+
+static inline PyObject *
+pair_list_calc_key(pair_list_t *list, PyObject *key)
+{
+    if (list->calc_ci_indentity)
+        return _ci_arg_to_key(key);
+    return _arg_to_key(key);
 }
 
 static inline void
@@ -270,11 +319,16 @@ _pair_list_add_with_hash(pair_list_t *list,
         return -1;
     }
 
+    PyObject *real_key = pair_list_calc_key(list, key);
+    if (real_key == NULL) {
+        return -1;
+    }
+
     pair_t *pair = list->pairs + list->size;
 
     pair->identity = Py_NewRef(identity);
 
-    pair->key = Py_NewRef(key);
+    pair->key = real_key;
 
     pair->value = Py_NewRef(value);
 
@@ -784,7 +838,11 @@ pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
         int tmp = str_cmp(identity, pair->identity);
         if (tmp > 0) {
             found = 1;
-            Py_SETREF(pair->key, Py_NewRef(key));
+            PyObject *real_key = pair_list_calc_key(list, key);
+            if (real_key == NULL) {
+                goto fail;
+            }
+            Py_SETREF(pair->key, real_key);
             Py_SETREF(pair->value, Py_NewRef(value));
             break;
         }
@@ -909,13 +967,12 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 
         int ident_cmp_res = str_cmp(pair->identity, identity);
         if (ident_cmp_res > 0) {
-            Py_INCREF(key);
-            Py_DECREF(pair->key);
-            pair->key = key;
-
-            Py_INCREF(value);
-            Py_DECREF(pair->value);
-            pair->value = value;
+            PyObject *real_key = pair_list_calc_key(list, key);
+            if (real_key == NULL) {
+                return -1;
+            }
+            Py_SETREF(pair->key, real_key);
+            Py_SETREF(pair->value, Py_NewRef(value));
 
             if (_dict_set_number(used_keys, pair->identity, pos + 1) < 0) {
                 return -1;
