@@ -18,6 +18,7 @@ from multidict import (
     MultiDictProxy,
     MultiMapping,
     MutableMultiMapping,
+    istr,
 )
 
 
@@ -828,13 +829,18 @@ class TestCIMultiDict(BaseMultiDictTest):
         d = cls([("KEY", "value1")], key="value2")
         assert repr(d.values()) == "<_ValuesView('value1', 'value2')>"
 
-    @pytest.mark.xfail(reason="CI sets are not implemented yet")
-    def test_keys_case_insensitive_union(
+    def test_keys_case_insensitive_and(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"),])
+        assert d.keys() & {"key"} == {"key"}
+
+    def test_keys_case_insensitive_or(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"),])
+
+        assert d.keys() | {"key", "other"} == {"key", "other"}
+
+    def test_keys_case_insensitive_isdisjoint(
         self,
         cls: type[CIMultiDict[str]],
     ) -> None:
         d = cls([("KEY", "one"),])
-
-        assert "key" in d.keys()
-        assert d.keys().isdisjoint({"key"})
-        assert {"key"} & d.keys() == {"key"}
+        assert not d.keys().isdisjoint({"key"})

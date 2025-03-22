@@ -27,6 +27,11 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
+if sys.version_info >= (3, 10):
+    from types import NotImplementedType
+else:
+    from typing import Any as NotImplementedType
+
 
 class istr(str):
     """Case insensitive str."""
@@ -80,8 +85,9 @@ class _Iter(Generic[_T]):
 
 
 class _ViewBase(Generic[_V]):
-    def __init__(self, impl: _Impl[_V]):
+    def __init__(self, impl: _Impl[_V], keyfunc: Callable[[str], str]):
         self._impl = impl
+        self._keyfunc = keyfunc
 
     def __len__(self) -> int:
         return len(self._impl._items)
@@ -139,8 +145,11 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
 
 class _KeysView(_ViewBase[_V], KeysView[str]):
     def __contains__(self, key: object) -> bool:
-        for item in self._impl._items:
-            if item[1] == key:
+        if not isinstance(key, str):
+            return False
+        identity = self._keyfunc(key)
+        for i, k, v in self._impl._items:
+            if i == identity:
                 return True
         return False
 
@@ -148,10 +157,10 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         return _Iter(len(self), self._iter(self._impl._version))
 
     def _iter(self, version: int) -> Iterator[str]:
-        for item in self._impl._items:
+        for i, k, v in self._impl._items:
             if version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
-            yield item[1]
+            yield k
 
     def __repr__(self) -> str:
         lst = []
@@ -159,6 +168,35 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             lst.append("{!r}".format(item[1]))
         body = ", ".join(lst)
         return "<{}({})>".format(self.__class__.__name__, body)
+
+    def __and__(self, other: Iterable[str]) -> Union[set[str], NotImplementedType]:
+        ret = set()
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+        for key in it:
+            identity = self._keyfunc(key)
+            for i, k, v in self._impl._items:
+                if i == identity:
+                    ret.add(key)
+        return ret
+
+    def __or__(self, other: Iterable[str]) -> Union[set[str], NotImplementedType]:
+        ret = set(self)
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+        for key in it:
+            identity = self._keyfunc(key)
+            for i, k, v in self._impl._items:
+                if i == identity:
+                    # breakpoint()
+                    break
+            else:
+                ret.add(key)
+        return ret
 
 
 class _Base(MultiMapping[_V]):
@@ -226,15 +264,15 @@ class _Base(MultiMapping[_V]):
 
     def keys(self) -> KeysView[str]:
         """Return a new view of the dictionary's keys."""
-        return _KeysView(self._impl)
+        return _KeysView(self._impl, self._title)
 
     def items(self) -> ItemsView[str, _V]:
         """Return a new view of the dictionary's items *(key, value) pairs)."""
-        return _ItemsView(self._impl)
+        return _ItemsView(self._impl, self._title)
 
     def values(self) -> _ValuesView[_V]:
         """Return a new view of the dictionary's values."""
-        return _ValuesView(self._impl)
+        return _ValuesView(self._impl, self._title)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Mapping):
@@ -530,6 +568,14 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
 class CIMultiDict(MultiDict[_V]):
     """Dictionary with the support for duplicate case-insensitive keys."""
 
+    def _key(self, key: str) -> str:
+        if isinstance(key, str):
+            if getattr(type(key), '__is_istr__', False):
+                return key
+            else:
+                return istr(key)
+        else:
+            raise TypeError("MultiDict keys should be either str or subclasses of str")
     def _title(self, key: str) -> str:
         return key.title()
 

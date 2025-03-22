@@ -690,3 +690,21 @@ class TestCIMutableMultiDict:
         d["c"] = "000"
         # This causes an error on pypy.
         list(before_mutation_values)
+
+    def test_keys_type(
+        self,
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
+        case_insensitive_str_class: istr,
+    ) -> None:
+        d = case_insensitive_multidict_class([("KEY", "one"),])
+        d['k2'] = '2'
+        d.extend(k3='3')
+
+        for k in d:
+            assert type(k) is case_insensitive_str_class
+
+        for k in d.keys():
+            assert type(k) is case_insensitive_str_class
+
+        for k, v in d.items():
+            assert type(k) is case_insensitive_str_class

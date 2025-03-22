@@ -12,6 +12,18 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Implementation note.
+identity always has exact PyUnicode_Type type, not a subclass.
+It guarantees that identity hashing and comparison never calls
+Python code back, and these operations has no weird side effects,
+e.g. deletion the key from multidict.
+
+Taking into account the fact that all multidict operations except
+repr(md), repr(md_proxy), or repr(view) never access to the key
+itself but identity instead, borrowed references during iteration
+over pair_list for, e.g., md.get() or md.pop() is safe.
+*/
+
 typedef struct pair {
     PyObject  *identity;  // 8
     PyObject  *key;       // 8
@@ -80,18 +92,17 @@ str_cmp(PyObject *s1, PyObject *s2)
 
 
 static inline PyObject *
-key_to_str(PyObject *key)
+_key_to_ident(PyObject *key)
 {
     PyTypeObject *type = Py_TYPE(key);
     if (type == &istr_type) {
         return Py_NewRef(((istrobject*)key)->canonical);
     }
     if (PyUnicode_CheckExact(key)) {
-        Py_INCREF(key);
-        return key;
+        return Py_NewRef(key);
     }
     if (PyUnicode_Check(key)) {
-        return PyObject_Str(key);
+        return _exact_str(PyObject_Str(key));
     }
     PyErr_SetString(PyExc_TypeError,
                     "MultiDict keys should be either str "
@@ -101,14 +112,44 @@ key_to_str(PyObject *key)
 
 
 static inline PyObject *
-ci_key_to_str(PyObject *key)
+_ci_key_to_ident(PyObject *key)
 {
     PyTypeObject *type = Py_TYPE(key);
     if (type == &istr_type) {
         return Py_NewRef(((istrobject*)key)->canonical);
     }
     if (PyUnicode_Check(key)) {
-        return PyObject_CallMethodNoArgs(key, multidict_str_lower);
+        return _exact_str(PyObject_CallMethodNoArgs(key, multidict_str_lower));
+    }
+    PyErr_SetString(PyExc_TypeError,
+                    "CIMultiDict keys should be either str "
+                    "or subclasses of str");
+    return NULL;
+}
+
+
+static inline PyObject *
+_arg_to_key(PyObject *key)
+{
+    if (PyUnicode_Check(key)) {
+        return Py_NewRef(key);
+    }
+    PyErr_SetString(PyExc_TypeError,
+                    "MultiDict keys should be either str "
+                    "or subclasses of str");
+    return NULL;
+}
+
+
+static inline PyObject *
+_ci_arg_to_key(PyObject *key)
+{
+    PyTypeObject *type = Py_TYPE(key);
+    if (type == &istr_type) {
+        return Py_NewRef(key);
+    }
+    if (PyUnicode_Check(key)) {
+        return IStr_New(key);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
@@ -217,8 +258,16 @@ static inline PyObject *
 pair_list_calc_identity(pair_list_t *list, PyObject *key)
 {
     if (list->calc_ci_indentity)
-        return ci_key_to_str(key);
-    return key_to_str(key);
+        return _ci_key_to_ident(key);
+    return _key_to_ident(key);
+}
+
+static inline PyObject *
+pair_list_calc_key(pair_list_t *list, PyObject *key)
+{
+    if (list->calc_ci_indentity)
+        return _ci_arg_to_key(key);
+    return _arg_to_key(key);
 }
 
 static inline void
@@ -292,7 +341,12 @@ pair_list_add(pair_list_t *list,
               PyObject *key,
               PyObject *value)
 {
-    PyObject *identity = pair_list_calc_identity(list, key);
+    PyObject *identity = NULL;
+    PyObject *real_key = pair_list_calc_key(list, key);
+    if (real_key == NULL) {
+        goto fail;
+    }
+    identity = pair_list_calc_identity(list, real_key);
     if (identity == NULL) {
         goto fail;
     }
@@ -300,11 +354,13 @@ pair_list_add(pair_list_t *list,
     if (hash == -1) {
         goto fail;
     }
-    int ret = _pair_list_add_with_hash(list, identity, key, value, hash);
-    Py_DECREF(identity);
+    int ret = _pair_list_add_with_hash(list, identity, real_key, value, hash);
+    Py_CLEAR(real_key);
+    Py_CLEAR(identity);
     return ret;
 fail:
-    Py_XDECREF(identity);
+    Py_CLEAR(real_key);
+    Py_CLEAR(identity);
     return -1;
 }
 
@@ -589,6 +645,7 @@ static inline PyObject *
 pair_list_set_default(pair_list_t *list, PyObject *key, PyObject *value)
 {
     Py_ssize_t pos;
+    PyObject *real_key = NULL;
 
     PyObject *ident = pair_list_calc_identity(list, key);
     if (ident == NULL) {
@@ -617,14 +674,21 @@ pair_list_set_default(pair_list_t *list, PyObject *key, PyObject *value)
         }
     }
 
-    if (_pair_list_add_with_hash(list, ident, key, value, hash) < 0) {
+    real_key = pair_list_calc_key(list, key);
+    if (real_key == NULL) {
         goto fail;
     }
 
-    Py_DECREF(ident);
+    if (_pair_list_add_with_hash(list, ident, real_key, value, hash) < 0) {
+        goto fail;
+    }
+
+    Py_CLEAR(ident);
+    Py_CLEAR(real_key);
     return Py_NewRef(value);
 fail:
-    Py_XDECREF(ident);
+    Py_CLEAR(ident);
+    Py_CLEAR(real_key);
     return NULL;
 }
 
@@ -794,10 +858,16 @@ pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
     }
 
     if (!found) {
-        if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
+        PyObject *real_key = pair_list_calc_key(list, key);
+        if (real_key == NULL) {
             goto fail;
         }
-        Py_DECREF(identity);
+        if (_pair_list_add_with_hash(list, identity, real_key, value, hash) < 0) {
+            Py_CLEAR(real_key);
+            goto fail;
+        }
+        Py_CLEAR(real_key);
+        Py_CLEAR(identity);
         return 0;
     }
     else {
@@ -805,11 +875,11 @@ pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
         if (_pair_list_drop_tail(list, identity, hash, pos+1) < 0) {
             goto fail;
         }
-        Py_DECREF(identity);
+        Py_CLEAR(identity);
         return 0;
     }
 fail:
-    Py_XDECREF(identity);
+    Py_CLEAR(identity);
     return -1;
 }
 
@@ -872,7 +942,7 @@ _pair_list_post_update(pair_list_t *list, PyObject* used_keys, Py_ssize_t pos)
 
 // TODO: need refactoring function name
 static inline int
-_pair_list_update(pair_list_t *list, PyObject *key,
+_pair_list_update(pair_list_t *list, PyObject *key0,
                   PyObject *value, PyObject *used_keys,
                   PyObject *identity, Py_hash_t hash)
 {
@@ -900,6 +970,11 @@ _pair_list_update(pair_list_t *list, PyObject *key,
         }
     }
 
+    PyObject *key = pair_list_calc_key(list, key0);
+    if (key == 0) {
+        return -1;
+    }
+
     found = 0;
     for (; pos < list->size; pos++) {
         pair_t *pair = list->pairs + pos;
@@ -909,13 +984,8 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 
         int ident_cmp_res = str_cmp(pair->identity, identity);
         if (ident_cmp_res > 0) {
-            Py_INCREF(key);
-            Py_DECREF(pair->key);
-            pair->key = key;
-
-            Py_INCREF(value);
-            Py_DECREF(pair->value);
-            pair->value = value;
+            Py_SETREF(pair->key, key);
+            Py_SETREF(pair->value, value);
 
             if (_dict_set_number(used_keys, pair->identity, pos + 1) < 0) {
                 return -1;
@@ -925,20 +995,24 @@ _pair_list_update(pair_list_t *list, PyObject *key,
             break;
         }
         else if (ident_cmp_res < 0) {
-            return -1;
+            goto fail;
         }
     }
 
     if (!found) {
         if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
-            return -1;
+            goto fail;
         }
         if (_dict_set_number(used_keys, identity, list->size) < 0) {
-            return -1;
+            goto fail;
         }
     }
 
+    Py_CLEAR(key);
     return 0;
+fail:
+    Py_CLEAR(key);
+    return -1;
 }
 
 
@@ -1057,12 +1131,9 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
             goto fail_1;
         }
 #else
-        key = PySequence_Fast_GET_ITEM(fast, 0);
-        value = PySequence_Fast_GET_ITEM(fast, 1);
-        Py_INCREF(key);
-        Py_INCREF(value);
+        key = Py_NewRef(PySequence_Fast_GET_ITEM(fast, 0));
+        value = Py_NewRef(PySequence_Fast_GET_ITEM(fast, 1));
 #endif
-
         identity = pair_list_calc_identity(list, key);
         if (identity == NULL) {
             goto fail_1;

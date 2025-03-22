@@ -14,6 +14,20 @@ PyDoc_STRVAR(istr__doc__, "istr class implementation");
 
 static PyTypeObject istr_type;
 
+static inline PyObject *
+_exact_str(PyObject *str) {
+    // steals ref to str
+    if (str == NULL) {
+        return NULL;
+    }
+    if (PyUnicode_CheckExact(str)) {
+        return str;
+    }
+    PyObject *ret = PyUnicode_FromObject(str);
+    Py_DECREF(str);
+    return ret;
+}
+
 static inline void
 istr_dealloc(istrobject *self)
 {
@@ -43,7 +57,7 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (!ret) {
         goto fail;
     }
-    s = PyObject_CallMethodNoArgs(ret, multidict_str_lower);
+    s = _exact_str(PyObject_CallMethodNoArgs(ret, multidict_str_lower));
     if (!s) {
         goto fail;
     }
@@ -68,6 +82,26 @@ static PyTypeObject istr_type = {
     .tp_new = (newfunc)istr_new,
 };
 
+
+static inline PyObject *
+IStr_New(PyObject *str)
+{
+    PyObject *args = PyTuple_Pack(1, str);
+    if (args == NULL) {
+        return NULL;
+    }
+
+    PyObject *kwds = PyDict_New();
+    if (kwds == NULL) {
+        Py_CLEAR(args);
+        return NULL;
+    }
+
+    PyObject *ret = istr_new(&istr_type, args, kwds);
+    Py_CLEAR(args);
+    Py_CLEAR(kwds);
+    return ret;
+}
 
 static inline int
 istr_init(void)
