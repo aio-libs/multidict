@@ -81,8 +81,14 @@ class _Iter(Generic[_T]):
 
 
 class _ViewBase(Generic[_V]):
-    def __init__(self, impl: _Impl[_V], keyfunc: Callable[[str], str]):
+    def __init__(
+        self,
+        impl: _Impl[_V],
+        identfunc: Callable[[str], str],
+        keyfunc: Callable[[str], str],
+    ):
         self._impl = impl
+        self._identfunc = identfunc
         self._keyfunc = keyfunc
 
     def __len__(self) -> int:
@@ -93,8 +99,13 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
     def __contains__(self, item: object) -> bool:
         if not isinstance(item, (tuple, list)) or len(item) != 2:
             return False
+        key, value = item
+        try:
+            ident = self._identfunc(key)
+        except TypeError:
+            return False
         for i, k, v in self._impl._items:
-            if item[0] == k and item[1] == v:
+            if ident == i and value == v:
                 return True
         return False
 
@@ -109,16 +120,16 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
 
     def __repr__(self) -> str:
         lst = []
-        for item in self._impl._items:
-            lst.append("{!r}: {!r}".format(item[1], item[2]))
+        for i, k, v in self._impl._items:
+            lst.append("{!r}: {!r}".format(k, v))
         body = ", ".join(lst)
         return "<{}({})>".format(self.__class__.__name__, body)
 
 
 class _ValuesView(_ViewBase[_V], ValuesView[_V]):
     def __contains__(self, value: object) -> bool:
-        for item in self._impl._items:
-            if item[2] == value:
+        for i, k, v in self._impl._items:
+            if v == value:
                 return True
         return False
 
@@ -126,15 +137,15 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
         return _Iter(len(self), self._iter(self._impl._version))
 
     def _iter(self, version: int) -> Iterator[_V]:
-        for item in self._impl._items:
+        for i, k, v in self._impl._items:
             if version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
-            yield item[2]
+            yield v
 
     def __repr__(self) -> str:
         lst = []
-        for item in self._impl._items:
-            lst.append("{!r}".format(item[2]))
+        for i, k, v in self._impl._items:
+            lst.append("{!r}".format(v))
         body = ", ".join(lst)
         return "<{}({})>".format(self.__class__.__name__, body)
 
@@ -143,7 +154,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
     def __contains__(self, key: object) -> bool:
         if not isinstance(key, str):
             return False
-        identity = self._keyfunc(key)
+        identity = self._identfunc(key)
         for i, k, v in self._impl._items:
             if i == identity:
                 return True
@@ -160,8 +171,8 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 
     def __repr__(self) -> str:
         lst = []
-        for item in self._impl._items:
-            lst.append("{!r}".format(item[1]))
+        for i, k, v in self._impl._items:
+            lst.append("{!r}".format(k))
         body = ", ".join(lst)
         return "<{}({})>".format(self.__class__.__name__, body)
 
@@ -261,15 +272,15 @@ class _Base(MultiMapping[_V]):
 
     def keys(self) -> KeysView[str]:
         """Return a new view of the dictionary's keys."""
-        return _KeysView(self._impl, self._title)
+        return _KeysView(self._impl, self._title, self._key)
 
     def items(self) -> ItemsView[str, _V]:
         """Return a new view of the dictionary's items *(key, value) pairs)."""
-        return _ItemsView(self._impl, self._title)
+        return _ItemsView(self._impl, self._title, self._key)
 
     def values(self) -> _ValuesView[_V]:
         """Return a new view of the dictionary's values."""
-        return _ValuesView(self._impl, self._title)
+        return _ValuesView(self._impl, self._title, self._key)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Mapping):
