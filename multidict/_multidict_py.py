@@ -121,9 +121,9 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
     def __repr__(self) -> str:
         lst = []
         for i, k, v in self._impl._items:
-            lst.append("{!r}: {!r}".format(k, v))
+            lst.append(f"'{k}': {v!r}")
         body = ", ".join(lst)
-        return "<{}({})>".format(self.__class__.__name__, body)
+        return f"<{self.__class__.__name__}({body})>"
 
 
 class _ValuesView(_ViewBase[_V], ValuesView[_V]):
@@ -145,9 +145,9 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
     def __repr__(self) -> str:
         lst = []
         for i, k, v in self._impl._items:
-            lst.append("{!r}".format(v))
+            lst.append(repr(v))
         body = ", ".join(lst)
-        return "<{}({})>".format(self.__class__.__name__, body)
+        return f"<{self.__class__.__name__}({body})>"
 
 
 class _KeysView(_ViewBase[_V], KeysView[str]):
@@ -172,9 +172,9 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
     def __repr__(self) -> str:
         lst = []
         for i, k, v in self._impl._items:
-            lst.append("{!r}".format(k))
+            lst.append(f"'{k}'")
         body = ", ".join(lst)
-        return "<{}({})>".format(self.__class__.__name__, body)
+        return f"<{self.__class__.__name__}({body})>"
 
 
 class _CSMixin:
@@ -312,8 +312,8 @@ class _Base(MultiMapping[_V]):
         return False
 
     def __repr__(self) -> str:
-        body = ", ".join("'{}': {!r}".format(k, v) for k, v in self.items())
-        return "<{}({})>".format(self.__class__.__name__, body)
+        body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
+        return f"<{self.__class__.__name__}({body})>"
 
 
 class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
@@ -372,8 +372,8 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
                 for item in arg:
                     if not len(item) == 2:
                         raise TypeError(
-                            "{} takes either dict or list of (key, value) "
-                            "tuples".format(name)
+                            f"{name} takes either dict or list of (key, value) "
+                            "tuples"
                         )
                     items.append((self._title(item[0]), item[0], item[1]))
 
@@ -574,13 +574,13 @@ class MultiDictProxy(_CSMixin, _Base[_V]):
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
                 "ctor requires MultiDict or MultiDictProxy instance"
-                ", not {}".format(type(arg))
+                f", not {type(arg)}"
             )
 
         self._impl = arg._impl
 
     def __reduce__(self) -> NoReturn:
-        raise TypeError("can't pickle {} objects".format(self.__class__.__name__))
+        raise TypeError(f"can't pickle {self.__class__.__name__} objects")
 
     def copy(self) -> MultiDict[_V]:
         """Return a copy of itself."""
@@ -594,7 +594,7 @@ class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
         if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
             raise TypeError(
                 "ctor requires CIMultiDict or CIMultiDictProxy instance"
-                ", not {}".format(type(arg))
+                f", not {type(arg)}"
             )
 
         self._impl = arg._impl
