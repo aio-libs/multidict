@@ -1,6 +1,7 @@
 import enum
 import sys
 from array import array
+from abc import abstractmethod
 from collections.abc import (
     Callable,
     ItemsView,
@@ -165,11 +166,41 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         return "<{}({})>".format(self.__class__.__name__, body)
 
 
+class _CSMixin:
+    def _key(self, key: str) -> str:
+        return key
+
+    def _title(self, key: str) -> str:
+        if isinstance(key, str):
+            return key
+        else:
+            raise TypeError("MultiDict keys should be either str or subclasses of str")
+
+
+class _CIMixin:
+    def _key(self, key: str) -> str:
+        if getattr(type(key), '__is_istr__', False):
+            return key
+        else:
+            return istr(key)
+
+    def _title(self, key: str) -> str:
+        if isinstance(key, str):
+            return key.title()
+        else:
+            raise TypeError("MultiDict keys should be either str or subclasses of str")
+
+
 class _Base(MultiMapping[_V]):
     _impl: _Impl[_V]
 
+    @abstractmethod
+    def _key(self, key: str) -> str:
+        pass
+
+    @abstractmethod
     def _title(self, key: str) -> str:
-        return key
+        pass
 
     @overload
     def getall(self, key: str) -> list[_V]: ...
@@ -274,7 +305,7 @@ class _Base(MultiMapping[_V]):
         return "<{}({})>".format(self.__class__.__name__, body)
 
 
-class MultiDict(_Base[_V], MutableMultiMapping[_V]):
+class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
     """Dictionary with the support for duplicate keys."""
 
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
@@ -289,15 +320,6 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
 
     def __reduce__(self) -> tuple[type[Self], tuple[list[tuple[str, _V]]]]:
         return (self.__class__, (list(self.items()),))
-
-    def _title(self, key: str) -> str:
-        return key
-
-    def _key(self, key: str) -> str:
-        if isinstance(key, str):
-            return key
-        else:
-            raise TypeError("MultiDict keys should be either str or subclasses of str")
 
     def add(self, key: str, value: _V) -> None:
         identity = self._title(key)
@@ -531,22 +553,11 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
                 i += 1
 
 
-class CIMultiDict(MultiDict[_V]):
+class CIMultiDict(_CIMixin, MultiDict[_V]):
     """Dictionary with the support for duplicate case-insensitive keys."""
 
-    def _key(self, key: str) -> str:
-        if isinstance(key, str):
-            if getattr(type(key), '__is_istr__', False):
-                return key
-            else:
-                return istr(key)
-        else:
-            raise TypeError("MultiDict keys should be either str or subclasses of str")
-    def _title(self, key: str) -> str:
-        return key.title()
 
-
-class MultiDictProxy(_Base[_V]):
+class MultiDictProxy(_CSMixin, _Base[_V]):
     """Read-only proxy for MultiDict instance."""
 
     def __init__(self, arg: Union[MultiDict[_V], "MultiDictProxy[_V]"]):
@@ -566,7 +577,7 @@ class MultiDictProxy(_Base[_V]):
         return MultiDict(self.items())
 
 
-class CIMultiDictProxy(MultiDictProxy[_V]):
+class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
     """Read-only proxy for CIMultiDict instance."""
 
     def __init__(self, arg: Union[MultiDict[_V], MultiDictProxy[_V]]):
@@ -577,9 +588,6 @@ class CIMultiDictProxy(MultiDictProxy[_V]):
             )
 
         self._impl = arg._impl
-
-    def _title(self, key: str) -> str:
-        return key.title()
 
     def copy(self) -> CIMultiDict[_V]:
         """Return a copy of itself."""
