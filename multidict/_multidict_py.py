@@ -359,8 +359,11 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
         method: Callable[[list[tuple[str, str, _V]]], None],
     ) -> None:
         if arg:
-            if isinstance(arg, (MultiDict, MultiDictProxy)) and not kwargs:
+            if isinstance(arg, (MultiDict, MultiDictProxy)):
                 items = arg._impl._items
+                if kwargs:
+                    for key, value in kwargs.items():
+                        items.append((self._title(key), key, value))
             else:
                 if hasattr(arg, "keys"):
                     arg = cast(SupportsKeys[_V], arg)
