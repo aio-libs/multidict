@@ -712,3 +712,6 @@ class TestCIMutableMultiDict:
 
         for k, v in d.items():
             assert type(k) is case_insensitive_str_class
+
+        k, v = d.popitem()
+        assert type(k) is case_insensitive_str_class
