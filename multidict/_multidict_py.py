@@ -214,12 +214,10 @@ class _Base(MultiMapping[_V]):
     _impl: _Impl[_V]
 
     @abstractmethod
-    def _key(self, key: str) -> str:
-        pass
+    def _key(self, key: str) -> str: ...
 
     @abstractmethod
-    def _title(self, key: str) -> str:
-        pass
+    def _title(self, key: str) -> str: ...
 
     @overload
     def getall(self, key: str) -> list[_V]: ...
@@ -320,7 +318,7 @@ class _Base(MultiMapping[_V]):
         return False
 
     def __repr__(self) -> str:
-        body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
+        body = ", ".join(f"'{k}': {v!r}" for i, k, v in self._impl._items)
         return f"<{self.__class__.__name__}({body})>"
 
 
