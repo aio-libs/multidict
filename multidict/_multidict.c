@@ -1606,7 +1606,7 @@ PyInit__multidict(void)
     if (multidict_str_lower == NULL) {
         goto fail;
     }
-    multidict_str_canonical = PyUnicode_InternFromString("canonical");
+    multidict_str_canonical = PyUnicode_InternFromString("_canonical");
     if (multidict_str_canonical == NULL) {
         goto fail;
     }
