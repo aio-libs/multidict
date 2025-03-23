@@ -28,7 +28,7 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"object", "encoding", "errors", 0};
     PyObject *encoding = NULL;
     PyObject *errors = NULL;
-    PyObject *s = NULL;
+    PyObject *canonical = NULL;
     PyObject * ret = NULL;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OOO:str",
@@ -43,12 +43,19 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (!ret) {
         goto fail;
     }
-    s = PyObject_CallMethodNoArgs(ret, multidict_str_lower);
-    if (!s) {
+    canonical = PyObject_CallMethodNoArgs(ret, multidict_str_lower);
+    if (!canonical) {
         goto fail;
     }
-    ((istrobject*)ret)->canonical = s;
-    s = NULL;  /* the reference is stollen by .canonical */
+    if (!PyUnicode_CheckExact(canonical)) {
+        PyObject *tmp = PyUnicode_FromObject(canonical);
+        Py_CLEAR(canonical);
+        if (tmp == NULL) {
+            goto fail;
+        }
+        canonical = tmp;
+    }
+    ((istrobject*)ret)->canonical = canonical;
     return ret;
 fail:
     Py_XDECREF(ret);

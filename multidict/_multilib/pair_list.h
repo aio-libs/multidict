@@ -102,7 +102,7 @@ _key_to_ident(PyObject *key)
         return Py_NewRef(key);
     }
     if (PyUnicode_Check(key)) {
-        return PyObject_Str(key);
+        return PyUnicode_FromObject(key);
     }
     PyErr_SetString(PyExc_TypeError,
                     "MultiDict keys should be either str "
@@ -119,7 +119,16 @@ _ci_key_to_ident(PyObject *key)
         return Py_NewRef(((istrobject*)key)->canonical);
     }
     if (PyUnicode_Check(key)) {
-        return PyObject_CallMethodNoArgs(key, multidict_str_lower);
+        PyObject *ret = PyObject_CallMethodNoArgs(key, multidict_str_lower);
+        if (!PyUnicode_CheckExact(ret)) {
+            PyObject *tmp = PyUnicode_FromObject(ret);
+            Py_CLEAR(ret);
+            if (tmp == NULL) {
+                return NULL;
+            }
+            ret = tmp;
+        }
+        return ret;
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
