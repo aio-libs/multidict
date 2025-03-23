@@ -274,7 +274,6 @@ pair_list_calc_identity(pair_list_t *list, PyObject *key)
 static inline PyObject *
 pair_list_calc_key(pair_list_t *list, PyObject *key, PyObject *ident)
 {
-    return Py_NewRef(key);
     if (list->calc_ci_indentity)
         return _ci_arg_to_key(key, ident);
     return _arg_to_key(key, ident);
