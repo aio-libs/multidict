@@ -15,6 +15,7 @@ from typing import (
     TYPE_CHECKING,
     Generic,
     NoReturn,
+    Optional,
     TypeVar,
     Union,
     cast,
@@ -33,6 +34,7 @@ class istr(str):
     """Case insensitive str."""
 
     __is_istr__ = True
+    __istr_title__: Optional[str] = None
 
 
 _V = TypeVar("_V")
@@ -196,6 +198,12 @@ class _CIMixin:
             return istr(key)
 
     def _title(self, key: str) -> str:
+        if isinstance(key, istr):
+            ret = key.__istr_title__
+            if ret is None:
+                ret = key.title()
+                key.__istr_title__ = ret
+            return ret
         if isinstance(key, str):
             return key.title()
         else:
@@ -391,7 +399,8 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
 
     def _extend_items(self, items: Iterable[tuple[str, str, _V]]) -> None:
         for identity, key, value in items:
-            self.add(key, value)
+            self._impl._items.append((identity, key, value))
+        self._impl.incr_version()
 
     def clear(self) -> None:
         """Remove all items from MultiDict."""
