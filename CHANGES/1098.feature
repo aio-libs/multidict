@@ -1,1 +1,1 @@
-Made C version of :class:`multidict.istr` picleable.
+Made C version of :class:`multidict.istr` pickleable.
