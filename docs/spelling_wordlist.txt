@@ -70,7 +70,6 @@ param
 params
 performant
 pickable
-pickleable
 pre
 proxied
 pyenv

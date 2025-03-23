@@ -55,35 +55,6 @@ fail:
     return NULL;
 }
 
-
-static inline PyObject *
-istr_reduce(PyObject *self)
-{
-    PyObject *str = NULL;
-    PyObject *args = NULL;
-    PyObject *result = NULL;
-
-    str = PyUnicode_FromObject(self);
-    if (str == NULL) {
-        goto ret;
-    }
-    args = PyTuple_Pack(1, str);
-    if (args == NULL) {
-        goto ret;
-    }
-    result = PyTuple_Pack(2, Py_TYPE(self), args);
-ret:
-    Py_CLEAR(str);
-    Py_CLEAR(args);
-    return result;
-}
-
-
-static PyMethodDef istr_methods[] = {
-    {"__reduce__", (PyCFunction)istr_reduce, METH_NOARGS, NULL},
-    {NULL, NULL}   /* sentinel */
-};
-
 static PyTypeObject istr_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "multidict._multidict.istr",
@@ -94,7 +65,6 @@ static PyTypeObject istr_type = {
               | Py_TPFLAGS_UNICODE_SUBCLASS,
     .tp_doc = istr__doc__,
     .tp_base = DEFERRED_ADDRESS(&PyUnicode_Type),
-    .tp_methods = istr_methods,
     .tp_new = (newfunc)istr_new,
 };
 

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from multidict import MultiDict, MultiDictProxy, istr
+from multidict import MultiDict, MultiDictProxy
 
 if TYPE_CHECKING:
     from conftest import MultidictImplementation
@@ -32,16 +32,6 @@ def test_pickle_proxy(
         pickle.dumps(proxy)
 
 
-def test_pickle_istr(
-    case_insensitive_str_class: type[istr], pickle_protocol: int
-) -> None:
-    s = case_insensitive_str_class('str')
-    pbytes = pickle.dumps(s, pickle_protocol)
-    obj = pickle.loads(pbytes)
-    assert s == obj
-    assert isinstance(obj, case_insensitive_str_class)
-
-
 def test_load_from_file(
     any_multidict_class: type[MultiDict[int]],
     multidict_implementation: "MultidictImplementation",
@@ -61,24 +51,3 @@ def test_load_from_file(
         obj = pickle.load(f)
     assert d == obj
     assert isinstance(obj, any_multidict_class)
-
-
-def test_load_istr_from_file(
-    case_insensitive_str_class: type[istr],
-    multidict_implementation: "MultidictImplementation",
-    pickle_protocol: int,
-) -> None:
-    istr_class_name = case_insensitive_str_class.__name__
-    pickle_file_basename = "-".join(
-        (
-            istr_class_name.lower(),
-            multidict_implementation.tag,
-        )
-    )
-    s = case_insensitive_str_class("str")
-    fname = f"{pickle_file_basename}.pickle.{pickle_protocol}"
-    p = here / fname
-    with p.open("rb") as f:
-        obj = pickle.load(f)
-    assert s == obj
-    assert isinstance(obj, case_insensitive_str_class)
