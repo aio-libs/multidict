@@ -190,7 +190,7 @@ class _CSMixin:
 
 class _CIMixin:
     def _key(self, key: str) -> str:
-        if getattr(type(key), "__is_istr__", False):
+        if type(key) is istr:
             return key
         else:
             return istr(key)
