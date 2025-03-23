@@ -696,9 +696,13 @@ class TestCIMutableMultiDict:
         case_insensitive_multidict_class: type[CIMultiDict[str]],
         case_insensitive_str_class: type[istr],
     ) -> None:
-        d = case_insensitive_multidict_class([("KEY", "one"),])
-        d['k2'] = '2'
-        d.extend(k3='3')
+        d = case_insensitive_multidict_class(
+            [
+                ("KEY", "one"),
+            ]
+        )
+        d["k2"] = "2"
+        d.extend(k3="3")
 
         for k in d:
             assert type(k) is case_insensitive_str_class

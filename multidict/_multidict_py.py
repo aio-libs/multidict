@@ -1,7 +1,7 @@
 import enum
 import sys
-from array import array
 from abc import abstractmethod
+from array import array
 from collections.abc import (
     Callable,
     ItemsView,
@@ -179,7 +179,7 @@ class _CSMixin:
 
 class _CIMixin:
     def _key(self, key: str) -> str:
-        if getattr(type(key), '__is_istr__', False):
+        if getattr(type(key), "__is_istr__", False):
             return key
         else:
             return istr(key)
