@@ -1579,6 +1579,7 @@ static inline void
 module_free(void *m)
 {
     Py_CLEAR(multidict_str_lower);
+    Py_CLEAR(multidict_str_canonical);
     Py_CLEAR(viewbaseset_and_func);
     Py_CLEAR(viewbaseset_or_func);
     Py_CLEAR(viewbaseset_sub_func);
@@ -1603,6 +1604,10 @@ PyInit__multidict(void)
 {
     multidict_str_lower = PyUnicode_InternFromString("lower");
     if (multidict_str_lower == NULL) {
+        goto fail;
+    }
+    multidict_str_canonical = PyUnicode_InternFromString("canonical");
+    if (multidict_str_canonical == NULL) {
         goto fail;
     }
 
@@ -1698,6 +1703,7 @@ PyInit__multidict(void)
 
 fail:
     Py_XDECREF(multidict_str_lower);
+    Py_XDECREF(multidict_str_canonical);
 
     return NULL;
 }

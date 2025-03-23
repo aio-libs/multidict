@@ -138,7 +138,7 @@ _ci_key_to_ident(PyObject *key)
 
 
 static inline PyObject *
-_arg_to_key(PyObject *key)
+_arg_to_key(PyObject *key, PyObject *ident)
 {
     if (PyUnicode_Check(key)) {
         return Py_NewRef(key);
@@ -151,14 +151,14 @@ _arg_to_key(PyObject *key)
 
 
 static inline PyObject *
-_ci_arg_to_key(PyObject *key)
+_ci_arg_to_key(PyObject *key, PyObject *ident)
 {
     PyTypeObject *type = Py_TYPE(key);
     if (type == &istr_type) {
         return Py_NewRef(key);
     }
     if (PyUnicode_Check(key)) {
-        return IStr_New(key);
+        return IStr_New(key, ident);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
@@ -272,11 +272,11 @@ pair_list_calc_identity(pair_list_t *list, PyObject *key)
 }
 
 static inline PyObject *
-pair_list_calc_key(pair_list_t *list, PyObject *key)
+pair_list_calc_key(pair_list_t *list, PyObject *key, PyObject *ident)
 {
     if (list->calc_ci_indentity)
-        return _ci_arg_to_key(key);
-    return _arg_to_key(key);
+        return _ci_arg_to_key(key, ident);
+    return _arg_to_key(key, ident);
 }
 
 static inline void
@@ -328,7 +328,7 @@ _pair_list_add_with_hash(pair_list_t *list,
         return -1;
     }
 
-    PyObject *real_key = pair_list_calc_key(list, key);
+    PyObject *real_key = pair_list_calc_key(list, key, identity);
     if (real_key == NULL) {
         return -1;
     }
@@ -847,7 +847,7 @@ pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
         int tmp = str_cmp(identity, pair->identity);
         if (tmp > 0) {
             found = 1;
-            PyObject *real_key = pair_list_calc_key(list, key);
+            PyObject *real_key = pair_list_calc_key(list, key, identity);
             if (real_key == NULL) {
                 goto fail;
             }
@@ -976,7 +976,7 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 
         int ident_cmp_res = str_cmp(pair->identity, identity);
         if (ident_cmp_res > 0) {
-            PyObject *real_key = pair_list_calc_key(list, key);
+            PyObject *real_key = pair_list_calc_key(list, key, identity);
             if (real_key == NULL) {
                 return -1;
             }

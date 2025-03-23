@@ -30,6 +30,14 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *errors = NULL;
     PyObject *canonical = NULL;
     PyObject * ret = NULL;
+    if (kwds != NULL) {
+        int cmp = PyDict_Pop(kwds, multidict_str_canonical, &canonical);
+        if (cmp < 0) {
+            return NULL;
+        } else if (cmp > 0) {
+            Py_INCREF(canonical);
+        }
+    }
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OOO:str",
                                      kwlist, &x, &encoding, &errors)) {
@@ -43,9 +51,12 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (!ret) {
         goto fail;
     }
-    canonical = PyObject_CallMethodNoArgs(ret, multidict_str_lower);
-    if (!canonical) {
-        goto fail;
+
+    if (canonical == NULL) {
+        canonical = PyObject_CallMethodNoArgs(ret, multidict_str_lower);
+        if (!canonical) {
+            goto fail;
+        }
     }
     if (!PyUnicode_CheckExact(canonical)) {
         PyObject *tmp = PyUnicode_FromObject(canonical);
@@ -107,23 +118,37 @@ static PyTypeObject istr_type = {
 
 
 static inline PyObject *
-IStr_New(PyObject *str)
+IStr_New(PyObject *str, PyObject *canonical)
 {
-    PyObject *args = PyTuple_Pack(1, str);
+    PyObject *args = NULL;
+    PyObject *kwds = NULL;
+    PyObject *res = NULL;
+
+    args = PyTuple_Pack(1, str);
     if (args == NULL) {
-        return NULL;
+        goto ret;
     }
 
-    PyObject *kwds = PyDict_New();
-    if (kwds == NULL) {
-        Py_CLEAR(args);
-        return NULL;
+    if (canonical != NULL) {
+        kwds = PyDict_New();
+        if (kwds == NULL) {
+            goto ret;
+        }
+        if (!PyUnicode_CheckExact(canonical)) {
+            PyErr_SetString(PyExc_TypeError,
+                            "'canonical' argument should be exactly str");
+            goto ret;
+        }
+        if (PyDict_SetItem(kwds, multidict_str_canonical, canonical) < 0) {
+            goto ret;
+        }
     }
 
-    PyObject *ret = istr_new(&istr_type, args, kwds);
+    res = istr_new(&istr_type, args, kwds);
+ret:
     Py_CLEAR(args);
     Py_CLEAR(kwds);
-    return ret;
+    return res;
 }
 
 static inline int
