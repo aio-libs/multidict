@@ -116,7 +116,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         for i, k, v in self._impl._items:
             if version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
-            yield k, v
+            yield self._keyfunc(k), v
 
     def __repr__(self) -> str:
         lst = []
@@ -167,7 +167,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         for i, k, v in self._impl._items:
             if version != self._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
-            yield k
+            yield self._keyfunc(k)
 
     def __repr__(self) -> str:
         lst = []
@@ -493,9 +493,9 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
     def popitem(self) -> tuple[str, _V]:
         """Remove and return an arbitrary (key, value) pair."""
         if self._impl._items:
-            i = self._impl._items.pop(0)
+            i, k, v = self._impl._items.pop(0)
             self._impl.incr_version()
-            return i[1], i[2]
+            return self._key(k), v
         else:
             raise KeyError("empty multidict")
 
