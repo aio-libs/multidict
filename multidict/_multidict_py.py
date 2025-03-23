@@ -334,7 +334,7 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
 
     def add(self, key: str, value: _V) -> None:
         identity = self._title(key)
-        self._impl._items.append((identity, self._key(key), value))
+        self._impl._items.append((identity, key, value))
         self._impl.incr_version()
 
     def copy(self) -> Self:
@@ -375,13 +375,13 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
                             "{} takes either dict or list of (key, value) "
                             "tuples".format(name)
                         )
-                    items.append((self._title(item[0]), self._key(item[0]), item[1]))
+                    items.append((self._title(item[0]), item[0], item[1]))
 
             method(items)
         else:
             method(
                 [
-                    (self._title(key), self._key(key), value)
+                    (self._title(key), key, value)
                     for key, value in kwargs.items()
                 ]
             )
@@ -536,7 +536,6 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
         self._impl.incr_version()
 
     def _replace(self, key: str, value: _V) -> None:
-        key = self._key(key)
         identity = self._title(key)
         items = self._impl._items
 
