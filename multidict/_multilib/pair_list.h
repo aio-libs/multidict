@@ -960,32 +960,22 @@ pair_list_update_from_pair_list(pair_list_t *list, PyObject* used, pair_list_t *
 {
     Py_ssize_t pos;
 
-    if (other->size == 0) {
-        return 0;
-    }
-
-    PyObject *used_keys = PyDict_New();
-    if (used_keys == NULL) {
-        return -1;
-    }
-
     for (pos = 0; pos < other->size; pos++) {
         pair_t *pair = other->pairs + pos;
-        if (_pair_list_update(list, pair->key, pair->value, used_keys,
-                              pair->identity, pair->hash) < 0) {
-            goto fail;
+        if (used != NULL) {
+            if (_pair_list_update(list, pair->key, pair->value, used,
+                                  pair->identity, pair->hash) < 0) {
+                goto fail;
+            }
+        } else {
+            if (_pair_list_add_with_hash(list, pair->identity, pair->key,
+                                         pair->value, pair->hash) < 0) {
+                goto fail;
+            }
         }
     }
-
-    if (pair_list_post_update(list, used_keys) < 0) {
-        goto fail;
-    }
-
-    Py_DECREF(used_keys);
     return 0;
-
 fail:
-    Py_XDECREF(used_keys);
     return -1;
 }
 
@@ -1008,14 +998,20 @@ pair_list_update_from_dict(pair_list_t *list, PyObject* used, PyObject *kwds)
         if (hash == -1) {
             goto fail;
         }
-        if (_pair_list_update(list, key, value, used,
-                              identity, hash) < 0) {
-            goto fail;
+        if (used != NULL) {
+            if (_pair_list_update(list, key, value, used, identity, hash) < 0) {
+                goto fail;
+            }
+        } else {
+            if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
+                goto fail;
+            }
         }
         Py_CLEAR(identity);
         Py_CLEAR(key);
         Py_CLEAR(value);
     }
+    return 0;
 fail:
     Py_CLEAR(identity);
     Py_CLEAR(key);
@@ -1025,9 +1021,8 @@ fail:
 
 
 static inline int
-pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
+pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
 {
-    PyObject *fast = NULL; // item as a 2-tuple or 2-list
     PyObject *item = NULL; // seq[i]
 
     PyObject *key = NULL;
@@ -1042,115 +1037,84 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
         return -1;
     }
 
-    PyObject *used_keys = PyDict_New();
-    if (used_keys == NULL) {
-        goto fail_1;
-    }
-
     for (i = 0; ; ++i) { // i - index into seq of current element
-        fast = NULL;
         item = PyIter_Next(it);
         if (item == NULL) {
             if (PyErr_Occurred()) {
-                goto fail_1;
+                goto fail;
             }
             break;
         }
 
         // Convert item to sequence, and verify length 2.
-#ifdef Py_GIL_DISABLED
         if (!PySequence_Check(item)) {
-#else
-        fast = PySequence_Fast(item, "");
-        if (fast == NULL) {
-            if (PyErr_ExceptionMatches(PyExc_TypeError)) {
-#endif
-                PyErr_Format(PyExc_TypeError,
-                             "multidict cannot convert sequence element #%zd"
-                             " to a sequence",
-                             i);
-#ifndef Py_GIL_DISABLED
-            }
-#endif
-            goto fail_1;
+            PyErr_Format(PyExc_TypeError,
+                         "multidict cannot convert sequence element #%zd"
+                         " to a sequence",
+                         i);
+            goto fail;
         }
 
-#ifdef Py_GIL_DISABLED
         n = PySequence_Size(item);
-#else
-        n = PySequence_Fast_GET_SIZE(fast);
-#endif
         if (n != 2) {
             PyErr_Format(PyExc_ValueError,
                          "multidict update sequence element #%zd "
                          "has length %zd; 2 is required",
                          i, n);
-            goto fail_1;
+            goto fail;
         }
 
-#ifdef Py_GIL_DISABLED
         key = PySequence_ITEM(item, 0);
         if (key == NULL) {
             PyErr_Format(PyExc_ValueError,
                          "multidict update sequence element #%zd's "
                          "key could not be fetched", i);
-            goto fail_1;
+            goto fail;
         }
         value = PySequence_ITEM(item, 1);
         if (value == NULL) {
             PyErr_Format(PyExc_ValueError,
                          "multidict update sequence element #%zd's "
                          "value could not be fetched", i);
-            goto fail_1;
+            goto fail;
         }
-#else
-        key = PySequence_Fast_GET_ITEM(fast, 0);
-        value = PySequence_Fast_GET_ITEM(fast, 1);
-        Py_INCREF(key);
-        Py_INCREF(value);
-#endif
 
         identity = pair_list_calc_identity(list, key);
         if (identity == NULL) {
-            goto fail_1;
+            goto fail;
         }
 
         Py_hash_t hash = PyObject_Hash(identity);
         if (hash == -1) {
-            goto fail_1;
+            goto fail;
         }
 
-        if (_pair_list_update(list, key, value, used_keys, identity, hash) < 0) {
-            goto fail_1;
+        if (used) {
+            if (_pair_list_update(list, key, value, used, identity, hash) < 0) {
+                goto fail;
+            }
+        } else {
+            if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
+                goto fail;
+            }
         }
 
-        Py_DECREF(key);
-        Py_DECREF(value);
-#ifndef Py_GIL_DISABLED
-        Py_DECREF(fast);
-#endif
-        Py_DECREF(item);
-        Py_DECREF(identity);
+
+        Py_CLEAR(key);
+        Py_CLEAR(value);
+        Py_CLEAR(item);
+        Py_CLEAR(identity);
     }
 
-    if (pair_list_post_update(list, used_keys) < 0) {
-        goto fail_2;
-    }
-
-    Py_DECREF(it);
-    Py_DECREF(used_keys);
+    Py_CLEAR(it);
     return 0;
 
-fail_1:
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_XDECREF(fast);
-    Py_XDECREF(item);
-    Py_XDECREF(identity);
-
-fail_2:
-    Py_XDECREF(it);
-    Py_XDECREF(used_keys);
+fail:
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_CLEAR(item);
+    Py_CLEAR(identity);
+    Py_CLEAR(it);
     return -1;
 }
 

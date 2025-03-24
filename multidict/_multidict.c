@@ -59,267 +59,101 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 
 
 static inline int
-_multidict_append_items(MultiDictObject *self, pair_list_t *pairs, PyObject *kwds)
-{
-    PyObject *key   = NULL,
-             *value = NULL;
-
-    int ret;
-
-    pair_list_pos_t pos1;
-    pair_list_init_pos(pairs, &pos1);
-
-    while ((ret = pair_list_next(pairs, &pos1, &key, &value)) > 0) {
-        ret = pair_list_add(&self->pairs, key, value);
-        Py_CLEAR(key);
-        Py_CLEAR(value);
-        if (ret < 0) {
-            return -1;
-        }
-    }
-    if (ret < 0) {
-        return -1;
-    }
-
-    if (kwds != NULL) {
-        Py_ssize_t pos2 = 0;
-        while (PyDict_Next(kwds, &pos2, &key, &value)) {
-            Py_INCREF(key);
-            Py_INCREF(value);
-            ret = pair_list_add(&self->pairs, key, value);
-            Py_CLEAR(key);
-            Py_CLEAR(value);
-            if (ret < 0) {
-                return -1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-static inline int
-_multidict_append_items_seq(MultiDictObject *self, PyObject *arg,
-                            const char *name)
-{
-    PyObject *key   = NULL,
-             *value = NULL,
-             *item  = NULL,
-             *iter  = PyObject_GetIter(arg);
-
-    if (iter == NULL) {
-        return -1;
-    }
-
-    while ((item = PyIter_Next(iter)) != NULL) {
-        if (PyTuple_CheckExact(item)) {
-            if (PyTuple_GET_SIZE(item) != 2) {
-                goto invalid_type;
-            }
-            key = PyTuple_GET_ITEM(item, 0);
-            Py_INCREF(key);
-            value = PyTuple_GET_ITEM(item, 1);
-            Py_INCREF(value);
-        }
-        else if (PyList_CheckExact(item)) {
-            if (PyList_Size(item) != 2) {
-                goto invalid_type;
-            }
-            key = PyList_GetItemRef(item, 0);
-            if (key == NULL) {
-                goto invalid_type;
-            }
-            value = PyList_GetItemRef(item, 1);
-            if (value == NULL) {
-                goto invalid_type;
-            }
-        }
-        else if (PySequence_Check(item)) {
-            if (PySequence_Size(item) != 2) {
-                goto invalid_type;
-            }
-            key = PySequence_GetItem(item, 0);
-            value = PySequence_GetItem(item, 1);
-        } else {
-            goto invalid_type;
-        }
-
-        if (pair_list_add(&self->pairs, key, value) < 0) {
-            goto fail;
-        }
-        Py_CLEAR(key);
-        Py_CLEAR(value);
-        Py_CLEAR(item);
-    }
-
-    Py_DECREF(iter);
-
-    if (PyErr_Occurred()) {
-        return -1;
-    }
-
-    return 0;
-invalid_type:
-    PyErr_Format(
-        PyExc_TypeError,
-        "%s takes either dict or list of (key, value) pairs",
-        name,
-        NULL
-    );
-    goto fail;
-fail:
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_XDECREF(item);
-    Py_DECREF(iter);
-    return -1;
-}
-
-static inline int
-_multidict_list_extend(PyObject *list, PyObject *target_list)
-{
-    PyObject *item = NULL,
-             *iter = PyObject_GetIter(target_list);
-
-    if (iter == NULL) {
-        return -1;
-    }
-
-    while ((item = PyIter_Next(iter)) != NULL) {
-        if (PyList_Append(list, item) < 0) {
-            Py_DECREF(item);
-            Py_DECREF(iter);
-            return -1;
-        }
-        Py_DECREF(item);
-    }
-
-    Py_DECREF(iter);
-
-    if (PyErr_Occurred()) {
-        return -1;
-    }
-
-    return 0;
-}
-
-static inline int
 _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
                             PyObject *kwds, const char *name, int do_add)
 {
-    PyObject *arg_items  = NULL, /* tracked by GC */
-             *kwds_items = NULL; /* new reference */
-    pair_list_t *pairs = NULL;
+    PyObject *used = NULL;
+    if (!do_add) {
+        used = PyDict_New();
+    }
 
+    PyObject *arg_items  = NULL;
     int err = 0;
 
     if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
-        return -1;
+        goto fail;
     }
 
     if (_MultiDict_Check(arg)) {
+        pair_list_t *pairs = NULL;
         if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
             pairs = &((MultiDictObject*)arg)->pairs;
         } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
             pairs = &((MultiDictProxyObject*)arg)->md->pairs;
         }
 
-        if (do_add) {
-            return _multidict_append_items(self, pairs, kwds);
-        }
-        PyObject *used = PyDict_New();
-        if (used == NULL) {
-            return -1;
-        }
         if (pair_list_update_from_pair_list(&self->pairs, used, pairs) < 0) {
-            Py_CLEAR(used);
-            return -1;
+            goto fail;
         }
-        if (kwds != NULL) {
-            if (pair_list_update_from_dict(&self->pairs, used, kwds) < 0) {
-                Py_CLEAR(used);
+    } else {
+        if (PyObject_HasAttrString(arg, "items")) {
+            if (_MultiDict_Check(arg)) {
+                if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
+                    arg_items = multidict_items((MultiDictObject*)arg);
+                } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
+                    arg_items = multidict_items(((MultiDictProxyObject*)arg)->md);
+                }
+            } else {
+                arg_items = PyMapping_Items(arg);
+            }
+            if (arg_items == NULL) {
                 return -1;
             }
-        }
-        if (pair_list_post_update(&self->pairs, used) < 0) {
-            Py_CLEAR(used);
-            return -1;
-        }
-        Py_CLEAR(used);
-        return 0;
-    }
-
-    if (PyObject_HasAttrString(arg, "items")) {
-        if (_MultiDict_Check(arg)) {
-            if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
-                arg_items = multidict_items((MultiDictObject*)arg);
-            } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
-                arg_items = multidict_items(((MultiDictProxyObject*)arg)->md);
-            }
         } else {
-            arg_items = PyMapping_Items(arg);
+            arg_items = arg;
+            Py_INCREF(arg_items);
         }
-        if (arg_items == NULL) {
-            return -1;
-        }
-    } else {
-        arg_items = arg;
-        Py_INCREF(arg_items);
-    }
 
-    if (kwds) {
-        PyObject *tmp = PySequence_List(arg_items);
+        err = pair_list_update_from_seq(&self->pairs, used, arg_items);
         Py_DECREF(arg_items);
-        arg_items = tmp;
-        if (arg_items == NULL) {
-            return -1;
-        }
-
-        kwds_items = PyDict_Items(kwds);
-        if (kwds_items == NULL) {
-            Py_DECREF(arg_items);
-            return -1;
-        }
-        err = _multidict_list_extend(arg_items, kwds_items);
-        Py_DECREF(kwds_items);
         if (err < 0) {
-            Py_DECREF(arg_items);
-            return -1;
+            goto fail;
         }
     }
 
-    if (do_add) {
-        err = _multidict_append_items_seq(self, arg_items, name);
-    } else {
-        err = pair_list_update_from_seq(&self->pairs, arg_items);
+    if (kwds != NULL) {
+        if (pair_list_update_from_dict(&self->pairs, used, kwds) < 0) {
+            goto fail;
+        }
     }
 
-    Py_DECREF(arg_items);
-
-    return err;
+    if (!do_add) {
+        if (pair_list_post_update(&self->pairs, used) < 0) {
+            goto fail;
+        }
+    }
+    Py_CLEAR(used);
+    return 0;
+fail:
+    Py_CLEAR(used);
+    return -1;
 }
 
 static inline int
 _multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
                                  const char *name, int do_add)
 {
-    PyObject *arg = NULL;
+    PyObject *used = NULL;
 
-    int err = 0;
-
-    if (!PyArg_ValidateKeywordArguments(kwds)) {
-        return -1;
+    if (!do_add) {
+        used = PyDict_New();
+        if (used == NULL) {
+            goto fail;
+        }
     }
-
-    arg = PyDict_Items(kwds);
-    if (do_add) {
-        err = _multidict_append_items_seq(self, arg, name);
-    } else {
-        err = pair_list_update_from_seq(&self->pairs, arg);
+    if ( pair_list_update_from_dict(&self->pairs, used, kwds) < 0) {
+        goto fail;
     }
-
-    Py_DECREF(arg);
-    return err;
+    if (!do_add) {
+        if (pair_list_post_update(&self->pairs, used) < 0) {
+            goto fail;
+        }
+    }
+    Py_CLEAR(used);
+    return 0;
+ fail:
+    Py_CLEAR(used);
+    return -1;
 }
 
 static inline int
