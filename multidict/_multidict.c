@@ -59,27 +59,39 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 
 
 static inline int
-_multidict_append_items(MultiDictObject *self, pair_list_t *pairs)
+_multidict_append_items(MultiDictObject *self, pair_list_t *pairs, PyObject *kwds)
 {
     PyObject *key   = NULL,
              *value = NULL;
 
-    pair_list_pos_t pos;
-    pair_list_init_pos(pairs, &pos);
+    int ret;
 
-    for (;;) {
-        int ret = pair_list_next(pairs, &pos, &key, &value);
-        if (ret < 0) {
-            return -1;
-        }
-        if (ret == 0)
-            break;
+    pair_list_pos_t pos1;
+    pair_list_init_pos(pairs, &pos1);
 
+    while ((ret = pair_list_next(pairs, &pos1, &key, &value)) > 0) {
         ret = pair_list_add(&self->pairs, key, value);
         Py_CLEAR(key);
         Py_CLEAR(value);
         if (ret < 0) {
             return -1;
+        }
+    }
+    if (ret < 0) {
+        return -1;
+    }
+
+    if (kwds != NULL) {
+        Py_ssize_t pos2 = 0;
+        while (PyDict_Next(kwds, &pos2, &key, &value)) {
+            Py_INCREF(key);
+            Py_INCREF(value);
+            ret = pair_list_add(&self->pairs, key, value);
+            Py_CLEAR(key);
+            Py_CLEAR(value);
+            if (ret < 0) {
+                return -1;
+            }
         }
     }
 
@@ -206,7 +218,7 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
     }
 
     // TODO: mb can be refactored more clear
-    if (_MultiDict_Check(arg) && kwds == NULL) {
+    if (_MultiDict_Check(arg)) {
         if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
             pairs = &((MultiDictObject*)arg)->pairs;
         } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
@@ -214,7 +226,7 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
         }
 
         if (do_add) {
-            return _multidict_append_items(self, pairs);
+            return _multidict_append_items(self, pairs, kwds);
         }
 
         return pair_list_update(&self->pairs, pairs, kwds);
