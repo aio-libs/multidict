@@ -536,84 +536,12 @@ ret:
 }
 
 static inline PyObject *
-_do_multidict_repr(MultiDictObject *md, PyObject *name,
-                   bool show_keys, bool show_values)
-{
-    PyObject *key = NULL,
-             *value = NULL;
-    bool comma = false;
-
-    PyUnicodeWriter *writer = PyUnicodeWriter_Create(1024);
-    if (writer == NULL)
-        return NULL;
-
-    if (PyUnicodeWriter_WriteChar(writer, '<') <0)
-        goto fail;
-    if (PyUnicodeWriter_WriteStr(writer, name) <0)
-        goto fail;
-    if (PyUnicodeWriter_WriteChar(writer, '(') <0)
-        goto fail;
-
-    pair_list_pos_t pos;
-    pair_list_init_pos(&md->pairs, &pos);
-
-    for (;;) {
-        int res = pair_list_next(&md->pairs, &pos, &key, &value);
-        if (res < 0) {
-            goto fail;
-        }
-        if (res == 0) {
-            break;
-        }
-
-        if (comma) {
-            if (PyUnicodeWriter_WriteChar(writer, ',') <0)
-                goto fail;
-            if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
-                goto fail;
-        }
-        if (show_keys) {
-            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
-                goto fail;
-            if (PyUnicodeWriter_WriteStr(writer, key) <0)
-                goto fail;
-            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
-                goto fail;
-        }
-        if (show_keys && show_values) {
-            if (PyUnicodeWriter_WriteChar(writer, ':') <0)
-                goto fail;
-            if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
-                goto fail;
-        }
-        if (show_values) {
-            if (PyUnicodeWriter_WriteRepr(writer, value) <0)
-                goto fail;
-        }
-
-        Py_CLEAR(key);
-        Py_CLEAR(value);
-        comma = true;
-    }
-
-    if (PyUnicodeWriter_WriteChar(writer, ')') <0)
-        goto fail;
-    if (PyUnicodeWriter_WriteChar(writer, '>') <0)
-        goto fail;
-    return PyUnicodeWriter_Finish(writer);
-fail:
-    Py_CLEAR(key);
-    Py_CLEAR(value);
-    PyUnicodeWriter_Discard(writer);
-}
-
-static inline PyObject *
 multidict_repr(MultiDictObject *self)
 {
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = _do_multidict_repr(self, name, true, true);
+    PyObject *ret = pair_list_repr(&self->pairs, name, true, true);
     Py_CLEAR(name);
     return ret;
 }
@@ -1371,7 +1299,7 @@ multidict_proxy_repr(MultiDictProxyObject *self)
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = _do_multidict_repr(self->md, name, true, true);
+    PyObject *ret = pair_list_repr(&self->md->pairs, name, true, true);
     Py_CLEAR(name);
     return ret;
 }

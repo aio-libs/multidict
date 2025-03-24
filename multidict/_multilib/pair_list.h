@@ -1290,6 +1290,81 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
 }
 
 
+static inline PyObject *
+pair_list_repr(pair_list_t *list, PyObject *name,
+                   bool show_keys, bool show_values)
+{
+    PyObject *key = NULL;
+    PyObject *value = NULL;
+
+    bool comma = false;
+    Py_ssize_t pos;
+    uint64_t version = list->version;
+
+    PyUnicodeWriter *writer = PyUnicodeWriter_Create(1024);
+    if (writer == NULL)
+        return NULL;
+
+    if (PyUnicodeWriter_WriteChar(writer, '<') <0)
+        goto fail;
+    if (PyUnicodeWriter_WriteStr(writer, name) <0)
+        goto fail;
+    if (PyUnicodeWriter_WriteChar(writer, '(') <0)
+        goto fail;
+
+    for (pos = 0; pos < list->size; ++pos) {
+        if (version != list->version) {
+            PyErr_SetString(PyExc_RuntimeError, "MultiDict changed during iteration");
+            return NULL;
+        }
+        pair_t *pair = list->pairs + pos;
+        key = Py_NewRef(pair->key);
+        value = Py_NewRef(pair->value);
+
+        if (comma) {
+            if (PyUnicodeWriter_WriteChar(writer, ',') <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
+                goto fail;
+        }
+        if (show_keys) {
+            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
+                goto fail;
+            /* Don't need to convert key to istr, the text is the same*/
+            if (PyUnicodeWriter_WriteStr(writer, key) <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
+                goto fail;
+        }
+        if (show_keys && show_values) {
+            if (PyUnicodeWriter_WriteChar(writer, ':') <0)
+                goto fail;
+            if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
+                goto fail;
+        }
+        if (show_values) {
+            if (PyUnicodeWriter_WriteRepr(writer, value) <0)
+                goto fail;
+        }
+
+        comma = true;
+        Py_CLEAR(key);
+        Py_CLEAR(value);
+    }
+
+    if (PyUnicodeWriter_WriteChar(writer, ')') <0)
+        goto fail;
+    if (PyUnicodeWriter_WriteChar(writer, '>') <0)
+        goto fail;
+    return PyUnicodeWriter_Finish(writer);
+fail:
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    PyUnicodeWriter_Discard(writer);
+}
+
+
+
 /***********************************************************************/
 
 static inline int
