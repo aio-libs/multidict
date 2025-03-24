@@ -1025,7 +1025,7 @@ fail:
 
 
 static inline int
-pair_list_update_from_seq(pair_list_t *list, PyObject *seq, PyObject *kwds)
+pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
 {
     PyObject *fast = NULL; // item as a 2-tuple or 2-list
     PyObject *item = NULL; // seq[i]

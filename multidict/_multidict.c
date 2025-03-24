@@ -291,7 +291,7 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
     if (do_add) {
         err = _multidict_append_items_seq(self, arg_items, name);
     } else {
-        err =  pair_list_update_from_seq(&self->pairs, arg_items, kwds);
+        err = pair_list_update_from_seq(&self->pairs, arg_items);
     }
 
     Py_DECREF(arg_items);
@@ -315,7 +315,7 @@ _multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
     if (do_add) {
         err = _multidict_append_items_seq(self, arg, name);
     } else {
-        err = pair_list_update_from_seq(&self->pairs, arg, kwds);
+        err = pair_list_update_from_seq(&self->pairs, arg);
     }
 
     Py_DECREF(arg);
