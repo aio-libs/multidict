@@ -228,8 +228,26 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
         if (do_add) {
             return _multidict_append_items(self, pairs, kwds);
         }
-
-        return pair_list_update(&self->pairs, pairs, kwds);
+        PyObject *used = PyDict_New();
+        if (used == NULL) {
+            return -1;
+        }
+        if (pair_list_update_from_pair_list(&self->pairs, used, pairs) < 0) {
+            Py_CLEAR(used);
+            return -1;
+        }
+        if (kwds != NULL) {
+            if (pair_list_update_from_dict(&self->pairs, used, kwds) < 0) {
+                Py_CLEAR(used);
+                return -1;
+            }
+        }
+        if (pair_list_post_update(&self->pairs, used) < 0) {
+            Py_CLEAR(used);
+            return -1;
+        }
+        Py_CLEAR(used);
+        return 0;
     }
 
     if (PyObject_HasAttrString(arg, "items")) {

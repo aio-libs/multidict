@@ -844,14 +844,14 @@ _dict_set_number(PyObject *dict, PyObject *key, Py_ssize_t num)
 
 
 static inline int
-_pair_list_post_update(pair_list_t *list, PyObject* used_keys)
+pair_list_post_update(pair_list_t *list, PyObject* used)
 {
     PyObject *tmp = NULL;
     Py_ssize_t pos;
 
     for (pos = 0; pos < list->size; pos++) {
         pair_t *pair = list->pairs + pos;
-        int status = PyDict_GetItemRef(used_keys, pair->identity, &tmp);
+        int status = PyDict_GetItemRef(used, pair->identity, &tmp);
         if (status == -1) {
             // exception set
             return -1;
@@ -886,14 +886,14 @@ _pair_list_post_update(pair_list_t *list, PyObject* used_keys)
 // TODO: need refactoring function name
 static inline int
 _pair_list_update(pair_list_t *list, PyObject *key,
-                  PyObject *value, PyObject *used_keys,
+                  PyObject *value, PyObject *used,
                   PyObject *identity, Py_hash_t hash)
 {
     PyObject *item = NULL;
     Py_ssize_t pos;
     int found;
 
-    int status = PyDict_GetItemRef(used_keys, identity, &item);
+    int status = PyDict_GetItemRef(used, identity, &item);
     if (status == -1) {
         // exception set
         return -1;
@@ -930,7 +930,7 @@ _pair_list_update(pair_list_t *list, PyObject *key,
             Py_DECREF(pair->value);
             pair->value = value;
 
-            if (_dict_set_number(used_keys, pair->identity, pos + 1) < 0) {
+            if (_dict_set_number(used, pair->identity, pos + 1) < 0) {
                 return -1;
             }
 
@@ -946,7 +946,7 @@ _pair_list_update(pair_list_t *list, PyObject *key,
         if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
             return -1;
         }
-        if (_dict_set_number(used_keys, identity, list->size) < 0) {
+        if (_dict_set_number(used, identity, list->size) < 0) {
             return -1;
         }
     }
@@ -956,7 +956,7 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 
 
 static inline int
-pair_list_update(pair_list_t *list, pair_list_t *other, PyObject *kwds)
+pair_list_update_from_pair_list(pair_list_t *list, PyObject* used, pair_list_t *other)
 {
     Py_ssize_t pos;
 
@@ -977,7 +977,7 @@ pair_list_update(pair_list_t *list, pair_list_t *other, PyObject *kwds)
         }
     }
 
-    if (_pair_list_post_update(list, used_keys) < 0) {
+    if (pair_list_post_update(list, used_keys) < 0) {
         goto fail;
     }
 
@@ -986,6 +986,40 @@ pair_list_update(pair_list_t *list, pair_list_t *other, PyObject *kwds)
 
 fail:
     Py_XDECREF(used_keys);
+    return -1;
+}
+
+static inline int
+pair_list_update_from_dict(pair_list_t *list, PyObject* used, PyObject *kwds)
+{
+    Py_ssize_t pos = 0;
+    PyObject *identity = NULL;
+    PyObject *key = NULL;
+    PyObject *value = NULL;
+
+    while(PyDict_Next(kwds, &pos, &key, &value)) {
+        Py_INCREF(key);
+        Py_INCREF(value);
+        identity = pair_list_calc_identity(list, key);
+        if (identity == NULL) {
+            goto fail;
+        }
+        Py_hash_t hash = PyObject_Hash(identity);
+        if (hash == -1) {
+            goto fail;
+        }
+        if (_pair_list_update(list, key, value, used,
+                              identity, hash) < 0) {
+            goto fail;
+        }
+        Py_CLEAR(identity);
+        Py_CLEAR(key);
+        Py_CLEAR(value);
+    }
+fail:
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
     return -1;
 }
 
@@ -1099,7 +1133,7 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *seq, PyObject *kwds)
         Py_DECREF(identity);
     }
 
-    if (_pair_list_post_update(list, used_keys) < 0) {
+    if (pair_list_post_update(list, used_keys) < 0) {
         goto fail_2;
     }
 
