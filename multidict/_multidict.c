@@ -217,7 +217,6 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
         return -1;
     }
 
-    // TODO: mb can be refactored more clear
     if (_MultiDict_Check(arg)) {
         if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
             pairs = &((MultiDictObject*)arg)->pairs;
