@@ -328,16 +328,11 @@ _pair_list_add_with_hash(pair_list_t *list,
         return -1;
     }
 
-    PyObject *real_key = pair_list_calc_key(list, key, identity);
-    if (real_key == NULL) {
-        return -1;
-    }
-
     pair_t *pair = list->pairs + list->size;
 
     pair->identity = Py_NewRef(identity);
 
-    pair->key = real_key;
+    pair->key = Py_NewRef(key);
 
     pair->value = Py_NewRef(value);
 
@@ -508,6 +503,15 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
     pair_t *pair = list->pairs + pos->pos;
 
     if (pkey) {
+        PyObject *key = pair_list_calc_key(list, pair->key, pair->identity);
+        if (key == NULL) {
+            return -1;
+        }
+        if (key != pair->key) {
+            Py_SETREF(pair->key, key);
+        } else {
+            Py_CLEAR(key);
+        }
         *pkey = Py_NewRef(pair->key);
     }
     if (pvalue) {
@@ -820,7 +824,12 @@ pair_list_pop_item(pair_list_t *list)
     }
 
     pair_t *pair = list->pairs;
-    PyObject *ret = PyTuple_Pack(2, pair->key, pair->value);
+    PyObject *key = pair_list_calc_key(list, pair->key, pair->identity);
+    if (key == NULL) {
+        return NULL;
+    }
+    PyObject *ret = PyTuple_Pack(2, key, pair->value);
+    Py_CLEAR(key);
     if (ret == NULL) {
         return NULL;
     }
@@ -859,11 +868,7 @@ pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
         int tmp = str_cmp(identity, pair->identity);
         if (tmp > 0) {
             found = 1;
-            PyObject *real_key = pair_list_calc_key(list, key, identity);
-            if (real_key == NULL) {
-                goto fail;
-            }
-            Py_SETREF(pair->key, real_key);
+            Py_SETREF(pair->key, Py_NewRef(key));
             Py_SETREF(pair->value, Py_NewRef(value));
             break;
         }
@@ -988,11 +993,7 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 
         int ident_cmp_res = str_cmp(pair->identity, identity);
         if (ident_cmp_res > 0) {
-            PyObject *real_key = pair_list_calc_key(list, key, identity);
-            if (real_key == NULL) {
-                return -1;
-            }
-            Py_SETREF(pair->key, real_key);
+            Py_SETREF(pair->key, Py_NewRef(key));
             Py_SETREF(pair->value, Py_NewRef(value));
 
             if (_dict_set_number(used_keys, pair->identity, pos + 1) < 0) {
