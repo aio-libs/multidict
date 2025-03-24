@@ -59,55 +59,45 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 
 
 static inline int
-_multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
-                            PyObject *kwds, const char *name, int do_add)
+_multidict_extend_impl(MultiDictObject *self, PyObject *arg,
+                     PyObject *kwds, const char *name, int do_add)
 {
     PyObject *used = NULL;
+    PyObject *seq  = NULL;
+    pair_list_t *list;
+
     if (!do_add) {
         used = PyDict_New();
+        if (used == NULL) {
+            goto fail;
+        }
     }
-
-    PyObject *arg_items  = NULL;
-    int err = 0;
 
     if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
     }
 
-    if (_MultiDict_Check(arg)) {
-        pair_list_t *pairs = NULL;
+    if (arg != NULL) {
         if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
-            pairs = &((MultiDictObject*)arg)->pairs;
-        } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
-            pairs = &((MultiDictProxyObject*)arg)->md->pairs;
-        }
-
-        if (pair_list_update_from_pair_list(&self->pairs, used, pairs) < 0) {
-            goto fail;
-        }
-    } else {
-        if (PyObject_HasAttrString(arg, "items")) {
-            if (_MultiDict_Check(arg)) {
-                if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
-                    arg_items = multidict_items((MultiDictObject*)arg);
-                } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
-                    arg_items = multidict_items(((MultiDictProxyObject*)arg)->md);
-                }
-            } else {
-                arg_items = PyMapping_Items(arg);
+            list = &((MultiDictObject*)arg)->pairs;
+            if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
+                goto fail;
             }
-            if (arg_items == NULL) {
-                return -1;
+        } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
+            list = &((MultiDictProxyObject*)arg)->md->pairs;
+            if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
+                goto fail;
             }
         } else {
-            arg_items = arg;
-            Py_INCREF(arg_items);
-        }
+            seq = PyMapping_Items(arg);
+            if (seq == NULL) {
+                PyErr_Clear();
+                seq = Py_NewRef(arg);
+            }
 
-        err = pair_list_update_from_seq(&self->pairs, used, arg_items);
-        Py_DECREF(arg_items);
-        if (err < 0) {
-            goto fail;
+            if (pair_list_update_from_seq(&self->pairs, used, seq) < 0) {
+                goto fail;
+            }
         }
     }
 
@@ -122,39 +112,15 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
             goto fail;
         }
     }
+    Py_CLEAR(seq);
     Py_CLEAR(used);
     return 0;
 fail:
+    Py_CLEAR(seq);
     Py_CLEAR(used);
     return -1;
 }
 
-static inline int
-_multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
-                                 const char *name, int do_add)
-{
-    PyObject *used = NULL;
-
-    if (!do_add) {
-        used = PyDict_New();
-        if (used == NULL) {
-            goto fail;
-        }
-    }
-    if ( pair_list_update_from_dict(&self->pairs, used, kwds) < 0) {
-        goto fail;
-    }
-    if (!do_add) {
-        if (pair_list_post_update(&self->pairs, used) < 0) {
-            goto fail;
-        }
-    }
-    Py_CLEAR(used);
-    return 0;
- fail:
-    Py_CLEAR(used);
-    return -1;
-}
 
 static inline int
 _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
@@ -175,13 +141,9 @@ _multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
         if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
             return -1;
         }
-        if (_multidict_extend_with_args(self, arg, kwds, name, do_add) < 0) {
-            return -1;
-        }
-    } else if (kwds && PyObject_Length(kwds) > 0) {
-        if (_multidict_extend_with_kwds(self, kwds, name, do_add) < 0) {
-            return -1;
-        }
+    }
+    if (_multidict_extend_impl(self, arg, kwds, name, do_add) < 0) {
+        return -1;
     }
 
     return 0;
@@ -251,7 +213,7 @@ _multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
     if (type->tp_init(new_multidict, NULL, NULL) < 0) {
         goto fail;
     }
-    if (_multidict_extend_with_args(
+    if (_multidict_extend_impl(
         (MultiDictObject*)new_multidict, (PyObject*)self, NULL, "copy", 1) < 0)
     {
         goto fail;
