@@ -844,11 +844,12 @@ _dict_set_number(PyObject *dict, PyObject *key, Py_ssize_t num)
 
 
 static inline int
-_pair_list_post_update(pair_list_t *list, PyObject* used_keys, Py_ssize_t pos)
+_pair_list_post_update(pair_list_t *list, PyObject* used_keys)
 {
     PyObject *tmp = NULL;
+    Py_ssize_t pos;
 
-    for (; pos < list->size; pos++) {
+    for (pos = 0; pos < list->size; pos++) {
         pair_t *pair = list->pairs + pos;
         int status = PyDict_GetItemRef(used_keys, pair->identity, &tmp);
         if (status == -1) {
@@ -955,7 +956,7 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 
 
 static inline int
-pair_list_update(pair_list_t *list, pair_list_t *other)
+pair_list_update(pair_list_t *list, pair_list_t *other, PyObject *kwds)
 {
     Py_ssize_t pos;
 
@@ -976,7 +977,7 @@ pair_list_update(pair_list_t *list, pair_list_t *other)
         }
     }
 
-    if (_pair_list_post_update(list, used_keys, 0) < 0) {
+    if (_pair_list_post_update(list, used_keys) < 0) {
         goto fail;
     }
 
@@ -990,7 +991,7 @@ fail:
 
 
 static inline int
-pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
+pair_list_update_from_seq(pair_list_t *list, PyObject *seq, PyObject *kwds)
 {
     PyObject *fast = NULL; // item as a 2-tuple or 2-list
     PyObject *item = NULL; // seq[i]
@@ -1098,7 +1099,7 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *seq)
         Py_DECREF(identity);
     }
 
-    if (_pair_list_post_update(list, used_keys, 0) < 0) {
+    if (_pair_list_post_update(list, used_keys) < 0) {
         goto fail_2;
     }
 

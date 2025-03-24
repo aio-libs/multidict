@@ -57,11 +57,6 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
     }
 }
 
-static inline int
-_multidict_update_items(MultiDictObject *self, pair_list_t *pairs)
-{
-    return pair_list_update(&self->pairs, pairs);
-}
 
 static inline int
 _multidict_append_items(MultiDictObject *self, pair_list_t *pairs)
@@ -222,7 +217,7 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
             return _multidict_append_items(self, pairs);
         }
 
-        return _multidict_update_items(self, pairs);
+        return pair_list_update(&self->pairs, pairs, kwds);
     }
 
     if (PyObject_HasAttrString(arg, "items")) {
@@ -267,7 +262,7 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
     if (do_add) {
         err = _multidict_append_items_seq(self, arg_items, name);
     } else {
-        err =  pair_list_update_from_seq(&self->pairs, arg_items);
+        err =  pair_list_update_from_seq(&self->pairs, arg_items, kwds);
     }
 
     Py_DECREF(arg_items);
@@ -291,7 +286,7 @@ _multidict_extend_with_kwds(MultiDictObject *self, PyObject *kwds,
     if (do_add) {
         err = _multidict_append_items_seq(self, arg, name);
     } else {
-        err = pair_list_update_from_seq(&self->pairs, arg);
+        err = pair_list_update_from_seq(&self->pairs, arg, kwds);
     }
 
     Py_DECREF(arg);
