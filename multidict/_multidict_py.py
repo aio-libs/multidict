@@ -182,13 +182,16 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                     ret.add(key)
         return ret
 
-    def __or__(self, other: Iterable[str]) -> Union[set[str], NotImplementedType]:
-        ret = set(self)
+    def __or__(self, other: Iterable[_T]) -> Union[set[Union[str, _T]], NotImplementedType]:
+        ret: set[Union[str, _T]] = set(self)
         try:
             it = iter(other)
         except TypeError:
             return NotImplemented
         for key in it:
+            if not isinstance(key, str):
+                ret.add(key)
+                continue
             identity = self._keyfunc(key)
             for i, k, v in self._impl._items:
                 if i == identity:
@@ -570,7 +573,7 @@ class CIMultiDict(MultiDict[_V]):
 
     def _key(self, key: str) -> str:
         if isinstance(key, str):
-            if getattr(type(key), '__is_istr__', False):
+            if getattr(type(key), "__is_istr__", False):
                 return key
             else:
                 return istr(key)
