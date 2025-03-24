@@ -421,10 +421,22 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
                PyObject **pkey, PyObject **pvalue)
 {
     if (pos->pos >= list->size) {
+        if (pkey) {
+            *pkey = NULL;
+        }
+        if (pvalue) {
+            *pvalue = NULL;
+        }
         return 0;
     }
 
     if (pos->version != list->version) {
+        if (pkey) {
+            *pkey = NULL;
+        }
+        if (pvalue) {
+            *pvalue = NULL;
+        }
         PyErr_SetString(PyExc_RuntimeError, "MultiDict changed during iteration");
         return -1;
     }

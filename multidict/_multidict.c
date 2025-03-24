@@ -227,7 +227,11 @@ _multidict_extend_with_args(MultiDictObject *self, PyObject *arg,
 
     if (PyObject_HasAttrString(arg, "items")) {
         if (_MultiDict_Check(arg)) {
-            arg_items = multidict_items((MultiDictObject*)arg);
+            if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
+                arg_items = multidict_items((MultiDictObject*)arg);
+            } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
+                arg_items = multidict_items(((MultiDictProxyObject*)arg)->md);
+            }
         } else {
             arg_items = PyMapping_Items(arg);
         }
