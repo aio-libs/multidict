@@ -1,0 +1,1 @@
+Fixed a crash when extending a multidict from multidict proxy if C Extensions were used.
