@@ -1125,31 +1125,34 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
     }
 
     for (i = 0; ; ++i) { // i - index into seq of current element
-        if (kind == LIST) {
+        switch (kind) {
+        case LIST:
             if (i >= size) {
-                break;
+                goto exit;
             }
             item = PyList_GET_ITEM(seq, i);
             if (item == NULL) {
                 goto fail;
             }
             Py_INCREF(item);
-        } else if (kind == TUPLE) {
+            break;
+        case TUPLE:
             if (i >= size) {
-                break;
+                goto exit;
             }
             item = PyTuple_GET_ITEM(seq, i);
             if (item == NULL) {
                 goto fail;
             }
             Py_INCREF(item);
-        } else {
+            break;
+        case ITER:
             item = PyIter_Next(it);
             if (item == NULL) {
                 if (PyErr_Occurred()) {
                     goto fail;
                 }
-                break;
+                goto exit;
             }
         }
 
@@ -1186,6 +1189,7 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
         Py_CLEAR(item);
     }
 
+exit:
     Py_CLEAR(it);
     return 0;
 
