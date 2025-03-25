@@ -456,7 +456,7 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
     def popitem(self) -> tuple[str, _V]:
         """Remove and return an arbitrary (key, value) pair."""
         if self._impl._items:
-            i = self._impl._items.pop(0)
+            i = self._impl._items.pop()
             self._impl.incr_version()
             return i[1], i[2]
         else:
