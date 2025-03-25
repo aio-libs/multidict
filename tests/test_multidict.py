@@ -291,7 +291,7 @@ class BaseMultiDictTest:
         self,
         cls: type[MutableMultiMapping[str]],
     ) -> None:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError, match="multidict update sequence element"):
             cls([(1, 2, 3)])  # type: ignore[call-arg]
 
     def test_keys_is_set_less(self, cls: type[MultiDict[str]]) -> None:

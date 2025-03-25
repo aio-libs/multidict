@@ -332,11 +332,11 @@ class MultiDict(_Base[_V], MutableMultiMapping[_V]):
                     arg = list(arg)
                     arg.extend(list(kwargs.items()))
                 items = []
-                for item in arg:
+                for pos, item in enumerate(arg):
                     if not len(item) == 2:
-                        raise TypeError(
-                            "{} takes either dict or list of (key, value) "
-                            "tuples".format(name)
+                        raise ValueError(
+                            f"multidict update sequence element #{pos}"
+                            f"has length {len(item)}; 2 is required"
                         )
                     items.append((self._title(item[0]), self._key(item[0]), item[1]))
 

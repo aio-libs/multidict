@@ -449,6 +449,7 @@ def test_create_cimultidict_with_items_istr(
     def _run() -> None:
         case_insensitive_multidict_class(items)
 
+
 def test_create_multidict_with_dict(
     benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
 ) -> None:
