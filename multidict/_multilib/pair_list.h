@@ -44,8 +44,8 @@ typedef struct pair_list {
     pair_t buffer[EMBEDDED_CAPACITY];
 } pair_list_t;
 
-#define MIN_CAPACITY 63
-#define CAPACITY_STEP 64
+#define MIN_CAPACITY 64
+#define CAPACITY_STEP MIN_CAPACITY
 
 /* Global counter used to set ma_version_tag field of dictionary.
  * It is incremented each time that a dictionary is created and each
@@ -194,10 +194,7 @@ _pair_list_init(pair_list_t *list, bool calc_ci_identity, Py_ssize_t preallocate
     list->calc_ci_indentity = calc_ci_identity;
     Py_ssize_t capacity = EMBEDDED_CAPACITY;
     if (preallocate >= capacity) {
-        capacity = MIN_CAPACITY;
-        while (preallocate < capacity) {
-            capacity += CAPACITY_STEP;
-        }
+        capacity = ((Py_ssize_t)(preallocate / CAPACITY_STEP) + 1) * CAPACITY_STEP;
         list->pairs = PyMem_New(pair_t, (size_t)capacity);
     } else {
         list->pairs = list->buffer;
