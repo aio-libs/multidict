@@ -932,13 +932,8 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 
         int ident_cmp_res = str_cmp(pair->identity, identity);
         if (ident_cmp_res > 0) {
-            Py_INCREF(key);
-            Py_DECREF(pair->key);
-            pair->key = key;
-
-            Py_INCREF(value);
-            Py_DECREF(pair->value);
-            pair->value = value;
+            Py_SETREF(pair->key, Py_NewRef(key));
+            Py_SETREF(pair->value, Py_NewRef(value));
 
             if (_dict_set_number(used, pair->identity, pos + 1) < 0) {
                 return -1;
@@ -1050,14 +1045,6 @@ static inline void _err_cannot_fetch(Py_ssize_t i, const char * name)
 }
 
 
-enum SupportsFast {
-    LIST,
-    TUPLE,
-    ITER
-};
-
-
-
 static int _pair_list_parse_item(Py_ssize_t i, PyObject *item,
                                  PyObject **pkey, PyObject **pvalue)
 {
@@ -1107,6 +1094,7 @@ fail:
     return -1;
 }
 
+
 static inline int
 pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
 {
@@ -1120,7 +1108,7 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
     Py_ssize_t i;
     Py_ssize_t size = -1;
 
-    enum SupportsFast kind;
+    enum {LIST, TUPLE, ITER} kind;
 
     if (PyList_CheckExact(seq)) {
         kind = LIST;

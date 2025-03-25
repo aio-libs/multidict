@@ -88,6 +88,10 @@ _multidict_extend_impl(MultiDictObject *self, PyObject *arg,
             if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
                 goto fail;
             }
+        } else if (PyDict_CheckExact(arg)) {
+            if (pair_list_update_from_dict(&self->pairs, used, arg) < 0) {
+                goto fail;
+            }
         } else {
             seq = PyMapping_Items(arg);
             if (seq == NULL) {
