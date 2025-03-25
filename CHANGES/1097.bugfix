@@ -2,5 +2,5 @@ Rewritten :class:`multidict.CIMultiDict` and it proxy to always return
 :class:`multidict.istr` keys. ``istr`` is derived from :class:`str`,
 thus the change is backward compatible.
 
-The performance boost is about 15% for some operations for C Extendsion,
+The performance boost is about 15% for some operations for C Extension,
 pure Python implementation have got a visible (15% - 230%) speedup as well.
