@@ -59,7 +59,7 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 
 
 static inline int
-_multidict_extend_impl(MultiDictObject *self, PyObject *arg,
+_multidict_extend(MultiDictObject *self, PyObject *arg,
                      PyObject *kwds, const char *name, int do_add)
 {
     PyObject *used = NULL;
@@ -127,29 +127,27 @@ fail:
 
 
 static inline int
-_multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds,
-                  const char *name, int do_add)
+_multidict_extend_parse_args(PyObject *args, const char *name, PyObject **parg)
 {
-    PyObject *arg = NULL;
-
-    if (args && PyObject_Length(args) > 1)  {
-        PyErr_Format(
-            PyExc_TypeError,
-            "%s takes from 1 to 2 positional arguments but %zd were given",
-            name, PyObject_Length(args) + 1, NULL
-        );
-        return -1;
-    }
-
-    if (args && PyObject_Length(args) > 0) {
-        if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
+    Py_ssize_t size = 0;
+    if (args) {
+        size = PyTuple_GET_SIZE(args);
+        if (size > 1) {
+            PyErr_Format(
+                         PyExc_TypeError,
+                         "%s takes from 1 to 2 positional arguments but %zd were given",
+                         name, size + 1, NULL
+                         );
+            *parg = NULL;
             return -1;
         }
     }
-    if (_multidict_extend_impl(self, arg, kwds, name, do_add) < 0) {
-        return -1;
-    }
 
+    if (size == 1) {
+        *parg = Py_NewRef(PyTuple_GET_ITEM(args, 0));
+    } else {
+        *parg = NULL;
+    }
     return 0;
 }
 
@@ -548,10 +546,35 @@ PyDoc_STRVAR(multidict_values_doc,
 static inline int
 multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
-    if (pair_list_init(&self->pairs) < 0) {
+    PyObject *arg = NULL;
+    if (_multidict_extend_parse_args(args, "MultiDict", &arg) < 0) {
         return -1;
     }
-    if (_multidict_extend(self, args, kwds, "MultiDict", 1) < 0) {
+    Py_ssize_t size = 0;
+    Py_ssize_t s;
+
+    if (arg != NULL) {
+        s = PyObject_Length(arg);
+        if (s < 0) {
+            // e.g. cannot calc size of generator object
+            PyErr_Clear();
+        } else {
+            size += s;
+        }
+    }
+
+    if (kwds != NULL) {
+        s = PyDict_Size(kwds);
+        if (s < 0) {
+            return -1;
+        }
+        size += s;
+    }
+
+    if (pair_list_init(&self->pairs, size) < 0) {
+        return -1;
+    }
+    if (_multidict_extend(self, arg, kwds, "MultiDict", 1) < 0) {
         return -1;
     }
     return 0;
@@ -582,7 +605,11 @@ multidict_add(
 static inline PyObject *
 multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
-    if (_multidict_extend(self, args, kwds, "extend", 1) < 0) {
+    PyObject *arg = NULL;
+    if (_multidict_extend_parse_args(args, "extend", &arg) < 0) {
+        return NULL;
+    }
+    if (_multidict_extend(self, arg, kwds, "extend", 1) < 0) {
         return NULL;
     }
 
@@ -725,7 +752,11 @@ multidict_popitem(MultiDictObject *self)
 static inline PyObject *
 multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
-    if (_multidict_extend(self, args, kwds, "update", 0) < 0) {
+    PyObject *arg = NULL;
+    if (_multidict_extend_parse_args(args, "update", &arg) < 0) {
+        return NULL;
+    }
+    if (_multidict_extend(self, arg, kwds, "update", 0) < 0) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -945,10 +976,37 @@ static PyTypeObject multidict_type = {
 static inline int
 cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
-    if (ci_pair_list_init(&self->pairs) < 0) {
+    PyObject *arg = NULL;
+    if (_multidict_extend_parse_args(args, "CIMultiDict", &arg) < 0) {
         return -1;
     }
-    if (_multidict_extend(self, args, kwds, "CIMultiDict", 1) < 0) {
+
+    Py_ssize_t size = 0;
+    Py_ssize_t s;
+
+    if (arg != NULL) {
+        s = PyObject_Length(arg);
+        if (s < 0) {
+            // e.g. cannot calc size of generator object
+            PyErr_Clear();
+        } else {
+            size += s;
+        }
+    }
+
+    if (kwds != NULL) {
+        s = PyDict_Size(kwds);
+        if (s < 0) {
+            return -1;
+        }
+        size += s;
+    }
+
+    if (ci_pair_list_init(&self->pairs, size) < 0) {
+        return -1;
+    }
+
+    if (_multidict_extend(self, arg, kwds, "CIMultiDict", 1) < 0) {
         return -1;
     }
     return 0;

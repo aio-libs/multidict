@@ -189,27 +189,36 @@ pair_list_shrink(pair_list_t *list)
 
 
 static inline int
-_pair_list_init(pair_list_t *list, bool calc_ci_identity)
+_pair_list_init(pair_list_t *list, bool calc_ci_identity, Py_ssize_t preallocate)
 {
     list->calc_ci_indentity = calc_ci_identity;
-    list->pairs = list->buffer;
-    list->capacity = EMBEDDED_CAPACITY;
+    Py_ssize_t capacity = EMBEDDED_CAPACITY;
+    if (preallocate >= capacity) {
+        capacity = MIN_CAPACITY;
+        while (preallocate < capacity) {
+            capacity += CAPACITY_STEP;
+        }
+        list->pairs = PyMem_New(pair_t, capacity);
+    } else {
+        list->pairs = list->buffer;
+    }
+    list->capacity = capacity;
     list->size = 0;
     list->version = NEXT_VERSION();
     return 0;
 }
 
 static inline int
-pair_list_init(pair_list_t *list)
+pair_list_init(pair_list_t *list, Py_ssize_t size)
 {
-    return _pair_list_init(list, /* calc_ci_identity = */ false);
+    return _pair_list_init(list, /* calc_ci_identity = */ false, size);
 }
 
 
 static inline int
-ci_pair_list_init(pair_list_t *list)
+ci_pair_list_init(pair_list_t *list, Py_ssize_t size)
 {
-    return _pair_list_init(list, /* calc_ci_identity = */ true);
+    return _pair_list_init(list, /* calc_ci_identity = */ true, size);
 }
 
 
