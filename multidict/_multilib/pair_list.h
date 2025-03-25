@@ -1084,14 +1084,14 @@ static int _pair_list_parse_item(Py_ssize_t i, PyObject *item,
         }
         *pkey = PySequence_ITEM(item, 0);
         *pvalue = PySequence_ITEM(item, 1);
-    }
-    if (*pkey == NULL) {
-        _err_cannot_fetch(i, "key");
-        goto fail;
-    }
-    if (*pvalue == NULL) {
-        _err_cannot_fetch(i, "value");
-        goto fail;
+        if (*pkey == NULL) {
+            _err_cannot_fetch(i, "key");
+            goto fail;
+        }
+        if (*pvalue == NULL) {
+            _err_cannot_fetch(i, "value");
+            goto fail;
+        }
     }
     return 0;
 fail:
