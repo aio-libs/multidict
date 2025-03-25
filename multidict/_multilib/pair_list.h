@@ -840,7 +840,8 @@ pair_list_pop_item(pair_list_t *list)
         return NULL;
     }
 
-    pair_t *pair = list->pairs;
+    Py_ssize_t pos = list->size - 1;
+    pair_t *pair = list->pairs + pos;
     PyObject *key = pair_list_calc_key(list, pair->key, pair->identity);
     if (key == NULL) {
         return NULL;
@@ -851,7 +852,7 @@ pair_list_pop_item(pair_list_t *list)
         return NULL;
     }
 
-    if (pair_list_del_at(list, 0) < 0) {
+    if (pair_list_del_at(list, pos) < 0) {
         Py_DECREF(ret);
         return NULL;
     }

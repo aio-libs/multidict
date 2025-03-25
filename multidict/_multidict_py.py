@@ -503,7 +503,7 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
     def popitem(self) -> tuple[str, _V]:
         """Remove and return an arbitrary (key, value) pair."""
         if self._impl._items:
-            i, k, v = self._impl._items.pop(0)
+            i, k, v = self._impl._items.pop()
             self._impl.incr_version()
             return self._key(k), v
         else:

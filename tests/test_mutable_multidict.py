@@ -158,8 +158,8 @@ class TestMutableMultiDict:
         d.add("key", "val1")
         d.add("key", "val2")
 
-        assert ("key", "val1") == d.popitem()
-        assert [("key", "val2")] == list(d.items())
+        assert ("key", "val2") == d.popitem()
+        assert [("key", "val1")] == list(d.items())
 
     def test_popitem_empty_multidict(
         self,
@@ -546,9 +546,9 @@ class TestCIMutableMultiDict:
         d.add("key", "val2")
 
         pair = d.popitem()
-        assert ("KEY", "val1") == pair
+        assert ("key", "val2") == pair
         assert isinstance(pair[0], str)
-        assert [("key", "val2")] == list(d.items())
+        assert [("KEY", "val1")] == list(d.items())
 
     def test_popitem_empty_multidict(
         self,
