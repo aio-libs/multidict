@@ -1075,7 +1075,6 @@ static int _pair_list_parse_item(Py_ssize_t i, PyObject *item,
     Py_CLEAR(fast);
     return 0;
 #endif
-    // Convert item to sequence, and verify length 2.
     if (!PySequence_Check(item)) {
         _err_not_sequence(i);
         goto fail;
@@ -1122,10 +1121,10 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
 
     if (PyList_CheckExact(seq)) {
         kind = LIST;
-        size = PyList_Size(seq);
+        size = PyList_GET_SIZE(seq);
     } else if (PyTuple_CheckExact(seq)) {
         kind = TUPLE;
-        size = PyTuple_Size(seq);
+        size = PyTuple_GET_SIZE(seq);
     } else {
         kind = ITER;
         it = PyObject_GetIter(seq);
@@ -1139,18 +1138,20 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
             if (i >= size) {
                 break;
             }
-            item = PyList_GetItemRef(seq, i);
+            item = PyList_GET_ITEM(seq, i);
             if (item == NULL) {
                 goto fail;
             }
+            Py_INCREF(item);
         } else if (kind == TUPLE) {
             if (i >= size) {
                 break;
             }
-            item = Py_XNewRef(PyTuple_GetItem(seq, i));
+            item = PyTuple_GET_ITEM(seq, i);
             if (item == NULL) {
                 goto fail;
             }
+            Py_INCREF(item);
         } else {
             item = PyIter_Next(it);
             if (item == NULL) {
