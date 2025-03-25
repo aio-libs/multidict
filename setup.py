@@ -9,8 +9,8 @@ NO_EXTENSIONS = bool(os.environ.get("MULTIDICT_NO_EXTENSIONS"))
 if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
 
-CFLAGS = ["-O2"]
-# CFLAGS = ['-g']
+CFLAGS = ["-O3"]
+# CFLAGS = ["-O0", '-g']
 if platform.system() != "Windows":
     CFLAGS.extend(
         [

@@ -260,11 +260,11 @@ pair_list_len(pair_list_t *list)
 
 
 static inline int
-_pair_list_add_with_hash(pair_list_t *list,
-                         PyObject *identity,
-                         PyObject *key,
-                         PyObject *value,
-                         Py_hash_t hash)
+_pair_list_add_with_hash_steal_refs(pair_list_t *list,
+                                    PyObject *identity,
+                                    PyObject *key,
+                                    PyObject *value,
+                                    Py_hash_t hash)
 {
     if (pair_list_grow(list) < 0) {
         return -1;
@@ -272,18 +272,28 @@ _pair_list_add_with_hash(pair_list_t *list,
 
     pair_t *pair = list->pairs + list->size;
 
-    pair->identity = Py_NewRef(identity);
-
-    pair->key = Py_NewRef(key);
-
-    pair->value = Py_NewRef(value);
-
+    pair->identity = identity;
+    pair->key = key;
+    pair->value = value;
     pair->hash = hash;
 
     list->version = NEXT_VERSION();
     list->size += 1;
 
     return 0;
+}
+
+static inline int
+_pair_list_add_with_hash(pair_list_t *list,
+                         PyObject *identity,
+                         PyObject *key,
+                         PyObject *value,
+                         Py_hash_t hash)
+{
+    Py_INCREF(identity);
+    Py_INCREF(key);
+    Py_INCREF(value);
+    return _pair_list_add_with_hash_steal_refs(list, identity, key, value, hash);
 }
 
 
@@ -989,7 +999,6 @@ pair_list_update_from_dict(pair_list_t *list, PyObject* used, PyObject *kwds)
 
     while(PyDict_Next(kwds, &pos, &key, &value)) {
         Py_INCREF(key);
-        Py_INCREF(value);
         identity = pair_list_calc_identity(list, key);
         if (identity == NULL) {
             goto fail;
@@ -1009,13 +1018,11 @@ pair_list_update_from_dict(pair_list_t *list, PyObject* used, PyObject *kwds)
         }
         Py_CLEAR(identity);
         Py_CLEAR(key);
-        Py_CLEAR(value);
     }
     return 0;
 fail:
     Py_CLEAR(identity);
     Py_CLEAR(key);
-    Py_CLEAR(value);
     return -1;
 }
 
@@ -1176,28 +1183,30 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
             if (_pair_list_update(list, key, value, used, identity, hash) < 0) {
                 goto fail;
             }
+            Py_CLEAR(identity);
+            Py_CLEAR(key);
+            Py_CLEAR(value);
         } else {
-            if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
+            if (_pair_list_add_with_hash_steal_refs(list, identity,
+                                                    key, value, hash) < 0) {
                 goto fail;
             }
+            identity = NULL;
+            key = NULL;
+            value = NULL;
         }
-
-
-        Py_CLEAR(key);
-        Py_CLEAR(value);
         Py_CLEAR(item);
-        Py_CLEAR(identity);
     }
 
     Py_CLEAR(it);
     return 0;
 
 fail:
-    Py_CLEAR(key);
-    Py_CLEAR(value);
-    Py_CLEAR(item);
     Py_CLEAR(identity);
     Py_CLEAR(it);
+    Py_CLEAR(item);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
     return -1;
 }
 
