@@ -126,7 +126,7 @@ fail:
 }
 
 
-static inline int
+static inline Py_ssize_t
 _multidict_extend_parse_args(PyObject *args, PyObject *kwds,
                              const char *name, PyObject **parg)
 {
@@ -532,9 +532,11 @@ static inline PyObject *
 multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *arg = NULL;
-    if (_multidict_extend_parse_args(args, kwds, "extend", &arg) < 0) {
+    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "extend", &arg);
+    if (size < 0) {
         return NULL;
     }
+    pair_list_grow(&self->pairs, size);
     if (_multidict_extend(self, arg, kwds, "extend", 1) < 0) {
         return NULL;
     }

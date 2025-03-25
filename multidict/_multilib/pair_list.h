@@ -168,26 +168,27 @@ _ci_arg_to_key(PyObject *key, PyObject *ident)
 
 
 static inline int
-pair_list_grow(pair_list_t *list)
+pair_list_grow(pair_list_t *list, Py_ssize_t amount)
 {
     // Grow by one element if needed
-    Py_ssize_t new_capacity;
+    Py_ssize_t capacity = ((Py_ssize_t)((list->size + amount)
+                                        / CAPACITY_STEP) + 1) * CAPACITY_STEP;
+
     pair_t *new_pairs;
 
-    if (list->size < list->capacity) {
+    if (list->size + amount -1 < list->capacity) {
         return 0;
     }
 
     if (list->pairs == list->buffer) {
-        new_pairs = PyMem_New(pair_t, MIN_CAPACITY);
+        new_pairs = PyMem_New(pair_t, (size_t)capacity);
         memcpy(new_pairs, list->buffer, (size_t)list->capacity * sizeof(pair_t));
 
         list->pairs = new_pairs;
-        list->capacity = MIN_CAPACITY;
+        list->capacity = capacity;
         return 0;
     } else {
-        new_capacity = list->capacity + CAPACITY_STEP;
-        new_pairs = PyMem_Resize(list->pairs, pair_t, (size_t)new_capacity);
+        new_pairs = PyMem_Resize(list->pairs, pair_t, (size_t)capacity);
 
         if (NULL == new_pairs) {
             // Resizing error
@@ -195,7 +196,7 @@ pair_list_grow(pair_list_t *list)
         }
 
         list->pairs = new_pairs;
-        list->capacity = new_capacity;
+        list->capacity = capacity;
         return 0;
     }
 }
@@ -330,7 +331,7 @@ _pair_list_add_with_hash_steal_refs(pair_list_t *list,
                                     PyObject *value,
                                     Py_hash_t hash)
 {
-    if (pair_list_grow(list) < 0) {
+    if (pair_list_grow(list, 1) < 0) {
         return -1;
     }
 
