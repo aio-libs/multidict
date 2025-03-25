@@ -1019,6 +1019,82 @@ fail:
     return -1;
 }
 
+static inline void _err_not_sequence(Py_ssize_t i)
+{
+    PyErr_Format(PyExc_TypeError,
+                 "multidict cannot convert sequence element #%zd"
+                 " to a sequence",
+                 i);
+}
+
+static inline void _err_bad_length(Py_ssize_t i, Py_ssize_t n)
+{
+    PyErr_Format(PyExc_ValueError,
+                 "multidict update sequence element #%zd "
+                 "has length %zd; 2 is required",
+                 i, n);
+}
+
+static inline void _err_cannot_fetch(Py_ssize_t i, const char * name)
+{
+    PyErr_Format(PyExc_ValueError,
+                 "multidict update sequence element #%zd's "
+                 "%s could not be fetched", name, i);
+}
+
+
+static int _pair_list_parse_item(Py_ssize_t i, PyObject *item,
+                                 PyObject **pkey, PyObject **pvalue)
+{
+    PyObject *fast = NULL; // item as a 2-tuple or 2-list
+    Py_ssize_t n;
+
+#ifndef Py_GIL_DISABLED
+    fast = PySequence_Fast(item, "");
+    if (fast == NULL) {
+        PyErr_Clear();
+        goto fallback;
+    }
+    n = PySequence_Fast_GET_SIZE(fast);
+    if (n != 2) {
+        _err_bad_length(i, n);
+        goto fail;
+    }
+    *pkey = Py_NewRef(PySequence_Fast_GET_ITEM(fast, 0));
+    *pvalue = Py_NewRef(PySequence_Fast_GET_ITEM(fast, 1));
+    Py_CLEAR(fast);
+    return 0;
+#endif
+fallback:
+    // Convert item to sequence, and verify length 2.
+    if (!PySequence_Check(item)) {
+        _err_not_sequence(i);
+        goto fail;
+    }
+
+    n = PySequence_Size(item);
+    if (n != 2) {
+        _err_bad_length(i, n);
+        goto fail;
+    }
+
+    *pkey = PySequence_ITEM(item, 0);
+    if (*pkey == NULL) {
+        _err_cannot_fetch(i, "key");
+        goto fail;
+    }
+    *pvalue = PySequence_ITEM(item, 1);
+    if (*pvalue == NULL) {
+        _err_cannot_fetch(i, "value");
+        goto fail;
+    }
+    return 0;
+fail:
+    Py_CLEAR(fast);
+    Py_CLEAR(*pkey);
+    Py_CLEAR(*pvalue);
+    return -1;
+}
 
 static inline int
 pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
@@ -1030,7 +1106,6 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
     PyObject *identity = NULL;
 
     Py_ssize_t i;
-    Py_ssize_t n;
 
     PyObject *it = PyObject_GetIter(seq);
     if (it == NULL) {
@@ -1046,36 +1121,7 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
             break;
         }
 
-        // Convert item to sequence, and verify length 2.
-        if (!PySequence_Check(item)) {
-            PyErr_Format(PyExc_TypeError,
-                         "multidict cannot convert sequence element #%zd"
-                         " to a sequence",
-                         i);
-            goto fail;
-        }
-
-        n = PySequence_Size(item);
-        if (n != 2) {
-            PyErr_Format(PyExc_ValueError,
-                         "multidict update sequence element #%zd "
-                         "has length %zd; 2 is required",
-                         i, n);
-            goto fail;
-        }
-
-        key = PySequence_ITEM(item, 0);
-        if (key == NULL) {
-            PyErr_Format(PyExc_ValueError,
-                         "multidict update sequence element #%zd's "
-                         "key could not be fetched", i);
-            goto fail;
-        }
-        value = PySequence_ITEM(item, 1);
-        if (value == NULL) {
-            PyErr_Format(PyExc_ValueError,
-                         "multidict update sequence element #%zd's "
-                         "value could not be fetched", i);
+        if (_pair_list_parse_item(i, item, &key, &value) < 0) {
             goto fail;
         }
 
