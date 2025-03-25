@@ -154,75 +154,44 @@ multidict_copy(MultiDictObject *self)
 {
     MultiDictObject *new_multidict = NULL;
 
-    PyObject *arg_items = NULL,
-             *items     = NULL;
-
     new_multidict = (MultiDictObject*)PyType_GenericNew(
         Py_TYPE(self), NULL, NULL);
     if (new_multidict == NULL) {
-        return NULL;
-    }
-
-    if (Py_TYPE(self)->tp_init(
-        (PyObject*)new_multidict, NULL, NULL) < 0)
-    {
-        return NULL;
-    }
-
-    items = multidict_items(self);
-    if (items == NULL) {
         goto fail;
     }
 
-    // TODO: "Implementation looks as slow as possible ..."
-    arg_items = PyTuple_New(1);
-    if (arg_items == NULL) {
+    if (Py_TYPE(self)->tp_init((PyObject*)new_multidict, NULL, NULL) < 0) {
         goto fail;
     }
 
-    Py_INCREF(items);
-    PyTuple_SET_ITEM(arg_items, 0, items);
-
-    if (_multidict_extend(
-        new_multidict, arg_items, NULL, "copy", 1) < 0)
-    {
+    if (pair_list_update_from_pair_list(&new_multidict->pairs,
+                                        NULL, &self->pairs) < 0) {
         goto fail;
     }
-
-    Py_DECREF(items);
-    Py_DECREF(arg_items);
-
     return (PyObject*)new_multidict;
-
 fail:
-    Py_XDECREF(items);
-    Py_XDECREF(arg_items);
-
-    Py_DECREF(new_multidict);
-
+    Py_CLEAR(new_multidict);
     return NULL;
 }
 
 static inline PyObject *
 _multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
 {
-    PyObject *new_multidict = PyType_GenericNew(type, NULL, NULL);
+    MultiDictObject *new_multidict = NULL;
+    new_multidict = (MultiDictObject*)PyType_GenericNew(type, NULL, NULL);
     if (new_multidict == NULL) {
         goto fail;
     }
-    if (type->tp_init(new_multidict, NULL, NULL) < 0) {
+    if (type->tp_init((PyObject*)new_multidict, NULL, NULL) < 0) {
         goto fail;
     }
-    if (_multidict_extend_impl(
-        (MultiDictObject*)new_multidict, (PyObject*)self, NULL, "copy", 1) < 0)
-    {
+    if (pair_list_update_from_pair_list(&new_multidict->pairs,
+                                        NULL, &self->md->pairs) < 0) {
         goto fail;
     }
-
-    return new_multidict;
-
+    return (PyObject*)new_multidict;
 fail:
-    Py_XDECREF(new_multidict);
+    Py_CLEAR(new_multidict);
     return NULL;
 }
 
