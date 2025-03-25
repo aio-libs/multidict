@@ -449,6 +449,26 @@ def test_create_cimultidict_with_items_istr(
     def _run() -> None:
         case_insensitive_multidict_class(items)
 
+def test_create_multidict_with_dict(
+    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+) -> None:
+    dct = {str(i): str(i) for i in range(100)}
+
+    @benchmark
+    def _run() -> None:
+        any_multidict_class(dct)
+
+
+def test_create_cimultidict_with_dict_istr(
+    benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+) -> None:
+    dct = {istr(i): istr(i) for i in range(100)}
+
+    @benchmark
+    def _run() -> None:
+        case_insensitive_multidict_class(dct)
+
 
 def test_create_multidict_with_items_with_kwargs(
     benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
