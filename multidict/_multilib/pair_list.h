@@ -198,7 +198,7 @@ _pair_list_init(pair_list_t *list, bool calc_ci_identity, Py_ssize_t preallocate
         while (preallocate < capacity) {
             capacity += CAPACITY_STEP;
         }
-        list->pairs = PyMem_New(pair_t, capacity);
+        list->pairs = PyMem_New(pair_t, (size_t)capacity);
     } else {
         list->pairs = list->buffer;
     }
