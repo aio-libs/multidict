@@ -1,5 +1,5 @@
-:meth:`multidict.MultiDict.popitem` and :meth:`multidict.CIMultiDict.popitem`
-are changed to remove the latest entry instead of the fisrt.
+:meth:`multidict.MultiDict.popitem` is changed to remove
+the latest entry instead of the fisrt.
 
 It gives O(1) amortized complexity.
 
