@@ -35,7 +35,7 @@ def test_pickle_proxy(
 def test_pickle_istr(
     case_insensitive_str_class: type[istr], pickle_protocol: int
 ) -> None:
-    s = case_insensitive_str_class('str')
+    s = case_insensitive_str_class("str")
     pbytes = pickle.dumps(s, pickle_protocol)
     obj = pickle.loads(pbytes)
     assert s == obj
