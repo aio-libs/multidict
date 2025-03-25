@@ -1054,51 +1054,47 @@ enum SupportsFast {
 static int _pair_list_parse_item(Py_ssize_t i, PyObject *item,
                                  PyObject **pkey, PyObject **pvalue)
 {
-    PyObject *fast = NULL; // item as a 2-tuple or 2-list
     Py_ssize_t n;
 
-#ifndef Py_GIL_DISABLED
-    fast = PySequence_Fast(item, "");
-    if (fast == NULL) {
-        if (PyErr_ExceptionMatches(PyExc_TypeError)) {
-            _err_not_sequence(i);
+    if (PyList_CheckExact(item)) {
+        n = PyList_GET_SIZE(item);
+        if (n != 2) {
+            _err_bad_length(i, n);
+            goto fail;
         }
-        goto fail;
+        *pkey = Py_NewRef(PyList_GET_ITEM(item, 0));
+        *pvalue = Py_NewRef(PyList_GET_ITEM(item, 1));
+    } else if (PyTuple_CheckExact(item)) {
+        n = PyTuple_GET_SIZE(item);
+        if (n != 2) {
+            _err_bad_length(i, n);
+            goto fail;
+        }
+        *pkey = Py_NewRef(PyTuple_GET_ITEM(item, 0));
+        *pvalue = Py_NewRef(PyTuple_GET_ITEM(item, 1));
+    } else {
+        if (!PySequence_Check(item)) {
+            _err_not_sequence(i);
+            goto fail;
+        }
+        n = PySequence_Size(item);
+        if (n != 2) {
+            _err_bad_length(i, n);
+            goto fail;
+        }
+        *pkey = PySequence_ITEM(item, 0);
+        *pvalue = PySequence_ITEM(item, 1);
     }
-    n = PySequence_Fast_GET_SIZE(fast);
-    if (n != 2) {
-        _err_bad_length(i, n);
-        goto fail;
-    }
-    *pkey = Py_NewRef(PySequence_Fast_GET_ITEM(fast, 0));
-    *pvalue = Py_NewRef(PySequence_Fast_GET_ITEM(fast, 1));
-    Py_CLEAR(fast);
-    return 0;
-#endif
-    if (!PySequence_Check(item)) {
-        _err_not_sequence(i);
-        goto fail;
-    }
-
-    n = PySequence_Size(item);
-    if (n != 2) {
-        _err_bad_length(i, n);
-        goto fail;
-    }
-
-    *pkey = PySequence_ITEM(item, 0);
     if (*pkey == NULL) {
         _err_cannot_fetch(i, "key");
         goto fail;
     }
-    *pvalue = PySequence_ITEM(item, 1);
     if (*pvalue == NULL) {
         _err_cannot_fetch(i, "value");
         goto fail;
     }
     return 0;
 fail:
-    Py_CLEAR(fast);
     Py_CLEAR(*pkey);
     Py_CLEAR(*pvalue);
     return -1;
