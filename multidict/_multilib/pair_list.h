@@ -1043,6 +1043,14 @@ static inline void _err_cannot_fetch(Py_ssize_t i, const char * name)
 }
 
 
+enum SupportsFast {
+    LIST,
+    TUPLE,
+    ITER
+};
+
+
+
 static int _pair_list_parse_item(Py_ssize_t i, PyObject *item,
                                  PyObject **pkey, PyObject **pvalue)
 {
@@ -1052,8 +1060,10 @@ static int _pair_list_parse_item(Py_ssize_t i, PyObject *item,
 #ifndef Py_GIL_DISABLED
     fast = PySequence_Fast(item, "");
     if (fast == NULL) {
-        PyErr_Clear();
-        goto fallback;
+        if (PyErr_ExceptionMatches(PyExc_TypeError)) {
+            _err_not_sequence(i);
+        }
+        goto fail;
     }
     n = PySequence_Fast_GET_SIZE(fast);
     if (n != 2) {
@@ -1065,7 +1075,6 @@ static int _pair_list_parse_item(Py_ssize_t i, PyObject *item,
     Py_CLEAR(fast);
     return 0;
 #endif
-fallback:
     // Convert item to sequence, and verify length 2.
     if (!PySequence_Check(item)) {
         _err_not_sequence(i);
@@ -1099,6 +1108,7 @@ fail:
 static inline int
 pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
 {
+    PyObject *it = NULL;
     PyObject *item = NULL; // seq[i]
 
     PyObject *key = NULL;
@@ -1106,19 +1116,49 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
     PyObject *identity = NULL;
 
     Py_ssize_t i;
+    Py_ssize_t size = -1;
 
-    PyObject *it = PyObject_GetIter(seq);
-    if (it == NULL) {
-        return -1;
+    enum SupportsFast kind;
+
+    if (PyList_CheckExact(seq)) {
+        kind = LIST;
+        size = PyList_Size(seq);
+    } else if (PyTuple_CheckExact(seq)) {
+        kind = TUPLE;
+        size = PyTuple_Size(seq);
+    } else {
+        kind = ITER;
+        it = PyObject_GetIter(seq);
+        if (it == NULL) {
+            goto fail;
+        }
     }
 
     for (i = 0; ; ++i) { // i - index into seq of current element
-        item = PyIter_Next(it);
-        if (item == NULL) {
-            if (PyErr_Occurred()) {
+        if (kind == LIST) {
+            if (i >= size) {
+                break;
+            }
+            item = PyList_GetItemRef(seq, i);
+            if (item == NULL) {
                 goto fail;
             }
-            break;
+        } else if (kind == TUPLE) {
+            if (i >= size) {
+                break;
+            }
+            item = Py_XNewRef(PyTuple_GetItem(seq, i));
+            if (item == NULL) {
+                goto fail;
+            }
+        } else {
+            item = PyIter_Next(it);
+            if (item == NULL) {
+                if (PyErr_Occurred()) {
+                    goto fail;
+                }
+                break;
+            }
         }
 
         if (_pair_list_parse_item(i, item, &key, &value) < 0) {
