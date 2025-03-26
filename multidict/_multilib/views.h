@@ -290,7 +290,7 @@ multidict_itemsview_repr(_Multidict_ViewObject *self)
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = _do_multidict_repr(self->md, name, true, true);
+    PyObject *ret = pair_list_repr(&self->md->pairs, name, true, true);
     Py_CLEAR(name);
     return ret;
 }
@@ -405,7 +405,7 @@ multidict_keysview_repr(_Multidict_ViewObject *self)
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = _do_multidict_repr(self->md, name, true, false);
+    PyObject *ret = pair_list_repr(&self->md->pairs, name, true, false);
     Py_CLEAR(name);
     return ret;
 }
@@ -469,7 +469,7 @@ multidict_valuesview_repr(_Multidict_ViewObject *self)
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = _do_multidict_repr(self->md, name, false, true);
+    PyObject *ret = pair_list_repr(&self->md->pairs, name, false, true);
     Py_CLEAR(name);
     return ret;
 }

@@ -18,11 +18,6 @@ typedef struct {
 } MultiDictProxyObject;
 
 
-static inline PyObject *
-_do_multidict_repr(MultiDictObject *md, PyObject *name,
-                   bool show_keys, bool show_values);
-
-
 #ifdef __cplusplus
 }
 #endif

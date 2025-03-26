@@ -18,7 +18,6 @@ from multidict import (
     MultiDictProxy,
     MultiMapping,
     MutableMultiMapping,
-    istr,
 )
 
 
@@ -292,7 +291,7 @@ class BaseMultiDictTest:
         self,
         cls: type[MutableMultiMapping[str]],
     ) -> None:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError, match="multidict update sequence element"):
             cls([(1, 2, 3)])  # type: ignore[call-arg]
 
     def test_keys_is_set_less(self, cls: type[MultiDict[str]]) -> None:
@@ -794,6 +793,14 @@ class TestCIMultiDict(BaseMultiDictTest):
         with pytest.raises(KeyError, match="key2"):
             d.getone("key2")
 
+    def test_from_md_and_kwds(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "value1")])
+        d2 = cls(d, KEY="value2")
+
+        print(type(d))
+
+        assert list(d2.items()) == [("KEY", "value1"), ("KEY", "value2")]
+
     def test_getall(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "value1")], KEY="value2")
 
@@ -844,3 +851,18 @@ class TestCIMultiDict(BaseMultiDictTest):
     ) -> None:
         d = cls([("KEY", "one"),])
         assert not d.keys().isdisjoint({"key"})
+
+    def test_items_iter_of_iter(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "value1")], key="value2")
+        it = iter(d.items())
+        assert iter(it) is it
+
+    def test_keys_iter_of_iter(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "value1")], key="value2")
+        it = iter(d.keys())
+        assert iter(it) is it
+
+    def test_values_iter_of_iter(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "value1")], key="value2")
+        it = iter(d.values())
+        assert iter(it) is it
