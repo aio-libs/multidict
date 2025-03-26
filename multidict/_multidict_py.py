@@ -29,11 +29,6 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
-if sys.version_info >= (3, 10):
-    from types import NotImplementedType
-else:
-    from typing import Any as NotImplementedType
-
 
 class istr(str):
     """Case insensitive str."""
@@ -43,6 +38,7 @@ class istr(str):
 
 
 _V = TypeVar("_V")
+_V_co = TypeVar("_V_co", covariant=True)
 _T = TypeVar("_T")
 
 _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
@@ -183,20 +179,24 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
-    def __and__(self, other: Iterable[str]) -> Union[set[str], NotImplementedType]:
+    def __and__(self, other: Iterable[str]) -> set[str]:
         ret = set()
         try:
             it = iter(other)
         except TypeError:
             return NotImplemented
         for key in it:
-            identity = self._keyfunc(key)
+            if not isinstance(key, str):
+                continue  # type: ignore[unreachable]
+            identity = self._identfunc(key)
             for i, k, v in self._impl._items:
                 if i == identity:
-                    ret.add(key)
+                    ret.add(k)
         return ret
 
-    def __or__(self, other: Iterable[_T]) -> Union[set[Union[str, _T]], NotImplementedType]:
+    __rand__ = __and__  # type: ignore[assignment]
+
+    def __or__(self, other: Iterable[_T]) -> set[Union[str, _T]]:
         ret: set[Union[str, _T]] = set(self)
         try:
             it = iter(other)
@@ -206,14 +206,76 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 ret.add(key)
                 continue
-            identity = self._keyfunc(key)
+            identity = self._identfunc(key)
             for i, k, v in self._impl._items:
                 if i == identity:
-                    # breakpoint()
                     break
             else:
                 ret.add(key)
         return ret
+
+    __ror__ = __or__
+
+    def __sub__(self, other: Iterable[str]) -> set[str]:
+        ret = set(self)
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+        for key in it:
+            if not isinstance(key, str):
+                continue  # type: ignore[unreachable]
+            identity = self._identfunc(key)
+            for i, k, v in self._impl._items:
+                if i == identity:
+                    ret.discard(k)
+                    break
+        return ret
+
+    def __rsub__(self, other: Iterable[_T]) -> set[_T]:
+        try:
+            ret: set[_T] = set(other)
+        except TypeError:
+            return NotImplemented
+        for key in other:
+            if not isinstance(key, str):
+                continue
+            identity = self._identfunc(key)
+            for i, k, v in self._impl._items:
+                if i == identity:
+                    ret.discard(key)  # type: ignore[arg-type]
+                    break
+        return ret
+
+    def __xor__(self, other: Iterable[_T]) -> set[Union[str, _T]]:
+        ret: set[Union[str, _T]] = set(self)
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+        for key in it:
+            if not isinstance(key, str):
+                continue
+            identity = self._identfunc(key)
+            for i, k, v in self._impl._items:
+                if i == identity:
+                    ret.discard(k)
+                    break
+            else:
+                ret.add(key)
+        return ret
+
+    __rxor__ = __xor__
+
+    def isdisjoint(self, other: Iterable[str]) -> bool:
+        for key in other:
+            if not isinstance(key, str):
+                continue  # type: ignore[unreachable]
+            identity = self._identfunc(key)
+            for i, k, v in self._impl._items:
+                if i == identity:
+                    return False
+        return True
 
 
 class _CSMixin:
