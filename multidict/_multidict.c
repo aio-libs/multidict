@@ -126,7 +126,7 @@ fail:
 }
 
 
-static inline int
+static inline Py_ssize_t
 _multidict_extend_parse_args(PyObject *args, PyObject *kwds,
                              const char *name, PyObject **parg)
 {
@@ -345,84 +345,12 @@ ret:
 }
 
 static inline PyObject *
-_do_multidict_repr(MultiDictObject *md, PyObject *name,
-                   bool show_keys, bool show_values)
-{
-    PyObject *key = NULL,
-             *value = NULL;
-    bool comma = false;
-
-    PyUnicodeWriter *writer = PyUnicodeWriter_Create(1024);
-    if (writer == NULL)
-        return NULL;
-
-    if (PyUnicodeWriter_WriteChar(writer, '<') <0)
-        goto fail;
-    if (PyUnicodeWriter_WriteStr(writer, name) <0)
-        goto fail;
-    if (PyUnicodeWriter_WriteChar(writer, '(') <0)
-        goto fail;
-
-    pair_list_pos_t pos;
-    pair_list_init_pos(&md->pairs, &pos);
-
-    for (;;) {
-        int res = pair_list_next(&md->pairs, &pos, &key, &value);
-        if (res < 0) {
-            goto fail;
-        }
-        if (res == 0) {
-            break;
-        }
-
-        if (comma) {
-            if (PyUnicodeWriter_WriteChar(writer, ',') <0)
-                goto fail;
-            if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
-                goto fail;
-        }
-        if (show_keys) {
-            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
-                goto fail;
-            if (PyUnicodeWriter_WriteStr(writer, key) <0)
-                goto fail;
-            if (PyUnicodeWriter_WriteChar(writer, '\'') <0)
-                goto fail;
-        }
-        if (show_keys && show_values) {
-            if (PyUnicodeWriter_WriteChar(writer, ':') <0)
-                goto fail;
-            if (PyUnicodeWriter_WriteChar(writer, ' ') <0)
-                goto fail;
-        }
-        if (show_values) {
-            if (PyUnicodeWriter_WriteRepr(writer, value) <0)
-                goto fail;
-        }
-
-        Py_CLEAR(key);
-        Py_CLEAR(value);
-        comma = true;
-    }
-
-    if (PyUnicodeWriter_WriteChar(writer, ')') <0)
-        goto fail;
-    if (PyUnicodeWriter_WriteChar(writer, '>') <0)
-        goto fail;
-    return PyUnicodeWriter_Finish(writer);
-fail:
-    Py_CLEAR(key);
-    Py_CLEAR(value);
-    PyUnicodeWriter_Discard(writer);
-}
-
-static inline PyObject *
 multidict_repr(MultiDictObject *self)
 {
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = _do_multidict_repr(self, name, true, true);
+    PyObject *ret = pair_list_repr(&self->pairs, name, true, true);
     Py_CLEAR(name);
     return ret;
 }
@@ -604,9 +532,11 @@ static inline PyObject *
 multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *arg = NULL;
-    if (_multidict_extend_parse_args(args, kwds, "extend", &arg) < 0) {
+    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "extend", &arg);
+    if (size < 0) {
         return NULL;
     }
+    pair_list_grow(&self->pairs, size);
     if (_multidict_extend(self, arg, kwds, "extend", 1) < 0) {
         return NULL;
     }
@@ -1200,7 +1130,7 @@ multidict_proxy_repr(MultiDictProxyObject *self)
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = _do_multidict_repr(self->md, name, true, true);
+    PyObject *ret = pair_list_repr(&self->md->pairs, name, true, true);
     Py_CLEAR(name);
     return ret;
 }
@@ -1412,6 +1342,7 @@ static inline void
 module_free(void *m)
 {
     Py_CLEAR(multidict_str_lower);
+    Py_CLEAR(multidict_str_canonical);
     Py_CLEAR(viewbaseset_and_func);
     Py_CLEAR(viewbaseset_or_func);
     Py_CLEAR(viewbaseset_sub_func);
@@ -1436,6 +1367,10 @@ PyInit__multidict(void)
 {
     multidict_str_lower = PyUnicode_InternFromString("lower");
     if (multidict_str_lower == NULL) {
+        goto fail;
+    }
+    multidict_str_canonical = PyUnicode_InternFromString("_canonical");
+    if (multidict_str_canonical == NULL) {
         goto fail;
     }
 
@@ -1531,6 +1466,7 @@ PyInit__multidict(void)
 
 fail:
     Py_XDECREF(multidict_str_lower);
+    Py_XDECREF(multidict_str_canonical);
 
     return NULL;
 }

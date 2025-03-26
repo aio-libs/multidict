@@ -28,8 +28,16 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     static char *kwlist[] = {"object", "encoding", "errors", 0};
     PyObject *encoding = NULL;
     PyObject *errors = NULL;
-    PyObject *s = NULL;
+    PyObject *canonical = NULL;
     PyObject * ret = NULL;
+    if (kwds != NULL) {
+        int cmp = PyDict_Pop(kwds, multidict_str_canonical, &canonical);
+        if (cmp < 0) {
+            return NULL;
+        } else if (cmp > 0) {
+            Py_INCREF(canonical);
+        }
+    }
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OOO:str",
                                      kwlist, &x, &encoding, &errors)) {
@@ -43,12 +51,22 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (!ret) {
         goto fail;
     }
-    s = PyObject_CallMethodNoArgs(ret, multidict_str_lower);
-    if (!s) {
-        goto fail;
+
+    if (canonical == NULL) {
+        canonical = PyObject_CallMethodNoArgs(ret, multidict_str_lower);
+        if (!canonical) {
+            goto fail;
+        }
     }
-    ((istrobject*)ret)->canonical = s;
-    s = NULL;  /* the reference is stollen by .canonical */
+    if (!PyUnicode_CheckExact(canonical)) {
+        PyObject *tmp = PyUnicode_FromObject(canonical);
+        Py_CLEAR(canonical);
+        if (tmp == NULL) {
+            goto fail;
+        }
+        canonical = tmp;
+    }
+    ((istrobject*)ret)->canonical = canonical;
     return ret;
 fail:
     Py_XDECREF(ret);
@@ -98,6 +116,40 @@ static PyTypeObject istr_type = {
     .tp_new = (newfunc)istr_new,
 };
 
+
+static inline PyObject *
+IStr_New(PyObject *str, PyObject *canonical)
+{
+    PyObject *args = NULL;
+    PyObject *kwds = NULL;
+    PyObject *res = NULL;
+
+    args = PyTuple_Pack(1, str);
+    if (args == NULL) {
+        goto ret;
+    }
+
+    if (canonical != NULL) {
+        kwds = PyDict_New();
+        if (kwds == NULL) {
+            goto ret;
+        }
+        if (!PyUnicode_CheckExact(canonical)) {
+            PyErr_SetString(PyExc_TypeError,
+                            "'canonical' argument should be exactly str");
+            goto ret;
+        }
+        if (PyDict_SetItem(kwds, multidict_str_canonical, canonical) < 0) {
+            goto ret;
+        }
+    }
+
+    res = istr_new(&istr_type, args, kwds);
+ret:
+    Py_CLEAR(args);
+    Py_CLEAR(kwds);
+    return res;
+}
 
 static inline int
 istr_init(void)

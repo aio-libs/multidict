@@ -835,3 +835,18 @@ class TestCIMultiDict(BaseMultiDictTest):
     def test_values__repr__(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "value1")], key="value2")
         assert repr(d.values()) == "<_ValuesView('value1', 'value2')>"
+
+    def test_items_iter_of_iter(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "value1")], key="value2")
+        it = iter(d.items())
+        assert iter(it) is it
+
+    def test_keys_iter_of_iter(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "value1")], key="value2")
+        it = iter(d.keys())
+        assert iter(it) is it
+
+    def test_values_iter_of_iter(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "value1")], key="value2")
+        it = iter(d.values())
+        assert iter(it) is it
