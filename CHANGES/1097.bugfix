@@ -1,4 +1,4 @@
-Rewritten :class:`multidict.CIMultiDict` and it proxy to always return
+Rewrote :class:`multidict.CIMultiDict` and it proxy to always return
 :class:`multidict.istr` keys. ``istr`` is derived from :class:`str`,
 thus the change is backward compatible.
 
