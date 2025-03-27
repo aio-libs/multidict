@@ -311,7 +311,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
-    def __and__(self, other: Iterable[str]) -> set[str]:
+    def __and__(self, other: Iterable[object]) -> set[str]:
         ret = set()
         try:
             it = iter(other)
@@ -319,7 +319,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             return NotImplemented
         for key in it:
             if not isinstance(key, str):
-                continue  # type: ignore[unreachable]
+                continue
             identity = self._identfunc(key)
             for i, k, v in self._impl._items:
                 if i == identity:
@@ -348,7 +348,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 
     __ror__ = __or__
 
-    def __sub__(self, other: Iterable[str]) -> set[str]:
+    def __sub__(self, other: Iterable[object]) -> set[str]:
         ret = set(self)
         try:
             it = iter(other)
@@ -356,7 +356,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             return NotImplemented
         for key in it:
             if not isinstance(key, str):
-                continue  # type: ignore[unreachable]
+                continue
             identity = self._identfunc(key)
             for i, k, v in self._impl._items:
                 if i == identity:
@@ -400,10 +400,10 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 
     __rxor__ = __xor__
 
-    def isdisjoint(self, other: Iterable[str]) -> bool:
+    def isdisjoint(self, other: Iterable[object]) -> bool:
         for key in other:
             if not isinstance(key, str):
-                continue  # type: ignore[unreachable]
+                continue
             identity = self._identfunc(key)
             for i, k, v in self._impl._items:
                 if i == identity:
