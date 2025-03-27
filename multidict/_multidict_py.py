@@ -128,7 +128,9 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
-    def _parse_item(self, arg: Union[tuple[str, _V], _T]) -> Optional[tuple[str, str, _V]]:
+    def _parse_item(
+        self, arg: Union[tuple[str, _V], _T]
+    ) -> Optional[tuple[str, str, _V]]:
         if not isinstance(arg, tuple):
             return None
         if len(arg) != 2:
@@ -201,13 +203,15 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         return ret
 
     def __rsub__(self, other: Iterable[_T]) -> set[_T]:
+        ret: set[_T] = set()
         try:
-            ret: set[_T] = set()
+            it = iter(other)
         except TypeError:
             return NotImplemented
-        for arg in other:
+        for arg in it:
             item = self._parse_item(arg)
             if item is None:
+                ret.add(arg)
                 continue
 
             identity, key, value = item
@@ -225,15 +229,12 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         except TypeError:
             return NotImplemented
 
-        invalid = set()
         tmp = set()
         for arg in it:
             item = self._parse_item(arg)
-            if item is None:
-                invalid.add(arg)
-            else:
+            ret.add(arg)
+            if item is not None:
                 tmp.add(item)
-                ret.add(arg)
 
         for i, k, v in self._impl._items:
             for i2, k2, v2 in tmp:
@@ -386,6 +387,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             return NotImplemented
         for key in it:
             if not isinstance(key, str):
+                ret.add(key)
                 continue
             identity = self._identfunc(key)
             for i, k, v in self._impl._items:
@@ -618,12 +620,7 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
 
             method(items)
         else:
-            method(
-                [
-                    (self._title(key), key, value)
-                    for key, value in kwargs.items()
-                ]
-            )
+            method([(self._title(key), key, value) for key, value in kwargs.items()])
 
     def _extend_items(self, items: Iterable[tuple[str, str, _V]]) -> None:
         for identity, key, value in items:
