@@ -9,12 +9,6 @@ static PyTypeObject multidict_itemsview_type;
 static PyTypeObject multidict_valuesview_type;
 static PyTypeObject multidict_keysview_type;
 
-static PyObject *viewbaseset_and_func;
-static PyObject *viewbaseset_or_func;
-static PyObject *viewbaseset_sub_func;
-static PyObject *viewbaseset_xor_func;
-
-
 typedef struct {
     PyObject_HEAD
     MultiDictObject *md;
@@ -146,78 +140,6 @@ fail:
     return NULL;
 }
 
-static inline PyObject *
-multidict_view_and(PyObject *self, PyObject *other)
-{
-    return PyObject_CallFunctionObjArgs(
-        viewbaseset_and_func, self, other, NULL);
-}
-
-static inline PyObject *
-multidict_view_or(PyObject *self, PyObject *other)
-{
-    return PyObject_CallFunctionObjArgs(
-        viewbaseset_or_func, self, other, NULL);
-}
-
-static inline PyObject *
-multidict_view_sub(PyObject *self, PyObject *other)
-{
-    return PyObject_CallFunctionObjArgs(
-        viewbaseset_sub_func, self, other, NULL);
-}
-
-static inline PyObject *
-multidict_view_xor(PyObject *self, PyObject *other)
-{
-    return PyObject_CallFunctionObjArgs(
-        viewbaseset_xor_func, self, other, NULL);
-}
-
-static PyNumberMethods multidict_view_as_number = {
-    .nb_subtract = (binaryfunc)multidict_view_sub,
-    .nb_and = (binaryfunc)multidict_view_and,
-    .nb_xor = (binaryfunc)multidict_view_xor,
-    .nb_or = (binaryfunc)multidict_view_or,
-};
-
-
-static inline PyObject *
-multidict_view_isdisjoint(PyObject *self, PyObject *other)
-{
-    PyObject *iter = PyObject_GetIter(other);
-    if (iter == NULL) {
-        return NULL;
-    }
-    PyObject *next = NULL;
-    while ((next = PyIter_Next(iter))) {
-        int tmp = PySequence_Contains(self, next);
-        Py_CLEAR(next);
-        if (tmp < 0) {
-            Py_CLEAR(iter);
-            return NULL;
-        }
-        if (tmp > 0) {
-            Py_CLEAR(iter);
-            Py_RETURN_FALSE;
-        }
-    }
-    if (PyErr_Occurred()) {
-        Py_CLEAR(iter);
-        return NULL;
-    }
-    Py_RETURN_TRUE;
-}
-
-PyDoc_STRVAR(view_isdisjoint_doc,
-             "Return True if two sets have a null intersection.");
-
-
-static PyMethodDef multidict_view_methods[] = {
-    {"isdisjoint", multidict_view_isdisjoint, METH_O, view_isdisjoint_doc},
-    {NULL, NULL}   /* sentinel */
-};
-
 
 /********** Items **********/
 
@@ -252,6 +174,337 @@ multidict_itemsview_repr(_Multidict_ViewObject *self)
     Py_CLEAR(name);
     return ret;
 }
+
+static inline PyObject *
+multidict_itemsview_and(_Multidict_ViewObject *self, PyObject *other)
+{
+    int tmp = PyObject_IsInstance((PyObject *)self,
+                                  (PyObject *)&multidict_itemsview_type);
+    if (tmp < 0) {
+        goto fail;
+    }
+    if (tmp == 0) {
+        tmp = PyObject_IsInstance(other, (PyObject *)&multidict_itemsview_type);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            Py_RETURN_NOTIMPLEMENTED;
+        }
+        return multidict_itemsview_and((_Multidict_ViewObject *)other,
+                                      (PyObject *)self);
+    }
+
+    PyObject *key = NULL;
+    PyObject *key2 = NULL;
+    PyObject *ret = NULL;
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        PyErr_Clear();
+        Py_RETURN_NOTIMPLEMENTED;
+    }
+    ret = PySet_New(NULL);
+    if (ret == NULL) {
+        goto fail;
+    }
+    while ((key = PyIter_Next(iter))) {
+        tmp = PyObject_IsInstance(key, (PyObject *)&PyUnicode_Type);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            Py_CLEAR(key);
+            continue;
+        }
+        tmp = pair_list_contains(&self->md->pairs, key, &key2);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp > 0) {
+            if (PySet_Add(ret, key2) < 0) {
+                goto fail;
+            }
+        }
+        Py_CLEAR(key);
+        Py_CLEAR(key2);
+    }
+    if (PyErr_Occurred()) {
+        goto fail;
+    }
+    Py_CLEAR(iter);
+    return ret;
+fail:
+    Py_CLEAR(key);
+    Py_CLEAR(key2);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
+    return NULL;
+}
+
+static inline PyObject *
+multidict_itemsview_or(_Multidict_ViewObject *self, PyObject *other)
+{
+    int tmp = PyObject_IsInstance((PyObject *)self,
+                                  (PyObject *)&multidict_itemsview_type);
+    if (tmp < 0) {
+        goto fail;
+    }
+    if (tmp == 0) {
+        tmp = PyObject_IsInstance(other, (PyObject *)&multidict_itemsview_type);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            Py_RETURN_NOTIMPLEMENTED;
+        }
+        return multidict_itemsview_or((_Multidict_ViewObject *)other,
+                                      (PyObject *)self);
+    }
+
+    PyObject *key = NULL;
+    PyObject *ret = NULL;
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        PyErr_Clear();
+        Py_RETURN_NOTIMPLEMENTED;
+    }
+    ret = PySet_New((PyObject *)self);
+    if (ret == NULL) {
+        goto fail;
+    }
+    while ((key = PyIter_Next(iter))) {
+        tmp = PyObject_IsInstance(key, (PyObject *)&PyUnicode_Type);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            if (PySet_Add(ret, key) < 0) {
+                goto fail;
+            }
+            Py_CLEAR(key);
+            continue;
+        }
+        tmp = pair_list_contains(&self->md->pairs, key, NULL);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            if (PySet_Add(ret, key) < 0) {
+                goto fail;
+            }
+        }
+        Py_CLEAR(key);
+    }
+    if (PyErr_Occurred()) {
+        goto fail;
+    }
+    Py_CLEAR(iter);
+    return ret;
+fail:
+    Py_CLEAR(key);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
+    return NULL;
+}
+
+
+static inline PyObject *
+multidict_itemsview_sub1(_Multidict_ViewObject *self, PyObject *other)
+{
+    int tmp;
+    PyObject *key = NULL;
+    PyObject *key2 = NULL;
+    PyObject *ret = NULL;
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        PyErr_Clear();
+        Py_RETURN_NOTIMPLEMENTED;
+    }
+    ret = PySet_New((PyObject *)self);
+    if (ret == NULL) {
+        goto fail;
+    }
+    while ((key = PyIter_Next(iter))) {
+        tmp = PyObject_IsInstance(key, (PyObject *)&PyUnicode_Type);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            Py_CLEAR(key);
+            continue;
+        }
+        tmp = pair_list_contains(&self->md->pairs, key, &key2);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp > 0) {
+            if (PySet_Discard(ret, key2) < 0) {
+                goto fail;
+            }
+        }
+        Py_CLEAR(key);
+        Py_CLEAR(key2);
+    }
+    if (PyErr_Occurred()) {
+        goto fail;
+    }
+    Py_CLEAR(iter);
+    return ret;
+fail:
+    Py_CLEAR(key);
+    Py_CLEAR(key2);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
+    return NULL;
+}
+
+static inline PyObject *
+multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
+{
+    int tmp;
+    PyObject *key = NULL;
+    PyObject *ret = NULL;
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        PyErr_Clear();
+        Py_RETURN_NOTIMPLEMENTED;
+    }
+    ret = PySet_New(other);
+    if (ret == NULL) {
+        goto fail;
+    }
+    while ((key = PyIter_Next(iter))) {
+        tmp = PyObject_IsInstance(key, (PyObject *)&PyUnicode_Type);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            Py_CLEAR(key);
+            continue;
+        }
+        tmp = pair_list_contains(&self->md->pairs, key, NULL);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp > 0) {
+            if (PySet_Discard(ret, key) < 0) {
+                goto fail;
+            }
+        }
+        Py_CLEAR(key);
+    }
+    if (PyErr_Occurred()) {
+        goto fail;
+    }
+    Py_CLEAR(iter);
+    return ret;
+fail:
+    Py_CLEAR(key);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
+    return NULL;
+}
+
+static inline PyObject *
+multidict_itemsview_sub(PyObject *lft, PyObject *rht)
+{
+    int tmp = PyObject_IsInstance(lft, (PyObject *)&multidict_itemsview_type);
+    if (tmp < 0) {
+        return NULL;
+    }
+    if (tmp > 0) {
+        return multidict_itemsview_sub1((_Multidict_ViewObject *)lft, rht);
+    } else {
+        tmp = PyObject_IsInstance(rht, (PyObject *)&multidict_itemsview_type);
+        if (tmp < 0) {
+            return NULL;
+        }
+        if (tmp == 0) {
+            Py_RETURN_NOTIMPLEMENTED;
+        }
+        return multidict_itemsview_sub2((_Multidict_ViewObject *)rht, lft);
+    }
+}
+
+static inline PyObject *
+multidict_itemsview_xor(_Multidict_ViewObject *self, PyObject *other)
+{
+    int tmp = PyObject_IsInstance((PyObject *)self,
+                                  (PyObject *)&multidict_itemsview_type);
+    if (tmp < 0) {
+        goto fail;
+    }
+    if (tmp == 0) {
+        tmp = PyObject_IsInstance(other, (PyObject *)&multidict_itemsview_type);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            Py_RETURN_NOTIMPLEMENTED;
+        }
+        return multidict_itemsview_xor((_Multidict_ViewObject *)other,
+                                      (PyObject *)self);
+    }
+
+    PyObject *key = NULL;
+    PyObject *key2 = NULL;
+    PyObject *ret = NULL;
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        PyErr_Clear();
+        Py_RETURN_NOTIMPLEMENTED;
+    }
+    ret = PySet_New((PyObject *)self);
+    if (ret == NULL) {
+        goto fail;
+    }
+    while ((key = PyIter_Next(iter))) {
+        tmp = PyObject_IsInstance(key, (PyObject *)&PyUnicode_Type);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            if (PySet_Add(ret, key) < 0) {
+                goto fail;
+            }
+            Py_CLEAR(key);
+            continue;
+        }
+        tmp = pair_list_contains(&self->md->pairs, key, &key2);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp > 0) {
+            if (PySet_Discard(ret, key2) < 0) {
+                goto fail;
+            }
+        } else {
+            if (PySet_Add(ret, key) < 0) {
+                goto fail;
+            }
+        }
+        Py_CLEAR(key);
+        Py_CLEAR(key2);
+    }
+    if (PyErr_Occurred()) {
+        goto fail;
+    }
+    Py_CLEAR(iter);
+    return ret;
+fail:
+    Py_CLEAR(key);
+    Py_CLEAR(key2);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
+    return NULL;
+}
+
+static PyNumberMethods multidict_itemsview_as_number = {
+    .nb_subtract = (binaryfunc)multidict_itemsview_sub,
+    .nb_and = (binaryfunc)multidict_itemsview_and,
+    .nb_xor = (binaryfunc)multidict_itemsview_xor,
+    .nb_or = (binaryfunc)multidict_itemsview_or,
+};
 
 static inline int
 multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
@@ -316,13 +569,50 @@ static PySequenceMethods multidict_itemsview_as_sequence = {
     .sq_contains = (objobjproc)multidict_itemsview_contains,
 };
 
+static inline PyObject *
+multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
+{
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        return NULL;
+    }
+    PyObject *key = NULL;
+    while ((key = PyIter_Next(iter))) {
+        int tmp = pair_list_contains(&self->md->pairs, key, NULL);
+        Py_CLEAR(key);
+        if (tmp < 0) {
+            Py_CLEAR(iter);
+            return NULL;
+        }
+        if (tmp > 0) {
+            Py_CLEAR(iter);
+            Py_RETURN_FALSE;
+        }
+    }
+    if (PyErr_Occurred()) {
+        Py_CLEAR(iter);
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+PyDoc_STRVAR(itemsview_isdisjoint_doc,
+             "Return True if two sets have a null intersection.");
+
+
+static PyMethodDef multidict_itemsview_methods[] = {
+    {"isdisjoint", (PyCFunction)multidict_itemsview_isdisjoint,
+     METH_O, itemsview_isdisjoint_doc},
+    {NULL, NULL}   /* sentinel */
+};
+
 static PyTypeObject multidict_itemsview_type = {
     PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
     "multidict._multidict._ItemsView",              /* tp_name */
     sizeof(_Multidict_ViewObject),                  /* tp_basicsize */
     .tp_dealloc = (destructor)multidict_view_dealloc,
     .tp_repr = (reprfunc)multidict_itemsview_repr,
-    .tp_as_number = &multidict_view_as_number,
+    .tp_as_number = &multidict_itemsview_as_number,
     .tp_as_sequence = &multidict_itemsview_as_sequence,
     .tp_getattro = PyObject_GenericGetAttr,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,
@@ -330,7 +620,7 @@ static PyTypeObject multidict_itemsview_type = {
     .tp_clear = (inquiry)multidict_view_clear,
     .tp_richcompare = multidict_view_richcompare,
     .tp_iter = (getiterfunc)multidict_itemsview_iter,
-    .tp_methods = multidict_view_methods,
+    .tp_methods = multidict_itemsview_methods,
 };
 
 
@@ -367,7 +657,6 @@ multidict_keysview_repr(_Multidict_ViewObject *self)
     Py_CLEAR(name);
     return ret;
 }
-
 
 static inline PyObject *
 multidict_keysview_and(_Multidict_ViewObject *self, PyObject *other)
@@ -822,24 +1111,6 @@ static PyTypeObject multidict_valuesview_type = {
 static inline int
 multidict_views_init(void)
 {
-    PyObject *module = PyImport_ImportModule("multidict._multidict_base");
-    if (module == NULL) {
-        goto fail;
-    }
-
-#define GET_MOD_ATTR(VAR, NAME)                 \
-    VAR = PyObject_GetAttrString(module, NAME); \
-    if (VAR == NULL) {                          \
-        goto fail;                              \
-    }
-
-    GET_MOD_ATTR(viewbaseset_and_func, "_viewbaseset_and");
-    GET_MOD_ATTR(viewbaseset_or_func, "_viewbaseset_or");
-    GET_MOD_ATTR(viewbaseset_sub_func, "_viewbaseset_sub");
-    GET_MOD_ATTR(viewbaseset_xor_func, "_viewbaseset_xor");
-
-    Py_CLEAR(module);
-
     if (PyType_Ready(&multidict_itemsview_type) < 0 ||
         PyType_Ready(&multidict_valuesview_type) < 0 ||
         PyType_Ready(&multidict_keysview_type) < 0)
@@ -849,10 +1120,7 @@ multidict_views_init(void)
 
     return 0;
 fail:
-    Py_CLEAR(module);
     return -1;
-
-#undef GET_MOD_ATTR
 }
 
 #ifdef __cplusplus

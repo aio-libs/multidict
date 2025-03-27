@@ -1343,10 +1343,6 @@ module_free(void *m)
 {
     Py_CLEAR(multidict_str_lower);
     Py_CLEAR(multidict_str_canonical);
-    Py_CLEAR(viewbaseset_and_func);
-    Py_CLEAR(viewbaseset_or_func);
-    Py_CLEAR(viewbaseset_sub_func);
-    Py_CLEAR(viewbaseset_xor_func);
 }
 
 static PyMethodDef multidict_module_methods[] = {
