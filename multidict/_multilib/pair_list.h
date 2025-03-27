@@ -541,7 +541,7 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
 
 
 static inline int
-pair_list_contains(pair_list_t *list, PyObject *key)
+pair_list_contains(pair_list_t *list, PyObject *key, PyObject **pret)
 {
     Py_ssize_t pos;
 
@@ -569,6 +569,9 @@ pair_list_contains(pair_list_t *list, PyObject *key)
         int tmp = str_cmp(ident, pair->identity);
         if (tmp > 0) {
             Py_DECREF(ident);
+            if (pret != NULL) {
+                *pret = Py_NewRef(pair->key);
+            }
             return 1;
         }
         else if (tmp < 0) {
@@ -577,9 +580,15 @@ pair_list_contains(pair_list_t *list, PyObject *key)
     }
 
     Py_DECREF(ident);
+    if (pret != NULL) {
+        *pret = NULL;
+    }
     return 0;
 fail:
     Py_XDECREF(ident);
+    if (pret != NULL) {
+        *pret = NULL;
+    }
     return -1;
 }
 

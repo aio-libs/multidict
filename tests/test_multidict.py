@@ -799,8 +799,6 @@ class TestCIMultiDict(BaseMultiDictTest):
         d = cls([("KEY", "value1")])
         d2 = cls(d, KEY="value2")
 
-        print(type(d))
-
         assert list(d2.items()) == [("KEY", "value1"), ("KEY", "value2")]
 
     def test_getall(self, cls: type[CIMultiDict[str]]) -> None:

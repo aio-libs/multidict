@@ -380,7 +380,7 @@ multidict_mp_as_subscript(MultiDictObject *self, PyObject *key, PyObject *val)
 static inline int
 multidict_sq_contains(MultiDictObject *self, PyObject *key)
 {
-    return pair_list_contains(&self->pairs, key);
+    return pair_list_contains(&self->pairs, key, NULL);
 }
 
 static inline PyObject *
