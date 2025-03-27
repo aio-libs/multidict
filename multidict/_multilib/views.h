@@ -693,12 +693,6 @@ fail:
     return NULL;
 }
 
-static inline int
-multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
-{
-    return pair_list_contains(&self->md->pairs, key, NULL);
-}
-
 static PyNumberMethods multidict_keysview_as_number = {
     .nb_subtract = (binaryfunc)multidict_keysview_sub,
     .nb_and = (binaryfunc)multidict_keysview_and,
@@ -706,9 +700,52 @@ static PyNumberMethods multidict_keysview_as_number = {
     .nb_or = (binaryfunc)multidict_keysview_or,
 };
 
+static inline int
+multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
+{
+    return pair_list_contains(&self->md->pairs, key, NULL);
+}
+
 static PySequenceMethods multidict_keysview_as_sequence = {
     .sq_length = (lenfunc)multidict_view_len,
     .sq_contains = (objobjproc)multidict_keysview_contains,
+};
+
+static inline PyObject *
+multidict_keysview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
+{
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        return NULL;
+    }
+    PyObject *key = NULL;
+    while ((key = PyIter_Next(iter))) {
+        int tmp = pair_list_contains(&self->md->pairs, key, NULL);
+        Py_CLEAR(key);
+        if (tmp < 0) {
+            Py_CLEAR(iter);
+            return NULL;
+        }
+        if (tmp > 0) {
+            Py_CLEAR(iter);
+            Py_RETURN_FALSE;
+        }
+    }
+    if (PyErr_Occurred()) {
+        Py_CLEAR(iter);
+        return NULL;
+    }
+    Py_RETURN_TRUE;
+}
+
+PyDoc_STRVAR(keysview_isdisjoint_doc,
+             "Return True if two sets have a null intersection.");
+
+
+static PyMethodDef multidict_keysview_methods[] = {
+    {"isdisjoint", (PyCFunction)multidict_keysview_isdisjoint,
+     METH_O, keysview_isdisjoint_doc},
+    {NULL, NULL}   /* sentinel */
 };
 
 static PyTypeObject multidict_keysview_type = {
@@ -725,7 +762,7 @@ static PyTypeObject multidict_keysview_type = {
     .tp_clear = (inquiry)multidict_view_clear,
     .tp_richcompare = multidict_view_richcompare,
     .tp_iter = (getiterfunc)multidict_keysview_iter,
-    .tp_methods = multidict_view_methods,
+    .tp_methods = multidict_keysview_methods,
 };
 
 
