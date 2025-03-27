@@ -541,6 +541,68 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
 
 
 static inline int
+pair_list_next_by_identity(pair_list_t *list, pair_list_pos_t *pos,
+                           PyObject *identity,
+                           PyObject **pkey, PyObject **pvalue)
+{
+    if (pos->pos >= list->size) {
+        if (pkey) {
+            *pkey = NULL;
+        }
+        if (pvalue) {
+            *pvalue = NULL;
+        }
+        return 0;
+    }
+
+    if (pos->version != list->version) {
+        if (pkey) {
+            *pkey = NULL;
+        }
+        if (pvalue) {
+            *pvalue = NULL;
+        }
+        PyErr_SetString(PyExc_RuntimeError, "MultiDict changed during iteration");
+        return -1;
+    }
+
+
+    for (; pos->pos < list->size; ++pos->pos) {
+        pair_t *pair = list->pairs + pos->pos;
+        PyObject *ret = PyUnicode_RichCompare(identity, pair->identity, Py_EQ);
+        if (Py_IsFalse(ret)) {
+            Py_DECREF(ret);
+            continue;
+        } else if (ret == NULL) {
+            return -1;
+        } else {
+            // equals
+            Py_DECREF(ret);
+        }
+
+        if (pkey) {
+            PyObject *key = pair_list_calc_key(list, pair->key, pair->identity);
+            if (key == NULL) {
+                return -1;
+            }
+            if (key != pair->key) {
+                Py_SETREF(pair->key, key);
+            } else {
+                Py_CLEAR(key);
+            }
+            *pkey = Py_NewRef(pair->key);
+        }
+        if (pvalue) {
+            *pvalue = Py_NewRef(pair->value);
+        }
+        ++pos->pos;
+        return 1;
+    }
+    return 0;
+}
+
+
+static inline int
 pair_list_contains(pair_list_t *list, PyObject *key, PyObject **pret)
 {
     Py_ssize_t pos;
