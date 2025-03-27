@@ -877,7 +877,7 @@ class TestCIMultiDict(BaseMultiDictTest):
     def test_keys_case_insensitive_rsub(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "one"), ("KEY2", "two")])
 
-        assert ["key", "other"] - d.keys() == {"KEY2"}
+        assert ["key", "other"] - d.keys() == {"other"}
 
     def test_keys_case_insensitive_xor(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "one"), ("KEY2", "two")])
@@ -895,3 +895,48 @@ class TestCIMultiDict(BaseMultiDictTest):
     ) -> None:
         d = cls([("KEY", "one"),])
         assert not d.keys().isdisjoint({"key"})
+
+    def test_items_case_insensitive_and(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"),])
+        assert d.items() & {("key", "one")} == {("KEY", "one")}
+
+    def test_items_case_insensitive_rand(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"),])
+        assert [("key", "one")] & d.items() == {("KEY", "one")}
+
+    def test_items_case_insensitive_or(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"),])
+
+        assert d.items() | {("key", "one"), ("other", "two")} == {("KEY", "one"), ("other", "two")}
+
+    def test_items_case_insensitive_ror(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"),])
+
+        assert [("key", "one"), ("other", "two")] | d.items() == {("KEY", "one"), ("other", "two")}
+
+    def test_items_case_insensitive_sub(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"), ("KEY2", "two")])
+
+        assert d.items() - {("key", "one"), ("other", "three")} == {("KEY2", "two")}
+
+    def test_items_case_insensitive_rsub(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"), ("KEY2", "two")])
+
+        assert [("key", "one"), ("other", "three")] - d.items() == {("other", "three")}
+
+    def test_items_case_insensitive_xor(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"), ("KEY2", "two")])
+
+        assert d.items() ^ {("key", "one"), ("other", "three")} == {("KEY2", "two"), ("other", "three")}
+
+    def test_items_case_insensitive_rxor(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("KEY", "one"), ("KEY2", "two")])
+
+        assert [("key", "one"), ("other", "three")] ^ d.items() == {("KEY2", "two"), ("other", "three")}
+
+    def test_items_case_insensitive_isdisjoint(
+        self,
+        cls: type[CIMultiDict[str]],
+    ) -> None:
+        d = cls([("KEY", "one"),])
+        assert not d.items().isdisjoint({("key", "one")})

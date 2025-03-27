@@ -13,6 +13,7 @@ from collections.abc import (
 )
 from typing import (
     TYPE_CHECKING,
+    Any,
     Generic,
     NoReturn,
     Optional,
@@ -38,7 +39,6 @@ class istr(str):
 
 
 _V = TypeVar("_V")
-_V_co = TypeVar("_V_co", covariant=True)
 _T = TypeVar("_T")
 
 _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
@@ -127,6 +127,137 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             lst.append(f"'{k}': {v!r}")
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
+
+    def _parse_item(self, arg: Union[tuple[str, _V], _T]) -> Optional[tuple[str, str, _V]]:
+        if not isinstance(arg, tuple):
+            return None
+        if len(arg) != 2:
+            return None
+        try:
+            return (self._identfunc(arg[0]), arg[0], arg[1])
+        except TypeError:
+            return None
+
+    def __and__(self, other: Iterable[Any]) -> set[tuple[str, _V]]:
+        ret = set()
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+        for arg in it:
+            item = self._parse_item(arg)
+            if item is None:
+                continue
+            identity, key, value = item
+            for i, k, v in self._impl._items:
+                if i == identity and v == value:
+                    ret.add((k, v))
+        return ret
+
+    __rand__ = __and__  # type: ignore[assignment]
+
+    def __or__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
+        ret: set[Union[tuple[str, _V], _T]] = set(self)
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+        for arg in it:
+            item: Optional[tuple[str, str, _V]] = self._parse_item(arg)
+            if item is None:
+                ret.add(arg)
+                continue
+            identity, key, value = item
+            for i, k, v in self._impl._items:
+                if i == identity and v == value:
+                    break
+            else:
+                ret.add((key, value))
+        return ret
+
+    __ror__ = __or__
+
+    def __sub__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
+        ret: set[Union[tuple[str, _V], _T]] = set()
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+        tmp = set()
+        for arg in it:
+            item = self._parse_item(arg)
+            if item is None:
+                continue
+            else:
+                tmp.add(item)
+
+        for i, k, v in self._impl._items:
+            for i2, k2, v2 in tmp:
+                if i == i2 and v == v2:
+                    break
+            else:
+                ret.add((k, v))
+
+        return ret
+
+    def __rsub__(self, other: Iterable[_T]) -> set[_T]:
+        try:
+            ret: set[_T] = set()
+        except TypeError:
+            return NotImplemented
+        for arg in other:
+            item = self._parse_item(arg)
+            if item is None:
+                continue
+
+            identity, key, value = item
+            for i, k, v in self._impl._items:
+                if i == identity and v == value:
+                    break
+            else:
+                ret.add(arg)
+        return ret
+
+    def __xor__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
+        ret: set[Union[tuple[str, _V], _T]] = set()
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+
+        invalid = set()
+        tmp = set()
+        for arg in it:
+            item = self._parse_item(arg)
+            if item is None:
+                invalid.add(arg)
+            else:
+                tmp.add(item)
+                ret.add(arg)
+
+        for i, k, v in self._impl._items:
+            for i2, k2, v2 in tmp:
+                if i == i2 and v == v2:
+                    ret.discard((k2, v2))
+                    break
+            else:
+                ret.add((k, v))
+
+        return ret
+
+    __rxor__ = __xor__
+
+    def isdisjoint(self, other: Iterable[tuple[str, _V]]) -> bool:
+        for arg in other:
+            item = self._parse_item(arg)
+            if item is None:
+                continue
+
+            identity, key, value = item
+            for i, k, v in self._impl._items:
+                if i == identity and v == value:
+                    return False
+        return True
 
 
 class _ValuesView(_ViewBase[_V], ValuesView[_V]):
