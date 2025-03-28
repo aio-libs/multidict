@@ -687,7 +687,6 @@ fail:
 static inline PyObject *
 multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
 {
-    int tmp;
     PyObject *arg = NULL;
     PyObject *identity = NULL;
     PyObject *key = NULL;
@@ -808,54 +807,37 @@ multidict_itemsview_xor(_Multidict_ViewObject *self, PyObject *other)
                                       (PyObject *)self);
     }
 
-    PyObject *key = NULL;
-    PyObject *key2 = NULL;
     PyObject *ret = NULL;
-    PyObject *iter = PyObject_GetIter(other);
-    if (iter == NULL) {
+    PyObject *tmp1 = NULL;
+    PyObject *tmp2 = NULL;
+    PyObject *rht = PySet_New(other);
+    if (rht == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
             PyErr_Clear();
             Py_RETURN_NOTIMPLEMENTED;
         }
         goto fail;
     }
-    ret = PySet_New((PyObject *)self);
+    tmp1 = PyNumber_Subtract((PyObject *)self, rht);
+    if (tmp1 == NULL) {
+        goto fail;
+    }
+    tmp2 = PyNumber_Subtract(rht, (PyObject *)self);
+    if (tmp2 == NULL) {
+        goto fail;
+    }
+    ret = PyNumber_InPlaceOr(tmp1, tmp2);
     if (ret == NULL) {
         goto fail;
     }
-    while ((key = PyIter_Next(iter))) {
-        if (!PyUnicode_Check(key)) {
-            if (PySet_Add(ret, key) < 0) {
-                goto fail;
-            }
-            Py_CLEAR(key);
-            continue;
-        }
-        tmp = pair_list_contains(&self->md->pairs, key, &key2);
-        if (tmp < 0) {
-            goto fail;
-        }
-        if (tmp > 0) {
-            if (PySet_Discard(ret, key2) < 0) {
-                goto fail;
-            }
-        } else {
-            if (PySet_Add(ret, key) < 0) {
-                goto fail;
-            }
-        }
-        Py_CLEAR(key);
-        Py_CLEAR(key2);
-    }
-    if (PyErr_Occurred()) {
-        goto fail;
-    }
-    Py_CLEAR(iter);
+    Py_CLEAR(tmp1);
+    Py_CLEAR(tmp2);
+    Py_CLEAR(rht);
     return ret;
 fail:
-    Py_CLEAR(key);
-    Py_CLEAR(key2);
-    Py_CLEAR(iter);
+    Py_CLEAR(tmp1);
+    Py_CLEAR(tmp2);
+    Py_CLEAR(rht);
     Py_CLEAR(ret);
     return NULL;
 }
@@ -1455,54 +1437,37 @@ multidict_keysview_xor(_Multidict_ViewObject *self, PyObject *other)
                                       (PyObject *)self);
     }
 
-    PyObject *key = NULL;
-    PyObject *key2 = NULL;
     PyObject *ret = NULL;
-    PyObject *iter = PyObject_GetIter(other);
-    if (iter == NULL) {
+    PyObject *tmp1 = NULL;
+    PyObject *tmp2 = NULL;
+    PyObject *rht = PySet_New(other);
+    if (rht == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
             PyErr_Clear();
             Py_RETURN_NOTIMPLEMENTED;
         }
         goto fail;
     }
-    ret = PySet_New((PyObject *)self);
+    tmp1 = PyNumber_Subtract((PyObject *)self, rht);
+    if (tmp1 == NULL) {
+        goto fail;
+    }
+    tmp2 = PyNumber_Subtract(rht, (PyObject *)self);
+    if (tmp2 == NULL) {
+        goto fail;
+    }
+    ret = PyNumber_InPlaceOr(tmp1, tmp2);
     if (ret == NULL) {
         goto fail;
     }
-    while ((key = PyIter_Next(iter))) {
-        if (!PyUnicode_Check(key)) {
-            if (PySet_Add(ret, key) < 0) {
-                goto fail;
-            }
-            Py_CLEAR(key);
-            continue;
-        }
-        tmp = pair_list_contains(&self->md->pairs, key, &key2);
-        if (tmp < 0) {
-            goto fail;
-        }
-        if (tmp > 0) {
-            if (PySet_Discard(ret, key2) < 0) {
-                goto fail;
-            }
-        } else {
-            if (PySet_Add(ret, key) < 0) {
-                goto fail;
-            }
-        }
-        Py_CLEAR(key);
-        Py_CLEAR(key2);
-    }
-    if (PyErr_Occurred()) {
-        goto fail;
-    }
-    Py_CLEAR(iter);
+    Py_CLEAR(tmp1);
+    Py_CLEAR(tmp2);
+    Py_CLEAR(rht);
     return ret;
 fail:
-    Py_CLEAR(key);
-    Py_CLEAR(key2);
-    Py_CLEAR(iter);
+    Py_CLEAR(tmp1);
+    Py_CLEAR(tmp2);
+    Py_CLEAR(rht);
     Py_CLEAR(ret);
     return NULL;
 }

@@ -249,27 +249,12 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         return ret
 
     def __xor__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
-        ret: set[Union[tuple[str, _V], _T]] = set()
         try:
-            it = iter(other)
+            rgt = set(other)
         except TypeError:
             return NotImplemented
-
-        tmp = set()
-        for arg in it:
-            item = self._parse_item(arg)
-            ret.add(arg)
-            if item is not None:
-                tmp.add(item)
-
-        for i, k, v in self._impl._items:
-            for i2, k2, v2 in tmp:
-                if i == i2 and v == v2:
-                    ret.discard((k2, v2))
-                    break
-            else:
-                ret.add((k, v))
-
+        ret: set[Union[tuple[str, _V], _T]] = self - rgt
+        ret |= (rgt - self)
         return ret
 
     __rxor__ = __xor__
@@ -435,22 +420,12 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         return ret
 
     def __xor__(self, other: Iterable[_T]) -> set[Union[str, _T]]:
-        ret: set[Union[str, _T]] = set(self)
         try:
-            it = iter(other)
+            rgt = set(other)
         except TypeError:
             return NotImplemented
-        for key in it:
-            if not isinstance(key, str):
-                ret.add(key)
-                continue
-            identity = self._identfunc(key)
-            for i, k, v in self._impl._items:
-                if i == identity:
-                    ret.discard(k)
-                    break
-            else:
-                ret.add(key)
+        ret: set[Union[str, _T]] = self - rgt  # type: ignore[assignment]
+        ret |= (rgt - self)
         return ret
 
     __rxor__ = __xor__
