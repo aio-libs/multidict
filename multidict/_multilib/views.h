@@ -546,7 +546,7 @@ multidict_itemsview_or2(_Multidict_ViewObject *self, PyObject *other)
             break;
         } else {
             PyObject *tpl = PyTuple_Pack(2, identity, value);
-            if (tpl < 0) {
+            if (tpl == NULL) {
                 goto fail;
             }
             tmp = PySet_Contains(tmp_set, tpl);
@@ -602,9 +602,15 @@ static inline PyObject *
 multidict_itemsview_sub1(_Multidict_ViewObject *self, PyObject *other)
 {
     int tmp;
+    PyObject *arg = NULL;
+    PyObject *identity = NULL;
     PyObject *key = NULL;
-    PyObject *key2 = NULL;
+    PyObject *value = NULL;
     PyObject *ret = NULL;
+    PyObject *tmp_set = NULL;
+
+    pair_list_pos_t pos;
+
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -613,35 +619,67 @@ multidict_itemsview_sub1(_Multidict_ViewObject *self, PyObject *other)
         }
         goto fail;
     }
-    ret = PySet_New((PyObject *)self);
+    ret = PySet_New(NULL);
     if (ret == NULL) {
         goto fail;
     }
-    while ((key = PyIter_Next(iter))) {
-        if (!PyUnicode_Check(key)) {
-            Py_CLEAR(key);
-            continue;
-        }
-        tmp = pair_list_contains(&self->md->pairs, key, &key2);
+    tmp_set = PySet_New(NULL);
+    if (tmp_set == NULL) {
+        goto fail;
+    }
+    while ((arg = PyIter_Next(iter))) {
+        int tmp = _multidict_itemsview_parse_item(self, arg,
+                                                  &identity, NULL, &value);
         if (tmp < 0) {
             goto fail;
-        }
-        if (tmp > 0) {
-            if (PySet_Discard(ret, key2) < 0) {
+        } else if (tmp > 0) {
+            if (_set_add(tmp_set, identity, value) < 0) {
                 goto fail;
             }
         }
-        Py_CLEAR(key);
-        Py_CLEAR(key2);
+        Py_CLEAR(arg);
     }
     if (PyErr_Occurred()) {
         goto fail;
     }
     Py_CLEAR(iter);
+
+    pair_list_init_pos(&self->md->pairs, &pos);
+
+    while (true) {
+        int tmp = pair_list_next(&self->md->pairs, &pos,
+                                 &identity, &key, &value);
+        if (tmp < 0) {
+            goto fail;
+        } else if (tmp == 0) {
+            break;
+        } else {
+            PyObject *tpl = PyTuple_Pack(2, identity, value);
+            if (tpl == NULL) {
+                goto fail;
+            }
+            tmp = PySet_Contains(tmp_set, tpl);
+            if (tmp < 0) {
+                goto fail;
+            }
+            if (tmp == 0) {
+                if (_set_add(ret, key, value) < 0) {
+                    goto fail;
+                }
+            }
+            Py_CLEAR(identity);
+            Py_CLEAR(key);
+            Py_CLEAR(value);
+        }
+    }
+    Py_CLEAR(tmp_set);
     return ret;
 fail:
+    Py_CLEAR(identity);
     Py_CLEAR(key);
-    Py_CLEAR(key2);
+    Py_CLEAR(value);
+    Py_CLEAR(ret);
+    Py_CLEAR(tmp_set);
     Py_CLEAR(iter);
     Py_CLEAR(ret);
     return NULL;
