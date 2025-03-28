@@ -598,6 +598,12 @@ pair_list_next_by_identity(pair_list_t *list, pair_list_pos_t *pos,
         ++pos->pos;
         return 1;
     }
+    if (pkey) {
+        *pkey = NULL;
+    }
+    if (pvalue) {
+        *pvalue = NULL;
+    }
     return 0;
 }
 

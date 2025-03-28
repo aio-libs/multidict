@@ -140,6 +140,16 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         except TypeError:
             return None
 
+    def _tmp_set(self, it: Iterable[_T]) -> set[tuple[str, _V]]:
+        tmp = set()
+        for arg in it:
+            item = self._parse_item(arg)
+            if item is None:
+                continue
+            else:
+                tmp.add((item[0], item[2]))
+        return tmp
+
     def __and__(self, other: Iterable[Any]) -> set[tuple[str, _V]]:
         ret = set()
         try:
@@ -156,7 +166,22 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                     ret.add((k, v))
         return ret
 
-    __rand__ = __and__  # type: ignore[assignment]
+    def __rand__(self, other: Iterable[_T]) -> set[_T]:
+        ret = set()
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+        for arg in it:
+            item = self._parse_item(arg)
+            if item is None:
+                continue
+            identity, key, value = item
+            for i, k, v in self._impl._items:
+                if i == identity and v == value:
+                    ret.add(arg)
+                    break
+        return ret
 
     def __or__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
         ret: set[Union[tuple[str, _V], _T]] = set(self)
@@ -174,10 +199,20 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 if i == identity and v == value:
                     break
             else:
-                ret.add((key, value))
+                ret.add(arg)
         return ret
 
-    __ror__ = __or__
+    def __ror__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
+        try:
+            ret: set[Union[tuple[str, _V], _T]] = set(other)
+        except TypeError:
+            return NotImplemented
+        tmp = self._tmp_set(ret)
+
+        for i, k, v in self._impl._items:
+            if (i, v) not in tmp:
+                ret.add((k, v))
+        return ret
 
     def __sub__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
         ret: set[Union[tuple[str, _V], _T]] = set()
@@ -185,19 +220,10 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             it = iter(other)
         except TypeError:
             return NotImplemented
-        tmp = set()
-        for arg in it:
-            item = self._parse_item(arg)
-            if item is None:
-                continue
-            else:
-                tmp.add(item)
+        tmp = self._tmp_set(it)
 
         for i, k, v in self._impl._items:
-            for i2, k2, v2 in tmp:
-                if i == i2 and v == v2:
-                    break
-            else:
+            if (i, v) not in tmp:
                 ret.add((k, v))
 
         return ret
@@ -326,7 +352,20 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                     ret.add(k)
         return ret
 
-    __rand__ = __and__  # type: ignore[assignment]
+    def __rand__(self, other: Iterable[_T]) -> set[_T]:
+        ret = set()
+        try:
+            it = iter(other)
+        except TypeError:
+            return NotImplemented
+        for key in it:
+            if not isinstance(key, str):
+                continue
+            identity = self._identfunc(key)
+            for i, k, v in self._impl._items:
+                if i == identity:
+                    ret.add(key)
+        return cast(set[_T], ret)
 
     def __or__(self, other: Iterable[_T]) -> set[Union[str, _T]]:
         ret: set[Union[str, _T]] = set(self)
@@ -346,7 +385,23 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(key)
         return ret
 
-    __ror__ = __or__
+    def __ror__(self, other: Iterable[_T]) -> set[Union[str, _T]]:
+        try:
+            ret: set[Union[str, _T]] = set(other)
+        except TypeError:
+            return NotImplemented
+
+        tmp = set()
+        for key in ret:
+            if not isinstance(key, str):
+                continue
+            identity = self._identfunc(key)
+            tmp.add(identity)
+
+        for i, k, v in self._impl._items:
+            if i not in tmp:
+                ret.add(k)
+        return ret
 
     def __sub__(self, other: Iterable[object]) -> set[str]:
         ret = set(self)

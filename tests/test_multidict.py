@@ -864,9 +864,19 @@ class TestCIMultiDict(BaseMultiDictTest):
         d = cls([("KEY", "one")])
         assert d.keys() & arg == expected
 
-    def test_keys_case_insensitive_rand(self, cls: type[CIMultiDict[str]]) -> None:
+    @pytest.mark.parametrize(
+        ("arg", "expected"),
+        (
+            pytest.param(["key"], {"key"}, id="ok"),
+            pytest.param(["key", 123], {"key"}, id="non-str"),
+        ),
+    )
+    def test_keys_case_insensitive_rand(
+        self, cls: type[CIMultiDict[str]], arg: list[_T], expected: set[_T]
+    ) -> None:
         d = cls([("KEY", "one")])
-        assert ["key"] & d.keys() == {"KEY"}
+        assert type(arg) is list
+        assert arg & d.keys() == expected
 
     @pytest.mark.parametrize(
         ("arg", "expected"),
@@ -882,10 +892,20 @@ class TestCIMultiDict(BaseMultiDictTest):
 
         assert d.keys() | arg == expected
 
-    def test_keys_case_insensitive_ror(self, cls: type[CIMultiDict[str]]) -> None:
+    @pytest.mark.parametrize(
+        ("arg", "expected"),
+        (
+            pytest.param(["key", "other"], {"key", "other"}, id="ok"),
+            pytest.param(["key", "other", 123], {"key", "other", 123}, id="non-str"),
+        ),
+    )
+    def test_keys_case_insensitive_ror(
+        self, cls: type[CIMultiDict[str]], arg: list[_T], expected: set[_T]
+    ) -> None:
         d = cls([("KEY", "one")])
+        assert type(arg) is list
 
-        assert ["key", "other"] | d.keys() == {"KEY", "other"}
+        assert arg | d.keys() == expected
 
     @pytest.mark.parametrize(
         ("arg", "expected"),
@@ -909,19 +929,12 @@ class TestCIMultiDict(BaseMultiDictTest):
         ),
     )
     def test_keys_case_insensitive_rsub(
-        self, cls: type[CIMultiDict[str]], arg: set[_T], expected: set[_T]
+        self, cls: type[CIMultiDict[str]], arg: list[_T], expected: set[_T]
     ) -> None:
         d = cls([("KEY", "one"), ("KEY2", "two")])
+        assert type(arg) is list
 
         assert arg - d.keys() == expected
-
-    def test_keys_case_insensitive_rsub_not_iterable(
-        self, cls: type[CIMultiDict[str]]
-    ) -> None:
-        d = cls([("KEY", "one"), ("KEY2", "two")])
-
-        with pytest.raises(TypeError):
-            123 - d.keys()  # type: ignore[operator]
 
     @pytest.mark.parametrize(
         ("arg", "expected"),
@@ -931,16 +944,25 @@ class TestCIMultiDict(BaseMultiDictTest):
         ),
     )
     def test_keys_case_insensitive_xor(
-        self, cls: type[CIMultiDict[str]], arg: set[_T], expected: set[_T]
+        self, cls: type[CIMultiDict[str]], arg: list[_T], expected: set[_T]
     ) -> None:
         d = cls([("KEY", "one"), ("KEY2", "two")])
 
         assert d.keys() ^ arg == expected
 
-    def test_keys_case_insensitive_rxor(self, cls: type[CIMultiDict[str]]) -> None:
+    @pytest.mark.parametrize(
+        ("arg", "expected"),
+        (
+            pytest.param(["key", "other"], {"KEY2", "other"}, id="ok"),
+            pytest.param(["key", "other", 123], {"KEY2", "other", 123}, id="non-str"),
+        ),
+    )
+    def test_keys_case_insensitive_rxor(
+        self, cls: type[CIMultiDict[str]], arg: list[_T], expected: set[_T]
+    ) -> None:
         d = cls([("KEY", "one"), ("KEY2", "two")])
 
-        assert ["key", "other"] ^ d.keys() == {"KEY2", "other"}
+        assert arg ^ d.keys() == expected
 
     @pytest.mark.parametrize(
         ("arg", "expected"),
@@ -955,6 +977,35 @@ class TestCIMultiDict(BaseMultiDictTest):
         d = cls([("KEY", "one")])
         assert d.keys().isdisjoint(arg) == expected
 
+    def test_keys_case_insensitive_not_iterable(
+        self, cls: type[CIMultiDict[str]]
+    ) -> None:
+        d = cls([("KEY", "one"), ("KEY2", "two")])
+
+        with pytest.raises(TypeError):
+            123 & d.keys()  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            d.keys() & 123  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            123 | d.keys()  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            d.keys() | 123  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            123 ^ d.keys()  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            d.keys() ^ 123  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            d.keys() - 123  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            123 - d.keys()  # type: ignore[operator]
+
     @pytest.mark.parametrize(
         "param",
         (
@@ -963,7 +1014,7 @@ class TestCIMultiDict(BaseMultiDictTest):
             pytest.param((123, "two"), id="not-str"),
         ),
     )
-    def test_items_case_insensitive_parse_item_not_tuple(
+    def test_items_case_insensitive_parse_item(
         self, cls: type[CIMultiDict[str]], param: _T
     ) -> None:
         d = cls([("KEY", "one")])
@@ -991,16 +1042,28 @@ class TestCIMultiDict(BaseMultiDictTest):
         d = cls([("KEY", "one")])
         assert d.items() & arg == expected
 
-    def test_items_case_insensitive_and_non_iterable(
-        self, cls: type[CIMultiDict[str]]
+    @pytest.mark.parametrize(
+        ("arg", "expected"),
+        (
+            pytest.param([("key", "one")], {("key", "one")}, id="ok"),
+            pytest.param(
+                [("key", "one"), (123, "two")],
+                {("key", "one")},
+                id="non-str",
+            ),
+            pytest.param(
+                [("key", "one"), ("key", "two")],
+                {("key", "one")},
+                id="nonequal-value",
+            ),
+        ),
+    )
+    def test_items_case_insensitive_rand(
+        self, cls: type[CIMultiDict[str]], arg: list[_T], expected: set[_T]
     ) -> None:
         d = cls([("KEY", "one")])
-        with pytest.raises(TypeError):
-            d.items() & None  # type: ignore[operator]
-
-    def test_items_case_insensitive_rand(self, cls: type[CIMultiDict[str]]) -> None:
-        d = cls([("KEY", "one")])
-        assert [("key", "one")] & d.items() == {("KEY", "one")}
+        assert type(arg) is list
+        assert arg & d.items() == expected
 
     def test_items_case_insensitive_or(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "one")])
@@ -1010,20 +1073,13 @@ class TestCIMultiDict(BaseMultiDictTest):
             ("other", "two"),
         }
 
-    def test_items_case_insensitive_or_non_iterable(
-        self, cls: type[CIMultiDict[str]]
-    ) -> None:
-        d = cls([("KEY", "one")])
-
-        with pytest.raises(TypeError):
-            d.items() | None  # type: ignore[operator]
-
     def test_items_case_insensitive_ror(self, cls: type[CIMultiDict[str]]) -> None:
-        d = cls([("KEY", "one")])
+        d = cls([("KEY", "one"), ("KEY2", "three")])
 
         assert [("key", "one"), ("other", "two")] | d.items() == {
-            ("KEY", "one"),
+            ("key", "one"),
             ("other", "two"),
+            ("KEY2", "three"),
         }
 
     @pytest.mark.parametrize(
@@ -1044,14 +1100,6 @@ class TestCIMultiDict(BaseMultiDictTest):
 
         assert d.items() - arg == expected
 
-    def test_items_case_insensitive_sub_non_iterable(
-        self, cls: type[CIMultiDict[str]]
-    ) -> None:
-        d = cls([("KEY", "one")])
-
-        with pytest.raises(TypeError):
-            d.items() - None  # type: ignore[operator]
-
     @pytest.mark.parametrize(
         ("arg", "expected"),
         (
@@ -1069,14 +1117,6 @@ class TestCIMultiDict(BaseMultiDictTest):
         d = cls([("KEY", "one"), ("KEY2", "two")])
 
         assert arg - d.items() == expected
-
-    def test_items_case_insensitive_rsub_non_iterable(
-        self, cls: type[CIMultiDict[str]]
-    ) -> None:
-        d = cls([("KEY", "one")])
-
-        with pytest.raises(TypeError):
-            None - d.items()  # type: ignore[operator]
 
     @pytest.mark.parametrize(
         ("arg", "expected"),
@@ -1100,14 +1140,6 @@ class TestCIMultiDict(BaseMultiDictTest):
 
         assert d.items() ^ arg == expected
 
-    def test_items_case_insensitive_xor_non_iterable(
-        self, cls: type[CIMultiDict[str]]
-    ) -> None:
-        d = cls([("KEY", "one")])
-
-        with pytest.raises(TypeError):
-            d.items() ^ None  # type: ignore[operator]
-
     def test_items_case_insensitive_rxor(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "one"), ("KEY2", "two")])
 
@@ -1115,6 +1147,35 @@ class TestCIMultiDict(BaseMultiDictTest):
             ("KEY2", "two"),
             ("other", "three"),
         }
+
+    def test_items_case_insensitive_non_iterable(
+        self, cls: type[CIMultiDict[str]]
+    ) -> None:
+        d = cls([("KEY", "one")])
+
+        with pytest.raises(TypeError):
+            d.items() & None  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            None & d.items()  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            d.items() | None  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            None | d.items()  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            d.items() ^ None  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            None ^ d.items()  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            d.items() - None  # type: ignore[operator]
+
+        with pytest.raises(TypeError):
+            None - d.items()  # type: ignore[operator]
 
     @pytest.mark.parametrize(
         ("arg", "expected"),

@@ -218,29 +218,33 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject *self, PyObject *arg,
     return 1;
 }
 
-static inline PyObject *
-multidict_itemsview_and(_Multidict_ViewObject *self, PyObject *other)
+static int
+_set_add(PyObject *set, PyObject *key, PyObject * value)
 {
-    int tmp = PyObject_IsInstance((PyObject *)self,
-                                  (PyObject *)&multidict_itemsview_type);
-    if (tmp < 0) {
-        goto fail;
+    PyObject *tpl = PyTuple_Pack(2, key, value);
+    if (tpl == NULL) {
+        return -1;
     }
-    if (tmp == 0) {
-        tmp = PyObject_IsInstance(other, (PyObject *)&multidict_itemsview_type);
-        if (tmp < 0) {
-            goto fail;
-        }
-        if (tmp == 0) {
-            Py_RETURN_NOTIMPLEMENTED;
-        }
-        return multidict_itemsview_and((_Multidict_ViewObject *)other,
-                                      (PyObject *)self);
-    }
+    int tmp = PySet_Add(set, tpl);
+    Py_DECREF(tpl);
+    return tmp;
+}
 
+static inline PyObject *
+multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
+{
+    int tmp;
+
+    PyObject *identity = NULL;
     PyObject *key = NULL;
     PyObject *key2 = NULL;
+    PyObject *value = NULL;
+    PyObject *value2 = NULL;
+    PyObject *arg = NULL;
     PyObject *ret = NULL;
+
+    pair_list_pos_t pos;
+
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
         PyErr_Clear();
@@ -250,22 +254,43 @@ multidict_itemsview_and(_Multidict_ViewObject *self, PyObject *other)
     if (ret == NULL) {
         goto fail;
     }
-    while ((key = PyIter_Next(iter))) {
-        if (!PyUnicode_Check(key)) {
-            Py_CLEAR(key);
-            continue;
-        }
-        tmp = pair_list_contains(&self->md->pairs, key, &key2);
+    while ((arg = PyIter_Next(iter))) {
+        int tmp = _multidict_itemsview_parse_item(self, arg,
+                                                  &identity, &key, &value);
         if (tmp < 0) {
             goto fail;
+        } else if (tmp == 0) {
+            Py_CLEAR(arg);
+            continue;
         }
-        if (tmp > 0) {
-            if (PySet_Add(ret, key2) < 0) {
+
+        pair_list_init_pos(&self->md->pairs, &pos);
+
+        while (true) {
+            tmp = pair_list_next_by_identity(&self->md->pairs, &pos,
+                                             identity, &key2, &value2);
+            if (tmp < 0) {
                 goto fail;
+            } else if (tmp == 0) {
+                break;
+            } else {
+                tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
+                if (tmp < 0) {
+                    goto fail;
+                }
+                if (tmp > 0) {
+                    if (_set_add(ret, key2, value2) < 0) {
+                        goto fail;
+                    }
+                }
             }
+            Py_CLEAR(key2);
+            Py_CLEAR(value2);
         }
+        Py_CLEAR(arg);
+        Py_CLEAR(identity);
         Py_CLEAR(key);
-        Py_CLEAR(key2);
+        Py_CLEAR(value);
     }
     if (PyErr_Occurred()) {
         goto fail;
@@ -273,12 +298,118 @@ multidict_itemsview_and(_Multidict_ViewObject *self, PyObject *other)
     Py_CLEAR(iter);
     return ret;
 fail:
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
     Py_CLEAR(key);
     Py_CLEAR(key2);
+    Py_CLEAR(value);
+    Py_CLEAR(value2);
     Py_CLEAR(iter);
     Py_CLEAR(ret);
     return NULL;
 }
+
+
+static inline PyObject *
+multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
+{
+    int tmp;
+    PyObject *identity = NULL;
+    PyObject *key = NULL;
+    PyObject *key2 = NULL;
+    PyObject *value = NULL;
+    PyObject *value2 = NULL;
+    PyObject *arg = NULL;
+    PyObject *ret = NULL;
+
+    pair_list_pos_t pos;
+
+    PyObject *iter = PyObject_GetIter(other);
+    if (iter == NULL) {
+        PyErr_Clear();
+        Py_RETURN_NOTIMPLEMENTED;
+    }
+    ret = PySet_New(NULL);
+    if (ret == NULL) {
+        goto fail;
+    }
+    while ((arg = PyIter_Next(iter))) {
+        int tmp = _multidict_itemsview_parse_item(self, arg,
+                                                  &identity, &key, &value);
+        if (tmp < 0) {
+            goto fail;
+        } else if (tmp == 0) {
+            Py_CLEAR(arg);
+            continue;
+        }
+
+        pair_list_init_pos(&self->md->pairs, &pos);
+
+        while (true) {
+            tmp = pair_list_next_by_identity(&self->md->pairs, &pos,
+                                             identity, &key2, &value2);
+            if (tmp < 0) {
+                goto fail;
+            } else if (tmp == 0) {
+                break;
+            } else {
+                tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
+                if (tmp < 0) {
+                    goto fail;
+                }
+                if (tmp > 0) {
+                    if (_set_add(ret, key2, value2) < 0) {
+                        goto fail;
+                    }
+                }
+            }
+            Py_CLEAR(key2);
+            Py_CLEAR(value2);
+        }
+        Py_CLEAR(arg);
+        Py_CLEAR(identity);
+        Py_CLEAR(key);
+        Py_CLEAR(value);
+    }
+    if (PyErr_Occurred()) {
+        goto fail;
+    }
+    Py_CLEAR(iter);
+    return ret;
+fail:
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(key2);
+    Py_CLEAR(value);
+    Py_CLEAR(value2);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
+    return NULL;
+}
+
+
+static inline PyObject *
+multidict_itemsview_and(PyObject *lft, PyObject *rht)
+{
+    int tmp = PyObject_IsInstance(lft, (PyObject *)&multidict_itemsview_type);
+    if (tmp < 0) {
+        return NULL;
+    }
+    if (tmp > 0) {
+        return multidict_itemsview_and1((_Multidict_ViewObject *)lft, rht);
+    } else {
+        tmp = PyObject_IsInstance(rht, (PyObject *)&multidict_itemsview_type);
+        if (tmp < 0) {
+            return NULL;
+        }
+        if (tmp == 0) {
+            Py_RETURN_NOTIMPLEMENTED;
+        }
+        return multidict_itemsview_and2((_Multidict_ViewObject *)rht, lft);
+    }
+}
+
 
 static inline PyObject *
 multidict_itemsview_or(_Multidict_ViewObject *self, PyObject *other)
@@ -300,8 +431,16 @@ multidict_itemsview_or(_Multidict_ViewObject *self, PyObject *other)
                                       (PyObject *)self);
     }
 
+    PyObject *identity = NULL;
     PyObject *key = NULL;
+    PyObject *key2 = NULL;
+    PyObject *value = NULL;
+    PyObject *value2 = NULL;
+    PyObject *arg = NULL;
     PyObject *ret = NULL;
+
+    pair_list_pos_t pos;
+
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
         PyErr_Clear();
@@ -311,24 +450,48 @@ multidict_itemsview_or(_Multidict_ViewObject *self, PyObject *other)
     if (ret == NULL) {
         goto fail;
     }
-    while ((key = PyIter_Next(iter))) {
-        if (!PyUnicode_Check(key)) {
-            if (PySet_Add(ret, key) < 0) {
-                goto fail;
-            }
-            Py_CLEAR(key);
-            continue;
-        }
-        tmp = pair_list_contains(&self->md->pairs, key, NULL);
+    while ((arg = PyIter_Next(iter))) {
+        int tmp = _multidict_itemsview_parse_item(self, arg,
+                                                  &identity, &key, &value);
         if (tmp < 0) {
             goto fail;
-        }
-        if (tmp == 0) {
-            if (PySet_Add(ret, key) < 0) {
+        } else if (tmp == 0) {
+            if (PySet_Add(ret, arg) < 0) {
                 goto fail;
             }
+            Py_CLEAR(arg);
+            continue;
         }
+
+        pair_list_init_pos(&self->md->pairs, &pos);
+
+        while (true) {
+            tmp = pair_list_next_by_identity(&self->md->pairs, &pos,
+                                             identity, &key2, &value2);
+            if (tmp < 0) {
+                goto fail;
+            } else if (tmp == 0) {
+                if (PySet_Add(ret, key) < 0) {
+                    goto fail;
+                }
+                break;
+            } else {
+                tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
+                if (tmp < 0) {
+                    goto fail;
+                }
+                if (tmp > 0) {
+                    Py_CLEAR(value2);
+                    break;
+                }
+            }
+            Py_CLEAR(key2);
+            Py_CLEAR(value2);
+        }
+        Py_CLEAR(arg);
+        Py_CLEAR(identity);
         Py_CLEAR(key);
+        Py_CLEAR(value);
     }
     if (PyErr_Occurred()) {
         goto fail;
@@ -336,7 +499,12 @@ multidict_itemsview_or(_Multidict_ViewObject *self, PyObject *other)
     Py_CLEAR(iter);
     return ret;
 fail:
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
     Py_CLEAR(key);
+    Py_CLEAR(key2);
+    Py_CLEAR(value);
+    Py_CLEAR(value2);
     Py_CLEAR(iter);
     Py_CLEAR(ret);
     return NULL;
