@@ -493,9 +493,13 @@ pair_list_init_pos(pair_list_t *list, pair_list_pos_t *pos)
 
 static inline int
 pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
+               PyObject **pidentity,
                PyObject **pkey, PyObject **pvalue)
 {
     if (pos->pos >= list->size) {
+        if (pidentity) {
+            *pidentity = NULL;
+        }
         if (pkey) {
             *pkey = NULL;
         }
@@ -506,6 +510,9 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
     }
 
     if (pos->version != list->version) {
+        if (pidentity) {
+            *pidentity = NULL;
+        }
         if (pkey) {
             *pkey = NULL;
         }
@@ -518,6 +525,10 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
 
 
     pair_t *pair = list->pairs + pos->pos;
+
+    if (pidentity) {
+        *pidentity = Py_NewRef(pair->identity);;
+    }
 
     if (pkey) {
         PyObject *key = pair_list_calc_key(list, pair->key, pair->identity);
@@ -1431,7 +1442,7 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
     pair_list_init_pos(list, &pos);
 
     for(;;) {
-        int ret = pair_list_next(list, &pos, &key, &avalue);
+        int ret = pair_list_next(list, &pos, NULL, &key, &avalue);
         if (ret < 0) {
             return -1;
         }
