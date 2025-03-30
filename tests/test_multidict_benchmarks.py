@@ -577,6 +577,17 @@ def test_iterate_multidict_keys(
             pass
 
 
+def test_iterate_multidict_values(
+    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+) -> None:
+    items = [(str(i), str(i)) for i in range(100)]
+    md = any_multidict_class(items)
+
+    @benchmark
+    def _run() -> None:
+        for _ in md.values():
+            pass
+
 def test_iterate_multidict_items(
     benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
 ) -> None:
