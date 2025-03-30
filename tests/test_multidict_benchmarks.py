@@ -552,3 +552,38 @@ def test_copy_from_existing_cimultidict(
     @benchmark
     def _run() -> None:
         existing.copy()
+
+
+def test_iterate_multidict(
+    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+) -> None:
+    items = [(str(i), str(i)) for i in range(100)]
+    md = any_multidict_class(items)
+
+    @benchmark
+    def _run() -> None:
+        for _ in md:
+            pass
+
+def test_iterate_multidict_keys(
+    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+) -> None:
+    items = [(str(i), str(i)) for i in range(100)]
+    md = any_multidict_class(items)
+
+    @benchmark
+    def _run() -> None:
+        for _ in md.keys():
+            pass
+
+
+def test_iterate_multidict_items(
+    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+) -> None:
+    items = [(str(i), str(i)) for i in range(100)]
+    md = any_multidict_class(items)
+
+    @benchmark
+    def _run() -> None:
+        for _, _ in md.items():
+            pass
