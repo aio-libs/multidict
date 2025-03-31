@@ -76,7 +76,8 @@ multidict_items_iter_iternext(MultidictIter *self)
     PyObject *value = NULL;
     PyObject *ret = NULL;
 
-    int res = pair_list_next(&self->md->pairs, &self->current, &key, &value);
+    int res = pair_list_next(&self->md->pairs, &self->current,
+                             NULL, &key, &value);
     if (res < 0) {
         return NULL;
     }
@@ -102,7 +103,8 @@ multidict_values_iter_iternext(MultidictIter *self)
 {
     PyObject *value = NULL;
 
-    int res = pair_list_next(&self->md->pairs, &self->current, NULL, &value);
+    int res = pair_list_next(&self->md->pairs, &self->current,
+                             NULL, NULL, &value);
     if (res < 0) {
         return NULL;
     }
@@ -119,7 +121,8 @@ multidict_keys_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
 
-    int res = pair_list_next(&self->md->pairs, &self->current, &key, NULL);
+    int res = pair_list_next(&self->md->pairs, &self->current,
+                             NULL, &key, NULL);
     if (res < 0) {
         return NULL;
     }

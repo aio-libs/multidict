@@ -380,7 +380,7 @@ multidict_mp_as_subscript(MultiDictObject *self, PyObject *key, PyObject *val)
 static inline int
 multidict_sq_contains(MultiDictObject *self, PyObject *key)
 {
-    return pair_list_contains(&self->pairs, key);
+    return pair_list_contains(&self->pairs, key, NULL);
 }
 
 static inline PyObject *
@@ -1343,10 +1343,6 @@ module_free(void *m)
 {
     Py_CLEAR(multidict_str_lower);
     Py_CLEAR(multidict_str_canonical);
-    Py_CLEAR(viewbaseset_and_func);
-    Py_CLEAR(viewbaseset_or_func);
-    Py_CLEAR(viewbaseset_sub_func);
-    Py_CLEAR(viewbaseset_xor_func);
 }
 
 static PyMethodDef multidict_module_methods[] = {
