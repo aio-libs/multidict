@@ -1,1 +1,0 @@
-Set operations for ``KeysView`` and ``ItemsView`` of case-insensitive multidicts and their proxies are processed in case-insensitive manner.

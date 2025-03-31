@@ -14,6 +14,174 @@ Changelog
 
 .. towncrier release notes start
 
+6.3.0
+=====
+
+*(2025-03-31)*
+
+
+Bug fixes
+---------
+
+- Set operations for ``KeysView`` and ``ItemsView`` of case-insensitive multidicts and their proxies are processed in case-insensitive manner.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`965`.
+
+- Rewrote :class:`multidict.CIMultiDict` and it proxy to always return
+  :class:`multidict.istr` keys. ``istr`` is derived from :class:`str`,
+  thus the change is backward compatible.
+
+  The performance boost is about 15% for some operations for C Extension,
+  pure Python implementation have got a visible (15% - 230%) speedup as well.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1097`.
+
+- Fixed a crash when extending a multidict from multidict proxy if C Extensions were used.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1100`.
+
+
+Features
+--------
+
+- Implemented a custom parser for ``METH_FASTCALL | METH_KEYWORDS`` protocol
+  -- by :user:`asvetlov`.
+
+  The patch re-enables fast call protocol in the :py:mod:`multidict` C Extension.
+
+  Speedup is about 25%-30% for the library benchmarks for Python 3.12+.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1070`.
+
+- The C-extension no longer pre-allocates a Python exception object in
+  lookup-related methods of :py:class:`~multidict.MultiDict` when the
+  passed-in *key* is not found but *default* value is provided.
+
+  Namely, this affects :py:meth:`MultiDict.getone()
+  <multidict.MultiDict.getone>`, :py:meth:`MultiDict.getall()
+  <multidict.MultiDict.getall>`, :py:meth:`MultiDict.get()
+  <multidict.MultiDict.get>`, :py:meth:`MultiDict.pop()
+  <multidict.MultiDict.pop>`, :py:meth:`MultiDict.popone()
+  <multidict.MultiDict.popone>`, and :py:meth:`MultiDict.popall()
+  <multidict.MultiDict.popall>`.
+
+  Additionally, the :py:class:`~multidict.MultiDict` comparison with
+  regular :py:class:`dict`\ ionaries is now about 60% faster
+  on Python 3.13+ in the fallback-to-default case.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1078`.
+
+- Implemented ``__repr__()`` for C Extension classes in C.
+
+  The speedup is about 2.5 times.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1081`.
+
+- Made C version of :class:`multidict.istr` pickleable.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1098`.
+
+- Optimized multidict creation and extending / updating if C Extensions are used.
+
+  The speedup is between 25% and 70% depending on the usage scenario.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1101`.
+
+- :meth:`multidict.MultiDict.popitem` is changed to remove
+  the latest entry instead of the first.
+
+  It gives O(1) amortized complexity.
+
+  The standard :meth:`dict.popitem` removes the last entry also.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1105`.
+
+
+Contributor-facing changes
+--------------------------
+
+- Started running benchmarks for the pure Python implementation in addition to the C implementation -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1092`.
+
+- The the project-wide Codecov_ metric is no longer reported
+  via GitHub Checks API. The combined value is not very useful
+  because one of the sources (MyPy) cannot reach 100% with the
+  current state of the ecosystem. We may want to reconsider in
+  the future. Instead, we now have two separate
+  “runtime coverage” metrics for library code and tests.
+  They are to be kept at 100% at all times.
+  And the “type coverage” metric will remain advisory, at a
+  lower threshold.
+
+  The default patch metric check is renamed to “runtime”
+  to better reflect its semantics. This one will also require
+  100% coverage.
+  Another “typing” patch coverage metric is now reported
+  alongside it. It's considered advisory, just like its
+  project counterpart.
+
+  When looking at Codecov_, one will likely want to look at
+  MyPy and pytest flags separately. It is usually best to
+  avoid looking at the PR pages that sometimes display
+  combined coverage incorrectly.
+
+  The change additionally disables the deprecated GitHub
+  Annotations integration in Codecov_.
+
+  Finally, the badge coloring range now starts at 100%.
+
+
+  .. image:: https://codecov.io/gh/aio-libs/multidict/branch/master/graph/badge.svg?flag=pytest
+     :target: https://codecov.io/gh/aio-libs/multidict?flags[]=pytest
+     :alt: Coverage metrics
+
+
+  -- by :user:`webknjaz`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1093`.
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Synchronized :file:`pythoncapi_compat.h` with the latest available version.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1063`.
+
+- Moved registering ABCs for C Extension classes from C to Python.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1083`.
+
+- Refactored the internal ``pair_list`` implementation.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1084`.
+
+- Implemented views comparison and disjoints in C instead of Python helpers.
+
+  The performance boost is about 40%.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1096`.
+
+
+----
+
+
 6.2.0
 ======
 
