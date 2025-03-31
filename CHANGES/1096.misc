@@ -1,3 +1,0 @@
-Implemented views comparison and disjoints in C instead of Python helpers.
-
-The performance boost is about 40%.
