@@ -1215,7 +1215,7 @@ def test_convert_multidict_to_cimultidict() -> None:
 
 @pytest.mark.xfail(reason="issue #1111", strict=True)
 def test_pure_python_convert_multidict_to_cimultidict_eq() -> None:
-    """Test conversion from MultiDict to CIMultiDict."""
+    """Test compare after conversion from MultiDict to CIMultiDict."""
     original = PyMultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
     assert PyCIMultiDict(original) == PyCIMultiDict(
         [("H1", "header1"), ("H2", "header2"), ("H3", "header3")]
@@ -1228,7 +1228,7 @@ def test_pure_python_convert_multidict_to_cimultidict_eq() -> None:
     reason="Will only fail on PyPy",
 )
 def test_convert_multidict_to_cimultidict_eq() -> None:
-    """Test conversion from MultiDict to CIMultiDict."""
+    """Test compare after conversion from MultiDict to CIMultiDict."""
     original = MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
     assert CIMultiDict(original) == CIMultiDict(
         [("H1", "header1"), ("H2", "header2"), ("H3", "header3")]
