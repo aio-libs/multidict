@@ -19,6 +19,7 @@ from multidict import (
     MultiMapping,
     MutableMultiMapping,
 )
+from multidict._multidict_py import MultiDict as PyMultiDict, CIMultiDict as PyCIMultiDict
 
 _T = TypeVar("_T")
 
@@ -1189,3 +1190,38 @@ class TestCIMultiDict(BaseMultiDictTest):
     ) -> None:
         d = cls([("KEY", "one")])
         assert d.items().isdisjoint(arg) == expected
+
+
+@pytest.mark.xfail(reason="issue #1111", strict=True)
+def test_convert_multidict_to_cimultidict() -> None:
+    """Test conversion from MultiDict to CIMultiDict."""
+    start_as_md = MultiDict([("KEY", "value1"), ("key2", "value2")])
+    assert start_as_md.get("KEY") == "value1"
+    assert start_as_md["KEY"] == "value1"
+    assert start_as_md.get("key2") == "value2"
+    assert start_as_md["key2"] == "value2"
+    start_as_cimd = CIMultiDict([("KEY", "value1"), ("key2", "value2")])
+    assert start_as_cimd.get("key") == "value1"
+    assert start_as_cimd["key"] == "value1"
+    assert start_as_cimd.get("key2") == "value2"
+    assert start_as_cimd["key2"] == "value2"
+    converted_to_ci = CIMultiDict(start_as_md)
+    assert converted_to_ci.get("key") == "value1"
+    assert converted_to_ci["key"] == "value1"
+    assert converted_to_ci.get("key2") == "value2"
+    assert converted_to_ci["key2"] == "value2"
+
+@pytest.mark.xfail(reason="issue #1111", strict=True)
+def test_pure_python_convert_multidict_to_cimultidict_eq() -> None:
+    """Test conversion from MultiDict to CIMultiDict."""
+    original = PyMultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
+    assert PyCIMultiDict(original) == PyCIMultiDict(
+        [("H1", "header1"), ("H2", "header2"), ("H3", "header3")]
+    )
+
+def test_convert_multidict_to_cimultidict_eq() -> None:
+    """Test conversion from MultiDict to CIMultiDict."""
+    original = MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
+    assert CIMultiDict(original) == CIMultiDict(
+        [("H1", "header1"), ("H2", "header2"), ("H3", "header3")]
+    )
