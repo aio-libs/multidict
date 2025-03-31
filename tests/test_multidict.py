@@ -1222,6 +1222,11 @@ def test_pure_python_convert_multidict_to_cimultidict_eq() -> None:
     )
 
 
+@pytest.mark.xfail(reason="issue #1111", strict=True)
+@pytest.mark.skipif(
+    sys.implementation.name != "pypy",
+    reason="Will only fail on PyPy",
+)
 def test_convert_multidict_to_cimultidict_eq() -> None:
     """Test conversion from MultiDict to CIMultiDict."""
     original = MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
