@@ -19,7 +19,8 @@ from multidict import (
     MultiMapping,
     MutableMultiMapping,
 )
-from multidict._multidict_py import MultiDict as PyMultiDict, CIMultiDict as PyCIMultiDict
+from multidict._multidict_py import CIMultiDict as PyCIMultiDict
+from multidict._multidict_py import MultiDict as PyMultiDict
 
 _T = TypeVar("_T")
 
@@ -1211,6 +1212,7 @@ def test_convert_multidict_to_cimultidict() -> None:
     assert converted_to_ci.get("key2") == "value2"
     assert converted_to_ci["key2"] == "value2"
 
+
 @pytest.mark.xfail(reason="issue #1111", strict=True)
 def test_pure_python_convert_multidict_to_cimultidict_eq() -> None:
     """Test conversion from MultiDict to CIMultiDict."""
@@ -1218,6 +1220,7 @@ def test_pure_python_convert_multidict_to_cimultidict_eq() -> None:
     assert PyCIMultiDict(original) == PyCIMultiDict(
         [("H1", "header1"), ("H2", "header2"), ("H3", "header3")]
     )
+
 
 def test_convert_multidict_to_cimultidict_eq() -> None:
     """Test conversion from MultiDict to CIMultiDict."""
