@@ -1,4 +1,5 @@
 import enum
+import reprlib
 import sys
 from abc import abstractmethod
 from array import array
@@ -121,6 +122,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._keyfunc(k), v
 
+    @reprlib.recursive_repr()
     def __repr__(self) -> str:
         lst = []
         for i, k, v in self._impl._items:
@@ -254,7 +256,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         except TypeError:
             return NotImplemented
         ret: set[Union[tuple[str, _V], _T]] = self - rgt
-        ret |= (rgt - self)
+        ret |= rgt - self
         return ret
 
     __rxor__ = __xor__
@@ -288,6 +290,7 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
                 raise RuntimeError("Dictionary changed during iteration")
             yield v
 
+    @reprlib.recursive_repr()
     def __repr__(self) -> str:
         lst = []
         for i, k, v in self._impl._items:
@@ -425,7 +428,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         except TypeError:
             return NotImplemented
         ret: set[Union[str, _T]] = self - rgt  # type: ignore[assignment]
-        ret |= (rgt - self)
+        ret |= rgt - self
         return ret
 
     __rxor__ = __xor__
@@ -579,6 +582,7 @@ class _Base(MultiMapping[_V]):
                 return True
         return False
 
+    @reprlib.recursive_repr()
     def __repr__(self) -> str:
         body = ", ".join(f"'{k}': {v!r}" for i, k, v in self._impl._items)
         return f"<{self.__class__.__name__}({body})>"
