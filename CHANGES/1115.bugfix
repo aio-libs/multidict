@@ -1,1 +1,0 @@
-Prevented crashing with a segfault when :func:`repr` is called for recursive multidicts and their proxies and views.
