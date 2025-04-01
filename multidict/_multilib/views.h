@@ -167,10 +167,20 @@ multidict_itemsview_iter(_Multidict_ViewObject *self)
 static inline PyObject *
 multidict_itemsview_repr(_Multidict_ViewObject *self)
 {
-    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
-    if (name == NULL)
+    int tmp = Py_ReprEnter((PyObject *)self);
+    if (tmp < 0) {
         return NULL;
+    }
+    if (tmp > 0) {
+        return PyUnicode_FromString("...");
+    }
+    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    if (name == NULL) {
+        Py_ReprLeave((PyObject *)self);
+        return NULL;
+    }
     PyObject *ret = pair_list_repr(&self->md->pairs, name, true, true);
+    Py_ReprLeave((PyObject *)self);
     Py_CLEAR(name);
     return ret;
 }
@@ -1034,8 +1044,9 @@ static inline PyObject *
 multidict_keysview_repr(_Multidict_ViewObject *self)
 {
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
-    if (name == NULL)
+    if (name == NULL) {
         return NULL;
+    }
     PyObject *ret = pair_list_repr(&self->md->pairs, name, true, false);
     Py_CLEAR(name);
     return ret;
@@ -1571,10 +1582,20 @@ multidict_valuesview_iter(_Multidict_ViewObject *self)
 static inline PyObject *
 multidict_valuesview_repr(_Multidict_ViewObject *self)
 {
-    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
-    if (name == NULL)
+    int tmp = Py_ReprEnter((PyObject *)self);
+    if (tmp < 0) {
         return NULL;
+    }
+    if (tmp > 0) {
+        return PyUnicode_FromString("...");
+    }
+    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    if (name == NULL) {
+        Py_ReprLeave((PyObject *)self);
+        return NULL;
+    }
     PyObject *ret = pair_list_repr(&self->md->pairs, name, false, true);
+    Py_ReprLeave((PyObject *)self);
     Py_CLEAR(name);
     return ret;
 }

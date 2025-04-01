@@ -726,6 +726,17 @@ class TestMultiDict(BaseMultiDictTest):
 
         assert str(d) == "<%s('key': 'one', 'key': 'two')>" % _cls.__name__
 
+    def test__repr___recursive(
+        self, any_multidict_class: type[MultiDict[object]]
+    ) -> None:
+        d = any_multidict_class()
+        _cls = type(d)
+
+        d = any_multidict_class()
+        d["key"] = d
+
+        assert str(d) == "<%s('key': ...)>" % _cls.__name__
+
     def test_getall(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
 
@@ -758,6 +769,14 @@ class TestMultiDict(BaseMultiDictTest):
         expected = "<_ItemsView('key': 'value1', 'key': 'value2')>"
         assert repr(d.items()) == expected
 
+    def test_items__repr__recursive(
+        self, any_multidict_class: type[MultiDict[object]]
+    ) -> None:
+        d = any_multidict_class()
+        d["key"] = d.items()
+        expected = "<_ItemsView('key': <_ItemsView('key': ...)>)>"
+        assert repr(d.items()) == expected
+
     def test_keys__repr__(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
         assert repr(d.keys()) == "<_KeysView('key', 'key')>"
@@ -765,6 +784,13 @@ class TestMultiDict(BaseMultiDictTest):
     def test_values__repr__(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
         assert repr(d.values()) == "<_ValuesView('value1', 'value2')>"
+
+    def test_values__repr__recursive(
+        self, any_multidict_class: type[MultiDict[object]]
+    ) -> None:
+        d = any_multidict_class()
+        d["key"] = d.values()
+        assert repr(d.values()) == "<_ValuesView(<_ValuesView(...)>)>"
 
 
 class TestCIMultiDict(BaseMultiDictTest):
