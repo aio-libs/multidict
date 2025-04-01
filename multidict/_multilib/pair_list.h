@@ -1134,6 +1134,7 @@ pair_list_update_from_pair_list(pair_list_t *list, PyObject* used, pair_list_t *
     Py_ssize_t pos;
     Py_hash_t hash;
     PyObject *identity = NULL;
+    PyObject *key = NULL;
     bool recalc_identity = list->calc_ci_indentity != other->calc_ci_indentity;
 
     for (pos = 0; pos < other->size; pos++) {
@@ -1147,29 +1148,37 @@ pair_list_update_from_pair_list(pair_list_t *list, PyObject* used, pair_list_t *
             if (hash == -1) {
                 goto fail;
             }
+            /* materialize key */
+            key = pair_list_calc_key(list, key, identity);
+            if (key == NULL) {
+                goto fail;
+            }
         } else {
             identity = pair->identity;
             hash = pair->hash;
+            key = pair->key;
         }
         if (used != NULL) {
-            if (_pair_list_update(list, pair->key, pair->value, used,
+            if (_pair_list_update(list, key, pair->value, used,
                                   identity, hash) < 0) {
                 goto fail;
             }
         } else {
-            if (_pair_list_add_with_hash(list, identity, pair->key,
+            if (_pair_list_add_with_hash(list, identity, key,
                                          pair->value, hash) < 0) {
                 goto fail;
             }
         }
         if (recalc_identity) {
             Py_CLEAR(identity);
+            Py_CLEAR(key);
         }
     }
     return 0;
 fail:
     if (recalc_identity) {
         Py_CLEAR(identity);
+        Py_CLEAR(key);
     }
     return -1;
 }
