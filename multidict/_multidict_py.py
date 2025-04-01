@@ -631,7 +631,7 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
     ) -> None:
         if arg:
             if isinstance(arg, (MultiDict, MultiDictProxy)):
-                if self._ci != arg._ci:
+                if self._ci is not arg._ci:
                     items = [(self._title(k), k, v) for _, k, v in arg._impl._items]
                 else:
                     items = arg._impl._items
