@@ -14,6 +14,34 @@ Changelog
 
 .. towncrier release notes start
 
+6.3.1
+=====
+
+*(2025-04-01)*
+
+
+Bug fixes
+---------
+
+- Fixed keys not becoming case-insensitive when :class:`multidict.CIMultiDict` is created by passing in a :class:`multidict.MultiDict` -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1112`.
+
+- Fixed the pure Python version mutating the original :class:`multidict.MultiDict` when creating a new :class:`multidict.CIMultiDict` from an existing one when keyword arguments are also passed -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1113`.
+
+- Prevented crashing with a segfault when :func:`repr` is called for recursive multidicts and their proxies and views.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1115`.
+
+
+----
+
+
 6.3.0
 =====
 
