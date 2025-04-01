@@ -1191,7 +1191,7 @@ class TestCIMultiDict(BaseMultiDictTest):
         assert d.items().isdisjoint(arg) == expected
 
 
-def test_create_multidict_from_existing_multidict() -> None:
+def test_create_multidict_from_existing_multidict_new_pairs() -> None:
     """Test creating a MultiDict from an existing one does not mutate the original."""
     original = MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
     new = MultiDict(original, h4="header4")
