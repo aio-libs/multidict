@@ -1,0 +1,1 @@
+Fixed the pure Python mutating the original :class:`multidict.MultiDict` when creating a new :class:`multidict.CIMultiDict` from an existing one when keyword arguments are also passed -- by :user:`bdraco`.
