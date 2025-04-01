@@ -1201,7 +1201,7 @@ def test_create_multidict_from_existing_multidict_new_pairs() -> None:
     assert "h4" not in original
 
 
-def test_convert_multidict_to_cimultidict() -> None:
+def test_convert_multidict_to_cimultidict_and_back() -> None:
     """Test conversion from MultiDict to CIMultiDict."""
     start_as_md = MultiDict([("KEY", "value1"), ("key2", "value2")])
     assert start_as_md.get("KEY") == "value1"
@@ -1218,6 +1218,11 @@ def test_convert_multidict_to_cimultidict() -> None:
     assert converted_to_ci["key"] == "value1"
     assert converted_to_ci.get("key2") == "value2"
     assert converted_to_ci["key2"] == "value2"
+    converted_to_md = MultiDict(converted_to_ci)
+    assert converted_to_md.get("KEY") == "value1"
+    assert converted_to_md["KEY"] == "value1"
+    assert converted_to_md.get("key2") == "value2"
+    assert converted_to_md["key2"] == "value2"
 
 
 def test_pure_python_convert_multidict_to_cimultidict_eq() -> None:
