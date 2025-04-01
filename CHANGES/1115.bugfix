@@ -1,0 +1,1 @@
+Prevented crashing of :func:`repr` calls for multidicts, proxies and their views.
