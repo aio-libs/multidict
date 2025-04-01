@@ -78,7 +78,7 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
     }
 
     if (arg != NULL) {
-        if (CIMultiDict_CheckExact(arg) || (!CIMultiDict_CheckExact(self) && MultiDict_CheckExact(arg))) {
+        if (MultiDict_CheckExact(arg) || CIMultiDict_CheckExact(arg)) {
             list = &((MultiDictObject*)arg)->pairs;
             if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
                 goto fail;

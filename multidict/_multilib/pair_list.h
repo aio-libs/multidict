@@ -1132,23 +1132,45 @@ static inline int
 pair_list_update_from_pair_list(pair_list_t *list, PyObject* used, pair_list_t *other)
 {
     Py_ssize_t pos;
+    Py_hash_t hash;
+    PyObject *identity = NULL;
+    bool recalc_identity = list->calc_ci_indentity != other->calc_ci_indentity;
 
     for (pos = 0; pos < other->size; pos++) {
         pair_t *pair = other->pairs + pos;
-        if (used != NULL) {
-            if (_pair_list_update(list, pair->key, pair->value, used,
-                                  pair->identity, pair->hash) < 0) {
+        if (recalc_identity) {
+            identity = pair_list_calc_identity(list, pair->key);
+            if (identity == NULL) {
+                goto fail;
+            }
+            hash = PyObject_Hash(identity);
+            if (hash == -1) {
                 goto fail;
             }
         } else {
-            if (_pair_list_add_with_hash(list, pair->identity, pair->key,
-                                         pair->value, pair->hash) < 0) {
+            identity = pair->identity;
+            hash = pair->hash;
+        }
+        if (used != NULL) {
+            if (_pair_list_update(list, pair->key, pair->value, used,
+                                  identity, hash) < 0) {
                 goto fail;
             }
+        } else {
+            if (_pair_list_add_with_hash(list, identity, pair->key,
+                                         pair->value, hash) < 0) {
+                goto fail;
+            }
+        }
+        if (recalc_identity) {
+            Py_CLEAR(identity);
         }
     }
     return 0;
 fail:
+    if (recalc_identity) {
+        Py_CLEAR(identity);
+    }
     return -1;
 }
 
