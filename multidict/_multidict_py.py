@@ -453,6 +453,8 @@ class _CSMixin:
 
 
 class _CIMixin:
+    _ci: bool = True
+
     def _key(self, key: str) -> str:
         if type(key) is istr:
             return key
@@ -474,6 +476,7 @@ class _CIMixin:
 
 class _Base(MultiMapping[_V]):
     _impl: _Impl[_V]
+    _ci: bool = False
 
     @abstractmethod
     def _key(self, key: str) -> str: ...
@@ -628,7 +631,10 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
     ) -> None:
         if arg:
             if isinstance(arg, (MultiDict, MultiDictProxy)):
-                items = arg._impl._items
+                if self._ci and not arg._ci:
+                    items = [(self._title(k), k, v) for _, k, v in arg._impl._items]
+                else:
+                    items = arg._impl._items
                 if kwargs:
                     for key, value in kwargs.items():
                         items.append((self._title(key), key, value))
