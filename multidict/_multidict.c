@@ -83,7 +83,7 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
             if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
                 goto fail;
             }
-        } else if (CIMultiDictProxy_CheckExact(arg) || (!CIMultiDictProxy_CheckExact(arg) && MultiDictProxy_CheckExact(arg))) {
+        } else if (MultiDictProxy_CheckExact(arg) || CIMultiDictProxy_CheckExact(arg)) {
             list = &((MultiDictProxyObject*)arg)->md->pairs;
             if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
                 goto fail;
