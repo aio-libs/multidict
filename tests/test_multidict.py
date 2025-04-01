@@ -20,8 +20,6 @@ from multidict import (
     MutableMultiMapping,
     istr,
 )
-from multidict._multidict_py import CIMultiDict as PyCIMultiDict
-from multidict._multidict_py import MultiDict as PyMultiDict
 
 _T = TypeVar("_T")
 
@@ -1235,17 +1233,16 @@ def test_convert_multidict_to_cimultidict_and_back(
     assert converted_to_md["key2"] == "value2"
 
 
-def test_pure_python_convert_multidict_to_cimultidict_eq() -> None:
+def test_convert_multidict_to_cimultidict_eq(
+    case_sensitive_multidict_class: type[MultiDict[str]],
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
     """Test compare after conversion from MultiDict to CIMultiDict."""
-    original = PyMultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
-    assert PyCIMultiDict(original) == PyCIMultiDict(
-        [("H1", "header1"), ("H2", "header2"), ("H3", "header3")]
+    original = case_sensitive_multidict_class(
+        [("h1", "header1"), ("h2", "header2"), ("h3", "header3")]
     )
-
-
-def test_convert_multidict_to_cimultidict_eq() -> None:
-    """Test compare after conversion from MultiDict to CIMultiDict."""
-    original = MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
-    assert CIMultiDict(original) == CIMultiDict(
+    assert case_insensitive_multidict_class(
+        original
+    ) == case_insensitive_multidict_class(
         [("H1", "header1"), ("H2", "header2"), ("H3", "header3")]
     )
