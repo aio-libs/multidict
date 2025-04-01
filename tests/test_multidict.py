@@ -1193,7 +1193,6 @@ class TestCIMultiDict(BaseMultiDictTest):
         assert d.items().isdisjoint(arg) == expected
 
 
-@pytest.mark.xfail(reason="issue #1111", strict=True)
 def test_convert_multidict_to_cimultidict() -> None:
     """Test conversion from MultiDict to CIMultiDict."""
     start_as_md = MultiDict([("KEY", "value1"), ("key2", "value2")])
