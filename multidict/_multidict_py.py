@@ -628,7 +628,7 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
     ) -> None:
         if arg:
             if isinstance(arg, (MultiDict, MultiDictProxy)):
-                items = arg._impl._items
+                items = arg._impl._items.copy()
                 if kwargs:
                     for key, value in kwargs.items():
                         items.append((self._title(key), key, value))
