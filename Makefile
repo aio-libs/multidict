@@ -30,7 +30,7 @@ lint: black-check isort-check
 	python -Im pre_commit run --all-files --show-diff-on-failure
 
 fmt:
-	black -t py35 $(SRC)
+	black -t py39 $(SRC)
 	isort $(SRC)
 
 .develop: .install-deps $(shell find multidict -type f)
