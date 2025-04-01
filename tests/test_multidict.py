@@ -18,6 +18,7 @@ from multidict import (
     MultiDictProxy,
     MultiMapping,
     MutableMultiMapping,
+    istr,
 )
 from multidict._multidict_py import CIMultiDict as PyCIMultiDict
 from multidict._multidict_py import MultiDict as PyMultiDict
@@ -1201,24 +1202,33 @@ def test_create_multidict_from_existing_multidict_new_pairs() -> None:
     assert "h4" not in original
 
 
-def test_convert_multidict_to_cimultidict_and_back() -> None:
+def test_convert_multidict_to_cimultidict_and_back(
+    case_sensitive_multidict_class: type[MultiDict[str]],
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+    case_insensitive_str_class: type[istr],
+) -> None:
     """Test conversion from MultiDict to CIMultiDict."""
-    start_as_md = MultiDict([("KEY", "value1"), ("key2", "value2")])
+    start_as_md = case_sensitive_multidict_class(
+        [("KEY", "value1"), ("key2", "value2")]
+    )
     assert start_as_md.get("KEY") == "value1"
     assert start_as_md["KEY"] == "value1"
     assert start_as_md.get("key2") == "value2"
     assert start_as_md["key2"] == "value2"
-    start_as_cimd = CIMultiDict([("KEY", "value1"), ("key2", "value2")])
+    start_as_cimd = case_insensitive_multidict_class(
+        [("KEY", "value1"), ("key2", "value2")]
+    )
     assert start_as_cimd.get("key") == "value1"
     assert start_as_cimd["key"] == "value1"
     assert start_as_cimd.get("key2") == "value2"
     assert start_as_cimd["key2"] == "value2"
-    converted_to_ci = CIMultiDict(start_as_md)
+    converted_to_ci = case_insensitive_multidict_class(start_as_md)
     assert converted_to_ci.get("key") == "value1"
     assert converted_to_ci["key"] == "value1"
     assert converted_to_ci.get("key2") == "value2"
     assert converted_to_ci["key2"] == "value2"
-    converted_to_md = MultiDict(converted_to_ci)
+    converted_to_md = case_sensitive_multidict_class(converted_to_ci)
+    assert all(type(k) is case_insensitive_str_class for k in converted_to_ci.keys())
     assert converted_to_md.get("KEY") == "value1"
     assert converted_to_md["KEY"] == "value1"
     assert converted_to_md.get("key2") == "value2"

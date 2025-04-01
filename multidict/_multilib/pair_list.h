@@ -1149,7 +1149,7 @@ pair_list_update_from_pair_list(pair_list_t *list, PyObject* used, pair_list_t *
                 goto fail;
             }
             /* materialize key */
-            key = pair_list_calc_key(list, key, identity);
+            key = pair_list_calc_key(other, pair->key, identity);
             if (key == NULL) {
                 goto fail;
             }
