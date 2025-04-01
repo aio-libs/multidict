@@ -254,7 +254,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         except TypeError:
             return NotImplemented
         ret: set[Union[tuple[str, _V], _T]] = self - rgt
-        ret |= rgt - self
+        ret |= (rgt - self)
         return ret
 
     __rxor__ = __xor__
@@ -425,7 +425,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         except TypeError:
             return NotImplemented
         ret: set[Union[str, _T]] = self - rgt  # type: ignore[assignment]
-        ret |= rgt - self
+        ret |= (rgt - self)
         return ret
 
     __rxor__ = __xor__
