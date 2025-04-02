@@ -347,10 +347,20 @@ ret:
 static inline PyObject *
 multidict_repr(MultiDictObject *self)
 {
-    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
-    if (name == NULL)
+    int tmp = Py_ReprEnter((PyObject *)self);
+    if (tmp < 0) {
         return NULL;
+    }
+    if (tmp > 0) {
+        return PyUnicode_FromString("...");
+    }
+    PyObject *name = PyObject_GetAttrString((PyObject *)Py_TYPE(self), "__name__");
+    if (name == NULL) {
+        Py_ReprLeave((PyObject *)self);
+        return NULL;
+    }
     PyObject *ret = pair_list_repr(&self->pairs, name, true, true);
+    Py_ReprLeave((PyObject *)self);
     Py_CLEAR(name);
     return ret;
 }
