@@ -9,28 +9,16 @@ IS_PYPY = platform.python_implementation() == "PyPy"
 
 
 @pytest.mark.parametrize(
-    ("script", "message"),
+    ("script"),
     (
-        (
-            "multidict_extend_dict.py",
-            "dict leaked after extend()",
-        ),
-        (
-            "multidict_extend_multidict.py",
-            "MultiDict leaked after extend()",
-        ),
-        (
-            "multidict_extend_tuple.py",
-            "tuple leaked after extend()",
-        ),
-        (
-            "multidict_update_multidict.py",
-            "MultiDict leaked after update()",
-        ),
+        "multidict_extend_dict.py",
+        "multidict_extend_multidict.py",
+        "multidict_extend_tuple.py",
+        "multidict_update_multidict.py",
     ),
 )
 @pytest.mark.xfail(reason="memory leak https://github.com/aio-libs/multidict/issues/1117")
-def test_leak(script: str, message: str) -> None:
+def test_leak(script: str) -> None:
     """Run isolated leak test script and check for leaks."""
     leak_test_script = pathlib.Path(__file__).parent.joinpath("isolated", script)
 
