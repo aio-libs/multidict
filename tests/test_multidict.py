@@ -1284,6 +1284,7 @@ def test_extend_does_not_alter_refcount(
     new.extend(original)
     assert sys.getrefcount(original) == original_refcount
 
+
 def test_update_does_not_alter_refcount(
     case_sensitive_multidict_class: type[MultiDict[str]],
 ) -> None:
@@ -1293,6 +1294,7 @@ def test_update_does_not_alter_refcount(
     original_refcount = sys.getrefcount(original)
     new.update(original)
     assert sys.getrefcount(original) == original_refcount
+
 
 def test_init_does_not_alter_refcount(
     case_sensitive_multidict_class: type[MultiDict[str]],
