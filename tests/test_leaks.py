@@ -42,4 +42,4 @@ def test_leak(script: str, message: str) -> None:
         exit_code = proc.wait()
         if exit_code != 0:
             outs, errs = proc.communicate()
-            assert exit_code == 0, f"Process exited with code {exit_code}, stdout: {outs!r}, stderr: {errs!r}"
+            raise AssertionError(f"Process exited with code {exit_code}, stdout: {outs!r}, stderr: {errs!r}")
