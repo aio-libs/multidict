@@ -11,15 +11,20 @@ class NotLeakTuple(tuple[Any, ...]):
     """A subclassed tuple to make it easier to test for leaks."""
 
 
-md: MultiDict[str] = MultiDict()
-for _ in range(100):
-    md.extend(NotLeakTuple())
-del md
-gc.collect()
+def _run_isolated_case() -> None:
+    md: MultiDict[str] = MultiDict()
+    for _ in range(100):
+        md.extend(NotLeakTuple())
+    del md
+    gc.collect()
 
-leaked = len(objgraph.by_type("NotLeakTuple"))
-if leaked:
-    print(
-        f"Memory leak detected: {leaked} instances of NotLeakTuple not collected by GC"
-    )
-sys.exit(1 if leaked else 0)
+    leaked = len(objgraph.by_type("NotLeakTuple"))
+    if leaked:
+        print(
+            f"Memory leak detected: {leaked} instances of NotLeakTuple not collected by GC"
+        )
+    sys.exit(1 if leaked else 0)
+
+
+if __name__ == "__main__":
+    _run_isolated_case()
