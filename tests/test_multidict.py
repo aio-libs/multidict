@@ -1272,3 +1272,33 @@ def test_convert_multidict_to_cimultidict_eq(
     ) == case_insensitive_multidict_class(
         [("H1", "header1"), ("H2", "header2"), ("H3", "header3")]
     )
+
+
+def test_extend_does_not_alter_refcount(
+    case_sensitive_multidict_class: type[MultiDict[str]],
+) -> None:
+    """Test that extending a MultiDict with a MultiDict does not alter the refcount of the original."""
+    original = case_sensitive_multidict_class([("h1", "header1")])
+    new = case_sensitive_multidict_class([("h2", "header2")])
+    original_refcount = sys.getrefcount(original)
+    new.extend(original)
+    assert sys.getrefcount(original) == original_refcount
+
+def test_update_does_not_alter_refcount(
+    case_sensitive_multidict_class: type[MultiDict[str]],
+) -> None:
+    """Test that updating a MultiDict with a MultiDict does not alter the refcount of the original."""
+    original = case_sensitive_multidict_class([("h1", "header1")])
+    new = case_sensitive_multidict_class([("h2", "header2")])
+    original_refcount = sys.getrefcount(original)
+    new.update(original)
+    assert sys.getrefcount(original) == original_refcount
+
+def test_init_does_not_alter_refcount(
+    case_sensitive_multidict_class: type[MultiDict[str]],
+) -> None:
+    """Test that initializing a MultiDict with a MultiDict does not alter the refcount of the original."""
+    original = case_sensitive_multidict_class([("h1", "header1")])
+    original_refcount = sys.getrefcount(original)
+    case_sensitive_multidict_class(original)
+    assert sys.getrefcount(original) == original_refcount
