@@ -5,14 +5,14 @@
 extern "C" {
 #endif
 
+#include "state.h"
+
 typedef struct {
     PyUnicodeObject str;
     PyObject * canonical;
 } istrobject;
 
 PyDoc_STRVAR(istr__doc__, "istr class implementation");
-
-static PyTypeObject istr_type;
 
 static inline void
 istr_dealloc(istrobject *self)
@@ -24,6 +24,8 @@ istr_dealloc(istrobject *self)
 static inline PyObject *
 istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
+    mod_state *state = get_mod_state_by_cls(type);
+
     PyObject *x = NULL;
     static char *kwlist[] = {"object", "encoding", "errors", 0};
     PyObject *encoding = NULL;
@@ -31,7 +33,7 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *canonical = NULL;
     PyObject * ret = NULL;
     if (kwds != NULL) {
-        int cmp = PyDict_Pop(kwds, multidict_str_canonical, &canonical);
+        int cmp = PyDict_Pop(kwds, state->str_canonical, &canonical);
         if (cmp < 0) {
             return NULL;
         } else if (cmp > 0) {
@@ -43,7 +45,7 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
                                      kwlist, &x, &encoding, &errors)) {
         return NULL;
     }
-    if (x != NULL && Py_TYPE(x) == &istr_type) {
+    if (x != NULL && Py_TYPE(x) == state->IStrType) {
         Py_INCREF(x);
         return x;
     }
@@ -53,7 +55,7 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
 
     if (canonical == NULL) {
-        canonical = PyObject_CallMethodNoArgs(ret, multidict_str_lower);
+        canonical = PyObject_CallMethodNoArgs(ret, state->str_lower);
         if (!canonical) {
             goto fail;
         }
@@ -102,23 +104,29 @@ static PyMethodDef istr_methods[] = {
     {NULL, NULL}   /* sentinel */
 };
 
-static PyTypeObject istr_type = {
-    PyVarObject_HEAD_INIT(DEFERRED_ADDRESS(&PyType_Type), 0)
-    "multidict._multidict.istr",
-    sizeof(istrobject),
-    .tp_dealloc = (destructor)istr_dealloc,
-    .tp_flags = Py_TPFLAGS_DEFAULT
+static PyType_Slot istr_slots[] = {
+    {Py_tp_dealloc, istr_dealloc},
+    {Py_tp_doc, (void *)istr__doc__},
+    {Py_tp_methods, istr_methods},
+    {Py_tp_new, istr_new},
+    {0, NULL},
+};
+
+static PyType_Spec istr_spec = {
+    .name = "multidict._multidict.istr",
+    .basicsize = sizeof(istrobject),
+    .flags = (Py_TPFLAGS_DEFAULT
               | Py_TPFLAGS_BASETYPE
-              | Py_TPFLAGS_UNICODE_SUBCLASS,
-    .tp_doc = istr__doc__,
-    .tp_base = DEFERRED_ADDRESS(&PyUnicode_Type),
-    .tp_methods = istr_methods,
-    .tp_new = (newfunc)istr_new,
+#if PY_VERSION_HEX >= 0x030a0f00
+              | Py_TPFLAGS_IMMUTABLETYPE
+#endif
+              | Py_TPFLAGS_UNICODE_SUBCLASS),
+    .slots = istr_slots,
 };
 
 
 static inline PyObject *
-IStr_New(PyObject *str, PyObject *canonical)
+IStr_New(mod_state *state, PyObject *str, PyObject *canonical)
 {
     PyObject *args = NULL;
     PyObject *kwds = NULL;
@@ -139,12 +147,12 @@ IStr_New(PyObject *str, PyObject *canonical)
                             "'canonical' argument should be exactly str");
             goto ret;
         }
-        if (PyDict_SetItem(kwds, multidict_str_canonical, canonical) < 0) {
+        if (PyDict_SetItem(kwds, state->str_canonical, canonical) < 0) {
             goto ret;
         }
     }
 
-    res = istr_new(&istr_type, args, kwds);
+    res = istr_new(state->IStrType, args, kwds);
 ret:
     Py_CLEAR(args);
     Py_CLEAR(kwds);
@@ -152,12 +160,14 @@ ret:
 }
 
 static inline int
-istr_init(void)
+istr_init(PyObject *module, mod_state *state)
 {
-    istr_type.tp_base = &PyUnicode_Type;
-    if (PyType_Ready(&istr_type) < 0) {
+    PyObject *tmp = PyType_FromModuleAndSpec(module, &istr_spec,
+                                             (PyObject *)&PyUnicode_Type);
+    if (tmp == NULL) {
         return -1;
     }
+    state->IStrType = (PyTypeObject *)tmp;
     return 0;
 }
 
