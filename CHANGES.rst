@@ -14,6 +14,24 @@ Changelog
 
 .. towncrier release notes start
 
+6.3.2
+=====
+
+*(2025-04-03)*
+
+
+Bug fixes
+---------
+
+- Resolved a memory leak by ensuring proper reference count decrementation -- by :user:`asvetlov` and :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1121`.
+
+
+----
+
+
 6.3.1
 =====
 

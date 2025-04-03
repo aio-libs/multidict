@@ -26,6 +26,7 @@ Ctrl
 cython
 Deprecations
 deallocation
+decrementation
 dev
 dict
 docstrings
