@@ -146,7 +146,7 @@ _multidict_extend_parse_args(PyObject *args, PyObject *kwds,
     }
 
     if (size == 1) {
-        *parg = PyTuple_GET_ITEM(args, 0);
+        *parg = Py_NewRef(PyTuple_GET_ITEM(args, 0));
         s = PyObject_Length(*parg);
         if (s < 0) {
             // e.g. cannot calc size of generator object
@@ -505,15 +505,19 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     PyObject *arg = NULL;
     Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "MultiDict", &arg);
     if (size < 0) {
-        return -1;
+        goto fail;
     }
     if (pair_list_init(&self->pairs, size) < 0) {
-        return -1;
+        goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "MultiDict", 1) < 0) {
-        return -1;
+        goto fail;
     }
+    Py_CLEAR(arg);
     return 0;
+fail:
+    Py_CLEAR(arg);
+    return -1;
 }
 
 static inline PyObject *
@@ -544,14 +548,17 @@ multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
     PyObject *arg = NULL;
     Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "extend", &arg);
     if (size < 0) {
-        return NULL;
+        goto fail;
     }
     pair_list_grow(&self->pairs, size);
     if (_multidict_extend(self, arg, kwds, "extend", 1) < 0) {
-        return NULL;
+        goto fail;
     }
-
+    Py_CLEAR(arg);
     Py_RETURN_NONE;
+fail:
+    Py_CLEAR(arg);
+    return NULL;
 }
 
 static inline PyObject *
@@ -692,12 +699,16 @@ multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *arg = NULL;
     if (_multidict_extend_parse_args(args, kwds, "update", &arg) < 0) {
-        return NULL;
+        goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "update", 0) < 0) {
-        return NULL;
+        goto fail;
     }
+    Py_CLEAR(arg);
     Py_RETURN_NONE;
+fail:
+    Py_CLEAR(arg);
+    return NULL;
 }
 
 PyDoc_STRVAR(multidict_add_doc,
@@ -917,17 +928,21 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     PyObject *arg = NULL;
     Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "CIMultiDict", &arg);
     if (size < 0) {
-        return -1;
+        goto fail;
     }
 
     if (ci_pair_list_init(&self->pairs, size) < 0) {
-        return -1;
+        goto fail;
     }
 
     if (_multidict_extend(self, arg, kwds, "CIMultiDict", 1) < 0) {
-        return -1;
+        goto fail;
     }
+    Py_CLEAR(arg);
     return 0;
+fail:
+    Py_CLEAR(arg);
+    return -1;
 }
 
 
