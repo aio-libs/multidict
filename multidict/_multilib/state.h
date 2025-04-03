@@ -52,7 +52,7 @@ PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
     PyObject *mod = NULL;
 
     mod = PyType_GetModule(tp);
-    if (mod != NULL) {
+    if (mod == NULL) {
         PyErr_Clear();
     } else {
         mod_def = PyModule_GetDef(mod);
@@ -93,13 +93,6 @@ PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
 #endif
 
 static PyModuleDef multidict_module;
-
-static inline PyObject *
-get_mod_by_def(PyObject *self)
-{
-    PyTypeObject *tp = Py_TYPE(self);
-    return PyType_GetModuleByDef(tp, &multidict_module);
-}
 
 static inline int
 get_mod_state_by_def_checked(PyObject *self, mod_state **ret)

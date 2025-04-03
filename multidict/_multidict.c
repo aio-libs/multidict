@@ -1549,7 +1549,8 @@ static int
 module_exec(PyObject *mod)
 {
     mod_state *state = get_mod_state(mod);
-    PyObject * tmp;
+    PyObject *tmp;
+    PyObject *tpl = NULL;
 
     state->str_lower = PyUnicode_InternFromString("lower");
     if (state->str_lower == NULL) {
@@ -1574,29 +1575,37 @@ module_exec(PyObject *mod)
 
     tmp = PyType_FromModuleAndSpec(mod, &multidict_spec, NULL);
     if (tmp == NULL) {
-        return -1;
+        goto fail;
     }
     state->MultiDictType = (PyTypeObject *)tmp;
 
-    tmp = PyType_FromModuleAndSpec(mod, &cimultidict_spec,
-                                   (PyObject *)state->MultiDictType);
+    tpl = PyTuple_Pack(1, (PyObject *)state->MultiDictType);
+    if (tpl == NULL) {
+        goto fail;
+    }
+    tmp = PyType_FromModuleAndSpec(mod, &cimultidict_spec, tpl);
     if (tmp == NULL) {
-        return -1;
+        goto fail;
     }
     state->CIMultiDictType = (PyTypeObject *)tmp;
+    Py_CLEAR(tpl);
 
     tmp = PyType_FromModuleAndSpec(mod, &multidict_proxy_spec, NULL);
     if (tmp == NULL) {
-        return -1;
+        goto fail;
     }
     state->MultiDictProxyType = (PyTypeObject *)tmp;
 
-    tmp = PyType_FromModuleAndSpec(mod, &cimultidict_proxy_spec,
-                                   (PyObject *)state->MultiDictProxyType);
+    tpl = PyTuple_Pack(1, (PyObject *)state->MultiDictProxyType);
+    if (tpl == NULL) {
+        goto fail;
+    }
+    tmp = PyType_FromModuleAndSpec(mod, &cimultidict_proxy_spec, tpl);
     if (tmp == NULL) {
-        return -1;
+        goto fail;
     }
     state->CIMultiDictProxyType = (PyTypeObject *)tmp;
+    Py_CLEAR(tpl);
 
     if (PyModule_AddType(mod, state->IStrType) < 0) {
         goto fail;
@@ -1625,6 +1634,7 @@ module_exec(PyObject *mod)
 
     return 0;
 fail:
+    Py_CLEAR(tpl);
     return -1;
 }
 

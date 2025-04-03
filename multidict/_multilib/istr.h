@@ -162,8 +162,12 @@ ret:
 static inline int
 istr_init(PyObject *module, mod_state *state)
 {
-    PyObject *tmp = PyType_FromModuleAndSpec(module, &istr_spec,
-                                             (PyObject *)&PyUnicode_Type);
+    PyObject *tpl = PyTuple_Pack(1, (PyObject *)&PyUnicode_Type);
+    if (tpl == NULL) {
+        return -1;
+    }
+    PyObject *tmp = PyType_FromModuleAndSpec(module, &istr_spec, tpl);
+    Py_DECREF(tpl);
     if (tmp == NULL) {
         return -1;
     }
