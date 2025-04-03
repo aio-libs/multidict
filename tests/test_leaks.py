@@ -17,6 +17,7 @@ IS_PYPY = platform.python_implementation() == "PyPy"
         "multidict_update_multidict.py",
     ),
 )
+@pytest.mark.leaks
 @pytest.mark.xfail(reason="memory leak https://github.com/aio-libs/multidict/issues/1117")
 def test_leak(script: str) -> None:
     """Run isolated leak test script and check for leaks."""
