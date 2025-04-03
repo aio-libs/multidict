@@ -1030,6 +1030,7 @@ PyDoc_STRVAR(CIMultDict_doc,
 static PyType_Slot cimultidict_slots[] = {
     {Py_tp_doc, (void *)CIMultDict_doc},
     {Py_tp_init, cimultidict_tp_init},
+    {Py_tp_methods, multidict_methods},  // copy for lookup optimization
     {0, NULL},
 };
 
