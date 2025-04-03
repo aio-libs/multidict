@@ -13,10 +13,7 @@ def _run_isolated_case() -> None:
     del md
     gc.collect()
     leaked = len(objgraph.by_type("MultiDict"))
-    if leaked:
-        print(
-            f"Memory leak detected: {leaked} instances of MultiDict not collected by GC"
-        )
+    print(f"{leaked} instances of MultiDict not collected by GC")
     sys.exit(1 if leaked else 0)
 
 

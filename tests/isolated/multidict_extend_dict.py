@@ -19,10 +19,7 @@ def _run_isolated_case() -> None:
     gc.collect()
 
     leaked = len(objgraph.by_type("NoLeakDict"))
-    if leaked:
-        print(
-            f"Memory leak detected: {leaked} instances of NoLeakDict not collected by GC"
-        )
+    print(f"{leaked} instances of NoLeakDict not collected by GC")
     sys.exit(1 if leaked else 0)
 
 
