@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import operator
+import platform
 import sys
 import weakref
 from collections import deque
@@ -22,6 +23,7 @@ from multidict import (
 )
 
 _T = TypeVar("_T")
+IS_PYPY = platform.python_implementation() == "PyPy"
 
 
 def chained_callable(
@@ -1274,6 +1276,7 @@ def test_convert_multidict_to_cimultidict_eq(
     )
 
 
+@pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_extend_does_not_alter_refcount(
     case_sensitive_multidict_class: type[MultiDict[str]],
 ) -> None:
@@ -1285,6 +1288,7 @@ def test_extend_does_not_alter_refcount(
     assert sys.getrefcount(original) == original_refcount
 
 
+@pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_update_does_not_alter_refcount(
     case_sensitive_multidict_class: type[MultiDict[str]],
 ) -> None:
@@ -1296,6 +1300,7 @@ def test_update_does_not_alter_refcount(
     assert sys.getrefcount(original) == original_refcount
 
 
+@pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_init_does_not_alter_refcount(
     case_sensitive_multidict_class: type[MultiDict[str]],
 ) -> None:
