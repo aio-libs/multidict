@@ -146,7 +146,7 @@ _multidict_extend_parse_args(PyObject *args, PyObject *kwds,
     }
 
     if (size == 1) {
-        *parg = Py_NewRef(PyTuple_GET_ITEM(args, 0));
+        *parg = PyTuple_GET_ITEM(args, 0);
         s = PyObject_Length(*parg);
         if (s < 0) {
             // e.g. cannot calc size of generator object
