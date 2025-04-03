@@ -86,7 +86,7 @@ PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
     PyErr_Format(
         PyExc_TypeError,
         "PyType_GetModuleByDef: No superclass of '%s' has the given module",
-        type->tp_name);
+        tp->tp_name);
     return NULL;
 
 }
