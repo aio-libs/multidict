@@ -203,7 +203,7 @@ static PyType_Spec multidict_items_iter_spec = {
     .name = "multidict._multidict._itemsiter",
     .basicsize = sizeof(MultidictIter),
     .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a0f00
+#if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif
               | Py_TPFLAGS_HAVE_GC),
@@ -224,7 +224,7 @@ static PyType_Spec multidict_values_iter_spec = {
     .name = "multidict._multidict._valuesiter",
     .basicsize = sizeof(MultidictIter),
     .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a0f00
+#if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif
               | Py_TPFLAGS_HAVE_GC),
@@ -246,7 +246,7 @@ static PyType_Spec multidict_keys_iter_spec = {
     .name = "multidict._multidict._keysiter",
     .basicsize = sizeof(MultidictIter),
     .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a0f00
+#if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif
               | Py_TPFLAGS_HAVE_GC),

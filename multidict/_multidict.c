@@ -986,7 +986,7 @@ static PyType_Spec multidict_spec = {
     .name = "multidict._multidict.MultiDict",
     .basicsize = sizeof(MultiDictObject),
     .flags = (Py_TPFLAGS_DEFAULT  | Py_TPFLAGS_BASETYPE
-#if PY_VERSION_HEX >= 0x030a0f00
+#if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif
 #ifdef MANAGED_WEAKREFS
@@ -1037,7 +1037,7 @@ static PyType_Spec cimultidict_spec = {
     .name = "multidict._multidict.CIMultiDict",
     .basicsize = sizeof(MultiDictObject),
     .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a0f00
+#if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif
               | Py_TPFLAGS_BASETYPE),
@@ -1357,7 +1357,7 @@ static PyType_Spec multidict_proxy_spec = {
     .name = "multidict._multidict.MultiDictProxy",
     .basicsize = sizeof(MultiDictProxyObject),
     .flags = (Py_TPFLAGS_DEFAULT  | Py_TPFLAGS_BASETYPE
-#if PY_VERSION_HEX >= 0x030a0f00
+#if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif
 #ifdef MANAGED_WEAKREFS
@@ -1453,7 +1453,7 @@ static PyType_Spec cimultidict_proxy_spec = {
     .name = "multidict._multidict.CIMultiDictProxy",
     .basicsize = sizeof(MultiDictProxyObject),
     .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a0f00
+#if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif
               | Py_TPFLAGS_BASETYPE),
@@ -1641,10 +1641,10 @@ fail:
 
 static struct PyModuleDef_Slot module_slots[] = {
     {Py_mod_exec, module_exec},
-#ifdef Py_MOD_PER_INTERPRETER_GIL_SUPPORTED
+#if PY_VERSION_HEX >= 0x030c00f0
     {Py_mod_multiple_interpreters, Py_MOD_PER_INTERPRETER_GIL_SUPPORTED},
 #endif
-#ifdef Py_MOD_GIL_NOT_USED
+#if PY_VERSION_HEX >= 0x030d00f0
     {Py_mod_gil, Py_MOD_GIL_NOT_USED},
 #endif
     {0, NULL},

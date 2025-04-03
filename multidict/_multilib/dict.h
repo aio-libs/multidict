@@ -8,7 +8,7 @@ extern "C" {
 #include "pythoncapi_compat.h"
 #include "pair_list.h"
 
-#if PY_VERSION_HEX >= 0x030c0f00
+#if PY_VERSION_HEX >= 0x030c00f0
 #define MANAGED_WEAKREFS
 #endif
 
