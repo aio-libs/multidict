@@ -498,11 +498,7 @@ multidict_tp_dealloc(MultiDictObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
-#ifndef MANAGED_WEAKREFS
-    if (self->weaklist != NULL) {
-        PyObject_ClearWeakRefs((PyObject *)self);
-    };
-#endif
+    PyObject_ClearWeakRefs((PyObject *)self);
     pair_list_dealloc(&self->pairs);
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END // there should be no code after this
@@ -1211,11 +1207,7 @@ static inline void
 multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
 {
     PyObject_GC_UnTrack(self);
-#ifndef MANAGED_WEAKREFS
-    if (self->weaklist != NULL) {
-        PyObject_ClearWeakRefs((PyObject *)self);
-    };
-#endif
+    PyObject_ClearWeakRefs((PyObject *)self);
     Py_XDECREF(self->md);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
