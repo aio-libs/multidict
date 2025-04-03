@@ -18,6 +18,7 @@ IS_PYPY = platform.python_implementation() == "PyPy"
     ),
 )
 @pytest.mark.leaks
+@pytest.mark.skipif(IS_PYPY, reason="leak testing is not supported on PyPy")
 @pytest.mark.xfail(reason="memory leak https://github.com/aio-libs/multidict/issues/1117")
 def test_leak(script: str) -> None:
     """Run isolated leak test script and check for leaks."""
