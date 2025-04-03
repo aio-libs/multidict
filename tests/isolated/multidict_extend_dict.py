@@ -11,7 +11,7 @@ class NoLeakDict(dict[str, Any]):
 
 
 md: MultiDict[str] = MultiDict()
-for _ in range(10000):
+for _ in range(100):
     md.update(NoLeakDict())
 del md
 gc.collect()

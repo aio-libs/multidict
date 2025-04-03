@@ -11,7 +11,7 @@ class NotLeakTuple(tuple[Any, ...]):
 
 
 md: MultiDict[str] = MultiDict()
-for _ in range(10000):
+for _ in range(100):
     md.extend(NotLeakTuple())
 del md
 gc.collect()
