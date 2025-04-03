@@ -45,10 +45,9 @@ get_mod_state_by_cls(PyTypeObject *cls)
 
 #if PY_VERSION_HEX < 0x030b0000
 PyObject *
-PyType_GetModuleByDef(PyTypeObject *type, PyModuleDef *def)
+PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
 {
     PyModuleDef * mod_def;
-    PyTypeObject *tp = Py_TYPE(self);
     assert(PyType_HasFeature(tp, Py_TPFLAGS_HEAPTYPE));
     PyObject *mod = NULL;
 
