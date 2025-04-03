@@ -1,0 +1,1 @@
+Resolved a memory leak by ensuring proper reference count decrementation -- by :user:`asvetlov` and :user:`bdraco`.
