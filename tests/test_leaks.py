@@ -37,5 +37,9 @@ def test_leak(script: str, message: str) -> None:
     with subprocess.Popen(
         [sys.executable, "-u", str(leak_test_script)],
         stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     ) as proc:
-        assert proc.wait() == 0, message
+        exit_code = proc.wait()
+        if exit_code != 0:
+            outs, errs = proc.communicate()
+            assert exit_code == 0, f"Process exited with code {exit_code}, stdout: {outs!r}, stderr: {errs!r}"

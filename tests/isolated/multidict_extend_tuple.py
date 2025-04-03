@@ -1,4 +1,5 @@
 import gc
+import sys
 from typing import Any
 
 import objgraph  # type: ignore[import-untyped]
@@ -21,4 +22,4 @@ if leaked:
     print(
         f"Memory leak detected: {leaked} instances of NotLeakTuple not collected by GC"
     )
-exit(1 if leaked else 0)
+sys.exit(1 if leaked else 0)
