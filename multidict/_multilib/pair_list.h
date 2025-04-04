@@ -12,6 +12,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "istr.h"
+#include "state.h"
+
 /* Implementation note.
 identity always has exact PyUnicode_Type type, not a subclass.
 It guarantees that identity hashing and comparison never calls
@@ -32,10 +35,7 @@ typedef struct pair {
 } pair_t;
 
 /* Note about the structure size
-With 29 pairs the MultiDict object size is slightly less than 1KiB
-(1000-1008 bytes depending on Python version,
-plus extra 12 bytes for memory allocator internal structures).
-As the result the max reserved size is 1020 bytes at most.
+With 28 pairs the MultiDict object size is slightly less than 1KiB
 
 To fit into 512 bytes, the structure can contain only 13 pairs
 which is too small, e.g. https://www.python.org returns 16 headers
@@ -45,9 +45,10 @@ The embedded buffer intention is to fit the vast majority of possible
 HTTP headers into the buffer without allocating an extra memory block.
 */
 
-#define EMBEDDED_CAPACITY 29
+#define EMBEDDED_CAPACITY 28
 
 typedef struct pair_list {
+    mod_state *state;
     Py_ssize_t capacity;
     Py_ssize_t size;
     uint64_t version;
@@ -92,10 +93,9 @@ str_cmp(PyObject *s1, PyObject *s2)
 
 
 static inline PyObject *
-_key_to_ident(PyObject *key)
+_key_to_ident(mod_state *state, PyObject *key)
 {
-    PyTypeObject *type = Py_TYPE(key);
-    if (type == &istr_type) {
+    if (IStr_Check(state, key)) {
         return Py_NewRef(((istrobject*)key)->canonical);
     }
     if (PyUnicode_CheckExact(key)) {
@@ -112,14 +112,13 @@ _key_to_ident(PyObject *key)
 
 
 static inline PyObject *
-_ci_key_to_ident(PyObject *key)
+_ci_key_to_ident(mod_state *state, PyObject *key)
 {
-    PyTypeObject *type = Py_TYPE(key);
-    if (type == &istr_type) {
+    if (IStr_Check(state, key)) {
         return Py_NewRef(((istrobject*)key)->canonical);
     }
     if (PyUnicode_Check(key)) {
-        PyObject *ret = PyObject_CallMethodNoArgs(key, multidict_str_lower);
+        PyObject *ret = PyObject_CallMethodNoArgs(key, state->str_lower);
         if (!PyUnicode_CheckExact(ret)) {
             PyObject *tmp = PyUnicode_FromObject(ret);
             Py_CLEAR(ret);
@@ -138,7 +137,7 @@ _ci_key_to_ident(PyObject *key)
 
 
 static inline PyObject *
-_arg_to_key(PyObject *key, PyObject *ident)
+_arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
 {
     if (PyUnicode_Check(key)) {
         return Py_NewRef(key);
@@ -151,14 +150,13 @@ _arg_to_key(PyObject *key, PyObject *ident)
 
 
 static inline PyObject *
-_ci_arg_to_key(PyObject *key, PyObject *ident)
+_ci_arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
 {
-    PyTypeObject *type = Py_TYPE(key);
-    if (type == &istr_type) {
+    if (IStr_Check(state, key)) {
         return Py_NewRef(key);
     }
     if (PyUnicode_Check(key)) {
-        return IStr_New(key, ident);
+        return IStr_New(state, key, ident);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
@@ -240,8 +238,10 @@ pair_list_shrink(pair_list_t *list)
 
 
 static inline int
-_pair_list_init(pair_list_t *list, bool calc_ci_identity, Py_ssize_t preallocate)
+_pair_list_init(pair_list_t *list, mod_state *state,
+                bool calc_ci_identity, Py_ssize_t preallocate)
 {
+    list->state = state;
     list->calc_ci_indentity = calc_ci_identity;
     Py_ssize_t capacity = EMBEDDED_CAPACITY;
     if (preallocate >= capacity) {
@@ -257,16 +257,16 @@ _pair_list_init(pair_list_t *list, bool calc_ci_identity, Py_ssize_t preallocate
 }
 
 static inline int
-pair_list_init(pair_list_t *list, Py_ssize_t size)
+pair_list_init(pair_list_t *list, mod_state *state, Py_ssize_t size)
 {
-    return _pair_list_init(list, /* calc_ci_identity = */ false, size);
+    return _pair_list_init(list, state, /* calc_ci_identity = */ false, size);
 }
 
 
 static inline int
-ci_pair_list_init(pair_list_t *list, Py_ssize_t size)
+ci_pair_list_init(pair_list_t *list, mod_state *state, Py_ssize_t size)
 {
-    return _pair_list_init(list, /* calc_ci_identity = */ true, size);
+    return _pair_list_init(list, state, /* calc_ci_identity = */ true, size);
 }
 
 
@@ -274,16 +274,16 @@ static inline PyObject *
 pair_list_calc_identity(pair_list_t *list, PyObject *key)
 {
     if (list->calc_ci_indentity)
-        return _ci_key_to_ident(key);
-    return _key_to_ident(key);
+        return _ci_key_to_ident(list->state, key);
+    return _key_to_ident(list->state, key);
 }
 
 static inline PyObject *
 pair_list_calc_key(pair_list_t *list, PyObject *key, PyObject *ident)
 {
     if (list->calc_ci_indentity)
-        return _ci_arg_to_key(key, ident);
-    return _arg_to_key(key, ident);
+        return _ci_arg_to_key(list->state, key, ident);
+    return _arg_to_key(list->state, key, ident);
 }
 
 static inline void
@@ -363,9 +363,7 @@ _pair_list_add_with_hash(pair_list_t *list,
 
 
 static inline int
-pair_list_add(pair_list_t *list,
-              PyObject *key,
-              PyObject *value)
+pair_list_add(pair_list_t *list, PyObject *key, PyObject *value)
 {
     PyObject *identity = pair_list_calc_identity(list, key);
     if (identity == NULL) {
@@ -1129,7 +1127,8 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 
 
 static inline int
-pair_list_update_from_pair_list(pair_list_t *list, PyObject* used, pair_list_t *other)
+pair_list_update_from_pair_list(pair_list_t *list,
+                                PyObject* used, pair_list_t *other)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
@@ -1576,6 +1575,7 @@ fail:
     Py_CLEAR(key);
     Py_CLEAR(value);
     PyUnicodeWriter_Discard(writer);
+    return NULL;
 }
 
 
