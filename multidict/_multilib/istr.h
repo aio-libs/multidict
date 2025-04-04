@@ -27,7 +27,11 @@ istr_new_with_state(PyTypeObject *type, PyObject *args, PyObject *kwds,
                     mod_state *state)
 {
     if (state == NULL) {
-        state = get_mod_state_by_cls(type);
+        PyObject *mod = PyType_GetModuleByDef(type, &multidict_module);
+        if (mod == NULL) {
+            return NULL;
+        }
+        state = get_mod_state(mod);
     }
 
     PyObject *x = NULL;
