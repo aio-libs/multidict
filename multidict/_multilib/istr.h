@@ -10,6 +10,7 @@ extern "C" {
 typedef struct {
     PyUnicodeObject str;
     PyObject * canonical;
+    mod_state *state;
 } istrobject;
 
 PyDoc_STRVAR(istr__doc__, "istr class implementation");
@@ -22,9 +23,12 @@ istr_dealloc(istrobject *self)
 }
 
 static inline PyObject *
-istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+istr_new_with_state(PyTypeObject *type, PyObject *args, PyObject *kwds,
+                    mod_state *state)
 {
-    mod_state *state = get_mod_state_by_cls(type);
+    if (state == NULL) {
+        state = get_mod_state_by_cls(type);
+    }
 
     PyObject *x = NULL;
     static char *kwlist[] = {"object", "encoding", "errors", 0};
@@ -69,12 +73,18 @@ istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         canonical = tmp;
     }
     ((istrobject*)ret)->canonical = canonical;
+    ((istrobject*)ret)->state = state;
     return ret;
 fail:
     Py_XDECREF(ret);
     return NULL;
 }
 
+static inline PyObject *
+istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    return istr_new_with_state(type, args, kwds, NULL);
+}
 
 static inline PyObject *
 istr_reduce(PyObject *self)
@@ -116,7 +126,6 @@ static PyType_Spec istr_spec = {
     .name = "multidict._multidict.istr",
     .basicsize = sizeof(istrobject),
     .flags = (Py_TPFLAGS_DEFAULT
-              | Py_TPFLAGS_BASETYPE
 #if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif
@@ -152,7 +161,7 @@ IStr_New(mod_state *state, PyObject *str, PyObject *canonical)
         }
     }
 
-    res = istr_new(state->IStrType, args, kwds);
+    res = istr_new_with_state(state->IStrType, args, kwds, state);
 ret:
     Py_CLEAR(args);
     Py_CLEAR(kwds);

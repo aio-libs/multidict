@@ -27,9 +27,8 @@ _init_iter(MultidictIter *it, MultiDictObject *md)
 static inline PyObject *
 multidict_items_iter_new(MultiDictObject *md)
 {
-    mod_state *state = get_mod_state_by_def((PyObject *)md);
     MultidictIter *it = PyObject_GC_New(
-        MultidictIter, state->ItemsIterType);
+        MultidictIter, md->pairs.state->ItemsIterType);
     if (it == NULL) {
         return NULL;
     }
@@ -43,9 +42,8 @@ multidict_items_iter_new(MultiDictObject *md)
 static inline PyObject *
 multidict_keys_iter_new(MultiDictObject *md)
 {
-    mod_state *state = get_mod_state_by_def((PyObject *)md);
     MultidictIter *it = PyObject_GC_New(
-        MultidictIter, state->KeysIterType);
+        MultidictIter, md->pairs.state->KeysIterType);
     if (it == NULL) {
         return NULL;
     }
@@ -59,9 +57,8 @@ multidict_keys_iter_new(MultiDictObject *md)
 static inline PyObject *
 multidict_values_iter_new(MultiDictObject *md)
 {
-    mod_state *state = get_mod_state_by_def((PyObject *)md);
     MultidictIter *it = PyObject_GC_New(
-        MultidictIter, state->ValuesIterType);
+        MultidictIter, md->pairs.state->ValuesIterType);
     if (it == NULL) {
         return NULL;
     }
@@ -79,9 +76,7 @@ multidict_items_iter_iternext(MultidictIter *self)
     PyObject *value = NULL;
     PyObject *ret = NULL;
 
-    mod_state *state = get_mod_state_by_def((PyObject *)self);
-
-    int res = pair_list_next(state, &self->md->pairs, &self->current,
+    int res = pair_list_next(&self->md->pairs, &self->current,
                              NULL, &key, &value);
     if (res < 0) {
         return NULL;
@@ -108,9 +103,7 @@ multidict_values_iter_iternext(MultidictIter *self)
 {
     PyObject *value = NULL;
 
-    mod_state *state = get_mod_state_by_def((PyObject *)self);
-
-    int res = pair_list_next(state, &self->md->pairs, &self->current,
+    int res = pair_list_next(&self->md->pairs, &self->current,
                              NULL, NULL, &value);
     if (res < 0) {
         return NULL;
@@ -128,9 +121,7 @@ multidict_keys_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
 
-    mod_state *state = get_mod_state_by_def((PyObject *)self);
-
-    int res = pair_list_next(state, &self->md->pairs, &self->current,
+    int res = pair_list_next(&self->md->pairs, &self->current,
                              NULL, &key, NULL);
     if (res < 0) {
         return NULL;

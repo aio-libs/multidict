@@ -21,12 +21,12 @@
 /******************** Internal Methods ********************/
 
 static inline PyObject *
-_multidict_getone(mod_state *state, MultiDictObject *self,
+_multidict_getone(MultiDictObject *self,
                   PyObject *key, PyObject *_default)
 {
     PyObject *val = NULL;
 
-    if (pair_list_get_one(state, &self->pairs, key, &val) <0) {
+    if (pair_list_get_one(&self->pairs, key, &val) <0) {
         return NULL;
     }
 
@@ -45,9 +45,10 @@ _multidict_getone(mod_state *state, MultiDictObject *self,
 
 
 static inline int
-_multidict_extend(mod_state *state, MultiDictObject *self, PyObject *arg,
+_multidict_extend(MultiDictObject *self, PyObject *arg,
                      PyObject *kwds, const char *name, int do_add)
 {
+    mod_state *state = self->pairs.state;
     PyObject *used = NULL;
     PyObject *seq  = NULL;
     pair_list_t *list;
@@ -66,17 +67,17 @@ _multidict_extend(mod_state *state, MultiDictObject *self, PyObject *arg,
     if (arg != NULL) {
         if (MultiDict_CheckExact(state, arg) || CIMultiDict_CheckExact(state, arg)) {
             list = &((MultiDictObject*)arg)->pairs;
-            if (pair_list_update_from_pair_list(state, &self->pairs, used, list) < 0) {
+            if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
                 goto fail;
             }
         } else if (MultiDictProxy_CheckExact(state, arg)
                    || CIMultiDictProxy_CheckExact(state, arg)) {
             list = &((MultiDictProxyObject*)arg)->md->pairs;
-            if (pair_list_update_from_pair_list(state, &self->pairs, used, list) < 0) {
+            if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
                 goto fail;
             }
         } else if (PyDict_CheckExact(arg)) {
-            if (pair_list_update_from_dict(state, &self->pairs, used, arg) < 0) {
+            if (pair_list_update_from_dict(&self->pairs, used, arg) < 0) {
                 goto fail;
             }
         } else {
@@ -86,14 +87,14 @@ _multidict_extend(mod_state *state, MultiDictObject *self, PyObject *arg,
                 seq = Py_NewRef(arg);
             }
 
-            if (pair_list_update_from_seq(state, &self->pairs, used, seq) < 0) {
+            if (pair_list_update_from_seq(&self->pairs, used, seq) < 0) {
                 goto fail;
             }
         }
     }
 
     if (kwds != NULL) {
-        if (pair_list_update_from_dict(state, &self->pairs, used, kwds) < 0) {
+        if (pair_list_update_from_dict(&self->pairs, used, kwds) < 0) {
             goto fail;
         }
     }
@@ -157,14 +158,8 @@ _multidict_extend_parse_args(PyObject *args, PyObject *kwds,
 }
 
 static inline PyObject *
-multidict_copy(MultiDictObject *self, PyTypeObject *cls,
-               PyObject *const *args, Py_ssize_t nargs,
-               PyObject *kwnames)
+multidict_copy(MultiDictObject *self)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
-    if (parse0("copy", args, nargs, kwnames) < 0) {;
-        return NULL;
-    }
     MultiDictObject *new_multidict = NULL;
 
     new_multidict = (MultiDictObject*)PyType_GenericNew(
@@ -177,7 +172,7 @@ multidict_copy(MultiDictObject *self, PyTypeObject *cls,
         goto fail;
     }
 
-    if (pair_list_update_from_pair_list(state, &new_multidict->pairs,
+    if (pair_list_update_from_pair_list(&new_multidict->pairs,
                                         NULL, &self->pairs) < 0) {
         goto fail;
     }
@@ -188,7 +183,7 @@ fail:
 }
 
 static inline PyObject *
-_multidict_proxy_copy(mod_state *state, MultiDictProxyObject *self, PyTypeObject *type)
+_multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
 {
     MultiDictObject *new_multidict = NULL;
     new_multidict = (MultiDictObject*)PyType_GenericNew(type, NULL, NULL);
@@ -198,7 +193,7 @@ _multidict_proxy_copy(mod_state *state, MultiDictProxyObject *self, PyTypeObject
     if (type->tp_init((PyObject*)new_multidict, NULL, NULL) < 0) {
         goto fail;
     }
-    if (pair_list_update_from_pair_list(state, &new_multidict->pairs,
+    if (pair_list_update_from_pair_list(&new_multidict->pairs,
                                         NULL, &self->md->pairs) < 0) {
         goto fail;
     }
@@ -212,14 +207,9 @@ fail:
 /******************** Base Methods ********************/
 
 static inline PyObject *
-multidict_getall(MultiDictObject *self,
-                 PyTypeObject *cls,
-                 PyObject *const *args,
-                 Py_ssize_t nargs,
-                 PyObject *kwnames
-                 )
+multidict_getall(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
-    mod_state * state = get_mod_state_by_cls(cls);
     PyObject *list     = NULL,
              *key      = NULL,
              *_default = NULL;
@@ -228,7 +218,7 @@ multidict_getall(MultiDictObject *self,
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    if (pair_list_get_all(state, &self->pairs, key, &list) <0) {
+    if (pair_list_get_all(&self->pairs, key, &list) <0) {
         return NULL;
     }
 
@@ -246,14 +236,9 @@ multidict_getall(MultiDictObject *self,
 }
 
 static inline PyObject *
-multidict_getone(MultiDictObject *self,
-                 PyTypeObject *cls,
-                 PyObject *const *args,
-                 Py_ssize_t nargs,
-                 PyObject *kwnames
-                 )
+multidict_getone(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
     PyObject *key      = NULL,
              *_default = NULL;
 
@@ -261,18 +246,13 @@ multidict_getone(MultiDictObject *self,
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    return _multidict_getone(state, self, key, _default);
+    return _multidict_getone(self, key, _default);
 }
 
 static inline PyObject *
-multidict_get(MultiDictObject *self,
-              PyTypeObject *cls,
-              PyObject *const *args,
-              Py_ssize_t nargs,
-              PyObject *kwnames
-              )
+multidict_get(MultiDictObject *self, PyObject *const *args,
+              Py_ssize_t nargs, PyObject *kwnames)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
     PyObject *key      = NULL,
              *_default = NULL,
              *ret;
@@ -285,73 +265,37 @@ multidict_get(MultiDictObject *self,
         // fixme, _default is potentially dangerous borrowed ref here
         _default = Py_None;
     }
-    ret = _multidict_getone(state, self, key, _default);
+    ret = _multidict_getone(self, key, _default);
     return ret;
 }
 
 static inline PyObject *
-multidict_keys(MultiDictObject *self,
-               PyTypeObject *cls,
-               PyObject *const *args,
-               Py_ssize_t nargs,
-               PyObject *kwnames
-               )
+multidict_keys(MultiDictObject *self)
 {
-    if (parse0("keys", args, nargs, kwnames) < 0) {
-        return NULL;
-    }
-    mod_state *state = get_mod_state_by_cls(cls);
-    return multidict_keysview_new(state, self);
+    return multidict_keysview_new(self);
 }
 
 static inline PyObject *
-multidict_items(MultiDictObject *self,
-                PyTypeObject *cls,
-                PyObject *const *args,
-                Py_ssize_t nargs,
-                PyObject *kwnames
-                )
+multidict_items(MultiDictObject *self)
 {
-    if (parse0("items", args, nargs, kwnames) < 0) {
-        return NULL;
-    }
-    mod_state *state = get_mod_state_by_cls(cls);
-    return multidict_itemsview_new(state, self);
+    return multidict_itemsview_new(self);
 }
 
 static inline PyObject *
-multidict_values(MultiDictObject *self,
-                 PyTypeObject *cls,
-                 PyObject *const *args,
-                 Py_ssize_t nargs,
-                 PyObject *kwnames
-                 )
+multidict_values(MultiDictObject *self)
 {
-    if (parse0("values", args, nargs, kwnames) < 0) {
-        return NULL;
-    }
-    mod_state *state = get_mod_state_by_cls(cls);
-    return multidict_valuesview_new(state, self);
+    return multidict_valuesview_new(self);
 }
 
 static inline PyObject *
-multidict_reduce(MultiDictObject *self,
-                 PyTypeObject *cls,
-                 PyObject *const *args,
-                 Py_ssize_t nargs,
-                 PyObject *kwnames
-                 )
+multidict_reduce(MultiDictObject *self)
 {
-    if (parse0("items", args, nargs, kwnames) < 0) {
-        return NULL;
-    }
-    mod_state *state = get_mod_state_by_cls(cls);
     PyObject *items      = NULL,
              *items_list = NULL,
-             *newargs       = NULL,
+             *args       = NULL,
              *result     = NULL;
 
-    items = multidict_itemsview_new(state, self);
+    items = multidict_itemsview_new(self);
     if (items == NULL) {
         goto ret;
     }
@@ -361,13 +305,12 @@ multidict_reduce(MultiDictObject *self,
         goto ret;
     }
 
-    newargs = PyTuple_Pack(1, items_list);
-    if (newargs == NULL) {
+    args = PyTuple_Pack(1, items_list);
+    if (args == NULL) {
         goto ret;
     }
 
-    result = PyTuple_Pack(2, Py_TYPE(self), newargs);
-
+    result = PyTuple_Pack(2, Py_TYPE(self), args);
 ret:
     Py_XDECREF(args);
     Py_XDECREF(items_list);
@@ -406,26 +349,23 @@ multidict_mp_len(MultiDictObject *self)
 static inline PyObject *
 multidict_mp_subscript(MultiDictObject *self, PyObject *key)
 {
-    mod_state *state = get_mod_state_by_def((PyObject *)self);
-    return _multidict_getone(state, self, key, NULL);
+    return _multidict_getone(self, key, NULL);
 }
 
 static inline int
 multidict_mp_as_subscript(MultiDictObject *self, PyObject *key, PyObject *val)
 {
-    mod_state *state = get_mod_state_by_def((PyObject *)self);
     if (val == NULL) {
-        return pair_list_del(state, &self->pairs, key);
+        return pair_list_del(&self->pairs, key);
     } else {
-        return pair_list_replace(state, &self->pairs, key, val);
+        return pair_list_replace(&self->pairs, key, val);
     }
 }
 
 static inline int
 multidict_sq_contains(MultiDictObject *self, PyObject *key)
 {
-    mod_state *state = get_mod_state_by_def((PyObject *)self);
-    return pair_list_contains(state, &self->pairs, key, NULL);
+    return pair_list_contains(&self->pairs, key, NULL);
 }
 
 static inline PyObject *
@@ -437,7 +377,6 @@ multidict_tp_iter(MultiDictObject *self)
 static inline PyObject *
 multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
 {
-    mod_state *state = get_mod_state_by_def(self);
     int cmp;
 
     if (op != Py_EQ && op != Py_NE) {
@@ -452,6 +391,7 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
         return PyBool_FromLong(cmp);
     }
 
+    mod_state *state = ((MultiDictObject*)self)->pairs.state;
     if (MultiDict_CheckExact(state, other)
         || CIMultiDict_CheckExact(state, other)) {
         cmp = pair_list_eq(
@@ -478,8 +418,8 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
             Py_CLEAR(keys);
         }
         if (fits) {
-            cmp = pair_list_eq_to_mapping(state,
-                                          &((MultiDictObject*)self)->pairs, other);
+            cmp = pair_list_eq_to_mapping(&((MultiDictObject*)self)->pairs,
+                                          other);
         } else {
             cmp = 0; // e.g., multidict is not equal to a list
         }
@@ -546,10 +486,10 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (size < 0) {
         goto fail;
     }
-    if (pair_list_init(&self->pairs, size) < 0) {
+    if (pair_list_init(&self->pairs, state, size) < 0) {
         goto fail;
     }
-    if (_multidict_extend(state, self, arg, kwds, "MultiDict", 1) < 0) {
+    if (_multidict_extend(self, arg, kwds, "MultiDict", 1) < 0) {
         goto fail;
     }
     Py_CLEAR(arg);
@@ -560,15 +500,9 @@ fail:
 }
 
 static inline PyObject *
-multidict_add(
-    MultiDictObject *self,
-    PyTypeObject *cls,
-    PyObject *const *args,
-    Py_ssize_t nargs,
-    PyObject *kwnames
-)
+multidict_add(MultiDictObject *self, PyObject *const *args,
+              Py_ssize_t nargs, PyObject *kwnames)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
     PyObject *key = NULL,
              *val = NULL;
 
@@ -576,7 +510,7 @@ multidict_add(
                 "key", &key, "value", &val) < 0) {
         return NULL;
     }
-    if (pair_list_add(state, &self->pairs, key, val) < 0) {
+    if (pair_list_add(&self->pairs, key, val) < 0) {
         return NULL;
     }
 
@@ -586,14 +520,13 @@ multidict_add(
 static inline PyObject *
 multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
-    mod_state *state = get_mod_state_by_def((PyObject *)self);
     PyObject *arg = NULL;
     Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "extend", &arg);
     if (size < 0) {
         goto fail;
     }
     pair_list_grow(&self->pairs, size);
-    if (_multidict_extend(state, self, arg, kwds, "extend", 1) < 0) {
+    if (_multidict_extend(self, arg, kwds, "extend", 1) < 0) {
         goto fail;
     }
     Py_CLEAR(arg);
@@ -614,15 +547,9 @@ multidict_clear(MultiDictObject *self)
 }
 
 static inline PyObject *
-multidict_setdefault(
-    MultiDictObject *self,
-    PyTypeObject *cls,
-    PyObject *const *args,
-    Py_ssize_t nargs,
-    PyObject *kwnames
-)
+multidict_setdefault(MultiDictObject *self, PyObject *const *args,
+                     Py_ssize_t nargs, PyObject *kwnames)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
     PyObject *key      = NULL,
              *_default = NULL;
 
@@ -630,19 +557,13 @@ multidict_setdefault(
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    return pair_list_set_default(state, &self->pairs, key, _default);
+    return pair_list_set_default(&self->pairs, key, _default);
 }
 
 static inline PyObject *
-multidict_popone(
-    MultiDictObject *self,
-    PyTypeObject *cls,
-    PyObject *const *args,
-    Py_ssize_t nargs,
-    PyObject *kwnames
-)
+multidict_popone(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
     PyObject *key      = NULL,
              *_default = NULL,
              *ret_val  = NULL;
@@ -651,7 +572,7 @@ multidict_popone(
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    if (pair_list_pop_one(state, &self->pairs, key, &ret_val) < 0) {
+    if (pair_list_pop_one(&self->pairs, key, &ret_val) < 0) {
         return NULL;
     }
 
@@ -671,13 +592,11 @@ multidict_popone(
 static inline PyObject *
 multidict_pop(
     MultiDictObject *self,
-    PyTypeObject *cls,
     PyObject *const *args,
     Py_ssize_t nargs,
     PyObject *kwnames
 )
 {
-    mod_state *state = get_mod_state_by_cls(cls);
     PyObject *key      = NULL,
              *_default = NULL,
              *ret_val  = NULL;
@@ -686,7 +605,7 @@ multidict_pop(
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    if (pair_list_pop_one(state, &self->pairs, key, &ret_val) < 0) {
+    if (pair_list_pop_one(&self->pairs, key, &ret_val) < 0) {
         return NULL;
     }
 
@@ -704,15 +623,9 @@ multidict_pop(
 }
 
 static inline PyObject *
-multidict_popall(
-    MultiDictObject *self,
-    PyTypeObject *cls,
-    PyObject *const *args,
-    Py_ssize_t nargs,
-    PyObject *kwnames
-)
+multidict_popall(MultiDictObject *self, PyObject *const *args,
+                 Py_ssize_t nargs, PyObject *kwnames)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
     PyObject *key      = NULL,
              *_default = NULL,
              *ret_val  = NULL;
@@ -721,7 +634,7 @@ multidict_popall(
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    if (pair_list_pop_all(state, &self->pairs, key, &ret_val) < 0) {
+    if (pair_list_pop_all(&self->pairs, key, &ret_val) < 0) {
         return NULL;
     }
 
@@ -739,30 +652,19 @@ multidict_popall(
 }
 
 static inline PyObject *
-multidict_popitem(
-    MultiDictObject *self,
-    PyTypeObject *cls,
-    PyObject *const *args,
-    Py_ssize_t nargs,
-    PyObject *kwnames
-)
+multidict_popitem(MultiDictObject *self)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
-    if (parse0("popitem", args, nargs, kwnames) < 0) {
-        return NULL;
-    }
-    return pair_list_pop_item(state, &self->pairs);
+    return pair_list_pop_item(&self->pairs);
 }
 
 static inline PyObject *
 multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
-    mod_state *state = get_mod_state_by_def((PyObject *)self);
     PyObject *arg = NULL;
     if (_multidict_extend_parse_args(args, kwds, "update", &arg) < 0) {
         goto fail;
     }
-    if (_multidict_extend(state, self, arg, kwds, "update", 0) < 0) {
+    if (_multidict_extend(self, arg, kwds, "update", 0) < 0) {
         goto fail;
     }
     Py_CLEAR(arg);
@@ -827,49 +729,49 @@ static PyMethodDef multidict_methods[] = {
     {
         "getall",
         (PyCFunction)multidict_getall,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getall_doc
     },
     {
         "getone",
         (PyCFunction)multidict_getone,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getone_doc
     },
     {
         "get",
         (PyCFunction)multidict_get,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_get_doc
     },
     {
         "keys",
         (PyCFunction)multidict_keys,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         multidict_keys_doc
     },
     {
         "items",
         (PyCFunction)multidict_items,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         multidict_items_doc
     },
     {
         "values",
         (PyCFunction)multidict_values,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         multidict_values_doc
     },
     {
         "add",
         (PyCFunction)multidict_add,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_add_doc
     },
     {
         "copy",
         (PyCFunction)multidict_copy,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         multidict_copy_doc
     },
     {
@@ -887,31 +789,31 @@ static PyMethodDef multidict_methods[] = {
     {
         "setdefault",
         (PyCFunction)multidict_setdefault,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_setdefault_doc
     },
     {
         "popone",
         (PyCFunction)multidict_popone,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_popone_doc
     },
     {
         "pop",
         (PyCFunction)multidict_pop,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_pop_doc
     },
     {
         "popall",
         (PyCFunction)multidict_popall,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_popall_doc
     },
     {
         "popitem",
         (PyCFunction)multidict_popitem,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         multidict_popitem_doc
     },
     {
@@ -923,7 +825,7 @@ static PyMethodDef multidict_methods[] = {
     {
         "__reduce__",
         (PyCFunction)multidict_reduce,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         NULL,
     },
     {
@@ -1009,11 +911,11 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         goto fail;
     }
 
-    if (ci_pair_list_init(&self->pairs, size) < 0) {
+    if (ci_pair_list_init(&self->pairs, state, size) < 0) {
         goto fail;
     }
 
-    if (_multidict_extend(state, self, arg, kwds, "CIMultiDict", 1) < 0) {
+    if (_multidict_extend(self, arg, kwds, "CIMultiDict", 1) < 0) {
         goto fail;
     }
     Py_CLEAR(arg);
@@ -1090,90 +992,48 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
 }
 
 static inline PyObject *
-multidict_proxy_getall(
-    MultiDictProxyObject *self,
-    PyTypeObject *cls,
-    PyObject *const *args,
-    Py_ssize_t nargs,
-    PyObject *kwnames
-)
+multidict_proxy_getall(MultiDictProxyObject *self, PyObject *const *args,
+                       Py_ssize_t nargs, PyObject *kwnames)
 {
-    return multidict_getall(
-        self->md,
-        cls,
-        args,
-        nargs,
-        kwnames
-    );
+    return multidict_getall(self->md, args, nargs, kwnames);
 }
 
 static inline PyObject *
-multidict_proxy_getone(
-    MultiDictProxyObject *self,
-    PyTypeObject *cls,
-    PyObject *const *args,
-    Py_ssize_t nargs,
-    PyObject *kwnames
-)
+multidict_proxy_getone(MultiDictProxyObject *self, PyObject *const *args,
+                       Py_ssize_t nargs, PyObject *kwnames)
 {
-    return multidict_getone(
-        self->md, cls, args,
-        nargs, kwnames
-    );
+    return multidict_getone(self->md, args, nargs, kwnames);
 }
 
 static inline PyObject *
-multidict_proxy_get(
-    MultiDictProxyObject *self,
-    PyTypeObject *cls,
-    PyObject *const *args,
-    Py_ssize_t nargs,
-    PyObject *kwnames
-)
+multidict_proxy_get(MultiDictProxyObject *self, PyObject *const *args,
+                       Py_ssize_t nargs, PyObject *kwnames)
 {
-    return multidict_get(
-        self->md,
-        cls,
-        args,
-        nargs,
-        kwnames
-    );
+    return multidict_get(self->md, args, nargs, kwnames);
 }
 
 static inline PyObject *
-multidict_proxy_keys(MultiDictProxyObject *self, PyTypeObject *cls,
-                     PyObject *const *args, Py_ssize_t nargs,
-                     PyObject *kwnames)
+multidict_proxy_keys(MultiDictProxyObject *self)
 {
-    return multidict_keys(self->md, cls, args, nargs, kwnames);
+    return multidict_keys(self->md);
 }
 
 static inline PyObject *
-multidict_proxy_items(MultiDictProxyObject *self, PyTypeObject *cls,
-                     PyObject *const *args, Py_ssize_t nargs,
-                     PyObject *kwnames)
+multidict_proxy_items(MultiDictProxyObject *self)
 {
-    return multidict_items(self->md, cls, args, nargs, kwnames);
+    return multidict_items(self->md);
 }
 
 static inline PyObject *
-multidict_proxy_values(MultiDictProxyObject *self, PyTypeObject *cls,
-                     PyObject *const *args, Py_ssize_t nargs,
-                     PyObject *kwnames)
+multidict_proxy_values(MultiDictProxyObject *self)
 {
-    return multidict_values(self->md, cls, args, nargs, kwnames);
+    return multidict_values(self->md);
 }
 
 static inline PyObject *
-multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *cls,
-                     PyObject *const *args, Py_ssize_t nargs,
-                     PyObject *kwnames)
+multidict_proxy_copy(MultiDictProxyObject *self)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
-    if (parse0("copy", args, nargs, kwnames) < 0) {;
-        return NULL;
-    }
-    return _multidict_proxy_copy(state, self, state->MultiDictType);
+    return _multidict_proxy_copy(self, self->md->pairs.state->MultiDictType);
 }
 
 static inline PyObject *
@@ -1259,43 +1119,43 @@ static PyMethodDef multidict_proxy_methods[] = {
     {
         "getall",
         (PyCFunction)multidict_proxy_getall,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getall_doc
     },
     {
         "getone",
         (PyCFunction)multidict_proxy_getone,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_getone_doc
     },
     {
         "get",
         (PyCFunction)multidict_proxy_get,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_FASTCALL | METH_KEYWORDS,
         multidict_get_doc
     },
     {
         "keys",
         (PyCFunction)multidict_proxy_keys,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         multidict_keys_doc
     },
     {
         "items",
         (PyCFunction)multidict_proxy_items,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         multidict_items_doc
     },
     {
         "values",
         (PyCFunction)multidict_proxy_values,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         multidict_values_doc
     },
     {
         "copy",
         (PyCFunction)multidict_proxy_copy,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         multidict_copy_doc
     },
     {
@@ -1411,15 +1271,9 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
 }
 
 static inline PyObject *
-cimultidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *cls,
-                     PyObject *const *args, Py_ssize_t nargs,
-                     PyObject *kwnames)
+cimultidict_proxy_copy(MultiDictProxyObject *self)
 {
-    mod_state *state = get_mod_state_by_cls(cls);
-    if (parse0("copy", args, nargs, kwnames) < 0) {;
-        return NULL;
-    }
-    return _multidict_proxy_copy(state, self, state->CIMultiDictType);
+    return _multidict_proxy_copy(self, self->md->pairs.state->CIMultiDictType);
 }
 
 
@@ -1433,7 +1287,7 @@ static PyMethodDef cimultidict_proxy_methods[] = {
     {
         "copy",
         (PyCFunction)cimultidict_proxy_copy,
-        METH_METHOD | METH_FASTCALL | METH_KEYWORDS,
+        METH_NOARGS,
         cimultidict_proxy_copy_doc
     },
     {

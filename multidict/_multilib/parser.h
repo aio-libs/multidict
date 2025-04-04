@@ -22,56 +22,6 @@ static int raise_missing_posarg(const char *fname, const char* argname)
 }
 
 
-/* Parse FASTCALL|METH_KEYWORDS arguments as no-args.
-*/
-
-static int
-parse0(const char* fname,
-       PyObject*const *args,
-       Py_ssize_t nargs,
-       PyObject *kwnames
-)
-{
-    if (kwnames != NULL) {
-        PyErr_Format(PyExc_TypeError,
-                     "%.150s() got an unexpected keyword argument",
-                     fname);
-        return -1;
-    }
-    if (nargs != 0) {
-        PyErr_Format(PyExc_TypeError,
-                     "%.150s() got an unexpected positional argument",
-                     fname);
-        return -1;
-    }
-    return 0;
-}
-
-/* Parse FASTCALL|METH_KEYWORDS arguments as one positional arg.
-*/
-
-static PyObject *
-parse1(const char* fname,
-       PyObject*const *args,
-       Py_ssize_t nargs,
-       PyObject *kwnames
-)
-{
-    if (kwnames != NULL) {
-        PyErr_Format(PyExc_TypeError,
-                     "%.150s() got an unexpected keyword argument",
-                     fname);
-        return NULL;
-    }
-    if (nargs != 1) {
-        PyErr_Format(PyExc_TypeError,
-                     "%.150s() accepts the only positional argument",
-                     fname);
-        return NULL;
-    }
-    return args[0];
-}
-
 /* Parse FASTCALL|METH_KEYWORDS arguments as two args,
 the first arg is mandatory and the second one is optional.
 If the second arg is not passed it remains NULL pointer.
