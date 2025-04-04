@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #include "pythoncapi_compat.h"
-#include "pair_list.h"
+#include "hashtable.h"
 
 #if PY_VERSION_HEX >= 0x030c00f0
 #define MANAGED_WEAKREFS
@@ -18,7 +18,7 @@ typedef struct {  // 16 or 24 for GC prefix
 #ifndef MANAGED_WEAKREFS
     PyObject *weaklist;
 #endif
-    pair_list_t pairs;
+    ht_t ht;
 } MultiDictObject;
 
 typedef struct {

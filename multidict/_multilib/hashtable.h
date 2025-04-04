@@ -27,17 +27,17 @@ itself but identity instead, borrowed references during iteration
 over pair_list for, e.g., md.get() or md.pop() is safe.
 */
 
-typedef struct pair {
+typedef struct entry {
     PyObject  *identity;  // 8
     PyObject  *key;       // 8
     PyObject  *value;     // 8
     Py_hash_t  hash;      // 8
-} pair_t;
+} entry_t;
 
 /* Note about the structure size
-With 28 pairs the MultiDict object size is slightly less than 1KiB
+With 28 entrys the MultiDict object size is slightly less than 1KiB
 
-To fit into 512 bytes, the structure can contain only 13 pairs
+To fit into 512 bytes, the structure can contain only 13 entrys
 which is too small, e.g. https://www.python.org returns 16 headers
 (9 of them are caching proxy information though).
 
@@ -47,15 +47,15 @@ HTTP headers into the buffer without allocating an extra memory block.
 
 #define EMBEDDED_CAPACITY 28
 
-typedef struct pair_list {
+typedef struct hashtable {
     mod_state *state;
     Py_ssize_t capacity;
     Py_ssize_t size;
     uint64_t version;
     bool calc_ci_indentity;
-    pair_t *pairs;
-    pair_t buffer[EMBEDDED_CAPACITY];
-} pair_list_t;
+    entry_t *entries;
+    entry_t buffer[EMBEDDED_CAPACITY];
+} ht_t;
 
 #define MIN_CAPACITY 64
 #define CAPACITY_STEP MIN_CAPACITY
@@ -63,15 +63,23 @@ typedef struct pair_list {
 /* Global counter used to set ma_version_tag field of dictionary.
  * It is incremented each time that a dictionary is created and each
  * time that a dictionary is modified. */
-static uint64_t pair_list_global_version = 0;
+static uint64_t ht_global_version = 0;
 
-#define NEXT_VERSION() (++pair_list_global_version)
+#define NEXT_VERSION() (++ht_global_version)
 
+static inline Py_ssize_t
+ht_sizeof(ht_t *ht)
+{
+    if (ht->entries != ht->buffer) {
+        return (Py_ssize_t)sizeof(entry_t) * ht->capacity;
+    }
+    return 0;
+}
 
-typedef struct pair_list_pos {
+typedef struct ht_pos {
     Py_ssize_t pos;
     uint64_t version;
-} pair_list_pos_t;
+} ht_pos_t;
 
 
 static inline int
@@ -166,42 +174,42 @@ _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
 
 
 static inline int
-pair_list_grow(pair_list_t *list, Py_ssize_t amount)
+ht_grow(ht_t *ht, Py_ssize_t amount)
 {
     // Grow by one element if needed
-    Py_ssize_t capacity = ((Py_ssize_t)((list->size + amount)
+    Py_ssize_t capacity = ((Py_ssize_t)((ht->size + amount)
                                         / CAPACITY_STEP) + 1) * CAPACITY_STEP;
 
-    pair_t *new_pairs;
+    entry_t *new_entries;
 
-    if (list->size + amount -1 < list->capacity) {
+    if (ht->size + amount -1 < ht->capacity) {
         return 0;
     }
 
-    if (list->pairs == list->buffer) {
-        new_pairs = PyMem_New(pair_t, (size_t)capacity);
-        memcpy(new_pairs, list->buffer, (size_t)list->capacity * sizeof(pair_t));
+    if (ht->entries == ht->buffer) {
+        new_entries = PyMem_New(entry_t, (size_t)capacity);
+        memcpy(new_entries, ht->buffer, (size_t)ht->capacity * sizeof(entry_t));
 
-        list->pairs = new_pairs;
-        list->capacity = capacity;
+        ht->entries = new_entries;
+        ht->capacity = capacity;
         return 0;
     } else {
-        new_pairs = PyMem_Resize(list->pairs, pair_t, (size_t)capacity);
+        new_entries = PyMem_Resize(ht->entries, entry_t, (size_t)capacity);
 
-        if (NULL == new_pairs) {
+        if (NULL == new_entries) {
             // Resizing error
             return -1;
         }
 
-        list->pairs = new_pairs;
-        list->capacity = capacity;
+        ht->entries = new_entries;
+        ht->capacity = capacity;
         return 0;
     }
 }
 
 
 static inline int
-pair_list_shrink(pair_list_t *list)
+ht_shrink(ht_t *ht)
 {
     // Shrink by one element if needed.
     // Optimization is applied to prevent jitter
@@ -212,144 +220,144 @@ pair_list_shrink(pair_list_t *list)
     // The switch back to embedded buffer is never performed for both reasons:
     // the code simplicity and the jitter prevention.
 
-    pair_t *new_pairs;
+    entry_t *new_entries;
     Py_ssize_t new_capacity;
 
-    if (list->capacity - list->size < 2 * CAPACITY_STEP) {
+    if (ht->capacity - ht->size < 2 * CAPACITY_STEP) {
         return 0;
     }
-    new_capacity = list->capacity - CAPACITY_STEP;
+    new_capacity = ht->capacity - CAPACITY_STEP;
     if (new_capacity < MIN_CAPACITY) {
         return 0;
     }
 
-    new_pairs = PyMem_Resize(list->pairs, pair_t, (size_t)new_capacity);
+    new_entries = PyMem_Resize(ht->entries, entry_t, (size_t)new_capacity);
 
-    if (NULL == new_pairs) {
+    if (NULL == new_entries) {
         // Resizing error
         return -1;
     }
 
-    list->pairs = new_pairs;
-    list->capacity = new_capacity;
+    ht->entries = new_entries;
+    ht->capacity = new_capacity;
 
     return 0;
 }
 
 
 static inline int
-_pair_list_init(pair_list_t *list, mod_state *state,
+_ht_init(ht_t *ht, mod_state *state,
                 bool calc_ci_identity, Py_ssize_t preallocate)
 {
-    list->state = state;
-    list->calc_ci_indentity = calc_ci_identity;
+    ht->state = state;
+    ht->calc_ci_indentity = calc_ci_identity;
     Py_ssize_t capacity = EMBEDDED_CAPACITY;
     if (preallocate >= capacity) {
         capacity = ((Py_ssize_t)(preallocate / CAPACITY_STEP) + 1) * CAPACITY_STEP;
-        list->pairs = PyMem_New(pair_t, (size_t)capacity);
+        ht->entries = PyMem_New(entry_t, (size_t)capacity);
     } else {
-        list->pairs = list->buffer;
+        ht->entries = ht->buffer;
     }
-    list->capacity = capacity;
-    list->size = 0;
-    list->version = NEXT_VERSION();
+    ht->capacity = capacity;
+    ht->size = 0;
+    ht->version = NEXT_VERSION();
     return 0;
 }
 
 static inline int
-pair_list_init(pair_list_t *list, mod_state *state, Py_ssize_t size)
+ht_init(ht_t *ht, mod_state *state, Py_ssize_t size)
 {
-    return _pair_list_init(list, state, /* calc_ci_identity = */ false, size);
+    return _ht_init(ht, state, /* calc_ci_identity = */ false, size);
 }
 
 
 static inline int
-ci_pair_list_init(pair_list_t *list, mod_state *state, Py_ssize_t size)
+ci_ht_init(ht_t *ht, mod_state *state, Py_ssize_t size)
 {
-    return _pair_list_init(list, state, /* calc_ci_identity = */ true, size);
+    return _ht_init(ht, state, /* calc_ci_identity = */ true, size);
 }
 
 
 static inline PyObject *
-pair_list_calc_identity(pair_list_t *list, PyObject *key)
+ht_calc_identity(ht_t *ht, PyObject *key)
 {
-    if (list->calc_ci_indentity)
-        return _ci_key_to_ident(list->state, key);
-    return _key_to_ident(list->state, key);
+    if (ht->calc_ci_indentity)
+        return _ci_key_to_ident(ht->state, key);
+    return _key_to_ident(ht->state, key);
 }
 
 static inline PyObject *
-pair_list_calc_key(pair_list_t *list, PyObject *key, PyObject *ident)
+ht_calc_key(ht_t *ht, PyObject *key, PyObject *ident)
 {
-    if (list->calc_ci_indentity)
-        return _ci_arg_to_key(list->state, key, ident);
-    return _arg_to_key(list->state, key, ident);
+    if (ht->calc_ci_indentity)
+        return _ci_arg_to_key(ht->state, key, ident);
+    return _arg_to_key(ht->state, key, ident);
 }
 
 static inline void
-pair_list_dealloc(pair_list_t *list)
+ht_dealloc(ht_t *ht)
 {
     Py_ssize_t pos;
 
-    for (pos = 0; pos < list->size; pos++) {
-        pair_t *pair = list->pairs + pos;
+    for (pos = 0; pos < ht->size; pos++) {
+        entry_t *entry = ht->entries + pos;
 
-        Py_CLEAR(pair->identity);
-        Py_CLEAR(pair->key);
-        Py_CLEAR(pair->value);
+        Py_CLEAR(entry->identity);
+        Py_CLEAR(entry->key);
+        Py_CLEAR(entry->value);
     }
 
     /*
     Strictly speaking, resetting size and capacity and
-    assigning pairs to buffer is not necessary.
+    assigning entries to buffer is not necessary.
     Do it to consistency and idemotency.
     The cleanup doesn't hurt performance.
     !!!
     !!! The buffer deletion is crucial though.
     !!!
     */
-    list->size = 0;
-    if (list->pairs != list->buffer) {
-        PyMem_Free(list->pairs);
-        list->pairs = list->buffer;
-        list->capacity = EMBEDDED_CAPACITY;
+    ht->size = 0;
+    if (ht->entries != ht->buffer) {
+        PyMem_Free(ht->entries);
+        ht->entries = ht->buffer;
+        ht->capacity = EMBEDDED_CAPACITY;
     }
 }
 
 
 static inline Py_ssize_t
-pair_list_len(pair_list_t *list)
+ht_len(ht_t *ht)
 {
-    return list->size;
+    return ht->size;
 }
 
 
 static inline int
-_pair_list_add_with_hash_steal_refs(pair_list_t *list,
+_ht_add_with_hash_steal_refs(ht_t *ht,
                                     PyObject *identity,
                                     PyObject *key,
                                     PyObject *value,
                                     Py_hash_t hash)
 {
-    if (pair_list_grow(list, 1) < 0) {
+    if (ht_grow(ht, 1) < 0) {
         return -1;
     }
 
-    pair_t *pair = list->pairs + list->size;
+    entry_t *entry = ht->entries + ht->size;
 
-    pair->identity = identity;
-    pair->key = key;
-    pair->value = value;
-    pair->hash = hash;
+    entry->identity = identity;
+    entry->key = key;
+    entry->value = value;
+    entry->hash = hash;
 
-    list->version = NEXT_VERSION();
-    list->size += 1;
+    ht->version = NEXT_VERSION();
+    ht->size += 1;
 
     return 0;
 }
 
 static inline int
-_pair_list_add_with_hash(pair_list_t *list,
+_ht_add_with_hash(ht_t *ht,
                          PyObject *identity,
                          PyObject *key,
                          PyObject *value,
@@ -358,14 +366,14 @@ _pair_list_add_with_hash(pair_list_t *list,
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    return _pair_list_add_with_hash_steal_refs(list, identity, key, value, hash);
+    return _ht_add_with_hash_steal_refs(ht, identity, key, value, hash);
 }
 
 
 static inline int
-pair_list_add(pair_list_t *list, PyObject *key, PyObject *value)
+ht_add(ht_t *ht, PyObject *key, PyObject *value)
 {
-    PyObject *identity = pair_list_calc_identity(list, key);
+    PyObject *identity = ht_calc_identity(ht, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -373,7 +381,7 @@ pair_list_add(pair_list_t *list, PyObject *key, PyObject *value)
     if (hash == -1) {
         goto fail;
     }
-    int ret = _pair_list_add_with_hash(list, identity, key, value, hash);
+    int ret = _ht_add_with_hash(ht, identity, key, value, hash);
     Py_DECREF(identity);
     return ret;
 fail:
@@ -383,51 +391,51 @@ fail:
 
 
 static inline int
-pair_list_del_at(pair_list_t *list, Py_ssize_t pos)
+ht_del_at(ht_t *ht, Py_ssize_t pos)
 {
     // return 1 on success, -1 on failure
-    pair_t *pair = list->pairs + pos;
-    Py_DECREF(pair->identity);
-    Py_DECREF(pair->key);
-    Py_DECREF(pair->value);
+    entry_t *entry = ht->entries + pos;
+    Py_DECREF(entry->identity);
+    Py_DECREF(entry->key);
+    Py_DECREF(entry->value);
 
-    list->size -= 1;
-    list->version = NEXT_VERSION();
+    ht->size -= 1;
+    ht->version = NEXT_VERSION();
 
-    if (list->size == pos) {
+    if (ht->size == pos) {
         // remove from tail, no need to shift body
         return 0;
     }
 
-    Py_ssize_t tail = list->size - pos;
+    Py_ssize_t tail = ht->size - pos;
     // TODO: raise an error if tail < 0
-    memmove((void *)(list->pairs + pos),
-            (void *)(list->pairs + pos + 1),
-            sizeof(pair_t) * (size_t)tail);
+    memmove((void *)(ht->entries + pos),
+            (void *)(ht->entries + pos + 1),
+            sizeof(entry_t) * (size_t)tail);
 
-    return pair_list_shrink(list);
+    return ht_shrink(ht);
 }
 
 
 static inline int
-_pair_list_drop_tail(pair_list_t *list, PyObject *identity, Py_hash_t hash,
+_ht_drop_tail(ht_t *ht, PyObject *identity, Py_hash_t hash,
                      Py_ssize_t pos)
 {
     // return 1 if deleted, 0 if not found
     int found = 0;
 
-    if (pos >= list->size) {
+    if (pos >= ht->size) {
         return 0;
     }
 
-    for (; pos < list->size; pos++) {
-        pair_t *pair = list->pairs + pos;
-        if (pair->hash != hash) {
+    for (; pos < ht->size; pos++) {
+        entry_t *entry = ht->entries + pos;
+        if (entry->hash != hash) {
             continue;
         }
-        int ret = str_cmp(pair->identity, identity);
+        int ret = str_cmp(entry->identity, identity);
         if (ret > 0) {
-            if (pair_list_del_at(list, pos) < 0) {
+            if (ht_del_at(ht, pos) < 0) {
                return -1;
             }
             found = 1;
@@ -443,9 +451,9 @@ _pair_list_drop_tail(pair_list_t *list, PyObject *identity, Py_hash_t hash,
 
 
 static inline int
-pair_list_del(pair_list_t *list, PyObject *key)
+ht_del(ht_t *ht, PyObject *key)
 {
-    PyObject *identity = pair_list_calc_identity(list, key);
+    PyObject *identity = ht_calc_identity(ht, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -455,7 +463,7 @@ pair_list_del(pair_list_t *list, PyObject *key)
         goto fail;
     }
 
-    int ret = _pair_list_drop_tail(list, identity, hash, 0);
+    int ret = _ht_drop_tail(ht, identity, hash, 0);
 
     if (ret < 0) {
         goto fail;
@@ -465,7 +473,7 @@ pair_list_del(pair_list_t *list, PyObject *key)
         goto fail;
     }
     else {
-        list->version = NEXT_VERSION();
+        ht->version = NEXT_VERSION();
     }
     Py_DECREF(identity);
     return 0;
@@ -476,25 +484,25 @@ fail:
 
 
 static inline uint64_t
-pair_list_version(pair_list_t *list)
+ht_version(ht_t *ht)
 {
-    return list->version;
+    return ht->version;
 }
 
 
 static inline void
-pair_list_init_pos(pair_list_t *list, pair_list_pos_t *pos)
+ht_init_pos(ht_t *ht, ht_pos_t *pos)
 {
     pos->pos = 0;
-    pos->version = list->version;
+    pos->version = ht->version;
 }
 
 static inline int
-pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
+ht_next(ht_t *ht, ht_pos_t *pos,
                PyObject **pidentity,
                PyObject **pkey, PyObject **pvalue)
 {
-    if (pos->pos >= list->size) {
+    if (pos->pos >= ht->size) {
         if (pidentity) {
             *pidentity = NULL;
         }
@@ -507,7 +515,7 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
         return 0;
     }
 
-    if (pos->version != list->version) {
+    if (pos->version != ht->version) {
         if (pidentity) {
             *pidentity = NULL;
         }
@@ -522,26 +530,26 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
     }
 
 
-    pair_t *pair = list->pairs + pos->pos;
+    entry_t *entry = ht->entries + pos->pos;
 
     if (pidentity) {
-        *pidentity = Py_NewRef(pair->identity);;
+        *pidentity = Py_NewRef(entry->identity);;
     }
 
     if (pkey) {
-        PyObject *key = pair_list_calc_key(list, pair->key, pair->identity);
+        PyObject *key = ht_calc_key(ht, entry->key, entry->identity);
         if (key == NULL) {
             return -1;
         }
-        if (key != pair->key) {
-            Py_SETREF(pair->key, key);
+        if (key != entry->key) {
+            Py_SETREF(entry->key, key);
         } else {
             Py_CLEAR(key);
         }
-        *pkey = Py_NewRef(pair->key);
+        *pkey = Py_NewRef(entry->key);
     }
     if (pvalue) {
-        *pvalue = Py_NewRef(pair->value);
+        *pvalue = Py_NewRef(entry->value);
     }
 
     ++pos->pos;
@@ -550,11 +558,11 @@ pair_list_next(pair_list_t *list, pair_list_pos_t *pos,
 
 
 static inline int
-pair_list_next_by_identity(pair_list_t *list, pair_list_pos_t *pos,
+ht_next_by_identity(ht_t *ht, ht_pos_t *pos,
                            PyObject *identity,
                            PyObject **pkey, PyObject **pvalue)
 {
-    if (pos->pos >= list->size) {
+    if (pos->pos >= ht->size) {
         if (pkey) {
             *pkey = NULL;
         }
@@ -564,7 +572,7 @@ pair_list_next_by_identity(pair_list_t *list, pair_list_pos_t *pos,
         return 0;
     }
 
-    if (pos->version != list->version) {
+    if (pos->version != ht->version) {
         if (pkey) {
             *pkey = NULL;
         }
@@ -576,9 +584,9 @@ pair_list_next_by_identity(pair_list_t *list, pair_list_pos_t *pos,
     }
 
 
-    for (; pos->pos < list->size; ++pos->pos) {
-        pair_t *pair = list->pairs + pos->pos;
-        PyObject *ret = PyUnicode_RichCompare(identity, pair->identity, Py_EQ);
+    for (; pos->pos < ht->size; ++pos->pos) {
+        entry_t *entry = ht->entries + pos->pos;
+        PyObject *ret = PyUnicode_RichCompare(identity, entry->identity, Py_EQ);
         if (Py_IsFalse(ret)) {
             Py_DECREF(ret);
             continue;
@@ -590,19 +598,19 @@ pair_list_next_by_identity(pair_list_t *list, pair_list_pos_t *pos,
         }
 
         if (pkey) {
-            PyObject *key = pair_list_calc_key(list, pair->key, pair->identity);
+            PyObject *key = ht_calc_key(ht, entry->key, entry->identity);
             if (key == NULL) {
                 return -1;
             }
-            if (key != pair->key) {
-                Py_SETREF(pair->key, key);
+            if (key != entry->key) {
+                Py_SETREF(entry->key, key);
             } else {
                 Py_CLEAR(key);
             }
-            *pkey = Py_NewRef(pair->key);
+            *pkey = Py_NewRef(entry->key);
         }
         if (pvalue) {
-            *pvalue = Py_NewRef(pair->value);
+            *pvalue = Py_NewRef(entry->value);
         }
         ++pos->pos;
         return 1;
@@ -618,7 +626,7 @@ pair_list_next_by_identity(pair_list_t *list, pair_list_pos_t *pos,
 
 
 static inline int
-pair_list_contains(pair_list_t *list, PyObject *key, PyObject **pret)
+ht_contains(ht_t *ht, PyObject *key, PyObject **pret)
 {
     Py_ssize_t pos;
 
@@ -626,7 +634,7 @@ pair_list_contains(pair_list_t *list, PyObject *key, PyObject **pret)
         return 0;
     }
 
-    PyObject *ident = pair_list_calc_identity(list, key);
+    PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -636,18 +644,18 @@ pair_list_contains(pair_list_t *list, PyObject *key, PyObject **pret)
         goto fail;
     }
 
-    Py_ssize_t size = pair_list_len(list);
+    Py_ssize_t size = ht_len(ht);
 
     for(pos = 0; pos < size; ++pos) {
-        pair_t * pair = list->pairs + pos;
-        if (hash != pair->hash) {
+        entry_t * entry = ht->entries + pos;
+        if (hash != entry->hash) {
             continue;
         }
-        int tmp = str_cmp(ident, pair->identity);
+        int tmp = str_cmp(ident, entry->identity);
         if (tmp > 0) {
             Py_DECREF(ident);
             if (pret != NULL) {
-                *pret = Py_NewRef(pair->key);
+                *pret = Py_NewRef(entry->key);
             }
             return 1;
         }
@@ -671,11 +679,11 @@ fail:
 
 
 static inline int
-pair_list_get_one(pair_list_t *list, PyObject *key, PyObject **ret)
+ht_get_one(ht_t *ht, PyObject *key, PyObject **ret)
 {
     Py_ssize_t pos;
 
-    PyObject *ident = pair_list_calc_identity(list, key);
+    PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -685,17 +693,17 @@ pair_list_get_one(pair_list_t *list, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    Py_ssize_t size = pair_list_len(list);
+    Py_ssize_t size = ht_len(ht);
 
     for(pos = 0; pos < size; ++pos) {
-        pair_t *pair = list->pairs + pos;
-        if (hash != pair->hash) {
+        entry_t *entry = ht->entries + pos;
+        if (hash != entry->hash) {
             continue;
         }
-        int tmp = str_cmp(ident, pair->identity);
+        int tmp = str_cmp(ident, entry->identity);
         if (tmp > 0) {
             Py_DECREF(ident);
-            *ret = Py_NewRef(pair->value);
+            *ret = Py_NewRef(entry->value);
             return 0;
         }
         else if (tmp < 0) {
@@ -712,12 +720,12 @@ fail:
 
 
 static inline int
-pair_list_get_all(pair_list_t *list, PyObject *key, PyObject **ret)
+ht_get_all(ht_t *ht, PyObject *key, PyObject **ret)
 {
     Py_ssize_t pos;
     PyObject *res = NULL;
 
-    PyObject *ident = pair_list_calc_identity(list, key);
+    PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -727,25 +735,25 @@ pair_list_get_all(pair_list_t *list, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    Py_ssize_t size = pair_list_len(list);
+    Py_ssize_t size = ht_len(ht);
     for(pos = 0; pos < size; ++pos) {
-        pair_t *pair = list->pairs + pos;
+        entry_t *entry = ht->entries + pos;
 
-        if (hash != pair->hash) {
+        if (hash != entry->hash) {
             continue;
         }
-        int tmp = str_cmp(ident, pair->identity);
+        int tmp = str_cmp(ident, entry->identity);
         if (tmp > 0) {
             if (res == NULL) {
                 res = PyList_New(1);
                 if (res == NULL) {
                     goto fail;
                 }
-                if (PyList_SetItem(res, 0, Py_NewRef(pair->value)) < 0) {
+                if (PyList_SetItem(res, 0, Py_NewRef(entry->value)) < 0) {
                     goto fail;
                 }
             }
-            else if (PyList_Append(res, pair->value) < 0) {
+            else if (PyList_Append(res, entry->value) < 0) {
                 goto fail;
             }
         }
@@ -768,11 +776,11 @@ fail:
 
 
 static inline PyObject *
-pair_list_set_default(pair_list_t *list, PyObject *key, PyObject *value)
+ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
 {
     Py_ssize_t pos;
 
-    PyObject *ident = pair_list_calc_identity(list, key);
+    PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -781,25 +789,25 @@ pair_list_set_default(pair_list_t *list, PyObject *key, PyObject *value)
     if (hash == -1) {
         goto fail;
     }
-    Py_ssize_t size = pair_list_len(list);
+    Py_ssize_t size = ht_len(ht);
 
     for(pos = 0; pos < size; ++pos) {
-        pair_t * pair = list->pairs + pos;
+        entry_t * entry = ht->entries + pos;
 
-        if (hash != pair->hash) {
+        if (hash != entry->hash) {
             continue;
         }
-        int tmp = str_cmp(ident, pair->identity);
+        int tmp = str_cmp(ident, entry->identity);
         if (tmp > 0) {
             Py_DECREF(ident);
-            return Py_NewRef(pair->value);
+            return Py_NewRef(entry->value);
         }
         else if (tmp < 0) {
             goto fail;
         }
     }
 
-    if (_pair_list_add_with_hash(list, ident, key, value, hash) < 0) {
+    if (_ht_add_with_hash(ht, ident, key, value, hash) < 0) {
         goto fail;
     }
 
@@ -812,12 +820,12 @@ fail:
 
 
 static inline int
-pair_list_pop_one(pair_list_t *list, PyObject *key, PyObject **ret)
+ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
 {
     Py_ssize_t pos;
     PyObject *value = NULL;
 
-    PyObject *ident = pair_list_calc_identity(list, key);
+    PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -827,15 +835,15 @@ pair_list_pop_one(pair_list_t *list, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    for (pos=0; pos < list->size; pos++) {
-        pair_t *pair = list->pairs + pos;
-        if (pair->hash != hash) {
+    for (pos=0; pos < ht->size; pos++) {
+        entry_t *entry = ht->entries + pos;
+        if (entry->hash != hash) {
             continue;
         }
-        int tmp = str_cmp(ident, pair->identity);
+        int tmp = str_cmp(ident, entry->identity);
         if (tmp > 0) {
-            value = Py_NewRef(pair->value);
-            if (pair_list_del_at(list, pos) < 0) {
+            value = Py_NewRef(entry->value);
+            if (ht_del_at(ht, pos) < 0) {
                 goto fail;
             }
             Py_DECREF(ident);
@@ -856,12 +864,12 @@ fail:
 
 
 static inline int
-pair_list_pop_all(pair_list_t *list, PyObject *key, PyObject ** ret)
+ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
 {
     Py_ssize_t pos;
     PyObject *lst = NULL;
 
-    PyObject *ident = pair_list_calc_identity(list, key);
+    PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
     }
@@ -871,30 +879,30 @@ pair_list_pop_all(pair_list_t *list, PyObject *key, PyObject ** ret)
         goto fail;
     }
 
-    if (list->size == 0) {
+    if (ht->size == 0) {
         Py_DECREF(ident);
         return 0;
     }
 
-    for (pos = list->size - 1; pos >= 0; pos--) {
-        pair_t *pair = list->pairs + pos;
-        if (hash != pair->hash) {
+    for (pos = ht->size - 1; pos >= 0; pos--) {
+        entry_t *entry = ht->entries + pos;
+        if (hash != entry->hash) {
             continue;
         }
-        int tmp = str_cmp(ident, pair->identity);
+        int tmp = str_cmp(ident, entry->identity);
         if (tmp > 0) {
             if (lst == NULL) {
                 lst = PyList_New(1);
                 if (lst == NULL) {
                     goto fail;
                 }
-                if (PyList_SetItem(lst, 0, Py_NewRef(pair->value)) < 0) {
+                if (PyList_SetItem(lst, 0, Py_NewRef(entry->value)) < 0) {
                     goto fail;
                 }
-            } else if (PyList_Append(lst, pair->value) < 0) {
+            } else if (PyList_Append(lst, entry->value) < 0) {
                 goto fail;
             }
-            if (pair_list_del_at(list, pos) < 0) {
+            if (ht_del_at(ht, pos) < 0) {
                 goto fail;
             }
         }
@@ -919,26 +927,26 @@ fail:
 
 
 static inline PyObject *
-pair_list_pop_item(pair_list_t *list)
+ht_pop_item(ht_t *ht)
 {
-    if (list->size == 0) {
+    if (ht->size == 0) {
         PyErr_SetString(PyExc_KeyError, "empty multidict");
         return NULL;
     }
 
-    Py_ssize_t pos = list->size - 1;
-    pair_t *pair = list->pairs + pos;
-    PyObject *key = pair_list_calc_key(list, pair->key, pair->identity);
+    Py_ssize_t pos = ht->size - 1;
+    entry_t *entry = ht->entries + pos;
+    PyObject *key = ht_calc_key(ht, entry->key, entry->identity);
     if (key == NULL) {
         return NULL;
     }
-    PyObject *ret = PyTuple_Pack(2, key, pair->value);
+    PyObject *ret = PyTuple_Pack(2, key, entry->value);
     Py_CLEAR(key);
     if (ret == NULL) {
         return NULL;
     }
 
-    if (pair_list_del_at(list, pos) < 0) {
+    if (ht_del_at(ht, pos) < 0) {
         Py_DECREF(ret);
         return NULL;
     }
@@ -948,12 +956,12 @@ pair_list_pop_item(pair_list_t *list)
 
 
 static inline int
-pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
+ht_replace(ht_t *ht, PyObject * key, PyObject *value)
 {
     Py_ssize_t pos;
     int found = 0;
 
-    PyObject *identity = pair_list_calc_identity(list, key);
+    PyObject *identity = ht_calc_identity(ht, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -964,16 +972,16 @@ pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
     }
 
 
-    for (pos = 0; pos < list->size; pos++) {
-        pair_t *pair = list->pairs + pos;
-        if (hash != pair->hash) {
+    for (pos = 0; pos < ht->size; pos++) {
+        entry_t *entry = ht->entries + pos;
+        if (hash != entry->hash) {
             continue;
         }
-        int tmp = str_cmp(identity, pair->identity);
+        int tmp = str_cmp(identity, entry->identity);
         if (tmp > 0) {
             found = 1;
-            Py_SETREF(pair->key, Py_NewRef(key));
-            Py_SETREF(pair->value, Py_NewRef(value));
+            Py_SETREF(entry->key, Py_NewRef(key));
+            Py_SETREF(entry->value, Py_NewRef(value));
             break;
         }
         else if (tmp < 0) {
@@ -982,15 +990,15 @@ pair_list_replace(pair_list_t *list, PyObject * key, PyObject *value)
     }
 
     if (!found) {
-        if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
+        if (_ht_add_with_hash(ht, identity, key, value, hash) < 0) {
             goto fail;
         }
         Py_DECREF(identity);
         return 0;
     }
     else {
-        list->version = NEXT_VERSION();
-        if (_pair_list_drop_tail(list, identity, hash, pos+1) < 0) {
+        ht->version = NEXT_VERSION();
+        if (_ht_drop_tail(ht, identity, hash, pos+1) < 0) {
             goto fail;
         }
         Py_DECREF(identity);
@@ -1020,14 +1028,14 @@ _dict_set_number(PyObject *dict, PyObject *key, Py_ssize_t num)
 
 
 static inline int
-pair_list_post_update(pair_list_t *list, PyObject* used)
+ht_post_update(ht_t *ht, PyObject* used)
 {
     PyObject *tmp = NULL;
     Py_ssize_t pos;
 
-    for (pos = 0; pos < list->size; pos++) {
-        pair_t *pair = list->pairs + pos;
-        int status = PyDict_GetItemRef(used, pair->identity, &tmp);
+    for (pos = 0; pos < ht->size; pos++) {
+        entry_t *entry = ht->entries + pos;
+        int status = PyDict_GetItemRef(used, entry->identity, &tmp);
         if (status == -1) {
             // exception set
             return -1;
@@ -1048,20 +1056,20 @@ pair_list_post_update(pair_list_t *list, PyObject* used)
 
         if (pos >= num) {
             // del self[pos]
-            if (pair_list_del_at(list, pos) < 0) {
+            if (ht_del_at(ht, pos) < 0) {
                 return -1;
             }
             pos--;
         }
     }
 
-    list->version = NEXT_VERSION();
+    ht->version = NEXT_VERSION();
     return 0;
 }
 
 // TODO: need refactoring function name
 static inline int
-_pair_list_update(pair_list_t *list, PyObject *key,
+_ht_update(ht_t *ht, PyObject *key,
                   PyObject *value, PyObject *used,
                   PyObject *identity, Py_hash_t hash)
 {
@@ -1090,18 +1098,18 @@ _pair_list_update(pair_list_t *list, PyObject *key,
     }
 
     found = 0;
-    for (; pos < list->size; pos++) {
-        pair_t *pair = list->pairs + pos;
-        if (pair->hash != hash) {
+    for (; pos < ht->size; pos++) {
+        entry_t *entry = ht->entries + pos;
+        if (entry->hash != hash) {
             continue;
         }
 
-        int ident_cmp_res = str_cmp(pair->identity, identity);
+        int ident_cmp_res = str_cmp(entry->identity, identity);
         if (ident_cmp_res > 0) {
-            Py_SETREF(pair->key, Py_NewRef(key));
-            Py_SETREF(pair->value, Py_NewRef(value));
+            Py_SETREF(entry->key, Py_NewRef(key));
+            Py_SETREF(entry->value, Py_NewRef(value));
 
-            if (_dict_set_number(used, pair->identity, pos + 1) < 0) {
+            if (_dict_set_number(used, entry->identity, pos + 1) < 0) {
                 return -1;
             }
 
@@ -1114,10 +1122,10 @@ _pair_list_update(pair_list_t *list, PyObject *key,
     }
 
     if (!found) {
-        if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
+        if (_ht_add_with_hash(ht, identity, key, value, hash) < 0) {
             return -1;
         }
-        if (_dict_set_number(used, identity, list->size) < 0) {
+        if (_dict_set_number(used, identity, ht->size) < 0) {
             return -1;
         }
     }
@@ -1127,19 +1135,19 @@ _pair_list_update(pair_list_t *list, PyObject *key,
 
 
 static inline int
-pair_list_update_from_pair_list(pair_list_t *list,
-                                PyObject* used, pair_list_t *other)
+ht_update_from_ht(ht_t *ht,
+                                PyObject* used, ht_t *other)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
     PyObject *identity = NULL;
     PyObject *key = NULL;
-    bool recalc_identity = list->calc_ci_indentity != other->calc_ci_indentity;
+    bool recalc_identity = ht->calc_ci_indentity != other->calc_ci_indentity;
 
     for (pos = 0; pos < other->size; pos++) {
-        pair_t *pair = other->pairs + pos;
+        entry_t *entry = other->entries + pos;
         if (recalc_identity) {
-            identity = pair_list_calc_identity(list, pair->key);
+            identity = ht_calc_identity(ht, entry->key);
             if (identity == NULL) {
                 goto fail;
             }
@@ -1148,23 +1156,23 @@ pair_list_update_from_pair_list(pair_list_t *list,
                 goto fail;
             }
             /* materialize key */
-            key = pair_list_calc_key(other, pair->key, identity);
+            key = ht_calc_key(other, entry->key, identity);
             if (key == NULL) {
                 goto fail;
             }
         } else {
-            identity = pair->identity;
-            hash = pair->hash;
-            key = pair->key;
+            identity = entry->identity;
+            hash = entry->hash;
+            key = entry->key;
         }
         if (used != NULL) {
-            if (_pair_list_update(list, key, pair->value, used,
+            if (_ht_update(ht, key, entry->value, used,
                                   identity, hash) < 0) {
                 goto fail;
             }
         } else {
-            if (_pair_list_add_with_hash(list, identity, key,
-                                         pair->value, hash) < 0) {
+            if (_ht_add_with_hash(ht, identity, key,
+                                         entry->value, hash) < 0) {
                 goto fail;
             }
         }
@@ -1183,7 +1191,7 @@ fail:
 }
 
 static inline int
-pair_list_update_from_dict(pair_list_t *list, PyObject* used, PyObject *kwds)
+ht_update_from_dict(ht_t *ht, PyObject* used, PyObject *kwds)
 {
     Py_ssize_t pos = 0;
     PyObject *identity = NULL;
@@ -1192,7 +1200,7 @@ pair_list_update_from_dict(pair_list_t *list, PyObject* used, PyObject *kwds)
 
     while(PyDict_Next(kwds, &pos, &key, &value)) {
         Py_INCREF(key);
-        identity = pair_list_calc_identity(list, key);
+        identity = ht_calc_identity(ht, key);
         if (identity == NULL) {
             goto fail;
         }
@@ -1201,11 +1209,11 @@ pair_list_update_from_dict(pair_list_t *list, PyObject* used, PyObject *kwds)
             goto fail;
         }
         if (used != NULL) {
-            if (_pair_list_update(list, key, value, used, identity, hash) < 0) {
+            if (_ht_update(ht, key, value, used, identity, hash) < 0) {
                 goto fail;
             }
         } else {
-            if (_pair_list_add_with_hash(list, identity, key, value, hash) < 0) {
+            if (_ht_add_with_hash(ht, identity, key, value, hash) < 0) {
                 goto fail;
             }
         }
@@ -1243,7 +1251,7 @@ static inline void _err_cannot_fetch(Py_ssize_t i, const char * name)
 }
 
 
-static int _pair_list_parse_item(Py_ssize_t i, PyObject *item,
+static int _ht_parse_item(Py_ssize_t i, PyObject *item,
                                  PyObject **pkey, PyObject **pvalue)
 {
     Py_ssize_t n;
@@ -1294,7 +1302,7 @@ fail:
 
 
 static inline int
-pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
+ht_update_from_seq(ht_t *ht, PyObject *used, PyObject *seq)
 {
     PyObject *it = NULL;
     PyObject *item = NULL; // seq[i]
@@ -1354,11 +1362,11 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
             }
         }
 
-        if (_pair_list_parse_item(i, item, &key, &value) < 0) {
+        if (_ht_parse_item(i, item, &key, &value) < 0) {
             goto fail;
         }
 
-        identity = pair_list_calc_identity(list, key);
+        identity = ht_calc_identity(ht, key);
         if (identity == NULL) {
             goto fail;
         }
@@ -1369,14 +1377,14 @@ pair_list_update_from_seq(pair_list_t *list, PyObject *used, PyObject *seq)
         }
 
         if (used) {
-            if (_pair_list_update(list, key, value, used, identity, hash) < 0) {
+            if (_ht_update(ht, key, value, used, identity, hash) < 0) {
                 goto fail;
             }
             Py_CLEAR(identity);
             Py_CLEAR(key);
             Py_CLEAR(value);
         } else {
-            if (_pair_list_add_with_hash_steal_refs(list, identity,
+            if (_ht_add_with_hash_steal_refs(ht, identity,
                                                     key, value, hash) < 0) {
                 goto fail;
             }
@@ -1402,29 +1410,29 @@ fail:
 
 
 static inline int
-pair_list_eq(pair_list_t *list, pair_list_t *other)
+ht_eq(ht_t *ht, ht_t *other)
 {
     Py_ssize_t pos;
 
-    if (list == other) {
+    if (ht == other) {
         return 1;
     }
 
-    Py_ssize_t size = pair_list_len(list);
+    Py_ssize_t size = ht_len(ht);
 
-    if (size != pair_list_len(other)) {
+    if (size != ht_len(other)) {
         return 0;
     }
 
     for(pos = 0; pos < size; ++pos) {
-        pair_t *pair1 = list->pairs + pos;
-        pair_t *pair2 = other->pairs +pos;
+        entry_t *entry1 = ht->entries + pos;
+        entry_t *entry2 = other->entries +pos;
 
-        if (pair1->hash != pair2->hash) {
+        if (entry1->hash != entry2->hash) {
             return 0;
         }
 
-        int cmp = PyObject_RichCompareBool(pair1->identity, pair2->identity, Py_EQ);
+        int cmp = PyObject_RichCompareBool(entry1->identity, entry2->identity, Py_EQ);
         if (cmp < 0) {
             return -1;
         };
@@ -1432,7 +1440,7 @@ pair_list_eq(pair_list_t *list, pair_list_t *other)
             return 0;
         }
 
-        cmp = PyObject_RichCompareBool(pair1->value, pair2->value, Py_EQ);
+        cmp = PyObject_RichCompareBool(entry1->value, entry2->value, Py_EQ);
         if (cmp < 0) {
             return -1;
         };
@@ -1445,7 +1453,7 @@ pair_list_eq(pair_list_t *list, pair_list_t *other)
 }
 
 static inline int
-pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
+ht_eq_to_mapping(ht_t *ht, PyObject *other)
 {
     PyObject *key = NULL;
     PyObject *avalue = NULL;
@@ -1464,15 +1472,15 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
     if (other_len < 0) {
         return -1;
     }
-    if (pair_list_len(list) != other_len) {
+    if (ht_len(ht) != other_len) {
         return 0;
     }
 
-    pair_list_pos_t pos;
-    pair_list_init_pos(list, &pos);
+    ht_pos_t pos;
+    ht_init_pos(ht, &pos);
 
     for(;;) {
-        int ret = pair_list_next(list, &pos, NULL, &key, &avalue);
+        int ret = ht_next(ht, &pos, NULL, &key, &avalue);
         if (ret < 0) {
             return -1;
         }
@@ -1505,7 +1513,7 @@ pair_list_eq_to_mapping(pair_list_t *list, PyObject *other)
 
 
 static inline PyObject *
-pair_list_repr(pair_list_t *list, PyObject *name,
+ht_repr(ht_t *ht, PyObject *name,
                    bool show_keys, bool show_values)
 {
     PyObject *key = NULL;
@@ -1513,7 +1521,7 @@ pair_list_repr(pair_list_t *list, PyObject *name,
 
     bool comma = false;
     Py_ssize_t pos;
-    uint64_t version = list->version;
+    uint64_t version = ht->version;
 
     PyUnicodeWriter *writer = PyUnicodeWriter_Create(1024);
     if (writer == NULL)
@@ -1526,14 +1534,14 @@ pair_list_repr(pair_list_t *list, PyObject *name,
     if (PyUnicodeWriter_WriteChar(writer, '(') <0)
         goto fail;
 
-    for (pos = 0; pos < list->size; ++pos) {
-        if (version != list->version) {
+    for (pos = 0; pos < ht->size; ++pos) {
+        if (version != ht->version) {
             PyErr_SetString(PyExc_RuntimeError, "MultiDict changed during iteration");
             return NULL;
         }
-        pair_t *pair = list->pairs + pos;
-        key = Py_NewRef(pair->key);
-        value = Py_NewRef(pair->value);
+        entry_t *entry = ht->entries + pos;
+        key = Py_NewRef(entry->key);
+        value = Py_NewRef(entry->value);
 
         if (comma) {
             if (PyUnicodeWriter_WriteChar(writer, ',') <0)
@@ -1583,16 +1591,16 @@ fail:
 /***********************************************************************/
 
 static inline int
-pair_list_traverse(pair_list_t *list, visitproc visit, void *arg)
+ht_traverse(ht_t *ht, visitproc visit, void *arg)
 {
-    pair_t *pair = NULL;
+    entry_t *entry = NULL;
     Py_ssize_t pos;
 
-    for (pos = 0; pos < list->size; pos++) {
-        pair = list->pairs + pos;
+    for (pos = 0; pos < ht->size; pos++) {
+        entry = ht->entries + pos;
         // Don't need traverse the identity: it is a terminal
-        Py_VISIT(pair->key);
-        Py_VISIT(pair->value);
+        Py_VISIT(entry->key);
+        Py_VISIT(entry->value);
     }
 
     return 0;
@@ -1600,26 +1608,26 @@ pair_list_traverse(pair_list_t *list, visitproc visit, void *arg)
 
 
 static inline int
-pair_list_clear(pair_list_t *list)
+ht_clear(ht_t *ht)
 {
-    pair_t *pair = NULL;
+    entry_t *entry = NULL;
     Py_ssize_t pos;
 
-    if (list->size == 0) {
+    if (ht->size == 0) {
         return 0;
     }
 
-    list->version = NEXT_VERSION();
-    for (pos = 0; pos < list->size; pos++) {
-        pair = list->pairs + pos;
-        Py_CLEAR(pair->key);
-        Py_CLEAR(pair->identity);
-        Py_CLEAR(pair->value);
+    ht->version = NEXT_VERSION();
+    for (pos = 0; pos < ht->size; pos++) {
+        entry = ht->entries + pos;
+        Py_CLEAR(entry->key);
+        Py_CLEAR(entry->identity);
+        Py_CLEAR(entry->value);
     }
-    list->size = 0;
-    if (list->pairs != list->buffer) {
-        PyMem_Free(list->pairs);
-        list->pairs = list->buffer;
+    ht->size = 0;
+    if (ht->entries != ht->buffer) {
+        PyMem_Free(ht->entries);
+        ht->entries = ht->buffer;
     }
 
     return 0;

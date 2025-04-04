@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #include "dict.h"
-#include "pair_list.h"
+#include "hashtable.h"
 #include "state.h"
 
 typedef struct {
@@ -54,7 +54,7 @@ multidict_view_clear(_Multidict_ViewObject *self)
 static inline Py_ssize_t
 multidict_view_len(_Multidict_ViewObject *self)
 {
-    return pair_list_len(&self->md->pairs);
+    return ht_len(&self->md->ht);
 }
 
 static inline PyObject *
@@ -152,7 +152,7 @@ static inline PyObject *
 multidict_itemsview_new(MultiDictObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, md->pairs.state->ItemsViewType);
+        _Multidict_ViewObject, md->ht.state->ItemsViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -184,7 +184,7 @@ multidict_itemsview_repr(_Multidict_ViewObject *self)
         Py_ReprLeave((PyObject *)self);
         return NULL;
     }
-    PyObject *ret = pair_list_repr(&self->md->pairs, name, true, true);
+    PyObject *ret = ht_repr(&self->md->ht, name, true, true);
     Py_ReprLeave((PyObject *)self);
     Py_CLEAR(name);
     return ret;
@@ -214,7 +214,7 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject *self, PyObject *arg,
         *pvalue = Py_NewRef(PyTuple_GET_ITEM(arg, 1));
     }
 
-    *pidentity = pair_list_calc_identity(&self->md->pairs, key);
+    *pidentity = ht_calc_identity(&self->md->ht, key);
     Py_DECREF(key);
     if (*pidentity == NULL) {
         if (pkey != NULL) {
@@ -256,7 +256,7 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
     PyObject *arg = NULL;
     PyObject *ret = NULL;
 
-    pair_list_pos_t pos;
+    ht_pos_t pos;
 
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
@@ -280,10 +280,10 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        pair_list_init_pos(&self->md->pairs, &pos);
+        ht_init_pos(&self->md->ht, &pos);
 
         while (true) {
-            tmp = pair_list_next_by_identity(&self->md->pairs, &pos,
+            tmp = ht_next_by_identity(&self->md->ht, &pos,
                                              identity, &key2, &value2);
             if (tmp < 0) {
                 goto fail;
@@ -335,7 +335,7 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
     PyObject *arg = NULL;
     PyObject *ret = NULL;
 
-    pair_list_pos_t pos;
+    ht_pos_t pos;
 
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
@@ -359,10 +359,10 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        pair_list_init_pos(&self->md->pairs, &pos);
+        ht_init_pos(&self->md->ht, &pos);
 
         while (true) {
-            tmp = pair_list_next_by_identity(&self->md->pairs, &pos,
+            tmp = ht_next_by_identity(&self->md->ht, &pos,
                                              identity, NULL, &value2);
             if (tmp < 0) {
                 goto fail;
@@ -436,7 +436,7 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
     PyObject *arg = NULL;
     PyObject *ret = NULL;
 
-    pair_list_pos_t pos;
+    ht_pos_t pos;
 
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
@@ -463,10 +463,10 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        pair_list_init_pos(&self->md->pairs, &pos);
+        ht_init_pos(&self->md->ht, &pos);
 
         while (true) {
-            tmp = pair_list_next_by_identity(&self->md->pairs, &pos,
+            tmp = ht_next_by_identity(&self->md->ht, &pos,
                                              identity, NULL, &value2);
             if (tmp < 0) {
                 goto fail;
@@ -518,7 +518,7 @@ multidict_itemsview_or2(_Multidict_ViewObject *self, PyObject *other)
     PyObject *arg = NULL;
     PyObject *tmp_set = NULL;
 
-    pair_list_pos_t pos;
+    ht_pos_t pos;
 
     PyObject *ret = PySet_New(other);
     if (ret == NULL) {
@@ -553,10 +553,10 @@ multidict_itemsview_or2(_Multidict_ViewObject *self, PyObject *other)
     }
     Py_CLEAR(iter);
 
-    pair_list_init_pos(&self->md->pairs, &pos);
+    ht_init_pos(&self->md->ht, &pos);
 
     while (true) {
-        int tmp = pair_list_next(&self->md->pairs, &pos,
+        int tmp = ht_next(&self->md->ht, &pos,
                                  &identity, &key, &value);
         if (tmp < 0) {
             goto fail;
@@ -629,7 +629,7 @@ multidict_itemsview_sub1(_Multidict_ViewObject *self, PyObject *other)
     PyObject *ret = NULL;
     PyObject *tmp_set = NULL;
 
-    pair_list_pos_t pos;
+    ht_pos_t pos;
 
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
@@ -664,10 +664,10 @@ multidict_itemsview_sub1(_Multidict_ViewObject *self, PyObject *other)
     }
     Py_CLEAR(iter);
 
-    pair_list_init_pos(&self->md->pairs, &pos);
+    ht_init_pos(&self->md->ht, &pos);
 
     while (true) {
-        int tmp = pair_list_next(&self->md->pairs, &pos,
+        int tmp = ht_next(&self->md->ht, &pos,
                                  &identity, &key, &value);
         if (tmp < 0) {
             goto fail;
@@ -716,7 +716,7 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
     PyObject *ret = NULL;
     PyObject *iter = PyObject_GetIter(other);
 
-    pair_list_pos_t pos;
+    ht_pos_t pos;
 
     if (iter == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -742,10 +742,10 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        pair_list_init_pos(&self->md->pairs, &pos);
+        ht_init_pos(&self->md->ht, &pos);
 
         while (true) {
-            tmp = pair_list_next_by_identity(&self->md->pairs, &pos,
+            tmp = ht_next_by_identity(&self->md->ht, &pos,
                                              identity, NULL, &value2);
             if (tmp < 0) {
                 goto fail;
@@ -941,7 +941,7 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
     PyObject *value = NULL;
     PyObject *value2 = NULL;
 
-    pair_list_pos_t pos;
+    ht_pos_t pos;
 
     while ((arg = PyIter_Next(iter))) {
         int tmp = _multidict_itemsview_parse_item(self, arg,
@@ -953,10 +953,10 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        pair_list_init_pos(&self->md->pairs, &pos);
+        ht_init_pos(&self->md->ht, &pos);
 
         while (true) {
-            tmp = pair_list_next_by_identity(&self->md->pairs, &pos,
+            tmp = ht_next_by_identity(&self->md->ht, &pos,
                                              identity, NULL, &value2);
             if (tmp < 0) {
                 goto fail;
@@ -1043,7 +1043,7 @@ static inline PyObject *
 multidict_keysview_new(MultiDictObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, md->pairs.state->KeysViewType);
+        _Multidict_ViewObject, md->ht.state->KeysViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -1067,7 +1067,7 @@ multidict_keysview_repr(_Multidict_ViewObject *self)
     if (name == NULL) {
         return NULL;
     }
-    PyObject *ret = pair_list_repr(&self->md->pairs, name, true, false);
+    PyObject *ret = ht_repr(&self->md->ht, name, true, false);
     Py_CLEAR(name);
     return ret;
 }
@@ -1095,7 +1095,7 @@ multidict_keysview_and1(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        int tmp = pair_list_contains(&self->md->pairs, key, &key2);
+        int tmp = ht_contains(&self->md->ht, key, &key2);
         if (tmp < 0) {
             goto fail;
         }
@@ -1142,7 +1142,7 @@ multidict_keysview_and2(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        int tmp = pair_list_contains(&self->md->pairs, key, NULL);
+        int tmp = ht_contains(&self->md->ht, key, NULL);
         if (tmp < 0) {
             goto fail;
         }
@@ -1214,7 +1214,7 @@ multidict_keysview_or1(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        int tmp = pair_list_contains(&self->md->pairs, key, NULL);
+        int tmp = ht_contains(&self->md->ht, key, NULL);
         if (tmp < 0) {
             goto fail;
         }
@@ -1265,7 +1265,7 @@ multidict_keysview_or2(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        identity = pair_list_calc_identity(&self->md->pairs, key);
+        identity = ht_calc_identity(&self->md->ht, key);
         if (identity == NULL) {
             goto fail;
         }
@@ -1280,11 +1280,11 @@ multidict_keysview_or2(_Multidict_ViewObject *self, PyObject *other)
     }
     Py_CLEAR(iter);
 
-    pair_list_pos_t pos;
-    pair_list_init_pos(&self->md->pairs, &pos);
+    ht_pos_t pos;
+    ht_init_pos(&self->md->ht, &pos);
 
     while (true) {
-        int tmp = pair_list_next(&self->md->pairs, &pos, &identity, &key, NULL);
+        int tmp = ht_next(&self->md->ht, &pos, &identity, &key, NULL);
         if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
@@ -1362,7 +1362,7 @@ multidict_keysview_sub1(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        tmp = pair_list_contains(&self->md->pairs, key, &key2);
+        tmp = ht_contains(&self->md->ht, key, &key2);
         if (tmp < 0) {
             goto fail;
         }
@@ -1410,7 +1410,7 @@ multidict_keysview_sub2(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        tmp = pair_list_contains(&self->md->pairs, key, NULL);
+        tmp = ht_contains(&self->md->ht, key, NULL);
         if (tmp < 0) {
             goto fail;
         }
@@ -1520,7 +1520,7 @@ fail:
 static inline int
 multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
 {
-    return pair_list_contains(&self->md->pairs, key, NULL);
+    return ht_contains(&self->md->ht, key, NULL);
 }
 
 static inline PyObject *
@@ -1532,7 +1532,7 @@ multidict_keysview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
     }
     PyObject *key = NULL;
     while ((key = PyIter_Next(iter))) {
-        int tmp = pair_list_contains(&self->md->pairs, key, NULL);
+        int tmp = ht_contains(&self->md->ht, key, NULL);
         Py_CLEAR(key);
         if (tmp < 0) {
             Py_CLEAR(iter);
@@ -1596,7 +1596,7 @@ static inline PyObject *
 multidict_valuesview_new(MultiDictObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, md->pairs.state->ValuesViewType);
+        _Multidict_ViewObject, md->ht.state->ValuesViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -1628,7 +1628,7 @@ multidict_valuesview_repr(_Multidict_ViewObject *self)
         Py_ReprLeave((PyObject *)self);
         return NULL;
     }
-    PyObject *ret = pair_list_repr(&self->md->pairs, name, false, true);
+    PyObject *ret = ht_repr(&self->md->ht, name, false, true);
     Py_ReprLeave((PyObject *)self);
     Py_CLEAR(name);
     return ret;
