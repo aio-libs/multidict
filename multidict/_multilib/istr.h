@@ -13,6 +13,10 @@ typedef struct {
     mod_state *state;
 } istrobject;
 
+#define IStr_CheckExact(state, obj) Py_IS_TYPE(obj, state->IStrType)
+#define IStr_Check(state, obj) \
+    (IStr_CheckExact(state, obj) || PyObject_TypeCheck(obj, state->IStrType))
+
 PyDoc_STRVAR(istr__doc__, "istr class implementation");
 
 static inline void
@@ -53,7 +57,7 @@ istr_new_with_state(PyTypeObject *type, PyObject *args, PyObject *kwds,
                                      kwlist, &x, &encoding, &errors)) {
         return NULL;
     }
-    if (x != NULL && Py_TYPE(x) == state->IStrType) {
+    if (x != NULL && IStr_Check(state, x)) {
         Py_INCREF(x);
         return x;
     }

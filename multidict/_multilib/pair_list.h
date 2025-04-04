@@ -95,8 +95,7 @@ str_cmp(PyObject *s1, PyObject *s2)
 static inline PyObject *
 _key_to_ident(mod_state *state, PyObject *key)
 {
-    PyTypeObject *type = Py_TYPE(key);
-    if (type == state->IStrType) {
+    if (IStr_Check(state, key)) {
         return Py_NewRef(((istrobject*)key)->canonical);
     }
     if (PyUnicode_CheckExact(key)) {
@@ -115,8 +114,7 @@ _key_to_ident(mod_state *state, PyObject *key)
 static inline PyObject *
 _ci_key_to_ident(mod_state *state, PyObject *key)
 {
-    PyTypeObject *type = Py_TYPE(key);
-    if (type == state->IStrType) {
+    if (IStr_Check(state, key)) {
         return Py_NewRef(((istrobject*)key)->canonical);
     }
     if (PyUnicode_Check(key)) {
@@ -154,8 +152,7 @@ _arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
 static inline PyObject *
 _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
 {
-    PyTypeObject *type = Py_TYPE(key);
-    if (type == state->IStrType) {
+    if (IStr_Check(state, key)) {
         return Py_NewRef(key);
     }
     if (PyUnicode_Check(key)) {

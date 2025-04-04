@@ -13,10 +13,30 @@
 
 
 #define MultiDict_CheckExact(state, obj) Py_IS_TYPE(obj, state->MultiDictType)
+#define MultiDict_Check(state, obj) \
+    (MultiDict_CheckExact(state, obj) \
+     || PyObject_TypeCheck(obj, state->MultiDictType))
 #define CIMultiDict_CheckExact(state, obj) Py_IS_TYPE(obj, state->CIMultiDictType)
+#define CIMultiDict_Check(state, obj) \
+    (CIMultiDict_CheckExact(state, obj) \
+     || PyObject_TypeCheck(obj, state->CIMultiDictType))
+#define AnyMultiDict_Check(state, obj) \
+    (MultiDict_CheckExact(state, obj) \
+     || CIMultiDict_CheckExact(state, obj) \
+     || PyObject_TypeCheck(obj, state->MultiDictType))
 #define MultiDictProxy_CheckExact(state, obj) Py_IS_TYPE(obj, state->MultiDictProxyType)
-#define CIMultiDictProxy_CheckExact(state, obj) Py_IS_TYPE(obj, \
-                                                           state->CIMultiDictProxyType)
+#define MultiDictProxy_Check(state, obj) \
+    (MultiDictProxy_CheckExact(state, obj) \
+     || PyObject_TypeCheck(obj, state->MultiDictProxyType))
+#define CIMultiDictProxy_CheckExact(state, obj) \
+    Py_IS_TYPE(obj, state->CIMultiDictProxyType)
+#define CIMultiDictProxy_Check(state, obj) \
+    (CIMultiDictProxy_CheckExact(state, obj) \
+     || PyObject_TypeCheck(obj, state->CIMultiDictProxyType))
+#define AnyMultiDictProxy_Check(state, obj) \
+    (MultiDictProxy_CheckExact(state, obj) \
+     || CIMultiDictProxy_CheckExact(state, obj) \
+     || PyObject_TypeCheck(obj, state->MultiDictProxyType))
 
 /******************** Internal Methods ********************/
 
@@ -64,13 +84,12 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
     }
 
     if (arg != NULL) {
-        if (MultiDict_CheckExact(state, arg) || CIMultiDict_CheckExact(state, arg)) {
+        if (AnyMultiDict_Check(state, arg)) {
             list = &((MultiDictObject*)arg)->pairs;
             if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
                 goto fail;
             }
-        } else if (MultiDictProxy_CheckExact(state, arg)
-                   || CIMultiDictProxy_CheckExact(state, arg)) {
+        } else if (AnyMultiDictProxy_Check(state, arg)) {
             list = &((MultiDictProxyObject*)arg)->md->pairs;
             if (pair_list_update_from_pair_list(&self->pairs, used, list) < 0) {
                 goto fail;
@@ -391,14 +410,12 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
     }
 
     mod_state *state = ((MultiDictObject*)self)->pairs.state;
-    if (MultiDict_CheckExact(state, other)
-        || CIMultiDict_CheckExact(state, other)) {
+    if (AnyMultiDict_Check(state, other)) {
         cmp = pair_list_eq(
             &((MultiDictObject*)self)->pairs,
             &((MultiDictObject*)other)->pairs
         );
-    } else if (MultiDictProxy_CheckExact(state, other)
-               || CIMultiDictProxy_CheckExact(state, other)) {
+    } else if (AnyMultiDictProxy_Check(state, other)) {
         cmp = pair_list_eq(
             &((MultiDictObject*)self)->pairs,
             &((MultiDictProxyObject*)other)->md->pairs
@@ -967,9 +984,8 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         );
         return -1;
     }
-    if (!MultiDictProxy_CheckExact(state, arg) &&
-        !CIMultiDict_CheckExact(state, arg) &&
-        !MultiDict_CheckExact(state, arg))
+    if (!AnyMultiDictProxy_Check(state, arg) &&
+        !AnyMultiDict_Check(state, arg))
     {
         PyErr_Format(
             PyExc_TypeError,
@@ -980,9 +996,10 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         return -1;
     }
 
-    md = (MultiDictObject*)arg;
-    if (MultiDictProxy_CheckExact(state, arg)) {
+    if (AnyMultiDictProxy_Check(state, arg)) {
         md = ((MultiDictProxyObject*)arg)->md;
+    } else {
+        md = (MultiDictObject*)arg;
     }
     Py_INCREF(md);
     self->md = md;
@@ -1248,8 +1265,8 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         );
         return -1;
     }
-    if (!CIMultiDictProxy_CheckExact(state, arg)
-        && !CIMultiDict_CheckExact(state, arg)) {
+    if (!CIMultiDictProxy_Check(state, arg)
+        && !CIMultiDict_Check(state, arg)) {
         PyErr_Format(
             PyExc_TypeError,
             "ctor requires CIMultiDict or CIMultiDictProxy instance, "
@@ -1259,9 +1276,10 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         return -1;
     }
 
-    md = (MultiDictObject*)arg;
-    if (CIMultiDictProxy_CheckExact(state, arg)) {
+    if (CIMultiDictProxy_Check(state, arg)) {
         md = ((MultiDictProxyObject*)arg)->md;
+    } else {
+        md = (MultiDictObject*)arg;
     }
     Py_INCREF(md);
     self->md = md;
@@ -1320,10 +1338,9 @@ getversion(PyObject *self, PyObject *md)
 {
     mod_state *state = get_mod_state(self);
     pair_list_t *pairs = NULL;
-    if (MultiDict_CheckExact(state, md) || CIMultiDict_CheckExact(state, md)) {
+    if (AnyMultiDict_Check(state, md)) {
         pairs = &((MultiDictObject*)md)->pairs;
-    } else if (MultiDictProxy_CheckExact(state, md)
-               || CIMultiDictProxy_CheckExact(state, md)) {
+    } else if (AnyMultiDictProxy_Check(state, md)) {
         pairs = &((MultiDictProxyObject*)md)->md->pairs;
     } else {
         PyErr_Format(PyExc_TypeError, "unexpected type");
