@@ -36,9 +36,6 @@ typedef struct pair {
 
 /* Note about the structure size
 With 28 pairs the MultiDict object size is slightly less than 1KiB
-(1000-1008 bytes depending on Python version,
-plus extra 12 bytes for memory allocator internal structures).
-As the result the max reserved size is 1020 bytes at most.
 
 To fit into 512 bytes, the structure can contain only 13 pairs
 which is too small, e.g. https://www.python.org returns 16 headers

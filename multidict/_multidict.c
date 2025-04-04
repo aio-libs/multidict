@@ -21,8 +21,7 @@
 /******************** Internal Methods ********************/
 
 static inline PyObject *
-_multidict_getone(MultiDictObject *self,
-                  PyObject *key, PyObject *_default)
+_multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 {
     PyObject *val = NULL;
 
