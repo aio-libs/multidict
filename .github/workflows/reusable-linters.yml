@@ -74,7 +74,6 @@ jobs:
         fail_ci_if_error: true
     - name: Install spell checker
       run: |
-        sudo apt install libenchant-2-dev
         pip install -r requirements/doc.txt
     - name: Run docs spelling
       run: |

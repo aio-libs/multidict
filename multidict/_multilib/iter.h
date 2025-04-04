@@ -6,13 +6,13 @@ extern "C" {
 #endif
 
 #include "dict.h"
-#include "pair_list.h"
+#include "hashtable.h"
 #include "state.h"
 
 typedef struct multidict_iter {
     PyObject_HEAD
     MultiDictObject *md;  // MultiDict or CIMultiDict
-    pair_list_pos_t current;
+    md_pos_t current;
 } MultidictIter;
 
 static inline void
@@ -21,14 +21,14 @@ _init_iter(MultidictIter *it, MultiDictObject *md)
     Py_INCREF(md);
 
     it->md = md;
-    pair_list_init_pos(&md->pairs, &it->current);
+    md_init_pos(md, &it->current);
 }
 
 static inline PyObject *
 multidict_items_iter_new(MultiDictObject *md)
 {
     MultidictIter *it = PyObject_GC_New(
-        MultidictIter, md->pairs.state->ItemsIterType);
+        MultidictIter, md->state->ItemsIterType);
     if (it == NULL) {
         return NULL;
     }
@@ -43,7 +43,7 @@ static inline PyObject *
 multidict_keys_iter_new(MultiDictObject *md)
 {
     MultidictIter *it = PyObject_GC_New(
-        MultidictIter, md->pairs.state->KeysIterType);
+        MultidictIter, md->state->KeysIterType);
     if (it == NULL) {
         return NULL;
     }
@@ -58,7 +58,7 @@ static inline PyObject *
 multidict_values_iter_new(MultiDictObject *md)
 {
     MultidictIter *it = PyObject_GC_New(
-        MultidictIter, md->pairs.state->ValuesIterType);
+        MultidictIter, md->state->ValuesIterType);
     if (it == NULL) {
         return NULL;
     }
@@ -76,8 +76,8 @@ multidict_items_iter_iternext(MultidictIter *self)
     PyObject *value = NULL;
     PyObject *ret = NULL;
 
-    int res = pair_list_next(&self->md->pairs, &self->current,
-                             NULL, &key, &value);
+    int res = md_next(self->md, &self->current,
+                      NULL, &key, &value);
     if (res < 0) {
         return NULL;
     }
@@ -103,8 +103,8 @@ multidict_values_iter_iternext(MultidictIter *self)
 {
     PyObject *value = NULL;
 
-    int res = pair_list_next(&self->md->pairs, &self->current,
-                             NULL, NULL, &value);
+    int res = md_next(self->md, &self->current,
+                      NULL, NULL, &value);
     if (res < 0) {
         return NULL;
     }
@@ -121,8 +121,8 @@ multidict_keys_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
 
-    int res = pair_list_next(&self->md->pairs, &self->current,
-                             NULL, &key, NULL);
+    int res = md_next(self->md, &self->current,
+                      NULL, &key, NULL);
     if (res < 0) {
         return NULL;
     }
@@ -159,7 +159,7 @@ multidict_iter_clear(MultidictIter *self)
 static inline PyObject *
 multidict_iter_len(MultidictIter *self)
 {
-    return PyLong_FromLong(pair_list_len(&self->md->pairs));
+    return PyLong_FromLong(md_len(self->md));
 }
 
 PyDoc_STRVAR(length_hint_doc,

@@ -123,12 +123,15 @@ jobs:
         os:
         - ubuntu
         - windows
+        - windows-11-arm
         - macos
         tag:
         - ''
         - 'musllinux'
         exclude:
         - os: windows
+          tag: 'musllinux'
+        - os: windows-11-arm
           tag: 'musllinux'
         - os: macos
           tag: 'musllinux'
@@ -199,7 +202,7 @@ jobs:
           debug: ''
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     continue-on-error: >-
       ${{

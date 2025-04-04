@@ -1,5 +1,8 @@
+import os
 from collections import deque
 from typing import Union
+
+import pytest
 
 from multidict import CIMultiDict, MultiDict
 
@@ -119,3 +122,46 @@ def test_update_deque_arg_and_kwds(any_multidict_class: _MD_Classes) -> None:
     obj.update(arg, b=2)
     assert list(obj.items()) == [("a", 1), ("b", 2)]
     assert arg == deque([("a", 1)])
+
+
+def test_update_with_second_md(any_multidict_class: _MD_Classes) -> None:
+    obj1 = any_multidict_class()
+    obj2 = any_multidict_class([("a", 2)])
+    obj1.update(obj2)
+    assert obj1 == obj2
+
+
+@pytest.mark.skipif(
+    "CI" in os.environ, reason="The test requires more resources than CI provides"
+)
+def test_update_large_dict(any_multidict_class: _MD_Classes) -> None:
+    NUM = 2**17
+    obj1 = any_multidict_class((str(i), i) for i in range(NUM))
+    obj2 = any_multidict_class((str(i + NUM), i + NUM) for i in range(NUM))
+    obj1.update(obj2)
+    assert len(obj1) == NUM * 2
+    for i in range(NUM * 2):
+        assert obj1[str(i)] == i
+
+
+@pytest.mark.leaks  # skip the test on wheel building stage
+def test_compact_after_deletion(any_multidict_class: _MD_Classes) -> None:
+    # multidict is resized when it is filled up to 2/3 of the index table size
+    NUM = 16 * 2 // 3
+    obj = any_multidict_class((str(i), i) for i in range(NUM - 1))
+    # keys.usable == 0
+    # delete items, it adds empty entries but not reduce keys.usable
+    for i in range(5):
+        del obj[str(i)]
+    # adding an entry requres keys resizing to remove empty entries
+    dct = {str(i): i for i in range(100, 105)}
+    obj.extend(dct)
+    assert obj == {str(i): i for i in range(5, NUM - 1)} | dct
+
+
+def test_update_with_empty_slots(any_multidict_class: _MD_Classes) -> None:
+    # multidict is resized when it is filled up to 2/3 of the index table size
+    obj = any_multidict_class([("0", 0), ("1", 1), ("1", 2)])
+    del obj["0"]
+    obj.update({"1": 100})
+    assert obj == {"1": 100}
