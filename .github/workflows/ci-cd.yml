@@ -124,9 +124,24 @@ jobs:
         - ubuntu
         - windows
         - macos
+        tag:
+        - ''
+        - 'musllinux'
+        exclude:
+        - os: windows
+          tag: 'musllinux'
+        - os: macos
+          tag: 'musllinux'
+        - os: ubuntu
+          tag: >-
+           ${{
+           (github.event_name != 'push' || !contains(github.ref, 'refs/tags/'))
+           && 'musllinux' || 'none'
+           }}
     uses: ./.github/workflows/reusable-build-wheel.yml
     with:
       os: ${{ matrix.os }}
+      tag: ${{ matrix.tag }}
       wheel-tags-to-skip: >-
         ${{
         (github.event_name != 'push' || !contains(github.ref, 'refs/tags/'))
@@ -135,7 +150,8 @@ jobs:
         *-musllinux_*
         *-win32
         pp*'
-        || ''
+        || (matrix.tag == 'musllinux') && '*-manylinux_* pp*'
+        || '*-musllinux_* pp*'
         }}
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
@@ -504,7 +520,7 @@ jobs:
         echo "Predeploy step"
 
   build-wheels-for-odd-archs:
-    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
+    name: Build wheels on ${{ matrix.tag }} ${{ matrix.qemu }}
     needs:
     - build-pure-python-dists
     - pre-deploy
@@ -515,9 +531,20 @@ jobs:
         - aarch64
         - ppc64le
         - s390x
+        - armv7l
+        tag:
+        - ''
+        - musllinux
     uses: ./.github/workflows/reusable-build-wheel.yml
     with:
       qemu: ${{ matrix.qemu }}
+      tag: ${{ matrix.tag }}
+      wheel-tags-to-skip: >-
+        ${{
+        (matrix.tag == 'musllinux')
+        && '*-manylinux_* pp*'
+        || '*-musllinux_* pp*'
+        }}
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
