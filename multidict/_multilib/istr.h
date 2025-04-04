@@ -126,6 +126,7 @@ static PyType_Spec istr_spec = {
     .name = "multidict._multidict.istr",
     .basicsize = sizeof(istrobject),
     .flags = (Py_TPFLAGS_DEFAULT
+              | Py_TPFLAGS_BASETYPE
 #if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif
