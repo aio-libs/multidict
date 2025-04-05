@@ -1,3 +1,4 @@
+armv
 aarch64
 i686
 ppc64le
