@@ -1419,11 +1419,10 @@ ht_eq(ht_t *ht, ht_t *other)
 
     entry_t *lft_entries = DK_ENTRIES(ht->ma_keys);
     entry_t *rht_entries = DK_ENTRIES(other->ma_keys);
-
     for (;;) {
         if (pos1 >= ht->ma_keys->dk_nentries
             || pos2 >= other->ma_keys->dk_nentries) {
-            return 0;
+            return 1;
         }
         entry_t *entry1 = lft_entries + pos1;
         if (entry1->identity == NULL) {
@@ -1458,7 +1457,6 @@ ht_eq(ht_t *ht, ht_t *other)
         pos1++;
         pos2++;
     }
-
     return 1;
 }
 

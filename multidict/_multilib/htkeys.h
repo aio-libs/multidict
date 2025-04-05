@@ -357,7 +357,7 @@ htkeys_find_empty_slot(htkeys_t *keys, Py_hash_t hash)
     const size_t mask = DK_MASK(keys);
     size_t i = hash & mask;
     Py_ssize_t ix = htkeys_get_index(keys, i);
-    for (size_t perturb = hash; ix >= 0 || ix == DKIX_DUMMY;) {
+    for (size_t perturb = hash; ix >= 0;) {
         perturb >>= HT_PERTURB_SHIFT;
         i = (i*5 + perturb + 1) & mask;
         ix = htkeys_get_index(keys, i);
