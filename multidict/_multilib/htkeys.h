@@ -28,9 +28,10 @@ typedef struct entry {
 } entry_t;
 
 
-#define DKIX_EMPTY (-1)
-#define DKIX_DUMMY (-2)  /* Used internally */
-#define DKIX_ERROR (-3)
+#define DKIX_EMPTY  (-1)
+#define DKIX_DUMMY  (-2)  /* Used internally */
+#define DKIX_ERROR  (-3)
+#define DKIX_UPDATE (-4)  /* Used internally */
 
 
 #define HT_LOG_MINSIZE 3
@@ -167,7 +168,10 @@ htkeys_set_index(htkeys_t *keys, Py_ssize_t i, Py_ssize_t ix)
  * USABLE_FRACTION should be quick to calculate.
  * Fractions around 1/2 to 2/3 seem to work well in practice.
  */
-#define USABLE_FRACTION(n) (((n) << 1)/3)
+static inline Py_ssize_t USABLE_FRACTION(uint8_t n)
+{
+    return (n << 1) / 3;
+}
 
 
 // Return the index of the most significant 1 bit in 'x'. This is the smallest
@@ -264,10 +268,10 @@ static htkeys_t empty_htkeys = {
 static inline size_t
 htkeys_sizeof(htkeys_t *keys)
 {
-    Py_ssize_t usable = USABLE_FRACTION((size_t)1<<keys->log2_size);
+    Py_ssize_t usable = USABLE_FRACTION((size_t)1<<keys->dk_log2_size);
     return (sizeof(htkeys_t)
-        + ((size_t)1 << keys->log2_index_bytes)
-        + sizeof(entry_t) * usable)
+        + ((size_t)1 << keys->dk_log2_index_bytes)
+        + sizeof(entry_t) * usable);
 }
 
 static htkeys_t*
@@ -294,25 +298,25 @@ htkeys_new(uint8_t log2_size)
         log2_bytes = log2_size + 2;
     }
 
-    htkeys_t *dk = NULL;
+    htkeys_t *keys = NULL;
     /* TODO: CPython uses freelist of key objects with unicode type
        and log2_size == PyDict_LOG_MINSIZE */
-    dk = PyMem_Malloc(sizeof(htkeys_t)
-                      + ((size_t)1 << log2_bytes)
-                      + sizeof(entry_t) * usable);
-    if (dk == NULL) {
+    keys = PyMem_Malloc(sizeof(htkeys_t)
+                        + ((size_t)1 << log2_bytes)
+                        + sizeof(entry_t) * usable);
+    if (keys == NULL) {
         PyErr_NoMemory();
         return NULL;
     }
 
-    dk->dk_log2_size = log2_size;
-    dk->dk_log2_index_bytes = log2_bytes;
-    dk->dk_nentries = 0;
-    dk->dk_usable = usable;
-    dk->dk_version = 0;
-    memset(&dk->dk_indices[0], 0xff, ((size_t)1 << log2_bytes));
-    memset(&dk->dk_indices[(size_t)1 << log2_bytes], 0, entry_size * usable);
-    return dk;
+    keys->dk_log2_size = log2_size;
+    keys->dk_log2_index_bytes = log2_bytes;
+    keys->dk_nentries = 0;
+    keys->dk_usable = usable;
+    keys->dk_version = 0;
+    memset(&keys->dk_indices[0], 0xff, ((size_t)1 << log2_bytes));
+    memset(&keys->dk_indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
+    return keys;
 }
 
 static void
@@ -343,17 +347,18 @@ htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
     }
 }
 
+
 /* Internal function to find slot for an item from its hash
    when it is known that the key is not present in the dict.
  */
 static Py_ssize_t
-htkeys_find_empty_slot(htkeys_t *dk, Py_hash_t hash)
+htkeys_find_empty_slot(htkeys_t *keys, Py_hash_t hash)
 {
     const size_t mask = DK_MASK(keys);
     size_t i = hash & mask;
     Py_ssize_t ix = htkeys_get_index(keys, i);
     for (size_t perturb = hash; ix >= 0 || ix == DKIX_DUMMY;) {
-        perturb >>= PERTURB_SHIFT;
+        perturb >>= HT_PERTURB_SHIFT;
         i = (i*5 + perturb + 1) & mask;
         ix = htkeys_get_index(keys, i);
     }

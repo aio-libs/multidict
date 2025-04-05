@@ -122,9 +122,11 @@ fail:
 
 
 static inline Py_ssize_t
-_multidict_extend_parse_args(PyObject *args, const char *name, PyObject **parg)
+_multidict_extend_parse_args(PyObject *args, PyObject *kwds,
+                             const char *name, PyObject **parg)
 {
     Py_ssize_t size = 0;
+    Py_ssize_t s;
     if (args) {
         size = PyTuple_GET_SIZE(args);
         if (size > 1) {
@@ -140,11 +142,26 @@ _multidict_extend_parse_args(PyObject *args, const char *name, PyObject **parg)
 
     if (size == 1) {
         *parg = Py_NewRef(PyTuple_GET_ITEM(args, 0));
+        s = PyObject_LengthHint(*parg, 0);
+        if (s < 0) {
+            // e.g. cannot calc size of generator object
+            PyErr_Clear();
+        } else {
+            size += s;
+        }
     } else {
         *parg = NULL;
     }
 
-    return 0;
+    if (kwds != NULL) {
+        s = PyDict_Size(kwds);
+        if (s < 0) {
+            return -1;
+        }
+        size += s;
+    }
+
+    return size;
 }
 
 static inline PyObject *
@@ -162,8 +179,7 @@ multidict_copy(MultiDictObject *self)
         goto fail;
     }
 
-    if (ht_update_from_ht(&new_multidict->ht,
-                                        NULL, &self->ht) < 0) {
+    if (ht_update_from_ht(&new_multidict->ht, &self->ht, false) < 0) {
         goto fail;
     }
     return (PyObject*)new_multidict;
@@ -183,8 +199,7 @@ _multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
     if (type->tp_init((PyObject*)new_multidict, NULL, NULL) < 0) {
         goto fail;
     }
-    if (ht_update_from_ht(&new_multidict->ht,
-                                        NULL, &self->md->ht) < 0) {
+    if (ht_update_from_ht(&new_multidict->ht, &self->md->ht, false) < 0) {
         goto fail;
     }
     return (PyObject*)new_multidict;
@@ -470,7 +485,11 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     mod_state *state = get_mod_state_by_def((PyObject *)self);
     PyObject *arg = NULL;
-    if (_multidict_extend_parse_args(args, "MultiDict", &arg) < 0) {
+    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "MultiDict", &arg);
+    if (size < 0) {
+        goto fail;
+    }
+    if (ht_init(&self->ht, state, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "MultiDict", false) < 0) {
@@ -505,7 +524,7 @@ static inline PyObject *
 multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *arg = NULL;
-    if (_multidict_extend_parse_args(args, "extend", &arg) < 0) {
+    if (_multidict_extend_parse_args(args, kwds, "extend", &arg) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "extend", false) < 0) {
@@ -643,7 +662,7 @@ static inline PyObject *
 multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *arg = NULL;
-    if (_multidict_extend_parse_args(args, "update", &arg) < 0) {
+    if (_multidict_extend_parse_args(args, kwds, "update", &arg) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "update", 0) < true) {
@@ -885,7 +904,11 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     mod_state *state = get_mod_state_by_def((PyObject *)self);
     PyObject *arg = NULL;
-    if (_multidict_extend_parse_args(args, "CIMultiDict", &arg) < 0) {
+    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "CIMultiDict", &arg);
+    if (size < 0) {
+        goto fail;
+    }
+    if (ci_ht_init(&self->ht, state, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "CIMultiDict", false) < 0) {
@@ -1294,16 +1317,16 @@ static inline PyObject *
 getversion(PyObject *self, PyObject *md)
 {
     mod_state *state = get_mod_state(self);
-    ht_t *pairs = NULL;
+    ht_t *ht = NULL;
     if (AnyMultiDict_Check(state, md)) {
-        pairs = &((MultiDictObject*)md)->ht;
+        ht = &((MultiDictObject*)md)->ht;
     } else if (AnyMultiDictProxy_Check(state, md)) {
-        pairs = &((MultiDictProxyObject*)md)->md->ht;
+        ht = &((MultiDictProxyObject*)md)->md->ht;
     } else {
         PyErr_Format(PyExc_TypeError, "unexpected type");
         return NULL;
     }
-    return PyLong_FromUnsignedLong(ht_version(pairs));
+    return PyLong_FromUnsignedLong(ht_version(ht));
 }
 
 /******************** Module ********************/
