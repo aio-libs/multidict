@@ -174,6 +174,7 @@ static inline Py_ssize_t USABLE_FRACTION(uint8_t n)
 }
 
 
+#ifndef _Py_bit_length
 // Return the index of the most significant 1 bit in 'x'. This is the smallest
 // integer k such that x < 2**k. Equivalent to floor(log2(x)) + 1 for x != 0.
 static inline int
@@ -212,6 +213,7 @@ _Py_bit_length(unsigned long x)
     return msb;
 #endif
 }
+#endif
 
 /* Find the smallest dk_size >= minsize. */
 static inline uint8_t
@@ -301,6 +303,9 @@ htkeys_new(uint8_t log2_size)
     htkeys_t *keys = NULL;
     /* TODO: CPython uses freelist of key objects with unicode type
        and log2_size == PyDict_LOG_MINSIZE */
+    printf("\nresize %d %ld %zd\n", log2_bytes, usable, sizeof(htkeys_t)
+                        + ((size_t)1 << log2_bytes)
+                        + sizeof(entry_t) * usable);
     keys = PyMem_Malloc(sizeof(htkeys_t)
                         + ((size_t)1 << log2_bytes)
                         + sizeof(entry_t) * usable);
