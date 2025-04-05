@@ -256,8 +256,6 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
     PyObject *arg = NULL;
     PyObject *ret = NULL;
 
-    ht_pos_t pos;
-
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -280,11 +278,11 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_init_pos(&self->md->ht, &pos);
+        ht_finder_t finder;
+        ht_init_finder(&self->md->ht, identity, &finder);
 
         while (true) {
-            tmp = ht_next_by_identity(&self->md->ht, &pos,
-                                             identity, &key2, &value2);
+            tmp = ht_find_next(&finder, &key2, &value2);
             if (tmp < 0) {
                 goto fail;
             } else if (tmp == 0) {
@@ -335,8 +333,6 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
     PyObject *arg = NULL;
     PyObject *ret = NULL;
 
-    ht_pos_t pos;
-
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -359,11 +355,11 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_init_pos(&self->md->ht, &pos);
+        ht_finder_t finder;
+        ht_init_finder(&self->md->ht, identity, &finder);
 
         while (true) {
-            tmp = ht_next_by_identity(&self->md->ht, &pos,
-                                             identity, NULL, &value2);
+            tmp = ht_find_next(&finder, NULL, &value2);
             if (tmp < 0) {
                 goto fail;
             } else if (tmp == 0) {
@@ -436,8 +432,6 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
     PyObject *arg = NULL;
     PyObject *ret = NULL;
 
-    ht_pos_t pos;
-
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -463,11 +457,11 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_init_pos(&self->md->ht, &pos);
+        ht_finder_t finder;
+        ht_init_finder(&self->md->ht, identity, &finder);
 
         while (true) {
-            tmp = ht_next_by_identity(&self->md->ht, &pos,
-                                             identity, NULL, &value2);
+            tmp = ht_find_next(&finder, NULL, &value2);
             if (tmp < 0) {
                 goto fail;
             } else if (tmp == 0) {
@@ -716,8 +710,6 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
     PyObject *ret = NULL;
     PyObject *iter = PyObject_GetIter(other);
 
-    ht_pos_t pos;
-
     if (iter == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
             PyErr_Clear();
@@ -742,11 +734,11 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_init_pos(&self->md->ht, &pos);
+        ht_finder_t finder;
+        ht_init_finder(&self->md->ht, identity, &finder);
 
         while (true) {
-            tmp = ht_next_by_identity(&self->md->ht, &pos,
-                                             identity, NULL, &value2);
+            tmp = ht_find_next(&finder, NULL, &value2);
             if (tmp < 0) {
                 goto fail;
             } else if (tmp == 0) {
@@ -941,8 +933,6 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
     PyObject *value = NULL;
     PyObject *value2 = NULL;
 
-    ht_pos_t pos;
-
     while ((arg = PyIter_Next(iter))) {
         int tmp = _multidict_itemsview_parse_item(self, arg,
                                                   &identity, NULL, &value);
@@ -953,11 +943,11 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_init_pos(&self->md->ht, &pos);
+        ht_finder_t finder;
+        ht_init_finder(&self->md->ht, identity, &finder);
 
         while (true) {
-            tmp = ht_next_by_identity(&self->md->ht, &pos,
-                                             identity, NULL, &value2);
+            tmp = ht_find_next(&finder, NULL, &value2);
             if (tmp < 0) {
                 goto fail;
             } else if (tmp == 0) {

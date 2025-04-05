@@ -1,7 +1,7 @@
 #include "pythoncapi_compat.h"
 
-#ifndef _MULTIDICT_PAIR_LIST_H
-#define _MULTIDICT_PAIR_LIST_H
+#ifndef _MULTIDICT_HASHTABLE_H
+#define _MULTIDICT_HASHTABLE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,51 +14,33 @@ extern "C" {
 
 #include "istr.h"
 #include "state.h"
+#include "htkeys.h"
 
-/* Implementation note.
-identity always has exact PyUnicode_Type type, not a subclass.
-It guarantees that identity hashing and comparison never calls
-Python code back, and these operations has no weird side effects,
-e.g. deletion the key from multidict.
 
-Taking into account the fact that all multidict operations except
-repr(md), repr(md_proxy), or repr(view) never access to the key
-itself but identity instead, borrowed references during iteration
-over pair_list for, e.g., md.get() or md.pop() is safe.
-*/
-
-typedef struct entry {
-    PyObject  *identity;  // 8
-    PyObject  *key;       // 8
-    PyObject  *value;     // 8
-    Py_hash_t  hash;      // 8
-} entry_t;
-
-/* Note about the structure size
-With 28 entrys the MultiDict object size is slightly less than 1KiB
-
-To fit into 512 bytes, the structure can contain only 13 entrys
-which is too small, e.g. https://www.python.org returns 16 headers
-(9 of them are caching proxy information though).
-
-The embedded buffer intention is to fit the vast majority of possible
-HTTP headers into the buffer without allocating an extra memory block.
-*/
-
-#define EMBEDDED_CAPACITY 28
-
-typedef struct hashtable {
+typedef struct _hashtable {
     mod_state *state;
-    Py_ssize_t capacity;
-    Py_ssize_t size;
+    Py_ssize_t ma_used;
+
     uint64_t version;
     bool calc_ci_indentity;
-    entry_t *entries;
-    entry_t buffer[EMBEDDED_CAPACITY];
+
+    ht_keys_t * ma_keys;
 } ht_t;
 
-#define MIN_CAPACITY 64
-#define CAPACITY_STEP MIN_CAPACITY
+
+typedef struct _ht_pos {
+    Py_ssize_t pos;
+    uint64_t version;
+} ht_pos_t;
+
+
+typedef struct _ht_finder {
+    htkeysiter_t iter;
+    uint64_t version;
+    Py_hash_t hash;
+    PyObject *identity; // borrowed ref
+} ht_finder_t;
+
 
 /* Global counter used to set ma_version_tag field of dictionary.
  * It is incremented each time that a dictionary is created and each
@@ -67,23 +49,50 @@ static uint64_t ht_global_version = 0;
 
 #define NEXT_VERSION() (++ht_global_version)
 
+/* GROWTH_RATE. Growth rate upon hitting maximum load.
+ * Currently set to used*3.
+ * This means that dicts double in size when growing without deletions,
+ * but have more head room when the number of deletions is on a par with the
+ * number of insertions.  See also bpo-17563 and bpo-33205.
+ *
+ * GROWTH_RATE was set to used*4 up to version 3.2.
+ * GROWTH_RATE was set to used*2 in version 3.3.0
+ * GROWTH_RATE was set to used*2 + capacity/2 in 3.4.0-3.6.0.
+ */
+static inline Py_ssize_t GROWTH_RATE(ht_t *ht) {
+    return ht->ma_used * 3;
+}
+
+
 static inline Py_ssize_t
 ht_sizeof(ht_t *ht)
 {
-    if (ht->entries != ht->buffer) {
-        return (Py_ssize_t)sizeof(entry_t) * ht->capacity;
+    if (ht->ma_keys != &empty_htkeys) {
+        return htkeys_sizeof(ht->ma_keys);
     }
     return 0;
 }
 
-typedef struct ht_pos {
-    Py_ssize_t pos;
-    uint64_t version;
-} ht_pos_t;
 
+Py_BUILD_ASSERT(sizeof(Py_hash_t) == 8 || sizeof(Py_hash_t) == 4)
+
+#if sizeof(Py_hash_t) == 8
+#define HASH_MASK     0X7FFFFFFFFFFFFFFFL
+#define HASH_HIGH_BIT 0X8000000000000000L
+#else
+#define HASH_MASK     0X7FFFFFFFL
+#define HASH_HIGH_BIT 0X80000000L
+#endif
+
+
+static inline bool
+_hash_cmp(Py_hash_t hash, entry_t * entry)
+{
+    return (hash & HASH_MASK) == entry->hash;
+}
 
 static inline int
-str_cmp(PyObject *s1, PyObject *s2)
+_str_cmp(PyObject *s1, PyObject *s2)
 {
     PyObject *ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
     if (Py_IsTrue(ret)) {
@@ -172,78 +181,67 @@ _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
     return NULL;
 }
 
-
 static inline int
-ht_grow(ht_t *ht, Py_ssize_t amount)
+ht_resize(ht_t *ht, uint8_t log2_newsize)
 {
-    // Grow by one element if needed
-    Py_ssize_t capacity = ((Py_ssize_t)((ht->size + amount)
-                                        / CAPACITY_STEP) + 1) * CAPACITY_STEP;
+    mdk_T *oldkeys, *newkeys;
 
-    entry_t *new_entries;
-
-    if (ht->size + amount -1 < ht->capacity) {
-        return 0;
-    }
-
-    if (ht->entries == ht->buffer) {
-        new_entries = PyMem_New(entry_t, (size_t)capacity);
-        memcpy(new_entries, ht->buffer, (size_t)ht->capacity * sizeof(entry_t));
-
-        ht->entries = new_entries;
-        ht->capacity = capacity;
-        return 0;
-    } else {
-        new_entries = PyMem_Resize(ht->entries, entry_t, (size_t)capacity);
-
-        if (NULL == new_entries) {
-            // Resizing error
-            return -1;
-        }
-
-        ht->entries = new_entries;
-        ht->capacity = capacity;
-        return 0;
-    }
-}
-
-
-static inline int
-ht_shrink(ht_t *ht)
-{
-    // Shrink by one element if needed.
-    // Optimization is applied to prevent jitter
-    // (grow-shrink-grow-shrink on adding-removing the single element
-    // when the buffer is full).
-    // To prevent this, the buffer is resized if the size is less than the capacity
-    // by 2*CAPACITY_STEP factor.
-    // The switch back to embedded buffer is never performed for both reasons:
-    // the code simplicity and the jitter prevention.
-
-    entry_t *new_entries;
-    Py_ssize_t new_capacity;
-
-    if (ht->capacity - ht->size < 2 * CAPACITY_STEP) {
-        return 0;
-    }
-    new_capacity = ht->capacity - CAPACITY_STEP;
-    if (new_capacity < MIN_CAPACITY) {
-        return 0;
-    }
-
-    new_entries = PyMem_Resize(ht->entries, entry_t, (size_t)new_capacity);
-
-    if (NULL == new_entries) {
-        // Resizing error
+    if (log2_newsize >= SIZEOF_SIZE_T*8) {
+        PyErr_NoMemory();
         return -1;
     }
+    assert(log2_newsize >= HT_LOG_MINSIZE);
 
-    ht->entries = new_entries;
-    ht->capacity = new_capacity;
+    oldkeys = ht->ma_keys;
 
+    /* Allocate a new table. */
+    newkeys = htkeys_new(log2_newsize);
+    if (newkeys == NULL) {
+        return -1;
+    }
+    // New table must be large enough.
+    assert(newkeys->dk_usable >= ht->ma_used);
+
+    Py_ssize_t numentries = ht->ma_used;
+
+    entry_t *oldentries = DK_ENTRIES(oldkeys);
+    entry_T *newentries = DK_ENTRIES(newkeys);
+    if (oldkeys->dk_nentries == numentries) {
+        memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+    } else {
+        entry_t *ep = oldentries;
+        for (Py_ssize_t i = 0; i < numentries; i++) {
+            while (ep->value == NULL)
+                ep++;
+            newentries[i] = *ep++;
+        }
+    }
+    htkeys_build_indices(newkeys, newentries, numentries);
+
+    ht->ma_keys = newkeys;
+
+    if (oldkeys != &empty_htkeys) {
+        htkeys_free(oldkeys);
+    }
+
+    mp->ma_keys->dk_usable = mp->ma_keys->dk_usable - numentries);
+    mp->ma_keys->dk_nentries = numentries;
+    // ASSERT_CONSISTENT(mp);
     return 0;
 }
 
+
+static inline int
+_insertion_resize(ht_t *ht)
+{
+    return ht_resize(ht, calculate_log2_keysize(GROWTH_RATE(ht)));
+}
+
+
+static inline int
+_do_ht_init(ht_t *ht, dkt_t *dkt)
+{
+}
 
 static inline int
 _ht_init(ht_t *ht, mod_state *state,
@@ -251,16 +249,33 @@ _ht_init(ht_t *ht, mod_state *state,
 {
     ht->state = state;
     ht->calc_ci_indentity = calc_ci_identity;
-    Py_ssize_t capacity = EMBEDDED_CAPACITY;
-    if (preallocate >= capacity) {
-        capacity = ((Py_ssize_t)(preallocate / CAPACITY_STEP) + 1) * CAPACITY_STEP;
-        ht->entries = PyMem_New(entry_t, (size_t)capacity);
-    } else {
-        ht->entries = ht->buffer;
-    }
-    ht->capacity = capacity;
-    ht->size = 0;
+    ht->ma_used = 0;
     ht->version = NEXT_VERSION();
+
+    const uint8_t log2_max_presize = 17;
+    const Py_ssize_t max_presize = ((Py_ssize_t)1) << log2_max_presize;
+    uint8_t log2_newsize;
+    PyDictKeysObject *new_keys;
+
+    if (minused <= USABLE_FRACTION(PyDict_MINSIZE)) {
+        ht->ma_keys = &empty_htkeys;
+        return 0;
+    }
+    /* There are no strict guarantee that returned dict can contain minused
+     * items without resize.  So we create medium size dict instead of very
+     * large dict or MemoryError.
+     */
+    if (minused > USABLE_FRACTION(max_presize)) {
+        log2_newsize = log2_max_presize;
+    }
+    else {
+        log2_newsize = estimate_log2_keysize(minused);
+    }
+
+    new_keys = new_keys_object(log2_newsize);
+    if (new_keys == NULL)
+        return -1;
+    ht->ma_keys = new_keys;
     return 0;
 }
 
@@ -297,30 +312,17 @@ ht_calc_key(ht_t *ht, PyObject *key, PyObject *ident)
 static inline void
 ht_dealloc(ht_t *ht)
 {
-    Py_ssize_t pos;
+    if (ht->ma_keys != &empty_htkeys) {
+        entry_t *entries = DK_ENTRIES(ht->ma_keys);
+        for (Py_ssize_t idx=0; idx<ht->ma_keys->dk_nentries; ++idx) {
+            entry_t *entry = entries + idx;
+            Py_XDECREF(entry->identity);
+            Py_XDECREF(entry->key);
+            Py_XDECREF(entry->value);
+        }
 
-    for (pos = 0; pos < ht->size; pos++) {
-        entry_t *entry = ht->entries + pos;
-
-        Py_CLEAR(entry->identity);
-        Py_CLEAR(entry->key);
-        Py_CLEAR(entry->value);
-    }
-
-    /*
-    Strictly speaking, resetting size and capacity and
-    assigning entries to buffer is not necessary.
-    Do it to consistency and idemotency.
-    The cleanup doesn't hurt performance.
-    !!!
-    !!! The buffer deletion is crucial though.
-    !!!
-    */
-    ht->size = 0;
-    if (ht->entries != ht->buffer) {
-        PyMem_Free(ht->entries);
-        ht->entries = ht->buffer;
-        ht->capacity = EMBEDDED_CAPACITY;
+        htkeys_free(ht->ma->keys);
+        ht->ma_keys = &empty_htkeys;
     }
 }
 
@@ -328,30 +330,51 @@ ht_dealloc(ht_t *ht)
 static inline Py_ssize_t
 ht_len(ht_t *ht)
 {
-    return ht->size;
+    return ht->ma_used;
 }
 
+static inline PyObject *
+_ht_ensure_key(ht_t *ht, entry_t *entry)
+{
+    PyObject *key = ht_calc_key(ht, entry->key, entry->identity);
+    if (key == NULL) {
+        return NULL;
+    }
+    if (key != entry->key) {
+        Py_SETREF(entry->key, key);
+    } else {
+        Py_CLEAR(key);
+    }
+    return Py_NewRef(entry->key);
+}
 
 static inline int
 _ht_add_with_hash_steal_refs(ht_t *ht,
-                                    PyObject *identity,
-                                    PyObject *key,
-                                    PyObject *value,
-                                    Py_hash_t hash)
+                             PyObject *identity,
+                             PyObject *key,
+                             PyObject *value,
+                             Py_hash_t hash)
 {
-    if (ht_grow(ht, 1) < 0) {
-        return -1;
+    if (ht->ma_keys->dk_usable <= 0 || ht->ma_keys == &empty_htkeys) {
+        /* Need to resize. */
+        if (_insertion_resize(ht) < 0) {
+            return -1;
+        }
     }
+    Py_ssize_t hashpos = htkeys_find_empty_slot(ht->ma_keys, hash);
+    htkeys_set_index(ht->ma_keys, hashpos, ht->ma_keys->dk_nentries);
 
-    entry_t *entry = ht->entries + ht->size;
+    entry_t *entry = DK_ENTRIES(ht->ma_keys)[ht->ma_keys->dk_nentries];
 
     entry->identity = identity;
     entry->key = key;
     entry->value = value;
-    entry->hash = hash;
+    entry->hash = hash & HASH_MASK;
 
     ht->version = NEXT_VERSION();
-    ht->size += 1;
+    ht->ma_used += 1;
+    ht->ma_keys->dk_usable -= 1;
+    ht->ma_keys->dk_nentries += 1;
 
     return 0;
 }
@@ -390,63 +413,14 @@ fail:
 }
 
 
-static inline int
-ht_del_at(ht_t *ht, Py_ssize_t pos)
+static inline void
+_ht_del_at(ht_t *ht, size_t slot, entry_t *entry)
 {
-    // return 1 on success, -1 on failure
-    entry_t *entry = ht->entries + pos;
-    Py_DECREF(entry->identity);
-    Py_DECREF(entry->key);
-    Py_DECREF(entry->value);
-
-    ht->size -= 1;
-    ht->version = NEXT_VERSION();
-
-    if (ht->size == pos) {
-        // remove from tail, no need to shift body
-        return 0;
-    }
-
-    Py_ssize_t tail = ht->size - pos;
-    // TODO: raise an error if tail < 0
-    memmove((void *)(ht->entries + pos),
-            (void *)(ht->entries + pos + 1),
-            sizeof(entry_t) * (size_t)tail);
-
-    return ht_shrink(ht);
-}
-
-
-static inline int
-_ht_drop_tail(ht_t *ht, PyObject *identity, Py_hash_t hash,
-                     Py_ssize_t pos)
-{
-    // return 1 if deleted, 0 if not found
-    int found = 0;
-
-    if (pos >= ht->size) {
-        return 0;
-    }
-
-    for (; pos < ht->size; pos++) {
-        entry_t *entry = ht->entries + pos;
-        if (entry->hash != hash) {
-            continue;
-        }
-        int ret = str_cmp(entry->identity, identity);
-        if (ret > 0) {
-            if (ht_del_at(ht, pos) < 0) {
-               return -1;
-            }
-            found = 1;
-            pos--;
-        }
-        else if (ret == -1) {
-            return -1;
-        }
-    }
-
-    return found;
+    Py_CLEAR(entry->identity);
+    Py_CLEAR(entry->key);
+    Py_CLEAR(entry->value);
+    htkeys_set_index(ht->ma_keys, slot, DKIX_DUMMY);
+    ht->ma_used -= 1
 }
 
 
@@ -463,16 +437,37 @@ ht_del(ht_t *ht, PyObject *key)
         goto fail;
     }
 
-    int ret = _ht_drop_tail(ht, identity, hash, 0);
+    bool found = false;
 
-    if (ret < 0) {
-        goto fail;
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->ma_keys);
+
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
+
+    while (htkeysiter_next(&iter)) {
+        if (iter.index < 0) {
+            continue;
+        }
+        entry_t *entry = entries[iter.index]
+        if (!_hash_cmp(hash, entry)) {
+            continue;
+        }
+        int tmp = _str_cmp(entry->identity, identity);
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (tmp == 0) {
+            continue;
+        }
+
+        found = true;
+        _ht_del_at(ht, iter.slot, entry);
     }
-    else if (ret == 0) {
+
+    if (!found) {
         PyErr_SetObject(PyExc_KeyError, key);
         goto fail;
-    }
-    else {
+    } else {
         ht->version = NEXT_VERSION();
     }
     Py_DECREF(identity);
@@ -499,54 +494,41 @@ ht_init_pos(ht_t *ht, ht_pos_t *pos)
 
 static inline int
 ht_next(ht_t *ht, ht_pos_t *pos,
-               PyObject **pidentity,
-               PyObject **pkey, PyObject **pvalue)
+        PyObject **pidentity,
+        PyObject **pkey, PyObject **pvalue)
 {
-    if (pos->pos >= ht->size) {
-        if (pidentity) {
-            *pidentity = NULL;
-        }
-        if (pkey) {
-            *pkey = NULL;
-        }
-        if (pvalue) {
-            *pvalue = NULL;
-        }
-        return 0;
+    int ret = 0;
+    if (pos->pos >= ht->ma_keys->dk_nentries) {
+        goto cleanup;
     }
 
     if (pos->version != ht->version) {
-        if (pidentity) {
-            *pidentity = NULL;
-        }
-        if (pkey) {
-            *pkey = NULL;
-        }
-        if (pvalue) {
-            *pvalue = NULL;
-        }
         PyErr_SetString(PyExc_RuntimeError, "MultiDict changed during iteration");
-        return -1;
+        ret = -1;
+        goto cleanup;
     }
 
-
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
     entry_t *entry = ht->entries + pos->pos;
+
+    while (entry->identity == NULL) {
+        pos->pos += 1;
+        if (pos->pos >= ht->ma_keys->dk_nentries) {
+            goto cleanup;
+        }
+        entry = ht->entries + pos->pos;
+    }
 
     if (pidentity) {
         *pidentity = Py_NewRef(entry->identity);;
     }
 
     if (pkey) {
-        PyObject *key = ht_calc_key(ht, entry->key, entry->identity);
-        if (key == NULL) {
-            return -1;
+        *pkey == _ht_ensure_key(ht, entry);
+        if (*pkey == NULL) {
+            ret = -1;
+            goto cleanup;
         }
-        if (key != entry->key) {
-            Py_SETREF(entry->key, key);
-        } else {
-            Py_CLEAR(key);
-        }
-        *pkey = Py_NewRef(entry->key);
     }
     if (pvalue) {
         *pvalue = Py_NewRef(entry->value);
@@ -554,66 +536,9 @@ ht_next(ht_t *ht, ht_pos_t *pos,
 
     ++pos->pos;
     return 1;
-}
-
-
-static inline int
-ht_next_by_identity(ht_t *ht, ht_pos_t *pos,
-                           PyObject *identity,
-                           PyObject **pkey, PyObject **pvalue)
-{
-    if (pos->pos >= ht->size) {
-        if (pkey) {
-            *pkey = NULL;
-        }
-        if (pvalue) {
-            *pvalue = NULL;
-        }
-        return 0;
-    }
-
-    if (pos->version != ht->version) {
-        if (pkey) {
-            *pkey = NULL;
-        }
-        if (pvalue) {
-            *pvalue = NULL;
-        }
-        PyErr_SetString(PyExc_RuntimeError, "MultiDict changed during iteration");
-        return -1;
-    }
-
-
-    for (; pos->pos < ht->size; ++pos->pos) {
-        entry_t *entry = ht->entries + pos->pos;
-        PyObject *ret = PyUnicode_RichCompare(identity, entry->identity, Py_EQ);
-        if (Py_IsFalse(ret)) {
-            Py_DECREF(ret);
-            continue;
-        } else if (ret == NULL) {
-            return -1;
-        } else {
-            // equals
-            Py_DECREF(ret);
-        }
-
-        if (pkey) {
-            PyObject *key = ht_calc_key(ht, entry->key, entry->identity);
-            if (key == NULL) {
-                return -1;
-            }
-            if (key != entry->key) {
-                Py_SETREF(entry->key, key);
-            } else {
-                Py_CLEAR(key);
-            }
-            *pkey = Py_NewRef(entry->key);
-        }
-        if (pvalue) {
-            *pvalue = Py_NewRef(entry->value);
-        }
-        ++pos->pos;
-        return 1;
+fail:
+    if (pidentity) {
+        *pidentity = NULL;
     }
     if (pkey) {
         *pkey = NULL;
@@ -621,15 +546,80 @@ ht_next_by_identity(ht_t *ht, ht_pos_t *pos,
     if (pvalue) {
         *pvalue = NULL;
     }
-    return 0;
+    return ret;
+}
+
+static inline int
+ht_init_finder(ht_t *ht, PyObject *identity, ht_finder_t *finder)
+{
+    finder->identity = identity;
+    finder->hash = PyObject_Hash(identity);
+    if (finder->hash < 0) {
+        return -1;
+    }
+    htkeysiter_init(&finder->iter, ht->ma_keys, hash);
+    finder->version = ht->version;
+}
+
+static inline int
+ht_find_next(ht_finder_t *finder, PyObject **pkey, PyObject **pvalue)
+{
+    int ret = 0;
+    if (finder->version != ht->version) {
+        ret = -1;
+        PyErr_SetString(PyExc_RuntimeError,
+                        "MultiDict changed during iteration");
+        goto cleanup;
+    }
+
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
+
+    for (;finder->iter.index != DKIX_EMPTY; htkeysiter_next(&pos->iter);) {
+        if (finder->iter.index < 0) {
+            continue;
+        }
+        entry_t *entry = entries + finder->iter.index;
+        int tmp = _str_cmp(identity, entry->identity);
+        if (tmp < 0) {
+            ret = -1;
+            goto cleanup;
+        }
+        if (tmp == 0) {
+            continue;
+        }
+
+        if (pidentity) {
+            *pidentity = Py_NewRef(entry->identity);
+        }
+
+        if (pkey) {
+            *pkey = _ht_ensure_key(ht, entry);
+            if (*key == NULL) {
+                ret = -1;
+                goto cleanup;
+            }
+        }
+        if (pvalue) {
+            *pvalue = Py_NewRef(entry->value);
+        }
+
+        htkeysiter_next(&finder->iter);
+        return 1;
+    }
+cleanup:
+    if (pkey) {
+        *pkey = NULL;
+    }
+    if (pvalue) {
+        *pvalue = NULL;
+    }
+    return ret;
 }
 
 
 static inline int
 ht_contains(ht_t *ht, PyObject *key, PyObject **pret)
 {
-    Py_ssize_t pos;
-
     if (!PyUnicode_Check(key)) {
         return 0;
     }
@@ -644,18 +634,26 @@ ht_contains(ht_t *ht, PyObject *key, PyObject **pret)
         goto fail;
     }
 
-    Py_ssize_t size = ht_len(ht);
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->keys, hash);
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
 
-    for(pos = 0; pos < size; ++pos) {
-        entry_t * entry = ht->entries + pos;
-        if (hash != entry->hash) {
+    for(; iter->index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter->index < 0) {
             continue;
         }
-        int tmp = str_cmp(ident, entry->identity);
+        entry_t *entry = entries + iter.index;
+        if (!_hash_cmp(hash, entry) {
+            continue;
+        }
+        int tmp = _str_cmp(ident, entry->identity);
         if (tmp > 0) {
             Py_DECREF(ident);
             if (pret != NULL) {
-                *pret = Py_NewRef(entry->key);
+                *pret = _ht_ensure_key(ht, entry);
+                if (*pret == NULL) {
+                    goto fail;
+                }
             }
             return 1;
         }
@@ -681,8 +679,6 @@ fail:
 static inline int
 ht_get_one(ht_t *ht, PyObject *key, PyObject **ret)
 {
-    Py_ssize_t pos;
-
     PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
@@ -693,14 +689,19 @@ ht_get_one(ht_t *ht, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    Py_ssize_t size = ht_len(ht);
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->keys, hash);
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
 
-    for(pos = 0; pos < size; ++pos) {
-        entry_t *entry = ht->entries + pos;
-        if (hash != entry->hash) {
+    for(; iter->index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter->index < 0) {
             continue;
         }
-        int tmp = str_cmp(ident, entry->identity);
+        entry_t *entry = entries + iter.index;
+        if (!_hash_cmp(hash, entry)) {
+            continue;
+        }
+        int tmp = _str_cmp(ident, entry->identity);
         if (tmp > 0) {
             Py_DECREF(ident);
             *ret = Py_NewRef(entry->value);
@@ -722,7 +723,6 @@ fail:
 static inline int
 ht_get_all(ht_t *ht, PyObject *key, PyObject **ret)
 {
-    Py_ssize_t pos;
     PyObject *res = NULL;
 
     PyObject *ident = ht_calc_identity(ht, key);
@@ -735,14 +735,20 @@ ht_get_all(ht_t *ht, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    Py_ssize_t size = ht_len(ht);
-    for(pos = 0; pos < size; ++pos) {
-        entry_t *entry = ht->entries + pos;
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->keys, hash);
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
 
-        if (hash != entry->hash) {
+    for(; iter->index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter->index < 0) {
             continue;
         }
-        int tmp = str_cmp(ident, entry->identity);
+        entry_t *entry = entries + iter.index;
+
+        if (!_hash_cmp(hash, entry)) {
+            continue;
+        }
+        int tmp = _str_cmp(ident, entry->identity);
         if (tmp > 0) {
             if (res == NULL) {
                 res = PyList_New(1);
@@ -778,8 +784,6 @@ fail:
 static inline PyObject *
 ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
 {
-    Py_ssize_t pos;
-
     PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
@@ -789,15 +793,21 @@ ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
     if (hash == -1) {
         goto fail;
     }
-    Py_ssize_t size = ht_len(ht);
 
-    for(pos = 0; pos < size; ++pos) {
-        entry_t * entry = ht->entries + pos;
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->keys, hash);
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
 
-        if (hash != entry->hash) {
+    for(; iter->index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter->index < 0) {
             continue;
         }
-        int tmp = str_cmp(ident, entry->identity);
+        entry_t *entry = entries + iter.index;
+
+        if (!_hash_cmp(hash, entry)) {
+            continue;
+        }
+        int tmp = _str_cmp(ident, entry->identity);
         if (tmp > 0) {
             Py_DECREF(ident);
             return Py_NewRef(entry->value);
@@ -822,7 +832,6 @@ fail:
 static inline int
 ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
 {
-    Py_ssize_t pos;
     PyObject *value = NULL;
 
     PyObject *ident = ht_calc_identity(ht, key);
@@ -835,19 +844,29 @@ ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    for (pos=0; pos < ht->size; pos++) {
-        entry_t *entry = ht->entries + pos;
-        if (entry->hash != hash) {
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->keys, hash);
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
+
+    for(; iter->index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter->index < 0) {
             continue;
         }
-        int tmp = str_cmp(ident, entry->identity);
+        entry_t *entry = entries + iter.index;
+
+        if (!_hash_cmp(hash, entry)) {
+            continue;
+        }
+        int tmp = _str_cmp(ident, entry->identity);
         if (tmp > 0) {
             value = Py_NewRef(entry->value);
-            if (ht_del_at(ht, pos) < 0) {
+
+            if (_ht_del_at(ht, iter->slot, entry) < 0) {
                 goto fail;
             }
             Py_DECREF(ident);
             *ret = value;
+            ht->version = NEXT_VERSION();
             return 0;
         }
         else if (tmp < 0) {
@@ -866,7 +885,6 @@ fail:
 static inline int
 ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
 {
-    Py_ssize_t pos;
     PyObject *lst = NULL;
 
     PyObject *ident = ht_calc_identity(ht, key);
@@ -884,12 +902,20 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
         return 0;
     }
 
-    for (pos = ht->size - 1; pos >= 0; pos--) {
-        entry_t *entry = ht->entries + pos;
-        if (hash != entry->hash) {
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->keys, hash);
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
+
+    for(; iter->index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter->index < 0) {
             continue;
         }
-        int tmp = str_cmp(ident, entry->identity);
+        entry_t *entry = entries + iter.index;
+
+        if (!_hash_cmp(hash, entry)) {
+            continue;
+        }
+        int tmp = _str_cmp(ident, entry->identity);
         if (tmp > 0) {
             if (lst == NULL) {
                 lst = PyList_New(1);
@@ -902,7 +928,7 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
             } else if (PyList_Append(lst, entry->value) < 0) {
                 goto fail;
             }
-            if (ht_del_at(ht, pos) < 0) {
+            if (_ht_del_at(ht, iter.slot, entry) < 0) {
                 goto fail;
             }
         }
@@ -911,13 +937,9 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
         }
     }
 
-    if (lst != NULL) {
-        if (PyList_Reverse(lst) < 0) {
-            goto fail;
-        }
-    }
     *ret = lst;
     Py_DECREF(ident);
+    ht->version = NEXT_VERSION();
     return 0;
 fail:
     Py_XDECREF(ident);
@@ -929,13 +951,21 @@ fail:
 static inline PyObject *
 ht_pop_item(ht_t *ht)
 {
-    if (ht->size == 0) {
+    if (ht->ma_used == 0) {
         PyErr_SetString(PyExc_KeyError, "empty multidict");
         return NULL;
     }
 
-    Py_ssize_t pos = ht->size - 1;
-    entry_t *entry = ht->entries + pos;
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
+
+    Py_ssize_t pos = ht->ma_keys->dk_nentries - 1;
+    entry_t *entry = entries + pos;
+    while (pos >= 0 && entry.identity == NULL) {
+        pos--;
+        entry--;
+    }
+    assert(pos >= 0);
+
     PyObject *key = ht_calc_key(ht, entry->key, entry->identity);
     if (key == NULL) {
         return NULL;
@@ -946,43 +976,44 @@ ht_pop_item(ht_t *ht)
         return NULL;
     }
 
-    if (ht_del_at(ht, pos) < 0) {
-        Py_DECREF(ret);
-        return NULL;
-    }
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->keys, hash);
 
+    for(; iter->index != pos; htkeysiter_next(&iter)) {
+    }
+    _ht_del_at(ht, iter.slot, entry);
+    ht->version = NEXT_VERSION();
     return ret;
 }
 
 
 static inline int
-ht_replace(ht_t *ht, PyObject * key, PyObject *value)
+_ht_replace(ht_t *ht, PyObject * key, PyObject *value,
+            PyObject *identity, Py_hash_t hash)
 {
-    Py_ssize_t pos;
     int found = 0;
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->keys, hash);
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
 
-    PyObject *identity = ht_calc_identity(ht, key);
-    if (identity == NULL) {
-        goto fail;
-    }
-
-    Py_hash_t hash = PyObject_Hash(identity);
-    if (hash == -1) {
-        goto fail;
-    }
-
-
-    for (pos = 0; pos < ht->size; pos++) {
-        entry_t *entry = ht->entries + pos;
-        if (hash != entry->hash) {
+    for(; iter->index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter->index < 0) {
             continue;
         }
-        int tmp = str_cmp(identity, entry->identity);
+        entry_t *entry = entries + iter.index;
+
+        if (!_hash_cmp(hash, entry)) {
+            continue;
+        }
+        int tmp = _str_cmp(identity, entry->identity);
         if (tmp > 0) {
-            found = 1;
-            Py_SETREF(entry->key, Py_NewRef(key));
-            Py_SETREF(entry->value, Py_NewRef(value));
-            break;
+            if (!found) {
+                found = 1;
+                Py_SETREF(entry->key, Py_NewRef(key));
+                Py_SETREF(entry->value, Py_NewRef(value));
+            } else {
+                _ht_del_at(ht, iter.slot, entry);
+            }
         }
         else if (tmp < 0) {
             goto fail;
@@ -993,17 +1024,32 @@ ht_replace(ht_t *ht, PyObject * key, PyObject *value)
         if (_ht_add_with_hash(ht, identity, key, value, hash) < 0) {
             goto fail;
         }
-        Py_DECREF(identity);
         return 0;
     }
     else {
         ht->version = NEXT_VERSION();
-        if (_ht_drop_tail(ht, identity, hash, pos+1) < 0) {
-            goto fail;
-        }
-        Py_DECREF(identity);
         return 0;
     }
+fail:
+    return -1;
+}
+
+static inline int
+ht_replace(ht_t *ht, PyObject * key, PyObject *value)
+{
+    PyObject *identity = ht_calc_identity(ht, key);
+    if (identity == NULL) {
+        goto fail;
+    }
+
+    Py_hash_t hash = PyObject_Hash(identity);
+    if (hash == -1) {
+        goto fail;
+    }
+
+    int ret = _ht_replace(ht, key, value, identity, hash);
+    Py_DECREF(identity);
+    return ret;
 fail:
     Py_XDECREF(identity);
     return -1;
@@ -1011,132 +1057,54 @@ fail:
 
 
 static inline int
-_dict_set_number(PyObject *dict, PyObject *key, Py_ssize_t num)
-{
-    PyObject *tmp = PyLong_FromSsize_t(num);
-    if (tmp == NULL) {
-       return -1;
-    }
-
-    if (PyDict_SetItem(dict, key, tmp) < 0) {
-        Py_DECREF(tmp);
-        return -1;
-    }
-
-    return 0;
-}
-
-
-static inline int
-ht_post_update(ht_t *ht, PyObject* used)
-{
-    PyObject *tmp = NULL;
-    Py_ssize_t pos;
-
-    for (pos = 0; pos < ht->size; pos++) {
-        entry_t *entry = ht->entries + pos;
-        int status = PyDict_GetItemRef(used, entry->identity, &tmp);
-        if (status == -1) {
-            // exception set
-            return -1;
-        }
-        else if (status == 0) {
-            // not found
-            continue;
-        }
-
-        Py_ssize_t num = PyLong_AsSsize_t(tmp);
-        Py_DECREF(tmp);
-        if (num == -1) {
-            if (!PyErr_Occurred()) {
-                PyErr_SetString(PyExc_RuntimeError, "invalid internal state");
-            }
-            return -1;
-        }
-
-        if (pos >= num) {
-            // del self[pos]
-            if (ht_del_at(ht, pos) < 0) {
-                return -1;
-            }
-            pos--;
-        }
-    }
-
-    ht->version = NEXT_VERSION();
-    return 0;
-}
-
-// TODO: need refactoring function name
-static inline int
-_ht_update(ht_t *ht, PyObject *key,
-                  PyObject *value, PyObject *used,
+_ht_update_helper(ht_t *ht, PyObject *key, PyObject *value,
                   PyObject *identity, Py_hash_t hash)
 {
-    PyObject *item = NULL;
-    Py_ssize_t pos;
-    int found;
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, ht->keys, hash);
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
 
-    int status = PyDict_GetItemRef(used, identity, &item);
-    if (status == -1) {
-        // exception set
-        return -1;
-    }
-    else if (status == 0) {
-        // not found
-        pos = 0;
-    }
-    else {
-        pos = PyLong_AsSsize_t(item);
-        Py_DECREF(item);
-        if (pos == -1) {
-            if (!PyErr_Occurred()) {
-                PyErr_SetString(PyExc_RuntimeError, "invalid internal state");
-            }
-            return -1;
-        }
-    }
-
-    found = 0;
-    for (; pos < ht->size; pos++) {
-        entry_t *entry = ht->entries + pos;
-        if (entry->hash != hash) {
+    for(; iter->index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter->index < 0) {
             continue;
         }
-
-        int ident_cmp_res = str_cmp(entry->identity, identity);
-        if (ident_cmp_res > 0) {
-            Py_SETREF(entry->key, Py_NewRef(key));
-            Py_SETREF(entry->value, Py_NewRef(value));
-
-            if (_dict_set_number(used, entry->identity, pos + 1) < 0) {
-                return -1;
+        entry_t *entry = entries + iter.index;
+        if (!_hash_cmp(hash, entry)) {
+            continue;
+        }
+        int tmp = _str_cmp(identity, entry->identity);
+        if (tmp > 0) {
+            if (!found) {
+                found = 1;
+                Py_SETREF(entry->key, Py_NewRef(key));
+                Py_SETREF(entry->value, Py_NewRef(value));
+                entry->hash |=  HASH_HIGH_BIT;
+            } else {
+                _ht_del_at(ht, iter.slot, entry);
             }
+        }
+        else if (tmp < 0) {
+            goto fail;
+        }
 
-            found = 1;
-            break;
-        }
-        else if (ident_cmp_res < 0) {
-            return -1;
-        }
     }
-
-    if (!found) {
-        if (_ht_add_with_hash(ht, identity, key, value, hash) < 0) {
-            return -1;
-        }
-        if (_dict_set_number(used, identity, ht->size) < 0) {
-            return -1;
-        }
-    }
-
     return 0;
+fail:
+    return -1;
 }
 
+static inline void
+ht_post_update(ht_t *ht)
+{
+    entry_t *entries = DK_ENTRIES(other->ma_keys);
+    for (pos = 0; pos < other->ma_used; pos++) {
+        entry_t *entry = entries + pos;
+        entry->hash &= HASH_MASK;
+    }
+}
 
 static inline int
-ht_update_from_ht(ht_t *ht,
-                                PyObject* used, ht_t *other)
+ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
@@ -1144,8 +1112,20 @@ ht_update_from_ht(ht_t *ht,
     PyObject *key = NULL;
     bool recalc_identity = ht->calc_ci_indentity != other->calc_ci_indentity;
 
-    for (pos = 0; pos < other->size; pos++) {
-        entry_t *entry = other->entries + pos;
+    uint8_t new_size = Py_MAX(
+        estimate_log2_keysize(ht_len(other) + ht->ma_used),
+        DK_LOG_SIZE(ht->ma_keys));
+    if (ht_resize(ht, new_size)) {
+        return -1;
+    }
+
+    entry_t *entries = DK_ENTRIES(other->ma_keys);
+
+    for (pos = 0; pos < other->ma_keys->dk_nentries; pos++) {
+        entry_t *entry = entries + pos;
+        if (entry->identity == NULL) {
+            continue;
+        }
         if (recalc_identity) {
             identity = ht_calc_identity(ht, entry->key);
             if (identity == NULL) {
@@ -1165,14 +1145,12 @@ ht_update_from_ht(ht_t *ht,
             hash = entry->hash;
             key = entry->key;
         }
-        if (used != NULL) {
-            if (_ht_update(ht, key, entry->value, used,
-                                  identity, hash) < 0) {
+        if (update) {
+            if (_ht_update(ht, key, entry->value, identity, hash) < 0) {
                 goto fail;
             }
         } else {
-            if (_ht_add_with_hash(ht, identity, key,
-                                         entry->value, hash) < 0) {
+            if (_ht_add_with_hash(ht, identity, key, entry->value, hash) < 0) {
                 goto fail;
             }
         }
@@ -1181,22 +1159,35 @@ ht_update_from_ht(ht_t *ht,
             Py_CLEAR(key);
         }
     }
+    if (update) {
+        _ht_post_update(ht);
+    }
     return 0;
 fail:
     if (recalc_identity) {
         Py_CLEAR(identity);
         Py_CLEAR(key);
     }
+    if (update) {
+        _ht_post_update(ht);
+    }
     return -1;
 }
 
 static inline int
-ht_update_from_dict(ht_t *ht, PyObject* used, PyObject *kwds)
+ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
 {
     Py_ssize_t pos = 0;
     PyObject *identity = NULL;
     PyObject *key = NULL;
     PyObject *value = NULL;
+
+    uint8_t new_size = Py_MAX(
+        estimate_log2_keysize(PyDict_GET_SIZE(other) + ht->ma_used),
+        DK_LOG_SIZE(ht->ma_keys));
+    if (ht_resize(ht, new_size)) {
+        return -1;
+    }
 
     while(PyDict_Next(kwds, &pos, &key, &value)) {
         Py_INCREF(key);
@@ -1209,7 +1200,7 @@ ht_update_from_dict(ht_t *ht, PyObject* used, PyObject *kwds)
             goto fail;
         }
         if (used != NULL) {
-            if (_ht_update(ht, key, value, used, identity, hash) < 0) {
+            if (_ht_update(ht, key, value, identity, hash) < 0) {
                 goto fail;
             }
         } else {
@@ -1302,7 +1293,7 @@ fail:
 
 
 static inline int
-ht_update_from_seq(ht_t *ht, PyObject *used, PyObject *seq)
+ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
 {
     PyObject *it = NULL;
     PyObject *item = NULL; // seq[i]
@@ -1315,6 +1306,17 @@ ht_update_from_seq(ht_t *ht, PyObject *used, PyObject *seq)
     Py_ssize_t size = -1;
 
     enum {LIST, TUPLE, ITER} kind;
+
+    Py_ssize_t length_hint = PyObject_LengthHint(other, 0);
+    if (length_hint < 0) {
+        return -1;
+    }
+    uint8_t new_size = Py_MAX(
+        estimate_log2_keysize(length_hint + ht->ma_used),
+        DK_LOG_SIZE(ht->ma_keys));
+    if (ht_resize(ht, new_size)) {
+        return -1;
+    }
 
     if (PyList_CheckExact(seq)) {
         kind = LIST;
@@ -1376,8 +1378,8 @@ ht_update_from_seq(ht_t *ht, PyObject *used, PyObject *seq)
             goto fail;
         }
 
-        if (used) {
-            if (_ht_update(ht, key, value, used, identity, hash) < 0) {
+        if (update) {
+            if (_ht_update(ht, key, value, identity, hash) < 0) {
                 goto fail;
             }
             Py_CLEAR(identity);
@@ -1396,10 +1398,16 @@ ht_update_from_seq(ht_t *ht, PyObject *used, PyObject *seq)
     }
 
 exit:
+    if (update) {
+        _ht_post_update(ht);
+    }
     Py_CLEAR(it);
     return 0;
 
 fail:
+    if (update) {
+        _ht_post_update(ht);
+    }
     Py_CLEAR(identity);
     Py_CLEAR(it);
     Py_CLEAR(item);
@@ -1412,21 +1420,35 @@ fail:
 static inline int
 ht_eq(ht_t *ht, ht_t *other)
 {
-    Py_ssize_t pos;
-
     if (ht == other) {
         return 1;
     }
 
-    Py_ssize_t size = ht_len(ht);
-
-    if (size != ht_len(other)) {
+    if (ht_len(ht) != ht_len(other)) {
         return 0;
     }
 
-    for(pos = 0; pos < size; ++pos) {
+    Py_ssize_t pos1 = 0;
+    Py_ssize_t pos2 = 0;
+
+    entry_t *lft = DK_ENTRIES(ht->ma_keys);
+    entry_t *rgt = DK_ENTRIES(other->ma_keys);
+
+    for (;;) {
+        if (pos1 >= ht->ma_keys->dk_nentries
+            || pos2 >= other->ma_keys->dk_nentries) {
+            return 0;
+        }
         entry_t *entry1 = ht->entries + pos;
+        if (entry1->identity == NULL) {
+            pos1++;
+            continue;
+        }
         entry_t *entry2 = other->entries +pos;
+        if (entry1->identity == NULL) {
+            pos2++;
+            continue;
+        }
 
         if (entry1->hash != entry2->hash) {
             return 0;
@@ -1447,6 +1469,8 @@ ht_eq(ht_t *ht, ht_t *other)
         if (cmp == 0) {
             return 0;
         }
+        pos1++;
+        pos2++;
     }
 
     return 1;
@@ -1520,7 +1544,6 @@ ht_repr(ht_t *ht, PyObject *name,
     PyObject *value = NULL;
 
     bool comma = false;
-    Py_ssize_t pos;
     uint64_t version = ht->version;
 
     PyUnicodeWriter *writer = PyUnicodeWriter_Create(1024);
@@ -1534,12 +1557,17 @@ ht_repr(ht_t *ht, PyObject *name,
     if (PyUnicodeWriter_WriteChar(writer, '(') <0)
         goto fail;
 
-    for (pos = 0; pos < ht->size; ++pos) {
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
+
+    for (Py_ssize_t pos = 0; pos < ht->ma_keys->dk_nentries; ++pos) {
         if (version != ht->version) {
             PyErr_SetString(PyExc_RuntimeError, "MultiDict changed during iteration");
             return NULL;
         }
-        entry_t *entry = ht->entries + pos;
+        entry_t *entry = entries + pos;
+        if (entry->identity == NULL) {
+            continue;
+        }
         key = Py_NewRef(entry->key);
         value = Py_NewRef(entry->value);
 
@@ -1593,14 +1621,20 @@ fail:
 static inline int
 ht_traverse(ht_t *ht, visitproc visit, void *arg)
 {
-    entry_t *entry = NULL;
-    Py_ssize_t pos;
+    if (ht->ma_used == 0) {
+        return 0;
+    }
 
-    for (pos = 0; pos < ht->size; pos++) {
-        entry = ht->entries + pos;
-        // Don't need traverse the identity: it is a terminal
-        Py_VISIT(entry->key);
-        Py_VISIT(entry->value);
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
+    ht->version = NEXT_VERSION();
+
+    for (Py_ssize_t pos = 0; pos < ht->ma_keys->dk_nentries; pos++) {
+        entry_t *entry = entries + pos;
+        if (entry->identity != NULL) {
+            Py_VISIT(entry->identity);
+            Py_VISIT(entry->key);
+            Py_VISIT(entry->value);
+        }
     }
 
     return 0;
@@ -1610,24 +1644,26 @@ ht_traverse(ht_t *ht, visitproc visit, void *arg)
 static inline int
 ht_clear(ht_t *ht)
 {
-    entry_t *entry = NULL;
-    Py_ssize_t pos;
-
-    if (ht->size == 0) {
+    if (ht->ma_used == 0) {
         return 0;
     }
 
+    entry_t *entries = DK_ENTRIES(ht->ma_keys);
     ht->version = NEXT_VERSION();
-    for (pos = 0; pos < ht->size; pos++) {
-        entry = ht->entries + pos;
-        Py_CLEAR(entry->key);
-        Py_CLEAR(entry->identity);
-        Py_CLEAR(entry->value);
+
+    for (Py_ssize_t pos = 0; pos < ht->ma_keys->dk_nentries; pos++) {
+        entry_t *entry = entries + pos;
+        if (entry->identity != NULL) {
+            Py_CLEAR(entry->identity);
+            Py_CLEAR(entry->key);
+            Py_CLEAR(entry->value);
+        }
     }
-    ht->size = 0;
-    if (ht->entries != ht->buffer) {
-        PyMem_Free(ht->entries);
-        ht->entries = ht->buffer;
+
+    ht->ma_used = 0;
+    if (ht->ma_keys != &empty_htkeys) {
+        htkeys_free(ht->ma_keys);
+        ht->ma_keys = &empty_htkeys;
     }
 
     return 0;
