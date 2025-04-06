@@ -353,11 +353,8 @@ _ht_ensure_key(ht_t *ht, entry_t *entry)
 }
 
 static inline int
-_ht_add_with_hash_steal_refs(ht_t *ht,
-                             PyObject *identity,
-                             PyObject *key,
-                             PyObject *value,
-                             Py_hash_t hash)
+_ht_add_with_hash_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
+                             PyObject *key, PyObject *value)
 {
     if (ht->ma_keys->dk_usable <= 0 || ht->ma_keys == &empty_htkeys) {
         /* Need to resize. */
@@ -385,21 +382,18 @@ _ht_add_with_hash_steal_refs(ht_t *ht,
 
 
 static inline int
-_ht_add_with_hash(ht_t *ht, PyObject *identity, PyObject *key,
-                  PyObject *value, Py_hash_t hash)
+_ht_add_with_hash(ht_t *ht, Py_hash_t hash, PyObject *identity,
+                  PyObject *key, PyObject *value)
 {
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    return _ht_add_with_hash_steal_refs(ht, identity, key, value, hash);
+    return _ht_add_with_hash_steal_refs(ht, hash, identity, key, value);
 }
 
 static inline int
-_ht_add_for_upd_steal_refs(ht_t *ht,
-                           PyObject *identity,
-                           PyObject *key,
-                           PyObject *value,
-                           Py_hash_t hash)
+_ht_add_for_upd_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
+                           PyObject *key, PyObject *value)
 {
     if (ht->ma_keys->dk_usable <= 0 || ht->ma_keys == &empty_htkeys) {
         /* Need to resize. */
@@ -426,16 +420,13 @@ _ht_add_for_upd_steal_refs(ht_t *ht,
 }
 
 static inline int
-_ht_add_for_upd(ht_t *ht,
-                PyObject *identity,
-                PyObject *key,
-                PyObject *value,
-                Py_hash_t hash)
+_ht_add_for_upd(ht_t *ht, Py_hash_t hash, PyObject *identity,
+                PyObject *key, PyObject *value)
 {
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    return _ht_add_for_upd_steal_refs(ht, identity, key, value, hash);
+    return _ht_add_for_upd_steal_refs(ht, hash, identity, key, value);
 }
 
 
@@ -450,7 +441,7 @@ ht_add(ht_t *ht, PyObject *key, PyObject *value)
     if (hash == -1) {
         goto fail;
     }
-    int ret = _ht_add_with_hash(ht, identity, key, value, hash);
+    int ret = _ht_add_with_hash(ht, hash, identity, key, value);
     ASSERT_CONSISTENT(ht, false);
     Py_DECREF(identity);
     return ret;
@@ -565,8 +556,7 @@ ht_init_pos(ht_t *ht, ht_pos_t *pos)
 }
 
 static inline int
-ht_next(ht_t *ht, ht_pos_t *pos,
-        PyObject **pidentity,
+ht_next(ht_t *ht, ht_pos_t *pos, PyObject **pidentity,
         PyObject **pkey, PyObject **pvalue)
 {
     int ret = 0;
@@ -887,7 +877,7 @@ ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
         }
     }
 
-    if (_ht_add_with_hash(ht, ident, key, value, hash) < 0) {
+    if (_ht_add_with_hash(ht, hash, ident, key, value) < 0) {
         goto fail;
     }
 
@@ -1099,7 +1089,7 @@ _ht_replace(ht_t *ht, PyObject * key, PyObject *value,
     }
 
     if (!found) {
-        if (_ht_add_with_hash(ht, identity, key, value, hash) < 0) {
+        if (_ht_add_with_hash(ht, hash, identity, key, value) < 0) {
             goto fail;
         }
         return 0;
@@ -1136,8 +1126,8 @@ fail:
 
 
 static inline int
-_ht_update(ht_t *ht, PyObject *key, PyObject *value,
-           PyObject *identity, Py_hash_t hash)
+_ht_update(ht_t *ht, Py_hash_t hash, PyObject *identity,
+           PyObject *key, PyObject *value)
 {
     htkeysiter_t iter;
     htkeysiter_init(&iter, ht->ma_keys, hash);
@@ -1207,7 +1197,7 @@ _ht_update(ht_t *ht, PyObject *key, PyObject *value,
         printf(" -> ");
         PyObject_Print(value, stdout, 0);
         printf("\n");
-        if (_ht_add_for_upd(ht, identity, key, value, hash) < 0) {
+        if (_ht_add_for_upd(ht, hash, identity, key, value) < 0) {
             goto fail;
         }
     }
@@ -1290,11 +1280,11 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
             key = entry->key;
         }
         if (update) {
-            if (_ht_update(ht, key, entry->value, identity, hash) < 0) {
+            if (_ht_update(ht, hash, identity, key, entry->value) < 0) {
                 goto fail;
             }
         } else {
-            if (_ht_add_for_upd(ht, identity, key, entry->value, hash) < 0) {
+            if (_ht_add_for_upd(ht, hash, identity, key, entry->value) < 0) {
                 goto fail;
             }
         }
@@ -1340,11 +1330,11 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
             goto fail;
         }
         if (update) {
-            if (_ht_update(ht, key, value, identity, hash) < 0) {
+            if (_ht_update(ht, hash, identity, key, value) < 0) {
                 goto fail;
             }
         } else {
-            if (_ht_add_for_upd(ht, identity, key, value, hash) < 0) {
+            if (_ht_add_for_upd(ht, hash, identity, key, value) < 0) {
                 goto fail;
             }
         }
@@ -1519,15 +1509,15 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
         }
 
         if (update) {
-            if (_ht_update(ht, key, value, identity, hash) < 0) {
+            if (_ht_update(ht, hash, identity, key, value) < 0) {
                 goto fail;
             }
             Py_CLEAR(identity);
             Py_CLEAR(key);
             Py_CLEAR(value);
         } else {
-            if (_ht_add_for_upd_steal_refs(ht, identity,
-                                           key, value, hash) < 0) {
+            if (_ht_add_for_upd_steal_refs(ht, hash, identity,
+                                           key, value) < 0) {
                 goto fail;
             }
             identity = NULL;
