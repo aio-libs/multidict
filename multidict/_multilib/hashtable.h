@@ -461,11 +461,7 @@ fail:
 static inline int
 _ht_del_at(ht_t *ht, size_t slot, entry_t *entry)
 {
-    if (ht->ma_keys == &empty_htkeys) {
-        if (ht_resize_for_insert(ht) < 0) {
-            return -1;
-        }
-    }
+    assert(ht->ma_keys != &empty_htkeys);
     Py_CLEAR(entry->identity);
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
@@ -478,11 +474,13 @@ _ht_del_at(ht_t *ht, size_t slot, entry_t *entry)
 static inline int
 _ht_del_at_for_upd(ht_t *ht, size_t slot, entry_t *entry)
 {
-    if (ht->ma_keys == &empty_htkeys) {
-        if (ht_resize_for_update(ht) < 0) {
-            return -1;
-        }
-    }
+    /* half deletion,
+       the entry could be replaced later with key and value set
+       or it will be finally cleaned up with identity=NULL,
+       ma_used -= 1, and setting the hash to DKIX_DUMMY
+       in ht_post_update()
+    */
+    assert(ht->ma_keys != &empty_htkeys);
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
     return 0;
