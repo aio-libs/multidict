@@ -999,6 +999,7 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
             if (_ht_del_at(ht, iter.slot, entry) < 0) {
                 goto fail;
             }
+            ht->version = NEXT_VERSION();
         }
         else if (tmp < 0) {
             goto fail;
@@ -1007,7 +1008,6 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
 
     *ret = lst;
     Py_DECREF(ident);
-    ht->version = NEXT_VERSION();
     ASSERT_CONSISTENT(ht, false);
     return 0;
 fail:
