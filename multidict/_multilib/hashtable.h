@@ -578,7 +578,7 @@ ht_next(ht_t *ht, ht_pos_t *pos, PyObject **pidentity,
         if (pos->pos >= ht->ma_keys->dk_nentries) {
             goto cleanup;
         }
-        entry++;
+        entry += 1;
     }
 
     if (pidentity) {
@@ -586,8 +586,10 @@ ht_next(ht_t *ht, ht_pos_t *pos, PyObject **pidentity,
     }
 
     if (pkey) {
-        *pkey == _ht_ensure_key(ht, entry);
+        assert(entry->key != NULL);
+        *pkey = _ht_ensure_key(ht, entry);
         if (*pkey == NULL) {
+            assert(PyErr_Occurred());
             ret = -1;
             goto cleanup;
         }
