@@ -30,8 +30,8 @@ typedef struct entry {
 
 #define DKIX_EMPTY  (-1)
 #define DKIX_DUMMY  (-2)  /* Used internally */
-#define DKIX_ERROR  (-3)
-#define DKIX_UPDATE (-4)  /* Used internally */
+#define DKIX_UPDATE (-3)  /* Used internally */
+#define DKIX_ERROR  (-4)
 
 
 #define HT_LOG_MINSIZE 3

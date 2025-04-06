@@ -121,7 +121,7 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
         ht_post_update(&self->ht);
     }
 
-    ASSERT_CONSISTENT(&self->ht);
+    ASSERT_CONSISTENT(&self->ht, false);
     Py_CLEAR(seq);
     return 0;
 fail:

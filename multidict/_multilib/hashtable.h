@@ -65,12 +65,12 @@ static inline Py_ssize_t GROWTH_RATE(ht_t *ht) {
 }
 
 
-static inline int ht_check_consistency(ht_t *ht);
+static inline int ht_check_consistency(ht_t *ht, bool update);
 
-#ifdef DEBUG
-#  define ASSERT_CONSISTENT(ht) assert(ht_check_consistency(ht))
+#ifndef NDEBUG
+#  define ASSERT_CONSISTENT(ht, update) assert(ht_check_consistency(ht, update))
 #else
-#  define ASSERT_CONSISTENT(ht) assert(0)
+#  define ASSERT_CONSISTENT(ht, update) assert(1)
 #endif
 
 static inline Py_ssize_t
@@ -228,7 +228,7 @@ ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
 
     ht->ma_keys->dk_usable = ht->ma_keys->dk_usable - numentries;
     ht->ma_keys->dk_nentries = numentries;
-    ASSERT_CONSISTENT(ht);
+    ASSERT_CONSISTENT(ht, update);
     return 0;
 }
 
@@ -280,7 +280,7 @@ _ht_init(ht_t *ht, mod_state *state,
     if (new_keys == NULL)
         return -1;
     ht->ma_keys = new_keys;
-    ASSERT_CONSISTENT(ht);
+    ASSERT_CONSISTENT(ht, false);
     return 0;
 }
 
@@ -452,7 +452,7 @@ ht_add(ht_t *ht, PyObject *key, PyObject *value)
         goto fail;
     }
     int ret = _ht_add_with_hash(ht, identity, key, value, hash);
-    ASSERT_CONSISTENT(ht);
+    ASSERT_CONSISTENT(ht, false);
     Py_DECREF(identity);
     return ret;
 fail:
@@ -503,7 +503,8 @@ ht_del(ht_t *ht, PyObject *key)
 
     entry_t *entries = DK_ENTRIES(ht->ma_keys);
 
-    while (iter.index != DKIX_EMPTY) {
+
+    for (;iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
             continue;
         }
@@ -521,7 +522,6 @@ ht_del(ht_t *ht, PyObject *key)
 
         found = true;
         _ht_del_at(ht, iter.slot, entry);
-        htkeysiter_next(&iter);
     }
 
     if (!found) {
@@ -531,7 +531,7 @@ ht_del(ht_t *ht, PyObject *key)
         ht->version = NEXT_VERSION();
     }
     Py_DECREF(identity);
-    ASSERT_CONSISTENT(ht);
+    ASSERT_CONSISTENT(ht, false);
     return 0;
 fail:
     Py_XDECREF(identity);
@@ -868,7 +868,7 @@ ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
         int tmp = _str_cmp(ident, entry->identity);
         if (tmp > 0) {
             Py_DECREF(ident);
-            ASSERT_CONSISTENT(ht);
+            ASSERT_CONSISTENT(ht, false);
             return Py_NewRef(entry->value);
         }
         else if (tmp < 0) {
@@ -881,7 +881,7 @@ ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
     }
 
     Py_DECREF(ident);
-    ASSERT_CONSISTENT(ht);
+    ASSERT_CONSISTENT(ht, false);
     return Py_NewRef(value);
 fail:
     Py_XDECREF(ident);
@@ -924,7 +924,7 @@ ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
             Py_DECREF(ident);
             *ret = value;
             ht->version = NEXT_VERSION();
-            ASSERT_CONSISTENT(ht);
+            ASSERT_CONSISTENT(ht, false);
             return 0;
         }
         else if (tmp < 0) {
@@ -932,7 +932,7 @@ ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
         }
     }
 
-    ASSERT_CONSISTENT(ht);
+    ASSERT_CONSISTENT(ht, false);
     return 0;
 fail:
     Py_XDECREF(value);
@@ -997,7 +997,7 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
     *ret = lst;
     Py_DECREF(ident);
     ht->version = NEXT_VERSION();
-    ASSERT_CONSISTENT(ht);
+    ASSERT_CONSISTENT(ht, false);
     return 0;
 fail:
     Py_XDECREF(ident);
@@ -1041,7 +1041,7 @@ ht_pop_item(ht_t *ht)
     }
     _ht_del_at(ht, iter.slot, entry);
     ht->version = NEXT_VERSION();
-    ASSERT_CONSISTENT(ht);
+    ASSERT_CONSISTENT(ht, false);
     return ret;
 }
 
@@ -1108,7 +1108,7 @@ ht_replace(ht_t *ht, PyObject * key, PyObject *value)
 
     int ret = _ht_replace(ht, key, value, identity, hash);
     Py_DECREF(identity);
-    ASSERT_CONSISTENT(ht);
+    ASSERT_CONSISTENT(ht, false);
     return ret;
 fail:
     Py_XDECREF(identity);
@@ -1731,13 +1731,12 @@ ht_clear(ht_t *ht)
 
 
 static inline int
-ht_check_consistency(ht_t *ht)
+ht_check_consistency(ht_t *ht, bool update)
 {
-    int check_content = 1;
 //    ASSERT_WORLD_STOPPED_OR_DICT_LOCKED(op);
 
-#define CHECK(expr) \
-    do { if (!(expr)) { assert(0 && Py_STRINGIFY(expr)); } } while (0)
+#define CHECK(expr) assert(expr)
+//    do { if (!(expr)) { assert(0 && Py_STRINGIFY(expr)); } } while (0)
 
     htkeys_t *keys = ht->ma_keys;
     Py_ssize_t usable = USABLE_FRACTION(DK_SIZE(keys));
@@ -1752,27 +1751,31 @@ ht_check_consistency(ht_t *ht)
     CHECK(0 <= dk_nentries && dk_nentries <= usable);
     CHECK(dk_usable + dk_nentries <= usable);
 
-    if (check_content) {
-        for (Py_ssize_t i=0; i < DK_SIZE(keys); i++) {
-            Py_ssize_t ix = htkeys_get_index(keys, i);
+    for (Py_ssize_t i=0; i < DK_SIZE(keys); i++) {
+        Py_ssize_t ix = htkeys_get_index(keys, i);
+        if (!update) {
             CHECK(DKIX_DUMMY <= ix && ix <= usable);
+        } else {
+            CHECK(DKIX_UPDATE <= ix && ix <= usable);
         }
+    }
 
-        entry_t *entries = DK_ENTRIES(keys);
-        for (Py_ssize_t i=0; i < usable; i++) {
-            entry_t *entry = &entries[i];
-            PyObject *identity = entry->identity;
+    entry_t *entries = DK_ENTRIES(keys);
+    for (Py_ssize_t i=0; i < usable; i++) {
+        entry_t *entry = &entries[i];
+        PyObject *identity = entry->identity;
 
-            if (identity != NULL) {
-                /* test_dict fails if PyObject_Hash() is called again */
+        if (identity != NULL) {
+            /* test_dict fails if PyObject_Hash() is called again */
+            if (!update) {
                 CHECK(entry->hash != -1);
-                CHECK(entry->key != NULL);
-                CHECK(entry->value != NULL);
-
-                CHECK(PyUnicode_CheckExact(identity));
-                Py_hash_t hash = PyObject_Hash(identity);
-                CHECK(entry->hash == hash);
             }
+            CHECK(entry->key != NULL);
+            CHECK(entry->value != NULL);
+
+            CHECK(PyUnicode_CheckExact(identity));
+            Py_hash_t hash = PyObject_Hash(identity);
+            CHECK(entry->hash == hash);
         }
     }
     return 1;
