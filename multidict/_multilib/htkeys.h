@@ -30,8 +30,7 @@ typedef struct entry {
 
 #define DKIX_EMPTY  (-1)
 #define DKIX_DUMMY  (-2)  /* Used internally */
-#define DKIX_UPDATE (-3)  /* Used internally */
-#define DKIX_ERROR  (-4)
+#define DKIX_ERROR  (-3)
 
 
 #define HT_LOG_MINSIZE 3
@@ -333,7 +332,7 @@ htkeys_free(htkeys_t *dk)
 /*
 Internal routine used by ht_resize() to build a hashtable of entries.
 */
-static void
+static int
 htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 {
     size_t mask = DK_MASK(keys);
@@ -347,16 +346,22 @@ htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
         }
         htkeys_set_index(keys, i, ix);
     }
+    return 0;
 }
 
 
-static void
+static int
 htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 {
     size_t mask = DK_MASK(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
-        assert(hash != -1);
+        if (hash == -1) {
+            hash = PyObject_Hash(ep->identity);
+            if (hash == -1) {
+                return -1;
+            }
+        }
         size_t i = hash & mask;
         for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
             perturb >>= HT_PERTURB_SHIFT;
@@ -364,6 +369,7 @@ htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
         }
         htkeys_set_index(keys, i, ix);
     }
+    return 0;
 }
 
 
@@ -391,8 +397,7 @@ htkeys_find_empty_slot_for_upd(htkeys_t *keys, Py_hash_t hash)
     const size_t mask = DK_MASK(keys);
     size_t i = hash & mask;
     Py_ssize_t ix = htkeys_get_index(keys, i);
-    for (size_t perturb = hash;
-         ix >= 0 || ix == DKIX_DUMMY || ix == DKIX_UPDATE;) {
+    for (size_t perturb = hash; ix >= 0 || ix == DKIX_DUMMY;) {
         perturb >>= HT_PERTURB_SHIFT;
         i = (i*5 + perturb + 1) & mask;
         ix = htkeys_get_index(keys, i);

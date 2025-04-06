@@ -118,7 +118,9 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
     }
 
     if (update) {
-        ht_post_update(&self->ht);
+        if (ht_post_update(&self->ht) < 0) {
+            goto fail;
+        }
     }
 
     ASSERT_CONSISTENT(&self->ht, false);
@@ -674,7 +676,7 @@ multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (_multidict_extend_parse_args(args, kwds, "update", &arg) < 0) {
         goto fail;
     }
-    if (_multidict_extend(self, arg, kwds, "update", 0) < 0) {
+    if (_multidict_extend(self, arg, kwds, "update", true) < 0) {
         goto fail;
     }
     Py_CLEAR(arg);

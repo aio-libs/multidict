@@ -65,10 +65,11 @@ static inline Py_ssize_t GROWTH_RATE(ht_t *ht) {
 }
 
 
-static inline int ht_check_consistency(ht_t *ht, bool update);
+static inline int _ht_check_consistency(ht_t *ht, bool update);
+static inline int _ht_dump(ht_t *ht);
 
 #ifndef NDEBUG
-#  define ASSERT_CONSISTENT(ht, update) assert(ht_check_consistency(ht, update))
+#  define ASSERT_CONSISTENT(ht, update) assert(_ht_check_consistency(ht, update))
 #else
 #  define ASSERT_CONSISTENT(ht, update) assert(1)
 #endif
@@ -80,13 +81,6 @@ ht_sizeof(ht_t *ht)
         return htkeys_sizeof(ht->ma_keys);
     }
     return 0;
-}
-
-
-static inline bool
-_hash_cmp(Py_hash_t hash, entry_t * entry)
-{
-    return hash == entry->hash;
 }
 
 
@@ -215,10 +209,15 @@ ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
             newentries[i] = *ep++;
         }
     }
-    if (update)
-        htkeys_build_indices_for_upd(newkeys, newentries, numentries);
-    else
-        htkeys_build_indices(newkeys, newentries, numentries);
+    if (update) {
+        if (htkeys_build_indices_for_upd(newkeys, newentries, numentries) < 0) {
+            return -1;
+        }
+    } else {
+        if (htkeys_build_indices(newkeys, newentries, numentries) < 0) {
+            return -1;
+        }
+    }
 
     ht->ma_keys = newkeys;
 
@@ -436,7 +435,7 @@ _ht_add_for_upd(ht_t *ht,
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    return _ht_add_with_hash_steal_refs(ht, identity, key, value, hash);
+    return _ht_add_for_upd_steal_refs(ht, identity, key, value, hash);
 }
 
 
@@ -486,10 +485,8 @@ _ht_del_at_for_upd(ht_t *ht, size_t slot, entry_t *entry)
             return -1;
         }
     }
-    Py_CLEAR(entry->identity);
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
-    htkeys_set_index(ht->ma_keys, slot, DKIX_UPDATE);
     ht->ma_used -= 1;
     return 0;
 }
@@ -521,7 +518,7 @@ ht_del(ht_t *ht, PyObject *key)
             continue;
         }
         entry_t *entry = entries + iter.index;
-        if (!_hash_cmp(hash, entry)) {
+        if (hash != entry->hash) {
             continue;
         }
         int tmp = _str_cmp(entry->identity, identity);
@@ -587,7 +584,7 @@ ht_next(ht_t *ht, ht_pos_t *pos,
     entry_t *entry = entries + pos->pos;
 
     while (entry->identity == NULL) {
-        pos->pos++;
+        pos->pos += 1;
         if (pos->pos >= ht->ma_keys->dk_nentries) {
             goto cleanup;
         }
@@ -715,7 +712,7 @@ ht_contains(ht_t *ht, PyObject *key, PyObject **pret)
             continue;
         }
         entry_t *entry = entries + iter.index;
-        if (!_hash_cmp(hash, entry)) {
+        if (hash != entry->hash) {
             continue;
         }
         int tmp = _str_cmp(ident, entry->identity);
@@ -770,7 +767,7 @@ ht_get_one(ht_t *ht, PyObject *key, PyObject **ret)
             continue;
         }
         entry_t *entry = entries + iter.index;
-        if (!_hash_cmp(hash, entry)) {
+        if (hash != entry->hash) {
             continue;
         }
         int tmp = _str_cmp(ident, entry->identity);
@@ -817,7 +814,7 @@ ht_get_all(ht_t *ht, PyObject *key, PyObject **ret)
         }
         entry_t *entry = entries + iter.index;
 
-        if (!_hash_cmp(hash, entry)) {
+        if (hash != entry->hash) {
             continue;
         }
         int tmp = _str_cmp(ident, entry->identity);
@@ -876,7 +873,7 @@ ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
         }
         entry_t *entry = entries + iter.index;
 
-        if (!_hash_cmp(hash, entry)) {
+        if (hash != entry->hash) {
             continue;
         }
         int tmp = _str_cmp(ident, entry->identity);
@@ -928,7 +925,7 @@ ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
         }
         entry_t *entry = entries + iter.index;
 
-        if (!_hash_cmp(hash, entry)) {
+        if (hash != entry->hash) {
             continue;
         }
         int tmp = _str_cmp(ident, entry->identity);
@@ -987,7 +984,7 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
         }
         entry_t *entry = entries + iter.index;
 
-        if (!_hash_cmp(hash, entry)) {
+        if (hash != entry->hash) {
             continue;
         }
         int tmp = _str_cmp(ident, entry->identity);
@@ -1081,7 +1078,7 @@ _ht_replace(ht_t *ht, PyObject * key, PyObject *value,
         }
         entry_t *entry = entries + iter.index;
 
-        if (!_hash_cmp(hash, entry)) {
+        if (hash != entry->hash) {
             continue;
         }
         int tmp = _str_cmp(identity, entry->identity);
@@ -1147,27 +1144,52 @@ _ht_update(ht_t *ht, PyObject *key, PyObject *value,
     entry_t *entries = DK_ENTRIES(ht->ma_keys);
     bool found = false;
 
+    printf("<<<<<<<<<<<UPDATE\n");
+
     for(; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index != DKIX_UPDATE, iter.index < 0) {
+        if (iter.index == DKIX_DUMMY) {
+            printf("  skip1 %ld->%ld\n", iter.slot, iter.index);
             continue;
         }
         entry_t *entry = entries + iter.index;
         if (entry->hash == -1) {
             // the entry was already replaced during md.update() processing
+            printf("  skip2 %ld->%ld\n", iter.slot, iter.index);
             continue;
         }
 
-        if (!_hash_cmp(hash, entry)) {
+        if (hash != entry->hash) {
+            printf("  skip3 %ld->%ld\n", iter.slot, iter.index);
             continue;
         }
         int tmp = _str_cmp(identity, entry->identity);
         if (tmp > 0) {
             if (!found) {
-                found = 1;
-                Py_SETREF(entry->key, Py_NewRef(key));
-                Py_SETREF(entry->value, Py_NewRef(value));
+                printf("  replace %ld->%ld ", iter.slot, iter.index);
+                PyObject_Print(key, stdout, 0);
+                printf(" -> ");
+                PyObject_Print(value, stdout, 0);
+                printf("\n");
+                found = true;
+                if (entry->key == NULL) {
+                    /* entry->key could be NULL if it was deleted
+                       by the previous _ht_update call during the iteration
+                       in ht_update_from* functions. */
+                    assert(entry->value == NULL);
+                    entry->key = Py_NewRef(key);
+                    entry->value = Py_NewRef(value);
+                    ht->ma_used += 1;
+                } else {
+                    Py_SETREF(entry->key, Py_NewRef(key));
+                    Py_SETREF(entry->value, Py_NewRef(value));
+                }
                 entry->hash = -1;
             } else {
+                printf("  delete %ld->%ld ", iter.slot, iter.index);
+                PyObject_Print(entry->identity, stdout, 0);
+                printf(" -> ");
+                PyObject_Print(entry->value, stdout, 0);
+                printf("\n");
                 if (_ht_del_at_for_upd(ht, iter.slot, entry) < 0) {
                     goto fail;
                 }
@@ -1178,27 +1200,49 @@ _ht_update(ht_t *ht, PyObject *key, PyObject *value,
         }
 
     }
+
+    if (!found) {
+        printf("  append ");
+        PyObject_Print(key, stdout, 0);
+        printf(" -> ");
+        PyObject_Print(value, stdout, 0);
+        printf("\n");
+        if (_ht_add_for_upd(ht, identity, key, value, hash) < 0) {
+            goto fail;
+        }
+    }
+    printf(">>>>>>>>>>>>UPDATE\n");
     return 0;
 fail:
     return -1;
 }
 
-static inline void
+static inline int
 ht_post_update(ht_t *ht)
 {
     size_t num_slots = DK_SIZE(ht->ma_keys);
-    for (size_t slot = 0; slot < num_slots; slot++) {
-        if (htkeys_get_index(ht->ma_keys, slot) == DKIX_UPDATE) {
-            htkeys_set_index(ht->ma_keys, slot, DKIX_DUMMY);
-        }
-    }
     entry_t *entries = DK_ENTRIES(ht->ma_keys);
-    for (Py_ssize_t pos = 0; pos < ht->ma_keys->dk_nentries; pos++) {
-        entry_t *entry = entries + pos;
-        if (entry->hash == -1) {
-            entry->hash = PyObject_Hash(entry->identity);
+    for (size_t slot = 0; slot < num_slots; slot++) {
+        Py_ssize_t index = htkeys_get_index(ht->ma_keys, slot);
+        if (index >= 0) {
+            entry_t *entry = entries + index;
+            if (entry->hash == -1) {
+                entry->hash = PyObject_Hash(entry->identity);
+                if (entry->hash == -1) {
+                    // hash of string always exists but still
+                    return -1;
+                }
+            }
+            if (entry->key == NULL) {
+                /* the entry is marked for deletion during .update() call
+                   and not filled by a new value */
+                Py_CLEAR(entry->key);
+                htkeys_set_index(ht->ma_keys, slot, DKIX_DUMMY);
+            }
         }
     }
+    _ht_dump(ht);
+    return 0;
 }
 
 static inline int
@@ -1218,8 +1262,10 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
     }
 
     entry_t *entries = DK_ENTRIES(other->ma_keys);
+    printf("\nBEGIN\n");
 
     for (pos = 0; pos < other->ma_keys->dk_nentries; pos++) {
+        _ht_dump(ht);
         entry_t *entry = entries + pos;
         if (entry->identity == NULL) {
             continue;
@@ -1257,6 +1303,8 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
             Py_CLEAR(key);
         }
     }
+    printf("END\n");
+    _ht_dump(ht);
     return 0;
 fail:
     if (recalc_identity) {
@@ -1755,7 +1803,7 @@ ht_clear(ht_t *ht)
 
 
 static inline int
-ht_check_consistency(ht_t *ht, bool update)
+_ht_check_consistency(ht_t *ht, bool update)
 {
 //    ASSERT_WORLD_STOPPED_OR_DICT_LOCKED(op);
 
@@ -1777,11 +1825,7 @@ ht_check_consistency(ht_t *ht, bool update)
 
     for (Py_ssize_t i=0; i < DK_SIZE(keys); i++) {
         Py_ssize_t ix = htkeys_get_index(keys, i);
-        if (!update) {
-            CHECK(DKIX_DUMMY <= ix && ix <= usable);
-        } else {
-            CHECK(DKIX_UPDATE <= ix && ix <= usable);
-        }
+        CHECK(DKIX_DUMMY <= ix && ix <= usable);
     }
 
     entry_t *entries = DK_ENTRIES(keys);
@@ -1790,16 +1834,23 @@ ht_check_consistency(ht_t *ht, bool update)
         PyObject *identity = entry->identity;
 
         if (identity != NULL) {
-            /* test_dict fails if PyObject_Hash() is called again */
             if (!update) {
                 CHECK(entry->hash != -1);
+                CHECK(entry->key != NULL);
+                CHECK(entry->value != NULL);
+            } else {
+                if (entry->key == NULL) {
+                    CHECK(entry->value == NULL);
+                } else {
+                    CHECK(entry->value != NULL);
+                }
             }
-            CHECK(entry->key != NULL);
-            CHECK(entry->value != NULL);
 
             CHECK(PyUnicode_CheckExact(identity));
-            Py_hash_t hash = PyObject_Hash(identity);
-            CHECK(entry->hash == hash);
+            if (entry->hash != -1) {
+                Py_hash_t hash = PyObject_Hash(identity);
+                CHECK(entry->hash == hash);
+            }
         }
     }
     return 1;
@@ -1807,6 +1858,38 @@ ht_check_consistency(ht_t *ht, bool update)
 #undef CHECK
 }
 
+
+static inline int
+_ht_dump(ht_t *ht)
+{
+    htkeys_t *keys = ht->ma_keys;
+    printf("Dump %p [%ld from %ld usable %ld nentries %ld]\n",
+           ht, ht->ma_used, DK_SIZE(keys), keys->dk_usable, keys->dk_nentries);
+    for (Py_ssize_t i=0; i < DK_SIZE(keys); i++) {
+        Py_ssize_t ix = htkeys_get_index(keys, i);
+        printf("  %ld -> %ld\n", i, ix);
+    }
+    printf("  --------\n");
+    entry_t *entries = DK_ENTRIES(keys);
+    for (Py_ssize_t i=0; i < keys->dk_nentries; i++) {
+        entry_t *entry = &entries[i];
+        PyObject *identity = entry->identity;
+
+        if (identity == NULL) {
+            printf("  %ld [deleted]\n", i);
+        } else {
+            printf("  %ld h=%20ld, i=\'", i, entry->hash);
+            PyObject_Print(entry->identity, stdout, Py_PRINT_RAW);
+            printf("\', k=\'");
+            PyObject_Print(entry->key, stdout, Py_PRINT_RAW);
+            printf("\', v=\'");
+            PyObject_Print(entry->value, stdout, Py_PRINT_RAW);
+            printf("\'\n");
+        }
+    }
+    printf("\n");
+    return 1;
+}
 
 #ifdef __cplusplus
 }
