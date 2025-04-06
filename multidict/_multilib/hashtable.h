@@ -461,25 +461,37 @@ fail:
 }
 
 
-static inline void
+static inline int
 _ht_del_at(ht_t *ht, size_t slot, entry_t *entry)
 {
+    if (ht->ma_keys == &empty_htkeys) {
+        if (ht_resize_for_insert(ht) < 0) {
+            return -1;
+        }
+    }
     Py_CLEAR(entry->identity);
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
     htkeys_set_index(ht->ma_keys, slot, DKIX_DUMMY);
     ht->ma_used -= 1;
+    return 0;
 }
 
 
-static inline void
+static inline int
 _ht_del_at_for_upd(ht_t *ht, size_t slot, entry_t *entry)
 {
+    if (ht->ma_keys == &empty_htkeys) {
+        if (ht_resize_for_update(ht) < 0) {
+            return -1;
+        }
+    }
     Py_CLEAR(entry->identity);
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
     htkeys_set_index(ht->ma_keys, slot, DKIX_UPDATE);
     ht->ma_used -= 1;
+    return 0;
 }
 
 
@@ -521,7 +533,9 @@ ht_del(ht_t *ht, PyObject *key)
         }
 
         found = true;
-        _ht_del_at(ht, iter.slot, entry);
+        if (_ht_del_at(ht, iter.slot, entry) < 0) {
+            goto fail;
+        }
     }
 
     if (!found) {
@@ -920,7 +934,9 @@ ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
         int tmp = _str_cmp(ident, entry->identity);
         if (tmp > 0) {
             value = Py_NewRef(entry->value);
-            _ht_del_at(ht, iter.slot, entry);
+            if (_ht_del_at(ht, iter.slot, entry) < 0) {
+                goto fail;
+            }
             Py_DECREF(ident);
             *ret = value;
             ht->version = NEXT_VERSION();
@@ -987,7 +1003,9 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
             } else if (PyList_Append(lst, entry->value) < 0) {
                 goto fail;
             }
-            _ht_del_at(ht, iter.slot, entry);
+            if (_ht_del_at(ht, iter.slot, entry) < 0) {
+                goto fail;
+            }
         }
         else if (tmp < 0) {
             goto fail;
@@ -1039,7 +1057,9 @@ ht_pop_item(ht_t *ht)
 
     for(; iter.index != pos; htkeysiter_next(&iter)) {
     }
-    _ht_del_at(ht, iter.slot, entry);
+    if (_ht_del_at(ht, iter.slot, entry) < 0) {
+        return NULL;
+    }
     ht->version = NEXT_VERSION();
     ASSERT_CONSISTENT(ht, false);
     return ret;
@@ -1071,7 +1091,9 @@ _ht_replace(ht_t *ht, PyObject * key, PyObject *value,
                 Py_SETREF(entry->key, Py_NewRef(key));
                 Py_SETREF(entry->value, Py_NewRef(value));
             } else {
-                _ht_del_at(ht, iter.slot, entry);
+                if (_ht_del_at(ht, iter.slot, entry) < 0) {
+                    goto fail;
+                }
             }
         }
         else if (tmp < 0) {
@@ -1146,7 +1168,9 @@ _ht_update(ht_t *ht, PyObject *key, PyObject *value,
                 Py_SETREF(entry->value, Py_NewRef(value));
                 entry->hash = -1;
             } else {
-                _ht_del_at_for_upd(ht, iter.slot, entry);
+                if (_ht_del_at_for_upd(ht, iter.slot, entry) < 0) {
+                    goto fail;
+                }
             }
         }
         else if (tmp < 0) {
