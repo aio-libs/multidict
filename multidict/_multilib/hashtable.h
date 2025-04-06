@@ -262,6 +262,7 @@ _ht_init(ht_t *ht, mod_state *state,
 
     if (minused <= USABLE_FRACTION(HT_MINSIZE)) {
         ht->ma_keys = &empty_htkeys;
+        ASSERT_CONSISTENT(ht, false);
         return 0;
     }
     /* There are no strict guarantee that returned dict can contain minused
@@ -316,6 +317,9 @@ ht_calc_key(ht_t *ht, PyObject *key, PyObject *ident)
 static inline void
 ht_dealloc(ht_t *ht)
 {
+    if (ht->ma_keys == NULL) {
+        return;
+    }
     if (ht->ma_keys != &empty_htkeys) {
         entry_t *entries = DK_ENTRIES(ht->ma_keys);
         for (Py_ssize_t idx=0; idx<ht->ma_keys->dk_nentries; ++idx) {
@@ -1228,11 +1232,12 @@ ht_post_update(ht_t *ht)
             if (entry->key == NULL) {
                 /* the entry is marked for deletion during .update() call
                    and not filled by a new value */
-                Py_CLEAR(entry->key);
+                Py_CLEAR(entry->identity);
                 htkeys_set_index(ht->ma_keys, slot, DKIX_DUMMY);
             }
         }
     }
+    printf("POST_UPDATE\n");
     _ht_dump(ht);
     return 0;
 }
@@ -1336,7 +1341,7 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
                 goto fail;
             }
         } else {
-            if (_ht_add_for_upd(ht, hash, identity, key, value) < 0) {
+            if (_ht_add_with_hash(ht, hash, identity, key, value) < 0) {
                 goto fail;
             }
         }
@@ -1517,6 +1522,7 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
             Py_CLEAR(identity);
             Py_CLEAR(key);
             Py_CLEAR(value);
+            _ht_dump(ht);
         } else {
             if (_ht_add_for_upd_steal_refs(ht, hash, identity,
                                            key, value) < 0) {
@@ -1803,6 +1809,7 @@ _ht_check_consistency(ht_t *ht, bool update)
 //    do { if (!(expr)) { assert(0 && Py_STRINGIFY(expr)); } } while (0)
 
     htkeys_t *keys = ht->ma_keys;
+    CHECK(keys != NULL);
     Py_ssize_t usable = USABLE_FRACTION(DK_SIZE(keys));
 
     // In the free-threaded build, shared keys may be concurrently modified,
