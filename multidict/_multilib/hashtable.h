@@ -178,6 +178,7 @@ static inline int
 ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
 {
     htkeys_t *oldkeys, *newkeys;
+    printf("ht_resize %ld -> %ld\n", ht->ma_keys->dk_log2_size, log2_newsize);
 
     if (log2_newsize >= SIZEOF_SIZE_T*8) {
         PyErr_NoMemory();
@@ -204,8 +205,10 @@ ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
     } else {
         entry_t *ep = oldentries;
         for (Py_ssize_t i = 0; i < numentries; i++) {
-            while (ep->identity == NULL)
-                ep++;
+            if (!update) {
+                while (ep->identity == NULL)
+                    ep++;
+            }
             newentries[i] = *ep++;
         }
     }
@@ -1140,7 +1143,7 @@ _ht_update(ht_t *ht, Py_hash_t hash, PyObject *identity,
     entry_t *entries = DK_ENTRIES(ht->ma_keys);
     bool found = false;
 
-    printf("<<<<<<<<<<<UPDATE\n");
+    printf("<<<<<<<<<<<UPDATE %ld %ld\n", ht->ma_used, ht->ma_keys->dk_nentries);
 
     for(; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index == DKIX_DUMMY) {
@@ -1208,6 +1211,7 @@ _ht_update(ht_t *ht, Py_hash_t hash, PyObject *identity,
         }
     }
     printf(">>>>>>>>>>>>UPDATE\n");
+    _ht_dump(ht);
     return 0;
 fail:
     return -1;
@@ -1259,7 +1263,7 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
     }
 
     entry_t *entries = DK_ENTRIES(other->ma_keys);
-    printf("\nBEGIN\n");
+    printf("\nBEGIN-HT\n");
 
     for (pos = 0; pos < other->ma_keys->dk_nentries; pos++) {
         _ht_dump(ht);
@@ -1300,7 +1304,7 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
             Py_CLEAR(key);
         }
     }
-    printf("END\n");
+    printf("END-HT\n");
     _ht_dump(ht);
     return 0;
 fail:
@@ -1326,6 +1330,7 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
         return -1;
     }
 
+    printf("\nBEGIN-DCT\n");
     while(PyDict_Next(kwds, &pos, &key, &value)) {
         Py_INCREF(key);
         identity = ht_calc_identity(ht, key);
@@ -1348,6 +1353,8 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
         Py_CLEAR(identity);
         Py_CLEAR(key);
     }
+    printf("END-DCT\n");
+    _ht_dump(ht);
     return 0;
 fail:
     Py_CLEAR(identity);
@@ -1469,6 +1476,7 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
         }
     }
 
+    printf("\nBEGIN-SEQ\n");
     for (i = 0; ; ++i) { // i - index into seq of current element
         switch (kind) {
         case LIST:
@@ -1536,6 +1544,8 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
     }
 
 exit:
+    printf("END-SEQ\n");
+    _ht_dump(ht);
     Py_CLEAR(it);
     return 0;
 
