@@ -485,7 +485,6 @@ _ht_del_at_for_upd(ht_t *ht, size_t slot, entry_t *entry)
     }
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
-    ht->ma_used -= 1;
     return 0;
 }
 
@@ -1177,7 +1176,6 @@ _ht_update(ht_t *ht, Py_hash_t hash, PyObject *identity,
                     assert(entry->value == NULL);
                     entry->key = Py_NewRef(key);
                     entry->value = Py_NewRef(value);
-                    ht->ma_used += 1;
                 } else {
                     Py_SETREF(entry->key, Py_NewRef(key));
                     Py_SETREF(entry->value, Py_NewRef(value));
@@ -1235,9 +1233,10 @@ ht_post_update(ht_t *ht)
             }
             if (entry->key == NULL) {
                 /* the entry is marked for deletion during .update() call
-                   and not filled by a new value */
+                   and not replaced with a new value */
                 Py_CLEAR(entry->identity);
                 htkeys_set_index(ht->ma_keys, slot, DKIX_DUMMY);
+                ht->ma_used -= 1;
             }
         }
     }
