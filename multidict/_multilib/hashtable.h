@@ -181,7 +181,7 @@ _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
 }
 
 static inline int
-ht_resize(ht_t *ht, uint8_t log2_newsize)
+ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
 {
     htkeys_t *oldkeys, *newkeys;
 
@@ -195,6 +195,7 @@ ht_resize(ht_t *ht, uint8_t log2_newsize)
 
     /* Allocate a new table. */
     newkeys = htkeys_new(log2_newsize);
+    assert(newkeys);
     if (newkeys == NULL) {
         return -1;
     }
@@ -202,7 +203,6 @@ ht_resize(ht_t *ht, uint8_t log2_newsize)
     assert(newkeys->dk_usable >= ht->ma_used);
 
     Py_ssize_t numentries = ht->ma_used;
-
     entry_t *oldentries = DK_ENTRIES(oldkeys);
     entry_t *newentries = DK_ENTRIES(newkeys);
     if (oldkeys->dk_nentries == numentries) {
@@ -215,7 +215,10 @@ ht_resize(ht_t *ht, uint8_t log2_newsize)
             newentries[i] = *ep++;
         }
     }
-    htkeys_build_indices(newkeys, newentries, numentries);
+    if (update)
+        htkeys_build_indices_for_upd(newkeys, newentries, numentries);
+    else
+        htkeys_build_indices(newkeys, newentries, numentries);
 
     ht->ma_keys = newkeys;
 
@@ -231,9 +234,16 @@ ht_resize(ht_t *ht, uint8_t log2_newsize)
 
 
 static inline int
-_insertion_resize(ht_t *ht)
+ht_resize_for_insert(ht_t *ht)
 {
-    return ht_resize(ht, calculate_log2_keysize(GROWTH_RATE(ht)));
+    return ht_resize(ht, calculate_log2_keysize(GROWTH_RATE(ht)), false);
+}
+
+
+static inline int
+ht_resize_for_update(ht_t *ht)
+{
+    return ht_resize(ht, calculate_log2_keysize(GROWTH_RATE(ht)), true);
 }
 
 
@@ -352,7 +362,49 @@ _ht_add_with_hash_steal_refs(ht_t *ht,
 {
     if (ht->ma_keys->dk_usable <= 0 || ht->ma_keys == &empty_htkeys) {
         /* Need to resize. */
-        if (_insertion_resize(ht) < 0) {
+        if (ht_resize_for_insert(ht) < 0) {
+            return -1;
+        }
+    }
+    Py_ssize_t hashpos = htkeys_find_empty_slot(ht->ma_keys, hash);
+    htkeys_set_index(ht->ma_keys, hashpos, ht->ma_keys->dk_nentries);
+
+    entry_t *entry = DK_ENTRIES(ht->ma_keys) + ht->ma_keys->dk_nentries;
+
+    entry->identity = identity;
+    entry->key = key;
+    entry->value = value;
+    entry->hash = hash;
+
+    ht->version = NEXT_VERSION();
+    ht->ma_used += 1;
+    ht->ma_keys->dk_usable -= 1;
+    ht->ma_keys->dk_nentries += 1;
+
+    return 0;
+}
+
+
+static inline int
+_ht_add_with_hash(ht_t *ht, PyObject *identity, PyObject *key,
+                  PyObject *value, Py_hash_t hash)
+{
+    Py_INCREF(identity);
+    Py_INCREF(key);
+    Py_INCREF(value);
+    return _ht_add_with_hash_steal_refs(ht, identity, key, value, hash);
+}
+
+static inline int
+_ht_add_for_upd_steal_refs(ht_t *ht,
+                           PyObject *identity,
+                           PyObject *key,
+                           PyObject *value,
+                           Py_hash_t hash)
+{
+    if (ht->ma_keys->dk_usable <= 0 || ht->ma_keys == &empty_htkeys) {
+        /* Need to resize. */
+        if (ht_resize_for_update(ht) < 0) {
             return -1;
         }
     }
@@ -375,11 +427,11 @@ _ht_add_with_hash_steal_refs(ht_t *ht,
 }
 
 static inline int
-_ht_add_with_hash(ht_t *ht,
-                         PyObject *identity,
-                         PyObject *key,
-                         PyObject *value,
-                         Py_hash_t hash)
+_ht_add_for_upd(ht_t *ht,
+                PyObject *identity,
+                PyObject *key,
+                PyObject *value,
+                Py_hash_t hash)
 {
     Py_INCREF(identity);
     Py_INCREF(key);
@@ -421,7 +473,7 @@ _ht_del_at(ht_t *ht, size_t slot, entry_t *entry)
 
 
 static inline void
-_ht_del_at_for_update(ht_t *ht, size_t slot, entry_t *entry)
+_ht_del_at_for_upd(ht_t *ht, size_t slot, entry_t *entry)
 {
     Py_CLEAR(entry->identity);
     Py_CLEAR(entry->key);
@@ -1094,7 +1146,7 @@ _ht_update(ht_t *ht, PyObject *key, PyObject *value,
                 Py_SETREF(entry->value, Py_NewRef(value));
                 entry->hash = -1;
             } else {
-                _ht_del_at_for_update(ht, iter.slot, entry);
+                _ht_del_at_for_upd(ht, iter.slot, entry);
             }
         }
         else if (tmp < 0) {
@@ -1110,6 +1162,12 @@ fail:
 static inline void
 ht_post_update(ht_t *ht)
 {
+    size_t num_slots = DK_SIZE(ht->ma_keys);
+    for (size_t slot = 0; slot < num_slots; slot++) {
+        if (htkeys_get_index(ht->ma_keys, slot) == DKIX_UPDATE) {
+            htkeys_set_index(ht->ma_keys, slot, DKIX_DUMMY);
+        }
+    }
     entry_t *entries = DK_ENTRIES(ht->ma_keys);
     for (Py_ssize_t pos = 0; pos < ht->ma_keys->dk_nentries; pos++) {
         entry_t *entry = entries + pos;
@@ -1131,7 +1189,7 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(ht_len(other) + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
-    if (ht_resize(ht, new_size)) {
+    if (ht_resize(ht, new_size, update)) {
         return -1;
     }
 
@@ -1166,7 +1224,7 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
                 goto fail;
             }
         } else {
-            if (_ht_add_with_hash(ht, identity, key, entry->value, hash) < 0) {
+            if (_ht_add_for_upd(ht, identity, key, entry->value, hash) < 0) {
                 goto fail;
             }
         }
@@ -1195,7 +1253,7 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(PyDict_GET_SIZE(kwds) + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
-    if (ht_resize(ht, new_size)) {
+    if (ht_resize(ht, new_size, update)) {
         return -1;
     }
 
@@ -1214,7 +1272,7 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
                 goto fail;
             }
         } else {
-            if (_ht_add_with_hash(ht, identity, key, value, hash) < 0) {
+            if (_ht_add_for_upd(ht, identity, key, value, hash) < 0) {
                 goto fail;
             }
         }
@@ -1324,7 +1382,7 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(length_hint + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
-    if (ht_resize(ht, new_size)) {
+    if (ht_resize(ht, new_size, update)) {
         return -1;
     }
 
@@ -1396,8 +1454,8 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
             Py_CLEAR(key);
             Py_CLEAR(value);
         } else {
-            if (_ht_add_with_hash_steal_refs(ht, identity,
-                                                    key, value, hash) < 0) {
+            if (_ht_add_for_upd_steal_refs(ht, identity,
+                                           key, value, hash) < 0) {
                 goto fail;
             }
             identity = NULL;

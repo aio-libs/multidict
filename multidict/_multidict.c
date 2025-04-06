@@ -90,6 +90,14 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
             if (ht_update_from_dict(&self->ht, arg, update) < 0) {
                 goto fail;
             }
+        } else if (PyList_CheckExact(arg)) {
+            if (ht_update_from_seq(&self->ht, arg, update) < 0) {
+                goto fail;
+            }
+        } else if (PyTuple_CheckExact(arg)) {
+            if (ht_update_from_seq(&self->ht, arg, update) < 0) {
+                goto fail;
+            }
         } else {
             seq = PyMapping_Items(arg);
             if (seq == NULL) {
@@ -666,7 +674,7 @@ multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (_multidict_extend_parse_args(args, kwds, "update", &arg) < 0) {
         goto fail;
     }
-    if (_multidict_extend(self, arg, kwds, "update", 0) < true) {
+    if (_multidict_extend(self, arg, kwds, "update", 0) < 0) {
         goto fail;
     }
     Py_CLEAR(arg);

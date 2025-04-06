@@ -168,7 +168,7 @@ htkeys_set_index(htkeys_t *keys, Py_ssize_t i, Py_ssize_t ix)
  * USABLE_FRACTION should be quick to calculate.
  * Fractions around 1/2 to 2/3 seem to work well in practice.
  */
-static inline Py_ssize_t USABLE_FRACTION(uint8_t n)
+static inline Py_ssize_t USABLE_FRACTION(Py_ssize_t n)
 {
     return (n << 1) / 3;
 }
@@ -284,7 +284,7 @@ htkeys_new(uint8_t log2_size)
 
     assert(log2_size >= HT_LOG_MINSIZE);
 
-    usable = USABLE_FRACTION((size_t)1<<log2_size);
+    usable = USABLE_FRACTION(((size_t)1)<<log2_size);
     if (log2_size < 8) {
         log2_bytes = log2_size;
     }
@@ -303,9 +303,6 @@ htkeys_new(uint8_t log2_size)
     htkeys_t *keys = NULL;
     /* TODO: CPython uses freelist of key objects with unicode type
        and log2_size == PyDict_LOG_MINSIZE */
-    printf("\nresize %d %ld %zd\n", log2_bytes, usable, sizeof(htkeys_t)
-                        + ((size_t)1 << log2_bytes)
-                        + sizeof(entry_t) * usable);
     keys = PyMem_Malloc(sizeof(htkeys_t)
                         + ((size_t)1 << log2_bytes)
                         + sizeof(entry_t) * usable);
@@ -353,6 +350,23 @@ htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 }
 
 
+static void
+htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
+{
+    size_t mask = DK_MASK(keys);
+    for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
+        Py_hash_t hash = ep->hash;
+        assert(hash != -1);
+        size_t i = hash & mask;
+        for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
+            perturb >>= HT_PERTURB_SHIFT;
+            i = mask & (i*5 + perturb + 1);
+        }
+        htkeys_set_index(keys, i, ix);
+    }
+}
+
+
 /* Internal function to find slot for an item from its hash
    when it is known that the key is not present in the dict.
  */
@@ -362,7 +376,23 @@ htkeys_find_empty_slot(htkeys_t *keys, Py_hash_t hash)
     const size_t mask = DK_MASK(keys);
     size_t i = hash & mask;
     Py_ssize_t ix = htkeys_get_index(keys, i);
-    for (size_t perturb = hash; ix >= 0;) {
+    for (size_t perturb = hash; ix >= 0 || ix == DKIX_DUMMY;) {
+        perturb >>= HT_PERTURB_SHIFT;
+        i = (i*5 + perturb + 1) & mask;
+        ix = htkeys_get_index(keys, i);
+    }
+    return i;
+}
+
+
+static Py_ssize_t
+htkeys_find_empty_slot_for_upd(htkeys_t *keys, Py_hash_t hash)
+{
+    const size_t mask = DK_MASK(keys);
+    size_t i = hash & mask;
+    Py_ssize_t ix = htkeys_get_index(keys, i);
+    for (size_t perturb = hash;
+         ix >= 0 || ix == DKIX_DUMMY || ix == DKIX_UPDATE;) {
         perturb >>= HT_PERTURB_SHIFT;
         i = (i*5 + perturb + 1) & mask;
         ix = htkeys_get_index(keys, i);
