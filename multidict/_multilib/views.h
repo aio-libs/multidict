@@ -255,6 +255,7 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
     PyObject *value2 = NULL;
     PyObject *arg = NULL;
     PyObject *ret = NULL;
+    ht_finder_t finder = {0};
 
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
@@ -278,29 +279,28 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_finder_t finder;
-        ht_init_finder(&self->md->ht, identity, &finder);
+        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+            assert(PyErr_Occurred());
+            goto fail;
+        }
 
-        while (true) {
-            tmp = ht_find_next(&finder, &key2, &value2);
+        while ((tmp = ht_find_next(&finder, &key2, &value2)) > 0) {
+            tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
             if (tmp < 0) {
                 goto fail;
-            } else if (tmp == 0) {
-                break;
-            } else {
-                tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
-                if (tmp < 0) {
+            }
+            if (tmp > 0) {
+                if (_set_add(ret, key2, value2) < 0) {
                     goto fail;
-                }
-                if (tmp > 0) {
-                    if (_set_add(ret, key2, value2) < 0) {
-                        goto fail;
-                    }
                 }
             }
             Py_CLEAR(key2);
             Py_CLEAR(value2);
         }
+        if (tmp < 0) {
+            goto fail;
+        }
+        ht_finder_cleanup(&finder);
         Py_CLEAR(arg);
         Py_CLEAR(identity);
         Py_CLEAR(key);
@@ -312,6 +312,7 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
     Py_CLEAR(iter);
     return ret;
 fail:
+    ht_finder_cleanup(&finder);
     Py_CLEAR(arg);
     Py_CLEAR(identity);
     Py_CLEAR(key);
@@ -332,6 +333,7 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
     PyObject *value2 = NULL;
     PyObject *arg = NULL;
     PyObject *ret = NULL;
+    ht_finder_t finder = {0};
 
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
@@ -355,28 +357,27 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_finder_t finder;
-        ht_init_finder(&self->md->ht, identity, &finder);
+        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+            assert(PyErr_Occurred());
+            goto fail;
+        }
 
-        while (true) {
-            tmp = ht_find_next(&finder, NULL, &value2);
+        while ((tmp = ht_find_next(&finder, NULL, &value2)) > 0) {
+            tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
             if (tmp < 0) {
                 goto fail;
-            } else if (tmp == 0) {
-                break;
-            } else {
-                tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
-                if (tmp < 0) {
+            }
+            if (tmp > 0) {
+                if (_set_add(ret, key, value2) < 0) {
                     goto fail;
-                }
-                if (tmp > 0) {
-                    if (_set_add(ret, key, value2) < 0) {
-                        goto fail;
-                    }
                 }
             }
             Py_CLEAR(value2);
         }
+        if (tmp < 0) {
+            goto fail;
+        }
+        ht_finder_cleanup(&finder);
         Py_CLEAR(arg);
         Py_CLEAR(identity);
         Py_CLEAR(key);
@@ -388,6 +389,7 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
     Py_CLEAR(iter);
     return ret;
 fail:
+    ht_finder_cleanup(&finder);
     Py_CLEAR(arg);
     Py_CLEAR(identity);
     Py_CLEAR(key);
@@ -431,6 +433,7 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
     PyObject *value2 = NULL;
     PyObject *arg = NULL;
     PyObject *ret = NULL;
+    ht_finder_t finder = {0};
 
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
@@ -457,30 +460,30 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_finder_t finder;
-        ht_init_finder(&self->md->ht, identity, &finder);
+        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+            assert(PyErr_Occurred());
+            goto fail;
+        }
 
-        while (true) {
-            tmp = ht_find_next(&finder, NULL, &value2);
+        while ((tmp = ht_find_next(&finder, NULL, &value2)) > 0) {
+            tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
             if (tmp < 0) {
                 goto fail;
-            } else if (tmp == 0) {
-                if (PySet_Add(ret, arg) < 0) {
-                    goto fail;
-                }
+            }
+            if (tmp > 0) {
+                Py_CLEAR(value2);
                 break;
-            } else {
-                tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
-                if (tmp < 0) {
-                    goto fail;
-                }
-                if (tmp > 0) {
-                    Py_CLEAR(value2);
-                    break;
-                }
             }
             Py_CLEAR(value2);
         }
+        if (tmp < 0) {
+            goto fail;
+        } else if (tmp == 0) {
+            if (PySet_Add(ret, arg) < 0) {
+                goto fail;
+            }
+        }
+        ht_finder_cleanup(&finder);
         Py_CLEAR(arg);
         Py_CLEAR(identity);
         Py_CLEAR(key);
@@ -492,6 +495,7 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
     Py_CLEAR(iter);
     return ret;
 fail:
+    ht_finder_cleanup(&finder);
     Py_CLEAR(arg);
     Py_CLEAR(identity);
     Py_CLEAR(key);
@@ -709,6 +713,7 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
     PyObject *value2 = NULL;
     PyObject *ret = NULL;
     PyObject *iter = PyObject_GetIter(other);
+    ht_finder_t finder = {0};
 
     if (iter == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -734,31 +739,30 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_finder_t finder;
-        ht_init_finder(&self->md->ht, identity, &finder);
+        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+            assert(PyErr_Occurred());
+            goto fail;
+        }
 
-        while (true) {
-            tmp = ht_find_next(&finder, NULL, &value2);
+        while ((tmp = ht_find_next(&finder, NULL, &value2)) > 0) {
+            tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
             if (tmp < 0) {
                 goto fail;
-            } else if (tmp == 0) {
-                if (PySet_Add(ret, arg) < 0) {
-                    goto fail;
-                }
+            }
+            if (tmp > 0) {
+                Py_CLEAR(value2);
                 break;
-            } else {
-                tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
-                if (tmp < 0) {
-                    goto fail;
-                }
-                if (tmp > 0) {
-                    Py_CLEAR(value2);
-                    break;
-                }
             }
             Py_CLEAR(value2);
         }
-
+        if (tmp < 0 ) {
+            goto fail;
+        } else if (tmp == 0) {
+            if (PySet_Add(ret, arg) < 0) {
+                goto fail;
+            }
+        }
+        ht_finder_cleanup(&finder);
         Py_CLEAR(arg);
         Py_CLEAR(identity);
         Py_CLEAR(key);
@@ -770,6 +774,7 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
     Py_CLEAR(iter);
     return ret;
 fail:
+    ht_finder_cleanup(&finder);
     Py_CLEAR(arg);
     Py_CLEAR(identity);
     Py_CLEAR(key);
@@ -924,6 +929,7 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
 static inline PyObject *
 multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 {
+    ht_finder_t finder = {0};
     PyObject *iter = PyObject_GetIter(other);
     if (iter == NULL) {
         return NULL;
@@ -943,31 +949,31 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        ht_finder_t finder;
-        ht_init_finder(&self->md->ht, identity, &finder);
+        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+            assert(PyErr_Occurred());
+            goto fail;
+        }
 
-        while (true) {
-            tmp = ht_find_next(&finder, NULL, &value2);
+        while ((tmp = ht_find_next(&finder, NULL, &value2)) > 0) {
+            tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
+            Py_CLEAR(value2);
             if (tmp < 0) {
                 goto fail;
-            } else if (tmp == 0) {
-                Py_CLEAR(value2);
-                break;
-            } else {
-                tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
-                Py_CLEAR(value2);
-                if (tmp < 0) {
-                    goto fail;
-                }
-                if (tmp > 0) {
-                    Py_CLEAR(iter);
-                    Py_CLEAR(arg);
-                    Py_CLEAR(identity);
-                    Py_CLEAR(value);
-                    Py_RETURN_FALSE;
-                }
+            }
+            if (tmp > 0) {
+                ht_finder_cleanup(&finder);
+                Py_CLEAR(iter);
+                Py_CLEAR(arg);
+                Py_CLEAR(identity);
+                Py_CLEAR(value);
+                ASSERT_CONSISTENT(&self->md->ht, false);
+                Py_RETURN_FALSE;
             }
         }
+        if (tmp < 0) {
+            goto fail;
+        }
+        ht_finder_cleanup(&finder);
         Py_CLEAR(arg);
         Py_CLEAR(identity);
         Py_CLEAR(value);
@@ -976,8 +982,10 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
     if (PyErr_Occurred()) {
         return NULL;
     }
+    ASSERT_CONSISTENT(&self->md->ht, false);
     Py_RETURN_TRUE;
 fail:
+    ht_finder_cleanup(&finder);
     Py_CLEAR(iter);
     Py_CLEAR(arg);
     Py_CLEAR(identity);

@@ -45,9 +45,6 @@ typedef struct _htkeys {
     /* Size of the hash table (dk_indices) by bytes. */
     uint8_t dk_log2_index_bytes;
 
-    /* Version number -- Reset to 0 by any modification to keys */
-    uint32_t dk_version;
-
     /* Number of usable entries in dk_entries. */
     Py_ssize_t dk_usable;
 
@@ -135,7 +132,6 @@ htkeys_set_index(htkeys_t *keys, Py_ssize_t i, Py_ssize_t ix)
     int log2size = DK_LOG_SIZE(keys);
 
     assert(ix >= DKIX_DUMMY);
-    assert(keys->dk_version == 0);
 
     if (log2size < 8) {
         assert(ix <= 0x7f);
@@ -258,7 +254,6 @@ estimate_log2_keysize(Py_ssize_t n)
 static htkeys_t empty_htkeys = {
         0, /* dk_log2_size */
         3, /* dk_log2_index_bytes */
-        1, /* dk_version */
         0, /* dk_usable (immutable) */
         0, /* dk_nentries */
         {DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
@@ -314,7 +309,6 @@ htkeys_new(uint8_t log2_size)
     keys->dk_log2_index_bytes = log2_bytes;
     keys->dk_nentries = 0;
     keys->dk_usable = usable;
-    keys->dk_version = 0;
     memset(&keys->dk_indices[0], 0xff, ((size_t)1 << log2_bytes));
     memset(&keys->dk_indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
     return keys;
@@ -391,20 +385,16 @@ htkeys_find_empty_slot(htkeys_t *keys, Py_hash_t hash)
 }
 
 
-static Py_ssize_t
-htkeys_find_empty_slot_for_upd(htkeys_t *keys, Py_hash_t hash)
-{
-    const size_t mask = DK_MASK(keys);
-    size_t i = hash & mask;
-    Py_ssize_t ix = htkeys_get_index(keys, i);
-    for (size_t perturb = hash; ix >= 0 || ix == DKIX_DUMMY;) {
-        perturb >>= HT_PERTURB_SHIFT;
-        i = (i*5 + perturb + 1) & mask;
-        ix = htkeys_get_index(keys, i);
-    }
-    return i;
-}
+/* Iterator over slots/indexes for given hash.
+   N.B. The iterator MIGHT return the same slot
+   multiple times, eiter consequently (1, 2, 2, 3)
+   or with different slots in the middle (1, 2, 3, 1).
 
+   The caller is responsible to mark visited slots
+   and cleanup the mark after the iteration finish.
+
+   See ht_finder_t for an object designed for such operations.
+*/
 
 typedef struct _htkeysiter {
     htkeys_t *keys;
@@ -420,9 +410,9 @@ htkeysiter_init(htkeysiter_t *iter, htkeys_t *keys, Py_hash_t hash)
 {
     iter->keys = keys;
     iter->mask = DK_MASK(keys);
-    iter->slot = hash & iter->mask;
+    iter->perturb = (size_t)hash;
+    iter->slot = iter->perturb & iter->mask;
     iter->index = htkeys_get_index(iter->keys, iter->slot);
-    iter->perturb = hash;
 }
 
 static inline void

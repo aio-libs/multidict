@@ -49,6 +49,8 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
         return NULL;
     }
 
+    ASSERT_CONSISTENT(&self->ht, false);
+
     if (val == NULL) {
         if (_default != NULL) {
             Py_INCREF(_default);
@@ -193,6 +195,7 @@ multidict_copy(MultiDictObject *self)
     if (ht_update_from_ht(&new_multidict->ht, &self->ht, false) < 0) {
         goto fail;
     }
+    ASSERT_CONSISTENT(&new_multidict->ht, false);
     return (PyObject*)new_multidict;
 fail:
     Py_CLEAR(new_multidict);
@@ -213,6 +216,7 @@ _multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
     if (ht_update_from_ht(&new_multidict->ht, &self->md->ht, false) < 0) {
         goto fail;
     }
+    ASSERT_CONSISTENT(&new_multidict->ht, false);
     return (PyObject*)new_multidict;
 fail:
     Py_CLEAR(new_multidict);
@@ -237,6 +241,8 @@ multidict_getall(MultiDictObject *self, PyObject *const *args,
     if (ht_get_all(&self->ht, key, &list) <0) {
         return NULL;
     }
+
+    ASSERT_CONSISTENT(&self->ht, false);
 
     if (list == NULL) {
         if (_default != NULL) {
