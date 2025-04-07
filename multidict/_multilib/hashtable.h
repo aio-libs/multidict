@@ -22,7 +22,7 @@ typedef struct _hashtable {
     Py_ssize_t ma_used;
 
     uint64_t version;
-    bool calc_ci_indentity;
+    bool is_ci;
 
     htkeys_t * ma_keys;
 } ht_t;
@@ -105,7 +105,7 @@ _str_cmp(PyObject *s1, PyObject *s2)
 
 
 static inline PyObject *
-_key_to_ident(mod_state *state, PyObject *key)
+_key_to_identity(mod_state *state, PyObject *key)
 {
     if (IStr_Check(state, key)) {
         return Py_NewRef(((istrobject*)key)->canonical);
@@ -124,7 +124,7 @@ _key_to_ident(mod_state *state, PyObject *key)
 
 
 static inline PyObject *
-_ci_key_to_ident(mod_state *state, PyObject *key)
+_ci_key_to_identity(mod_state *state, PyObject *key)
 {
     if (IStr_Check(state, key)) {
         return Py_NewRef(((istrobject*)key)->canonical);
@@ -149,7 +149,7 @@ _ci_key_to_ident(mod_state *state, PyObject *key)
 
 
 static inline PyObject *
-_arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
+_arg_to_key(mod_state *state, PyObject *key, PyObject *identity)
 {
     if (PyUnicode_Check(key)) {
         return Py_NewRef(key);
@@ -162,13 +162,13 @@ _arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
 
 
 static inline PyObject *
-_ci_arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
+_ci_arg_to_key(mod_state *state, PyObject *key, PyObject *identity)
 {
     if (IStr_Check(state, key)) {
         return Py_NewRef(key);
     }
     if (PyUnicode_Check(key)) {
-        return IStr_New(state, key, ident);
+        return IStr_New(state, key, identity);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
@@ -274,7 +274,7 @@ _ht_init(ht_t *ht, mod_state *state,
                 bool calc_ci_identity, Py_ssize_t minused)
 {
     ht->state = state;
-    ht->calc_ci_indentity = calc_ci_identity;
+    ht->is_ci = calc_ci_identity;
     ht->ma_used = 0;
     ht->version = NEXT_VERSION();
 
@@ -351,18 +351,18 @@ ht_clone_from_ht(ht_t *ht, ht_t *other)
 static inline PyObject *
 ht_calc_identity(ht_t *ht, PyObject *key)
 {
-    if (ht->calc_ci_indentity)
-        return _ci_key_to_ident(ht->state, key);
-    return _key_to_ident(ht->state, key);
+    if (ht->is_ci)
+        return _ci_key_to_identity(ht->state, key);
+    return _key_to_identity(ht->state, key);
 }
 
 
 static inline PyObject *
-ht_calc_key(ht_t *ht, PyObject *key, PyObject *ident)
+ht_calc_key(ht_t *ht, PyObject *key, PyObject *identity)
 {
-    if (ht->calc_ci_indentity)
-        return _ci_arg_to_key(ht->state, key, ident);
-    return _arg_to_key(ht->state, key, ident);
+    if (ht->is_ci)
+        return _ci_arg_to_key(ht->state, key, identity);
+    return _arg_to_key(ht->state, key, identity);
 }
 
 
@@ -791,12 +791,12 @@ ht_contains(ht_t *ht, PyObject *key, PyObject **pret)
         }
     }
 
-    PyObject *ident = ht_calc_identity(ht, key);
-    if (ident == NULL) {
+    PyObject *identity = ht_calc_identity(ht, key);
+    if (identity == NULL) {
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(ident);
+    Py_hash_t hash = PyObject_Hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -813,9 +813,9 @@ ht_contains(ht_t *ht, PyObject *key, PyObject **pret)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(ident, entry->identity);
+        int tmp = _str_cmp(identity, entry->identity);
         if (tmp > 0) {
-            Py_DECREF(ident);
+            Py_DECREF(identity);
             if (pret != NULL) {
                 *pret = _ht_ensure_key(ht, entry);
                 if (*pret == NULL) {
@@ -829,13 +829,13 @@ ht_contains(ht_t *ht, PyObject *key, PyObject **pret)
         }
     }
 
-    Py_DECREF(ident);
+    Py_DECREF(identity);
     if (pret != NULL) {
         *pret = NULL;
     }
     return 0;
 fail:
-    Py_XDECREF(ident);
+    Py_XDECREF(identity);
     if (pret != NULL) {
         *pret = NULL;
     }
@@ -852,12 +852,12 @@ ht_get_one(ht_t *ht, PyObject *key, PyObject **ret)
         }
     }
 
-    PyObject *ident = ht_calc_identity(ht, key);
-    if (ident == NULL) {
+    PyObject *identity = ht_calc_identity(ht, key);
+    if (identity == NULL) {
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(ident);
+    Py_hash_t hash = PyObject_Hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -874,9 +874,9 @@ ht_get_one(ht_t *ht, PyObject *key, PyObject **ret)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(ident, entry->identity);
+        int tmp = _str_cmp(identity, entry->identity);
         if (tmp > 0) {
-            Py_DECREF(ident);
+            Py_DECREF(identity);
             *ret = Py_NewRef(entry->value);
             return 0;
         }
@@ -885,10 +885,10 @@ ht_get_one(ht_t *ht, PyObject *key, PyObject **ret)
         }
     }
 
-    Py_DECREF(ident);
+    Py_DECREF(identity);
     return 0;
 fail:
-    Py_XDECREF(ident);
+    Py_XDECREF(identity);
     return -1;
 }
 
@@ -959,12 +959,12 @@ ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
         }
     }
 
-    PyObject *ident = ht_calc_identity(ht, key);
-    if (ident == NULL) {
+    PyObject *identity = ht_calc_identity(ht, key);
+    if (identity == NULL) {
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(ident);
+    Py_hash_t hash = PyObject_Hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -982,9 +982,9 @@ ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(ident, entry->identity);
+        int tmp = _str_cmp(identity, entry->identity);
         if (tmp > 0) {
-            Py_DECREF(ident);
+            Py_DECREF(identity);
             ASSERT_CONSISTENT(ht, false);
             return Py_NewRef(entry->value);
         }
@@ -993,15 +993,15 @@ ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
         }
     }
 
-    if (_ht_add_with_hash(ht, hash, ident, key, value) < 0) {
+    if (_ht_add_with_hash(ht, hash, identity, key, value) < 0) {
         goto fail;
     }
 
-    Py_DECREF(ident);
+    Py_DECREF(identity);
     ASSERT_CONSISTENT(ht, false);
     return Py_NewRef(value);
 fail:
-    Py_XDECREF(ident);
+    Py_XDECREF(identity);
     return NULL;
 }
 
@@ -1017,12 +1017,12 @@ ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
 
     PyObject *value = NULL;
 
-    PyObject *ident = ht_calc_identity(ht, key);
-    if (ident == NULL) {
+    PyObject *identity = ht_calc_identity(ht, key);
+    if (identity == NULL) {
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(ident);
+    Py_hash_t hash = PyObject_Hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -1040,13 +1040,13 @@ ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(ident, entry->identity);
+        int tmp = _str_cmp(identity, entry->identity);
         if (tmp > 0) {
             value = Py_NewRef(entry->value);
             if (_ht_del_at(ht, iter.slot, entry) < 0) {
                 goto fail;
             }
-            Py_DECREF(ident);
+            Py_DECREF(identity);
             *ret = value;
             ht->version = NEXT_VERSION();
             ASSERT_CONSISTENT(ht, false);
@@ -1061,7 +1061,7 @@ ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
     return 0;
 fail:
     Py_XDECREF(value);
-    Py_XDECREF(ident);
+    Py_XDECREF(identity);
     return -1;
 }
 
@@ -1076,18 +1076,18 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
     }
     PyObject *lst = NULL;
 
-    PyObject *ident = ht_calc_identity(ht, key);
-    if (ident == NULL) {
+    PyObject *identity = ht_calc_identity(ht, key);
+    if (identity == NULL) {
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(ident);
+    Py_hash_t hash = PyObject_Hash(identity);
     if (hash == -1) {
         goto fail;
     }
 
     if (ht_len(ht) == 0) {
-        Py_DECREF(ident);
+        Py_DECREF(identity);
         return 0;
     }
 
@@ -1104,7 +1104,7 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(ident, entry->identity);
+        int tmp = _str_cmp(identity, entry->identity);
         if (tmp > 0) {
             if (lst == NULL) {
                 lst = PyList_New(1);
@@ -1128,11 +1128,11 @@ ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
     }
 
     *ret = lst;
-    Py_DECREF(ident);
+    Py_DECREF(identity);
     ASSERT_CONSISTENT(ht, false);
     return 0;
 fail:
-    Py_XDECREF(ident);
+    Py_XDECREF(identity);
     Py_XDECREF(lst);
     return -1;
 }
@@ -1364,7 +1364,7 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
     Py_hash_t hash;
     PyObject *identity = NULL;
     PyObject *key = NULL;
-    bool recalc_identity = ht->calc_ci_indentity != other->calc_ci_indentity;
+    bool recalc_identity = ht->is_ci != other->is_ci;
 
     if (other->ma_used == 0) {
         return 0;
