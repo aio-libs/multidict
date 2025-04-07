@@ -1366,6 +1366,10 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
     PyObject *key = NULL;
     bool recalc_identity = ht->calc_ci_indentity != other->calc_ci_indentity;
 
+    if (other->ma_used == 0) {
+        return 0;
+    }
+
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(ht_len(other) + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
@@ -1431,6 +1435,11 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
     PyObject *identity = NULL;
     PyObject *key = NULL;
     PyObject *value = NULL;
+
+    assert(PyDict_CheckExact(kwds));
+    if (PyDict_GET_SIZE(kwds) == 0) {
+        return 0;
+    }
 
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(PyDict_GET_SIZE(kwds) + ht->ma_used),
@@ -1575,9 +1584,15 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
     if (PyList_CheckExact(seq)) {
         kind = LIST;
         size = PyList_GET_SIZE(seq);
+        if (size == 0) {
+            return 0;
+        }
     } else if (PyTuple_CheckExact(seq)) {
         kind = TUPLE;
         size = PyTuple_GET_SIZE(seq);
+        if (size == 0) {
+            return 0;
+        }
     } else {
         kind = ITER;
         it = PyObject_GetIter(seq);
