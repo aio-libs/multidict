@@ -258,6 +258,7 @@ _ht_reserve(ht_t *ht, Py_ssize_t extra_size, bool update)
     if (new_size > DK_LOG_SIZE(ht->ma_keys)) {
         return _ht_resize(ht, new_size, update);
     }
+    return 0;
 }
 
 
