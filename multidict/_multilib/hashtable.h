@@ -400,6 +400,10 @@ _ht_add_with_hash_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
         if (_ht_resize_for_insert(ht) < 0) {
             return -1;
         }
+    } else if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return -1;
+        }
     }
     Py_ssize_t hashpos = htkeys_find_empty_slot(ht->ma_keys, hash);
     htkeys_set_index(ht->ma_keys, hashpos, ht->ma_keys->dk_nentries);
@@ -438,6 +442,10 @@ _ht_add_for_upd_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
     if (ht->ma_keys->dk_usable <= 0 || ht->ma_keys == &empty_htkeys) {
         /* Need to resize. */
         if (_ht_resize_for_update(ht) < 0) {
+            return -1;
+        }
+    } else if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, true) < 0) {
             return -1;
         }
     }
@@ -500,6 +508,7 @@ _ht_del_at(ht_t *ht, size_t slot, entry_t *entry)
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
     htkeys_set_index(ht->ma_keys, slot, DKIX_DUMMY);
+    ht->ma_keys->dk_ndummies += 1;
     ht->ma_used -= 1;
     return 0;
 }
@@ -776,6 +785,12 @@ ht_contains(ht_t *ht, PyObject *key, PyObject **pret)
         return 0;
     }
 
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return -1;
+        }
+    }
+
     PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
@@ -831,6 +846,12 @@ fail:
 static inline int
 ht_get_one(ht_t *ht, PyObject *key, PyObject **ret)
 {
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return -1;
+        }
+    }
+
     PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
@@ -875,7 +896,14 @@ fail:
 static inline int
 ht_get_all(ht_t *ht, PyObject *key, PyObject **ret)
 {
-    PyObject *res = NULL;
+    *ret == NULL;
+
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return -1;
+        }
+    }
+
     ht_finder_t finder = {0};
 
     PyObject *identity = ht_calc_identity(ht, key);
@@ -892,15 +920,15 @@ ht_get_all(ht_t *ht, PyObject *key, PyObject **ret)
     PyObject *value = NULL;;
 
     while ((tmp = ht_find_next(&finder, NULL, &value)) > 0) {
-        if (res == NULL) {
-            res = PyList_New(1);
-            if (res == NULL) {
+        if (*ret == NULL) {
+            *ret = PyList_New(1);
+            if (*ret == NULL) {
                 goto fail;
             }
-            PyList_SET_ITEM(res, 0, value);
+            PyList_SET_ITEM(*ret, 0, value);
             value = NULL;  // stealed by PyList_SET_ITEM
         } else {
-            if (PyList_Append(res, value) < 0) {
+            if (PyList_Append(*ret, value) < 0) {
                 goto fail;
             }
             Py_CLEAR(value);
@@ -910,9 +938,6 @@ ht_get_all(ht_t *ht, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    if (res != NULL) {
-        *ret = res;
-    }
     ht_finder_cleanup(&finder);
     Py_DECREF(identity);
     return 0;
@@ -920,7 +945,7 @@ fail:
     ht_finder_cleanup(&finder);
     Py_XDECREF(identity);
     Py_XDECREF(value);
-    Py_XDECREF(res);
+    Py_CLEAR(*ret);
     return -1;
 }
 
@@ -928,6 +953,12 @@ fail:
 static inline PyObject *
 ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
 {
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return NULL;
+        }
+    }
+
     PyObject *ident = ht_calc_identity(ht, key);
     if (ident == NULL) {
         goto fail;
@@ -978,6 +1009,12 @@ fail:
 static inline int
 ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
 {
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return -1;
+        }
+    }
+
     PyObject *value = NULL;
 
     PyObject *ident = ht_calc_identity(ht, key);
@@ -1032,6 +1069,11 @@ fail:
 static inline int
 ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
 {
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return -1;
+        }
+    }
     PyObject *lst = NULL;
 
     PyObject *ident = ht_calc_identity(ht, key);
@@ -1104,6 +1146,12 @@ ht_pop_item(ht_t *ht)
         return NULL;
     }
 
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return NULL;
+        }
+    }
+
     entry_t *entries = DK_ENTRIES(ht->ma_keys);
 
     Py_ssize_t pos = ht->ma_keys->dk_nentries - 1;
@@ -1142,6 +1190,12 @@ static inline int
 _ht_replace(ht_t *ht, PyObject * key, PyObject *value,
             PyObject *identity, Py_hash_t hash)
 {
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return -1;
+        }
+    }
+
     int found = 0;
     ht_finder_t finder = {0};
     if (ht_init_finder(ht, identity, &finder) < 0) {
@@ -1213,6 +1267,11 @@ static inline int
 _ht_update(ht_t *ht, Py_hash_t hash, PyObject *identity,
            PyObject *key, PyObject *value)
 {
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, true) < 0) {
+            return -1;
+        }
+    }
     htkeysiter_t iter;
     htkeysiter_init(&iter, ht->ma_keys, hash);
     entry_t *entries = DK_ENTRIES(ht->ma_keys);
@@ -1285,8 +1344,14 @@ ht_post_update(ht_t *ht)
                    and not replaced with a new value */
                 Py_CLEAR(entry->identity);
                 htkeys_set_index(ht->ma_keys, slot, DKIX_DUMMY);
+                ht->ma_keys->dk_ndummies += 1;
                 ht->ma_used -= 1;
             }
+        }
+    }
+    if (ht->ma_keys->dk_ndummies > htkeys_dummies_fraction(ht->ma_keys)) {
+        if (htkeys_rebuild_indices(ht->ma_keys, false) < 0) {
+            return -1;
         }
     }
     return 0;

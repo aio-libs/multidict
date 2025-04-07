@@ -51,6 +51,9 @@ typedef struct _htkeys {
     /* Number of used entries in dk_entries. */
     Py_ssize_t dk_nentries;
 
+    /* Number of DUMMY entries in dk_entries. */
+    Py_ssize_t dk_ndummies;
+
     /* Actual hash table of dk_size entries. It holds indices in dk_entries,
        or DKIX_EMPTY(-1) or DKIX_DUMMY(-2).
 
@@ -254,6 +257,7 @@ static htkeys_t empty_htkeys = {
         3, /* dk_log2_index_bytes */
         0, /* dk_usable (immutable) */
         0, /* dk_nentries */
+        0, /* dk_ndummies */
         {DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
          DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY}, /* dk_indices */
 };
@@ -268,7 +272,7 @@ htkeys_sizeof(htkeys_t *keys)
         + sizeof(entry_t) * usable);
 }
 
-static htkeys_t*
+static inline htkeys_t*
 htkeys_new(uint8_t log2_size)
 {
     Py_ssize_t usable;
@@ -307,12 +311,13 @@ htkeys_new(uint8_t log2_size)
     keys->dk_log2_index_bytes = log2_bytes;
     keys->dk_nentries = 0;
     keys->dk_usable = usable;
+    keys->dk_ndummies = 0;
     memset(&keys->dk_indices[0], 0xff, ((size_t)1 << log2_bytes));
     memset(&keys->dk_indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
     return keys;
 }
 
-static void
+static inline void
 htkeys_free(htkeys_t *dk)
 {
     /* TODO: CPython uses freelist of key objects with unicode type
@@ -324,7 +329,7 @@ htkeys_free(htkeys_t *dk)
 /*
 Internal routine used by ht_resize() to build a hashtable of entries.
 */
-static int
+static inline int
 htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 {
     size_t mask = DK_MASK(keys);
@@ -338,11 +343,12 @@ htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
         }
         htkeys_set_index(keys, i, ix);
     }
+    keys->dk_ndummies = 0;
     return 0;
 }
 
 
-static int
+static inline int
 htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 {
     size_t mask = DK_MASK(keys);
@@ -361,14 +367,33 @@ htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
         }
         htkeys_set_index(keys, i, ix);
     }
+    keys->dk_ndummies = 0;
     return 0;
+}
+
+
+static inline Py_ssize_t
+htkeys_dummies_fraction(htkeys_t *keys)
+{
+    return DK_SIZE(keys) / 3;
+}
+
+
+static inline int
+htkeys_rebuild_indices(htkeys_t *keys, bool update)
+{
+    if (update) {
+        return htkeys_build_indices_for_upd(keys, DK_ENTRIES(keys), keys->dk_nentries);
+    } else {
+        return htkeys_build_indices(keys, DK_ENTRIES(keys), keys->dk_nentries);
+    }
 }
 
 
 /* Internal function to find slot for an item from its hash
    when it is known that the key is not present in the dict.
  */
-static Py_ssize_t
+static inline Py_ssize_t
 htkeys_find_empty_slot(htkeys_t *keys, Py_hash_t hash)
 {
     const size_t mask = DK_MASK(keys);
