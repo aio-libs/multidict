@@ -233,7 +233,7 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject *self, PyObject *arg,
     return 1;
 }
 
-static int
+static inline int
 _set_add(PyObject *set, PyObject *key, PyObject * value)
 {
     PyObject *tpl = PyTuple_Pack(2, key, value);
