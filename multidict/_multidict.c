@@ -513,6 +513,7 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         goto fail;
     }
     Py_CLEAR(arg);
+    ASSERT_CONSISTENT(&self->ht, false);
     return 0;
 fail:
     Py_CLEAR(arg);
@@ -533,7 +534,7 @@ multidict_add(MultiDictObject *self, PyObject *const *args,
     if (ht_add(&self->ht, key, val) < 0) {
         return NULL;
     }
-
+    ASSERT_CONSISTENT(&self->ht, false);
     Py_RETURN_NONE;
 }
 
@@ -548,6 +549,7 @@ multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
         goto fail;
     }
     Py_CLEAR(arg);
+    ASSERT_CONSISTENT(&self->ht, false);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);
@@ -561,6 +563,7 @@ multidict_clear(MultiDictObject *self)
         return NULL;
     }
 
+    ASSERT_CONSISTENT(&self->ht, false);
     Py_RETURN_NONE;
 }
 
@@ -575,6 +578,7 @@ multidict_setdefault(MultiDictObject *self, PyObject *const *args,
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
+    ASSERT_CONSISTENT(&self->ht, false);
     return ht_set_default(&self->ht, key, _default);
 }
 
@@ -594,6 +598,7 @@ multidict_popone(MultiDictObject *self, PyObject *const *args,
         return NULL;
     }
 
+    ASSERT_CONSISTENT(&self->ht, false);
     if (ret_val == NULL) {
         if (_default != NULL) {
             Py_INCREF(_default);
@@ -627,6 +632,7 @@ multidict_pop(
         return NULL;
     }
 
+    ASSERT_CONSISTENT(&self->ht, false);
     if (ret_val == NULL) {
         if (_default != NULL) {
             Py_INCREF(_default);
@@ -656,6 +662,7 @@ multidict_popall(MultiDictObject *self, PyObject *const *args,
         return NULL;
     }
 
+    ASSERT_CONSISTENT(&self->ht, false);
     if (ret_val == NULL) {
         if (_default != NULL) {
             Py_INCREF(_default);
@@ -686,6 +693,7 @@ multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
         goto fail;
     }
     Py_CLEAR(arg);
+    ASSERT_CONSISTENT(&self->ht, false);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);

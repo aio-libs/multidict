@@ -40,6 +40,7 @@ typedef struct _ht_finder {
     uint64_t version;
     Py_hash_t hash;
     PyObject *identity; // borrowed ref
+    bool first;
 } ht_finder_t;
 
 
@@ -617,8 +618,27 @@ ht_init_finder(ht_t *ht, PyObject *identity, ht_finder_t *finder)
         return -1;
     }
     htkeysiter_init(&finder->iter, finder->ht->ma_keys, finder->hash);
+    finder->first = true;
     return -0;
 }
+
+
+static inline Py_ssize_t
+ht_finder_slot(ht_finder_t *finder)
+{
+    assert(finder->ht != NULL);
+    return finder->iter.slot;
+}
+
+
+static inline Py_ssize_t
+ht_finder_index(ht_finder_t *finder)
+{
+    assert(finder->ht != NULL);
+    assert(finder->iter.index >= 0);
+    return finder->iter.index;
+}
+
 
 static inline int
 ht_find_next(ht_finder_t *finder, PyObject **pkey, PyObject **pvalue)
@@ -634,6 +654,10 @@ ht_find_next(ht_finder_t *finder, PyObject **pkey, PyObject **pvalue)
     }
 
     entry_t *entries = DK_ENTRIES(finder->ht->ma_keys);
+    if (!finder->first) {
+        htkeysiter_next(&finder->iter);
+        finder->first = false;
+    }
 
     for (;finder->iter.index != DKIX_EMPTY; htkeysiter_next(&finder->iter)) {
         if (finder->iter.index < 0) {
@@ -665,10 +689,9 @@ ht_find_next(ht_finder_t *finder, PyObject **pkey, PyObject **pvalue)
         if (pvalue) {
             *pvalue = Py_NewRef(entry->value);
         }
-
-        htkeysiter_next(&finder->iter);
         return 1;
     }
+    ret = 0;
 cleanup:
     if (pkey) {
         *pkey = NULL;
@@ -1076,36 +1099,34 @@ _ht_replace(ht_t *ht, PyObject * key, PyObject *value,
             PyObject *identity, Py_hash_t hash)
 {
     int found = 0;
-    htkeysiter_t iter;
-    htkeysiter_init(&iter, ht->ma_keys, hash);
+    ht_finder_t finder = {0};
+    if (ht_init_finder(ht, identity, &finder) < 0) {
+        assert(PyErr_Occurred());
+        goto fail;
+    }
     entry_t *entries = DK_ENTRIES(ht->ma_keys);
 
-    for(; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
-            continue;
-        }
-        entry_t *entry = entries + iter.index;
+    int tmp;
 
-        if (hash != entry->hash) {
-            continue;
-        }
-        int tmp = _str_cmp(identity, entry->identity);
-        if (tmp > 0) {
-            if (!found) {
-                found = 1;
-                Py_SETREF(entry->key, Py_NewRef(key));
-                Py_SETREF(entry->value, Py_NewRef(value));
-            } else {
-                if (_ht_del_at(ht, iter.slot, entry) < 0) {
-                    goto fail;
-                }
+    // don't grab neither key nor value but use the calculated index
+    while ((tmp = ht_find_next(&finder, NULL, NULL)) > 0) {
+        entry_t *entry = entries + ht_finder_index(&finder);
+        if (!found) {
+            found = 1;
+            Py_SETREF(entry->key, Py_NewRef(key));
+            Py_SETREF(entry->value, Py_NewRef(value));
+            entry->hash = -1;
+        } else {
+            if (_ht_del_at(ht, ht_finder_slot(&finder), entry) < 0) {
+                goto fail;
             }
         }
-        else if (tmp < 0) {
-            goto fail;
-        }
+    }
+    if (tmp < 0) {
+        goto fail;
     }
 
+    ht_finder_cleanup(&finder);
     if (!found) {
         if (_ht_add_with_hash(ht, hash, identity, key, value) < 0) {
             goto fail;
@@ -1117,6 +1138,7 @@ _ht_replace(ht_t *ht, PyObject * key, PyObject *value,
         return 0;
     }
 fail:
+    ht_finder_cleanup(&finder);
     return -1;
 }
 
