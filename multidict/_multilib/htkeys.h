@@ -169,11 +169,10 @@ static inline Py_ssize_t USABLE_FRACTION(Py_ssize_t n)
 }
 
 
-#ifndef _Py_bit_length
 // Return the index of the most significant 1 bit in 'x'. This is the smallest
 // integer k such that x < 2**k. Equivalent to floor(log2(x)) + 1 for x != 0.
 static inline int
-_Py_bit_length(unsigned long x)
+_ht_bit_length(unsigned long x)
 {
 #if (defined(__clang__) || defined(__GNUC__))
     if (x != 0) {
@@ -208,7 +207,6 @@ _Py_bit_length(unsigned long x)
     return msb;
 #endif
 }
-#endif
 
 /* Find the smallest dk_size >= minsize. */
 static inline uint8_t
@@ -216,7 +214,7 @@ calculate_log2_keysize(Py_ssize_t minsize)
 {
 #if SIZEOF_LONG == SIZEOF_SIZE_T
     minsize = (minsize | HT_MINSIZE) - 1;
-    return _Py_bit_length(minsize | (HT_MINSIZE-1));
+    return _ht_bit_length(minsize | (HT_MINSIZE-1));
 #elif defined(_MSC_VER)
     // On 64bit Windows, sizeof(long) == 4.
     minsize = (minsize | HT_MINSIZE) - 1;
