@@ -1260,8 +1260,10 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(ht_len(other) + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
-    if (ht_resize(ht, new_size, update)) {
-        return -1;
+    if (new_size > ht->ma_keys->dk_log2_size) {
+        if (ht_resize(ht, new_size, update)) {
+            return -1;
+        }
     }
 
     entry_t *entries = DK_ENTRIES(other->ma_keys);
@@ -1324,8 +1326,10 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(PyDict_GET_SIZE(kwds) + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
-    if (ht_resize(ht, new_size, update)) {
-        return -1;
+    if (new_size > ht->ma_keys->dk_log2_size) {
+        if (ht_resize(ht, new_size, update)) {
+            return -1;
+        }
     }
 
     while(PyDict_Next(kwds, &pos, &key, &value)) {
@@ -1453,8 +1457,10 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
     uint8_t new_size = Py_MAX(
         estimate_log2_keysize(length_hint + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
-    if (ht_resize(ht, new_size, update)) {
-        return -1;
+    if (new_size > ht->ma_keys->dk_log2_size) {
+        if (ht_resize(ht, new_size, update)) {
+            return -1;
+        }
     }
 
     if (PyList_CheckExact(seq)) {
