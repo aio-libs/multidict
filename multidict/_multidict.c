@@ -542,7 +542,11 @@ static inline PyObject *
 multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *arg = NULL;
-    if (_multidict_extend_parse_args(args, kwds, "extend", &arg) < 0) {
+    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "extend", &arg);
+    if (size < 0) {
+        goto fail;
+    }
+    if (ht_reserve(&self->ht, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "extend", false) < 0) {
@@ -686,7 +690,11 @@ static inline PyObject *
 multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *arg = NULL;
-    if (_multidict_extend_parse_args(args, kwds, "update", &arg) < 0) {
+    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "update", &arg);
+    if (size < 0) {
+        goto fail;
+    }
+    if (ht_reserve(&self->ht, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "update", true) < 0) {

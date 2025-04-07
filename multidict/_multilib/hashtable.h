@@ -178,7 +178,7 @@ _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *ident)
 
 
 static inline int
-ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
+_ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
 {
     htkeys_t *oldkeys, *newkeys;
 
@@ -238,16 +238,33 @@ ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
 
 
 static inline int
-ht_resize_for_insert(ht_t *ht)
+_ht_resize_for_insert(ht_t *ht)
 {
-    return ht_resize(ht, calculate_log2_keysize(GROWTH_RATE(ht)), false);
+    return _ht_resize(ht, calculate_log2_keysize(GROWTH_RATE(ht)), false);
 }
 
 
 static inline int
-ht_resize_for_update(ht_t *ht)
+_ht_resize_for_update(ht_t *ht)
 {
-    return ht_resize(ht, calculate_log2_keysize(GROWTH_RATE(ht)), true);
+    return _ht_resize(ht, calculate_log2_keysize(GROWTH_RATE(ht)), true);
+}
+
+
+static inline int
+_ht_reserve(ht_t *ht, Py_ssize_t extra_size, bool update)
+{
+    uint8_t new_size = estimate_log2_keysize(extra_size + ht->ma_used);
+    if (new_size > DK_LOG_SIZE(ht->ma_keys)) {
+        return _ht_resize(ht, new_size, update);
+    }
+}
+
+
+static inline int
+ht_reserve(ht_t *ht, Py_ssize_t extra_size)
+{
+    return _ht_reserve(ht, extra_size, false);
 }
 
 
@@ -353,7 +370,7 @@ _ht_add_with_hash_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
 {
     if (ht->ma_keys->dk_usable <= 0 || ht->ma_keys == &empty_htkeys) {
         /* Need to resize. */
-        if (ht_resize_for_insert(ht) < 0) {
+        if (_ht_resize_for_insert(ht) < 0) {
             return -1;
         }
     }
@@ -393,7 +410,7 @@ _ht_add_for_upd_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
 {
     if (ht->ma_keys->dk_usable <= 0 || ht->ma_keys == &empty_htkeys) {
         /* Need to resize. */
-        if (ht_resize_for_update(ht) < 0) {
+        if (_ht_resize_for_update(ht) < 0) {
             return -1;
         }
     }
@@ -1261,7 +1278,7 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
         estimate_log2_keysize(ht_len(other) + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
     if (new_size > ht->ma_keys->dk_log2_size) {
-        if (ht_resize(ht, new_size, update)) {
+        if (_ht_resize(ht, new_size, update)) {
             return -1;
         }
     }
@@ -1327,7 +1344,7 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
         estimate_log2_keysize(PyDict_GET_SIZE(kwds) + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
     if (new_size > ht->ma_keys->dk_log2_size) {
-        if (ht_resize(ht, new_size, update)) {
+        if (_ht_resize(ht, new_size, update)) {
             return -1;
         }
     }
@@ -1458,7 +1475,7 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
         estimate_log2_keysize(length_hint + ht->ma_used),
         DK_LOG_SIZE(ht->ma_keys));
     if (new_size > ht->ma_keys->dk_log2_size) {
-        if (ht_resize(ht, new_size, update)) {
+        if (_ht_resize(ht, new_size, update)) {
             return -1;
         }
     }
