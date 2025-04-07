@@ -322,6 +322,32 @@ ci_ht_init(ht_t *ht, mod_state *state, Py_ssize_t size)
 }
 
 
+static inline int
+ht_clone_from_ht(ht_t *ht, ht_t *other)
+{
+    ASSERT_CONSISTENT(other, false);
+    memcpy(ht, other, sizeof(ht_t));
+    if (other->ma_keys != &empty_htkeys) {
+        size_t size = htkeys_sizeof(other->ma_keys);
+        htkeys_t *keys = PyMem_Malloc(size);
+        if (keys == NULL) {
+            PyErr_NoMemory();
+            return -1;
+        }
+        memcpy(keys, other->ma_keys, size);
+        entry_t *entry = DK_ENTRIES(keys);
+        for (Py_ssize_t idx = 0; idx < keys->dk_nentries; idx++, entry++) {
+            Py_XINCREF(entry->identity);
+            Py_XINCREF(entry->key);
+            Py_XINCREF(entry->value);
+        }
+        ht->ma_keys = keys;
+    }
+    ASSERT_CONSISTENT(ht, false);
+    return 0;
+}
+
+
 static inline PyObject *
 ht_calc_identity(ht_t *ht, PyObject *key)
 {

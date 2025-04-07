@@ -71,7 +71,6 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
 {
     mod_state *state = self->ht.state;
     PyObject *seq  = NULL;
-    ht_t *list;
 
     if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
@@ -79,13 +78,13 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
 
     if (arg != NULL) {
         if (AnyMultiDict_Check(state, arg)) {
-            list = &((MultiDictObject*)arg)->ht;
-            if (ht_update_from_ht(&self->ht, list, update) < 0) {
+            ht_t *ht = &((MultiDictObject*)arg)->ht;
+            if (ht_update_from_ht(&self->ht, ht, update) < 0) {
                 goto fail;
             }
         } else if (AnyMultiDictProxy_Check(state, arg)) {
-            list = &((MultiDictProxyObject*)arg)->md->ht;
-            if (ht_update_from_ht(&self->ht, list, update) < 0) {
+            ht_t *ht = &((MultiDictProxyObject*)arg)->md->ht;
+            if (ht_update_from_ht(&self->ht, ht, update) < 0) {
                 goto fail;
             }
         } else if (PyDict_CheckExact(arg)) {
@@ -180,47 +179,27 @@ _multidict_extend_parse_args(PyObject *args, PyObject *kwds,
 static inline PyObject *
 multidict_copy(MultiDictObject *self)
 {
-    MultiDictObject *new_multidict = NULL;
-
-    new_multidict = (MultiDictObject*)PyType_GenericNew(
-        Py_TYPE(self), NULL, NULL);
-    if (new_multidict == NULL) {
+    PyObject * ret = PyType_GenericNew(Py_TYPE(self), NULL, NULL);
+    if (ret == NULL) {
         goto fail;
     }
 
-    if (Py_TYPE(self)->tp_init((PyObject*)new_multidict, NULL, NULL) < 0) {
+    MultiDictObject *new_md = (MultiDictObject*) ret;
+    if (ht_clone_from_ht(&new_md->ht, &self->ht) < 0) {
         goto fail;
     }
-
-    if (ht_update_from_ht(&new_multidict->ht, &self->ht, false) < 0) {
-        goto fail;
-    }
-    ASSERT_CONSISTENT(&new_multidict->ht, false);
-    return (PyObject*)new_multidict;
+    ASSERT_CONSISTENT(&new_md->ht, false);
+    return ret;
 fail:
-    Py_CLEAR(new_multidict);
+    Py_XDECREF(ret);
     return NULL;
 }
+
 
 static inline PyObject *
 _multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
 {
-    MultiDictObject *new_multidict = NULL;
-    new_multidict = (MultiDictObject*)PyType_GenericNew(type, NULL, NULL);
-    if (new_multidict == NULL) {
-        goto fail;
-    }
-    if (type->tp_init((PyObject*)new_multidict, NULL, NULL) < 0) {
-        goto fail;
-    }
-    if (ht_update_from_ht(&new_multidict->ht, &self->md->ht, false) < 0) {
-        goto fail;
-    }
-    ASSERT_CONSISTENT(&new_multidict->ht, false);
-    return (PyObject*)new_multidict;
-fail:
-    Py_CLEAR(new_multidict);
-    return NULL;
+    return multidict_copy(self->md);
 }
 
 
