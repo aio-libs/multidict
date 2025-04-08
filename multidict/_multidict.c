@@ -432,7 +432,7 @@ multidict_tp_dealloc(MultiDictObject *self)
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
     PyObject_ClearWeakRefs((PyObject *)self);
-    md_dealloc(self);
+    md_clear(self);
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END // there should be no code after this
 }

@@ -1877,11 +1877,9 @@ md_clear(MultiDictObject *md)
     entry_t *entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
-        if (entry->identity != NULL) {
-            Py_CLEAR(entry->identity);
-            Py_CLEAR(entry->key);
-            Py_CLEAR(entry->value);
-        }
+        Py_CLEAR(entry->identity);
+        Py_CLEAR(entry->key);
+        Py_CLEAR(entry->value);
     }
 
     md->used = 0;
@@ -1893,26 +1891,6 @@ md_clear(MultiDictObject *md)
     return 0;
 }
 
-
-static inline void
-md_dealloc(MultiDictObject *md)
-{
-    if (md->keys == NULL) {
-        return;
-    }
-    if (md->keys != &empty_htkeys) {
-        entry_t *entries = htkeys_entries(md->keys);
-        for (Py_ssize_t idx=0; idx<md->keys->nentries; ++idx) {
-            entry_t *entry = entries + idx;
-            Py_XDECREF(entry->identity);
-            Py_XDECREF(entry->key);
-            Py_XDECREF(entry->value);
-        }
-
-        htkeys_free(md->keys);
-        md->keys = &empty_htkeys;
-    }
-}
 
 static inline int
 _md_check_consistency(MultiDictObject *md, bool update)
