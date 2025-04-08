@@ -485,12 +485,27 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (size < 0) {
         goto fail;
     }
+    if (arg != NULL && kwds == NULL) {
+        ht_t *other = NULL;
+        if (AnyMultiDict_Check(state, arg)) {
+            other = &((MultiDictObject*)arg)->ht;
+        } else if (AnyMultiDictProxy_Check(state, arg)) {
+            other = &((MultiDictProxyObject*)arg)->md->ht;
+        }
+        if (other != NULL && !other->is_ci) {
+            if (ht_clone_from_ht(&self->ht, other) < 0) {
+                goto fail;
+            }
+            goto done;
+        }
+    }
     if (ht_init(&self->ht, state, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "MultiDict", false) < 0) {
         goto fail;
     }
+done:
     Py_CLEAR(arg);
     ASSERT_CONSISTENT(&self->ht, false);
     return 0;
@@ -920,12 +935,27 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (size < 0) {
         goto fail;
     }
+    if (arg != NULL && kwds == NULL) {
+        ht_t *other = NULL;
+        if (AnyMultiDict_Check(state, arg)) {
+            other = &((MultiDictObject*)arg)->ht;
+        } else if (AnyMultiDictProxy_Check(state, arg)) {
+            other = &((MultiDictProxyObject*)arg)->md->ht;
+        }
+        if (other != NULL && other->is_ci) {
+            if (ht_clone_from_ht(&self->ht, other) < 0) {
+                goto fail;
+            }
+            goto done;
+        }
+    }
     if (ci_ht_init(&self->ht, state, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "CIMultiDict", false) < 0) {
         goto fail;
     }
+done:
     Py_CLEAR(arg);
     ASSERT_CONSISTENT(&self->ht, false);
     return 0;
