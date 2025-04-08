@@ -28,9 +28,8 @@ typedef struct entry {
 } entry_t;
 
 
-#define DKIX_EMPTY  (-1)
-#define DKIX_DUMMY  (-2)  /* Used internally */
-#define DKIX_ERROR  (-3)
+#define DKIX_EMPTY  (-1)  /* empty (never used) slot */
+#define DKIX_DUMMY  (-2)  /* deleted slot */
 
 
 #define HT_LOG_MINSIZE 3
@@ -61,9 +60,9 @@ typedef struct _htkeys {
 
        The size in bytes of an indice depends on dk_size:
 
-       - 1 byte if dk_size <= 0xff (char*)
-       - 2 bytes if dk_size <= 0xffff (int16_t*)
-       - 4 bytes if dk_size <= 0xffffffff (int32_t*)
+       - 1 byte if DK_SIZE <= 0xff (char*)
+       - 2 bytes if DK_SIZE <= 0xffff (int16_t*)
+       - 4 bytes if DK_SIZE <= 0xffffffff (int32_t*)
        - 8 bytes otherwise (int64_t*)
 
        Dynamically sized, SIZEOF_VOID_P is minimum. */
@@ -71,25 +70,21 @@ typedef struct _htkeys {
 
 } htkeys_t;
 
-static inline uint8_t DK_LOG_SIZE(const htkeys_t *dk) {
-    return dk->dk_log2_size;
-}
-
 #if SIZEOF_VOID_P > 4
-static inline Py_ssize_t DK_SIZE(const htkeys_t *dk)
+static inline Py_ssize_t DK_SIZE(const htkeys_t *keys)
 {
-    return ((int64_t)1)<<DK_LOG_SIZE(dk);
+    return ((int64_t)1) << keys->dk_log2_size;
 }
 #else
-static inline Py_ssize_t DK_SIZE(const htkeys_t *dk)
+static inline Py_ssize_t DK_SIZE(const htkeys_t *keys)
 {
-    return 1<<DK_LOG_SIZE(dk);
+    return 1<< keys->dk_log2_size;
 }
 #endif
 
-static inline Py_ssize_t DK_MASK(const htkeys_t *dk)
+static inline Py_ssize_t DK_MASK(const htkeys_t *keys)
 {
-    return DK_SIZE(dk)-1;
+    return DK_SIZE(keys)-1;
 }
 
 
@@ -107,7 +102,7 @@ static inline entry_t* DK_ENTRIES(const htkeys_t *dk) {
 static inline Py_ssize_t
 htkeys_get_index(const htkeys_t *keys, Py_ssize_t i)
 {
-    int log2size = DK_LOG_SIZE(keys);
+    uint8_t log2size = keys->dk_log2_size;
     Py_ssize_t ix;
 
     if (log2size < 8) {
@@ -132,7 +127,7 @@ htkeys_get_index(const htkeys_t *keys, Py_ssize_t i)
 static inline void
 htkeys_set_index(htkeys_t *keys, Py_ssize_t i, Py_ssize_t ix)
 {
-    int log2size = DK_LOG_SIZE(keys);
+    uint8_t log2size = keys->dk_log2_size;
 
     assert(ix >= DKIX_DUMMY);
 
