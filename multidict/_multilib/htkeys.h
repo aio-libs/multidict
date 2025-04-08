@@ -258,7 +258,7 @@ static htkeys_t empty_htkeys = {
 };
 
 
-static inline size_t
+static inline Py_ssize_t
 htkeys_sizeof(htkeys_t *keys)
 {
     Py_ssize_t usable = USABLE_FRACTION((size_t)1<<keys->dk_log2_size);
@@ -270,12 +270,11 @@ htkeys_sizeof(htkeys_t *keys)
 static inline htkeys_t*
 htkeys_new(uint8_t log2_size)
 {
-    Py_ssize_t usable;
-    int log2_bytes;
-
     assert(log2_size >= HT_LOG_MINSIZE);
 
-    usable = USABLE_FRACTION(((size_t)1)<<log2_size);
+    Py_ssize_t usable = USABLE_FRACTION(((size_t)1)<<log2_size);
+    uint8_t log2_bytes;
+
     if (log2_size < 8) {
         log2_bytes = log2_size;
     }
