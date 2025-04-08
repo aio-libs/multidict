@@ -880,12 +880,30 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
     int tmp;
     int ret = 0;
 
-    if (!PyTuple_CheckExact(obj) || PyTuple_GET_SIZE(obj) != 2) {
-        return 0;
+    if (PyTuple_CheckExact(obj) && PyTuple_GET_SIZE(obj) != 2) {
+        key = Py_NewRef(PyTuple_GET_ITEM(obj, 0));
+        value = Py_NewRef(PyTuple_GET_ITEM(obj, 1));
+    } else if (PyList_CheckExact(obj) && PyList_GET_SIZE(obj) != 2) {
+        key = Py_NewRef(PyList_GET_ITEM(obj, 0));
+        value = Py_NewRef(PyList_GET_ITEM(obj, 1));
+    } else {
+        tmp = PyObject_Length(obj);
+        if (tmp < 0) {
+            PyErr_Clear();
+            return 0;
+        }
+        if (tmp != 2) {
+            return 0;
+        }
+        key = PySequence_GetItem(obj, 0);
+        if (key == NULL) {
+            return -1;
+        }
+        value = PySequence_GetItem(obj, 1);
+        if (value == NULL) {
+            return -1;
+        }
     }
-
-    key = Py_NewRef(PyTuple_GET_ITEM(obj, 0));
-    value = Py_NewRef(PyTuple_GET_ITEM(obj, 1));
 
     identity = md_calc_identity(self->md, key);
     if (identity == NULL) {
