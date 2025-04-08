@@ -1960,18 +1960,18 @@ _ht_check_consistency(ht_t *ht, bool update)
     Py_ssize_t usable = keys->usable;
     Py_ssize_t nentries = keys->nentries;
 
-    CHECK(0 <= ht->used && ht->used <= usable);
+    CHECK(0 <= ht->used && ht->used <= calc_usable);
     CHECK(0 <= usable && usable <= calc_usable);
-    CHECK(0 <= nentries && nentries <= usable);
+    CHECK(0 <= nentries && nentries <= calc_usable);
     CHECK(usable + nentries <= calc_usable);
 
     for (Py_ssize_t i=0; i < htkeys_nslots(keys); i++) {
         Py_ssize_t ix = htkeys_get_index(keys, i);
-        CHECK(DKIX_DUMMY <= ix && ix <= usable);
+        CHECK(DKIX_DUMMY <= ix && ix <= calc_usable);
     }
 
     entry_t *entries = htkeys_entries(keys);
-    for (Py_ssize_t i=0; i < usable; i++) {
+    for (Py_ssize_t i=0; i < calc_usable; i++) {
         entry_t *entry = &entries[i];
         PyObject *identity = entry->identity;
 
