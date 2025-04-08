@@ -60,9 +60,9 @@ typedef struct _htkeys {
 
        The size in bytes of an indice depends on dk_size:
 
-       - 1 byte if DK_SIZE <= 0xff (char*)
-       - 2 bytes if DK_SIZE <= 0xffff (int16_t*)
-       - 4 bytes if DK_SIZE <= 0xffffffff (int32_t*)
+       - 1 byte if htkeys_size() <= 0xff (char*)
+       - 2 bytes if htkeys_size() <= 0xffff (int16_t*)
+       - 4 bytes if htkeys_size() <= 0xffffffff (int32_t*)
        - 8 bytes otherwise (int64_t*)
 
        Dynamically sized, SIZEOF_VOID_P is minimum. */
@@ -71,12 +71,12 @@ typedef struct _htkeys {
 } htkeys_t;
 
 #if SIZEOF_VOID_P > 4
-static inline Py_ssize_t DK_SIZE(const htkeys_t *keys)
+static inline Py_ssize_t htkeys_size(const htkeys_t *keys)
 {
     return ((int64_t)1) << keys->dk_log2_size;
 }
 #else
-static inline Py_ssize_t DK_SIZE(const htkeys_t *keys)
+static inline Py_ssize_t htkeys_size(const htkeys_t *keys)
 {
     return 1<< keys->dk_log2_size;
 }
@@ -84,7 +84,7 @@ static inline Py_ssize_t DK_SIZE(const htkeys_t *keys)
 
 static inline Py_ssize_t htkeys_mask(const htkeys_t *keys)
 {
-    return DK_SIZE(keys)-1;
+    return htkeys_size(keys)-1;
 }
 
 
@@ -370,7 +370,7 @@ htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 static inline Py_ssize_t
 htkeys_dummies_fraction(htkeys_t *keys)
 {
-    return DK_SIZE(keys) / 3;
+    return htkeys_size(keys) / 3;
 }
 
 

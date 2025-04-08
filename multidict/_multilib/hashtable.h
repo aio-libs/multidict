@@ -1326,7 +1326,7 @@ fail:
 static inline int
 ht_post_update(ht_t *ht)
 {
-    size_t num_slots = DK_SIZE(ht->keys);
+    size_t num_slots = htkeys_size(ht->keys);
     entry_t *entries = htkeys_entries(ht->keys);
     for (size_t slot = 0; slot < num_slots; slot++) {
         Py_ssize_t index = htkeys_get_index(ht->keys, slot);
@@ -1953,7 +1953,7 @@ _ht_check_consistency(ht_t *ht, bool update)
 
     htkeys_t *keys = ht->keys;
     CHECK(keys != NULL);
-    Py_ssize_t usable = USABLE_FRACTION(DK_SIZE(keys));
+    Py_ssize_t usable = USABLE_FRACTION(htkeys_size(keys));
 
     // In the free-threaded build, shared keys may be concurrently modified,
     // so use atomic loads.
@@ -1965,7 +1965,7 @@ _ht_check_consistency(ht_t *ht, bool update)
     CHECK(0 <= dk_nentries && dk_nentries <= usable);
     CHECK(dk_usable + dk_nentries <= usable);
 
-    for (Py_ssize_t i=0; i < DK_SIZE(keys); i++) {
+    for (Py_ssize_t i=0; i < htkeys_size(keys); i++) {
         Py_ssize_t ix = htkeys_get_index(keys, i);
         CHECK(DKIX_DUMMY <= ix && ix <= usable);
     }
@@ -2006,8 +2006,8 @@ _ht_dump(ht_t *ht)
 {
     htkeys_t *keys = ht->keys;
     printf("Dump %p [%ld from %ld usable %ld nentries %ld]\n",
-           ht, ht->used, DK_SIZE(keys), keys->dk_usable, keys->dk_nentries);
-    for (Py_ssize_t i=0; i < DK_SIZE(keys); i++) {
+           ht, ht->used, htkeys_size(keys), keys->dk_usable, keys->dk_nentries);
+    for (Py_ssize_t i=0; i < htkeys_size(keys); i++) {
         Py_ssize_t ix = htkeys_get_index(keys, i);
         printf("  %ld -> %ld\n", i, ix);
     }
