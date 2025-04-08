@@ -492,7 +492,7 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
             goto done;
         }
     }
-    if (ht_init(self, state, size) < 0) {
+    if (ht_init(self, state, false, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "MultiDict", false) < 0) {
@@ -944,7 +944,7 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
             goto done;
         }
     }
-    if (ci_ht_init(self, state, size) < 0) {
+    if (ht_init(self, state, true, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "CIMultiDict", false) < 0) {

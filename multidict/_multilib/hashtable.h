@@ -250,11 +250,10 @@ ht_reserve(MultiDictObject *md, Py_ssize_t extra_size)
 
 
 static inline int
-_ht_init(MultiDictObject *md, mod_state *state,
-                bool calc_ci_identity, Py_ssize_t minused)
+ht_init(MultiDictObject *md, mod_state *state, bool is_ci, Py_ssize_t minused)
 {
     md->state = state;
-    md->is_ci = calc_ci_identity;
+    md->is_ci = is_ci;
     md->used = 0;
     md->version = NEXT_VERSION();
 
@@ -285,20 +284,6 @@ _ht_init(MultiDictObject *md, mod_state *state,
     md->keys = new_keys;
     ASSERT_CONSISTENT(md, false);
     return 0;
-}
-
-
-static inline int
-ht_init(MultiDictObject *md, mod_state *state, Py_ssize_t size)
-{
-    return _ht_init(md, state, /* calc_ci_identity = */ false, size);
-}
-
-
-static inline int
-ci_ht_init(MultiDictObject *md, mod_state *state, Py_ssize_t size)
-{
-    return _ht_init(md, state, /* calc_ci_identity = */ true, size);
 }
 
 
