@@ -12,7 +12,7 @@ extern "C" {
 typedef struct multidict_iter {
     PyObject_HEAD
     MultiDictObject *md;  // MultiDict or CIMultiDict
-    ht_pos_t current;
+    md_pos_t current;
 } MultidictIter;
 
 static inline void
@@ -21,7 +21,7 @@ _init_iter(MultidictIter *it, MultiDictObject *md)
     Py_INCREF(md);
 
     it->md = md;
-    ht_init_pos(md, &it->current);
+    md_init_pos(md, &it->current);
 }
 
 static inline PyObject *
@@ -76,7 +76,7 @@ multidict_items_iter_iternext(MultidictIter *self)
     PyObject *value = NULL;
     PyObject *ret = NULL;
 
-    int res = ht_next(self->md, &self->current,
+    int res = md_next(self->md, &self->current,
                       NULL, &key, &value);
     if (res < 0) {
         return NULL;
@@ -103,7 +103,7 @@ multidict_values_iter_iternext(MultidictIter *self)
 {
     PyObject *value = NULL;
 
-    int res = ht_next(self->md, &self->current,
+    int res = md_next(self->md, &self->current,
                       NULL, NULL, &value);
     if (res < 0) {
         return NULL;
@@ -121,7 +121,7 @@ multidict_keys_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
 
-    int res = ht_next(self->md, &self->current,
+    int res = md_next(self->md, &self->current,
                       NULL, &key, NULL);
     if (res < 0) {
         return NULL;
@@ -159,7 +159,7 @@ multidict_iter_clear(MultidictIter *self)
 static inline PyObject *
 multidict_iter_len(MultidictIter *self)
 {
-    return PyLong_FromLong(ht_len(self->md));
+    return PyLong_FromLong(md_len(self->md));
 }
 
 PyDoc_STRVAR(length_hint_doc,

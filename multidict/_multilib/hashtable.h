@@ -18,20 +18,20 @@ extern "C" {
 #include "htkeys.h"
 
 
-typedef struct _ht_pos {
+typedef struct _md_pos {
     Py_ssize_t pos;
     uint64_t version;
-} ht_pos_t;
+} md_pos_t;
 
 
-typedef struct _ht_finder {
+typedef struct _md_finder {
     MultiDictObject *md;
     htkeysiter_t iter;
     uint64_t version;
     Py_hash_t hash;
     PyObject *identity; // borrowed ref
     bool first;
-} ht_finder_t;
+} md_finder_t;
 
 
 /*
@@ -70,9 +70,9 @@ in the left and right arguments.
 /* Global counter used to set ma_version_tag field of dictionary.
  * It is incremented each time that a dictionary is created and each
  * time that a dictionary is modified. */
-static uint64_t ht_global_version = 0;
+static uint64_t md_global_version = 0;
 
-#define NEXT_VERSION() (++ht_global_version)
+#define NEXT_VERSION() (++md_global_version)
 
 /* GROWTH_RATE. Growth rate upon hitting maximum load.
  * Currently set to used*3.
@@ -89,11 +89,11 @@ static inline Py_ssize_t GROWTH_RATE(MultiDictObject *md) {
 }
 
 
-static inline int _ht_check_consistency(MultiDictObject *md, bool update);
-static inline int _ht_dump(MultiDictObject *md);
+static inline int _md_check_consistency(MultiDictObject *md, bool update);
+static inline int _md_dump(MultiDictObject *md);
 
 #ifndef NDEBUG
-#  define ASSERT_CONSISTENT(md, update) assert(_ht_check_consistency(md, update))
+#  define ASSERT_CONSISTENT(md, update) assert(_md_check_consistency(md, update))
 #else
 #  define ASSERT_CONSISTENT(md, update) assert(1)
 #endif
@@ -191,7 +191,7 @@ _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *identity)
 
 
 static inline int
-_ht_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
+_md_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
 {
     htkeys_t *oldkeys, *newkeys;
 
@@ -251,39 +251,39 @@ _ht_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
 
 
 static inline int
-_ht_resize_for_insert(MultiDictObject *md)
+_md_resize_for_insert(MultiDictObject *md)
 {
-    return _ht_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), false);
+    return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), false);
 }
 
 
 static inline int
-_ht_resize_for_update(MultiDictObject *md)
+_md_resize_for_update(MultiDictObject *md)
 {
-    return _ht_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), true);
+    return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), true);
 }
 
 
 static inline int
-_ht_reserve(MultiDictObject *md, Py_ssize_t extra_size, bool update)
+_md_reserve(MultiDictObject *md, Py_ssize_t extra_size, bool update)
 {
     uint8_t new_size = estimate_log2_keysize(extra_size + md->used);
     if (new_size > md->keys->log2_size) {
-        return _ht_resize(md, new_size, update);
+        return _md_resize(md, new_size, update);
     }
     return 0;
 }
 
 
 static inline int
-ht_reserve(MultiDictObject *md, Py_ssize_t extra_size)
+md_reserve(MultiDictObject *md, Py_ssize_t extra_size)
 {
-    return _ht_reserve(md, extra_size, false);
+    return _md_reserve(md, extra_size, false);
 }
 
 
 static inline int
-ht_init(MultiDictObject *md, mod_state *state, bool is_ci, Py_ssize_t minused)
+md_init(MultiDictObject *md, mod_state *state, bool is_ci, Py_ssize_t minused)
 {
     md->state = state;
     md->is_ci = is_ci;
@@ -321,7 +321,7 @@ ht_init(MultiDictObject *md, mod_state *state, bool is_ci, Py_ssize_t minused)
 
 
 static inline int
-ht_clone_from_ht(MultiDictObject *md, MultiDictObject *other)
+md_clone_from_ht(MultiDictObject *md, MultiDictObject *other)
 {
     ASSERT_CONSISTENT(other, false);
     md->state = other->state;
@@ -352,7 +352,7 @@ ht_clone_from_ht(MultiDictObject *md, MultiDictObject *other)
 
 
 static inline PyObject *
-ht_calc_identity(MultiDictObject *md, PyObject *key)
+md_calc_identity(MultiDictObject *md, PyObject *key)
 {
     if (md->is_ci)
         return _ci_key_to_identity(md->state, key);
@@ -361,7 +361,7 @@ ht_calc_identity(MultiDictObject *md, PyObject *key)
 
 
 static inline PyObject *
-ht_calc_key(MultiDictObject *md, PyObject *key, PyObject *identity)
+md_calc_key(MultiDictObject *md, PyObject *key, PyObject *identity)
 {
     if (md->is_ci)
         return _ci_arg_to_key(md->state, key, identity);
@@ -370,18 +370,18 @@ ht_calc_key(MultiDictObject *md, PyObject *key, PyObject *identity)
 
 
 static inline Py_ssize_t
-ht_len(MultiDictObject *md)
+md_len(MultiDictObject *md)
 {
     return md->used;
 }
 
 
 static inline PyObject *
-_ht_ensure_key(MultiDictObject *md, entry_t *entry)
+_md_ensure_key(MultiDictObject *md, entry_t *entry)
 {
     assert(entry >= htkeys_entries(md->keys));
     assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
-    PyObject *key = ht_calc_key(md, entry->key, entry->identity);
+    PyObject *key = md_calc_key(md, entry->key, entry->identity);
     if (key == NULL) {
         return NULL;
     }
@@ -395,12 +395,12 @@ _ht_ensure_key(MultiDictObject *md, entry_t *entry)
 
 
 static inline int
-_ht_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
+_md_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                              PyObject *key, PyObject *value)
 {
     if (md->keys->usable <= 0 || md->keys == &empty_htkeys) {
         /* Need to resize. */
-        if (_ht_resize_for_insert(md) < 0) {
+        if (_md_resize_for_insert(md) < 0) {
             return -1;
         }
     } else if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
@@ -427,23 +427,23 @@ _ht_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *iden
 
 
 static inline int
-_ht_add_with_hash(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
+_md_add_with_hash(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                   PyObject *key, PyObject *value)
 {
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    return _ht_add_with_hash_steal_refs(md, hash, identity, key, value);
+    return _md_add_with_hash_steal_refs(md, hash, identity, key, value);
 }
 
 
 static inline int
-_ht_add_for_upd_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
+_md_add_for_upd_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                            PyObject *key, PyObject *value)
 {
     if (md->keys->usable <= 0 || md->keys == &empty_htkeys) {
         /* Need to resize. */
-        if (_ht_resize_for_update(md) < 0) {
+        if (_md_resize_for_update(md) < 0) {
             return -1;
         }
     } else if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
@@ -470,20 +470,20 @@ _ht_add_for_upd_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identi
 
 
 static inline int
-_ht_add_for_upd(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
+_md_add_for_upd(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                 PyObject *key, PyObject *value)
 {
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    return _ht_add_for_upd_steal_refs(md, hash, identity, key, value);
+    return _md_add_for_upd_steal_refs(md, hash, identity, key, value);
 }
 
 
 static inline int
-ht_add(MultiDictObject *md, PyObject *key, PyObject *value)
+md_add(MultiDictObject *md, PyObject *key, PyObject *value)
 {
-    PyObject *identity = ht_calc_identity(md, key);
+    PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -491,7 +491,7 @@ ht_add(MultiDictObject *md, PyObject *key, PyObject *value)
     if (hash == -1) {
         goto fail;
     }
-    int ret = _ht_add_with_hash(md, hash, identity, key, value);
+    int ret = _md_add_with_hash(md, hash, identity, key, value);
     ASSERT_CONSISTENT(md, false);
     Py_DECREF(identity);
     return ret;
@@ -502,7 +502,7 @@ fail:
 
 
 static inline int
-_ht_del_at(MultiDictObject *md, size_t slot, entry_t *entry)
+_md_del_at(MultiDictObject *md, size_t slot, entry_t *entry)
 {
     assert(md->keys != &empty_htkeys);
     Py_CLEAR(entry->identity);
@@ -516,13 +516,13 @@ _ht_del_at(MultiDictObject *md, size_t slot, entry_t *entry)
 
 
 static inline int
-_ht_del_at_for_upd(MultiDictObject *md, size_t slot, entry_t *entry)
+_md_del_at_for_upd(MultiDictObject *md, size_t slot, entry_t *entry)
 {
     /* half deletion,
        the entry could be replaced later with key and value set
        or it will be finally cleaned up with identity=NULL,
        used -= 1, and setting the hash to DKIX_DUMMY
-       in ht_post_update()
+       in md_post_update()
     */
     assert(md->keys != &empty_htkeys);
     Py_CLEAR(entry->key);
@@ -532,9 +532,9 @@ _ht_del_at_for_upd(MultiDictObject *md, size_t slot, entry_t *entry)
 
 
 static inline int
-ht_del(MultiDictObject *md, PyObject *key)
+md_del(MultiDictObject *md, PyObject *key)
 {
-    PyObject *identity = ht_calc_identity(md, key);
+    PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -568,7 +568,7 @@ ht_del(MultiDictObject *md, PyObject *key)
         }
 
         found = true;
-        if (_ht_del_at(md, iter.slot, entry) < 0) {
+        if (_md_del_at(md, iter.slot, entry) < 0) {
             goto fail;
         }
     }
@@ -589,21 +589,21 @@ fail:
 
 
 static inline uint64_t
-ht_version(MultiDictObject *md)
+md_version(MultiDictObject *md)
 {
     return md->version;
 }
 
 
 static inline void
-ht_init_pos(MultiDictObject *md, ht_pos_t *pos)
+md_init_pos(MultiDictObject *md, md_pos_t *pos)
 {
     pos->pos = 0;
     pos->version = md->version;
 }
 
 static inline int
-ht_next(MultiDictObject *md, ht_pos_t *pos, PyObject **pidentity,
+md_next(MultiDictObject *md, md_pos_t *pos, PyObject **pidentity,
         PyObject **pkey, PyObject **pvalue)
 {
     int ret = 0;
@@ -636,7 +636,7 @@ ht_next(MultiDictObject *md, ht_pos_t *pos, PyObject **pidentity,
 
     if (pkey) {
         assert(entry->key != NULL);
-        *pkey = _ht_ensure_key(md, entry);
+        *pkey = _md_ensure_key(md, entry);
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
             ret = -1;
@@ -663,7 +663,7 @@ cleanup:
 }
 
 static inline int
-ht_init_finder(MultiDictObject *md, PyObject *identity, ht_finder_t *finder)
+md_init_finder(MultiDictObject *md, PyObject *identity, md_finder_t *finder)
 {
     finder->version = md->version;
     finder->md = md;
@@ -679,7 +679,7 @@ ht_init_finder(MultiDictObject *md, PyObject *identity, ht_finder_t *finder)
 
 
 static inline Py_ssize_t
-ht_finder_slot(ht_finder_t *finder)
+md_finder_slot(md_finder_t *finder)
 {
     assert(finder->md != NULL);
     return finder->iter.slot;
@@ -687,7 +687,7 @@ ht_finder_slot(ht_finder_t *finder)
 
 
 static inline Py_ssize_t
-ht_finder_index(ht_finder_t *finder)
+md_finder_index(md_finder_t *finder)
 {
     assert(finder->md != NULL);
     assert(finder->iter.index >= 0);
@@ -696,7 +696,7 @@ ht_finder_index(ht_finder_t *finder)
 
 
 static inline int
-ht_find_next(ht_finder_t *finder, PyObject **pkey, PyObject **pvalue)
+md_find_next(md_finder_t *finder, PyObject **pkey, PyObject **pvalue)
 {
     int ret = 0;
     assert(finder->iter.keys == finder->md->keys);
@@ -735,7 +735,7 @@ ht_find_next(ht_finder_t *finder, PyObject **pkey, PyObject **pvalue)
         entry->hash = -1;
 
         if (pkey) {
-            *pkey = _ht_ensure_key(finder->md, entry);
+            *pkey = _md_ensure_key(finder->md, entry);
             if (*pkey == NULL) {
                 ret = -1;
                 goto cleanup;
@@ -758,7 +758,7 @@ cleanup:
 }
 
 
-static inline void ht_finder_cleanup(ht_finder_t *finder)
+static inline void md_finder_cleanup(md_finder_t *finder)
 {
     if (finder->md == NULL) {
         return;
@@ -781,7 +781,7 @@ static inline void ht_finder_cleanup(ht_finder_t *finder)
 
 
 static inline int
-ht_contains(MultiDictObject *md, PyObject *key, PyObject **pret)
+md_contains(MultiDictObject *md, PyObject *key, PyObject **pret)
 {
     if (!PyUnicode_Check(key)) {
         return 0;
@@ -793,7 +793,7 @@ ht_contains(MultiDictObject *md, PyObject *key, PyObject **pret)
         }
     }
 
-    PyObject *identity = ht_calc_identity(md, key);
+    PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -819,7 +819,7 @@ ht_contains(MultiDictObject *md, PyObject *key, PyObject **pret)
         if (tmp > 0) {
             Py_DECREF(identity);
             if (pret != NULL) {
-                *pret = _ht_ensure_key(md, entry);
+                *pret = _md_ensure_key(md, entry);
                 if (*pret == NULL) {
                     goto fail;
                 }
@@ -846,7 +846,7 @@ fail:
 
 
 static inline int
-ht_get_one(MultiDictObject *md, PyObject *key, PyObject **ret)
+md_get_one(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
     if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
@@ -854,7 +854,7 @@ ht_get_one(MultiDictObject *md, PyObject *key, PyObject **ret)
         }
     }
 
-    PyObject *identity = ht_calc_identity(md, key);
+    PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -896,7 +896,7 @@ fail:
 
 
 static inline int
-ht_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
+md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
     *ret == NULL;
 
@@ -906,14 +906,14 @@ ht_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
         }
     }
 
-    ht_finder_t finder = {0};
+    md_finder_t finder = {0};
 
-    PyObject *identity = ht_calc_identity(md, key);
+    PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
 
-    if (ht_init_finder(md, identity, &finder) < 0) {
+    if (md_init_finder(md, identity, &finder) < 0) {
         assert(PyErr_Occurred());
         goto fail;
     }
@@ -921,7 +921,7 @@ ht_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
     int tmp;
     PyObject *value = NULL;;
 
-    while ((tmp = ht_find_next(&finder, NULL, &value)) > 0) {
+    while ((tmp = md_find_next(&finder, NULL, &value)) > 0) {
         if (*ret == NULL) {
             *ret = PyList_New(1);
             if (*ret == NULL) {
@@ -940,11 +940,11 @@ ht_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    ht_finder_cleanup(&finder);
+    md_finder_cleanup(&finder);
     Py_DECREF(identity);
     return 0;
 fail:
-    ht_finder_cleanup(&finder);
+    md_finder_cleanup(&finder);
     Py_XDECREF(identity);
     Py_XDECREF(value);
     Py_CLEAR(*ret);
@@ -953,7 +953,7 @@ fail:
 
 
 static inline PyObject *
-ht_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
+md_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
 {
     if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
@@ -961,7 +961,7 @@ ht_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
         }
     }
 
-    PyObject *identity = ht_calc_identity(md, key);
+    PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -995,7 +995,7 @@ ht_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
         }
     }
 
-    if (_ht_add_with_hash(md, hash, identity, key, value) < 0) {
+    if (_md_add_with_hash(md, hash, identity, key, value) < 0) {
         goto fail;
     }
 
@@ -1009,7 +1009,7 @@ fail:
 
 
 static inline int
-ht_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
+md_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
     if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
@@ -1019,7 +1019,7 @@ ht_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
 
     PyObject *value = NULL;
 
-    PyObject *identity = ht_calc_identity(md, key);
+    PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -1045,7 +1045,7 @@ ht_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
         int tmp = _str_cmp(identity, entry->identity);
         if (tmp > 0) {
             value = Py_NewRef(entry->value);
-            if (_ht_del_at(md, iter.slot, entry) < 0) {
+            if (_md_del_at(md, iter.slot, entry) < 0) {
                 goto fail;
             }
             Py_DECREF(identity);
@@ -1069,7 +1069,7 @@ fail:
 
 
 static inline int
-ht_pop_all(MultiDictObject *md, PyObject *key, PyObject ** ret)
+md_pop_all(MultiDictObject *md, PyObject *key, PyObject ** ret)
 {
     if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
@@ -1078,7 +1078,7 @@ ht_pop_all(MultiDictObject *md, PyObject *key, PyObject ** ret)
     }
     PyObject *lst = NULL;
 
-    PyObject *identity = ht_calc_identity(md, key);
+    PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -1088,7 +1088,7 @@ ht_pop_all(MultiDictObject *md, PyObject *key, PyObject ** ret)
         goto fail;
     }
 
-    if (ht_len(md) == 0) {
+    if (md_len(md) == 0) {
         Py_DECREF(identity);
         return 0;
     }
@@ -1119,7 +1119,7 @@ ht_pop_all(MultiDictObject *md, PyObject *key, PyObject ** ret)
             } else if (PyList_Append(lst, entry->value) < 0) {
                 goto fail;
             }
-            if (_ht_del_at(md, iter.slot, entry) < 0) {
+            if (_md_del_at(md, iter.slot, entry) < 0) {
                 goto fail;
             }
             md->version = NEXT_VERSION();
@@ -1141,7 +1141,7 @@ fail:
 
 
 static inline PyObject *
-ht_pop_item(MultiDictObject *md)
+md_pop_item(MultiDictObject *md)
 {
     if (md->used == 0) {
         PyErr_SetString(PyExc_KeyError, "empty multidict");
@@ -1164,7 +1164,7 @@ ht_pop_item(MultiDictObject *md)
     }
     assert(pos >= 0);
 
-    PyObject *key = ht_calc_key(md, entry->key, entry->identity);
+    PyObject *key = md_calc_key(md, entry->key, entry->identity);
     if (key == NULL) {
         return NULL;
     }
@@ -1179,7 +1179,7 @@ ht_pop_item(MultiDictObject *md)
 
     for(; iter.index != pos; htkeysiter_next(&iter)) {
     }
-    if (_ht_del_at(md, iter.slot, entry) < 0) {
+    if (_md_del_at(md, iter.slot, entry) < 0) {
         return NULL;
     }
     md->version = NEXT_VERSION();
@@ -1189,7 +1189,7 @@ ht_pop_item(MultiDictObject *md)
 
 
 static inline int
-_ht_replace(MultiDictObject *md, PyObject * key, PyObject *value,
+_md_replace(MultiDictObject *md, PyObject * key, PyObject *value,
             PyObject *identity, Py_hash_t hash)
 {
     if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
@@ -1199,8 +1199,8 @@ _ht_replace(MultiDictObject *md, PyObject * key, PyObject *value,
     }
 
     int found = 0;
-    ht_finder_t finder = {0};
-    if (ht_init_finder(md, identity, &finder) < 0) {
+    md_finder_t finder = {0};
+    if (md_init_finder(md, identity, &finder) < 0) {
         assert(PyErr_Occurred());
         goto fail;
     }
@@ -1209,15 +1209,15 @@ _ht_replace(MultiDictObject *md, PyObject * key, PyObject *value,
     int tmp;
 
     // don't grab neither key nor value but use the calculated index
-    while ((tmp = ht_find_next(&finder, NULL, NULL)) > 0) {
-        entry_t *entry = entries + ht_finder_index(&finder);
+    while ((tmp = md_find_next(&finder, NULL, NULL)) > 0) {
+        entry_t *entry = entries + md_finder_index(&finder);
         if (!found) {
             found = 1;
             Py_SETREF(entry->key, Py_NewRef(key));
             Py_SETREF(entry->value, Py_NewRef(value));
             entry->hash = -1;
         } else {
-            if (_ht_del_at(md, ht_finder_slot(&finder), entry) < 0) {
+            if (_md_del_at(md, md_finder_slot(&finder), entry) < 0) {
                 goto fail;
             }
         }
@@ -1226,9 +1226,9 @@ _ht_replace(MultiDictObject *md, PyObject * key, PyObject *value,
         goto fail;
     }
 
-    ht_finder_cleanup(&finder);
+    md_finder_cleanup(&finder);
     if (!found) {
-        if (_ht_add_with_hash(md, hash, identity, key, value) < 0) {
+        if (_md_add_with_hash(md, hash, identity, key, value) < 0) {
             goto fail;
         }
         return 0;
@@ -1238,14 +1238,14 @@ _ht_replace(MultiDictObject *md, PyObject * key, PyObject *value,
         return 0;
     }
 fail:
-    ht_finder_cleanup(&finder);
+    md_finder_cleanup(&finder);
     return -1;
 }
 
 static inline int
-ht_replace(MultiDictObject *md, PyObject * key, PyObject *value)
+md_replace(MultiDictObject *md, PyObject * key, PyObject *value)
 {
-    PyObject *identity = ht_calc_identity(md, key);
+    PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
@@ -1255,7 +1255,7 @@ ht_replace(MultiDictObject *md, PyObject * key, PyObject *value)
         goto fail;
     }
 
-    int ret = _ht_replace(md, key, value, identity, hash);
+    int ret = _md_replace(md, key, value, identity, hash);
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
     return ret;
@@ -1266,7 +1266,7 @@ fail:
 
 
 static inline int
-_ht_update(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
+_md_update(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
            PyObject *key, PyObject *value)
 {
     if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
@@ -1293,8 +1293,8 @@ _ht_update(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                 found = true;
                 if (entry->key == NULL) {
                     /* entry->key could be NULL if it was deleted
-                       by the previous _ht_update call during the iteration
-                       in ht_update_from* functions. */
+                       by the previous _md_update call during the iteration
+                       in md_update_from* functions. */
                     assert(entry->value == NULL);
                     entry->key = Py_NewRef(key);
                     entry->value = Py_NewRef(value);
@@ -1304,7 +1304,7 @@ _ht_update(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                 }
                 entry->hash = -1;
             } else {
-                if (_ht_del_at_for_upd(md, iter.slot, entry) < 0) {
+                if (_md_del_at_for_upd(md, iter.slot, entry) < 0) {
                     goto fail;
                 }
             }
@@ -1316,7 +1316,7 @@ _ht_update(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
     }
 
     if (!found) {
-        if (_ht_add_for_upd(md, hash, identity, key, value) < 0) {
+        if (_md_add_for_upd(md, hash, identity, key, value) < 0) {
             goto fail;
         }
     }
@@ -1326,7 +1326,7 @@ fail:
 }
 
 static inline int
-ht_post_update(MultiDictObject *md)
+md_post_update(MultiDictObject *md)
 {
     size_t num_slots = htkeys_nslots(md->keys);
     entry_t *entries = htkeys_entries(md->keys);
@@ -1360,7 +1360,7 @@ ht_post_update(MultiDictObject *md)
 }
 
 static inline int
-ht_update_from_ht(MultiDictObject *md, MultiDictObject *other, bool update)
+md_update_from_ht(MultiDictObject *md, MultiDictObject *other, bool update)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
@@ -1380,7 +1380,7 @@ ht_update_from_ht(MultiDictObject *md, MultiDictObject *other, bool update)
             continue;
         }
         if (recalc_identity) {
-            identity = ht_calc_identity(md, entry->key);
+            identity = md_calc_identity(md, entry->key);
             if (identity == NULL) {
                 goto fail;
             }
@@ -1389,7 +1389,7 @@ ht_update_from_ht(MultiDictObject *md, MultiDictObject *other, bool update)
                 goto fail;
             }
             /* materialize key */
-            key = ht_calc_key(other, entry->key, identity);
+            key = md_calc_key(other, entry->key, identity);
             if (key == NULL) {
                 goto fail;
             }
@@ -1399,11 +1399,11 @@ ht_update_from_ht(MultiDictObject *md, MultiDictObject *other, bool update)
             key = entry->key;
         }
         if (update) {
-            if (_ht_update(md, hash, identity, key, entry->value) < 0) {
+            if (_md_update(md, hash, identity, key, entry->value) < 0) {
                 goto fail;
             }
         } else {
-            if (_ht_add_with_hash(md, hash, identity, key, entry->value) < 0) {
+            if (_md_add_with_hash(md, hash, identity, key, entry->value) < 0) {
                 goto fail;
             }
         }
@@ -1422,7 +1422,7 @@ fail:
 }
 
 static inline int
-ht_update_from_dict(MultiDictObject *md, PyObject *kwds, bool update)
+md_update_from_dict(MultiDictObject *md, PyObject *kwds, bool update)
 {
     Py_ssize_t pos = 0;
     PyObject *identity = NULL;
@@ -1434,7 +1434,7 @@ ht_update_from_dict(MultiDictObject *md, PyObject *kwds, bool update)
     // PyDict_Next returns borrowed refs
     while(PyDict_Next(kwds, &pos, &key, &value)) {
         Py_INCREF(key);
-        identity = ht_calc_identity(md, key);
+        identity = md_calc_identity(md, key);
         if (identity == NULL) {
             goto fail;
         }
@@ -1443,11 +1443,11 @@ ht_update_from_dict(MultiDictObject *md, PyObject *kwds, bool update)
             goto fail;
         }
         if (update) {
-            if (_ht_update(md, hash, identity, key, value) < 0) {
+            if (_md_update(md, hash, identity, key, value) < 0) {
                 goto fail;
             }
         } else {
-            if (_ht_add_with_hash(md, hash, identity, key, value) < 0) {
+            if (_md_add_with_hash(md, hash, identity, key, value) < 0) {
                 goto fail;
             }
         }
@@ -1485,7 +1485,7 @@ static inline void _err_cannot_fetch(Py_ssize_t i, const char * name)
 }
 
 
-static int _ht_parse_item(Py_ssize_t i, PyObject *item,
+static int _md_parse_item(Py_ssize_t i, PyObject *item,
                                  PyObject **pkey, PyObject **pvalue)
 {
     Py_ssize_t n;
@@ -1536,7 +1536,7 @@ fail:
 
 
 static inline int
-ht_update_from_seq(MultiDictObject *md, PyObject *seq, bool update)
+md_update_from_seq(MultiDictObject *md, PyObject *seq, bool update)
 {
     PyObject *it = NULL;
     PyObject *item = NULL; // seq[i]
@@ -1602,11 +1602,11 @@ ht_update_from_seq(MultiDictObject *md, PyObject *seq, bool update)
             }
         }
 
-        if (_ht_parse_item(i, item, &key, &value) < 0) {
+        if (_md_parse_item(i, item, &key, &value) < 0) {
             goto fail;
         }
 
-        identity = ht_calc_identity(md, key);
+        identity = md_calc_identity(md, key);
         if (identity == NULL) {
             goto fail;
         }
@@ -1617,14 +1617,14 @@ ht_update_from_seq(MultiDictObject *md, PyObject *seq, bool update)
         }
 
         if (update) {
-            if (_ht_update(md, hash, identity, key, value) < 0) {
+            if (_md_update(md, hash, identity, key, value) < 0) {
                 goto fail;
             }
             Py_CLEAR(identity);
             Py_CLEAR(key);
             Py_CLEAR(value);
         } else {
-            if (_ht_add_with_hash_steal_refs(md, hash, identity,
+            if (_md_add_with_hash_steal_refs(md, hash, identity,
                                              key, value) < 0) {
                 goto fail;
             }
@@ -1650,13 +1650,13 @@ fail:
 
 
 static inline int
-ht_eq(MultiDictObject *md, MultiDictObject *other)
+md_eq(MultiDictObject *md, MultiDictObject *other)
 {
     if (md == other) {
         return 1;
     }
 
-    if (ht_len(md) != ht_len(other)) {
+    if (md_len(md) != md_len(other)) {
         return 0;
     }
 
@@ -1707,7 +1707,7 @@ ht_eq(MultiDictObject *md, MultiDictObject *other)
 }
 
 static inline int
-ht_eq_to_mapping(MultiDictObject *md, PyObject *other)
+md_eq_to_mapping(MultiDictObject *md, PyObject *other)
 {
     PyObject *key = NULL;
     PyObject *avalue = NULL;
@@ -1726,15 +1726,15 @@ ht_eq_to_mapping(MultiDictObject *md, PyObject *other)
     if (other_len < 0) {
         return -1;
     }
-    if (ht_len(md) != other_len) {
+    if (md_len(md) != other_len) {
         return 0;
     }
 
-    ht_pos_t pos;
-    ht_init_pos(md, &pos);
+    md_pos_t pos;
+    md_init_pos(md, &pos);
 
     for(;;) {
-        int ret = ht_next(md, &pos, NULL, &key, &avalue);
+        int ret = md_next(md, &pos, NULL, &key, &avalue);
         if (ret < 0) {
             return -1;
         }
@@ -1767,7 +1767,7 @@ ht_eq_to_mapping(MultiDictObject *md, PyObject *other)
 
 
 static inline PyObject *
-ht_repr(MultiDictObject *md, PyObject *name,
+md_repr(MultiDictObject *md, PyObject *name,
                    bool show_keys, bool show_values)
 {
     PyObject *key = NULL;
@@ -1849,7 +1849,7 @@ fail:
 /***********************************************************************/
 
 static inline int
-ht_traverse(MultiDictObject *md, visitproc visit, void *arg)
+md_traverse(MultiDictObject *md, visitproc visit, void *arg)
 {
     if (md->used == 0) {
         return 0;
@@ -1867,7 +1867,7 @@ ht_traverse(MultiDictObject *md, visitproc visit, void *arg)
 
 
 static inline int
-ht_clear(MultiDictObject *md)
+md_clear(MultiDictObject *md)
 {
     if (md->used == 0) {
         return 0;
@@ -1895,7 +1895,7 @@ ht_clear(MultiDictObject *md)
 
 
 static inline void
-ht_dealloc(MultiDictObject *md)
+md_dealloc(MultiDictObject *md)
 {
     if (md->keys == NULL) {
         return;
@@ -1915,7 +1915,7 @@ ht_dealloc(MultiDictObject *md)
 }
 
 static inline int
-_ht_check_consistency(MultiDictObject *md, bool update)
+_md_check_consistency(MultiDictObject *md, bool update)
 {
 //    ASSERT_WORLD_STOPPED_OR_DICT_LOCKED(op);
 
@@ -1973,7 +1973,7 @@ _ht_check_consistency(MultiDictObject *md, bool update)
 
 
 static inline int
-_ht_dump(MultiDictObject *md)
+_md_dump(MultiDictObject *md)
 {
     htkeys_t *keys = md->keys;
     printf("Dump %p [%ld from %ld usable %ld nentries %ld]\n",
