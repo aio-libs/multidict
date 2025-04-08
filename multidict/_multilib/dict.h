@@ -23,7 +23,7 @@ typedef struct {
     Py_ssize_t used;
 
     uint64_t version;
-    uint8_t flags;
+    bool is_ci;
 
     htkeys_t * keys;
 } MultiDictObject;
@@ -35,46 +35,6 @@ typedef struct {
 #endif
     MultiDictObject *md;
 } MultiDictProxyObject;
-
-
-#define IS_CI      (1)
-#define IS_TRACKED (2)
-
-
-static inline bool md_is_ci(MultiDictObject *md)
-{
-    return md->flags & IS_CI;
-}
-
-static inline bool md_set_ci(MultiDictObject *md, bool set)
-{
-    if (set) {
-        md->flags |= IS_CI;
-    } else {
-        md->flags &= ~IS_CI;
-    }
-}
-
-static inline bool md_is_tracked(MultiDictObject *md)
-{
-    return md->flags & IS_TRACKED;
-}
-
-static inline bool md_set_tracked(MultiDictObject *md, bool set)
-{
-    uint8_t flags = md->flags;
-    if (set) {
-        md->flags |= IS_TRACKED;
-        if (flags & ~IS_TRACKED) {
-            PyObject_GC_Track(md);
-        }
-    } else {
-        md->flags &= ~IS_TRACKED;
-        if (flags & IS_TRACKED) {
-            PyObject_GC_UnTrack(md);
-        }
-    }
-}
 
 
 #ifdef __cplusplus
