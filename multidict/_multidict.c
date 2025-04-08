@@ -486,7 +486,7 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         } else if (AnyMultiDictProxy_Check(state, arg)) {
             other = ((MultiDictProxyObject*)arg)->md;
         }
-        if (other != NULL && !other->is_ci) {
+        if (other != NULL && !md_is_ci(other)) {
             if (ht_clone_from_ht(self, other) < 0) {
                 goto fail;
             }
@@ -938,7 +938,7 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         } else if (AnyMultiDictProxy_Check(state, arg)) {
             other = ((MultiDictProxyObject*)arg)->md;
         }
-        if (other != NULL && other->is_ci) {
+        if (other != NULL && md_is_ci(other)) {
             if (ht_clone_from_ht(self, other) < 0) {
                 goto fail;
             }

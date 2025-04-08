@@ -157,6 +157,40 @@ _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *identity)
 }
 
 
+static inline bool _ht_is_gc_tracked(mod_state *state, PyObject *o)
+{
+    if (PyUnicode_CheckExact(o)) {
+        return false;
+    }
+    if (IStr_CheckExact(state, o)) {
+        return false;
+    }
+    if (PyLong_CheckExact(o)) {
+        return false;
+    }
+    if (PyBool_Check(o)) {
+        return false;
+    }
+    if (PyFloat_CheckExact(o)) {
+        return false;
+    }
+    return PyObject_GC_IsTracked(o);
+}
+
+
+static inline void
+_ht_maybe_track(MultiDictObject *md, PyObject *key, PyObject *value)
+{
+    if (!md_is_tracked(md)) {
+        assert(!PyObject_GC_IsTracked((PyObject *)md));
+        if (_ht_is_gc_tracked(md->state, key)
+            || _ht_is_gc_tracked(md->state, value)) {
+            PyObject_GC_Track(md);
+        }
+    }
+}
+
+
 static inline int
 _ht_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
 {
@@ -253,7 +287,8 @@ static inline int
 ht_init(MultiDictObject *md, mod_state *state, bool is_ci, Py_ssize_t minused)
 {
     md->state = state;
-    md->is_ci = is_ci;
+    md->flags = 0;
+    md_set_ci(md, is_ci);
     md->used = 0;
     md->version = NEXT_VERSION();
 
@@ -264,7 +299,8 @@ ht_init(MultiDictObject *md, mod_state *state, bool is_ci, Py_ssize_t minused)
 
     if (minused <= USABLE_FRACTION(HT_MINSIZE)) {
         md->keys = &empty_htkeys;
-        ASSERT_CONSISTENT(ms, false);
+        PyObject_GC_UnTrack(md);
+        ASSERT_CONSISTENT(md, false);
         return 0;
     }
     /* There are no strict guarantee that returned dict can contain minused
@@ -282,6 +318,7 @@ ht_init(MultiDictObject *md, mod_state *state, bool is_ci, Py_ssize_t minused)
     if (new_keys == NULL)
         return -1;
     md->keys = new_keys;
+    PyObject_GC_UnTrack(md);
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
@@ -294,7 +331,12 @@ ht_clone_from_ht(MultiDictObject *md, MultiDictObject *other)
     md->state = other->state;
     md->used = other->used;
     md->version = other->version;
-    md->is_ci = other->is_ci;
+    md->flags = other->flags;
+    // flag copy doesn't call PyObject_GC_[Un]Track
+    if (!md_is_tracked(md)) {
+        PyObject_GC_UnTrack(md);
+    }
+    assert(PyObject_GC_IsTracked((PyObject *)md) == md_is_tracked(md));
     if (other->keys != &empty_htkeys) {
         size_t size = htkeys_sizeof(other->keys);
         htkeys_t *keys = PyMem_Malloc(size);
@@ -313,7 +355,6 @@ ht_clone_from_ht(MultiDictObject *md, MultiDictObject *other)
     } else {
         md->keys = &empty_htkeys;
     }
-
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
@@ -322,7 +363,7 @@ ht_clone_from_ht(MultiDictObject *md, MultiDictObject *other)
 static inline PyObject *
 ht_calc_identity(MultiDictObject *md, PyObject *key)
 {
-    if (md->is_ci)
+    if (md_is_ci(md))
         return _ci_key_to_identity(md->state, key);
     return _key_to_identity(md->state, key);
 }
@@ -331,7 +372,7 @@ ht_calc_identity(MultiDictObject *md, PyObject *key)
 static inline PyObject *
 ht_calc_key(MultiDictObject *md, PyObject *key, PyObject *identity)
 {
-    if (md->is_ci)
+    if (md_is_ci(md))
         return _ci_arg_to_key(md->state, key, identity);
     return _arg_to_key(md->state, key, identity);
 }
@@ -391,6 +432,7 @@ _ht_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *iden
     md->keys->usable -= 1;
     md->keys->nentries += 1;
 
+    _ht_maybe_track(md, key, value);
     return 0;
 }
 
@@ -435,6 +477,7 @@ _ht_add_for_upd_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identi
     md->keys->usable -= 1;
     md->keys->nentries += 1;
 
+    _ht_maybe_track(md, key, value);
     return 0;
 }
 
@@ -650,7 +693,7 @@ ht_init_finder(MultiDictObject *md, PyObject *identity, ht_finder_t *finder)
 static inline Py_ssize_t
 ht_finder_slot(ht_finder_t *finder)
 {
-    assert(finder->ht != NULL);
+    assert(finder->md != NULL);
     return finder->iter.slot;
 }
 
@@ -1185,6 +1228,7 @@ _ht_replace(MultiDictObject *md, PyObject * key, PyObject *value,
             Py_SETREF(entry->key, Py_NewRef(key));
             Py_SETREF(entry->value, Py_NewRef(value));
             entry->hash = -1;
+            _ht_maybe_track(md, key, value);
         } else {
             if (_ht_del_at(md, ht_finder_slot(&finder), entry) < 0) {
                 goto fail;
@@ -1272,6 +1316,7 @@ _ht_update(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                     Py_SETREF(entry->value, Py_NewRef(value));
                 }
                 entry->hash = -1;
+                _ht_maybe_track(md, key, value);
             } else {
                 if (_ht_del_at_for_upd(md, iter.slot, entry) < 0) {
                     goto fail;
@@ -1335,7 +1380,7 @@ ht_update_from_ht(MultiDictObject *md, MultiDictObject *other, bool update)
     Py_hash_t hash;
     PyObject *identity = NULL;
     PyObject *key = NULL;
-    bool recalc_identity = md->is_ci != other->is_ci;
+    bool recalc_identity = md_is_ci(md) != md_is_ci(other);
 
     if (other->used == 0) {
         return 0;
@@ -1885,7 +1930,6 @@ ht_dealloc(MultiDictObject *md)
         md->keys = &empty_htkeys;
     }
 }
-
 
 static inline int
 _ht_check_consistency(MultiDictObject *md, bool update)
