@@ -1697,7 +1697,7 @@ md_eq(MultiDictObject *md, MultiDictObject *other)
             return 0;
         }
 
-        int cmp = PyObject_RichCompareBool(entry1->identity, entry2->identity, Py_EQ);
+        int cmp = _str_cmp(entry1->identity, entry2->identity);
         if (cmp < 0) {
             return -1;
         };

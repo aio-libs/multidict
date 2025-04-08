@@ -58,13 +58,10 @@ multidict_view_len(_Multidict_ViewObject *self)
 }
 
 static inline PyObject *
-multidict_view_richcompare(PyObject *self, PyObject *other, int op)
+multidict_view_richcompare(_Multidict_ViewObject *self, PyObject *other, int op)
 {
     int tmp;
-    Py_ssize_t self_size = PyObject_Length(self);
-    if (self_size < 0) {
-        return NULL;
-    }
+    Py_ssize_t self_size = md_len(self->md);
     Py_ssize_t size = PyObject_Length(other);
     if (size < 0) {
         PyErr_Clear();
@@ -76,12 +73,12 @@ multidict_view_richcompare(PyObject *self, PyObject *other, int op)
         case Py_LT:
             if (self_size >= size)
                 Py_RETURN_FALSE;
-            return PyObject_RichCompare(self, other, Py_LE);
+            return multidict_view_richcompare(self, other, Py_LE);
         case Py_LE:
             if (self_size > size) {
                 Py_RETURN_FALSE;
             }
-            iter = PyObject_GetIter(self);
+            iter = PyObject_GetIter((PyObject *)self);
             if (iter == NULL) {
                 goto fail;
             }
@@ -104,16 +101,23 @@ multidict_view_richcompare(PyObject *self, PyObject *other, int op)
         case Py_EQ:
             if (self_size != size)
                 Py_RETURN_FALSE;
-            return PyObject_RichCompare(self, other, Py_LE);
+            return multidict_view_richcompare(self, other, Py_LE);
         case Py_NE:
-            tmp = PyObject_RichCompareBool(self, other, Py_EQ);
-            if (tmp < 0)
+            item = multidict_view_richcompare(self, other, Py_EQ);
+            if (item == NULL) {
                 goto fail;
-            return PyBool_FromLong(!tmp);
+            }
+            if (item == Py_True) {
+                Py_DECREF(item);
+                Py_RETURN_FALSE;
+            } else {
+                Py_DECREF(item);
+                Py_RETURN_TRUE;
+            }
         case Py_GT:
             if (self_size <= size)
                 Py_RETURN_FALSE;
-            return PyObject_RichCompare(self, other, Py_GE);
+            return multidict_view_richcompare(self, other, Py_GE);
         case Py_GE:
             if (self_size < size) {
                 Py_RETURN_FALSE;
@@ -123,7 +127,7 @@ multidict_view_richcompare(PyObject *self, PyObject *other, int op)
                 goto fail;
             }
             while ((item = PyIter_Next(iter))) {
-                tmp = PySequence_Contains(self, item);
+                tmp = PySequence_Contains((PyObject *)self, item);
                 if (tmp < 0) {
                     goto fail;
                 }
@@ -869,59 +873,58 @@ fail:
 static inline int
 multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
 {
-    PyObject *akey  = NULL,
-             *aval  = NULL,
-             *bkey  = NULL,
-             *bval  = NULL,
-             *iter  = NULL,
-             *item  = NULL;
-    int ret1, ret2;
+    PyObject *identity = NULL;
+    PyObject *key = NULL;
+    PyObject *value = NULL;
+    PyObject *value2 = NULL;
+    int tmp;
+    int ret = 0;
 
-    if (!PyTuple_Check(obj) || PyTuple_GET_SIZE(obj) != 2) {
+    if (!PyTuple_CheckExact(obj) || PyTuple_GET_SIZE(obj) != 2) {
         return 0;
     }
 
-    bkey = PyTuple_GET_ITEM(obj, 0);
-    bval = PyTuple_GET_ITEM(obj, 1);
+    key = Py_NewRef(PyTuple_GET_ITEM(obj, 0));
+    value = Py_NewRef(PyTuple_GET_ITEM(obj, 1));
 
-    iter = multidict_itemsview_iter(self);
-    if (iter == NULL) {
-        return 0;
+    identity = md_calc_identity(self->md, key);
+    if (identity == NULL) {
+        PyErr_Clear();
+        ret = 0;
+        goto done;
     }
 
-    while ((item = PyIter_Next(iter)) != NULL) {
-        akey = PyTuple_GET_ITEM(item, 0);
-        aval = PyTuple_GET_ITEM(item, 1);
+    md_finder_t finder = {0};
 
-        ret1 = PyObject_RichCompareBool(akey, bkey, Py_EQ);
-        if (ret1 < 0) {
-            Py_DECREF(iter);
-            Py_DECREF(item);
-            return -1;
-        }
-        ret2 = PyObject_RichCompareBool(aval, bval, Py_EQ);
-        if (ret2 < 0) {
-            Py_DECREF(iter);
-            Py_DECREF(item);
-            return -1;
-        }
-        if (ret1 > 0 && ret2 > 0)
-        {
-            Py_DECREF(iter);
-            Py_DECREF(item);
-            return 1;
-        }
-
-        Py_DECREF(item);
+    if (md_init_finder(self->md, identity, &finder) < 0) {
+        assert(PyErr_Occurred());
+        ret = -1;
+        goto done;
     }
 
-    Py_DECREF(iter);
-
-    if (PyErr_Occurred()) {
-        return -1;
+    while ((tmp = md_find_next(&finder, NULL, &value2)) > 0) {
+        tmp = PyObject_RichCompareBool(value, value2, Py_EQ);
+        Py_CLEAR(value2);
+        if (tmp < 0) {
+            ret = -1;
+            goto done;
+        }
+        if (tmp > 0) {
+            ret = 1;
+            goto done;
+        }
+    }
+    if (tmp < 0) {
+        ret = -1;
+        goto done;
     }
 
-    return 0;
+ done:
+    md_finder_cleanup(&finder);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    return ret;
 }
 
 static inline PyObject *
