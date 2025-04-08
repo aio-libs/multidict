@@ -159,6 +159,9 @@ _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *identity)
 
 static inline bool _ht_is_gc_tracked(mod_state *state, PyObject *o)
 {
+    if (o == Py_None) {
+        return false;
+    }
     if (PyUnicode_CheckExact(o)) {
         return false;
     }
@@ -174,7 +177,17 @@ static inline bool _ht_is_gc_tracked(mod_state *state, PyObject *o)
     if (PyFloat_CheckExact(o)) {
         return false;
     }
-    return PyObject_GC_IsTracked(o);
+    /*
+       N.B. don't rely on PyObject_GC_IsTracked(o),
+       if the object was untracked but later was mutated to tracked
+       the multidict has no chance to get this knowledge,
+       it is potentially dangerous because the situation could make
+       loops that are not tracked by GC.
+
+       Thus, we analyze only the simpliest types.
+       As the consequence, the check is super fast.
+    */
+    return true;
 }
 
 
