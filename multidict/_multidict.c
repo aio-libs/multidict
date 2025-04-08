@@ -330,7 +330,8 @@ multidict_repr(MultiDictObject *self)
     if (tmp > 0) {
         return PyUnicode_FromString("...");
     }
-    PyObject *name = PyObject_GetAttrString((PyObject *)Py_TYPE(self), "__name__");
+    PyObject *name = PyObject_GetAttr((PyObject *)Py_TYPE(self),
+                                      self->state->str_name);
     if (name == NULL) {
         Py_ReprLeave((PyObject *)self);
         return NULL;
@@ -1140,7 +1141,8 @@ multidict_proxy_tp_clear(MultiDictProxyObject *self)
 static inline PyObject *
 multidict_proxy_repr(MultiDictProxyObject *self)
 {
-    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    PyObject *name = PyObject_GetAttr((PyObject *)Py_TYPE(self),
+                                      self->md->state->str_name);
     if (name == NULL)
         return NULL;
     PyObject *ret = ht_repr(self->md, name, true, true);
@@ -1389,8 +1391,9 @@ module_traverse(PyObject *mod, visitproc visit, void *arg)
     Py_VISIT(state->ItemsIterType);
     Py_VISIT(state->ValuesIterType);
 
-    Py_VISIT(state->str_lower);
     Py_VISIT(state->str_canonical);
+    Py_VISIT(state->str_lower);
+    Py_VISIT(state->str_name);
 
     return 0;
 }
@@ -1415,8 +1418,9 @@ module_clear(PyObject *mod)
     Py_CLEAR(state->ItemsIterType);
     Py_CLEAR(state->ValuesIterType);
 
-    Py_CLEAR(state->str_lower);
     Py_CLEAR(state->str_canonical);
+    Py_CLEAR(state->str_lower);
+    Py_CLEAR(state->str_name);
 
     return 0;
 }
@@ -1446,6 +1450,10 @@ module_exec(PyObject *mod)
     }
     state->str_canonical = PyUnicode_InternFromString("_canonical");
     if (state->str_canonical == NULL) {
+        goto fail;
+    }
+    state->str_name = PyUnicode_InternFromString("__name__");
+    if (state->str_name == NULL) {
         goto fail;
     }
 

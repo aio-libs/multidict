@@ -22,8 +22,9 @@ typedef struct {
     PyTypeObject *ItemsIterType;
     PyTypeObject *ValuesIterType;
 
-    PyObject *str_lower;
     PyObject *str_canonical;
+    PyObject *str_lower;
+    PyObject *str_name;
 } mod_state;
 
 static inline mod_state *
