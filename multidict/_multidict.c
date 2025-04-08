@@ -1003,7 +1003,7 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         );
         return -1;
     }
-    if (kwds == NULL) {
+    if (kwds != NULL) {
         PyErr_Format(
             PyExc_TypeError,
             "__init__() doesn't accept keyword arguments"
@@ -1292,7 +1292,7 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         );
         return -1;
     }
-    if (kwds == NULL) {
+    if (kwds != NULL) {
         PyErr_Format(
             PyExc_TypeError,
             "__init__() doesn't accept keyword arguments"
