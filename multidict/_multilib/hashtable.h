@@ -21,6 +21,7 @@ extern "C" {
 typedef struct _ht_pos {
     Py_ssize_t pos;
     uint64_t version;
+    bool tracking;
 } ht_pos_t;
 
 
@@ -626,6 +627,7 @@ ht_init_pos(MultiDictObject *md, ht_pos_t *pos)
 {
     pos->pos = 0;
     pos->version = md->version;
+    pos->tracking = md_is_tracked(md);
 }
 
 static inline int
@@ -633,14 +635,18 @@ ht_next(MultiDictObject *md, ht_pos_t *pos, PyObject **pidentity,
         PyObject **pkey, PyObject **pvalue)
 {
     int ret = 0;
-    if (pos->pos >= md->keys->nentries) {
-        goto cleanup;
-    }
 
     if (pos->version != md->version) {
         PyErr_SetString(PyExc_RuntimeError,
                         "MultiDict is changed during iteration");
         ret = -1;
+        goto cleanup;
+    }
+
+    if (pos->pos >= md->keys->nentries) {
+        if (!pos->tracking) {
+            md_set_tracked(md, false);
+        }
         goto cleanup;
     }
 
@@ -653,6 +659,13 @@ ht_next(MultiDictObject *md, ht_pos_t *pos, PyObject **pidentity,
             goto cleanup;
         }
         entry += 1;
+    }
+
+    if (pos->tracking) {
+        if (!_ht_is_gc_tracked(md->state, entry->key)
+            && !_ht_is_gc_tracked(md->state, entry->value)) {
+            pos->tracking = false;
+        }
     }
 
     if (pidentity) {
