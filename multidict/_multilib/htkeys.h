@@ -39,13 +39,13 @@ typedef struct entry {
 
 typedef struct _htkeys {
     /* Size of the hash table (dk_indices). It must be a power of 2. */
-    uint8_t dk_log2_size;
+    uint8_t log2_size;
 
     /* Size of the hash table (dk_indices) by bytes. */
-    uint8_t dk_log2_index_bytes;
+    uint8_t log2_index_bytes;
 
     /* Number of usable entries in dk_entries. */
-    Py_ssize_t dk_usable;
+    Py_ssize_t usable;
 
     /* Number of used entries in dk_entries. */
     Py_ssize_t dk_nentries;
@@ -60,9 +60,9 @@ typedef struct _htkeys {
 
        The size in bytes of an indice depends on dk_size:
 
-       - 1 byte if htkeys_size() <= 0xff (char*)
-       - 2 bytes if htkeys_size() <= 0xffff (int16_t*)
-       - 4 bytes if htkeys_size() <= 0xffffffff (int32_t*)
+       - 1 byte if htkeys_nslots() <= 0xff (char*)
+       - 2 bytes if htkeys_nslots() <= 0xffff (int16_t*)
+       - 4 bytes if htkeys_nslots() <= 0xffffffff (int32_t*)
        - 8 bytes otherwise (int64_t*)
 
        Dynamically sized, SIZEOF_VOID_P is minimum. */
@@ -71,26 +71,26 @@ typedef struct _htkeys {
 } htkeys_t;
 
 #if SIZEOF_VOID_P > 4
-static inline Py_ssize_t htkeys_size(const htkeys_t *keys)
+static inline Py_ssize_t htkeys_nslots(const htkeys_t *keys)
 {
-    return ((int64_t)1) << keys->dk_log2_size;
+    return ((int64_t)1) << keys->log2_size;
 }
 #else
-static inline Py_ssize_t htkeys_size(const htkeys_t *keys)
+static inline Py_ssize_t htkeys_nslots(const htkeys_t *keys)
 {
-    return 1<< keys->dk_log2_size;
+    return 1<< keys->log2_size;
 }
 #endif
 
 static inline Py_ssize_t htkeys_mask(const htkeys_t *keys)
 {
-    return htkeys_size(keys)-1;
+    return htkeys_nslots(keys)-1;
 }
 
 
 static inline entry_t* htkeys_entries(const htkeys_t *dk) {
     int8_t *indices = (int8_t*)(dk->dk_indices);
-    size_t index = (size_t)1 << dk->dk_log2_index_bytes;
+    size_t index = (size_t)1 << dk->log2_index_bytes;
     return (entry_t*)(&indices[index]);
 }
 
@@ -102,7 +102,7 @@ static inline entry_t* htkeys_entries(const htkeys_t *dk) {
 static inline Py_ssize_t
 htkeys_get_index(const htkeys_t *keys, Py_ssize_t i)
 {
-    uint8_t log2size = keys->dk_log2_size;
+    uint8_t log2size = keys->log2_size;
     Py_ssize_t ix;
 
     if (log2size < 8) {
@@ -127,7 +127,7 @@ htkeys_get_index(const htkeys_t *keys, Py_ssize_t i)
 static inline void
 htkeys_set_index(htkeys_t *keys, Py_ssize_t i, Py_ssize_t ix)
 {
-    uint8_t log2size = keys->dk_log2_size;
+    uint8_t log2size = keys->log2_size;
 
     assert(ix >= DKIX_DUMMY);
 
@@ -245,12 +245,12 @@ estimate_log2_keysize(Py_ssize_t n)
  * (which cannot fail and thus can do no allocation).
  *
  * See https://github.com/python/cpython/pull/127568#discussion_r1868070614
- * for the rationale of using dk_log2_index_bytes=3 instead of 0.
+ * for the rationale of using log2_index_bytes=3 instead of 0.
  */
 static htkeys_t empty_htkeys = {
-        0, /* dk_log2_size */
-        3, /* dk_log2_index_bytes */
-        0, /* dk_usable (immutable) */
+        0, /* log2_size */
+        3, /* log2_index_bytes */
+        0, /* usable (immutable) */
         0, /* dk_nentries */
         0, /* dk_ndummies */
         {DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
@@ -261,9 +261,9 @@ static htkeys_t empty_htkeys = {
 static inline Py_ssize_t
 htkeys_sizeof(htkeys_t *keys)
 {
-    Py_ssize_t usable = USABLE_FRACTION((size_t)1<<keys->dk_log2_size);
+    Py_ssize_t usable = USABLE_FRACTION((size_t)1<<keys->log2_size);
     return (sizeof(htkeys_t)
-        + ((size_t)1 << keys->dk_log2_index_bytes)
+        + ((size_t)1 << keys->log2_index_bytes)
         + sizeof(entry_t) * usable);
 }
 
@@ -301,10 +301,10 @@ htkeys_new(uint8_t log2_size)
         return NULL;
     }
 
-    keys->dk_log2_size = log2_size;
-    keys->dk_log2_index_bytes = log2_bytes;
+    keys->log2_size = log2_size;
+    keys->log2_index_bytes = log2_bytes;
     keys->dk_nentries = 0;
-    keys->dk_usable = usable;
+    keys->usable = usable;
     keys->dk_ndummies = 0;
     memset(&keys->dk_indices[0], 0xff, ((size_t)1 << log2_bytes));
     memset(&keys->dk_indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
@@ -369,7 +369,7 @@ htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 static inline Py_ssize_t
 htkeys_dummies_fraction(htkeys_t *keys)
 {
-    return htkeys_size(keys) / 3;
+    return htkeys_nslots(keys) / 3;
 }
 
 

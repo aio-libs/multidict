@@ -197,7 +197,7 @@ _ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
         return -1;
     }
     // New table must be large enough.
-    assert(newkeys->dk_usable >= ht->used);
+    assert(newkeys->usable >= ht->used);
 
     Py_ssize_t numentries = ht->used;
     entry_t *oldentries = htkeys_entries(oldkeys);
@@ -230,7 +230,7 @@ _ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
         htkeys_free(oldkeys);
     }
 
-    ht->keys->dk_usable = ht->keys->dk_usable - numentries;
+    ht->keys->usable = ht->keys->usable - numentries;
     ht->keys->dk_nentries = numentries;
     ASSERT_CONSISTENT(ht, update);
     return 0;
@@ -255,7 +255,7 @@ static inline int
 _ht_reserve(ht_t *ht, Py_ssize_t extra_size, bool update)
 {
     uint8_t new_size = estimate_log2_keysize(extra_size + ht->used);
-    if (new_size > ht->keys->dk_log2_size) {
+    if (new_size > ht->keys->log2_size) {
         return _ht_resize(ht, new_size, update);
     }
     return 0;
@@ -395,7 +395,7 @@ static inline int
 _ht_add_with_hash_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
                              PyObject *key, PyObject *value)
 {
-    if (ht->keys->dk_usable <= 0 || ht->keys == &empty_htkeys) {
+    if (ht->keys->usable <= 0 || ht->keys == &empty_htkeys) {
         /* Need to resize. */
         if (_ht_resize_for_insert(ht) < 0) {
             return -1;
@@ -417,7 +417,7 @@ _ht_add_with_hash_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
 
     ht->version = NEXT_VERSION();
     ht->used += 1;
-    ht->keys->dk_usable -= 1;
+    ht->keys->usable -= 1;
     ht->keys->dk_nentries += 1;
 
     return 0;
@@ -439,7 +439,7 @@ static inline int
 _ht_add_for_upd_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
                            PyObject *key, PyObject *value)
 {
-    if (ht->keys->dk_usable <= 0 || ht->keys == &empty_htkeys) {
+    if (ht->keys->usable <= 0 || ht->keys == &empty_htkeys) {
         /* Need to resize. */
         if (_ht_resize_for_update(ht) < 0) {
             return -1;
@@ -461,7 +461,7 @@ _ht_add_for_upd_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
 
     ht->version = NEXT_VERSION();
     ht->used += 1;
-    ht->keys->dk_usable -= 1;
+    ht->keys->usable -= 1;
     ht->keys->dk_nentries += 1;
 
     return 0;
@@ -1326,7 +1326,7 @@ fail:
 static inline int
 ht_post_update(ht_t *ht)
 {
-    size_t num_slots = htkeys_size(ht->keys);
+    size_t num_slots = htkeys_nslots(ht->keys);
     entry_t *entries = htkeys_entries(ht->keys);
     for (size_t slot = 0; slot < num_slots; slot++) {
         Py_ssize_t index = htkeys_get_index(ht->keys, slot);
@@ -1371,7 +1371,7 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
     }
 
     uint8_t new_size = estimate_log2_keysize(ht_len(other) + ht->used);
-    if (new_size > ht->keys->dk_log2_size) {
+    if (new_size > ht->keys->log2_size) {
         if (_ht_resize(ht, new_size, update)) {
             return -1;
         }
@@ -1440,7 +1440,7 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
     }
 
     uint8_t new_size = estimate_log2_keysize(PyDict_GET_SIZE(kwds) + ht->used);
-    if (new_size > ht->keys->dk_log2_size) {
+    if (new_size > ht->keys->log2_size) {
         if (_ht_resize(ht, new_size, update)) {
             return -1;
         }
@@ -1569,7 +1569,7 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
         return -1;
     }
     uint8_t new_size = estimate_log2_keysize(length_hint + ht->used);
-    if (new_size > ht->keys->dk_log2_size) {
+    if (new_size > ht->keys->log2_size) {
         if (_ht_resize(ht, new_size, update)) {
             return -1;
         }
@@ -1953,19 +1953,19 @@ _ht_check_consistency(ht_t *ht, bool update)
 
     htkeys_t *keys = ht->keys;
     CHECK(keys != NULL);
-    Py_ssize_t usable = USABLE_FRACTION(htkeys_size(keys));
+    Py_ssize_t calc_usable = USABLE_FRACTION(htkeys_nslots(keys));
 
     // In the free-threaded build, shared keys may be concurrently modified,
     // so use atomic loads.
-    Py_ssize_t dk_usable = keys->dk_usable;
+    Py_ssize_t usable = keys->usable;
     Py_ssize_t dk_nentries = keys->dk_nentries;
 
     CHECK(0 <= ht->used && ht->used <= usable);
-    CHECK(0 <= dk_usable && dk_usable <= usable);
+    CHECK(0 <= usable && usable <= calc_usable);
     CHECK(0 <= dk_nentries && dk_nentries <= usable);
-    CHECK(dk_usable + dk_nentries <= usable);
+    CHECK(usable + dk_nentries <= calc_usable);
 
-    for (Py_ssize_t i=0; i < htkeys_size(keys); i++) {
+    for (Py_ssize_t i=0; i < htkeys_nslots(keys); i++) {
         Py_ssize_t ix = htkeys_get_index(keys, i);
         CHECK(DKIX_DUMMY <= ix && ix <= usable);
     }
@@ -2006,8 +2006,8 @@ _ht_dump(ht_t *ht)
 {
     htkeys_t *keys = ht->keys;
     printf("Dump %p [%ld from %ld usable %ld nentries %ld]\n",
-           ht, ht->used, htkeys_size(keys), keys->dk_usable, keys->dk_nentries);
-    for (Py_ssize_t i=0; i < htkeys_size(keys); i++) {
+           ht, ht->used, htkeys_nslots(keys), keys->usable, keys->dk_nentries);
+    for (Py_ssize_t i=0; i < htkeys_nslots(keys); i++) {
         Py_ssize_t ix = htkeys_get_index(keys, i);
         printf("  %ld -> %ld\n", i, ix);
     }
