@@ -1886,6 +1886,7 @@ ht_traverse(MultiDictObject *md, visitproc visit, void *arg)
 static inline int
 ht_clear(MultiDictObject *md)
 {
+    md_set_tracked(md, false);
     if (md->used == 0) {
         return 0;
     }

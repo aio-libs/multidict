@@ -23,7 +23,7 @@ typedef struct {
     Py_ssize_t used;
 
     uint64_t version;
-    unsigned int flags;
+    uint8_t flags;
 
     htkeys_t * keys;
 } MultiDictObject;
@@ -62,12 +62,17 @@ static inline bool md_is_tracked(MultiDictObject *md)
 
 static inline bool md_set_tracked(MultiDictObject *md, bool set)
 {
+    uint8_t flags = md->flags;
     if (set) {
         md->flags |= IS_TRACKED;
-        PyObject_GC_Track(md);
+        if (flags & ~IS_TRACKED) {
+            PyObject_GC_Track(md);
+        }
     } else {
         md->flags &= ~IS_TRACKED;
-        PyObject_GC_UnTrack(md);
+        if (flags & IS_TRACKED) {
+            PyObject_GC_UnTrack(md);
+        }
     }
 }
 
