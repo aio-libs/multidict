@@ -1446,13 +1446,19 @@ md_update_from_dict(MultiDictObject *md, PyObject *kwds, bool update)
             if (_md_update(md, hash, identity, key, value) < 0) {
                 goto fail;
             }
+            Py_CLEAR(identity);
+            Py_CLEAR(key);
         } else {
-            if (_md_add_with_hash(md, hash, identity, key, value) < 0) {
+            int tmp = _md_add_with_hash_steal_refs(md, hash, identity,
+                                                   key, Py_NewRef(value));
+            if (tmp < 0) {
+                Py_DECREF(value);
                 goto fail;
             }
+            identity = NULL;
+            key = NULL;
+            value = NULL;
         }
-        Py_CLEAR(identity);
-        Py_CLEAR(key);
     }
     return 0;
 fail:
@@ -1490,15 +1496,7 @@ static int _md_parse_item(Py_ssize_t i, PyObject *item,
 {
     Py_ssize_t n;
 
-    if (PyList_CheckExact(item)) {
-        n = PyList_GET_SIZE(item);
-        if (n != 2) {
-            _err_bad_length(i, n);
-            goto fail;
-        }
-        *pkey = Py_NewRef(PyList_GET_ITEM(item, 0));
-        *pvalue = Py_NewRef(PyList_GET_ITEM(item, 1));
-    } else if (PyTuple_CheckExact(item)) {
+    if (PyTuple_CheckExact(item)) {
         n = PyTuple_GET_SIZE(item);
         if (n != 2) {
             _err_bad_length(i, n);
@@ -1506,6 +1504,14 @@ static int _md_parse_item(Py_ssize_t i, PyObject *item,
         }
         *pkey = Py_NewRef(PyTuple_GET_ITEM(item, 0));
         *pvalue = Py_NewRef(PyTuple_GET_ITEM(item, 1));
+    } else if (PyList_CheckExact(item)) {
+        n = PyList_GET_SIZE(item);
+        if (n != 2) {
+            _err_bad_length(i, n);
+            goto fail;
+        }
+        *pkey = Py_NewRef(PyList_GET_ITEM(item, 0));
+        *pvalue = Py_NewRef(PyList_GET_ITEM(item, 1));
     } else {
         if (!PySequence_Check(item)) {
             _err_not_sequence(i);
