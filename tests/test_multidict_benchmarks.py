@@ -255,8 +255,9 @@ def test_cimultidict_delitem_istr(
 def test_multidict_getall_str_hit(
     benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
 ) -> None:
-    md = any_multidict_class((f"key{j}", str(f"{i}-{j}"))
-                             for i in range(20) for j in range(5))
+    md = any_multidict_class(
+        (f"key{j}", str(f"{i}-{j}")) for i in range(20) for j in range(5)
+    )
 
     @benchmark
     def _run() -> None:
@@ -266,8 +267,9 @@ def test_multidict_getall_str_hit(
 def test_multidict_getall_str_miss(
     benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
 ) -> None:
-    md = any_multidict_class((f"key{j}", str(f"{i}-{j}"))
-                             for i in range(20) for j in range(5))
+    md = any_multidict_class(
+        (f"key{j}", str(f"{i}-{j}")) for i in range(20) for j in range(5)
+    )
 
     @benchmark
     def _run() -> None:
@@ -279,8 +281,9 @@ def test_cimultidict_getall_istr_hit(
     case_insensitive_multidict_class: Type[CIMultiDict[istr]],
 ) -> None:
     all_istr = istr("key0")
-    md = case_insensitive_multidict_class((f"key{j}", istr(f"{i}-{j}"))
-                                          for i in range(20) for j in range(5))
+    md = case_insensitive_multidict_class(
+        (f"key{j}", istr(f"{i}-{j}")) for i in range(20) for j in range(5)
+    )
 
     @benchmark
     def _run() -> None:
@@ -292,8 +295,9 @@ def test_cimultidict_getall_istr_miss(
     case_insensitive_multidict_class: Type[CIMultiDict[istr]],
 ) -> None:
     miss_istr = istr("miss")
-    md = case_insensitive_multidict_class((istr(f"key{j}"), istr(f"{i}-{j}"))
-                                          for i in range(20) for j in range(5))
+    md = case_insensitive_multidict_class(
+        (istr(f"key{j}"), istr(f"{i}-{j}")) for i in range(20) for j in range(5)
+    )
 
     @benchmark
     def _run() -> None:
@@ -603,3 +607,18 @@ def test_iterate_multidict_items(
     def _run() -> None:
         for _, _ in md.items():
             pass
+
+
+def test_leak(
+    benchmark: BenchmarkFixture,
+) -> None:
+    @benchmark
+    def run() -> None:
+        for _ in range(1000):
+            for _ in range(1000):
+                result: CIMultiDict[str] = CIMultiDict()
+                headers = CIMultiDict({f"X-Any-{i}": str(i) for i in range(10)})
+                for key, value in headers.items():
+                    result[key] = value
+            del result  # type: ignore[possibly-undefined]
+            del headers  # type: ignore[possibly-undefined]
