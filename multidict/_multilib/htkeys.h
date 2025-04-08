@@ -82,13 +82,13 @@ static inline Py_ssize_t DK_SIZE(const htkeys_t *keys)
 }
 #endif
 
-static inline Py_ssize_t DK_MASK(const htkeys_t *keys)
+static inline Py_ssize_t htkeys_mask(const htkeys_t *keys)
 {
     return DK_SIZE(keys)-1;
 }
 
 
-static inline entry_t* DK_ENTRIES(const htkeys_t *dk) {
+static inline entry_t* htkeys_entries(const htkeys_t *dk) {
     int8_t *indices = (int8_t*)(dk->dk_indices);
     size_t index = (size_t)1 << dk->dk_log2_index_bytes;
     return (entry_t*)(&indices[index]);
@@ -327,7 +327,7 @@ Internal routine used by ht_resize() to build a hashtable of entries.
 static inline int
 htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 {
-    size_t mask = DK_MASK(keys);
+    size_t mask = htkeys_mask(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
         assert(hash != -1);
@@ -346,7 +346,7 @@ htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 static inline int
 htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 {
-    size_t mask = DK_MASK(keys);
+    size_t mask = htkeys_mask(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
         if (hash == -1) {
@@ -378,9 +378,13 @@ static inline int
 htkeys_rebuild_indices(htkeys_t *keys, bool update)
 {
     if (update) {
-        return htkeys_build_indices_for_upd(keys, DK_ENTRIES(keys), keys->dk_nentries);
+        return htkeys_build_indices_for_upd(keys,
+                                            htkeys_entries(keys),
+                                            keys->dk_nentries);
     } else {
-        return htkeys_build_indices(keys, DK_ENTRIES(keys), keys->dk_nentries);
+        return htkeys_build_indices(keys,
+                                    htkeys_entries(keys),
+                                    keys->dk_nentries);
     }
 }
 
@@ -391,7 +395,7 @@ htkeys_rebuild_indices(htkeys_t *keys, bool update)
 static inline Py_ssize_t
 htkeys_find_empty_slot(htkeys_t *keys, Py_hash_t hash)
 {
-    const size_t mask = DK_MASK(keys);
+    const size_t mask = htkeys_mask(keys);
     size_t i = hash & mask;
     Py_ssize_t ix = htkeys_get_index(keys, i);
     for (size_t perturb = hash; ix >= 0 || ix == DKIX_DUMMY;) {
@@ -416,7 +420,7 @@ htkeys_find_empty_slot(htkeys_t *keys, Py_hash_t hash)
 
 typedef struct _htkeysiter {
     htkeys_t *keys;
-    size_t mask;  // DK_MASK(keys)
+    size_t mask;  // htkeys_mask(keys)
     size_t slot;  // masked hash, Py_hash_t h & mask;
     size_t perturb;
     Py_ssize_t index;
@@ -427,7 +431,7 @@ static inline void
 htkeysiter_init(htkeysiter_t *iter, htkeys_t *keys, Py_hash_t hash)
 {
     iter->keys = keys;
-    iter->mask = DK_MASK(keys);
+    iter->mask = htkeys_mask(keys);
     iter->perturb = (size_t)hash;
     iter->slot = iter->perturb & iter->mask;
     iter->index = htkeys_get_index(iter->keys, iter->slot);
