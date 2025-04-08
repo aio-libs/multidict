@@ -23,10 +23,10 @@ over pair_list for, e.g., md.get() or md.pop() is safe.
 */
 
 typedef struct entry {
-    PyObject  *identity;  // 8
-    PyObject  *key;       // 8
-    PyObject  *value;     // 8
-    Py_hash_t  hash;      // 8
+    Py_hash_t  hash;
+    PyObject  *identity;
+    PyObject  *key;
+    PyObject  *value;
 } entry_t;
 
 
@@ -371,12 +371,8 @@ htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 static inline Py_ssize_t
 htkeys_dummies_fraction(htkeys_t *keys)
 {
-    Py_ssize_t ret = htkeys_nslots(keys);
-    if (ret >= 16) {
-        return ret / 4;
-    } else {
-        return ret / 2;
-    }
+    // rebiuld indices when there are at least 1/4 dummies.
+    return htkeys_nslots(keys) / 4;
 }
 
 
