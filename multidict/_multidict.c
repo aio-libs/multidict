@@ -927,6 +927,7 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         goto fail;
     }
     Py_CLEAR(arg);
+    ASSERT_CONSISTENT(&self->ht, false);
     return 0;
 fail:
     Py_CLEAR(arg);
