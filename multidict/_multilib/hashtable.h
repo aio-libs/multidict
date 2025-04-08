@@ -35,6 +35,39 @@ typedef struct _ht_finder {
 } ht_finder_t;
 
 
+/*
+The multidict's implementation is close to Python's dict except for multiple keys.
+
+It starts from the empty hashtable, which grows by a power of 2 starting from 8: 8, 16,
+32, 64, 128, ...  The amount of items is 2/3 of the hashtable size (1/3 of the table is
+never allocated).
+
+The table is resized if needed, and bulk updates (extend(), update(), and constructor
+calls) pre-allocate many items at once, reducing the amount of potential hashtable
+resizes.
+
+Item deletion puts DKIX_DUMMY special index in the hashtable. In opposite to the
+standard dict, DKIX_DUMMY is never replaced with an index of the new entry except by
+hashtable indices rebuild. It allows to keep the insertion order for multiple equal
+keys. The index table rebuild happens on the keys table size changeing and if the number
+of DKIX_DUMMY slots grows to 1/4 of the total amount.
+
+The iteration for operations like getall() is a little tricky. The next index
+calculation could return the already visited index before reaching the end. To eliminate
+duplicates, the code marks already visited entries by entry->hash = -1. -1 hash is an
+invalid hash value that could be used as a marker. After the iteration finishes, all
+marked entries are restored.  Double iteration over the indices still has O(1) amortized
+time, it is ok.
+
+`.add()`, `val = md[key]`, `md[key] = val`, `md.setdefault()` all have O(1).
+`.getall()` / `.popall()` have O(N) where N is the amount of returned items.
+`.update()` / `extend()` have O(N+M) where N and M are amount of items
+in the left and right arguments.
+
+`.copy()` and constuction from multidict is super fast.
+*/
+
+
 /* Global counter used to set ma_version_tag field of dictionary.
  * It is incremented each time that a dictionary is created and each
  * time that a dictionary is modified. */
