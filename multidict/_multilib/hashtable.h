@@ -398,20 +398,23 @@ static inline int
 _md_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                              PyObject *key, PyObject *value)
 {
-    if (md->keys->usable <= 0 || md->keys == &empty_htkeys) {
+    htkeys_t *keys = md->keys;
+    if (keys->usable <= 0 || keys == &empty_htkeys) {
         /* Need to resize. */
         if (_md_resize_for_insert(md) < 0) {
             return -1;
         }
-    } else if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
+        keys = md->keys;  // updated by resizing
+    } else if (keys->ndummies > htkeys_dummies_fraction(keys)) {
+        if (htkeys_rebuild_indices(keys, false) < 0) {
             return -1;
         }
     }
-    Py_ssize_t hashpos = htkeys_find_empty_slot(md->keys, hash);
-    htkeys_set_index(md->keys, hashpos, md->keys->nentries);
 
-    entry_t *entry = htkeys_entries(md->keys) + md->keys->nentries;
+    Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
+    htkeys_set_index(keys, hashpos, keys->nentries);
+
+    entry_t *entry = htkeys_entries(keys) + keys->nentries;
 
     entry->identity = identity;
     entry->key = key;
@@ -420,8 +423,8 @@ _md_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *iden
 
     md->version = NEXT_VERSION();
     md->used += 1;
-    md->keys->usable -= 1;
-    md->keys->nentries += 1;
+    keys->usable -= 1;
+    keys->nentries += 1;
     return 0;
 }
 
@@ -441,20 +444,22 @@ static inline int
 _md_add_for_upd_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                            PyObject *key, PyObject *value)
 {
-    if (md->keys->usable <= 0 || md->keys == &empty_htkeys) {
+    htkeys_t *keys = md->keys;
+    if (keys->usable <= 0 || keys == &empty_htkeys) {
         /* Need to resize. */
         if (_md_resize_for_update(md) < 0) {
             return -1;
         }
-    } else if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, true) < 0) {
+        keys = md->keys;  // updated by resizing
+    } else if (keys->ndummies > htkeys_dummies_fraction(keys)) {
+        if (htkeys_rebuild_indices(keys, true) < 0) {
             return -1;
         }
     }
-    Py_ssize_t hashpos = htkeys_find_empty_slot(md->keys, hash);
-    htkeys_set_index(md->keys, hashpos, md->keys->nentries);
+    Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
+    htkeys_set_index(keys, hashpos, keys->nentries);
 
-    entry_t *entry = htkeys_entries(md->keys) + md->keys->nentries;
+    entry_t *entry = htkeys_entries(keys) + keys->nentries;
 
     entry->identity = identity;
     entry->key = key;
@@ -463,8 +468,8 @@ _md_add_for_upd_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identi
 
     md->version = NEXT_VERSION();
     md->used += 1;
-    md->keys->usable -= 1;
-    md->keys->nentries += 1;
+    keys->usable -= 1;
+    keys->nentries += 1;
     return 0;
 }
 
