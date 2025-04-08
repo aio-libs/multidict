@@ -38,20 +38,20 @@ typedef struct entry {
 
 
 typedef struct _htkeys {
-    /* Size of the hash table (dk_indices). It must be a power of 2. */
+    /* Size of the hash table (indices). It must be a power of 2. */
     uint8_t log2_size;
 
-    /* Size of the hash table (dk_indices) by bytes. */
+    /* Size of the hash table (indices) by bytes. */
     uint8_t log2_index_bytes;
 
     /* Number of usable entries in dk_entries. */
     Py_ssize_t usable;
 
     /* Number of used entries in dk_entries. */
-    Py_ssize_t dk_nentries;
+    Py_ssize_t nentries;
 
     /* Number of DUMMY entries in dk_entries. */
-    Py_ssize_t dk_ndummies;
+    Py_ssize_t ndummies;
 
     /* Actual hash table of dk_size entries. It holds indices in dk_entries,
        or DKIX_EMPTY(-1) or DKIX_DUMMY(-2).
@@ -66,7 +66,7 @@ typedef struct _htkeys {
        - 8 bytes otherwise (int64_t*)
 
        Dynamically sized, SIZEOF_VOID_P is minimum. */
-    char dk_indices[];  /* char is required to avoid strict aliasing. */
+    char indices[];  /* char is required to avoid strict aliasing. */
 
 } htkeys_t;
 
@@ -89,13 +89,13 @@ static inline Py_ssize_t htkeys_mask(const htkeys_t *keys)
 
 
 static inline entry_t* htkeys_entries(const htkeys_t *dk) {
-    int8_t *indices = (int8_t*)(dk->dk_indices);
+    int8_t *indices = (int8_t*)(dk->indices);
     size_t index = (size_t)1 << dk->log2_index_bytes;
     return (entry_t*)(&indices[index]);
 }
 
-#define LOAD_INDEX(keys, size, idx) ((const int##size##_t*)(keys->dk_indices))[idx]
-#define STORE_INDEX(keys, size, idx, value) ((int##size##_t*)(keys->dk_indices))[idx] = (int##size##_t)value
+#define LOAD_INDEX(keys, size, idx) ((const int##size##_t*)(keys->indices))[idx]
+#define STORE_INDEX(keys, size, idx, value) ((int##size##_t*)(keys->indices))[idx] = (int##size##_t)value
 
 
 /* lookup indices.  returns DKIX_EMPTY, DKIX_DUMMY, or ix >=0 */
@@ -251,10 +251,10 @@ static htkeys_t empty_htkeys = {
         0, /* log2_size */
         3, /* log2_index_bytes */
         0, /* usable (immutable) */
-        0, /* dk_nentries */
-        0, /* dk_ndummies */
+        0, /* nentries */
+        0, /* ndummies */
         {DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
-         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY}, /* dk_indices */
+         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY}, /* indices */
 };
 
 
@@ -303,11 +303,11 @@ htkeys_new(uint8_t log2_size)
 
     keys->log2_size = log2_size;
     keys->log2_index_bytes = log2_bytes;
-    keys->dk_nentries = 0;
+    keys->nentries = 0;
     keys->usable = usable;
-    keys->dk_ndummies = 0;
-    memset(&keys->dk_indices[0], 0xff, ((size_t)1 << log2_bytes));
-    memset(&keys->dk_indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
+    keys->ndummies = 0;
+    memset(&keys->indices[0], 0xff, ((size_t)1 << log2_bytes));
+    memset(&keys->indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
     return keys;
 }
 
@@ -337,7 +337,7 @@ htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
         }
         htkeys_set_index(keys, i, ix);
     }
-    keys->dk_ndummies = 0;
+    keys->ndummies = 0;
     return 0;
 }
 
@@ -361,7 +361,7 @@ htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
         }
         htkeys_set_index(keys, i, ix);
     }
-    keys->dk_ndummies = 0;
+    keys->ndummies = 0;
     return 0;
 }
 
@@ -379,11 +379,11 @@ htkeys_rebuild_indices(htkeys_t *keys, bool update)
     if (update) {
         return htkeys_build_indices_for_upd(keys,
                                             htkeys_entries(keys),
-                                            keys->dk_nentries);
+                                            keys->nentries);
     } else {
         return htkeys_build_indices(keys,
                                     htkeys_entries(keys),
-                                    keys->dk_nentries);
+                                    keys->nentries);
     }
 }
 

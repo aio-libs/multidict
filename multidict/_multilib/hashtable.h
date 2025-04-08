@@ -202,7 +202,7 @@ _ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
     Py_ssize_t numentries = ht->used;
     entry_t *oldentries = htkeys_entries(oldkeys);
     entry_t *newentries = htkeys_entries(newkeys);
-    if (oldkeys->dk_nentries == numentries) {
+    if (oldkeys->nentries == numentries) {
         memcpy(newentries, oldentries, numentries * sizeof(entry_t));
     } else {
         entry_t *ep = oldentries;
@@ -231,7 +231,7 @@ _ht_resize(ht_t *ht, uint8_t log2_newsize, bool update)
     }
 
     ht->keys->usable = ht->keys->usable - numentries;
-    ht->keys->dk_nentries = numentries;
+    ht->keys->nentries = numentries;
     ASSERT_CONSISTENT(ht, update);
     return 0;
 }
@@ -336,7 +336,7 @@ ht_clone_from_ht(ht_t *ht, ht_t *other)
         }
         memcpy(keys, other->keys, size);
         entry_t *entry = htkeys_entries(keys);
-        for (Py_ssize_t idx = 0; idx < keys->dk_nentries; idx++, entry++) {
+        for (Py_ssize_t idx = 0; idx < keys->nentries; idx++, entry++) {
             Py_XINCREF(entry->identity);
             Py_XINCREF(entry->key);
             Py_XINCREF(entry->value);
@@ -377,7 +377,7 @@ static inline PyObject *
 _ht_ensure_key(ht_t *ht, entry_t *entry)
 {
     assert(entry >= htkeys_entries(ht->keys));
-    assert(entry < htkeys_entries(ht->keys) + ht->keys->dk_nentries);
+    assert(entry < htkeys_entries(ht->keys) + ht->keys->nentries);
     PyObject *key = ht_calc_key(ht, entry->key, entry->identity);
     if (key == NULL) {
         return NULL;
@@ -400,15 +400,15 @@ _ht_add_with_hash_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
         if (_ht_resize_for_insert(ht) < 0) {
             return -1;
         }
-    } else if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    } else if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return -1;
         }
     }
     Py_ssize_t hashpos = htkeys_find_empty_slot(ht->keys, hash);
-    htkeys_set_index(ht->keys, hashpos, ht->keys->dk_nentries);
+    htkeys_set_index(ht->keys, hashpos, ht->keys->nentries);
 
-    entry_t *entry = htkeys_entries(ht->keys) + ht->keys->dk_nentries;
+    entry_t *entry = htkeys_entries(ht->keys) + ht->keys->nentries;
 
     entry->identity = identity;
     entry->key = key;
@@ -418,7 +418,7 @@ _ht_add_with_hash_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
     ht->version = NEXT_VERSION();
     ht->used += 1;
     ht->keys->usable -= 1;
-    ht->keys->dk_nentries += 1;
+    ht->keys->nentries += 1;
 
     return 0;
 }
@@ -444,15 +444,15 @@ _ht_add_for_upd_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
         if (_ht_resize_for_update(ht) < 0) {
             return -1;
         }
-    } else if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    } else if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, true) < 0) {
             return -1;
         }
     }
     Py_ssize_t hashpos = htkeys_find_empty_slot(ht->keys, hash);
-    htkeys_set_index(ht->keys, hashpos, ht->keys->dk_nentries);
+    htkeys_set_index(ht->keys, hashpos, ht->keys->nentries);
 
-    entry_t *entry = htkeys_entries(ht->keys) + ht->keys->dk_nentries;
+    entry_t *entry = htkeys_entries(ht->keys) + ht->keys->nentries;
 
     entry->identity = identity;
     entry->key = key;
@@ -462,7 +462,7 @@ _ht_add_for_upd_steal_refs(ht_t *ht, Py_hash_t hash, PyObject *identity,
     ht->version = NEXT_VERSION();
     ht->used += 1;
     ht->keys->usable -= 1;
-    ht->keys->dk_nentries += 1;
+    ht->keys->nentries += 1;
 
     return 0;
 }
@@ -508,7 +508,7 @@ _ht_del_at(ht_t *ht, size_t slot, entry_t *entry)
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
     htkeys_set_index(ht->keys, slot, DKIX_DUMMY);
-    ht->keys->dk_ndummies += 1;
+    ht->keys->ndummies += 1;
     ht->used -= 1;
     return 0;
 }
@@ -606,7 +606,7 @@ ht_next(ht_t *ht, ht_pos_t *pos, PyObject **pidentity,
         PyObject **pkey, PyObject **pvalue)
 {
     int ret = 0;
-    if (pos->pos >= ht->keys->dk_nentries) {
+    if (pos->pos >= ht->keys->nentries) {
         goto cleanup;
     }
 
@@ -622,7 +622,7 @@ ht_next(ht_t *ht, ht_pos_t *pos, PyObject **pidentity,
 
     while (entry->identity == NULL) {
         pos->pos += 1;
-        if (pos->pos >= ht->keys->dk_nentries) {
+        if (pos->pos >= ht->keys->nentries) {
             goto cleanup;
         }
         entry += 1;
@@ -785,7 +785,7 @@ ht_contains(ht_t *ht, PyObject *key, PyObject **pret)
         return 0;
     }
 
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return -1;
         }
@@ -846,7 +846,7 @@ fail:
 static inline int
 ht_get_one(ht_t *ht, PyObject *key, PyObject **ret)
 {
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return -1;
         }
@@ -898,7 +898,7 @@ ht_get_all(ht_t *ht, PyObject *key, PyObject **ret)
 {
     *ret == NULL;
 
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return -1;
         }
@@ -953,7 +953,7 @@ fail:
 static inline PyObject *
 ht_set_default(ht_t *ht, PyObject *key, PyObject *value)
 {
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return NULL;
         }
@@ -1009,7 +1009,7 @@ fail:
 static inline int
 ht_pop_one(ht_t *ht, PyObject *key, PyObject **ret)
 {
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return -1;
         }
@@ -1069,7 +1069,7 @@ fail:
 static inline int
 ht_pop_all(ht_t *ht, PyObject *key, PyObject ** ret)
 {
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return -1;
         }
@@ -1146,7 +1146,7 @@ ht_pop_item(ht_t *ht)
         return NULL;
     }
 
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return NULL;
         }
@@ -1154,7 +1154,7 @@ ht_pop_item(ht_t *ht)
 
     entry_t *entries = htkeys_entries(ht->keys);
 
-    Py_ssize_t pos = ht->keys->dk_nentries - 1;
+    Py_ssize_t pos = ht->keys->nentries - 1;
     entry_t *entry = entries + pos;
     while (pos >= 0 && entry->identity == NULL) {
         pos--;
@@ -1190,7 +1190,7 @@ static inline int
 _ht_replace(ht_t *ht, PyObject * key, PyObject *value,
             PyObject *identity, Py_hash_t hash)
 {
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return -1;
         }
@@ -1267,7 +1267,7 @@ static inline int
 _ht_update(ht_t *ht, Py_hash_t hash, PyObject *identity,
            PyObject *key, PyObject *value)
 {
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, true) < 0) {
             return -1;
         }
@@ -1344,12 +1344,12 @@ ht_post_update(ht_t *ht)
                    and not replaced with a new value */
                 Py_CLEAR(entry->identity);
                 htkeys_set_index(ht->keys, slot, DKIX_DUMMY);
-                ht->keys->dk_ndummies += 1;
+                ht->keys->ndummies += 1;
                 ht->used -= 1;
             }
         }
     }
-    if (ht->keys->dk_ndummies > htkeys_dummies_fraction(ht->keys)) {
+    if (ht->keys->ndummies > htkeys_dummies_fraction(ht->keys)) {
         if (htkeys_rebuild_indices(ht->keys, false) < 0) {
             return -1;
         }
@@ -1379,7 +1379,7 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
 
     entry_t *entries = htkeys_entries(other->keys);
 
-    for (pos = 0; pos < other->keys->dk_nentries; pos++) {
+    for (pos = 0; pos < other->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
         if (entry->identity == NULL) {
             continue;
@@ -1691,8 +1691,8 @@ ht_eq(ht_t *ht, ht_t *other)
     entry_t *lft_entries = htkeys_entries(ht->keys);
     entry_t *rht_entries = htkeys_entries(other->keys);
     for (;;) {
-        if (pos1 >= ht->keys->dk_nentries
-            || pos2 >= other->keys->dk_nentries) {
+        if (pos1 >= ht->keys->nentries
+            || pos2 >= other->keys->nentries) {
             return 1;
         }
         entry_t *entry1 = lft_entries + pos1;
@@ -1814,7 +1814,7 @@ ht_repr(ht_t *ht, PyObject *name,
 
     entry_t *entries = htkeys_entries(ht->keys);
 
-    for (Py_ssize_t pos = 0; pos < ht->keys->dk_nentries; ++pos) {
+    for (Py_ssize_t pos = 0; pos < ht->keys->nentries; ++pos) {
         if (version != ht->version) {
             PyErr_SetString(PyExc_RuntimeError, "MultiDict changed during iteration");
             return NULL;
@@ -1881,7 +1881,7 @@ ht_traverse(ht_t *ht, visitproc visit, void *arg)
     }
 
     entry_t *entries = htkeys_entries(ht->keys);
-    for (Py_ssize_t pos = 0; pos < ht->keys->dk_nentries; pos++) {
+    for (Py_ssize_t pos = 0; pos < ht->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
         if (entry->identity != NULL) {
             Py_VISIT(entry->identity);
@@ -1903,7 +1903,7 @@ ht_clear(ht_t *ht)
     ht->version = NEXT_VERSION();
 
     entry_t *entries = htkeys_entries(ht->keys);
-    for (Py_ssize_t pos = 0; pos < ht->keys->dk_nentries; pos++) {
+    for (Py_ssize_t pos = 0; pos < ht->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
         if (entry->identity != NULL) {
             Py_CLEAR(entry->identity);
@@ -1930,7 +1930,7 @@ ht_dealloc(ht_t *ht)
     }
     if (ht->keys != &empty_htkeys) {
         entry_t *entries = htkeys_entries(ht->keys);
-        for (Py_ssize_t idx=0; idx<ht->keys->dk_nentries; ++idx) {
+        for (Py_ssize_t idx=0; idx<ht->keys->nentries; ++idx) {
             entry_t *entry = entries + idx;
             Py_XDECREF(entry->identity);
             Py_XDECREF(entry->key);
@@ -1958,12 +1958,12 @@ _ht_check_consistency(ht_t *ht, bool update)
     // In the free-threaded build, shared keys may be concurrently modified,
     // so use atomic loads.
     Py_ssize_t usable = keys->usable;
-    Py_ssize_t dk_nentries = keys->dk_nentries;
+    Py_ssize_t nentries = keys->nentries;
 
     CHECK(0 <= ht->used && ht->used <= usable);
     CHECK(0 <= usable && usable <= calc_usable);
-    CHECK(0 <= dk_nentries && dk_nentries <= usable);
-    CHECK(usable + dk_nentries <= calc_usable);
+    CHECK(0 <= nentries && nentries <= usable);
+    CHECK(usable + nentries <= calc_usable);
 
     for (Py_ssize_t i=0; i < htkeys_nslots(keys); i++) {
         Py_ssize_t ix = htkeys_get_index(keys, i);
@@ -2006,14 +2006,14 @@ _ht_dump(ht_t *ht)
 {
     htkeys_t *keys = ht->keys;
     printf("Dump %p [%ld from %ld usable %ld nentries %ld]\n",
-           ht, ht->used, htkeys_nslots(keys), keys->usable, keys->dk_nentries);
+           ht, ht->used, htkeys_nslots(keys), keys->usable, keys->nentries);
     for (Py_ssize_t i=0; i < htkeys_nslots(keys); i++) {
         Py_ssize_t ix = htkeys_get_index(keys, i);
         printf("  %ld -> %ld\n", i, ix);
     }
     printf("  --------\n");
     entry_t *entries = htkeys_entries(keys);
-    for (Py_ssize_t i=0; i < keys->dk_nentries; i++) {
+    for (Py_ssize_t i=0; i < keys->nentries; i++) {
         entry_t *entry = &entries[i];
         PyObject *identity = entry->identity;
 
