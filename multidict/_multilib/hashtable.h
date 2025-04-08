@@ -299,11 +299,13 @@ md_init(MultiDictObject *md, mod_state *state, bool is_ci, Py_ssize_t minused)
     uint8_t log2_newsize;
     htkeys_t *new_keys;
 
+    /*
     if (minused <= USABLE_FRACTION(HT_MINSIZE)) {
         md->keys = &empty_htkeys;
         ASSERT_CONSISTENT(md, false);
         return 0;
     }
+    */
     /* There are no strict guarantee that returned dict can contain minused
      * items without resize.  So we create medium size dict instead of very
      * large dict or MemoryError.

@@ -34,8 +34,8 @@ typedef struct entry {
 #define DKIX_DUMMY  (-2)  /* deleted slot */
 
 
-#define HT_LOG_MINSIZE 4
-#define HT_MINSIZE 16
+#define HT_LOG_MINSIZE 5
+#define HT_MINSIZE 32
 #define HT_PERTURB_SHIFT 5
 
 
@@ -256,6 +256,10 @@ static htkeys_t empty_htkeys = {
         0, /* nentries */
         0, /* ndummies */
         {DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
+         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
+         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
+         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
+         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
          DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
          DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
          DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY}, /* indices */
