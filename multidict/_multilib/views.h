@@ -879,11 +879,18 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
     PyObject *value2 = NULL;
     int tmp;
     int ret = 0;
+    md_finder_t finder = {0};
 
-    if (PyTuple_CheckExact(obj) && PyTuple_GET_SIZE(obj) != 2) {
+    if (PyTuple_CheckExact(obj)) {
+        if (PyTuple_GET_SIZE(obj) != 2) {
+            return 0;
+        }
         key = Py_NewRef(PyTuple_GET_ITEM(obj, 0));
         value = Py_NewRef(PyTuple_GET_ITEM(obj, 1));
-    } else if (PyList_CheckExact(obj) && PyList_GET_SIZE(obj) != 2) {
+    } else if (PyList_CheckExact(obj)) {
+        if (PyList_GET_SIZE(obj) != 2) {
+            return 0;
+        }
         key = Py_NewRef(PyList_GET_ITEM(obj, 0));
         value = Py_NewRef(PyList_GET_ITEM(obj, 1));
     } else {
@@ -911,8 +918,6 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
         ret = 0;
         goto done;
     }
-
-    md_finder_t finder = {0};
 
     if (md_init_finder(self->md, identity, &finder) < 0) {
         assert(PyErr_Occurred());
@@ -942,6 +947,7 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
     Py_CLEAR(identity);
     Py_CLEAR(key);
     Py_CLEAR(value);
+    ASSERT_CONSISTENT(self->md, false);
     return ret;
 }
 

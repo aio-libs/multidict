@@ -144,6 +144,9 @@ _ci_key_to_identity(mod_state *state, PyObject *key)
     }
     if (PyUnicode_Check(key)) {
         PyObject *ret = PyObject_CallMethodNoArgs(key, state->str_lower);
+        if (ret == NULL) {
+            goto fail;
+        }
         if (!PyUnicode_CheckExact(ret)) {
             PyObject *tmp = PyUnicode_FromObject(ret);
             Py_CLEAR(ret);
@@ -154,6 +157,7 @@ _ci_key_to_identity(mod_state *state, PyObject *key)
         }
         return ret;
     }
+fail:
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
                     "or subclasses of str");
@@ -1903,7 +1907,7 @@ md_clear(MultiDictObject *md)
         htkeys_free(md->keys);
         md->keys = &empty_htkeys;
     }
-
+    ASSERT_CONSISTENT(md, false);
     return 0;
 }
 
