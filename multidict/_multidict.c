@@ -1003,6 +1003,13 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         );
         return -1;
     }
+    if (kwds == NULL) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "__init__() doesn't accept keyword arguments"
+        );
+        return -1;
+    }
     if (!AnyMultiDictProxy_Check(state, arg) &&
         !AnyMultiDict_Check(state, arg))
     {
@@ -1282,6 +1289,13 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         PyErr_Format(
             PyExc_TypeError,
             "__init__() missing 1 required positional argument: 'arg'"
+        );
+        return -1;
+    }
+    if (kwds == NULL) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "__init__() doesn't accept keyword arguments"
         );
         return -1;
     }
