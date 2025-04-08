@@ -134,7 +134,7 @@ fail:
 
 
 static inline Py_ssize_t
-_multidict_extend_parse_args(PyObject *args, PyObject *kwds,
+_multidict_extend_parse_args(mod_state *state, PyObject *args, PyObject *kwds,
                              const char *name, PyObject **parg)
 {
     Py_ssize_t size = 0;
@@ -154,19 +154,36 @@ _multidict_extend_parse_args(PyObject *args, PyObject *kwds,
 
     if (s == 1) {
         *parg = Py_NewRef(PyTuple_GET_ITEM(args, 0));
-        s = PyObject_LengthHint(*parg, 0);
-        if (s < 0) {
-            // e.g. cannot calc size of generator object
-            PyErr_Clear();
+        if (PyTuple_CheckExact(*parg)) {
+            size += PyTuple_GET_SIZE(*parg);
+        } else if (PyList_CheckExact(*parg)) {
+            size += PyList_GET_SIZE(*parg);
+        } else if (PyDict_CheckExact(*parg)) {
+            size += PyDict_GET_SIZE(*parg);
+        } else if (MultiDict_CheckExact(state, *parg)
+                   || CIMultiDict_CheckExact(state, *parg)) {
+            MultiDictObject *md = (MultiDictObject *)*parg;
+            size += md_len(md);
+        } else if (MultiDictProxy_CheckExact(state, *parg)
+                   || CIMultiDictProxy_CheckExact(state, *parg)) {
+            MultiDictObject *md = ((MultiDictProxyObject *)*parg)->md;
+            size += md_len(md);
         } else {
-            size += s;
+            s = PyObject_LengthHint(*parg, 0);
+            if (s < 0) {
+                // e.g. cannot calc size of generator object
+                PyErr_Clear();
+            } else {
+                size += s;
+            }
         }
     } else {
         *parg = NULL;
     }
 
     if (kwds != NULL) {
-        s = PyDict_Size(kwds);
+        assert((PyDict_CheckExact(kwds)));
+        s = PyDict_GET_SIZE(kwds);
         if (s < 0) {
             return -1;
         }
@@ -475,7 +492,8 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     mod_state *state = get_mod_state_by_def((PyObject *)self);
     PyObject *arg = NULL;
-    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "MultiDict", &arg);
+    Py_ssize_t size = _multidict_extend_parse_args(state, args,
+                                                   kwds, "MultiDict", &arg);
     if (size < 0) {
         goto fail;
     }
@@ -530,7 +548,8 @@ static PyObject *
 multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *arg = NULL;
-    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "extend", &arg);
+    Py_ssize_t size = _multidict_extend_parse_args(self->state, args,
+                                                   kwds, "extend", &arg);
     if (size < 0) {
         goto fail;
     }
@@ -678,7 +697,8 @@ static PyObject *
 multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     PyObject *arg = NULL;
-    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "update", &arg);
+    Py_ssize_t size = _multidict_extend_parse_args(self->state, args,
+                                                   kwds, "update", &arg);
     if (size < 0) {
         goto fail;
     }
@@ -927,7 +947,8 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
 {
     mod_state *state = get_mod_state_by_def((PyObject *)self);
     PyObject *arg = NULL;
-    Py_ssize_t size = _multidict_extend_parse_args(args, kwds, "CIMultiDict", &arg);
+    Py_ssize_t size = _multidict_extend_parse_args(state, args, kwds,
+                                                   "CIMultiDict", &arg);
     if (size < 0) {
         goto fail;
     }

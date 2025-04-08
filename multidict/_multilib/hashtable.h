@@ -1858,8 +1858,10 @@ md_traverse(MultiDictObject *md, visitproc visit, void *arg)
     entry_t *entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
-        Py_VISIT(entry->key);
-        Py_VISIT(entry->value);
+        if (entry->identity != NULL) {
+            Py_VISIT(entry->key);
+            Py_VISIT(entry->value);
+        }
     }
 
     return 0;
