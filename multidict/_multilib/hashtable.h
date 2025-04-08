@@ -66,16 +66,6 @@ static inline int _ht_dump(MultiDictObject *md);
 #endif
 
 
-static inline Py_ssize_t
-ht_sizeof(MultiDictObject *md)
-{
-    if (md->keys != &empty_htkeys) {
-        return htkeys_sizeof(md->keys);
-    }
-    return 0;
-}
-
-
 static inline int
 _str_cmp(PyObject *s1, PyObject *s2)
 {

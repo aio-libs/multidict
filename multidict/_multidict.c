@@ -738,7 +738,9 @@ PyDoc_STRVAR(sizeof__doc__,
 static inline PyObject *
 _multidict_sizeof(MultiDictObject *self)
 {
-    Py_ssize_t size = sizeof(MultiDictObject) + ht_sizeof(self);
+    Py_ssize_t size = sizeof(MultiDictObject);
+    if (self->keys != &empty_htkeys)
+        size += htkeys_sizeof(self->keys);
     return PyLong_FromSsize_t(size);
 }
 
