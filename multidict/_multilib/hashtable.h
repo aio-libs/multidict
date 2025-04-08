@@ -1877,9 +1877,11 @@ md_clear(MultiDictObject *md)
     entry_t *entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
-        Py_CLEAR(entry->identity);
-        Py_CLEAR(entry->key);
-        Py_CLEAR(entry->value);
+        if (entry->identity != NULL) {
+            Py_CLEAR(entry->identity);
+            Py_CLEAR(entry->key);
+            Py_CLEAR(entry->value);
+        }
     }
 
     md->used = 0;
