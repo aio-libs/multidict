@@ -1370,13 +1370,6 @@ ht_update_from_ht(ht_t *ht, ht_t *other, bool update)
         return 0;
     }
 
-    uint8_t new_size = estimate_log2_keysize(ht_len(other) + ht->used);
-    if (new_size > ht->keys->log2_size) {
-        if (_ht_resize(ht, new_size, update)) {
-            return -1;
-        }
-    }
-
     entry_t *entries = htkeys_entries(other->keys);
 
     for (pos = 0; pos < other->keys->nentries; pos++) {
@@ -1435,17 +1428,8 @@ ht_update_from_dict(ht_t *ht, PyObject *kwds, bool update)
     PyObject *value = NULL;
 
     assert(PyDict_CheckExact(kwds));
-    if (PyDict_GET_SIZE(kwds) == 0) {
-        return 0;
-    }
 
-    uint8_t new_size = estimate_log2_keysize(PyDict_GET_SIZE(kwds) + ht->used);
-    if (new_size > ht->keys->log2_size) {
-        if (_ht_resize(ht, new_size, update)) {
-            return -1;
-        }
-    }
-
+    // PyDict_Next returns borrowed refs
     while(PyDict_Next(kwds, &pos, &key, &value)) {
         Py_INCREF(key);
         identity = ht_calc_identity(ht, key);
@@ -1563,17 +1547,6 @@ ht_update_from_seq(ht_t *ht, PyObject *seq, bool update)
     Py_ssize_t size = -1;
 
     enum {LIST, TUPLE, ITER} kind;
-
-    Py_ssize_t length_hint = PyObject_LengthHint(seq, 0);
-    if (length_hint < 0) {
-        return -1;
-    }
-    uint8_t new_size = estimate_log2_keysize(length_hint + ht->used);
-    if (new_size > ht->keys->log2_size) {
-        if (_ht_resize(ht, new_size, update)) {
-            return -1;
-        }
-    }
 
     if (PyList_CheckExact(seq)) {
         kind = LIST;

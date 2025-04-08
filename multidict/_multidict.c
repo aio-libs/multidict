@@ -140,19 +140,19 @@ _multidict_extend_parse_args(PyObject *args, PyObject *kwds,
     Py_ssize_t size = 0;
     Py_ssize_t s;
     if (args) {
-        size = PyTuple_GET_SIZE(args);
-        if (size > 1) {
+        s = PyTuple_GET_SIZE(args);
+        if (s > 1) {
             PyErr_Format(
                          PyExc_TypeError,
                          "%s takes from 1 to 2 positional arguments but %zd were given",
-                         name, size + 1, NULL
+                         name, s + 1, NULL
                          );
             *parg = NULL;
             return -1;
         }
     }
 
-    if (size == 1) {
+    if (s == 1) {
         *parg = Py_NewRef(PyTuple_GET_ITEM(args, 0));
         s = PyObject_LengthHint(*parg, 0);
         if (s < 0) {

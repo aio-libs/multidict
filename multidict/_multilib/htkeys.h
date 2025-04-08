@@ -369,7 +369,12 @@ htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
 static inline Py_ssize_t
 htkeys_dummies_fraction(htkeys_t *keys)
 {
-    return htkeys_nslots(keys) / 3;
+    Py_ssize_t ret = htkeys_nslots(keys);
+    if (ret >= 16) {
+        return ret / 4;
+    } else {
+        return ret / 2;
+    }
 }
 
 
