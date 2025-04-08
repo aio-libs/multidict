@@ -509,12 +509,13 @@ fail:
 static inline int
 _md_del_at(MultiDictObject *md, size_t slot, entry_t *entry)
 {
-    assert(md->keys != &empty_htkeys);
+    htkeys_t *keys = md->keys;
+    assert(keys != &empty_htkeys);
     Py_CLEAR(entry->identity);
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
-    htkeys_set_index(md->keys, slot, DKIX_DUMMY);
-    md->keys->ndummies += 1;
+    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    keys->ndummies += 1;
     md->used -= 1;
     return 0;
 }
