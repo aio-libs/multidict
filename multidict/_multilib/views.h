@@ -54,7 +54,7 @@ multidict_view_clear(_Multidict_ViewObject *self)
 static inline Py_ssize_t
 multidict_view_len(_Multidict_ViewObject *self)
 {
-    return ht_len(&self->md->ht);
+    return ht_len(self->md);
 }
 
 static inline PyObject *
@@ -152,7 +152,7 @@ static inline PyObject *
 multidict_itemsview_new(MultiDictObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, md->ht.state->ItemsViewType);
+        _Multidict_ViewObject, md->state->ItemsViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -184,7 +184,7 @@ multidict_itemsview_repr(_Multidict_ViewObject *self)
         Py_ReprLeave((PyObject *)self);
         return NULL;
     }
-    PyObject *ret = ht_repr(&self->md->ht, name, true, true);
+    PyObject *ret = ht_repr(self->md, name, true, true);
     Py_ReprLeave((PyObject *)self);
     Py_CLEAR(name);
     return ret;
@@ -214,7 +214,7 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject *self, PyObject *arg,
         *pvalue = Py_NewRef(PyTuple_GET_ITEM(arg, 1));
     }
 
-    *pidentity = ht_calc_identity(&self->md->ht, key);
+    *pidentity = ht_calc_identity(self->md, key);
     Py_DECREF(key);
     if (*pidentity == NULL) {
         if (pkey != NULL) {
@@ -279,7 +279,7 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+        if (ht_init_finder(self->md, identity, &finder) < 0) {
             assert(PyErr_Occurred());
             goto fail;
         }
@@ -357,7 +357,7 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+        if (ht_init_finder(self->md, identity, &finder) < 0) {
             assert(PyErr_Occurred());
             goto fail;
         }
@@ -460,7 +460,7 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+        if (ht_init_finder(self->md, identity, &finder) < 0) {
             assert(PyErr_Occurred());
             goto fail;
         }
@@ -551,11 +551,10 @@ multidict_itemsview_or2(_Multidict_ViewObject *self, PyObject *other)
     }
     Py_CLEAR(iter);
 
-    ht_init_pos(&self->md->ht, &pos);
+    ht_init_pos(self->md, &pos);
 
     while (true) {
-        int tmp = ht_next(&self->md->ht, &pos,
-                                 &identity, &key, &value);
+        int tmp = ht_next(self->md, &pos, &identity, &key, &value);
         if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
@@ -662,11 +661,10 @@ multidict_itemsview_sub1(_Multidict_ViewObject *self, PyObject *other)
     }
     Py_CLEAR(iter);
 
-    ht_init_pos(&self->md->ht, &pos);
+    ht_init_pos(self->md, &pos);
 
     while (true) {
-        int tmp = ht_next(&self->md->ht, &pos,
-                                 &identity, &key, &value);
+        int tmp = ht_next(self->md, &pos, &identity, &key, &value);
         if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
@@ -739,7 +737,7 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+        if (ht_init_finder(self->md, identity, &finder) < 0) {
             assert(PyErr_Occurred());
             goto fail;
         }
@@ -949,7 +947,7 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
             continue;
         }
 
-        if (ht_init_finder(&self->md->ht, identity, &finder) < 0) {
+        if (ht_init_finder(self->md, identity, &finder) < 0) {
             assert(PyErr_Occurred());
             goto fail;
         }
@@ -966,7 +964,7 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
                 Py_CLEAR(arg);
                 Py_CLEAR(identity);
                 Py_CLEAR(value);
-                ASSERT_CONSISTENT(&self->md->ht, false);
+                ASSERT_CONSISTENT(self->md, false);
                 Py_RETURN_FALSE;
             }
         }
@@ -982,7 +980,7 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
     if (PyErr_Occurred()) {
         return NULL;
     }
-    ASSERT_CONSISTENT(&self->md->ht, false);
+    ASSERT_CONSISTENT(self->md, false);
     Py_RETURN_TRUE;
 fail:
     ht_finder_cleanup(&finder);
@@ -1041,7 +1039,7 @@ static inline PyObject *
 multidict_keysview_new(MultiDictObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, md->ht.state->KeysViewType);
+        _Multidict_ViewObject, md->state->KeysViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -1065,7 +1063,7 @@ multidict_keysview_repr(_Multidict_ViewObject *self)
     if (name == NULL) {
         return NULL;
     }
-    PyObject *ret = ht_repr(&self->md->ht, name, true, false);
+    PyObject *ret = ht_repr(self->md, name, true, false);
     Py_CLEAR(name);
     return ret;
 }
@@ -1093,7 +1091,7 @@ multidict_keysview_and1(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        int tmp = ht_contains(&self->md->ht, key, &key2);
+        int tmp = ht_contains(self->md, key, &key2);
         if (tmp < 0) {
             goto fail;
         }
@@ -1140,7 +1138,7 @@ multidict_keysview_and2(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        int tmp = ht_contains(&self->md->ht, key, NULL);
+        int tmp = ht_contains(self->md, key, NULL);
         if (tmp < 0) {
             goto fail;
         }
@@ -1212,7 +1210,7 @@ multidict_keysview_or1(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        int tmp = ht_contains(&self->md->ht, key, NULL);
+        int tmp = ht_contains(self->md, key, NULL);
         if (tmp < 0) {
             goto fail;
         }
@@ -1263,7 +1261,7 @@ multidict_keysview_or2(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        identity = ht_calc_identity(&self->md->ht, key);
+        identity = ht_calc_identity(self->md, key);
         if (identity == NULL) {
             goto fail;
         }
@@ -1279,10 +1277,10 @@ multidict_keysview_or2(_Multidict_ViewObject *self, PyObject *other)
     Py_CLEAR(iter);
 
     ht_pos_t pos;
-    ht_init_pos(&self->md->ht, &pos);
+    ht_init_pos(self->md, &pos);
 
     while (true) {
-        int tmp = ht_next(&self->md->ht, &pos, &identity, &key, NULL);
+        int tmp = ht_next(self->md, &pos, &identity, &key, NULL);
         if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
@@ -1360,7 +1358,7 @@ multidict_keysview_sub1(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        tmp = ht_contains(&self->md->ht, key, &key2);
+        tmp = ht_contains(self->md, key, &key2);
         if (tmp < 0) {
             goto fail;
         }
@@ -1408,7 +1406,7 @@ multidict_keysview_sub2(_Multidict_ViewObject *self, PyObject *other)
             Py_CLEAR(key);
             continue;
         }
-        tmp = ht_contains(&self->md->ht, key, NULL);
+        tmp = ht_contains(self->md, key, NULL);
         if (tmp < 0) {
             goto fail;
         }
@@ -1518,7 +1516,7 @@ fail:
 static inline int
 multidict_keysview_contains(_Multidict_ViewObject *self, PyObject *key)
 {
-    return ht_contains(&self->md->ht, key, NULL);
+    return ht_contains(self->md, key, NULL);
 }
 
 static inline PyObject *
@@ -1530,7 +1528,7 @@ multidict_keysview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
     }
     PyObject *key = NULL;
     while ((key = PyIter_Next(iter))) {
-        int tmp = ht_contains(&self->md->ht, key, NULL);
+        int tmp = ht_contains(self->md, key, NULL);
         Py_CLEAR(key);
         if (tmp < 0) {
             Py_CLEAR(iter);
@@ -1594,7 +1592,7 @@ static inline PyObject *
 multidict_valuesview_new(MultiDictObject *md)
 {
     _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, md->ht.state->ValuesViewType);
+        _Multidict_ViewObject, md->state->ValuesViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -1626,7 +1624,7 @@ multidict_valuesview_repr(_Multidict_ViewObject *self)
         Py_ReprLeave((PyObject *)self);
         return NULL;
     }
-    PyObject *ret = ht_repr(&self->md->ht, name, false, true);
+    PyObject *ret = ht_repr(self->md, name, false, true);
     Py_ReprLeave((PyObject *)self);
     Py_CLEAR(name);
     return ret;

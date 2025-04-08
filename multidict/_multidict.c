@@ -1,5 +1,5 @@
-#include "Python.h"
-#include "structmember.h"
+#include <Python.h>
+#include <structmember.h>
 
 #include "_multilib/pythoncapi_compat.h"
 
@@ -45,11 +45,11 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 {
     PyObject *val = NULL;
 
-    if (ht_get_one(&self->ht, key, &val) <0) {
+    if (ht_get_one(self, key, &val) <0) {
         return NULL;
     }
 
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
 
     if (val == NULL) {
         if (_default != NULL) {
@@ -69,7 +69,7 @@ static inline int
 _multidict_extend(MultiDictObject *self, PyObject *arg,
                      PyObject *kwds, const char *name, bool update)
 {
-    mod_state *state = self->ht.state;
+    mod_state *state = self->state;
     PyObject *seq  = NULL;
 
     if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
@@ -78,25 +78,25 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
 
     if (arg != NULL) {
         if (AnyMultiDict_Check(state, arg)) {
-            ht_t *ht = &((MultiDictObject*)arg)->ht;
-            if (ht_update_from_ht(&self->ht, ht, update) < 0) {
+            MultiDictObject *other = (MultiDictObject*)arg;
+            if (ht_update_from_ht(self, other, update) < 0) {
                 goto fail;
             }
         } else if (AnyMultiDictProxy_Check(state, arg)) {
-            ht_t *ht = &((MultiDictProxyObject*)arg)->md->ht;
-            if (ht_update_from_ht(&self->ht, ht, update) < 0) {
+            MultiDictObject *other = ((MultiDictProxyObject*)arg)->md;
+            if (ht_update_from_ht(self, other, update) < 0) {
                 goto fail;
             }
         } else if (PyDict_CheckExact(arg)) {
-            if (ht_update_from_dict(&self->ht, arg, update) < 0) {
+            if (ht_update_from_dict(self, arg, update) < 0) {
                 goto fail;
             }
         } else if (PyList_CheckExact(arg)) {
-            if (ht_update_from_seq(&self->ht, arg, update) < 0) {
+            if (ht_update_from_seq(self, arg, update) < 0) {
                 goto fail;
             }
         } else if (PyTuple_CheckExact(arg)) {
-            if (ht_update_from_seq(&self->ht, arg, update) < 0) {
+            if (ht_update_from_seq(self, arg, update) < 0) {
                 goto fail;
             }
         } else {
@@ -106,25 +106,25 @@ _multidict_extend(MultiDictObject *self, PyObject *arg,
                 seq = Py_NewRef(arg);
             }
 
-            if (ht_update_from_seq(&self->ht, seq, update) < 0) {
+            if (ht_update_from_seq(self, seq, update) < 0) {
                 goto fail;
             }
         }
     }
 
     if (kwds != NULL) {
-        if (ht_update_from_dict(&self->ht, kwds, update) < 0) {
+        if (ht_update_from_dict(self, kwds, update) < 0) {
             goto fail;
         }
     }
 
     if (update) {
-        if (ht_post_update(&self->ht) < 0) {
+        if (ht_post_update(self) < 0) {
             goto fail;
         }
     }
 
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     Py_CLEAR(seq);
     return 0;
 fail:
@@ -185,10 +185,10 @@ multidict_copy(MultiDictObject *self)
     }
 
     MultiDictObject *new_md = (MultiDictObject*) ret;
-    if (ht_clone_from_ht(&new_md->ht, &self->ht) < 0) {
+    if (ht_clone_from_ht(new_md, self) < 0) {
         goto fail;
     }
-    ASSERT_CONSISTENT(&new_md->ht, false);
+    ASSERT_CONSISTENT(new_md, false);
     return ret;
 fail:
     Py_XDECREF(ret);
@@ -217,11 +217,11 @@ multidict_getall(MultiDictObject *self, PyObject *const *args,
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    if (ht_get_all(&self->ht, key, &list) <0) {
+    if (ht_get_all(self, key, &list) <0) {
         return NULL;
     }
 
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
 
     if (list == NULL) {
         if (_default != NULL) {
@@ -335,7 +335,7 @@ multidict_repr(MultiDictObject *self)
         Py_ReprLeave((PyObject *)self);
         return NULL;
     }
-    PyObject *ret = ht_repr(&self->ht, name, true, true);
+    PyObject *ret = ht_repr(self, name, true, true);
     Py_ReprLeave((PyObject *)self);
     Py_CLEAR(name);
     return ret;
@@ -344,7 +344,7 @@ multidict_repr(MultiDictObject *self)
 static inline Py_ssize_t
 multidict_mp_len(MultiDictObject *self)
 {
-    return ht_len(&self->ht);
+    return ht_len(self);
 }
 
 static inline PyObject *
@@ -357,16 +357,16 @@ static inline int
 multidict_mp_as_subscript(MultiDictObject *self, PyObject *key, PyObject *val)
 {
     if (val == NULL) {
-        return ht_del(&self->ht, key);
+        return ht_del(self, key);
     } else {
-        return ht_replace(&self->ht, key, val);
+        return ht_replace(self, key, val);
     }
 }
 
 static inline int
 multidict_sq_contains(MultiDictObject *self, PyObject *key)
 {
-    return ht_contains(&self->ht, key, NULL);
+    return ht_contains(self, key, NULL);
 }
 
 static inline PyObject *
@@ -376,7 +376,7 @@ multidict_tp_iter(MultiDictObject *self)
 }
 
 static inline PyObject *
-multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
+multidict_tp_richcompare(MultiDictObject *self, PyObject *other, int op)
 {
     int cmp;
 
@@ -384,7 +384,7 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
         Py_RETURN_NOTIMPLEMENTED;
     }
 
-    if (self == other) {
+    if ((PyObject *)self == other) {
         cmp = 1;
         if (op == Py_NE) {
             cmp = !cmp;
@@ -392,17 +392,11 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
         return PyBool_FromLong(cmp);
     }
 
-    mod_state *state = ((MultiDictObject*)self)->ht.state;
+    mod_state *state = self->state;
     if (AnyMultiDict_Check(state, other)) {
-        cmp = ht_eq(
-            &((MultiDictObject*)self)->ht,
-            &((MultiDictObject*)other)->ht
-        );
+        cmp = ht_eq(self, (MultiDictObject*)other);
     } else if (AnyMultiDictProxy_Check(state, other)) {
-        cmp = ht_eq(
-            &((MultiDictObject*)self)->ht,
-            &((MultiDictProxyObject*)other)->md->ht
-        );
+        cmp = ht_eq(self, ((MultiDictProxyObject*)other)->md);
     } else {
         bool fits = false;
         fits = PyDict_Check(other);
@@ -417,8 +411,7 @@ multidict_tp_richcompare(PyObject *self, PyObject *other, int op)
             Py_CLEAR(keys);
         }
         if (fits) {
-            cmp = ht_eq_to_mapping(&((MultiDictObject*)self)->ht,
-                                          other);
+            cmp = ht_eq_to_mapping(self, other);
         } else {
             cmp = 0; // e.g., multidict is not equal to a list
         }
@@ -438,7 +431,7 @@ multidict_tp_dealloc(MultiDictObject *self)
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
     PyObject_ClearWeakRefs((PyObject *)self);
-    ht_dealloc(&self->ht);
+    ht_dealloc(self);
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END // there should be no code after this
 }
@@ -447,13 +440,13 @@ static inline int
 multidict_tp_traverse(MultiDictObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(Py_TYPE(self));
-    return ht_traverse(&self->ht, visit, arg);
+    return ht_traverse(self, visit, arg);
 }
 
 static inline int
 multidict_tp_clear(MultiDictObject *self)
 {
-    return ht_clear(&self->ht);
+    return ht_clear(self);
 }
 
 PyDoc_STRVAR(multidict_getall_doc,
@@ -486,20 +479,20 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         goto fail;
     }
     if (arg != NULL && kwds == NULL) {
-        ht_t *other = NULL;
+        MultiDictObject *other = NULL;
         if (AnyMultiDict_Check(state, arg)) {
-            other = &((MultiDictObject*)arg)->ht;
+            other = (MultiDictObject*)arg;
         } else if (AnyMultiDictProxy_Check(state, arg)) {
-            other = &((MultiDictProxyObject*)arg)->md->ht;
+            other = ((MultiDictProxyObject*)arg)->md;
         }
         if (other != NULL && !other->is_ci) {
-            if (ht_clone_from_ht(&self->ht, other) < 0) {
+            if (ht_clone_from_ht(self, other) < 0) {
                 goto fail;
             }
             goto done;
         }
     }
-    if (ht_init(&self->ht, state, size) < 0) {
+    if (ht_init(self, state, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "MultiDict", false) < 0) {
@@ -507,7 +500,7 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     }
 done:
     Py_CLEAR(arg);
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     return 0;
 fail:
     Py_CLEAR(arg);
@@ -525,10 +518,10 @@ multidict_add(MultiDictObject *self, PyObject *const *args,
                 "key", &key, "value", &val) < 0) {
         return NULL;
     }
-    if (ht_add(&self->ht, key, val) < 0) {
+    if (ht_add(self, key, val) < 0) {
         return NULL;
     }
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     Py_RETURN_NONE;
 }
 
@@ -540,14 +533,14 @@ multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (size < 0) {
         goto fail;
     }
-    if (ht_reserve(&self->ht, size) < 0) {
+    if (ht_reserve(self, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "extend", false) < 0) {
         goto fail;
     }
     Py_CLEAR(arg);
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);
@@ -557,11 +550,11 @@ fail:
 static inline PyObject *
 multidict_clear(MultiDictObject *self)
 {
-    if (ht_clear(&self->ht) < 0) {
+    if (ht_clear(self) < 0) {
         return NULL;
     }
 
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     Py_RETURN_NONE;
 }
 
@@ -576,8 +569,8 @@ multidict_setdefault(MultiDictObject *self, PyObject *const *args,
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    ASSERT_CONSISTENT(&self->ht, false);
-    return ht_set_default(&self->ht, key, _default);
+    ASSERT_CONSISTENT(self, false);
+    return ht_set_default(self, key, _default);
 }
 
 static inline PyObject *
@@ -592,11 +585,11 @@ multidict_popone(MultiDictObject *self, PyObject *const *args,
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    if (ht_pop_one(&self->ht, key, &ret_val) < 0) {
+    if (ht_pop_one(self, key, &ret_val) < 0) {
         return NULL;
     }
 
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     if (ret_val == NULL) {
         if (_default != NULL) {
             Py_INCREF(_default);
@@ -626,11 +619,11 @@ multidict_pop(
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    if (ht_pop_one(&self->ht, key, &ret_val) < 0) {
+    if (ht_pop_one(self, key, &ret_val) < 0) {
         return NULL;
     }
 
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     if (ret_val == NULL) {
         if (_default != NULL) {
             Py_INCREF(_default);
@@ -656,11 +649,11 @@ multidict_popall(MultiDictObject *self, PyObject *const *args,
                 "key", &key, "default", &_default) < 0) {
         return NULL;
     }
-    if (ht_pop_all(&self->ht, key, &ret_val) < 0) {
+    if (ht_pop_all(self, key, &ret_val) < 0) {
         return NULL;
     }
 
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     if (ret_val == NULL) {
         if (_default != NULL) {
             Py_INCREF(_default);
@@ -677,7 +670,7 @@ multidict_popall(MultiDictObject *self, PyObject *const *args,
 static inline PyObject *
 multidict_popitem(MultiDictObject *self)
 {
-    return ht_pop_item(&self->ht);
+    return ht_pop_item(self);
 }
 
 static inline PyObject *
@@ -688,14 +681,14 @@ multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (size < 0) {
         goto fail;
     }
-    if (ht_reserve(&self->ht, size) < 0) {
+    if (ht_reserve(self, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "update", true) < 0) {
         goto fail;
     }
     Py_CLEAR(arg);
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);
@@ -745,7 +738,7 @@ PyDoc_STRVAR(sizeof__doc__,
 static inline PyObject *
 _multidict_sizeof(MultiDictObject *self)
 {
-    Py_ssize_t size = sizeof(MultiDictObject) + ht_sizeof(&self->ht);
+    Py_ssize_t size = sizeof(MultiDictObject) + ht_sizeof(self);
     return PyLong_FromSsize_t(size);
 }
 
@@ -936,20 +929,20 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         goto fail;
     }
     if (arg != NULL && kwds == NULL) {
-        ht_t *other = NULL;
+        MultiDictObject *other = NULL;
         if (AnyMultiDict_Check(state, arg)) {
-            other = &((MultiDictObject*)arg)->ht;
+            other = (MultiDictObject*)arg;
         } else if (AnyMultiDictProxy_Check(state, arg)) {
-            other = &((MultiDictProxyObject*)arg)->md->ht;
+            other = ((MultiDictProxyObject*)arg)->md;
         }
         if (other != NULL && other->is_ci) {
-            if (ht_clone_from_ht(&self->ht, other) < 0) {
+            if (ht_clone_from_ht(self, other) < 0) {
                 goto fail;
             }
             goto done;
         }
     }
-    if (ci_ht_init(&self->ht, state, size) < 0) {
+    if (ci_ht_init(self, state, size) < 0) {
         goto fail;
     }
     if (_multidict_extend(self, arg, kwds, "CIMultiDict", false) < 0) {
@@ -957,7 +950,7 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     }
 done:
     Py_CLEAR(arg);
-    ASSERT_CONSISTENT(&self->ht, false);
+    ASSERT_CONSISTENT(self, false);
     return 0;
 fail:
     Py_CLEAR(arg);
@@ -1072,7 +1065,7 @@ multidict_proxy_values(MultiDictProxyObject *self)
 static inline PyObject *
 multidict_proxy_copy(MultiDictProxyObject *self)
 {
-    return _multidict_proxy_copy(self, self->md->ht.state->MultiDictType);
+    return _multidict_proxy_copy(self, self->md->state->MultiDictType);
 }
 
 static inline PyObject *
@@ -1114,7 +1107,7 @@ static inline PyObject *
 multidict_proxy_tp_richcompare(MultiDictProxyObject *self, PyObject *other,
                                int op)
 {
-    return multidict_tp_richcompare((PyObject*)self->md, other, op);
+    return multidict_tp_richcompare(self->md, other, op);
 }
 
 static inline void
@@ -1148,7 +1141,7 @@ multidict_proxy_repr(MultiDictProxyObject *self)
     PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL)
         return NULL;
-    PyObject *ret = ht_repr(&self->md->ht, name, true, true);
+    PyObject *ret = ht_repr(self->md, name, true, true);
     Py_CLEAR(name);
     return ret;
 }
@@ -1313,7 +1306,7 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
 static inline PyObject *
 cimultidict_proxy_copy(MultiDictProxyObject *self)
 {
-    return _multidict_proxy_copy(self, self->md->ht.state->CIMultiDictType);
+    return _multidict_proxy_copy(self, self->md->state->CIMultiDictType);
 }
 
 
@@ -1357,19 +1350,19 @@ static PyType_Spec cimultidict_proxy_spec = {
 /******************** Other functions ********************/
 
 static inline PyObject *
-getversion(PyObject *self, PyObject *md)
+getversion(PyObject *self, PyObject *arg)
 {
     mod_state *state = get_mod_state(self);
-    ht_t *ht = NULL;
-    if (AnyMultiDict_Check(state, md)) {
-        ht = &((MultiDictObject*)md)->ht;
-    } else if (AnyMultiDictProxy_Check(state, md)) {
-        ht = &((MultiDictProxyObject*)md)->md->ht;
+    MultiDictObject* md;
+    if (AnyMultiDict_Check(state, arg)) {
+        md = (MultiDictObject*)arg;
+    } else if (AnyMultiDictProxy_Check(state, arg)) {
+        md = ((MultiDictProxyObject*)arg)->md;
     } else {
         PyErr_Format(PyExc_TypeError, "unexpected type");
         return NULL;
     }
-    return PyLong_FromUnsignedLong(ht_version(ht));
+    return PyLong_FromUnsignedLong(ht_version(md));
 }
 
 /******************** Module ********************/

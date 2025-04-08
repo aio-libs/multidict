@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+#include <Python.h>
+#include <stdbool.h>
 
 /* Implementation note.
 identity always has exact PyUnicode_Type type, not a subclass.
