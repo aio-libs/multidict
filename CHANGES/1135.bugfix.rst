@@ -1,1 +1,3 @@
 Fixed reference counting when calling :py:meth:`MultiDict.update` -- by :user:`bdraco`.
+
+The leak was introduced in 4.4.0
