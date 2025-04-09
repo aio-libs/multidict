@@ -34,8 +34,8 @@ typedef struct entry {
 #define DKIX_DUMMY  (-2)  /* deleted slot */
 
 
-#define HT_LOG_MINSIZE 5
-#define HT_MINSIZE 32
+#define HT_LOG_MINSIZE 3
+#define HT_MINSIZE 8
 #define HT_PERTURB_SHIFT 5
 
 
@@ -251,17 +251,11 @@ estimate_log2_keysize(Py_ssize_t n)
  */
 static htkeys_t empty_htkeys = {
         0, /* log2_size */
-        4, /* log2_index_bytes */
+        3, /* log2_index_bytes */
         0, /* usable (immutable) */
         0, /* nentries */
         0, /* ndummies */
         {DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
-         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
-         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
-         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
-         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
-         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
-         DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
          DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY}, /* indices */
 };
 
