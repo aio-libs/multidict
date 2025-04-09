@@ -27,7 +27,7 @@ istr_dealloc(istrobject *self)
 }
 
 static inline PyObject *
-istr_new_with_state(PyTypeObject *type, PyObject *args, PyObject *kwds)
+istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyObject *mod = PyType_GetModuleByDef(type, &multidict_module);
     if (mod == NULL) {
@@ -64,12 +64,6 @@ istr_new_with_state(PyTypeObject *type, PyObject *args, PyObject *kwds)
 fail:
     Py_XDECREF(ret);
     return NULL;
-}
-
-static inline PyObject *
-istr_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    return istr_new_with_state(type, args, kwds);
 }
 
 static inline PyObject *
