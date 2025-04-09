@@ -146,11 +146,21 @@ static PyType_Spec istr_spec = {
 static inline PyObject *
 IStr_New(mod_state *state, PyObject *str, PyObject *canonical)
 {
-    PyObject *res = PyObject_Str(str);
-    if (res) {
-        ((istrobject*)res)->canonical = canonical;
-        ((istrobject*)res)->state = state;
+    PyObject *args = NULL;
+    PyObject *res = NULL;
+    args = PyTuple_Pack(1, str);
+    if (args == NULL) {
+        goto ret;
     }
+    res = PyUnicode_Type.tp_new(state->IStrType, args, NULL);
+    if (!res) {
+        goto ret;
+    }
+    Py_INCREF(canonical);
+    ((istrobject*)res)->canonical = canonical;
+    ((istrobject*)res)->state = state;
+ret:
+    Py_CLEAR(args);
     return res;
 }
 
