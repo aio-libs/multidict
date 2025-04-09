@@ -73,8 +73,7 @@ PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
         if (!PyType_HasFeature((PyTypeObject *)super, Py_TPFLAGS_HEAPTYPE)) {
             continue;
         }
-        PyTypeObject *ht = (PyTypeObject*)super;
-        mod = PyType_GetModule(ht);
+        mod = PyType_GetModule((PyTypeObject*)super);
         if (mod == NULL) {
             PyErr_Clear();
         } else {
