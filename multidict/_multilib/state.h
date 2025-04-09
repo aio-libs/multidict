@@ -43,9 +43,8 @@ get_mod_state_by_cls(PyTypeObject *cls)
 }
 
 
-#if PY_VERSION_HEX < 0x030b0000
 PyObject *
-PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
+PyType_GetModuleByDef2(PyTypeObject *tp, PyModuleDef *def)
 {
     PyModuleDef * mod_def;
     assert(PyType_HasFeature(tp, Py_TPFLAGS_HEAPTYPE));
@@ -69,13 +68,12 @@ PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
 
     Py_ssize_t n = PyTuple_GET_SIZE(mro);
     for (Py_ssize_t i = 1; i < n; i++) {
-        mod = PyType_GetModule(tp);
-        if (mod != NULL) {
-            PyErr_Clear();
-        } else {
-            if (!PyType_HasFeature(tp, Py_TPFLAGS_HEAPTYPE)) {
-                continue;
-            }
+        PyObject *super = PyTuple_GET_ITEM(mro, i);
+        if (!PyType_HasFeature(super, Py_TPFLAGS_HEAPTYPE)) {
+            continue;
+        }
+        mod = PyType_GetModule(super);
+        if (mod) {
             mod_def = PyModule_GetDef(mod);
             if (mod_def == def) {
                 return mod;
@@ -90,7 +88,6 @@ PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
     return NULL;
 
 }
-#endif
 
 static PyModuleDef multidict_module;
 
@@ -98,7 +95,7 @@ static inline int
 get_mod_state_by_def_checked(PyObject *self, mod_state **ret)
 {
     PyTypeObject *tp = Py_TYPE(self);
-    PyObject *mod = PyType_GetModuleByDef(tp, &multidict_module);
+    PyObject *mod = PyType_GetModuleByDef2(tp, &multidict_module);
     if (mod == NULL) {
         *ret = NULL;
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -116,7 +113,7 @@ static inline mod_state *
 get_mod_state_by_def(PyObject *self)
 {
     PyTypeObject *tp = Py_TYPE(self);
-    PyObject *mod = PyType_GetModuleByDef(tp, &multidict_module);
+    PyObject *mod = PyType_GetModuleByDef2(tp, &multidict_module);
     assert(mod != NULL);
     return get_mod_state(mod);
 }
