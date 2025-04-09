@@ -67,13 +67,6 @@ in the left and right arguments.
 */
 
 
-/* Global counter used to set ma_version_tag field of dictionary.
- * It is incremented each time that a dictionary is created and each
- * time that a dictionary is modified. */
-static uint64_t md_global_version = 0;
-
-#define NEXT_VERSION() (++md_global_version)
-
 /* GROWTH_RATE. Growth rate upon hitting maximum load.
  * Currently set to used*3.
  * This means that dicts double in size when growing without deletions,
@@ -292,7 +285,7 @@ md_init(MultiDictObject *md, mod_state *state, bool is_ci, Py_ssize_t minused)
     md->state = state;
     md->is_ci = is_ci;
     md->used = 0;
-    md->version = NEXT_VERSION();
+    md->version = NEXT_VERSION(md->state);
 
     const uint8_t log2_max_presize = 17;
     const Py_ssize_t max_presize = ((Py_ssize_t)1) << log2_max_presize;
@@ -425,7 +418,7 @@ _md_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *iden
     entry->value = value;
     entry->hash = hash;
 
-    md->version = NEXT_VERSION();
+    md->version = NEXT_VERSION(md->state);
     md->used += 1;
     keys->usable -= 1;
     keys->nentries += 1;
@@ -470,7 +463,7 @@ _md_add_for_upd_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identi
     entry->value = value;
     entry->hash = -1;
 
-    md->version = NEXT_VERSION();
+    md->version = NEXT_VERSION(md->state);
     md->used += 1;
     keys->usable -= 1;
     keys->nentries += 1;
@@ -587,7 +580,7 @@ md_del(MultiDictObject *md, PyObject *key)
         PyErr_SetObject(PyExc_KeyError, key);
         goto fail;
     } else {
-        md->version = NEXT_VERSION();
+        md->version = NEXT_VERSION(md->state);
     }
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
@@ -1060,7 +1053,7 @@ md_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
             }
             Py_DECREF(identity);
             *ret = value;
-            md->version = NEXT_VERSION();
+            md->version = NEXT_VERSION(md->state);
             ASSERT_CONSISTENT(md, false);
             return 0;
         }
@@ -1132,7 +1125,7 @@ md_pop_all(MultiDictObject *md, PyObject *key, PyObject ** ret)
             if (_md_del_at(md, iter.slot, entry) < 0) {
                 goto fail;
             }
-            md->version = NEXT_VERSION();
+            md->version = NEXT_VERSION(md->state);
         }
         else if (tmp < 0) {
             goto fail;
@@ -1192,7 +1185,7 @@ md_pop_item(MultiDictObject *md)
     if (_md_del_at(md, iter.slot, entry) < 0) {
         return NULL;
     }
-    md->version = NEXT_VERSION();
+    md->version = NEXT_VERSION(md->state);
     ASSERT_CONSISTENT(md, false);
     return ret;
 }
@@ -1244,7 +1237,7 @@ _md_replace(MultiDictObject *md, PyObject * key, PyObject *value,
         return 0;
     }
     else {
-        md->version = NEXT_VERSION();
+        md->version = NEXT_VERSION(md->state);
         return 0;
     }
 fail:
@@ -1338,12 +1331,21 @@ fail:
 static inline int
 md_post_update(MultiDictObject *md)
 {
-    size_t num_slots = htkeys_nslots(md->keys);
-    entry_t *entries = htkeys_entries(md->keys);
+    htkeys_t *keys = md->keys;
+    size_t num_slots = htkeys_nslots(keys);
+    entry_t *entries = htkeys_entries(keys);
     for (size_t slot = 0; slot < num_slots; slot++) {
-        Py_ssize_t index = htkeys_get_index(md->keys, slot);
+        Py_ssize_t index = htkeys_get_index(keys, slot);
         if (index >= 0) {
             entry_t *entry = entries + index;
+            if (entry->key == NULL) {
+                /* the entry is marked for deletion during .update() call
+                   and not replaced with a new value */
+                Py_CLEAR(entry->identity);
+                htkeys_set_index(keys, slot, DKIX_DUMMY);
+                keys->ndummies += 1;
+                md->used -= 1;
+            }
             if (entry->hash == -1) {
                 entry->hash = PyObject_Hash(entry->identity);
                 if (entry->hash == -1) {
@@ -1351,18 +1353,10 @@ md_post_update(MultiDictObject *md)
                     return -1;
                 }
             }
-            if (entry->key == NULL) {
-                /* the entry is marked for deletion during .update() call
-                   and not replaced with a new value */
-                Py_CLEAR(entry->identity);
-                htkeys_set_index(md->keys, slot, DKIX_DUMMY);
-                md->keys->ndummies += 1;
-                md->used -= 1;
-            }
         }
     }
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
+    if (keys->ndummies > htkeys_dummies_fraction(keys)) {
+        if (htkeys_rebuild_indices(keys, false) < 0) {
             return -1;
         }
     }
@@ -1890,7 +1884,7 @@ md_clear(MultiDictObject *md)
     if (md->used == 0) {
         return 0;
     }
-    md->version = NEXT_VERSION();
+    md->version = NEXT_VERSION(md->state);
 
     entry_t *entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
