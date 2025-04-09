@@ -45,7 +45,7 @@ _multidict_getone(MultiDictObject *self, PyObject *key, PyObject *_default)
 {
     PyObject *val = NULL;
 
-    if (md_get_one(self, key, &val) <0) {
+    if (md_get_one(self, key, &val) < 0) {
         return NULL;
     }
 
