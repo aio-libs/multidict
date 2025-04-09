@@ -56,7 +56,6 @@ class _Impl(Generic[_V]):
         self.incr_version()
 
     def incr_version(self) -> None:
-        global _version
         v = _version
         v[0] += 1
         self._version = v[0]
