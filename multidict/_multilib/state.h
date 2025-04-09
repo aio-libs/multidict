@@ -69,10 +69,11 @@ PyType_GetModuleByDef2(PyTypeObject *tp, PyModuleDef *def)
     Py_ssize_t n = PyTuple_GET_SIZE(mro);
     for (Py_ssize_t i = 1; i < n; i++) {
         PyObject *super = PyTuple_GET_ITEM(mro, i);
-        if (!PyType_HasFeature(super, Py_TPFLAGS_HEAPTYPE)) {
+        if (!PyType_HasFeature((PyTypeObject *)super, Py_TPFLAGS_HEAPTYPE)) {
             continue;
         }
-        mod = PyType_GetModule(super);
+        PyHeapTypeObject *ht = (PyHeapTypeObject*)super;
+        mod = PyType_GetModule(ht);
         if (mod == NULL) {
             PyErr_Clear();
         } else {
