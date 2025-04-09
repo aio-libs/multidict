@@ -414,11 +414,11 @@ _md_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *iden
             return -1;
         }
         keys = md->keys;  // updated by resizing
-    } else if (keys->ndummies > htkeys_dummies_fraction(keys)) {
+    } /*else if (keys->ndummies > htkeys_dummies_fraction(keys)) {
         if (htkeys_rebuild_indices(keys, false) < 0) {
             return -1;
         }
-    }
+    }*/
 
     Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
     htkeys_set_index(keys, hashpos, keys->nentries);
@@ -460,11 +460,11 @@ _md_add_for_upd_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identi
             return -1;
         }
         keys = md->keys;  // updated by resizing
-    } else if (keys->ndummies > htkeys_dummies_fraction(keys)) {
+    } /* else if (keys->ndummies > htkeys_dummies_fraction(keys)) {
         if (htkeys_rebuild_indices(keys, true) < 0) {
             return -1;
         }
-    }
+    }*/
     Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
     htkeys_set_index(keys, hashpos, keys->nentries);
 
@@ -802,11 +802,11 @@ md_contains(MultiDictObject *md, PyObject *key, PyObject **pret)
         return 0;
     }
 
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
+    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
             return -1;
         }
-    }
+    }*/
 
     PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
@@ -863,11 +863,11 @@ fail:
 static inline int
 md_get_one(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
+    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
             return -1;
         }
-    }
+    }*/
 
     PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
@@ -915,11 +915,11 @@ md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
     *ret == NULL;
 
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
+    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
             return -1;
         }
-    }
+    }*/
 
     md_finder_t finder = {0};
 
@@ -970,11 +970,11 @@ fail:
 static inline PyObject *
 md_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
 {
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
+    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
             return NULL;
         }
-    }
+    }*/
 
     PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
@@ -1026,11 +1026,11 @@ fail:
 static inline int
 md_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
+    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
             return -1;
         }
-    }
+    }*/
 
     PyObject *value = NULL;
 
@@ -1086,11 +1086,11 @@ fail:
 static inline int
 md_pop_all(MultiDictObject *md, PyObject *key, PyObject ** ret)
 {
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
+    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
             return -1;
         }
-    }
+    }*/
     PyObject *lst = NULL;
 
     PyObject *identity = md_calc_identity(md, key);
@@ -1163,11 +1163,11 @@ md_pop_item(MultiDictObject *md)
         return NULL;
     }
 
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
+    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
             return NULL;
         }
-    }
+    }*/
 
     entry_t *entries = htkeys_entries(md->keys);
 
@@ -1207,11 +1207,11 @@ static inline int
 _md_replace(MultiDictObject *md, PyObject * key, PyObject *value,
             PyObject *identity, Py_hash_t hash)
 {
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
+    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, false) < 0) {
             return -1;
         }
-    }
+    }*/
 
     int found = 0;
     md_finder_t finder = {0};
@@ -1284,11 +1284,11 @@ static inline int
 _md_update(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
            PyObject *key, PyObject *value)
 {
-    if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
+    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
         if (htkeys_rebuild_indices(md->keys, true) < 0) {
             return -1;
         }
-    }
+    }*/
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t *entries = htkeys_entries(md->keys);
@@ -1367,11 +1367,11 @@ md_post_update(MultiDictObject *md)
             }
         }
     }
-    if (keys->ndummies > htkeys_dummies_fraction(keys)) {
+    /*if (keys->ndummies > htkeys_dummies_fraction(keys)) {
         if (htkeys_rebuild_indices(keys, false) < 0) {
             return -1;
         }
-    }
+    }*/
     return 0;
 }
 
