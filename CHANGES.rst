@@ -14,6 +14,47 @@ Changelog
 
 .. towncrier release notes start
 
+6.4.0
+=====
+
+*(2025-04-09)*
+
+
+Bug fixes
+---------
+
+- Fixed a memory leak creating new :class:`~multidict.istr` objects -- by :user:`bdraco`.
+
+  The leak was introduced in 6.3.0
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1133`.
+
+- Fixed reference counting when calling :py:meth:`multidict.MultiDict.update` -- by :user:`bdraco`.
+
+  The leak was introduced in 4.4.0
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1135`.
+
+
+Features
+--------
+
+- Switched C Extension to use heap types and the module state.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1125`.
+
+- Started building armv7l wheels -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1127`.
+
+
+----
+
+
 6.3.2
 =====
 

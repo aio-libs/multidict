@@ -22,7 +22,7 @@ __all__ = (
     "getversion",
 )
 
-__version__ = "6.3.3.dev0"
+__version__ = "6.4.0"
 
 
 if TYPE_CHECKING or not USE_EXTENSIONS:
