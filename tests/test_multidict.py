@@ -1307,3 +1307,19 @@ def test_init_does_not_alter_refcount(
     original_refcount = sys.getrefcount(original)
     case_sensitive_multidict_class(original)
     assert sys.getrefcount(original) == original_refcount
+
+
+def test_subclassed_multidict(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    """Test that subclassed MultiDicts work as expected."""
+    class SubclassedMultiDict(any_multidict_class):  # type: ignore[valid-type, misc]
+        """Subclassed MultiDict."""
+
+    d1 = SubclassedMultiDict([("key", "value1")])
+    d2 = SubclassedMultiDict([("key", "value2")])
+    d3 = SubclassedMultiDict([("key", "value1")])
+    assert d1 != d2
+    assert d1 == d3
+    assert d1 == SubclassedMultiDict([("key", "value1")])
+    assert d1 != SubclassedMultiDict([("key", "value2")])
