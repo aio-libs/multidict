@@ -1015,6 +1015,7 @@ _dict_set_number(PyObject *dict, PyObject *key, Py_ssize_t num)
         return -1;
     }
 
+    Py_DECREF(tmp);
     return 0;
 }
 
