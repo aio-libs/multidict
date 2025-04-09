@@ -73,7 +73,9 @@ PyType_GetModuleByDef2(PyTypeObject *tp, PyModuleDef *def)
             continue;
         }
         mod = PyType_GetModule(super);
-        if (mod) {
+        if (mod == NULL) {
+            PyErr_Clear();
+        } else {
             mod_def = PyModule_GetDef(mod);
             if (mod_def == def) {
                 return mod;
