@@ -187,6 +187,18 @@ _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *identity)
 }
 
 
+static inline Py_hash_t
+_unicode_hash(PyObject *o)
+{
+    assert(PyUnicode_CheckExact(o));
+    PyASCIIObject *ascii = (PyASCIIObject *)o;
+    if (ascii->hash != -1) {
+        return ascii->hash;
+    }
+    return PyUnicode_Type.tp_hash(o);
+}
+
+
 static inline int
 _md_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
 {
@@ -489,7 +501,7 @@ md_add(MultiDictObject *md, PyObject *key, PyObject *value)
     if (identity == NULL) {
         goto fail;
     }
-    Py_hash_t hash = PyObject_Hash(identity);
+    Py_hash_t hash = _unicode_hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -542,7 +554,7 @@ md_del(MultiDictObject *md, PyObject *key)
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(identity);
+    Py_hash_t hash = _unicode_hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -671,7 +683,7 @@ md_init_finder(MultiDictObject *md, PyObject *identity, md_finder_t *finder)
     finder->version = md->version;
     finder->md = md;
     finder->identity = identity;
-    finder->hash = PyObject_Hash(identity);
+    finder->hash = _unicode_hash(identity);
     if (finder->hash == -1) {
         return -1;
     }
@@ -801,7 +813,7 @@ md_contains(MultiDictObject *md, PyObject *key, PyObject **pret)
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(identity);
+    Py_hash_t hash = _unicode_hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -862,7 +874,7 @@ md_get_one(MultiDictObject *md, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(identity);
+    Py_hash_t hash = _unicode_hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -969,7 +981,7 @@ md_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(identity);
+    Py_hash_t hash = _unicode_hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -1027,7 +1039,7 @@ md_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(identity);
+    Py_hash_t hash = _unicode_hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -1086,7 +1098,7 @@ md_pop_all(MultiDictObject *md, PyObject *key, PyObject ** ret)
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(identity);
+    Py_hash_t hash = _unicode_hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -1253,7 +1265,7 @@ md_replace(MultiDictObject *md, PyObject * key, PyObject *value)
         goto fail;
     }
 
-    Py_hash_t hash = PyObject_Hash(identity);
+    Py_hash_t hash = _unicode_hash(identity);
     if (hash == -1) {
         goto fail;
     }
@@ -1347,7 +1359,7 @@ md_post_update(MultiDictObject *md)
                 md->used -= 1;
             }
             if (entry->hash == -1) {
-                entry->hash = PyObject_Hash(entry->identity);
+                entry->hash = _unicode_hash(entry->identity);
                 if (entry->hash == -1) {
                     // hash of string always exists but still
                     return -1;
@@ -1388,7 +1400,7 @@ md_update_from_ht(MultiDictObject *md, MultiDictObject *other, bool update)
             if (identity == NULL) {
                 goto fail;
             }
-            hash = PyObject_Hash(identity);
+            hash = _unicode_hash(identity);
             if (hash == -1) {
                 goto fail;
             }
@@ -1442,7 +1454,7 @@ md_update_from_dict(MultiDictObject *md, PyObject *kwds, bool update)
         if (identity == NULL) {
             goto fail;
         }
-        Py_hash_t hash = PyObject_Hash(identity);
+        Py_hash_t hash = _unicode_hash(identity);
         if (hash == -1) {
             goto fail;
         }
@@ -1621,7 +1633,7 @@ md_update_from_seq(MultiDictObject *md, PyObject *seq, bool update)
             goto fail;
         }
 
-        Py_hash_t hash = PyObject_Hash(identity);
+        Py_hash_t hash = _unicode_hash(identity);
         if (hash == -1) {
             goto fail;
         }
@@ -1953,7 +1965,7 @@ _md_check_consistency(MultiDictObject *md, bool update)
 
             CHECK(PyUnicode_CheckExact(identity));
             if (entry->hash != -1) {
-                Py_hash_t hash = PyObject_Hash(identity);
+                Py_hash_t hash = _unicode_hash(identity);
                 CHECK(entry->hash == hash);
             }
         }
