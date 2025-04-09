@@ -1,3 +1,0 @@
-Fixed a memory leak creating new :class:`~multidict.istr` objects -- by :user:`bdraco`.
-
-The leak was introduced in 6.3.0
