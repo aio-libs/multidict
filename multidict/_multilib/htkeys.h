@@ -52,9 +52,6 @@ typedef struct _htkeys {
     /* Number of used entries in dk_entries. */
     Py_ssize_t nentries;
 
-    /* Number of DUMMY entries in dk_entries. */
-    Py_ssize_t ndummies;
-
     /* Actual hash table of dk_size entries. It holds indices in dk_entries,
        or DKIX_EMPTY(-1) or DKIX_DUMMY(-2).
 
@@ -254,7 +251,6 @@ static htkeys_t empty_htkeys = {
         3, /* log2_index_bytes */
         0, /* usable (immutable) */
         0, /* nentries */
-        0, /* ndummies */
         {DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY,
          DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY, DKIX_EMPTY}, /* indices */
 };
@@ -307,7 +303,6 @@ htkeys_new(uint8_t log2_size)
     keys->log2_index_bytes = log2_bytes;
     keys->nentries = 0;
     keys->usable = usable;
-    keys->ndummies = 0;
     memset(&keys->indices[0], 0xff, ((size_t)1 << log2_bytes));
     memset(&keys->indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
     return keys;
@@ -322,39 +317,36 @@ htkeys_free(htkeys_t *dk)
 }
 
 
+static inline Py_hash_t
+_unicode_hash(PyObject *o)
+{
+    assert(PyUnicode_CheckExact(o));
+    PyASCIIObject *ascii = (PyASCIIObject *)o;
+    if (ascii->hash != -1) {
+        return ascii->hash;
+    }
+    return PyUnicode_Type.tp_hash(o);
+}
+
+
 /*
 Internal routine used by ht_resize() to build a hashtable of entries.
 */
 static inline int
-htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
+htkeys_build_indices(htkeys_t *keys, entry_t *ep, Py_ssize_t n, bool update)
 {
     size_t mask = htkeys_mask(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
-        assert(hash != -1);
-        size_t i = hash & mask;
-        for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
-            perturb >>= HT_PERTURB_SHIFT;
-            i = mask & (i*5 + perturb + 1);
-        }
-        htkeys_set_index(keys, i, ix);
-    }
-    keys->ndummies = 0;
-    return 0;
-}
-
-
-static inline int
-htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
-{
-    size_t mask = htkeys_mask(keys);
-    for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
-        Py_hash_t hash = ep->hash;
-        if (hash == -1) {
-            hash = PyObject_Hash(ep->identity);
+        if (update) {
             if (hash == -1) {
-                return -1;
+                hash = _unicode_hash(ep->identity);
+                if (hash == -1) {
+                    return -1;
+                }
             }
+        } else {
+            assert(hash != -1);
         }
         size_t i = hash & mask;
         for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
@@ -363,31 +355,7 @@ htkeys_build_indices_for_upd(htkeys_t *keys, entry_t *ep, Py_ssize_t n)
         }
         htkeys_set_index(keys, i, ix);
     }
-    keys->ndummies = 0;
     return 0;
-}
-
-
-static inline Py_ssize_t
-htkeys_dummies_fraction(htkeys_t *keys)
-{
-    // rebiuld indices when there are at least 1/4 dummies.
-    return htkeys_nslots(keys) / 4;
-}
-
-
-static inline int
-htkeys_rebuild_indices(htkeys_t *keys, bool update)
-{
-    if (update) {
-        return htkeys_build_indices_for_upd(keys,
-                                            htkeys_entries(keys),
-                                            keys->nentries);
-    } else {
-        return htkeys_build_indices(keys,
-                                    htkeys_entries(keys),
-                                    keys->nentries);
-    }
 }
 
 

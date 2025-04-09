@@ -187,18 +187,6 @@ _ci_arg_to_key(mod_state *state, PyObject *key, PyObject *identity)
 }
 
 
-static inline Py_hash_t
-_unicode_hash(PyObject *o)
-{
-    assert(PyUnicode_CheckExact(o));
-    PyASCIIObject *ascii = (PyASCIIObject *)o;
-    if (ascii->hash != -1) {
-        return ascii->hash;
-    }
-    return PyUnicode_Type.tp_hash(o);
-}
-
-
 static inline int
 _md_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
 {
@@ -236,14 +224,9 @@ _md_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
             newentries[i] = *ep++;
         }
     }
-    if (update) {
-        if (htkeys_build_indices_for_upd(newkeys, newentries, numentries) < 0) {
-            return -1;
-        }
-    } else {
-        if (htkeys_build_indices(newkeys, newentries, numentries) < 0) {
-            return -1;
-        }
+
+    if (htkeys_build_indices(newkeys, newentries, numentries, update) < 0) {
+        return -1;
     }
 
     md->keys = newkeys;
@@ -414,11 +397,7 @@ _md_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *iden
             return -1;
         }
         keys = md->keys;  // updated by resizing
-    } /*else if (keys->ndummies > htkeys_dummies_fraction(keys)) {
-        if (htkeys_rebuild_indices(keys, false) < 0) {
-            return -1;
-        }
-    }*/
+    }
 
     Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
     htkeys_set_index(keys, hashpos, keys->nentries);
@@ -460,11 +439,7 @@ _md_add_for_upd_steal_refs(MultiDictObject *md, Py_hash_t hash, PyObject *identi
             return -1;
         }
         keys = md->keys;  // updated by resizing
-    } /* else if (keys->ndummies > htkeys_dummies_fraction(keys)) {
-        if (htkeys_rebuild_indices(keys, true) < 0) {
-            return -1;
-        }
-    }*/
+    }
     Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
     htkeys_set_index(keys, hashpos, keys->nentries);
 
@@ -524,7 +499,6 @@ _md_del_at(MultiDictObject *md, size_t slot, entry_t *entry)
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
     htkeys_set_index(keys, slot, DKIX_DUMMY);
-    keys->ndummies += 1;
     md->used -= 1;
     return 0;
 }
@@ -802,12 +776,6 @@ md_contains(MultiDictObject *md, PyObject *key, PyObject **pret)
         return 0;
     }
 
-    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
-            return -1;
-        }
-    }*/
-
     PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
@@ -863,12 +831,6 @@ fail:
 static inline int
 md_get_one(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
-    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
-            return -1;
-        }
-    }*/
-
     PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
@@ -914,12 +876,6 @@ static inline int
 md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
     *ret == NULL;
-
-    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
-            return -1;
-        }
-    }*/
 
     md_finder_t finder = {0};
 
@@ -970,12 +926,6 @@ fail:
 static inline PyObject *
 md_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
 {
-    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
-            return NULL;
-        }
-    }*/
-
     PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
@@ -1026,12 +976,6 @@ fail:
 static inline int
 md_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
-    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
-            return -1;
-        }
-    }*/
-
     PyObject *value = NULL;
 
     PyObject *identity = md_calc_identity(md, key);
@@ -1086,11 +1030,6 @@ fail:
 static inline int
 md_pop_all(MultiDictObject *md, PyObject *key, PyObject ** ret)
 {
-    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
-            return -1;
-        }
-    }*/
     PyObject *lst = NULL;
 
     PyObject *identity = md_calc_identity(md, key);
@@ -1163,12 +1102,6 @@ md_pop_item(MultiDictObject *md)
         return NULL;
     }
 
-    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
-            return NULL;
-        }
-    }*/
-
     entry_t *entries = htkeys_entries(md->keys);
 
     Py_ssize_t pos = md->keys->nentries - 1;
@@ -1207,12 +1140,6 @@ static inline int
 _md_replace(MultiDictObject *md, PyObject * key, PyObject *value,
             PyObject *identity, Py_hash_t hash)
 {
-    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, false) < 0) {
-            return -1;
-        }
-    }*/
-
     int found = 0;
     md_finder_t finder = {0};
     if (md_init_finder(md, identity, &finder) < 0) {
@@ -1284,11 +1211,6 @@ static inline int
 _md_update(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
            PyObject *key, PyObject *value)
 {
-    /*if (md->keys->ndummies > htkeys_dummies_fraction(md->keys)) {
-        if (htkeys_rebuild_indices(md->keys, true) < 0) {
-            return -1;
-        }
-    }*/
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t *entries = htkeys_entries(md->keys);
@@ -1355,7 +1277,6 @@ md_post_update(MultiDictObject *md)
                    and not replaced with a new value */
                 Py_CLEAR(entry->identity);
                 htkeys_set_index(keys, slot, DKIX_DUMMY);
-                keys->ndummies += 1;
                 md->used -= 1;
             }
             if (entry->hash == -1) {
@@ -1367,11 +1288,6 @@ md_post_update(MultiDictObject *md)
             }
         }
     }
-    /*if (keys->ndummies > htkeys_dummies_fraction(keys)) {
-        if (htkeys_rebuild_indices(keys, false) < 0) {
-            return -1;
-        }
-    }*/
     return 0;
 }
 
