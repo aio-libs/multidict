@@ -146,7 +146,7 @@ static PyType_Spec istr_spec = {
 static inline PyObject *
 IStr_New(mod_state *state, PyObject *str, PyObject *canonical)
 {
-    PyObject *res = PyUnicode_FromObject(str);
+    PyObject *res = PyObject_Str(str);
     if (res) {
         ((istrobject*)res)->canonical = canonical;
         ((istrobject*)res)->state = state;
