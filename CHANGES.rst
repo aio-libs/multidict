@@ -14,6 +14,26 @@ Changelog
 
 .. towncrier release notes start
 
+6.4.2
+=====
+
+*(2025-04-09)*
+
+
+Bug fixes
+---------
+
+- Fixed a segmentation fault when creating subclassed :py:class:`~multidict.MultiDict` objects on Python < 3.11 -- by :user:`bdraco`.
+
+  The problem first appeared in 6.4.0
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1141`.
+
+
+----
+
+
 6.4.1
 =====
 
