@@ -42,6 +42,7 @@ get_mod_state_by_cls(PyTypeObject *cls)
     return state;
 }
 
+
 #if PY_VERSION_HEX < 0x030b0000
 PyObject *
 PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
