@@ -193,6 +193,33 @@ _multidict_extend_parse_args(mod_state *state, PyObject *args, PyObject *kwds,
     return size;
 }
 
+
+static inline int
+_multidict_clone_fast(mod_state *state, MultiDictObject *self,
+                      bool is_ci, PyObject *arg, PyObject *kwds)
+{
+    int ret = 0;
+    if (arg != NULL && kwds == NULL) {
+        MultiDictObject *other = NULL;
+        if (AnyMultiDict_Check(state, arg)) {
+            other = (MultiDictObject*)arg;
+        } else if (AnyMultiDictProxy_Check(state, arg)) {
+            other = ((MultiDictProxyObject*)arg)->md;
+        }
+        if (other != NULL && other->is_ci == is_ci) {
+            if (md_clone_from_ht(self, other) < 0) {
+                ret = -1;
+                goto done;
+            }
+            ret = 1;
+            goto done;
+        }
+    }
+done:
+    return ret;
+}
+
+
 static inline PyObject *
 multidict_copy(MultiDictObject *self)
 {
@@ -497,19 +524,11 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (size < 0) {
         goto fail;
     }
-    if (arg != NULL && kwds == NULL) {
-        MultiDictObject *other = NULL;
-        if (AnyMultiDict_Check(state, arg)) {
-            other = (MultiDictObject*)arg;
-        } else if (AnyMultiDictProxy_Check(state, arg)) {
-            other = ((MultiDictProxyObject*)arg)->md;
-        }
-        if (other != NULL && !other->is_ci) {
-            if (md_clone_from_ht(self, other) < 0) {
-                goto fail;
-            }
-            goto done;
-        }
+    int tmp = _multidict_clone_fast(state, self, false, args, kwds);
+    if (tmp < 0) {
+        goto fail;
+    } else if (tmp == 1) {
+        goto done;
     }
     if (md_init(self, state, false, size) < 0) {
         goto fail;
@@ -952,19 +971,11 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
     if (size < 0) {
         goto fail;
     }
-    if (arg != NULL && kwds == NULL) {
-        MultiDictObject *other = NULL;
-        if (AnyMultiDict_Check(state, arg)) {
-            other = (MultiDictObject*)arg;
-        } else if (AnyMultiDictProxy_Check(state, arg)) {
-            other = ((MultiDictProxyObject*)arg)->md;
-        }
-        if (other != NULL && other->is_ci) {
-            if (md_clone_from_ht(self, other) < 0) {
-                goto fail;
-            }
-            goto done;
-        }
+    int tmp = _multidict_clone_fast(state, self, true, args, kwds);
+    if (tmp < 0) {
+        goto fail;
+    } else if (tmp == 1) {
+        goto done;
     }
     if (md_init(self, state, true, size) < 0) {
         goto fail;
