@@ -39,8 +39,6 @@ def chained_callable(
         *args: object,
         **kwargs: object,
     ) -> MultiMapping[int | str] | MutableMultiMapping[int | str]:
-        nonlocal callables
-
         callable_chain = (getattr(module, name) for name in callables)
         first_callable = next(callable_chain)
 
