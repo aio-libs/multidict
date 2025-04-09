@@ -146,34 +146,11 @@ static PyType_Spec istr_spec = {
 static inline PyObject *
 IStr_New(mod_state *state, PyObject *str, PyObject *canonical)
 {
-    PyObject *args = NULL;
-    PyObject *kwds = NULL;
-    PyObject *res = NULL;
-
-    args = PyTuple_Pack(1, str);
-    if (args == NULL) {
-        goto ret;
+    PyObject *res = PyUnicode_FromObject(str);
+    if (res) {
+        ((istrobject*)res)->canonical = canonical;
+        ((istrobject*)res)->state = state;
     }
-
-    if (canonical != NULL) {
-        kwds = PyDict_New();
-        if (kwds == NULL) {
-            goto ret;
-        }
-        if (!PyUnicode_CheckExact(canonical)) {
-            PyErr_SetString(PyExc_TypeError,
-                            "'canonical' argument should be exactly str");
-            goto ret;
-        }
-        if (PyDict_SetItem(kwds, state->str_canonical, canonical) < 0) {
-            goto ret;
-        }
-    }
-
-    res = istr_new_with_state(state->IStrType, args, kwds, state);
-ret:
-    Py_CLEAR(args);
-    Py_CLEAR(kwds);
     return res;
 }
 
