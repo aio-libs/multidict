@@ -377,8 +377,6 @@ jobs:
 
   test_debug_mode:
     name: Test in debug mode
-    needs:
-    - pre-setup  # transitive, for accessing settings
     strategy:
       matrix:
         pyver:
