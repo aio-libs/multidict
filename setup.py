@@ -10,7 +10,7 @@ if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
 
 CFLAGS = ["-O3"]
-# CFLAGS = ["-O0", "-g3", "-DDEBUG"]
+# CFLAGS = ["-O0", "-g3", "-UNDEBUG"]
 if platform.system() != "Windows":
     CFLAGS.extend(
         [
