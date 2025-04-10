@@ -174,6 +174,7 @@ jobs:
         - 3.9
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
+        debug: ['', 'Y']
         exclude:
         - os: macos
           no-extensions: Y
@@ -183,10 +184,13 @@ jobs:
           pyver: 3.13-freethreading  # this is still tested within cibuildwheel
         - os: windows
           pyver: 3.13-freethreading  # this is still tested within cibuildwheel
+        - no-extensions: Y
+          debug: Y
         include:
         - pyver: pypy-3.9
           no-extensions: Y
           os: ubuntu
+          debug: ''
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 15
@@ -207,7 +211,10 @@ jobs:
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
-      if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
+      if: >-
+        ${{ !endsWith(matrix.pyver, '-dev') &&
+          matrix.debug != 'Y' &&
+          true || false }}
       uses: actions/download-artifact@v4
       with:
         pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
@@ -269,6 +276,8 @@ jobs:
           }}-${{
             matrix.no-extensions
           }}-${{
+            matrix.debug
+          }}-${{
             hashFiles('requirements/*.txt')
           }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -279,13 +288,18 @@ jobs:
             matrix.pyver
           }}-${{
             matrix.no-extensions
-          }}-
+          }}-${{
+            matrix.debug
+          }}
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v4
       with:
         path: requirements/pytest.txt
     - name: Determine pre-compiled compatible wheel
-      if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
+      if: >-
+        ${{ !endsWith(matrix.pyver, '-dev') &&
+          matrix.debug != 'Y' &&
+          true || false }}
       env:
         # NOTE: When `pip` is forced to colorize output piped into `jq`,
         # NOTE: the latter can't parse it. So we're overriding the color
@@ -326,16 +340,17 @@ jobs:
       shell: bash
     - name: >-
         Self-install (from ${{
-          endsWith(matrix.pyver, '-dev')
+          (endsWith(matrix.pyver, '-dev') || matrix.debug == 'Y')
           && 'source'
           || 'wheel'
         }})
       env:
         MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        MULTIDICT_DEBUG_BUILD: ${{ matrix.debug }}
       run: >-
         python -Im
         pip install '${{
-          endsWith(matrix.pyver, '-dev')
+          (endsWith(matrix.pyver, '-dev') || matrix.debug == 'Y')
           && '.'
           || steps.wheel-file.outputs.path
         }}'
@@ -374,79 +389,6 @@ jobs:
       if: ${{ matrix.os == 'ubuntu' }}
       uses: aio-libs/prepare-coverage@v24.9.2
 
-
-  test_debug_mode:
-    name: Test in debug mode
-    strategy:
-      matrix:
-        pyver:
-        - 3.13t
-        - 3.13
-        - 3.12
-        - 3.11
-        - "3.10"
-        - 3.9
-      fail-fast: false
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-    - name: Checkout project
-      uses: actions/checkout@v4
-    - name: Setup Python ${{ matrix.pyver }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.pyver }}
-        allow-prereleases: true
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
-      shell: bash
-    - name: Cache PyPI
-      uses: actions/cache@v4
-      with:
-        key: >-
-          pip-ci-${{
-            runner.os
-          }}-${{
-            matrix.pyver
-          }}--${{
-            hashFiles('requirements/*.txt')
-          }}
-        path: ${{ steps.pip-cache.outputs.dir }}
-        restore-keys: >-
-          pip-ci-${{
-            runner.os
-          }}-${{
-            matrix.pyver
-          }}--
-    - name: Install dependencies
-      uses: py-actions/py-dependency-install@v4
-      with:
-        path: requirements/pytest.txt
-    - name: >-
-        Self-install source
-      env:
-        MULTIDICT_DEBUG_BUILD: 1
-      run: >-
-        python -Im
-        pip install '.'
-    - name: Run unittests without coverage
-      run: >-
-        python -Im pytest tests -v
-        --no-cov
-        --c-extensions
-    - name: Re-run the failing tests with maximum verbosity
-      if: >-
-        !cancelled()
-        && failure()
-      run: >-  # `exit 1` makes sure that the job remains red with flaky runs
-        python -Im
-        pytest --no-cov -vvvvv --lf -rA
-        --c-extensions
-        && exit 1
-      shell: bash
 
   benchmark:
     name: Benchmark
