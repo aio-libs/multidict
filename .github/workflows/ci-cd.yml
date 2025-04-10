@@ -213,7 +213,7 @@ jobs:
       id: build_type
       run: |
         echo "build_type=${{
-          contains(matrix.pyver, '-dev') && matrix.debug == 'Y' &&
+          (contains(matrix.pyver, '-dev') || matrix.debug == 'Y') &&
           'source' || 'wheel'
         }}" >> "$GITHUB_OUTPUT"
       shell: sh
