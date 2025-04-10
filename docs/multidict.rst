@@ -448,7 +448,7 @@ Environment variables
    An environment variable that instructs the packaging scripts to compile
    the C-extension based variant of :mod:`multidict` with debug symbols.
    This is useful for debugging the C-extension code, but it will result in
-   a larger binary size and slower performance.
+   a larger binary size and worse performance.
 
    .. caution::
 
