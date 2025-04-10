@@ -393,7 +393,8 @@ jobs:
     timeout-minutes: 15
 
     steps:
-
+    - name: Checkout project
+      uses: actions/checkout@v4
     - name: Setup Python ${{ matrix.pyver }}
       uses: actions/setup-python@v5
       with:
