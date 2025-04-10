@@ -1,0 +1,1 @@
+Fix custom ``PyType_GetModuleByDef()`` when non-heap type object was passed.
