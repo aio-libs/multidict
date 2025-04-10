@@ -48,7 +48,9 @@ PyObject *
 PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
 {
     PyModuleDef * mod_def;
-    assert(PyType_HasFeature(tp, Py_TPFLAGS_HEAPTYPE));
+    if (!PyType_HasFeature(tp, Py_TPFLAGS_HEAPTYPE)) {
+        goto err;
+    }
     PyObject *mod = NULL;
 
     mod = PyType_GetModule(tp);
@@ -84,6 +86,7 @@ PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
         }
     }
 
+err:
     PyErr_Format(
         PyExc_TypeError,
         "PyType_GetModuleByDef: No superclass of '%s' has the given module",
