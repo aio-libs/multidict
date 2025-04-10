@@ -161,8 +161,8 @@ jobs:
     name: >-
       Test ${{ matrix.os }}
       ${{ matrix.pyver }}
-      ext=${{ matrix.no-extensions }}
-      dbg=${{ matrix.debug }}
+      noext=${{ matrix.no-extensions }}
+      debug=${{ matrix.debug }}
     needs:
     - build-pure-python-dists  # transitive, for accessing settings
     - build-wheels-for-tested-arches
