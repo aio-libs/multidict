@@ -87,6 +87,7 @@ runtime
 runtimes
 str
 subclassable
+subclassed
 subclassing
 subprotocol
 subprotocols
