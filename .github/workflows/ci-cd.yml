@@ -355,7 +355,7 @@ jobs:
     - name: Self-install (from ${{ steps.build_type.outputs.build_type }})
       env:
         MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
-        MULTIDICT_DEBUG_BUILD: ${{ matrix.debug }}
+        MULTIDICT_DEBUG_BUILD: 1  # Always on for source builds
       run: >-
         pip install '${{
           steps.build_type.outputs.build_type == 'source'
