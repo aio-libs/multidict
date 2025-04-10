@@ -107,7 +107,7 @@ the usage scenario!!!
 For extension development, set the ``MULTIDICT_DEBUG_BUILD`` environment variable to compile
 the extensions in debug mode:
 
-.. code-block:: bash
+.. code-block:: console
 
    $ MULTIDICT_DEBUG_BUILD=1 pip install multidict
 
