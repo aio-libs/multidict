@@ -14,6 +14,38 @@ Changelog
 
 .. towncrier release notes start
 
+6.4.3
+=====
+
+*(2025-04-10)*
+
+
+Bug fixes
+---------
+
+- Fixed building the library in debug mode.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1144`.
+
+- Fixed custom ``PyType_GetModuleByDef()`` when non-heap type object was passed.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1147`.
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Added the ability to build in debug mode by setting :envvar:`MULTIDICT_DEBUG_BUILD` in the environment -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1145`.
+
+
+----
+
+
 6.4.2
 =====
 
