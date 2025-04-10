@@ -346,9 +346,8 @@ jobs:
         | jq --raw-output .install[].download_info.url
         | tee -a "${GITHUB_OUTPUT}"
       shell: bash
-    - name: Ensure clean for debug
-      if: >-
-        ${{ matrix.debug == 'Y' }}
+    - name: Ensure clean for source build
+      if: steps.build_type.outputs.build_type == 'source'
       run: >-
         make clean
       shell: bash
