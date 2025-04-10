@@ -442,3 +442,15 @@ Environment variables
 
       The pure-Python (uncompiled) version is roughly 20-50 times slower than
       its C counterpart, depending on the way it's used.
+
+.. envvar:: MULTIDICT_DEBUG_BUILD
+   
+   An environment variable that instructs the packaging scripts to compile
+   the C-extension based variant of :mod:`multidict` with debug symbols.
+   This is useful for debugging the C-extension code, but it will result in
+   a larger binary size and slower performance.
+
+   .. caution::
+
+      The debug build is not intended for production use and should only be
+      used for development and debugging purposes.
