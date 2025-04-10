@@ -158,7 +158,11 @@ jobs:
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
 
   test:
-    name: Test
+    name: -<
+      Test on ${{ matrix.os }}
+      ${{ matrix.pyver }}
+      ext=${{ matrix.no-extensions }}
+      debug=${{ matrix.debug }}
     needs:
     - build-pure-python-dists  # transitive, for accessing settings
     - build-wheels-for-tested-arches
@@ -337,6 +341,12 @@ jobs:
         --quiet
         | jq --raw-output .install[].download_info.url
         | tee -a "${GITHUB_OUTPUT}"
+      shell: bash
+    - name: Ensure clean for debug
+      if: >-
+        ${{ matrix.debug == 'Y' }}
+      run: >-
+        make clean
       shell: bash
     - name: >-
         Self-install (from ${{
