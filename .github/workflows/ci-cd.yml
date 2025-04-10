@@ -428,7 +428,7 @@ jobs:
     - name: >-
         Self-install source
       env:
-        MULTIDICT_DEBUG_BUILD: Y
+        MULTIDICT_DEBUG_BUILD: 1
       run: >-
         python -Im
         pip install '.'
