@@ -1,1 +1,1 @@
-Added the ability to build in debug mode by setting ``MULTIDICT_DEBUG_BUILD`` in the environment -- by :user:`bdraco`.
+Added the ability to build in debug mode by setting :envvar:`MULTIDICT_DEBUG_BUILD` in the environment -- by :user:`bdraco`.
