@@ -180,6 +180,8 @@ jobs:
         os: [ubuntu, macos, windows]
         debug: ['', 'Y']
         exclude:
+        - no-extensions: Y
+          debug: Y
         - os: macos
           no-extensions: Y
         - os: windows
