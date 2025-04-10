@@ -158,7 +158,11 @@ jobs:
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
 
   test:
-    name: Test
+    name: >-
+      Test ${{ matrix.os }}
+      ${{ matrix.pyver }}
+      ${{ matrix.no-extensions == 'Y' && ' ' || 'ext' }}
+      ${{ matrix.debug == 'Y' && 'debug' || '' }}
     needs:
     - build-pure-python-dists  # transitive, for accessing settings
     - build-wheels-for-tested-arches
@@ -174,7 +178,10 @@ jobs:
         - 3.9
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
+        debug: ['', 'Y']
         exclude:
+        - no-extensions: Y
+          debug: Y
         - os: macos
           no-extensions: Y
         - os: windows
@@ -183,10 +190,13 @@ jobs:
           pyver: 3.13-freethreading  # this is still tested within cibuildwheel
         - os: windows
           pyver: 3.13-freethreading  # this is still tested within cibuildwheel
+        - no-extensions: Y
+          debug: Y
         include:
         - pyver: pypy-3.9
           no-extensions: Y
           os: ubuntu
+          debug: ''
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 15
@@ -199,6 +209,14 @@ jobs:
       }}
 
     steps:
+    - name: Determine build type
+      id: build_type
+      run: |
+        echo "build_type=${{
+          (contains(matrix.pyver, '-dev') || matrix.debug == 'Y') &&
+          'source' || 'wheel'
+        }}" >> "$GITHUB_OUTPUT"
+      shell: sh
     - name: Retrieve the project source from an sdist inside the GHA artifact
       uses: re-actors/checkout-python-sdist@release/v2
       with:
@@ -207,7 +225,7 @@ jobs:
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
-      if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
+      if: steps.build_type.outputs.build_type == 'wheel'
       uses: actions/download-artifact@v4
       with:
         pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
@@ -269,6 +287,8 @@ jobs:
           }}-${{
             matrix.no-extensions
           }}-${{
+            matrix.debug
+          }}-${{
             hashFiles('requirements/*.txt')
           }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -279,13 +299,15 @@ jobs:
             matrix.pyver
           }}-${{
             matrix.no-extensions
-          }}-
+          }}-${{
+            matrix.debug
+          }}
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v4
       with:
         path: requirements/pytest.txt
     - name: Determine pre-compiled compatible wheel
-      if: ${{ !endsWith(matrix.pyver, '-dev') && true || false }}
+      if: steps.build_type.outputs.build_type == 'wheel'
       env:
         # NOTE: When `pip` is forced to colorize output piped into `jq`,
         # NOTE: the latter can't parse it. So we're overriding the color
@@ -324,18 +346,18 @@ jobs:
         | jq --raw-output .install[].download_info.url
         | tee -a "${GITHUB_OUTPUT}"
       shell: bash
-    - name: >-
-        Self-install (from ${{
-          endsWith(matrix.pyver, '-dev')
-          && 'source'
-          || 'wheel'
-        }})
+    - name: Ensure clean for source build
+      if: steps.build_type.outputs.build_type == 'source'
+      run: >-
+        make clean
+      shell: bash
+    - name: Self-install (from ${{ steps.build_type.outputs.build_type }})
       env:
         MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        MULTIDICT_DEBUG_BUILD: 1  # Always on for source builds
       run: >-
-        python -Im
         pip install '${{
-          endsWith(matrix.pyver, '-dev')
+          steps.build_type.outputs.build_type == 'source'
           && '.'
           || steps.wheel-file.outputs.path
         }}'
@@ -373,6 +395,7 @@ jobs:
       # others multidict has no Windows or macOS specific code paths anyway
       if: ${{ matrix.os == 'ubuntu' }}
       uses: aio-libs/prepare-coverage@v24.9.2
+
 
   benchmark:
     name: Benchmark
