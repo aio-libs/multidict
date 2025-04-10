@@ -212,13 +212,11 @@ jobs:
     - name: Determine build type
       id: build_type
       run: |
-        if [[ "${{ matrix.pyver }}" == *-dev* && \
-              "${{ matrix.debug }}" == Y ]]; then
-          echo "build_type=source" >> "${GITHUB_OUTPUT}"
-        else
-          echo "build_type=wheel" >> "${GITHUB_OUTPUT}"
-        fi
-      shell: bash
+        echo "build_type=${{
+          contains(matrix.pyver, '-dev') && matrix.debug == 'Y' &&
+          'source' || 'wheel'
+        }}" >> "$GITHUB_OUTPUT"
+      shell: sh
     - name: Retrieve the project source from an sdist inside the GHA artifact
       uses: re-actors/checkout-python-sdist@release/v2
       with:
