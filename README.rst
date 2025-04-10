@@ -104,7 +104,7 @@ e.g.:
 Please note, the pure Python (uncompiled) version is about 20-50 times slower depending on
 the usage scenario!!!
 
-For extension development, set the `MULTIDICT_DEBUG_BUILD` environment variable to compile
+For extension development, set the ``MULTIDICT_DEBUG_BUILD`` environment variable to compile
 the extensions in debug mode:
 
 .. code-block:: bash
