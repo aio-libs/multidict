@@ -158,11 +158,11 @@ jobs:
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
 
   test:
-    name: -<
-      Test on ${{ matrix.os }}
+    name: >-
+      Test ${{ matrix.os }}
       ${{ matrix.pyver }}
       ext=${{ matrix.no-extensions }}
-      debug=${{ matrix.debug }}
+      dbg=${{ matrix.debug }}
     needs:
     - build-pure-python-dists  # transitive, for accessing settings
     - build-wheels-for-tested-arches
