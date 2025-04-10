@@ -209,6 +209,16 @@ jobs:
       }}
 
     steps:
+    - name: Determine build type
+      id: build_type
+      run: |
+        if [[ "${{ matrix.pyver }}" == *-dev* && \
+              "${{ matrix.debug }}" == Y ]]; then
+          echo "build_type=source" >> "${GITHUB_OUTPUT}"
+        else
+          echo "build_type=wheel" >> "${GITHUB_OUTPUT}"
+        fi
+      shell: bash
     - name: Retrieve the project source from an sdist inside the GHA artifact
       uses: re-actors/checkout-python-sdist@release/v2
       with:
@@ -217,10 +227,7 @@ jobs:
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
-      if: >-
-        ${{ !endsWith(matrix.pyver, '-dev') &&
-          matrix.debug != 'Y' &&
-          true || false }}
+      if: steps.build_type.outputs.build_type == 'wheel'
       uses: actions/download-artifact@v4
       with:
         pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
@@ -302,10 +309,7 @@ jobs:
       with:
         path: requirements/pytest.txt
     - name: Determine pre-compiled compatible wheel
-      if: >-
-        ${{ !endsWith(matrix.pyver, '-dev') &&
-          matrix.debug != 'Y' &&
-          true || false }}
+      if: steps.build_type.outputs.build_type == 'wheel'
       env:
         # NOTE: When `pip` is forced to colorize output piped into `jq`,
         # NOTE: the latter can't parse it. So we're overriding the color
@@ -350,19 +354,13 @@ jobs:
       run: >-
         make clean
       shell: bash
-    - name: >-
-        Self-install (from ${{
-          (endsWith(matrix.pyver, '-dev') || matrix.debug == 'Y')
-          && 'source'
-          || 'wheel'
-        }})
+    - name: Self-install (from ${{ steps.build_type.outputs.build_type }})
       env:
         MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         MULTIDICT_DEBUG_BUILD: ${{ matrix.debug }}
       run: >-
-        python -Im
         pip install '${{
-          (endsWith(matrix.pyver, '-dev') || matrix.debug == 'Y')
+          steps.build_type.outputs.build_type == 'source'
           && '.'
           || steps.wheel-file.outputs.path
         }}'
