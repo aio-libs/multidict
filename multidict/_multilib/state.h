@@ -65,7 +65,7 @@ PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
     assert(mro != NULL);
     assert(PyTuple_Check(mro));
     assert(PyTuple_GET_SIZE(mro) >= 1);
-    assert(PyTuple_GET_ITEM(mro, 0) == (PyObject *)type);
+    assert(PyTuple_GET_ITEM(mro, 0) == (PyObject *)tp);
 
     Py_ssize_t n = PyTuple_GET_SIZE(mro);
     for (Py_ssize_t i = 1; i < n; i++) {
