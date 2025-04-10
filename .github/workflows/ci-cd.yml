@@ -374,6 +374,107 @@ jobs:
       if: ${{ matrix.os == 'ubuntu' }}
       uses: aio-libs/prepare-coverage@v24.9.2
 
+
+  test_debug_mode:
+    name: Test in debug mode
+    needs:
+    - pre-setup  # transitive, for accessing settings
+    strategy:
+      matrix:
+        pyver:
+        - 3.13-freethreading
+        - 3.13
+        - 3.12
+        - 3.11
+        - "3.10"
+        - 3.9
+      fail-fast: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+
+    - name: Setup Python ${{ matrix.pyver }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.pyver }}
+        allow-prereleases: true
+    - name: Compute runtime Python version
+      id: python-install
+      run: |
+        import sys
+        from os import environ
+        from pathlib import Path
+
+        FILE_APPEND_MODE = 'a'
+
+        python_version_str = ".".join(
+            map(str, sys.version_info[:3]),
+        )
+        freethreading_suffix = (
+            '' if sys.version_info < (3, 13) or sys._is_gil_enabled()
+            else 't'
+        )
+
+        with Path(environ['GITHUB_OUTPUT']).open(
+                mode=FILE_APPEND_MODE,
+        ) as outputs_file:
+            print(
+                f'python-version={python_version_str}{freethreading_suffix}',
+                file=outputs_file,
+            )
+      shell: python
+
+    - name: Get pip cache dir
+      id: pip-cache
+      run: |
+        echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
+      shell: bash
+    - name: Cache PyPI
+      uses: actions/cache@v4
+      with:
+        key: >-
+          pip-ci-${{
+            runner.os
+          }}-${{
+            matrix.pyver
+          }}--${{
+            hashFiles('requirements/*.txt')
+          }}
+        path: ${{ steps.pip-cache.outputs.dir }}
+        restore-keys: >-
+          pip-ci-${{
+            runner.os
+          }}-${{
+            matrix.pyver
+          }}--
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4
+      with:
+        path: requirements/pytest.txt
+    - name: >-
+        Self-install source
+      env:
+        MULTIDICT_DEBUG_BUILD: Y
+      run: >-
+        python -Im
+        pip install '.'
+    - name: Run unittests without coverage
+      run: >-
+        python -Im pytest tests -v
+        --no-cov
+        --c-extensions
+    - name: Re-run the failing tests with maximum verbosity
+      if: >-
+        !cancelled()
+        && failure()
+      run: >-  # `exit 1` makes sure that the job remains red with flaky runs
+        python -Im
+        pytest --no-cov -vvvvv --lf -rA
+        --c-extensions
+        && exit 1
+      shell: bash
+
   benchmark:
     name: Benchmark
     needs:
