@@ -558,6 +558,8 @@ class _Base(MultiMapping[_V]):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Mapping):
             return NotImplemented
+        if isinstance(other, MultiDictProxy):
+            return self == other._md
         if isinstance(other, _Base):
             lft = self._impl._items
             rht = other._impl._items
@@ -633,7 +635,9 @@ class MultiDict(_CSMixin, _Base[_V], MutableMultiMapping[_V]):
         method: Callable[[list[tuple[str, str, _V]]], None],
     ) -> None:
         if arg:
-            if isinstance(arg, (MultiDict, MultiDictProxy)):
+            if isinstance(arg, MultiDictProxy):
+                arg = arg._md
+            if isinstance(arg, MultiDict):
                 if self._ci is not arg._ci:
                     items = [(self._title(k), k, v) for _, k, v in arg._impl._items]
                 else:
@@ -847,6 +851,7 @@ class CIMultiDict(_CIMixin, MultiDict[_V]):
 
 class MultiDictProxy(_CSMixin, _Base[_V]):
     """Read-only proxy for MultiDict instance."""
+    _md: MultiDict[_V]
 
     def __init__(self, arg: Union[MultiDict[_V], "MultiDictProxy[_V]"]):
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
@@ -854,11 +859,87 @@ class MultiDictProxy(_CSMixin, _Base[_V]):
                 "ctor requires MultiDict or MultiDictProxy instance"
                 f", not {type(arg)}"
             )
-
-        self._impl = arg._impl
+        if (isinstance(arg, MultiDictProxy)):
+            self._md = arg._md
+        else:
+            self._md = arg
 
     def __reduce__(self) -> NoReturn:
         raise TypeError(f"can't pickle {self.__class__.__name__} objects")
+
+    @overload
+    def getall(self, key: str) -> list[_V]: ...
+    @overload
+    def getall(self, key: str, default: _T) -> Union[list[_V], _T]: ...
+    def getall(
+        self, key: str, default: Union[_T, _SENTINEL] = sentinel
+    ) -> Union[list[_V], _T]:
+        """Return a list of all values matching the key."""
+        if default is not sentinel:
+            return self._md.getall(key, default)
+        else:
+            return self._md.getall(key)
+
+    @overload
+    def getone(self, key: str) -> _V: ...
+    @overload
+    def getone(self, key: str, default: _T) -> Union[_V, _T]: ...
+    def getone(
+        self, key: str, default: Union[_T, _SENTINEL] = sentinel
+    ) -> Union[_V, _T]:
+        """Get first value matching the key.
+
+        Raises KeyError if the key is not found and no default is provided.
+        """
+        if default is not sentinel:
+            return self._md.getone(key, default)
+        else:
+            return self._md.getone(key)
+
+    # Mapping interface #
+
+    def __getitem__(self, key: str) -> _V:
+        return self.getone(key)
+
+    @overload
+    def get(self, key: str, /) -> Union[_V, None]: ...
+    @overload
+    def get(self, key: str, /, default: _T) -> Union[_V, _T]: ...
+    def get(self, key: str, default: Union[_T, None] = None) -> Union[_V, _T, None]:
+        """Get first value matching the key.
+
+        If the key is not found, returns the default (or None if no default is provided)
+        """
+        return self._md.getone(key, default)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._md.keys())
+
+    def __len__(self) -> int:
+        return len(self._md)
+
+    def keys(self) -> KeysView[str]:
+        """Return a new view of the dictionary's keys."""
+        return self._md.keys()
+
+    def items(self) -> ItemsView[str, _V]:
+        """Return a new view of the dictionary's items *(key, value) pairs)."""
+        return self._md.items()
+
+    def values(self) -> _ValuesView[_V]:
+        """Return a new view of the dictionary's values."""
+        return self._md.values()
+
+    def __eq__(self, other: object) -> bool:
+        return self._md == other
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._md
+
+    @reprlib.recursive_repr()
+    def __repr__(self) -> str:
+        body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
+        return f"<{self.__class__.__name__}({body})>"
 
     def copy(self) -> MultiDict[_V]:
         """Return a copy of itself."""
@@ -875,7 +956,7 @@ class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
                 f", not {type(arg)}"
             )
 
-        self._impl = arg._impl
+        super().__init__(arg)
 
     def copy(self) -> CIMultiDict[_V]:
         """Return a copy of itself."""
@@ -885,4 +966,6 @@ class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
 def getversion(md: Union[MultiDict[object], MultiDictProxy[object]]) -> int:
     if not isinstance(md, _Base):
         raise TypeError("Parameter should be multidict or proxy")
+    if isinstance(md, MultiDictProxy):
+        md = md._md
     return md._impl._version
