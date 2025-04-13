@@ -849,7 +849,7 @@ class CIMultiDict(_CIMixin, MultiDict[_V]):
     """Dictionary with the support for duplicate case-insensitive keys."""
 
 
-class MultiDictProxy(_CSMixin, _Base[_V]):
+class MultiDictProxy(_CSMixin, MultiMapping[_V]):
     """Read-only proxy for MultiDict instance."""
     _md: MultiDict[_V]
 
@@ -964,8 +964,8 @@ class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
 
 
 def getversion(md: Union[MultiDict[object], MultiDictProxy[object]]) -> int:
-    if not isinstance(md, _Base):
-        raise TypeError("Parameter should be multidict or proxy")
     if isinstance(md, MultiDictProxy):
         md = md._md
+    elif not isinstance(md, MultiDict):
+        raise TypeError("Parameter should be multidict or proxy")
     return md._impl._version
