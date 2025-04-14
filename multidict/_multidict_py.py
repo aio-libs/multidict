@@ -102,7 +102,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             ident = self._md._identity(key)
         except TypeError:
             return False
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             if ident == i and value == v:
                 return True
         return False
@@ -111,7 +111,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         return _Iter(len(self), self._iter(self._md._impl._version))
 
     def _iter(self, version: int) -> Iterator[tuple[str, _V]]:
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             if version != self._md._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._md._key(k), v
@@ -119,7 +119,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
         lst = []
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             lst.append(f"'{k}': {v!r}")
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
@@ -157,7 +157,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             if item is None:
                 continue
             identity, key, value = item
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity and v == value:
                     ret.add((k, v))
         return ret
@@ -173,7 +173,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             if item is None:
                 continue
             identity, key, value = item
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity and v == value:
                     ret.add(arg)
                     break
@@ -191,7 +191,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add(arg)
                 continue
             identity, key, value = item
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity and v == value:
                     break
             else:
@@ -205,7 +205,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             return NotImplemented
         tmp = self._tmp_set(ret)
 
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             if (i, v) not in tmp:
                 ret.add((k, v))
         return ret
@@ -218,7 +218,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             return NotImplemented
         tmp = self._tmp_set(it)
 
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             if (i, v) not in tmp:
                 ret.add((k, v))
 
@@ -237,7 +237,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 continue
 
             identity, key, value = item
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity and v == value:
                     break
             else:
@@ -262,7 +262,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 continue
 
             identity, key, value = item
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity and v == value:
                     return False
         return True
@@ -270,7 +270,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
 
 class _ValuesView(_ViewBase[_V], ValuesView[_V]):
     def __contains__(self, value: object) -> bool:
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             if v == value:
                 return True
         return False
@@ -279,7 +279,7 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
         return _Iter(len(self), self._iter(self._md._impl._version))
 
     def _iter(self, version: int) -> Iterator[_V]:
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             if version != self._md._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield v
@@ -287,7 +287,7 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
         lst = []
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             lst.append(repr(v))
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
@@ -298,7 +298,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         if not isinstance(key, str):
             return False
         identity = self._md._identity(key)
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             if i == identity:
                 return True
         return False
@@ -307,14 +307,14 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         return _Iter(len(self), self._iter(self._md._impl._version))
 
     def _iter(self, version: int) -> Iterator[str]:
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             if version != self._md._impl._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._md._key(k)
 
     def __repr__(self) -> str:
         lst = []
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             lst.append(f"'{k}'")
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
@@ -329,7 +329,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 continue
             identity = self._md._identity(key)
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity:
                     ret.add(k)
         return ret
@@ -344,7 +344,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 continue
             identity = self._md._identity(key)
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity:
                     ret.add(key)
         return cast(set[_T], ret)
@@ -360,7 +360,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(key)
                 continue
             identity = self._md._identity(key)
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity:
                     break
             else:
@@ -380,7 +380,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             identity = self._md._identity(key)
             tmp.add(identity)
 
-        for i, k, v in self._md._iteritems():
+        for i, k, v in self._md._impl._items:
             if i not in tmp:
                 ret.add(k)
         return ret
@@ -395,7 +395,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 continue
             identity = self._md._identity(key)
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity:
                     ret.discard(k)
                     break
@@ -410,7 +410,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 continue
             identity = self._md._identity(key)
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity:
                     ret.discard(key)  # type: ignore[arg-type]
                     break
@@ -432,7 +432,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 continue
             identity = self._md._identity(key)
-            for i, k, v in self._md._iteritems():
+            for i, k, v in self._md._impl._items:
                 if i == identity:
                     return False
         return True
@@ -586,10 +586,6 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def __repr__(self) -> str:
         body = ", ".join(f"'{k}': {v!r}" for i, k, v in self._impl._items)
         return f"<{self.__class__.__name__}({body})>"
-
-    def _iteritems(self) -> Iterator[tuple[str, str, _V]]:
-        for item in self._impl._items:
-            yield item
 
     if sys.implementation.name != "pypy":
 
