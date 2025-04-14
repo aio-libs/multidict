@@ -826,6 +826,7 @@ class CIMultiDict(_CIMixin, MultiDict[_V]):
 
 class MultiDictProxy(_CSMixin, MultiMapping[_V]):
     """Read-only proxy for MultiDict instance."""
+
     _md: MultiDict[_V]
 
     def __init__(self, arg: Union[MultiDict[_V], "MultiDictProxy[_V]"]):
@@ -834,7 +835,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
                 "ctor requires MultiDict or MultiDictProxy instance"
                 f", not {type(arg)}"
             )
-        if (isinstance(arg, MultiDictProxy)):
+        if isinstance(arg, MultiDictProxy):
             self._md = arg._md
         else:
             self._md = arg

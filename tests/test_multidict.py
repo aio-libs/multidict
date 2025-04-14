@@ -1313,6 +1313,7 @@ def test_subclassed_multidict(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
     """Test that subclassed MultiDicts work as expected."""
+
     class SubclassedMultiDict(any_multidict_class):  # type: ignore[valid-type, misc]
         """Subclassed MultiDict."""
 
