@@ -1,0 +1,2 @@
+Dropped internal ``_Impl`` class from pure Python implementation, both pure Python and C
+Extension follows the same design internally now.
