@@ -602,9 +602,34 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         v = _version
         v[0] += 1
         self._version = v[0]
+        if not kwargs:
+            if isinstance(arg, MultiDictProxy):
+                md = arg._md
+                if md._ci is self._ci:
+                    self._from_md(md)
+                    return
+            elif isinstance(arg, MultiDict):
+                if arg._ci is self._ci:
+                    self._from_md(arg)
+                    return
+
         items = self._parse_args(arg, kwargs)
-        self._keys: _HtKeys[_V] = _HtKeys.new((len(items) | _HtKeys.MINSIZE - 1).bit_length(), [])
+        self._keys: _HtKeys[_V] = _HtKeys.new(
+            (len(items) | _HtKeys.MINSIZE - 1).bit_length(), []
+        )
         self._extend_items(items)
+
+    def _from_md(self, md: "MultiDict[_V]") -> None:
+        self._keys = _HtKeys.new(
+            md._keys.log2_size,
+            [
+                _Entry(e.hash, e.identity, e.key, e.value)
+                for e in md._keys.entries
+                if e is not None
+            ],
+        )
+        self._keys.indices = md._keys.indices.__copy__()
+        self._used = md._used
 
     @overload
     def getall(self, key: str) -> list[_V]: ...
@@ -768,8 +793,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                         identity = identity_func(e.key)
                         items.append(_Entry(hash(identity), identity, e.key, e.value))
                 else:
-                    items = [_Entry(e.hash, e.identity, e.key, e.value)
-                             for e in arg._keys.iter_entries()]
+                    items = [
+                        _Entry(e.hash, e.identity, e.key, e.value)
+                        for e in arg._keys.iter_entries()
+                    ]
                 if kwargs:
                     for key, value in kwargs.items():
                         identity = identity_func(key)
@@ -995,6 +1022,12 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def _resize(self, log2_newsize: int, update: bool) -> None:
         oldkeys = self._keys
         newentries = self._used
+        if log2_newsize == oldkeys.log2_size:
+            if len(oldkeys.entries) != newentries:
+                oldkeys.entries = [e for e in oldkeys.entries if e is not None]
+                oldkeys.build_indices(False)
+            return
+
         if len(oldkeys.entries) == newentries:
             entries = oldkeys.entries
         else:
