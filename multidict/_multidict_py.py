@@ -757,24 +757,27 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         arg: MDArg[_V],
         kwargs: Mapping[str, _V],
         name: str,
-        method: Callable[[list[tuple[str, str, _V]]], None],
+        method: Callable[[list[tuple[int, str, str, _V]]], None],
     ) -> None:
+        identity_func = self._identity
         if arg:
             if isinstance(arg, MultiDictProxy):
                 arg = arg._md
             if isinstance(arg, MultiDict):
                 if self._ci is not arg._ci:
-                    items = [
-                        (self._identity(e.key), e.key, e.value)
-                        for e in arg._keys.iter_entries()
-                    ]
+                    items = []
+                    for e in arg._keys.iter_entries():
+                        identity = identity_func(e.key)
+                        items.append((hash(identity), identity, e.key, e.value))
                 else:
                     items = [
-                        (e.identity, e.key, e.value) for e in arg._keys.iter_entries()
+                        (e.hash, e.identity, e.key, e.value)
+                        for e in arg._keys.iter_entries()
                     ]
                 if kwargs:
                     for key, value in kwargs.items():
-                        items.append((self._identity(key), key, value))
+                        identity = identity_func(key)
+                        items.append((hash(identity), identity, key, value))
             else:
                 if hasattr(arg, "keys"):
                     arg = cast(SupportsKeys[_V], arg)
@@ -789,15 +792,18 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                             f"multidict update sequence element #{pos}"
                             f"has length {len(item)}; 2 is required"
                         )
-                    items.append((self._identity(item[0]), item[0], item[1]))
-
-            method(items)
+                    identity = identity_func(item[0])
+                    items.append((hash(identity), identity, item[0], item[1]))
         else:
-            method([(self._identity(key), key, value) for key, value in kwargs.items()])
+            items = []
+            for key, value in kwargs.items():
+                identity = identity_func(key)
+                items.append((hash(identity), identity, key, value))
 
-    def _extend_items(self, items: Iterable[tuple[str, str, _V]]) -> None:
-        for identity, key, value in items:
-            hash_ = hash(identity)
+        method(items)
+
+    def _extend_items(self, items: Iterable[tuple[int, str, str, _V]]) -> None:
+        for hash_, identity, key, value in items:
             self._add_with_hash(hash_, identity, key, value)
         self._incr_version()
 
@@ -948,11 +954,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """Update the dictionary from *other*, overwriting existing keys."""
         self._extend(arg, kwargs, "update", self._update_items)
 
-    def _update_items(self, items: list[tuple[str, str, _V]]) -> None:
+    def _update_items(self, items: list[tuple[int, str, str, _V]]) -> None:
         if not items:
             return
-        for identity, key, value in items:
-            hash_ = hash(identity)
+        for hash_, identity, key, value in items:
             found = False
             for slot, idx, e in self._keys.iter_hash(hash_):
                 if e.hash != hash_:
