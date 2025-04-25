@@ -464,18 +464,6 @@ class _Entry(Generic[_V]):
     value: _V
 
 
-def USABLE_FRACTION(n: int) -> int:
-    return (n << 1) // 3
-
-
-def calculate_log2_size(minsize: int) -> int:
-    return (minsize | (_HtKeys.MINSIZE - 1)).bit_length()
-
-
-def estimate_log2_size(n: int) -> int:
-    return calculate_log2_size((n * 3 + 1) // 2)
-
-
 @dataclass
 class _HtKeys(Generic[_V]):  # type: ignore[misc]
     LOG_MINSIZE: ClassVar[int] = 3
@@ -506,9 +494,9 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
             )
 
     @classmethod
-    def new(cls, log2_size: int) -> Self:
+    def new(cls, log2_size: int, entries: list[Optional[_Entry[_V]]]) -> Self:
         size = 1 << log2_size
-        usable = USABLE_FRACTION(size)
+        usable = (size << 1) // 3
         if log2_size < 8:
             kind = "b"
         elif log2_size < 16:
@@ -521,7 +509,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
             log2_size=log2_size,
             usable=usable,
             indices=array(kind, (-1 for i in range(size))),
-            entries=[],
+            entries=entries,
         )
         return ret
 
@@ -545,8 +533,8 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
     def find_empty_slot(self, hash_: int) -> int:
         mask = self.mask
         i = hash_ & mask
-        ix = self.indices[i]
         perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
+        ix = self.indices[i]
         while ix != -1:
             perturb >>= self.PERTURB_SHUFT
             i = (i * 5 + perturb + 1) & mask
@@ -586,8 +574,8 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
     def restore_hash(self, hash_: int) -> None:
         mask = self.mask
         i = hash_ & mask
-        ix = self.indices[i]
         perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
+        ix = self.indices[i]
         while ix != -1:
             if ix != -2:
                 entry = self.entries[ix]
@@ -609,7 +597,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         v[0] += 1
         self._version = v[0]
         items = self._parse_args(arg, kwargs)
-        self._keys: _HtKeys[_V] = _HtKeys.new((len(items) | _HtKeys.MINSIZE - 1).bit_length())
+        self._keys: _HtKeys[_V] = _HtKeys.new((len(items) | _HtKeys.MINSIZE - 1).bit_length(), [])
         self._extend_items(items)
 
     @overload
@@ -625,7 +613,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         hash_ = hash(identity)
         res = []
         for slot, idx, e in keys.iter_hash(hash_):
-            if e.identity == identity:
+            if e.hash == hash_ and e.identity == identity:
                 res.append(e.value)
                 e.hash = -1
 
@@ -812,7 +800,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def clear(self) -> None:
         """Remove all items from MultiDict."""
         self._used = 0
-        self._keys = _HtKeys.new(_HtKeys.LOG_MINSIZE)
+        self._keys = _HtKeys.new(_HtKeys.LOG_MINSIZE, [])
         self._incr_version()
 
     # Mapping interface #
@@ -1000,13 +988,12 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     def _resize(self, log2_newsize: int, update: bool) -> None:
         oldkeys = self._keys
-        newkeys: _HtKeys[_V] = _HtKeys.new(log2_newsize)
         newentries = self._used
         if len(oldkeys.entries) == newentries:
-            newkeys.entries = oldkeys.entries
+            entries = oldkeys.entries
         else:
-            newkeys.entries = [e for e in oldkeys.entries if e is not None]
-
+            entries = [e for e in oldkeys.entries if e is not None]
+        newkeys: _HtKeys[_V] = _HtKeys.new(log2_newsize, entries)
         newkeys.usable -= newentries
         newkeys.build_indices(update)
         self._keys = newkeys
