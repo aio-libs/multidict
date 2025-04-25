@@ -468,7 +468,6 @@ class _Entry(Generic[_V]):
 class _HtKeys(Generic[_V]):  # type: ignore[misc]
     LOG_MINSIZE: ClassVar[int] = 3
     MINSIZE: ClassVar[int] = 8
-    PERTURB_SHUFT: ClassVar[int] = 5
 
     log2_size: int
     usable: int
@@ -515,6 +514,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
 
     def build_indices(self, update: bool) -> None:
         mask = self.mask
+        indices = self.indices
         for idx, e in enumerate(self.entries):
             assert e is not None
             hash_ = e.hash
@@ -525,46 +525,50 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
                 assert hash_ != -1
             i = hash_ & mask
             perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
-            while self.indices[i] != -1:
-                perturb >>= self.PERTURB_SHUFT
+            while indices[i] != -1:
+                perturb >>= 5
                 i = mask & (i * 5 + perturb + 1)
-            self.indices[i] = idx
+            indices[i] = idx
 
     def find_empty_slot(self, hash_: int) -> int:
         mask = self.mask
+        indices = self.indices
         i = hash_ & mask
         perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
-        ix = self.indices[i]
+        ix = indices[i]
         while ix != -1:
-            perturb >>= self.PERTURB_SHUFT
+            perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
-            ix = self.indices[i]
+            ix = indices[i]
         return i
 
     def iter_hash(self, hash_: int) -> Iterator[tuple[int, int, _Entry[_V]]]:
         mask = self.mask
+        indices = self.indices
+        entries = self.entries
         i = hash_ & mask
         perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
-        ix = self.indices[i]
+        ix = indices[i]
         while ix != -1:
             if ix != -2:
-                e = self.entries[ix]
+                e = entries[ix]
                 if e.hash == hash_ or e.hash == -1:
                     yield i, ix, e
-            perturb >>= self.PERTURB_SHUFT
+            perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
-            ix = self.indices[i]
+            ix = indices[i]
 
     def del_idx(self, hash_: int, idx: int) -> None:
         mask = self.mask
+        indices = self.indices
         i = hash_ & mask
         perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
-        ix = self.indices[i]
+        ix = indices[i]
         while ix != idx:
-            perturb >>= self.PERTURB_SHUFT
+            perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
-            ix = self.indices[i]
-        self.indices[i] = -2
+            ix = indices[i]
+        indices[i] = -2
 
     def iter_entries(self) -> Iterator[_Entry[_V]]:
         for e in self.entries:
@@ -573,17 +577,19 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
 
     def restore_hash(self, hash_: int) -> None:
         mask = self.mask
+        indices = self.indices
+        entries = self.entries
         i = hash_ & mask
         perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
-        ix = self.indices[i]
+        ix = indices[i]
         while ix != -1:
             if ix != -2:
-                entry = self.entries[ix]
+                entry = entries[ix]
                 if entry.hash == -1:
                     entry.hash = hash_
-            perturb >>= self.PERTURB_SHUFT
+            perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
-            ix = self.indices[i]
+            ix = indices[i]
 
 
 class MultiDict(_CSMixin, MutableMultiMapping[_V]):
