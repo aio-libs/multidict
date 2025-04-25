@@ -560,7 +560,9 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         ix = self.indices[i]
         while ix != -1:
             if ix != -2:
-                yield i, ix, self.entries[ix]
+                e = self.entries[ix]
+                if e.hash == hash_ or e.hash == -1:
+                    yield i, ix, e
             perturb >>= self.PERTURB_SHUFT
             i = (i * 5 + perturb + 1) & mask
             ix = self.indices[i]
@@ -623,7 +625,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         hash_ = hash(identity)
         res = []
         for slot, idx, e in keys.iter_hash(hash_):
-            if e.hash != -1 and e.identity == identity:
+            if e.identity == identity:
                 res.append(e.value)
                 e.hash = -1
 
@@ -934,13 +936,11 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             raise KeyError("empty multidict")
 
         pos = len(self._keys.entries) - 1
-        entry = self._keys.entries[pos]
+        entry = self._keys.entries.pop()
 
         while entry is None:
             pos -= 1
-            entry = self._keys.entries[pos]
-
-        self._keys.entries[pos] = None
+            entry = self._keys.entries.pop()
 
         ret = self._key(entry.key), entry.value
         self._keys.del_idx(entry.hash, pos)
