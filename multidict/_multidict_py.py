@@ -422,7 +422,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 
 
 class _CSMixin:
-    _ci: bool = False
+    _ci: ClassVar[bool] = False
 
     def _key(self, key: str) -> str:
         return key
@@ -435,7 +435,7 @@ class _CSMixin:
 
 
 class _CIMixin:
-    _ci: bool = True
+    _ci: ClassVar[bool] = True
 
     def _key(self, key: str) -> str:
         if type(key) is istr:
