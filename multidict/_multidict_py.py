@@ -484,7 +484,6 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
 
     log2_size: int
     usable: int
-    nentries: int
 
     indices: array  # type: ignore[type-arg] # in py3.9 array is not a generic
     entries: list[Optional[_Entry[_V]]]
@@ -521,18 +520,14 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         ret = cls(
             log2_size=log2_size,
             usable=usable,
-            nentries=0,
             indices=array(kind, (-1 for i in range(size))),
-            entries=[None] * usable,
+            entries=[],
         )
         return ret
 
     def build_indices(self, update: bool) -> None:
         mask = self.mask
-        idx = 0
-        entries = self.entries
-        for idx in range(self.nentries):
-            e = entries[idx]
+        for idx, e in enumerate(self.entries):
             assert e is not None
             hash_ = e.hash
             if update:
@@ -570,14 +565,21 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
             i = (i * 5 + perturb + 1) & mask
             ix = self.indices[i]
 
+    def del_idx(self, hash_: int, idx: int) -> None:
+        mask = self.mask
+        i = hash_ & mask
+        perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
+        ix = self.indices[i]
+        while ix != idx:
+            perturb >>= self.PERTURB_SHUFT
+            i = (i * 5 + perturb + 1) & mask
+            ix = self.indices[i]
+        self.indices[i] = -2
+
     def iter_entries(self) -> Iterator[_Entry[_V]]:
-        n = self.nentries
-        for i, e in enumerate(self.entries):  # pragma: no branch
-            if i >= n:
-                break
-            if e is None:
-                continue
-            yield e
+        for e in self.entries:
+            if e is not None:
+                yield e
 
     def restore_hash(self, hash_: int) -> None:
         mask = self.mask
@@ -605,7 +607,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         v[0] += 1
         self._version = v[0]
         items = self._parse_args(arg, kwargs)
-        self._keys: _HtKeys[_V] = _HtKeys.new((len(items) * 3 | _HtKeys.MINSIZE - 1).bit_length())
+        self._keys: _HtKeys[_V] = _HtKeys.new((len(items) | _HtKeys.MINSIZE - 1).bit_length())
         self._extend_items(items)
 
     @overload
@@ -836,13 +838,12 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     def __delitem__(self, key: str) -> None:
         found = False
-        if self._keys.nentries:
-            identity = self._identity(key)
-            hash_ = hash(identity)
-            for slot, idx, e in self._keys.iter_hash(hash_):
-                if e.identity == identity:
-                    self._del_at(slot, idx)
-                    found = True
+        identity = self._identity(key)
+        hash_ = hash(identity)
+        for slot, idx, e in self._keys.iter_hash(hash_):
+            if e.identity == identity:
+                self._del_at(slot, idx)
+                found = True
         if not found:
             raise KeyError(key)
         else:
@@ -929,22 +930,20 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     def popitem(self) -> tuple[str, _V]:
         """Remove and return an arbitrary (key, value) pair."""
-        pos = self._keys.nentries - 1
-        if pos < 0:
+        if self._used <= 0:
             raise KeyError("empty multidict")
 
+        pos = len(self._keys.entries) - 1
         entry = self._keys.entries[pos]
+
         while entry is None:
             pos -= 1
             entry = self._keys.entries[pos]
 
+        self._keys.entries[pos] = None
+
         ret = self._key(entry.key), entry.value
-
-        for slot, idx, e in self._keys.iter_hash(entry.hash):
-            if idx == pos:
-                break
-
-        self._del_at(slot, idx)
+        self._keys.del_idx(entry.hash, pos)
         self._incr_version()
         return ret
 
@@ -962,7 +961,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             found = False
             hash_ = entry.hash
             identity = entry.identity
-            for slot, idx, e in self._keys.iter_hash(entry.hash):
+            for slot, idx, e in self._keys.iter_hash(hash_):
                 if e.hash != hash_:
                     continue
                 if e.identity == identity:
@@ -1003,22 +1002,12 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         oldkeys = self._keys
         newkeys: _HtKeys[_V] = _HtKeys.new(log2_newsize)
         newentries = self._used
-        if oldkeys.nentries == newentries:
-            reserve = newkeys.usable - newentries
-            newkeys.entries = oldkeys.entries + [None] * reserve
+        if len(oldkeys.entries) == newentries:
+            newkeys.entries = oldkeys.entries
         else:
-            idx = 0
-            it = iter(oldkeys.entries)
-            while idx < newentries:
-                e = next(it)
-                if not update:
-                    if e is None:
-                        continue
-                newkeys.entries[idx] = e
-                idx += 1
+            newkeys.entries = [e for e in oldkeys.entries if e is not None]
 
         newkeys.usable -= newentries
-        newkeys.nentries = newentries
         newkeys.build_indices(update)
         self._keys = newkeys
 
@@ -1033,25 +1022,23 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             self._resize_for_insert()
         keys = self._keys
         slot = keys.find_empty_slot(entry.hash)
-        self._keys.indices[slot] = keys.nentries
-        keys.entries[keys.nentries] = entry
+        self._keys.indices[slot] = len(keys.entries)
+        keys.entries.append(entry)
         self._incr_version()
         self._used += 1
         keys.usable -= 1
-        keys.nentries += 1
 
     def _add_with_hash_for_upd(self, entry: _Entry[_V]) -> None:
         if self._keys.usable <= 0:
             self._resize_for_update()
         keys = self._keys
         slot = keys.find_empty_slot(entry.hash)
-        self._keys.indices[slot] = keys.nentries
+        self._keys.indices[slot] = len(keys.entries)
         entry.hash = -1
-        keys.entries[keys.nentries] = entry
+        keys.entries.append(entry)
         self._incr_version()
         self._used += 1
         keys.usable -= 1
-        keys.nentries += 1
 
     def _del_at(self, slot: int, idx: int) -> None:
         self._keys.entries[idx] = None
