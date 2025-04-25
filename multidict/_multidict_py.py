@@ -735,7 +735,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def add(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity)
-        self._add_with_hash(hash_, identity, key, value)
+        self._add_with_hash(_Entry(hash_, identity, key, value))
         self._incr_version()
 
     def copy(self) -> Self:
@@ -757,7 +757,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         arg: MDArg[_V],
         kwargs: Mapping[str, _V],
         name: str,
-        method: Callable[[list[tuple[int, str, str, _V]]], None],
+        method: Callable[[list[_Entry[_V]]], None],
     ) -> None:
         identity_func = self._identity
         if arg:
@@ -768,16 +768,17 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     items = []
                     for e in arg._keys.iter_entries():
                         identity = identity_func(e.key)
-                        items.append((hash(identity), identity, e.key, e.value))
+                        items.append(_Entry(hash(identity), identity, e.key, e.value))
                 else:
-                    items = [
-                        (e.hash, e.identity, e.key, e.value)
-                        for e in arg._keys.iter_entries()
-                    ]
+                    items = [_Entry(hash=e.hash,
+                                    identity=e.identity,
+                                    key=e.key,
+                                    value=e.value)
+                             for e in arg._keys.iter_entries()]
                 if kwargs:
                     for key, value in kwargs.items():
                         identity = identity_func(key)
-                        items.append((hash(identity), identity, key, value))
+                        items.append(_Entry(hash(identity), identity, key, value))
             else:
                 if hasattr(arg, "keys"):
                     arg = cast(SupportsKeys[_V], arg)
@@ -793,18 +794,18 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                             f"has length {len(item)}; 2 is required"
                         )
                     identity = identity_func(item[0])
-                    items.append((hash(identity), identity, item[0], item[1]))
+                    items.append(_Entry(hash(identity), identity, item[0], item[1]))
         else:
             items = []
             for key, value in kwargs.items():
                 identity = identity_func(key)
-                items.append((hash(identity), identity, key, value))
+                items.append(_Entry(hash(identity), identity, key, value))
 
         method(items)
 
-    def _extend_items(self, items: Iterable[tuple[int, str, str, _V]]) -> None:
-        for hash_, identity, key, value in items:
-            self._add_with_hash(hash_, identity, key, value)
+    def _extend_items(self, items: Iterable[_Entry[_V]]) -> None:
+        for e in items:
+            self._add_with_hash(e)
         self._incr_version()
 
     def clear(self) -> None:
@@ -832,7 +833,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     self._del_at(slot, idx)
 
         if not found:
-            self._add_with_hash(hash_, identity, key, value)
+            self._add_with_hash(_Entry(hash_, identity, key, value))
         else:
             self._keys.restore_hash(hash_)
 
@@ -954,24 +955,26 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """Update the dictionary from *other*, overwriting existing keys."""
         self._extend(arg, kwargs, "update", self._update_items)
 
-    def _update_items(self, items: list[tuple[int, str, str, _V]]) -> None:
+    def _update_items(self, items: list[_Entry[_V]]) -> None:
         if not items:
             return
-        for hash_, identity, key, value in items:
+        for entry in items:
             found = False
-            for slot, idx, e in self._keys.iter_hash(hash_):
+            hash_ = entry.hash
+            identity = entry.identity
+            for slot, idx, e in self._keys.iter_hash(entry.hash):
                 if e.hash != hash_:
                     continue
                 if e.identity == identity:
                     if not found:
                         found = True
-                        e.key = key
-                        e.value = value
+                        e.key = entry.key
+                        e.value = entry.value
                         e.hash = -1
                     else:
                         self._del_at_for_upd(e)
             if not found:
-                self._add_with_hash_for_upd(hash_, identity, key, value)
+                self._add_with_hash_for_upd(entry)
 
         keys = self._keys
         indices = keys.indices
@@ -1025,38 +1028,25 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def _resize_for_update(self) -> None:
         self._resize((self._used * 3 | _HtKeys.MINSIZE - 1).bit_length(), True)
 
-    def _add_with_hash(self, hash_: int, identity: str, key: str, value: _V) -> None:
+    def _add_with_hash(self, entry: _Entry[_V]) -> None:
         if self._keys.usable <= 0:
             self._resize_for_insert()
         keys = self._keys
-        slot = keys.find_empty_slot(hash_)
+        slot = keys.find_empty_slot(entry.hash)
         self._keys.indices[slot] = keys.nentries
-        entry = _Entry(
-            hash=hash_,
-            identity=identity,
-            key=key,
-            value=value,
-        )
         keys.entries[keys.nentries] = entry
         self._incr_version()
         self._used += 1
         keys.usable -= 1
         keys.nentries += 1
 
-    def _add_with_hash_for_upd(
-        self, hash_: int, identity: str, key: str, value: _V
-    ) -> None:
+    def _add_with_hash_for_upd(self, entry: _Entry[_V]) -> None:
         if self._keys.usable <= 0:
             self._resize_for_update()
         keys = self._keys
-        slot = keys.find_empty_slot(hash_)
+        slot = keys.find_empty_slot(entry.hash)
         self._keys.indices[slot] = keys.nentries
-        entry = _Entry(
-            hash=-1,
-            identity=identity,
-            key=key,
-            value=value,
-        )
+        entry.hash = -1
         keys.entries[keys.nentries] = entry
         self._incr_version()
         self._used += 1
