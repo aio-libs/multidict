@@ -4,7 +4,6 @@ import reprlib
 import sys
 from array import array
 from collections.abc import (
-    Callable,
     ItemsView,
     Iterable,
     Iterator,
@@ -602,12 +601,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     __slots__ = ("_keys", "_used", "_version")
 
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
-        self._keys: _HtKeys[_V] = _HtKeys.new(_HtKeys.LOG_MINSIZE)
         self._used = 0
         v = _version
         v[0] += 1
         self._version = v[0]
-        self._extend(arg, kwargs, self.__class__.__name__, self._extend_items)
+        items = self._parse_args(arg, kwargs)
+        self._keys: _HtKeys[_V] = _HtKeys.new((len(items) * 3 | _HtKeys.MINSIZE - 1).bit_length())
+        self._extend_items(items)
 
     @overload
     def getall(self, key: str) -> list[_V]: ...
@@ -741,7 +741,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def copy(self) -> Self:
         """Return a copy of itself."""
         cls = self.__class__
-        return cls(self.items())
+        return cls(self)
 
     __copy__ = copy
 
@@ -750,15 +750,16 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
         This method must be used instead of update.
         """
-        self._extend(arg, kwargs, "extend", self._extend_items)
+        items = self._parse_args(arg, kwargs)
+        newsize = self._used + len(items)
+        self._resize(newsize.bit_length(), False)
+        self._extend_items(items)
 
-    def _extend(
+    def _parse_args(
         self,
         arg: MDArg[_V],
         kwargs: Mapping[str, _V],
-        name: str,
-        method: Callable[[list[_Entry[_V]]], None],
-    ) -> None:
+    ) -> list[_Entry[_V]]:
         identity_func = self._identity
         if arg:
             if isinstance(arg, MultiDictProxy):
@@ -801,7 +802,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 identity = identity_func(key)
                 items.append(_Entry(hash(identity), identity, key, value))
 
-        method(items)
+        return items
 
     def _extend_items(self, items: Iterable[_Entry[_V]]) -> None:
         for e in items:
@@ -953,7 +954,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Update the dictionary from *other*, overwriting existing keys."""
-        self._extend(arg, kwargs, "update", self._update_items)
+        items = self._parse_args(arg, kwargs)
+        newsize = self._used + len(items)
+        self._resize(newsize.bit_length(), False)
+        self._update_items(items)
 
     def _update_items(self, items: list[_Entry[_V]]) -> None:
         if not items:
