@@ -1144,7 +1144,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 
     def copy(self) -> MultiDict[_V]:
         """Return a copy of itself."""
-        return MultiDict(self.items())
+        return MultiDict(self._md)
 
 
 class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
@@ -1161,7 +1161,7 @@ class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
 
     def copy(self) -> CIMultiDict[_V]:
         """Return a copy of itself."""
-        return CIMultiDict(self.items())
+        return CIMultiDict(self._md)
 
 
 def getversion(md: Union[MultiDict[object], MultiDictProxy[object]]) -> int:
