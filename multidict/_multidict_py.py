@@ -524,7 +524,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
             else:
                 assert hash_ != -1
             i = hash_ & mask
-            perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
+            perturb = hash_ & sys.maxsize
             while indices[i] != -1:
                 perturb >>= 5
                 i = mask & (i * 5 + perturb + 1)
@@ -534,7 +534,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
+        perturb = hash_ & sys.maxsize
         ix = indices[i]
         while ix != -1:
             perturb >>= 5
@@ -547,7 +547,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
+        perturb = hash_ & sys.maxsize
         ix = indices[i]
         while ix != -1:
             if ix != -2:
@@ -562,7 +562,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
+        perturb = hash_ & sys.maxsize
         ix = indices[i]
         while ix != idx:
             perturb >>= 5
@@ -580,7 +580,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & 0xFFFF_FFFF_FFFF_FFFF
+        perturb = hash_ & sys.maxsize
         ix = indices[i]
         while ix != -1:
             if ix != -2:
