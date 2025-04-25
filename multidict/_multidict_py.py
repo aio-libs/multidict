@@ -451,13 +451,7 @@ class _CIMixin:
             raise TypeError("MultiDict keys should be either str or subclasses of str")
 
 
-if sys.version_info >= (3, 10):
-    _KW_ONLY = {"kw_only": True}
-else:
-    _KW_ONLY = {}
-
-
-@dataclass(**_KW_ONLY)
+@dataclass
 class _Entry(Generic[_V]):
     hash: int
     identity: str
@@ -477,7 +471,7 @@ def estimate_log2_size(n: int) -> int:
     return calculate_log2_size((n * 3 + 1) // 2)
 
 
-@dataclass(**_KW_ONLY)
+@dataclass
 class _HtKeys(Generic[_V]):  # type: ignore[misc]
     LOG_MINSIZE: ClassVar[int] = 3
     MINSIZE: ClassVar[int] = 8
@@ -771,10 +765,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                         identity = identity_func(e.key)
                         items.append(_Entry(hash(identity), identity, e.key, e.value))
                 else:
-                    items = [_Entry(hash=e.hash,
-                                    identity=e.identity,
-                                    key=e.key,
-                                    value=e.value)
+                    items = [_Entry(e.hash, e.identity, e.key, e.value)
                              for e in arg._keys.iter_entries()]
                 if kwargs:
                     for key, value in kwargs.items():
