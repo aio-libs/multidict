@@ -111,13 +111,14 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
 
     def _parse_item(
         self, arg: Union[tuple[str, _V], _T]
-    ) -> Optional[tuple[str, str, _V]]:
+    ) -> Optional[tuple[int, str, str, _V]]:
         if not isinstance(arg, tuple):
             return None
         if len(arg) != 2:
             return None
         try:
-            return (self._md._identity(arg[0]), arg[0], arg[1])
+            identity = self._md._identity(arg[0])
+            return (hash(identity), identity, arg[0], arg[1])
         except TypeError:
             return None
 
@@ -128,7 +129,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             if item is None:
                 continue
             else:
-                tmp.add((item[0], item[2]))
+                tmp.add((item[1], item[3]))
         return tmp
 
     def __and__(self, other: Iterable[Any]) -> set[tuple[str, _V]]:
@@ -141,10 +142,14 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             item = self._parse_item(arg)
             if item is None:
                 continue
-            identity, key, value = item
-            for e in self._md._keys.iter_entries():
+            hash_, identity, key, value = item
+            for slot, idx, e in self._md._keys.iter_hash(hash_):
+                if e.hash == -1:
+                    continue
+                e.hash = -1
                 if e.identity == identity and e.value == value:
                     ret.add((e.key, e.value))
+            self._md._keys.restore_hash(hash_)
         return ret
 
     def __rand__(self, other: Iterable[_T]) -> set[_T]:
@@ -157,8 +162,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             item = self._parse_item(arg)
             if item is None:
                 continue
-            identity, key, value = item
-            for e in self._md._keys.iter_entries():
+            hash_, identity, key, value = item
+            for slot, idx, e in self._md._keys.iter_hash(hash_):
                 if e.identity == identity and e.value == value:
                     ret.add(arg)
                     break
@@ -171,12 +176,12 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         except TypeError:
             return NotImplemented
         for arg in it:
-            item: Optional[tuple[str, str, _V]] = self._parse_item(arg)
+            item: Optional[tuple[int, str, str, _V]] = self._parse_item(arg)
             if item is None:
                 ret.add(arg)
                 continue
-            identity, key, value = item
-            for e in self._md._keys.iter_entries():
+            hash_, identity, key, value = item
+            for slot, idx, e in self._md._keys.iter_hash(hash_):
                 if e.identity == identity and e.value == value:
                     break
             else:
@@ -221,8 +226,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add(arg)
                 continue
 
-            identity, key, value = item
-            for e in self._md._keys.iter_entries():
+            hash_, identity, key, value = item
+            for slot, idx, e in self._md._keys.iter_hash(hash_):
                 if e.identity == identity and e.value == value:
                     break
             else:
@@ -246,8 +251,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             if item is None:
                 continue
 
-            identity, key, value = item
-            for e in self._md._keys.iter_entries():
+            hash_, identity, key, value = item
+            for slot, idx, e in self._md._keys.iter_hash(hash_):
                 if e.identity == identity and e.value == value:
                     return False
         return True
@@ -567,7 +572,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
 
     def iter_entries(self) -> Iterator[_Entry[_V]]:
         n = self.nentries
-        for i, e in enumerate(self.entries):
+        for i, e in enumerate(self.entries):  # pragma: no branch
             if i >= n:
                 break
             if e is None:
