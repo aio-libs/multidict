@@ -814,7 +814,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """
         items = self._parse_args(arg, kwargs)
         newsize = self._used + len(items)
-        self._resize(newsize.bit_length(), False)
+        self._resize(estimate_log2_keysize(newsize), False)
         self._extend_items(items)
 
     def _parse_args(
@@ -1015,7 +1015,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """Update the dictionary from *other*, overwriting existing keys."""
         items = self._parse_args(arg, kwargs)
         newsize = self._used + len(items)
-        self._resize(newsize.bit_length(), False)
+        self._resize(estimate_log2_keysize(newsize), False)
         self._update_items(items)
 
     def _update_items(self, items: list[_Entry[_V]]) -> None:
