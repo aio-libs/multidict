@@ -655,15 +655,18 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self._extend_items(items)
 
     def _from_md(self, md: "MultiDict[_V]") -> None:
+        # Copy everything as-is without compacting the new multidict,
+        # otherwise it requires reindexing
+        oldkeys = md._keys
         self._keys = _HtKeys.new(
-            md._keys.log2_size,
+            oldkeys.log2_size,
             [
-                _Entry(e.hash, e.identity, e.key, e.value)
-                for e in md._keys.entries
-                if e is not None
+                _Entry(e.hash, e.identity, e.key, e.value) if e is not None else None
+                for e in oldkeys.entries
             ],
         )
-        self._keys.indices = md._keys.indices.__copy__()
+        self._keys.indices = oldkeys.indices.__copy__()
+        self._keys.usable = oldkeys.usable
         self._used = md._used
 
     @overload
