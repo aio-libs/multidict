@@ -1073,11 +1073,6 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def _resize(self, log2_newsize: int, update: bool) -> None:
         oldkeys = self._keys
         newentries = self._used
-        if log2_newsize == oldkeys.log2_size:
-            if len(oldkeys.entries) != newentries:
-                oldkeys.entries = [e for e in oldkeys.entries if e is not None]
-                oldkeys.build_indices(False)
-            return
 
         if len(oldkeys.entries) == newentries:
             entries = oldkeys.entries
