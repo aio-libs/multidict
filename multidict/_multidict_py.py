@@ -537,6 +537,19 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         )
         return ret
 
+    def clone(self) -> "_HtKeys[_V]":
+        entries = [
+            _Entry(e.hash, e.identity, e.key, e.value) if e is not None else None
+            for e in self.entries
+        ]
+
+        return _HtKeys(
+            log2_size=self.log2_size,
+            usable=self.usable,
+            indices=self.indices.__copy__(),
+            entries=entries,
+        )
+
     def build_indices(self, update: bool) -> None:
         mask = self.mask
         indices = self.indices
@@ -657,16 +670,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def _from_md(self, md: "MultiDict[_V]") -> None:
         # Copy everything as-is without compacting the new multidict,
         # otherwise it requires reindexing
-        oldkeys = md._keys
-        self._keys = _HtKeys.new(
-            oldkeys.log2_size,
-            [
-                _Entry(e.hash, e.identity, e.key, e.value) if e is not None else None
-                for e in oldkeys.entries
-            ],
-        )
-        self._keys.indices = oldkeys.indices.__copy__()
-        self._keys.usable = oldkeys.usable
+        self._keys = md._keys.clone()
         self._used = md._used
 
     @overload
