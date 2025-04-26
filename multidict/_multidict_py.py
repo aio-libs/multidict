@@ -494,8 +494,8 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
     LOG_MINSIZE: ClassVar[int] = 3
     MINSIZE: ClassVar[int] = 8
     PREALLOCATED_INDICES: ClassVar[dict[int, array]] = {  # type: ignore[type-arg]
-        log2_size: array('b', (-1 for i in range(1 << log2_size)))
-        for log2_size in range(3, 8)
+        log2_size: array('b' if log2_size < 8 else 'h', (-1 for i in range(1 << log2_size)))
+        for log2_size in range(3, 10)
     }
 
     log2_size: int
@@ -525,7 +525,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
     def new(cls, log2_size: int, entries: list[Optional[_Entry[_V]]]) -> Self:
         size = 1 << log2_size
         usable = (size << 1) // 3
-        if log2_size < 8:
+        if log2_size < 10:
             indices = cls.PREALLOCATED_INDICES[log2_size].__copy__()
         elif log2_size < 16:
             indices = array("h", (-1 for i in range(size)))
