@@ -677,38 +677,15 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self, key: str, default: Union[_T, _SENTINEL] = sentinel
     ) -> Union[list[_V], _T]:
         """Return a list of all values matching the key."""
-        keys = self._keys
-        mask = keys.mask
-        indices = keys.indices
-        entries = keys.entries
-
         identity = self._identity(key)
         hash_ = hash(identity)
         res = []
 
-        perturb1 = perturb2 = hash_ & sys.maxsize
-        i = hash_ & mask
-        ix = indices[i]
-        while ix != -1:
-            if ix != -2:
-                e = entries[ix]
-                if e.hash == hash_ and e.identity == identity:
-                    res.append(e.value)
-                    e.hash = -1
-            perturb1 >>= 5
-            i = (i * 5 + perturb1 + 1) & mask
-            ix = indices[i]
-
-        i = hash_ & mask
-        ix = indices[i]
-        while ix != -1:
-            if ix != -2:
-                entry = entries[ix]
-                if entry.hash == -1:
-                    entry.hash = hash_
-            perturb2 >>= 5
-            i = (i * 5 + perturb2 + 1) & mask
-            ix = indices[i]
+        for slot, idx, e in self._keys.iter_hash(hash_):
+            if e.hash != -1 and e.identity == identity:
+                res.append(e.value)
+                e.hash = -1
+        self._keys.restore_hash(hash_)
 
         if res:
             return res
