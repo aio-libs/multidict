@@ -476,6 +476,11 @@ class _CIMixin:
             raise TypeError("MultiDict keys should be either str or subclasses of str")
 
 
+def estimate_log2_keysize(n: int) -> int:
+    # 7 == HT_MINSIZE - 1
+    return (((n * 3 + 1) // 2) | 7).bit_length()
+
+
 @dataclass
 class _Entry(Generic[_V]):
     hash: int
@@ -556,10 +561,16 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         i = hash_ & mask
         perturb = hash_ & sys.maxsize
         ix = indices[i]
+        # lst = [(i, ix, perturb)]
         while ix != -1:
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
+            # lst += [(i, ix, perturb)]
+        # if len(lst) > 7:
+        #     print("find_empty_slot", hash_, mask)
+        #     for line in lst:
+        #         print('  ', *line)
         return i
 
     def iter_hash(self, hash_: int) -> Iterator[tuple[int, int, _Entry[_V]]]:
@@ -634,9 +645,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     return
 
         items = self._parse_args(arg, kwargs)
-        self._keys: _HtKeys[_V] = _HtKeys.new(
-            (len(items) | _HtKeys.MINSIZE - 1).bit_length(), []
-        )
+        log2_size = estimate_log2_keysize(len(items))
+        if log2_size < 3:
+            log2_size = 3
+        elif log2_size >= 17:
+            # Don't overallocate really huge keys space in init
+            log2_size = 17
+        self._keys: _HtKeys[_V] = _HtKeys.new(log2_size, [])
         self._extend_items(items)
 
     def _from_md(self, md: "MultiDict[_V]") -> None:
@@ -1096,7 +1111,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             self._resize_for_insert()
         keys = self._keys
         slot = keys.find_empty_slot(entry.hash)
-        self._keys.indices[slot] = len(keys.entries)
+        keys.indices[slot] = len(keys.entries)
         keys.entries.append(entry)
         self._incr_version()
         self._used += 1
@@ -1107,7 +1122,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             self._resize_for_update()
         keys = self._keys
         slot = keys.find_empty_slot(entry.hash)
-        self._keys.indices[slot] = len(keys.entries)
+        keys.indices[slot] = len(keys.entries)
         entry.hash = -1
         keys.entries.append(entry)
         self._incr_version()
