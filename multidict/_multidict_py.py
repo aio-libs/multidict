@@ -511,7 +511,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
             indices = array("h", (-1 for i in range(size)))
         elif log2_size < 32:
             indices = array("l", (-1 for i in range(size)))
-        else:
+        else:  # pragma: no cover  # don't test huge multidicts
             indices = array("q", (-1 for i in range(size)))
         ret = cls(
             log2_size=log2_size,
@@ -641,9 +641,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
         items = self._parse_args(arg, kwargs)
         log2_size = estimate_log2_keysize(len(items))
-        if log2_size < 3:
-            log2_size = 3
-        elif log2_size >= 17:
+        if log2_size > 17:
             # Don't overallocate really huge keys space in init
             log2_size = 17
         self._keys: _HtKeys[_V] = _HtKeys.new(log2_size, [])
