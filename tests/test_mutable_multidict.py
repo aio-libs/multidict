@@ -350,6 +350,38 @@ class TestMutableMultiDict:
         with pytest.raises(TypeError):
             d.update("foo", "bar")  # type: ignore[arg-type, call-arg]
 
+    def test_repr_with_dummy(
+        self, case_sensitive_multidict_class: type[CIMultiDict[int]]
+    ) -> None:
+        d = case_sensitive_multidict_class({"a": 1, "b": 2, "c": 3})
+        cls = d.__class__.__name__
+        del d["b"]  # make a dummy entry
+        assert repr(d) == f"<{cls}('a': 1, 'c': 3)>"
+
+    def test_items_repr_with_dummy(
+        self, case_sensitive_multidict_class: type[CIMultiDict[int]]
+    ) -> None:
+        d = case_sensitive_multidict_class({"a": 1, "b": 2, "c": 3})
+        del d["b"]  # make a dummy entry
+        cls = d.items().__class__.__name__
+        assert repr(d.items()) == f"<{cls}('a': 1, 'c': 3)>"
+
+    def test_keys_repr_with_dummy(
+        self, case_sensitive_multidict_class: type[CIMultiDict[int]]
+    ) -> None:
+        d = case_sensitive_multidict_class({"a": 1, "b": 2, "c": 3})
+        del d["b"]  # make a dummy entry
+        cls = d.keys().__class__.__name__
+        assert repr(d.keys()) == f"<{cls}('a', 'c')>"
+
+    def test_values_repr_with_dummy(
+        self, case_sensitive_multidict_class: type[CIMultiDict[int]]
+    ) -> None:
+        d = case_sensitive_multidict_class({"a": 1, "b": 2, "c": 3})
+        del d["b"]  # make a dummy entry
+        cls = d.values().__class__.__name__
+        assert repr(d.values()) == f"<{cls}(1, 3)>"
+
 
 class TestCIMutableMultiDict:
     def test_getall(

@@ -148,8 +148,6 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 continue
             hash_, identity, key, value = item
             for slot, idx, e in self._md._keys.iter_hash(hash_):
-                if e.hash == -1:
-                    continue
                 e.hash = -1
                 if e.identity == identity and e.value == value:
                     ret.add((e.key, e.value))
@@ -199,9 +197,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             return NotImplemented
         tmp = self._tmp_set(ret)
 
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             if (e.identity, e.value) not in tmp:
                 ret.add((e.key, e.value))
         return ret
@@ -214,9 +210,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             return NotImplemented
         tmp = self._tmp_set(it)
 
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             if (e.identity, e.value) not in tmp:
                 ret.add((e.key, e.value))
 
@@ -268,9 +262,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
 
 class _ValuesView(_ViewBase[_V], ValuesView[_V]):
     def __contains__(self, value: object) -> bool:
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             if e.value == value:
                 return True
         return False
@@ -494,7 +486,9 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
     LOG_MINSIZE: ClassVar[int] = 3
     MINSIZE: ClassVar[int] = 8
     PREALLOCATED_INDICES: ClassVar[dict[int, array]] = {  # type: ignore[type-arg]
-        log2_size: array('b' if log2_size < 8 else 'h', (-1 for i in range(1 << log2_size)))
+        log2_size: array(
+            "b" if log2_size < 8 else "h", (-1 for i in range(1 << log2_size))
+        )
         for log2_size in range(3, 10)
     }
 
@@ -600,7 +594,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         while ix != -1:
             if ix != -2:
                 e = entries[ix]
-                if e.hash == hash_ or e.hash == -1:
+                if e.hash == hash_:
                     yield i, ix, e
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
@@ -619,9 +613,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         indices[i] = -2
 
     def iter_entries(self) -> Iterator[_Entry[_V]]:
-        for e in self.entries:
-            if e is not None:
-                yield e
+        return filter(None, self.entries)
 
     def restore_hash(self, hash_: int) -> None:
         mask = self.mask
@@ -690,7 +682,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         res = []
 
         for slot, idx, e in self._keys.iter_hash(hash_):
-            if e.hash != -1 and e.identity == identity:
+            if e.identity == identity:
                 res.append(e.value)
                 e.hash = -1
         self._keys.restore_hash(hash_)
@@ -1034,8 +1026,6 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             hash_ = entry.hash
             identity = entry.identity
             for slot, idx, e in self._keys.iter_hash(hash_):
-                if e.hash != hash_:
-                    continue
                 if e.identity == identity:
                     if not found:
                         found = True
