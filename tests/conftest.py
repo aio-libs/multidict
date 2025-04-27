@@ -39,7 +39,7 @@ class MultidictImplementation:
     @cached_property
     def tag(self) -> str:
         """Return a text representation of the pure-python attribute."""
-        return "pure-python" if self.is_pure_python else "c-extension"
+        return "pure-py" if self.is_pure_python else "c-ext"
 
     @cached_property
     def imported_module(self) -> ModuleType:
@@ -79,24 +79,24 @@ def multidict_module(
 @pytest.fixture(
     scope="session",
     params=("MultiDict", "CIMultiDict"),
-    ids=("case-sensitive", "case-insensitive"),
+    ids=("cs", "ci"),
 )
-def any_multidict_class_name(request: pytest.FixtureRequest) -> str:
+def any_md_class_name(request: pytest.FixtureRequest) -> str:
     """Return a class name of a mutable multidict implementation."""
     return request.param  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")
-def any_multidict_class(
-    any_multidict_class_name: str,
+def any_md_class(
+    any_md_class_name: str,
     multidict_module: ModuleType,
 ) -> Type[MutableMultiMapping[str]]:
     """Return a class object of a mutable multidict implementation."""
-    return getattr(multidict_module, any_multidict_class_name)  # type: ignore[no-any-return]
+    return getattr(multidict_module, any_md_class_name)  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")
-def case_sensitive_multidict_class(
+def cs_md_class(
     multidict_module: ModuleType,
 ) -> Type[MultiDict[str]]:
     """Return a case-sensitive mutable multidict class."""
@@ -104,7 +104,7 @@ def case_sensitive_multidict_class(
 
 
 @pytest.fixture(scope="session")
-def case_insensitive_multidict_class(
+def ci_md_class(
     multidict_module: ModuleType,
 ) -> Type[CIMultiDict[str]]:
     """Return a case-insensitive mutable multidict class."""
@@ -112,28 +112,28 @@ def case_insensitive_multidict_class(
 
 
 @pytest.fixture(scope="session")
-def case_insensitive_str_class(multidict_module: ModuleType) -> Type[str]:
+def ci_str_class(multidict_module: ModuleType) -> Type[str]:
     """Return a case-insensitive string class."""
     return multidict_module.istr  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")
-def any_multidict_proxy_class_name(any_multidict_class_name: str) -> str:
+def any_md_proxy_class_name(any_md_class_name: str) -> str:
     """Return a class name of an immutable multidict implementation."""
-    return f"{any_multidict_class_name}Proxy"
+    return f"{any_md_class_name}Proxy"
 
 
 @pytest.fixture(scope="session")
-def any_multidict_proxy_class(
-    any_multidict_proxy_class_name: str,
+def any_md_proxy_class(
+    any_md_proxy_class_name: str,
     multidict_module: ModuleType,
 ) -> Type[MultiMapping[str]]:
     """Return an immutable multidict implementation class object."""
-    return getattr(multidict_module, any_multidict_proxy_class_name)  # type: ignore[no-any-return]
+    return getattr(multidict_module, any_md_proxy_class_name)  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")
-def case_sensitive_multidict_proxy_class(
+def cs_md_proxy_class(
     multidict_module: ModuleType,
 ) -> Type[MutableMultiMapping[str]]:
     """Return a case-sensitive immutable multidict class."""
@@ -141,7 +141,7 @@ def case_sensitive_multidict_proxy_class(
 
 
 @pytest.fixture(scope="session")
-def case_insensitive_multidict_proxy_class(
+def ci_md_proxy_class(
     multidict_module: ModuleType,
 ) -> Type[MutableMultiMapping[str]]:
     """Return a case-insensitive immutable multidict class."""
@@ -149,7 +149,7 @@ def case_insensitive_multidict_proxy_class(
 
 
 @pytest.fixture(scope="session")
-def multidict_getversion_callable(
+def md_getversion(
     multidict_module: ModuleType,
 ) -> Callable[[Union[MultiDict[object], MultiDictProxy[object]]], int]:
     """Return a ``getversion()`` function for current implementation."""

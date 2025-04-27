@@ -8,54 +8,54 @@ IMPLEMENTATION = getattr(sys, "implementation")  # to suppress mypy error
 GIL_ENABLED = getattr(sys, "_is_gil_enabled", lambda: True)()
 
 
-def test_ctor(case_insensitive_str_class: Type[str]) -> None:
-    s = case_insensitive_str_class()
+def test_ctor(ci_str_class: Type[str]) -> None:
+    s = ci_str_class()
     assert "" == s
 
 
-def test_ctor_str(case_insensitive_str_class: Type[str]) -> None:
-    s = case_insensitive_str_class("aBcD")
+def test_ctor_str(ci_str_class: Type[str]) -> None:
+    s = ci_str_class("aBcD")
     assert "aBcD" == s
 
 
-def test_ctor_istr(case_insensitive_str_class: Type[str]) -> None:
-    s = case_insensitive_str_class("A")
-    s2 = case_insensitive_str_class(s)
+def test_ctor_istr(ci_str_class: Type[str]) -> None:
+    s = ci_str_class("A")
+    s2 = ci_str_class(s)
     assert "A" == s
     assert s == s2
 
 
-def test_ctor_buffer(case_insensitive_str_class: Type[str]) -> None:
-    s = case_insensitive_str_class(b"aBc")
+def test_ctor_buffer(ci_str_class: Type[str]) -> None:
+    s = ci_str_class(b"aBc")
     assert "b'aBc'" == s
 
 
-def test_ctor_repr(case_insensitive_str_class: Type[str]) -> None:
-    s = case_insensitive_str_class(None)
+def test_ctor_repr(ci_str_class: Type[str]) -> None:
+    s = ci_str_class(None)
     assert "None" == s
 
 
-def test_str(case_insensitive_str_class: Type[str]) -> None:
-    s = case_insensitive_str_class("aBcD")
+def test_str(ci_str_class: Type[str]) -> None:
+    s = ci_str_class("aBcD")
     s1 = str(s)
     assert s1 == "aBcD"
     assert type(s1) is str
 
 
-def test_eq(case_insensitive_str_class: Type[str]) -> None:
+def test_eq(ci_str_class: Type[str]) -> None:
     s1 = "Abc"
-    s2 = case_insensitive_str_class(s1)
+    s2 = ci_str_class(s1)
     assert s1 == s2
 
 
 @pytest.fixture
-def create_istrs(case_insensitive_str_class: Type[str]) -> Callable[[], None]:
+def create_istrs(ci_str_class: Type[str]) -> Callable[[], None]:
     """Make a callable populating memory with a few ``istr`` objects."""
 
     def _create_strs() -> None:
-        case_insensitive_str_class("foobarbaz")
-        istr2 = case_insensitive_str_class()
-        case_insensitive_str_class(istr2)
+        ci_str_class("foobarbaz")
+        istr2 = ci_str_class()
+        ci_str_class(istr2)
 
     return _create_strs
 

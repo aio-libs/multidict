@@ -66,8 +66,8 @@ def cls(  # type: ignore[misc]
     return chained_callable(multidict_module, request.param)
 
 
-def test_exposed_names(any_multidict_class_name: str) -> None:
-    assert any_multidict_class_name in multidict.__all__
+def test_exposed_names(any_md_class_name: str) -> None:
+    assert any_md_class_name in multidict.__all__
 
 
 @pytest.mark.parametrize(
@@ -91,11 +91,11 @@ def test__iter__types(
 
 
 def test_proxy_copy(
-    any_multidict_class: type[MultiDict[str]],
-    any_multidict_proxy_class: type[MultiDictProxy[str]],
+    any_md_class: type[MultiDict[str]],
+    any_md_proxy_class: type[MultiDictProxy[str]],
 ) -> None:
-    d1 = any_multidict_class(key="value", a="b")
-    p1 = any_multidict_proxy_class(d1)
+    d1 = any_md_class(key="value", a="b")
+    p1 = any_md_proxy_class(d1)
 
     d2 = p1.copy()
     assert d1 == d2
@@ -103,17 +103,17 @@ def test_proxy_copy(
 
 
 def test_multidict_subclassing(
-    any_multidict_class: type[MultiDict[str]],
+    any_md_class: type[MultiDict[str]],
 ) -> None:
-    class DummyMultidict(any_multidict_class):  # type: ignore[valid-type,misc]
+    class DummyMultidict(any_md_class):  # type: ignore[valid-type,misc]
         pass
 
 
 def test_multidict_proxy_subclassing(
-    any_multidict_proxy_class: type[MultiDictProxy[str]],
+    any_md_proxy_class: type[MultiDictProxy[str]],
 ) -> None:
     class DummyMultidictProxy(
-        any_multidict_proxy_class,  # type: ignore[valid-type,misc]
+        any_md_proxy_class,  # type: ignore[valid-type,misc]
     ):
         pass
 
@@ -727,12 +727,12 @@ class TestMultiDict(BaseMultiDictTest):
         assert str(d) == "<%s('key': 'one', 'key': 'two')>" % _cls.__name__
 
     def test__repr___recursive(
-        self, any_multidict_class: type[MultiDict[object]]
+        self, any_md_class: type[MultiDict[object]]
     ) -> None:
-        d = any_multidict_class()
+        d = any_md_class()
         _cls = type(d)
 
-        d = any_multidict_class()
+        d = any_md_class()
         d["key"] = d
 
         assert str(d) == "<%s('key': ...)>" % _cls.__name__
@@ -770,9 +770,9 @@ class TestMultiDict(BaseMultiDictTest):
         assert repr(d.items()) == expected
 
     def test_items__repr__recursive(
-        self, any_multidict_class: type[MultiDict[object]]
+        self, any_md_class: type[MultiDict[object]]
     ) -> None:
-        d = any_multidict_class()
+        d = any_md_class()
         d["key"] = d.items()
         expected = "<_ItemsView('key': <_ItemsView('key': ...)>)>"
         assert repr(d.items()) == expected
@@ -786,9 +786,9 @@ class TestMultiDict(BaseMultiDictTest):
         assert repr(d.values()) == "<_ValuesView('value1', 'value2')>"
 
     def test_values__repr__recursive(
-        self, any_multidict_class: type[MultiDict[object]]
+        self, any_md_class: type[MultiDict[object]]
     ) -> None:
-        d = any_multidict_class()
+        d = any_md_class()
         d["key"] = d.values()
         assert repr(d.values()) == "<_ValuesView(<_ValuesView(...)>)>"
 
@@ -1227,32 +1227,32 @@ def test_create_multidict_from_existing_multidict_new_pairs() -> None:
 
 
 def test_convert_multidict_to_cimultidict_and_back(
-    case_sensitive_multidict_class: type[MultiDict[str]],
-    case_insensitive_multidict_class: type[CIMultiDict[str]],
-    case_insensitive_str_class: type[istr],
+    cs_md_class: type[MultiDict[str]],
+    ci_md_class: type[CIMultiDict[str]],
+    ci_str_class: type[istr],
 ) -> None:
     """Test conversion from MultiDict to CIMultiDict."""
-    start_as_md = case_sensitive_multidict_class(
+    start_as_md = cs_md_class(
         [("KEY", "value1"), ("key2", "value2")]
     )
     assert start_as_md.get("KEY") == "value1"
     assert start_as_md["KEY"] == "value1"
     assert start_as_md.get("key2") == "value2"
     assert start_as_md["key2"] == "value2"
-    start_as_cimd = case_insensitive_multidict_class(
+    start_as_cimd = ci_md_class(
         [("KEY", "value1"), ("key2", "value2")]
     )
     assert start_as_cimd.get("key") == "value1"
     assert start_as_cimd["key"] == "value1"
     assert start_as_cimd.get("key2") == "value2"
     assert start_as_cimd["key2"] == "value2"
-    converted_to_ci = case_insensitive_multidict_class(start_as_md)
+    converted_to_ci = ci_md_class(start_as_md)
     assert converted_to_ci.get("key") == "value1"
     assert converted_to_ci["key"] == "value1"
     assert converted_to_ci.get("key2") == "value2"
     assert converted_to_ci["key2"] == "value2"
-    converted_to_md = case_sensitive_multidict_class(converted_to_ci)
-    assert all(type(k) is case_insensitive_str_class for k in converted_to_ci.keys())
+    converted_to_md = cs_md_class(converted_to_ci)
+    assert all(type(k) is ci_str_class for k in converted_to_ci.keys())
     assert converted_to_md.get("KEY") == "value1"
     assert converted_to_md["KEY"] == "value1"
     assert converted_to_md.get("key2") == "value2"
@@ -1260,27 +1260,27 @@ def test_convert_multidict_to_cimultidict_and_back(
 
 
 def test_convert_multidict_to_cimultidict_eq(
-    case_sensitive_multidict_class: type[MultiDict[str]],
-    case_insensitive_multidict_class: type[CIMultiDict[str]],
+    cs_md_class: type[MultiDict[str]],
+    ci_md_class: type[CIMultiDict[str]],
 ) -> None:
     """Test compare after conversion from MultiDict to CIMultiDict."""
-    original = case_sensitive_multidict_class(
+    original = cs_md_class(
         [("h1", "header1"), ("h2", "header2"), ("h3", "header3")]
     )
-    assert case_insensitive_multidict_class(
+    assert ci_md_class(
         original
-    ) == case_insensitive_multidict_class(
+    ) == ci_md_class(
         [("H1", "header1"), ("H2", "header2"), ("H3", "header3")]
     )
 
 
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_extend_does_not_alter_refcount(
-    case_sensitive_multidict_class: type[MultiDict[str]],
+    cs_md_class: type[MultiDict[str]],
 ) -> None:
     """Test that extending a MultiDict with a MultiDict does not alter the refcount of the original."""
-    original = case_sensitive_multidict_class([("h1", "header1")])
-    new = case_sensitive_multidict_class([("h2", "header2")])
+    original = cs_md_class([("h1", "header1")])
+    new = cs_md_class([("h2", "header2")])
     original_refcount = sys.getrefcount(original)
     new.extend(original)
     assert sys.getrefcount(original) == original_refcount
@@ -1288,11 +1288,11 @@ def test_extend_does_not_alter_refcount(
 
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_update_does_not_alter_refcount(
-    case_sensitive_multidict_class: type[MultiDict[str]],
+    cs_md_class: type[MultiDict[str]],
 ) -> None:
     """Test that updating a MultiDict with a MultiDict does not alter the refcount of the original."""
-    original = case_sensitive_multidict_class([("h1", "header1")])
-    new = case_sensitive_multidict_class([("h2", "header2")])
+    original = cs_md_class([("h1", "header1")])
+    new = cs_md_class([("h2", "header2")])
     original_refcount = sys.getrefcount(original)
     new.update(original)
     assert sys.getrefcount(original) == original_refcount
@@ -1300,21 +1300,21 @@ def test_update_does_not_alter_refcount(
 
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_init_does_not_alter_refcount(
-    case_sensitive_multidict_class: type[MultiDict[str]],
+    cs_md_class: type[MultiDict[str]],
 ) -> None:
     """Test that initializing a MultiDict with a MultiDict does not alter the refcount of the original."""
-    original = case_sensitive_multidict_class([("h1", "header1")])
+    original = cs_md_class([("h1", "header1")])
     original_refcount = sys.getrefcount(original)
-    case_sensitive_multidict_class(original)
+    cs_md_class(original)
     assert sys.getrefcount(original) == original_refcount
 
 
 def test_subclassed_multidict(
-    any_multidict_class: type[MultiDict[str]],
+    any_md_class: type[MultiDict[str]],
 ) -> None:
     """Test that subclassed MultiDicts work as expected."""
 
-    class SubclassedMultiDict(any_multidict_class):  # type: ignore[valid-type, misc]
+    class SubclassedMultiDict(any_md_class):  # type: ignore[valid-type, misc]
         """Subclassed MultiDict."""
 
     d1 = SubclassedMultiDict([("key", "value1")])
