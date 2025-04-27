@@ -96,9 +96,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         return _Iter(len(self), self._iter(self._md._version))
 
     def _iter(self, version: int) -> Iterator[tuple[str, _V]]:
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._md._key(e.key), e.value
@@ -106,9 +104,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
         lst = []
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             lst.append(f"'{e.key}': {e.value!r}")
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
@@ -271,9 +267,7 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
         return _Iter(len(self), self._iter(self._md._version))
 
     def _iter(self, version: int) -> Iterator[_V]:
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield e.value
@@ -281,9 +275,7 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
         lst = []
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             lst.append(repr(e.value))
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
@@ -304,18 +296,14 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         return _Iter(len(self), self._iter(self._md._version))
 
     def _iter(self, version: int) -> Iterator[str]:
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._md._key(e.key)
 
     def __repr__(self) -> str:
         lst = []
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             lst.append(f"'{e.key}'")
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
@@ -377,9 +365,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             identity = self._md._identity(key)
             tmp.add(identity)
 
-        for e in self._md._keys.entries:
-            if e is None:
-                continue
+        for e in self._md._keys.iter_entries():
             if e.identity not in tmp:
                 ret.add(e.key)
         return ret
@@ -782,7 +768,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
         body = ", ".join(
-            f"'{e.key}': {e.value!r}" for e in self._keys.entries if e is not None
+            f"'{e.key}': {e.value!r}" for e in self._keys.iter_entries()
         )
         return f"<{self.__class__.__name__}({body})>"
 
@@ -829,16 +815,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             if isinstance(arg, MultiDict):
                 if self._ci is not arg._ci:
                     items = []
-                    for e in arg._keys.entries:
-                        if e is None:
-                            continue
+                    for e in arg._keys.iter_entries():
                         identity = identity_func(e.key)
                         items.append(_Entry(hash(identity), identity, e.key, e.value))
                 else:
                     items = [
                         _Entry(e.hash, e.identity, e.key, e.value)
-                        for e in arg._keys.entries
-                        if e is not None
+                        for e in arg._keys.iter_entries()
                     ]
                 if kwargs:
                     for key, value in kwargs.items():
