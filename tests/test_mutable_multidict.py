@@ -170,6 +170,20 @@ class TestMutableMultiDict:
         assert ("key", "val2") == d.popitem()
         assert [("key", "val1")] == list(d.items())
 
+    def test_popitem2(
+        self,
+        case_sensitive_multidict_class: type[CIMultiDict[str]],
+    ) -> None:
+        d = case_sensitive_multidict_class()
+        d.add("key", "val1")
+        d.add("key", "val2")
+        d.add("key2", "val3")
+
+        del d["key2"]  # make dummy at the end
+
+        assert ("key", "val2") == d.popitem()
+        assert [("key", "val1")] == list(d.items())
+
     def test_popitem_empty_multidict(
         self,
         case_sensitive_multidict_class: type[MultiDict[str]],

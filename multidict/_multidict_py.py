@@ -641,7 +641,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
         items = self._parse_args(arg, kwargs)
         log2_size = estimate_log2_keysize(len(items))
-        if log2_size > 17:
+        if log2_size > 17:  # pragma: no cover
             # Don't overallocate really huge keys space in init
             log2_size = 17
         self._keys: _HtKeys[_V] = _HtKeys.new(log2_size, [])
