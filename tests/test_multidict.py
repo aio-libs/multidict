@@ -1227,12 +1227,12 @@ def test_create_multidict_from_existing_multidict_new_pairs() -> None:
 
 
 def test_convert_multidict_to_cimultidict_and_back(
-    cs_md_class: type[MultiDict[str]],
+    md_class: type[MultiDict[str]],
     ci_md_class: type[CIMultiDict[str]],
     ci_str_class: type[istr],
 ) -> None:
     """Test conversion from MultiDict to CIMultiDict."""
-    start_as_md = cs_md_class(
+    start_as_md = md_class(
         [("KEY", "value1"), ("key2", "value2")]
     )
     assert start_as_md.get("KEY") == "value1"
@@ -1251,7 +1251,7 @@ def test_convert_multidict_to_cimultidict_and_back(
     assert converted_to_ci["key"] == "value1"
     assert converted_to_ci.get("key2") == "value2"
     assert converted_to_ci["key2"] == "value2"
-    converted_to_md = cs_md_class(converted_to_ci)
+    converted_to_md = md_class(converted_to_ci)
     assert all(type(k) is ci_str_class for k in converted_to_ci.keys())
     assert converted_to_md.get("KEY") == "value1"
     assert converted_to_md["KEY"] == "value1"
@@ -1260,11 +1260,11 @@ def test_convert_multidict_to_cimultidict_and_back(
 
 
 def test_convert_multidict_to_cimultidict_eq(
-    cs_md_class: type[MultiDict[str]],
+    md_class: type[MultiDict[str]],
     ci_md_class: type[CIMultiDict[str]],
 ) -> None:
     """Test compare after conversion from MultiDict to CIMultiDict."""
-    original = cs_md_class(
+    original = md_class(
         [("h1", "header1"), ("h2", "header2"), ("h3", "header3")]
     )
     assert ci_md_class(
@@ -1276,11 +1276,11 @@ def test_convert_multidict_to_cimultidict_eq(
 
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_extend_does_not_alter_refcount(
-    cs_md_class: type[MultiDict[str]],
+    md_class: type[MultiDict[str]],
 ) -> None:
     """Test that extending a MultiDict with a MultiDict does not alter the refcount of the original."""
-    original = cs_md_class([("h1", "header1")])
-    new = cs_md_class([("h2", "header2")])
+    original = md_class([("h1", "header1")])
+    new = md_class([("h2", "header2")])
     original_refcount = sys.getrefcount(original)
     new.extend(original)
     assert sys.getrefcount(original) == original_refcount
@@ -1288,11 +1288,11 @@ def test_extend_does_not_alter_refcount(
 
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_update_does_not_alter_refcount(
-    cs_md_class: type[MultiDict[str]],
+    md_class: type[MultiDict[str]],
 ) -> None:
     """Test that updating a MultiDict with a MultiDict does not alter the refcount of the original."""
-    original = cs_md_class([("h1", "header1")])
-    new = cs_md_class([("h2", "header2")])
+    original = md_class([("h1", "header1")])
+    new = md_class([("h2", "header2")])
     original_refcount = sys.getrefcount(original)
     new.update(original)
     assert sys.getrefcount(original) == original_refcount
@@ -1300,12 +1300,12 @@ def test_update_does_not_alter_refcount(
 
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_init_does_not_alter_refcount(
-    cs_md_class: type[MultiDict[str]],
+    md_class: type[MultiDict[str]],
 ) -> None:
     """Test that initializing a MultiDict with a MultiDict does not alter the refcount of the original."""
-    original = cs_md_class([("h1", "header1")])
+    original = md_class([("h1", "header1")])
     original_refcount = sys.getrefcount(original)
-    cs_md_class(original)
+    md_class(original)
     assert sys.getrefcount(original) == original_refcount
 
 

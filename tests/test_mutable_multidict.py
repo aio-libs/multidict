@@ -16,9 +16,9 @@ from multidict import (
 class TestMutableMultiDict:
     def test_copy(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d1 = cs_md_class(key="value", a="b")
+        d1 = md_class(key="value", a="b")
 
         d2 = d1.copy()
         assert d1 == d2
@@ -26,24 +26,24 @@ class TestMutableMultiDict:
 
     def test__repr__(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
-        assert str(d) == "<%s()>" % cs_md_class.__name__
+        d = md_class()
+        assert str(d) == "<%s()>" % md_class.__name__
 
-        d = cs_md_class([("key", "one"), ("key", "two")])
+        d = md_class([("key", "one"), ("key", "two")])
 
         expected = (
-            f"<{cs_md_class.__name__}"
+            f"<{md_class.__name__}"
             "('key': 'one', 'key': 'two')>"
         )
         assert str(d) == expected
 
     def test_getall(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class([("key", "value1")], key="value2")
+        d = md_class([("key", "value1")], key="value2")
         assert len(d) == 2
 
         assert d.getall("key") == ["value1", "value2"]
@@ -56,9 +56,9 @@ class TestMutableMultiDict:
 
     def test_add(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
 
         assert d == {}
         d["key"] = "one"
@@ -79,9 +79,9 @@ class TestMutableMultiDict:
 
     def test_extend(
         self,
-        cs_md_class: type[MultiDict[Union[str, int]]],
+        md_class: type[MultiDict[Union[str, int]]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         assert d == {}
 
         d.extend([("key", "one"), ("key", "two")], key=3, foo="bar")
@@ -94,7 +94,7 @@ class TestMutableMultiDict:
         assert ("key", 3) in itms
         assert ("foo", "bar") in itms
 
-        other = cs_md_class(bar="baz")
+        other = md_class(bar="baz")
         assert other == {"bar": "baz"}
 
         d.extend(other)
@@ -111,22 +111,22 @@ class TestMutableMultiDict:
 
     def test_extend_from_proxy(
         self,
-        cs_md_class: type[MultiDict[str]],
-        cs_md_proxy_class: type[MultiDictProxy[str]],
+        md_class: type[MultiDict[str]],
+        md_proxy_class: type[MultiDictProxy[str]],
     ) -> None:
-        d = cs_md_class([("a", "a"), ("b", "b")])
-        proxy = cs_md_proxy_class(d)
+        d = md_class([("a", "a"), ("b", "b")])
+        proxy = md_proxy_class(d)
 
-        d2 = cs_md_class()
+        d2 = md_class()
         d2.extend(proxy)
 
         assert [("a", "a"), ("b", "b")] == list(d2.items())
 
     def test_clear(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class([("key", "one")], key="two", foo="bar")
+        d = md_class([("key", "one")], key="two", foo="bar")
 
         d.clear()
         assert d == {}
@@ -134,9 +134,9 @@ class TestMutableMultiDict:
 
     def test_del(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class([("key", "one"), ("key", "two")], foo="bar")
+        d = md_class([("key", "one"), ("key", "two")], foo="bar")
         assert list(d.keys()) == ["key", "key", "foo"]
 
         del d["key"]
@@ -148,9 +148,9 @@ class TestMutableMultiDict:
 
     def test_set_default(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class([("key", "one"), ("key", "two")], foo="bar")
+        d = md_class([("key", "one"), ("key", "two")], foo="bar")
         assert "one" == d.setdefault("key", "three")
         assert "three" == d.setdefault("otherkey", "three")
         assert "otherkey" in d
@@ -158,9 +158,9 @@ class TestMutableMultiDict:
 
     def test_popitem(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         d.add("key", "val1")
         d.add("key", "val2")
 
@@ -169,18 +169,18 @@ class TestMutableMultiDict:
 
     def test_popitem_empty_multidict(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
 
         with pytest.raises(KeyError):
             d.popitem()
 
     def test_pop(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         d.add("key", "val1")
         d.add("key", "val2")
 
@@ -189,9 +189,9 @@ class TestMutableMultiDict:
 
     def test_pop2(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         d.add("key", "val1")
         d.add("key2", "val2")
         d.add("key", "val3")
@@ -201,18 +201,18 @@ class TestMutableMultiDict:
 
     def test_pop_default(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class(other="val")
+        d = md_class(other="val")
 
         assert "default" == d.pop("key", "default")
         assert "other" in d
 
     def test_pop_raises(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class(other="val")
+        d = md_class(other="val")
 
         with pytest.raises(KeyError, match="key"):
             d.pop("key")
@@ -221,9 +221,9 @@ class TestMutableMultiDict:
 
     def test_replacement_order(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         d.add("key1", "val1")
         d.add("key2", "val2")
         d.add("key1", "val3")
@@ -237,57 +237,57 @@ class TestMutableMultiDict:
 
     def test_nonstr_key(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         with pytest.raises(TypeError):
             d[1] = "val"  # type: ignore[index]
 
     def test_istr_key(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
         ci_str_class: type[str],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         d[ci_str_class("1")] = "val"
         assert type(list(d.keys())[0]) is ci_str_class
 
     def test_str_derived_key(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
         class A(str):
             pass
 
-        d = cs_md_class()
+        d = md_class()
         d[A("1")] = "val"
         assert type(list(d.keys())[0]) is A
 
     def test_istr_key_add(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
         ci_str_class: type[str],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         d.add(ci_str_class("1"), "val")
         assert type(list(d.keys())[0]) is ci_str_class
 
     def test_str_derived_key_add(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
         class A(str):
             pass
 
-        d = cs_md_class()
+        d = md_class()
         d.add(A("1"), "val")
         assert type(list(d.keys())[0]) is A
 
     def test_popall(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         d.add("key1", "val1")
         d.add("key2", "val2")
         d.add("key1", "val3")
@@ -297,25 +297,25 @@ class TestMutableMultiDict:
 
     def test_popall_default(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         assert "val" == d.popall("key", "val")
 
     def test_popall_key_error(
         self,
-        cs_md_class: type[MultiDict[str]],
+        md_class: type[MultiDict[str]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         with pytest.raises(KeyError, match="key"):
             d.popall("key")
 
     def test_large_multidict_resizing(
         self,
-        cs_md_class: type[MultiDict[int]],
+        md_class: type[MultiDict[int]],
     ) -> None:
         SIZE = 1024
-        d = cs_md_class()
+        d = md_class()
         for i in range(SIZE):
             d["key" + str(i)] = i
 
@@ -326,9 +326,9 @@ class TestMutableMultiDict:
 
     def test_update(
         self,
-        cs_md_class: type[MultiDict[Union[str, int]]],
+        md_class: type[MultiDict[Union[str, int]]],
     ) -> None:
-        d = cs_md_class()
+        d = md_class()
         assert d == {}
 
         d.update([("key", "one"), ("key", "two")], key=3, foo="bar")
@@ -341,7 +341,7 @@ class TestMutableMultiDict:
         assert ("key", 3) in itms
         assert ("foo", "bar") in itms
 
-        other = cs_md_class(bar="baz")
+        other = md_class(bar="baz")
         assert other == {"bar": "baz"}
 
         d.update(other)

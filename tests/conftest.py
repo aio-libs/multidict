@@ -79,7 +79,7 @@ def multidict_module(
 @pytest.fixture(
     scope="session",
     params=("MultiDict", "CIMultiDict"),
-    ids=("cs", "ci"),
+    ids=("", "ci"),
 )
 def any_md_class_name(request: pytest.FixtureRequest) -> str:
     """Return a class name of a mutable multidict implementation."""
@@ -96,7 +96,7 @@ def any_md_class(
 
 
 @pytest.fixture(scope="session")
-def cs_md_class(
+def md_class(
     multidict_module: ModuleType,
 ) -> Type[MultiDict[str]]:
     """Return a case-sensitive mutable multidict class."""
@@ -133,7 +133,7 @@ def any_md_proxy_class(
 
 
 @pytest.fixture(scope="session")
-def cs_md_proxy_class(
+def md_proxy_class(
     multidict_module: ModuleType,
 ) -> Type[MutableMultiMapping[str]]:
     """Return a case-sensitive immutable multidict class."""

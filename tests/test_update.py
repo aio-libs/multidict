@@ -61,8 +61,8 @@ def test_update_remove_seq(any_md_class: _MD_Classes) -> None:
     assert list(obj1.items()) == expected
 
 
-def test_update_md(cs_md_class: type[CIMultiDict[str]]) -> None:
-    d = cs_md_class()
+def test_update_md(md_class: type[CIMultiDict[str]]) -> None:
+    d = md_class()
     d.add("key", "val1")
     d.add("key", "val2")
     d.add("key2", "val3")
