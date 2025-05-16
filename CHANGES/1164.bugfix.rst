@@ -1,5 +1,5 @@
-Fixed segmentation fault when attempting to directly instantiate view objects
-(``multidict._ItemsView``, ``multidict._KeysView``, ``multidict._ValuesView``).
+Fixed a segmentation fault when attempting to directly instantiate view objects
+(``multidict._ItemsView``, ``multidict._KeysView``, ``multidict._ValuesView``) -- by :user:`bdraco`.
 
 View objects now raise a proper :exc:`TypeError` with the message "cannot create '...' instances directly"
 when direct instantiation is attempted.
