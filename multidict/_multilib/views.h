@@ -1009,7 +1009,7 @@ static PyMethodDef multidict_itemsview_methods[] = {
 static inline PyObject *
 multidict_view_forbidden_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
-    PyErr_Format(PyExc_TypeError, 
+    PyErr_Format(PyExc_TypeError,
                  "cannot create '%s' instances directly", type->tp_name);
     return NULL;
 }
