@@ -1,0 +1,1 @@
+Fixed a segmentation fault when calling :py:meth:`multidict.MultiDict.setdefault` with a single argument -- by :user:`bdraco`.
