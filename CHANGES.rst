@@ -14,6 +14,60 @@ Changelog
 
 .. towncrier release notes start
 
+6.4.4
+=====
+
+*(2025-05-19)*
+
+
+Bug fixes
+---------
+
+- Fixed a segmentation fault when calling :py:meth:`multidict.MultiDict.setdefault` with a single argument -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1160`.
+
+- Fixed a segmentation fault when attempting to directly instantiate view objects
+  (``multidict._ItemsView``, ``multidict._KeysView``, ``multidict._ValuesView``) -- by :user:`bdraco`.
+
+  View objects now raise a proper :exc:`TypeError` with the message "cannot create '...' instances directly"
+  when direct instantiation is attempted.
+
+  View objects should only be created through the proper methods: :py:meth:`multidict.MultiDict.items`,
+  :py:meth:`multidict.MultiDict.keys`, and :py:meth:`multidict.MultiDict.values`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1164`.
+
+
+Miscellaneous internal changes
+------------------------------
+
+- :class:`multidict.MultiDictProxy` was refactored to rely only on
+  :class:`multidict.MultiDict` public interface and don't touch any implementation
+  details.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1150`.
+
+- Multidict views were refactored to rely only on
+  :class:`multidict.MultiDict` API and don't touch any implementation
+  details.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1152`.
+
+- Dropped internal ``_Impl`` class from pure Python implementation, both pure Python and C
+  Extension follows the same design internally now.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1153`.
+
+
+----
+
+
 6.4.3
 =====
 
