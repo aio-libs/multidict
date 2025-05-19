@@ -1,3 +1,0 @@
-Multidict views were refactored to rely only on
-:class:`multidict.MultiDict` API and don't touch any implementation
-details.

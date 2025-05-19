@@ -1,8 +1,0 @@
-Fixed a segmentation fault when attempting to directly instantiate view objects
-(``multidict._ItemsView``, ``multidict._KeysView``, ``multidict._ValuesView``) -- by :user:`bdraco`.
-
-View objects now raise a proper :exc:`TypeError` with the message "cannot create '...' instances directly"
-when direct instantiation is attempted.
-
-View objects should only be created through the proper methods: :py:meth:`multidict.MultiDict.items`,
-:py:meth:`multidict.MultiDict.keys`, and :py:meth:`multidict.MultiDict.values`.
