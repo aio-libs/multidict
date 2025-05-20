@@ -45,8 +45,8 @@ jobs:
     name: >-
       Build ${{ inputs.tag }} wheels on ${{ inputs.os }} ${{ inputs.qemu }}
     runs-on: ${{ 
-        matrix.os == 'windows-11-arm' && matrix.os || 
-        format('{0}-latest', matrix.os) 
+        inputs.os == 'windows-11-arm' && inputs.os || 
+        format('{0}-latest', inputs.os) 
       }}
     timeout-minutes: ${{ inputs.qemu && 120 || 15 }}
     steps:
