@@ -8,10 +8,10 @@ from multidict import MultiDict
 
 
 def test_keys_view_equals(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
 
     @benchmark
     def _run() -> None:
@@ -19,10 +19,10 @@ def test_keys_view_equals(
 
 
 def test_keys_view_not_equals(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(20, 120)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(20, 120)})
 
     @benchmark
     def _run() -> None:
@@ -30,9 +30,9 @@ def test_keys_view_not_equals(
 
 
 def test_keys_view_more(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
     s = {str(i) for i in range(50)}
 
     @benchmark
@@ -41,9 +41,9 @@ def test_keys_view_more(
 
 
 def test_keys_view_more_or_equal(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
     s = {str(i) for i in range(100)}
 
     @benchmark
@@ -52,9 +52,9 @@ def test_keys_view_more_or_equal(
 
 
 def test_keys_view_less(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
     s = {str(i) for i in range(150)}
 
     @benchmark
@@ -63,9 +63,9 @@ def test_keys_view_less(
 
 
 def test_keys_view_less_or_equal(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
     s = {str(i) for i in range(100)}
 
     @benchmark
@@ -74,10 +74,10 @@ def test_keys_view_less_or_equal(
 
 
 def test_keys_view_and(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(50, 150)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(50, 150)})
 
     @benchmark
     def _run() -> None:
@@ -85,10 +85,10 @@ def test_keys_view_and(
 
 
 def test_keys_view_or(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(50, 150)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(50, 150)})
 
     @benchmark
     def _run() -> None:
@@ -96,10 +96,10 @@ def test_keys_view_or(
 
 
 def test_keys_view_sub(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(50, 150)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(50, 150)})
 
     @benchmark
     def _run() -> None:
@@ -107,10 +107,10 @@ def test_keys_view_sub(
 
 
 def test_keys_view_xor(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(50, 150)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(50, 150)})
 
     @benchmark
     def _run() -> None:
@@ -118,10 +118,10 @@ def test_keys_view_xor(
 
 
 def test_keys_view_is_disjoint(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100, 200)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100, 200)})
 
     @benchmark
     def _run() -> None:
@@ -129,9 +129,9 @@ def test_keys_view_is_disjoint(
 
 
 def test_keys_view_repr(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
 
     @benchmark
     def _run() -> None:
@@ -139,10 +139,10 @@ def test_keys_view_repr(
 
 
 def test_items_view_equals(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
 
     @benchmark
     def _run() -> None:
@@ -150,10 +150,10 @@ def test_items_view_equals(
 
 
 def test_items_view_not_equals(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(20, 120)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(20, 120)})
 
     @benchmark
     def _run() -> None:
@@ -161,9 +161,9 @@ def test_items_view_not_equals(
 
 
 def test_items_view_more(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
     s = {(str(i), str(i)) for i in range(50)}
 
     @benchmark
@@ -172,9 +172,9 @@ def test_items_view_more(
 
 
 def test_items_view_more_or_equal(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
     s = {(str(i), str(i)) for i in range(100)}
 
     @benchmark
@@ -183,9 +183,9 @@ def test_items_view_more_or_equal(
 
 
 def test_items_view_less(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
     s = {(str(i), str(i)) for i in range(150)}
 
     @benchmark
@@ -194,9 +194,9 @@ def test_items_view_less(
 
 
 def test_items_view_less_or_equal(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
     s = {(str(i), str(i)) for i in range(100)}
 
     @benchmark
@@ -205,10 +205,10 @@ def test_items_view_less_or_equal(
 
 
 def test_items_view_and(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(50, 150)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(50, 150)})
 
     @benchmark
     def _run() -> None:
@@ -216,10 +216,10 @@ def test_items_view_and(
 
 
 def test_items_view_or(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(50, 150)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(50, 150)})
 
     @benchmark
     def _run() -> None:
@@ -227,10 +227,10 @@ def test_items_view_or(
 
 
 def test_items_view_sub(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(50, 150)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(50, 150)})
 
     @benchmark
     def _run() -> None:
@@ -238,10 +238,10 @@ def test_items_view_sub(
 
 
 def test_items_view_xor(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(50, 150)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(50, 150)})
 
     @benchmark
     def _run() -> None:
@@ -249,10 +249,10 @@ def test_items_view_xor(
 
 
 def test_items_view_is_disjoint(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md1: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
-    md2: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100, 200)})
+    md1: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
+    md2: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100, 200)})
 
     @benchmark
     def _run() -> None:
@@ -260,9 +260,9 @@ def test_items_view_is_disjoint(
 
 
 def test_items_view_repr(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
 
     @benchmark
     def _run() -> None:
@@ -270,9 +270,9 @@ def test_items_view_repr(
 
 
 def test_values_view_repr(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_md_class: Type[MultiDict[str]]
 ) -> None:
-    md: MultiDict[str] = any_multidict_class({str(i): str(i) for i in range(100)})
+    md: MultiDict[str] = any_md_class({str(i): str(i) for i in range(100)})
 
     @benchmark
     def _run() -> None:
