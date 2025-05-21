@@ -199,9 +199,9 @@ jobs:
         - os: windows-11-arm
           pyver: 3.13-freethreading  # this is still tested within cibuildwheel
         - os: windows-11-arm
-          pyver: "3.10"
+          pyver: "3.10"  # not available for setup-python, still tested within cibuildwheel
         - os: windows-11-arm
-          pyver: 3.9
+          pyver: 3.9  # not available for setup-python, still tested within cibuildwheel
         - no-extensions: Y
           debug: Y
         include:
