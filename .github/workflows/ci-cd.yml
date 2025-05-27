@@ -180,7 +180,7 @@ jobs:
         - "3.10"
         - 3.9
         no-extensions: ['', 'Y']
-        os: [ubuntu, macos, windows, windows-11-arm]
+        os: [ubuntu, macos, windows]
         debug: ['', 'Y']
         exclude:
         - no-extensions: Y
@@ -189,18 +189,10 @@ jobs:
           no-extensions: Y
         - os: windows
           no-extensions: Y
-        - os: windows-11-arm
-          no-extensions: Y
         - os: macos
           pyver: 3.13-freethreading  # this is still tested within cibuildwheel
         - os: windows
           pyver: 3.13-freethreading  # this is still tested within cibuildwheel
-        - os: windows-11-arm
-          pyver: 3.13-freethreading  # this is still tested within cibuildwheel
-        - os: windows-11-arm
-          pyver: "3.10"  # not on setup-python, still tested with cibuildwheel
-        - os: windows-11-arm
-          pyver: 3.9  # not on setup-python, still tested with cibuildwheel
         - no-extensions: Y
           debug: Y
         include:
@@ -209,10 +201,7 @@ jobs:
           os: ubuntu
           debug: ''
       fail-fast: false
-    runs-on: ${{
-        matrix.os == 'windows-11-arm' && matrix.os ||
-        format('{0}-latest', matrix.os)
-      }}
+    runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 15
 
     continue-on-error: >-
