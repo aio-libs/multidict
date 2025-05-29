@@ -1,3 +1,0 @@
-:class:`multidict.MultiDictProxy` was refactored to rely only on
-:class:`multidict.MultiDict` public interface and don't touch any implementation
-details.

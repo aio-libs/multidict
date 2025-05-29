@@ -150,6 +150,15 @@ class TestMutableMultiDict:
         assert "otherkey" in d
         assert "three" == d["otherkey"]
 
+    def test_set_default_single_arg(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[str]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("key", "one"), ("key", "two")], foo="bar")
+        assert d.setdefault("key") == "one"  # type: ignore[call-arg]
+        assert d.setdefault("noexist") is None  # type: ignore[call-arg]
+        assert d["noexist"] is None
+
     def test_popitem(
         self,
         case_sensitive_multidict_class: type[MultiDict[str]],
