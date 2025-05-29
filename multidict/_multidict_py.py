@@ -765,9 +765,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
-        body = ", ".join(
-            f"'{e.key}': {e.value!r}" for e in self._keys.iter_entries()
-        )
+        body = ", ".join(f"'{e.key}': {e.value!r}" for e in self._keys.iter_entries())
         return f"<{self.__class__.__name__}({body})>"
 
     if sys.implementation.name != "pypy":

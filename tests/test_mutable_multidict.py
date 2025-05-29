@@ -4,7 +4,13 @@ from typing import Union
 
 import pytest
 
-from multidict import MultiDict, CIMultiDict, CIMultiDictProxy, MultiDictProxy, istr
+from multidict import (
+    CIMultiDict,
+    CIMultiDictProxy,
+    MultiDict,
+    MultiDictProxy,
+    istr,
+)
 
 
 class TestMutableMultiDict:
