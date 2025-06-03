@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-static int raise_unexpected_kwarg(const char *fname, PyObject* argname)
+static inline int raise_unexpected_kwarg(const char *fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() got an unexpected keyword argument '%.150U'",
@@ -13,7 +13,7 @@ static int raise_unexpected_kwarg(const char *fname, PyObject* argname)
     return -1;
 }
 
-static int raise_missing_posarg(const char *fname, const char* argname)
+static inline int raise_missing_posarg(const char *fname, const char* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() missing 1 required positional argument: '%.150s'",
@@ -32,7 +32,7 @@ The parser accepts three forms:
 3. all named keyword args.
 */
 
-static int parse2(const char* fname,
+static inline int parse2(const char* fname,
                   PyObject*const *args,
                   Py_ssize_t nargs,
                   PyObject *kwnames,

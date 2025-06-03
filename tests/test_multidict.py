@@ -1093,17 +1093,19 @@ class TestCIMultiDict(BaseMultiDictTest):
         assert arg & d.items() == expected
 
     def test_items_case_insensitive_or(self, cls: type[CIMultiDict[str]]) -> None:
-        d = cls([("KEY", "one")])
+        d = cls([("K", "v"), ("KEY", "one")])
 
         assert d.items() | {("key", "one"), ("other", "two")} == {
+            ("K", "v"),
             ("KEY", "one"),
             ("other", "two"),
         }
 
     def test_items_case_insensitive_ror(self, cls: type[CIMultiDict[str]]) -> None:
-        d = cls([("KEY", "one"), ("KEY2", "three")])
+        d = cls([("K", "v"), ("KEY", "one"), ("KEY2", "three")])
 
         assert [("key", "one"), ("other", "two")] | d.items() == {
+            ("K", "v"),
             ("key", "one"),
             ("other", "two"),
             ("KEY2", "three"),
