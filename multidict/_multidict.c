@@ -3,6 +3,7 @@
 
 #include "_multilib/pythoncapi_compat.h"
 
+#include "_multilib/capsule.h"
 #include "_multilib/dict.h"
 #include "_multilib/istr.h"
 #include "_multilib/iter.h"
@@ -1503,6 +1504,32 @@ module_exec(PyObject *mod)
         goto fail;
     }
     if (PyModule_AddType(mod, state->ValuesViewType) < 0) {
+        goto fail;
+    }
+
+    /*************************** CAPI ***********************************/
+
+    PyMultiDict_CAPI* _MultiDict_CAPI;
+    _MultiDict_CAPI->_IStrType = state->IStrType;
+    _MultiDict_CAPI->_MultiDictType = state->MultiDictType;
+    _MultiDict_CAPI->_MultiDictProxyType = state->MultiDictProxyType;
+    _MultiDict_CAPI->_CIMultiDictType = state->CIMultiDictType;
+    _MultiDict_CAPI->_CIMultiDictProxyType = state->CIMultiDictProxyType;
+    
+    _MultiDict_CAPI->_MultiDict_Copy = multidict_copy;
+    _MultiDict_CAPI->_MultiDict_Items = multidict_items;
+    _MultiDict_CAPI->_MultiDict_Iter = multidict_tp_iter;
+    _MultiDict_CAPI->_MultiDict_Keys = multidict_keys;
+    _MultiDict_CAPI->_MultiDict_Values = multidict_values;
+    _MultiDict_CAPI->_MultiDict_Reduce = multidict_reduce;
+    _MultiDict_CAPI->_MultiDict_Repr = multidict_repr;
+    _MultiDict_CAPI->_MultiDict_Update = multidict_update;
+    _MultiDict_CAPI->_MultiDictProxy_Copy = multidict_proxy_copy;
+
+    PyObject* c_api_object = PyCapsule_New((void *)MultiDict_CAPI, "_multidict._C_API", NULL);
+    
+    if (PyModule_AddObject(mod, "_C_API", c_api_object) < 0) {
+        Py_XDECREF(c_api_object);
         goto fail;
     }
 
