@@ -44,9 +44,9 @@ def tested_method_args(
 
 @pytest.fixture(scope="module")
 def multidict_object(
-    any_multidict_class: type[MultiDict[int]],
+    any_md_class: type[MultiDict[int]],
 ) -> MultiDict[int]:
-    return any_multidict_class([("a", 1), ("a", 2)])
+    return any_md_class([("a", 1), ("a", 2)])
 
 
 def test_getall_args(
