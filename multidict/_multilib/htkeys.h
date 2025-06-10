@@ -403,7 +403,7 @@ htkeysiter_init(htkeysiter_t *iter, htkeys_t *keys, Py_hash_t hash)
     iter->keys = keys;
     iter->mask = htkeys_mask(keys);
     iter->perturb = (size_t)hash;
-    iter->slot = iter->perturb & iter->mask;
+    iter->slot = hash & iter->mask;
     iter->index = htkeys_get_index(iter->keys, iter->slot);
 }
 
