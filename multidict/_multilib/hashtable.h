@@ -31,6 +31,8 @@ typedef struct _md_finder {
     Py_hash_t hash;
     PyObject *identity; // borrowed ref
     bool first;
+    Py_ssize_t visited[8];  // Track up to 8 visited indices
+    int num_visited;
 } md_finder_t;
 
 
@@ -663,6 +665,7 @@ md_init_finder(MultiDictObject *md, PyObject *identity, md_finder_t *finder)
     }
     htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
     finder->first = true;
+    finder->num_visited = -1;  // -1 means not initialized yet
     return 0;
 }
 
@@ -700,6 +703,7 @@ md_find_next(md_finder_t *finder, PyObject **pkey, PyObject **pvalue)
     entry_t *entries = htkeys_entries(finder->md->keys);
     if (!finder->first) {
         htkeysiter_next(&finder->iter);
+    } else {
         finder->first = false;
     }
 
@@ -720,8 +724,29 @@ md_find_next(md_finder_t *finder, PyObject **pkey, PyObject **pvalue)
             continue;
         }
 
-        /* found, mark the entry as visited */
-        entry->hash = -1;
+        /* Only track visited indices if we've found at least one match */
+        if (finder->num_visited >= 0) {
+            /* Check if we've already visited this index */
+            bool already_visited = false;
+            for (int i = 0; i < finder->num_visited; i++) {
+                if (finder->visited[i] == finder->iter.index) {
+                    already_visited = true;
+                    break;
+                }
+            }
+            if (already_visited) {
+                continue;
+            }
+
+            /* Mark as visited */
+            if (finder->num_visited < 8) {
+                finder->visited[finder->num_visited++] = finder->iter.index;
+            }
+        } else {
+            /* First match found - initialize tracking */
+            finder->num_visited = 1;
+            finder->visited[0] = finder->iter.index;
+        }
 
         if (pkey) {
             *pkey = _md_ensure_key(finder->md, entry);
@@ -749,21 +774,7 @@ cleanup:
 
 static inline void md_finder_cleanup(md_finder_t *finder)
 {
-    if (finder->md == NULL) {
-        return;
-    }
-
-    htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
-    entry_t *entries = htkeys_entries(finder->md->keys);
-    for (;finder->iter.index != DKIX_EMPTY; htkeysiter_next(&finder->iter)) {
-        if (finder->iter.index < 0) {
-            continue;
-        }
-        entry_t *entry = entries + finder->iter.index;
-        if (entry->hash == -1) {
-            entry->hash = finder->hash;
-        }
-    }
+    // No longer need to restore hashes since we track visited indices instead
     ASSERT_CONSISTENT(finder->md, false);
     finder->md = NULL;
 }
