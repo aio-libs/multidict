@@ -558,16 +558,10 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         i = hash_ & mask
         perturb = hash_ & sys.maxsize
         ix = indices[i]
-        # lst = [(i, ix, perturb)]
         while ix != -1:
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
-            # lst += [(i, ix, perturb)]
-        # if len(lst) > 7:
-        #     print("find_empty_slot", hash_, mask)
-        #     for line in lst:
-        #         print('  ', *line)
         return i
 
     def iter_hash(self, hash_: int) -> Iterator[tuple[int, int, _Entry[_V]]]:
