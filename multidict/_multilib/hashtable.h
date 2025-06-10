@@ -620,7 +620,7 @@ md_next(MultiDictObject *md, md_pos_t *pos, PyObject **pidentity,
     }
 
     if (pidentity) {
-        *pidentity = Py_NewRef(entry->identity);;
+        *pidentity = Py_NewRef(entry->identity);
     }
 
     if (pkey) {
