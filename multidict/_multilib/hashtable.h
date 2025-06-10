@@ -663,7 +663,7 @@ md_init_finder(MultiDictObject *md, PyObject *identity, md_finder_t *finder)
     }
     htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
     finder->first = true;
-    return -0;
+    return 0;
 }
 
 
