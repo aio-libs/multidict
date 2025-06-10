@@ -1614,7 +1614,7 @@ md_eq(MultiDictObject *md, MultiDictObject *other)
             continue;
         }
         entry_t *entry2 = rht_entries +pos2;
-        if (entry1->identity == NULL) {
+        if (entry2->identity == NULL) {
             pos2++;
             continue;
         }
