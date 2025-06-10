@@ -119,3 +119,10 @@ def test_update_deque_arg_and_kwds(any_multidict_class: _MD_Classes) -> None:
     obj.update(arg, b=2)
     assert list(obj.items()) == [("a", 1), ("b", 2)]
     assert arg == deque([("a", 1)])
+
+def test_update_with_second_md(any_multidict_class: _MD_Classes) -> None:
+    obj1 = any_multidict_class()
+    obj2 = any_multidict_class([("a", 2)])
+    obj1.update(obj2)
+    assert obj1 == obj2
+    
