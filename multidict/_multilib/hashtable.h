@@ -890,7 +890,7 @@ md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
     }
 
     int tmp;
-    PyObject *value = NULL;;
+    PyObject *value = NULL;
 
     while ((tmp = md_find_next(&finder, NULL, &value)) > 0) {
         if (*ret == NULL) {
