@@ -58,7 +58,7 @@ def chained_callable(
 
 
 @pytest.fixture
-def cls(  # type: ignore[misc]
+def cls(
     request: pytest.FixtureRequest,
     multidict_module: ModuleType,
 ) -> Callable[..., MultiMapping[int | str] | MutableMultiMapping[int | str]]:
@@ -708,7 +708,7 @@ class TestMultiDict(BaseMultiDictTest):
             ("MultiDict", "MultiDictProxy"),
         ],
     )
-    def cls(  # type: ignore[misc]
+    def cls(
         self,
         request: pytest.FixtureRequest,
         multidict_module: ModuleType,
@@ -800,7 +800,7 @@ class TestCIMultiDict(BaseMultiDictTest):
             ("CIMultiDict", "CIMultiDictProxy"),
         ],
     )
-    def cls(  # type: ignore[misc]
+    def cls(
         self,
         request: pytest.FixtureRequest,
         multidict_module: ModuleType,
