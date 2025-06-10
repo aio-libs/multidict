@@ -875,7 +875,7 @@ fail:
 static inline int
 md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
-    *ret == NULL;
+    *ret = NULL;
 
     md_finder_t finder = {0};
 
