@@ -1335,13 +1335,19 @@ def test_view_direct_instantiation_segfault() -> None:
     This test only applies to the C extension implementation.
     """
     # Test that _ItemsView cannot be instantiated directly
-    with pytest.raises(TypeError, match="cannot create '.*_ItemsView' instances directly"):
+    with pytest.raises(
+        TypeError, match="cannot create '.*_ItemsView' instances directly"
+    ):
         multidict._ItemsView()  # type: ignore[attr-defined]
 
     # Test that _KeysView cannot be instantiated directly
-    with pytest.raises(TypeError, match="cannot create '.*_KeysView' instances directly"):
+    with pytest.raises(
+        TypeError, match="cannot create '.*_KeysView' instances directly"
+    ):
         multidict._KeysView()  # type: ignore[attr-defined]
 
     # Test that _ValuesView cannot be instantiated directly
-    with pytest.raises(TypeError, match="cannot create '.*_ValuesView' instances directly"):
+    with pytest.raises(
+        TypeError, match="cannot create '.*_ValuesView' instances directly"
+    ):
         multidict._ValuesView()  # type: ignore[attr-defined]
