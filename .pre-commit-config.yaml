@@ -125,7 +125,6 @@ repos:
     args:
     - --python-version=3.13
     - --txt-report=.tox/.tmp/.mypy/python-3.13
-    - --cobertura-xml-report=.tox/.tmp/.mypy/python-3.13
     - --html-report=.tox/.tmp/.mypy/python-3.13
     pass_filenames: false
   - id: mypy
@@ -141,7 +140,6 @@ repos:
     args:
     - --python-version=3.11
     - --txt-report=.tox/.tmp/.mypy/python-3.11
-    - --cobertura-xml-report=.tox/.tmp/.mypy/python-3.11
     - --html-report=.tox/.tmp/.mypy/python-3.11
     pass_filenames: false
 
