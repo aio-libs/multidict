@@ -1,4 +1,3 @@
-import os
 from collections import deque
 from typing import Union
 
@@ -131,9 +130,6 @@ def test_update_with_second_md(any_multidict_class: _MD_Classes) -> None:
     assert obj1 == obj2
 
 
-@pytest.mark.skipif(
-    "CI" in os.environ, reason="The test requires more resources than CI provides"
-)
 def test_update_large_dict(any_multidict_class: _MD_Classes) -> None:
     NUM = 2**17
     obj1 = any_multidict_class((str(i), i) for i in range(NUM))
