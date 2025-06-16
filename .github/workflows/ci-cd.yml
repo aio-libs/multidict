@@ -202,7 +202,7 @@ jobs:
           debug: ''
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     continue-on-error: >-
       ${{

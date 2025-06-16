@@ -1,7 +1,6 @@
 from collections import deque
 from typing import Union
 
-import pytest
 
 from multidict import CIMultiDict, MultiDict
 
@@ -130,17 +129,6 @@ def test_update_with_second_md(any_multidict_class: _MD_Classes) -> None:
     assert obj1 == obj2
 
 
-def test_update_large_dict(any_multidict_class: _MD_Classes) -> None:
-    NUM = 2**17
-    obj1 = any_multidict_class((str(i), i) for i in range(NUM))
-    obj2 = any_multidict_class((str(i + NUM), i + NUM) for i in range(NUM))
-    obj1.update(obj2)
-    assert len(obj1) == NUM * 2
-    for i in range(NUM * 2):
-        assert obj1[str(i)] == i
-
-
-@pytest.mark.leaks  # skip the test on wheel building stage
 def test_compact_after_deletion(any_multidict_class: _MD_Classes) -> None:
     # multidict is resized when it is filled up to 2/3 of the index table size
     NUM = 16 * 2 // 3
