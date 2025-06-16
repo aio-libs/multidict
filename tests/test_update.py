@@ -1,7 +1,6 @@
 from collections import deque
 from typing import Union
 
-
 from multidict import CIMultiDict, MultiDict
 
 _MD_Classes = Union[type[MultiDict[int]], type[CIMultiDict[int]]]
