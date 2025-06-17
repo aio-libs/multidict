@@ -8,7 +8,7 @@ test-requires = "-r requirements/pytest.txt"
 test-command = 'pytest -m "not leaks" --no-cov {project}/tests'
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
-free-threaded-support = true
+enable = ["cpython-freethreading"]
 
 [tool.cibuildwheel.linux]
 before-all = "yum install -y libffi-devel || apk add --upgrade libffi-dev || apt-get install libffi-dev"
