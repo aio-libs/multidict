@@ -20,6 +20,7 @@ __all__ = (
     "upstr",
     "istr",
     "getversion",
+    "get_include"
 )
 
 __version__ = "6.5.1.dev0"
