@@ -57,3 +57,14 @@ else:
 
 
 upstr = istr
+
+# Inspired by Numpy
+
+def get_include():
+    """Get multidict headers for compiling multidict with other 
+    C Extensions or cython code"""
+    # NOTE: Import pathlib later so that were not being slow during
+    # other use-cases
+    import pathlib
+    return str(pathlib.Path(__file__).parent)
+
