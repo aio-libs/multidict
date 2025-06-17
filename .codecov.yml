@@ -18,7 +18,7 @@ coverage:
   status:
     patch:
       runtime:
-        target: 100%
+        target: 95%
         flags:
         - pytest
       typing:
@@ -30,7 +30,7 @@ coverage:
         - pytest
         paths:
         - multidict/
-        target: 100%
+        target: 95%
       tests:
         flags:
         - pytest

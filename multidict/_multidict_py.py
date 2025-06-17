@@ -809,7 +809,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                         items.append(_Entry(hash(identity), identity, e.key, e.value))
                 else:
                     items = [
-                        _Entry(e.hash, e.identity, e.key, e.value)  # pragma: no cover
+                        _Entry(e.hash, e.identity, e.key, e.value)
                         for e in arg._keys.iter_entries()
                     ]
                 if kwargs:
