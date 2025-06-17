@@ -3,6 +3,8 @@
 
 #include "_multilib/pythoncapi_compat.h"
 
+#include "_multilib/capsule.h"
+
 #include "_multilib/dict.h"
 #include "_multilib/hashtable.h"
 #include "_multilib/istr.h"
@@ -1419,6 +1421,27 @@ getversion(PyObject *self, PyObject *arg)
     return PyLong_FromUnsignedLong(md_version(md));
 }
 
+/********************* CAPI **********************/
+
+// Not to be confused with the variable in capsule.h
+// hence the underscores
+static MultiDict_CAPI __MultiDict_API = {
+    ._MultiDict_GetAll = md_get_all,
+    ._MultiDict_GetOne = md_get_one,
+    ._MultiDict_Keys = multidict_keys,
+    ._MultiDict_Items = multidict_items,
+    ._MultiDict_Values = multidict_values,
+    ._MultiDict_Add = md_add,
+    ._MultiDict_Clear = multidict_clear,
+    ._MultiDict_Extend = multidict_extend,
+    ._MultiDict_Copy = multidict_copy,
+    ._MultiDict_SetDefault = multidict_setdefault,
+    ._MultiDict_PopOne = md_pop_one,
+    ._MultiDict_PopItem = md_pop_item,
+    ._MultiDict_Update = multidict_update,
+};
+
+
 /******************** Module ********************/
 
 static int
@@ -1474,6 +1497,7 @@ module_clear(PyObject *mod)
 
     return 0;
 }
+
 
 static void
 module_free(void *mod)
@@ -1578,6 +1602,11 @@ module_exec(PyObject *mod)
         goto fail;
     }
 
+    PyObject* py_capi_obj = PyCapsule_New((void*)(&__MultiDict_API), "_multidict.multidict_CAPI", NULL);
+    if (PyModule_Add(mod, "multidict_CAPI", py_capi_obj) < 0) {
+        goto fail;
+    };
+
     return 0;
 fail:
     Py_CLEAR(tpl);
@@ -1613,3 +1642,4 @@ PyInit__multidict(void)
 {
     return PyModuleDef_Init(&multidict_module);
 }
+
