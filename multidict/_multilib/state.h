@@ -22,8 +22,11 @@ typedef struct {
     PyTypeObject *ItemsIterType;
     PyTypeObject *ValuesIterType;
 
-    PyObject *str_lower;
     PyObject *str_canonical;
+    PyObject *str_lower;
+    PyObject *str_name;
+
+    uint64_t global_version;
 } mod_state;
 
 static inline mod_state *
@@ -123,6 +126,12 @@ get_mod_state_by_def(PyObject *self)
     PyObject *mod = PyType_GetModuleByDef(tp, &multidict_module);
     assert(mod != NULL);
     return get_mod_state(mod);
+}
+
+
+static inline uint64_t NEXT_VERSION(mod_state *state)
+{
+    return ++state->global_version;
 }
 
 
