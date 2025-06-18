@@ -1,12 +1,17 @@
 # cython: language_level = 3
 
-from cpython.object cimport PyObject
-
+from cpython.object cimport PyObject, Py_TYPE
 
 cdef extern from "Python.h":
+    """
+/* Needed in order to ignore kwargs for a faster istr.__new__ */
+#define PyType_GenericNew_NoKwargs(type, args) PyType_GenericNew(type, args, NULL)
+    """
     void Py_INCREF(PyObject* o)
+    int Py_IS_TYPE(object, type)
+    object PyType_GenericNew_NoKwargs(type, tuple args)
 
-
+ 
 cdef extern from "_multilib/dict.h":
 
     ctypedef struct MultiDictObject:
@@ -28,14 +33,16 @@ cdef extern from "_multilib/dict.h":
         pass
 
 
-cdef extern from "_mutlilib/istr.h":
+cdef extern from "_multilib/istr.h":
+
     ctypedef struct istrobject:
         pass
     
     ctypedef class _multidict.istr [object istrobject, check_size ignore]:
         cdef object canonical
         pass
-
+    
+    
 
 cdef extern from "_multilib/capsule.h":
 
@@ -83,9 +90,15 @@ cdef inline void import_multidict() noexcept:
     MultiDict_IMPORT
 
 
-cdef inline object MultiDict_Get(MultiDict self, object key, PyObject* default) except NULL:
+cdef inline object MultiDict_Get(MultiDict self, object key, PyObject* default):
     cdef PyObject* ret
     if MultiDict_GetOne(self, key, &ret) < 0:
         return <object>default if default != NULL else None
     Py_INCREF(ret)
     return <object>ret
+
+# Initializes istr from another unicode object
+cdef inline istr IStr_FromUnicode(str obj):
+    return <istr>PyType_GenericNew_NoKwargs(istr, (obj,))
+
+
