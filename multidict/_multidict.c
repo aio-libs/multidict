@@ -243,7 +243,7 @@ fail:
 
 
 static inline PyObject *
-_multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
+_multidict_proxy_copy(MultiDictProxyObject *self)
 {
     return multidict_copy(self->md);
 }
@@ -1113,7 +1113,7 @@ multidict_proxy_values(MultiDictProxyObject *self)
 static PyObject *
 multidict_proxy_copy(MultiDictProxyObject *self)
 {
-    return _multidict_proxy_copy(self, self->md->state->MultiDictType);
+    return _multidict_proxy_copy(self);
 }
 
 static PyObject *
@@ -1362,7 +1362,7 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
 static PyObject *
 cimultidict_proxy_copy(MultiDictProxyObject *self)
 {
-    return _multidict_proxy_copy(self, self->md->state->CIMultiDictType);
+    return _multidict_proxy_copy(self);
 }
 
 
