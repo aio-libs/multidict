@@ -65,8 +65,8 @@ upstr = istr
 
 def get_include() -> str:
     """
-    Get multidict headers for compiling 
-    multidict with other C Extensions or 
+    Get multidict headers for compiling
+    multidict with other C Extensions or
     cython code
     """
 
