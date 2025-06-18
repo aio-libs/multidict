@@ -20,7 +20,7 @@ __all__ = (
     "upstr",
     "istr",
     "getversion",
-    "get_include"
+    "get_include",
 )
 
 __version__ = "6.5.1.dev0"
@@ -61,10 +61,12 @@ upstr = istr
 
 # Inspired by Numpy
 
+
 def get_include() -> str:
     """Get multidict headers for compiling multidict with other
     C Extensions or cython code"""
     # NOTE: Import pathlib later so that were not being slow during
     # other use-cases
     import pathlib
+
     return str(pathlib.Path(__file__).parent)
