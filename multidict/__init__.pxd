@@ -48,20 +48,20 @@ cdef extern from "_multilib/capsule.h":
     object MultiDict_PopItem(MultiDict self)
     PyObject* MultiDict_Update(MultiDict self, tuple args, dict kwds) except NULL
 
-    int CIMultiDict_GetAll(MultiDict self, object key, PyObject **ret)
-    int CIMultiDict_GetOne(MultiDict self, object key, PyObject **ret)
-    object CIMultiDict_Keys(MultiDict self)
-    object CIMultiDict_Items(MultiDict self)
-    object CIMultiDict_Values(MultiDict self)
-    int CIMultiDict_Add(MultiDict self, object key, object value)
+    int CIMultiDict_GetAll(CIMultiDict self, object key, PyObject **ret)
+    int CIMultiDict_GetOne(CIMultiDict self, object key, PyObject **ret)
+    object CIMultiDict_Keys(CIMultiDict self)
+    object CIMultiDict_Items(CIMultiDict self)
+    object CIMultiDict_Values(CIMultiDict self)
+    int CIMultiDict_Add(CIMultiDict self, object key, object value)
 
-    PyObject* CIMultiDict_Clear(MultiDict self) except NULL
-    PyObject* CIMultiDict_Extend(MultiDict self, tuple args, dict kwargs) except NULL
-    PyObject* CIMultiDict_Copy(MultiDict self) except NULL
-    PyObject* CIMultiDict_SetDefault(MultiDict self, object key, object value) except NULL
+    PyObject* CIMultiDict_Clear(CIMultiDict self) except NULL
+    PyObject* CIMultiDict_Extend(CIMultiDict self, tuple args, dict kwargs) except NULL
+    PyObject* CIMultiDict_Copy(CIMultiDict self) except NULL
+    PyObject* CIMultiDict_SetDefault(CIMultiDict self, object key, object value) except NULL
 
-    int CIMultiDict_PopOne(MultiDict self, object key, PyObject** ret)
-    int CIMultiDict_PopAll(MultiDict self, object key, PyObject** ret)
+    int CIMultiDict_PopOne(CIMultiDict self, object key, PyObject** ret)
+    int CIMultiDict_PopAll(CIMultiDict self, object key, PyObject** ret)
     object CIMultiDict_PopItem(CIMultiDict self)
     PyObject* CIMultiDict_Update(CIMultiDict self, tuple args, dict kwds) except NULL
 
