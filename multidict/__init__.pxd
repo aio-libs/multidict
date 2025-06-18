@@ -1,6 +1,7 @@
 # cython: language_level = 3
 
-from cpython.object cimport PyObject, Py_TYPE
+from cpython.object cimport Py_TYPE, PyObject
+
 
 cdef extern from "Python.h":
     """
