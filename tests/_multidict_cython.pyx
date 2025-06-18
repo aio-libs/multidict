@@ -1,0 +1,54 @@
+# cython: language_level = 3 
+from multidict cimport *
+# Always remember to import_multidict or your script WILL FAIL
+import_multidict()
+
+# NOTE: will use this check if the _multidict c module remained the same
+Cython_MultiDict = MultiDict
+Cython_MultiDictProxy = MultiDictProxy
+Cython_CIMultiDict = CIMultiDict
+Cython_CIMultiDictProxy = CIMultiDictProxy 
+
+
+
+
+def multidict_create():
+    cdef MultiDict md = MultiDict()
+    return md
+
+def cimultidict_create():
+    cdef CIMultiDict md = CIMultiDict()
+    return md
+
+def multidictproxy_create(object inner):
+    cdef MultiDictProxy md = MultiDictProxy(inner)
+    return md
+
+def cimultidictproxy_create(object inner):
+    cdef CIMultiDictProxy md = CIMultiDictProxy(inner)
+    return md
+
+def multidict_add(MultiDict md):
+    MultiDict_Add(md, "a", 1)
+    MultiDict_Add(md, "b", 2)
+
+def multidict_update(MultiDict md, object data):
+    MultiDict_Update(md, data, {})
+
+def multidict_copy(MultiDict md):
+    return MultiDict_Copy(md)
+
+
+def cimultidict_add(MultiDict md):
+    CIMultiDict_Add(md, "a", 1)
+    CIMultiDict_Add(md, "b", 2)
+
+def multidict_update(MultiDict md, object data):
+    CIMultiDict_Update(md, data, {})
+
+def multidict_copy(MultiDict md):
+    return MultiDict_Copy(md)
+
+
+
+
