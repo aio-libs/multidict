@@ -5,6 +5,7 @@ multidict. It behaves mostly like a dict but it can have
 several values for the same key.
 """
 
+import pathlib
 from typing import TYPE_CHECKING
 
 from ._abc import MultiMapping, MutableMultiMapping
@@ -65,8 +66,5 @@ upstr = istr
 def get_include() -> str:
     """Get multidict headers for compiling multidict with other
     C Extensions or cython code"""
-    # NOTE: Import pathlib later so that were not being slow during
-    # other use-cases
-    import pathlib
 
     return str(pathlib.Path(__file__).parent)
