@@ -1,1 +1,1 @@
-added multidict as a cython library -- by ``@Vizonex``.
+Started exposing an interface for importing the :mod:`multidict` C-extension from downstream Cython libraries -- by :user:`Vizonex`.
