@@ -2,6 +2,7 @@
 
 from cpython.object cimport PyObject
 
+
 cdef extern from "Python.h":
     void Py_INCREF(PyObject* o)
 
@@ -79,6 +80,3 @@ cdef inline object MultiDict_Get(MultiDict self, object key, PyObject* default) 
         return <object>default if default != NULL else None
     Py_INCREF(ret)
     return <object>ret
-
-
-
