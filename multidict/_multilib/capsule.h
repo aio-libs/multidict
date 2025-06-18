@@ -60,6 +60,9 @@ static MultiDict_CAPI *MultiDictAPI = NULL;
 #define MultiDict_IMPORT \
 	MultiDictAPI = PyCapsule_Import("multidict._multidict.multidict_CAPI", 0)
 
+	
+/*********************  MultiDict Macros  *********************/
+
 #define MultiDict_GetAll(self, key, ret) \
 	MultiDictAPI->_MultiDict_GetAll(self, key, ret)
 
@@ -95,6 +98,8 @@ static MultiDict_CAPI *MultiDictAPI = NULL;
 
 #define MultiDict_Update(self, args, kwargs) \
 	MultiDictAPI->_MultiDict_Update(self, args, kwargs)
+
+/*********************  CIMultiDict Macros  *********************/
 
 #define CIMultiDict_GetAll(self, key, ret) \
 	MultiDictAPI->_MultiDict_GetAll(self, key, ret)
