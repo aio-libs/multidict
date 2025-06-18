@@ -62,7 +62,7 @@ upstr = istr
 # Inspired by Numpy
 
 def get_include() -> str:
-    """Get multidict headers for compiling multidict with other 
+    """Get multidict headers for compiling multidict with other
     C Extensions or cython code"""
     # NOTE: Import pathlib later so that were not being slow during
     # other use-cases
