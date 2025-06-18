@@ -30,7 +30,7 @@ cdef extern from "_multilib/dict.h":
 
 cdef extern from "_multilib/capsule.h":
 
-    int MultiDict_GetAll(MultiDict self, object key, PyObject **ret)
+    int MultiDict_GetAll(object self, object key, PyObject **ret)
     int MultiDict_GetOne(MultiDict self, object key, PyObject **ret)
     object MultiDict_Keys(MultiDict self)
     object MultiDict_Items(MultiDict self)
