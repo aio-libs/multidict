@@ -28,6 +28,15 @@ cdef extern from "_multilib/dict.h":
         pass
 
 
+cdef extern from "_mutlilib/istr.h":
+    ctypedef struct istrobject:
+        pass
+    
+    ctypedef class _multidict.istr [object istrobject, check_size ignore]:
+        cdef object canonical
+        pass
+
+
 cdef extern from "_multilib/capsule.h":
 
     int MultiDict_GetAll(MultiDict self, object key, PyObject **ret)
@@ -36,7 +45,6 @@ cdef extern from "_multilib/capsule.h":
     object MultiDict_Items(MultiDict self)
     object MultiDict_Values(MultiDict self)
     int MultiDict_Add(MultiDict self, object key, object value)
-
 
     PyObject* MultiDict_Clear(MultiDict self) except NULL
     PyObject* MultiDict_Extend(MultiDict self, tuple args, dict kwargs) except NULL
@@ -47,6 +55,7 @@ cdef extern from "_multilib/capsule.h":
     int MultiDict_PopAll(MultiDict self, object key, PyObject** ret)
     object MultiDict_PopItem(MultiDict self)
     PyObject* MultiDict_Update(MultiDict self, tuple args, dict kwds) except NULL
+
 
     int CIMultiDict_GetAll(CIMultiDict self, object key, PyObject **ret)
     int CIMultiDict_GetOne(CIMultiDict self, object key, PyObject **ret)
