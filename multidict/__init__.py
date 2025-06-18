@@ -64,7 +64,10 @@ upstr = istr
 
 
 def get_include() -> str:
-    """Get multidict headers for compiling multidict with other
-    C Extensions or cython code"""
+    """
+    Get multidict headers for compiling 
+    multidict with other C Extensions or 
+    cython code
+    """
 
     return str(pathlib.Path(__file__).parent)
