@@ -30,7 +30,7 @@ typedef struct _multidict_capi {
 	int (*_MultiDict_Add)(MultiDictObject *self, PyObject *key, PyObject *value);
 
 	// multidict_clear
-	PyObject (*_MultiDict_Clear)(MultiDictObject *self);
+	PyObject *(*_MultiDict_Clear)(MultiDictObject *self);
 
 	// multidict_extend
 	PyObject *(*_MultiDict_Extend)(MultiDictObject *self, PyObject *args, PyObject *kwargs);
