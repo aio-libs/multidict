@@ -47,6 +47,8 @@ cdef extern from "_multilib/istr.h":
 
 cdef extern from "_multilib/capsule.h":
 
+    # ==================== MultiDict Functions ====================
+
     int MultiDict_GetAll(MultiDict self, object key, PyObject **ret)
     int MultiDict_GetOne(MultiDict self, object key, PyObject **ret)
     object MultiDict_Keys(MultiDict self)
@@ -64,6 +66,7 @@ cdef extern from "_multilib/capsule.h":
     object MultiDict_PopItem(MultiDict self)
     PyObject* MultiDict_Update(MultiDict self, tuple args, dict kwds) except NULL
 
+    # ==================== CIMultiDict Functions ====================
 
     int CIMultiDict_GetAll(CIMultiDict self, object key, PyObject **ret)
     int CIMultiDict_GetOne(CIMultiDict self, object key, PyObject **ret)
@@ -82,6 +85,23 @@ cdef extern from "_multilib/capsule.h":
     object CIMultiDict_PopItem(CIMultiDict self)
     PyObject* CIMultiDict_Update(CIMultiDict self, tuple args, dict kwds) except NULL
 
+    # ==================== MultiDictProxy Functions ====================
+
+    int MultiDictProxy_GetAll(MultiDictProxy self, object key, PyObject **ret)
+    int MultiDictProxy_GetOne(MultiDictProxy self, object key, PyObject **ret)
+    int MultiDictProxy_Keys(MultiDictProxy self)
+    int MultiDictProxy_Values(MultiDictProxy self)
+    int MutliDictProxy_Items(MultiDictProxy self)
+    MultiDictProxy MultiDictProxy_Copy(MultiDictProxy self)
+
+    # ==================== CIMultiDict Functions ====================
+
+    int CIMultiDictProxy_GetAll(CIMultiDictProxy self, object key, PyObject **ret)
+    int CIMultiDictProxy_GetOne(CIMultiDictProxy self, object key, PyObject **ret)
+    int CIMultiDictProxy_Keys(CIMultiDictProxy self)
+    int CIMultiDictProxy_Values(CIMultiDictProxy self)
+    int CIMutliDictProxy_Items(CIMultiDictProxy self)
+    CIMultiDictProxy MultiDictProxy_Copy(CIMultiDictProxy self)
 
     void MultiDict_IMPORT()
 

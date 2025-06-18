@@ -157,9 +157,6 @@ static MultiDict_CAPI *MultiDictAPI = NULL;
 #define MutliDictProxy_Items(self) \
 	MultiDictAPI->_MultiDict_Items(self->md)
 
-#define MultiDictProxy_Add(self, key, value) \
-	MultiDictAPI->_MultiDict_Add(self->md, key, value)
-
 #define MultiDictProxy_Copy(self) \
 	MultiDictAPI->_MultiDict_Copy(self->md)
 
@@ -182,9 +179,6 @@ static MultiDict_CAPI *MultiDictAPI = NULL;
 
 #define CIMutliDictProxy_Items(self) \
 	MultiDictAPI->_MultiDict_Items(self->md)
-
-#define CIMultiDictProxy_Add(self, key, value) \
-	MultiDictAPI->_MultiDict_Add(self->md, key, value)
 
 #define CIMultiDictProxy_Copy(self) \
 	MultiDictAPI->_MultiDict_Copy(self->md)
