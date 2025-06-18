@@ -67,7 +67,7 @@ cdef extern from "_multilib/capsule.h":
 
     PyObject* MultiDict_Clear(AnyNPMultiDict self) except NULL
     PyObject* MultiDict_Extend(AnyNPMultiDict self, tuple args, dict kwargs) except NULL
-    PyObject* MultiDict_Copy(AnyNPMultiDict self) except NULL
+    AnyNPMultiDict MultiDict_Copy(AnyNPMultiDict self)
     PyObject* MultiDict_SetDefault(AnyNPMultiDict self, object key, object value) except NULL
 
     int MultiDict_PopOne(AnyNPMultiDict self, object key, PyObject** ret)
@@ -82,7 +82,7 @@ cdef extern from "_multilib/capsule.h":
     int MultiDictProxy_Keys(AnyMultiDictProxy self)
     int MultiDictProxy_Values(AnyMultiDictProxy self)
     int MutliDictProxy_Items(AnyMultiDictProxy self)
-    MultiDictProxy MultiDictProxy_Copy(AnyMultiDictProxy self)
+    AnyMultiDictProxy MultiDictProxy_Copy(AnyMultiDictProxy self)
 
 
     void MultiDict_IMPORT()
