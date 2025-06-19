@@ -14,8 +14,9 @@ all: test
 lint:
 	python -Im pre_commit run --all-files --show-diff-on-failure
 
-.develop: .install-deps $(shell find multidict -type f)
+.develop: .install-deps $(shell find multidict -type f) $(shell find testcapi -type f)
 	pip install -e .
+	cd testcapi; pip install -e .
 	@touch .develop
 
 test: .develop
