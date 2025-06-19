@@ -100,6 +100,9 @@ static int MultiDict_IMPORT() {
 #define MultiDict_PopOne(self, key, ret) \
 	MultiDictAPI->_MultiDict_PopOne(self, key, ret)
 
+#define MultiDict_PopItem(self) \
+	MultiDictAPI->_MultiDict_PopItem(self)
+
 #define MultiDict_Update(self, args, kwargs) \
 	MultiDictAPI->_MultiDict_Update(self, args, kwargs)
 

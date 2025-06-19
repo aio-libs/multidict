@@ -1,5 +1,6 @@
 # cython: language_level = 3, freethreading_compatible = True
 
+from cpython.exc cimport PyErr_SetObject
 from cpython.object cimport Py_TYPE, PyObject
 
 
@@ -108,10 +109,10 @@ cdef extern from "_multilib/capsule.h":
     int import_multidict "MultiDict_IMPORT" () except -1
 
 
-cdef inline object MultiDict_Get(MultiDict self, object key, PyObject* default):
+cdef inline object MultiDict_Get(MultiDict self, object key, object default = None):
     cdef PyObject* ret
     if MultiDict_GetOne(self, key, &ret) < 0:
-        return <object>default if default != NULL else None
+        return default
     Py_INCREF(ret)
     return <object>ret
 
