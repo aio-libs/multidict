@@ -60,7 +60,7 @@ typedef struct _multidict_capi {
 
 static MultiDict_CAPI *MultiDictAPI = NULL;
 
-int MultiDict_IMPORT() {
+static int MultiDict_IMPORT() {
 	MultiDictAPI = PyCapsule_Import("multidict._multidict.multidict_CAPI", 0);
 	return (MultiDictAPI != NULL) ? 0 : -1;
 }

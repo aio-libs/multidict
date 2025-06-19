@@ -103,13 +103,9 @@ cdef extern from "_multilib/capsule.h":
     int CIMutliDictProxy_Items "MultiDictProxy_Items" (MultiDictProxy self)
     CIMultiDictProxy CIMultiDictProxy_Copy "MultiDictProxy_Copy"(CIMultiDictProxy self)
 
-
+    # NOTE: Make sure you import this before using anything 
     int MultiDict_IMPORT() except -1
-
-# NOTE: Make sure you import this before using anything 
-
-cdef inline int import_multidict() except -1:
-    return MultiDict_IMPORT()
+    int import_multidict "MultiDict_IMPORT" () except -1
 
 
 cdef inline object MultiDict_Get(MultiDict self, object key, PyObject* default):
