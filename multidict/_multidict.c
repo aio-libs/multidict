@@ -304,7 +304,9 @@ static inline PyObject *
 multidict_get(MultiDictObject *self, PyObject *const *args, Py_ssize_t nargs,
               PyObject *kwnames)
 {
-    PyObject *key = NULL, *_default = NULL, *ret;
+    PyObject *key = NULL;
+    PyObject *_default = NULL;
+    bool decref_default = false;
 
     if (parse2("get",
                args,
@@ -318,10 +320,17 @@ multidict_get(MultiDictObject *self, PyObject *const *args, Py_ssize_t nargs,
         return NULL;
     }
     if (_default == NULL) {
-        // fixme, _default is potentially dangerous borrowed ref here
-        _default = Py_None;
+        _default = Py_GetConstant(Py_CONSTANT_NONE);
+        if (_default == NULL) {
+            return NULL;
+        }
+        decref_default = true;
     }
-    ret = _multidict_getone(self, key, _default);
+    ASSERT_CONSISTENT(self, false);
+    PyObject *ret = _multidict_getone(self, key, _default);
+    if (decref_default) {
+        Py_CLEAR(_default);
+    }
     return ret;
 }
 
@@ -609,7 +618,9 @@ static PyObject *
 multidict_setdefault(MultiDictObject *self, PyObject *const *args,
                      Py_ssize_t nargs, PyObject *kwnames)
 {
-    PyObject *key = NULL, *_default = NULL;
+    PyObject *key = NULL;
+    PyObject *_default = NULL;
+    bool decref_default = false;
 
     if (parse2("setdefault",
                args,
@@ -623,11 +634,18 @@ multidict_setdefault(MultiDictObject *self, PyObject *const *args,
         return NULL;
     }
     if (_default == NULL) {
-        // fixme, _default is potentially dangerous borrowed ref here
-        _default = Py_None;
+        _default = Py_GetConstant(Py_CONSTANT_NONE);
+        if (_default == NULL) {
+            return NULL;
+        }
+        decref_default = true;
     }
     ASSERT_CONSISTENT(self, false);
-    return md_set_default(self, key, _default);
+    PyObject *ret = md_set_default(self, key, _default);
+    if (decref_default) {
+        Py_CLEAR(_default);
+    }
+    return ret;
 }
 
 static PyObject *
