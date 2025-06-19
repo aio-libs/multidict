@@ -48,9 +48,6 @@ install:
 
 install-dev: .develop
 
-compile-cython-test:
-	@python tools/setup_cython_test.py build_ext --inplace 
-
 
 clean:
 	rm -rf `find . -name __pycache__`
