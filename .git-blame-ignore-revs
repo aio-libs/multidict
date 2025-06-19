@@ -80,3 +80,6 @@
 
 # 👺 Format `gen_pickles.py` and `test_istr.py`
 0a27de369f963cf4b233d2f898ebb7898267acf7
+
+# Setup pre-commit hook for auto-formating both Python and C code (#1179)
+f428d506656d6a9fb574466fb49df6d2e73906ef

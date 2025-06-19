@@ -1098,8 +1098,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
     def __init__(self, arg: Union[MultiDict[_V], "MultiDictProxy[_V]"]):
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
-                "ctor requires MultiDict or MultiDictProxy instance"
-                f", not {type(arg)}"
+                f"ctor requires MultiDict or MultiDictProxy instance, not {type(arg)}"
             )
         if isinstance(arg, MultiDictProxy):
             self._md = arg._md
