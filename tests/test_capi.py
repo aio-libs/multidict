@@ -1,8 +1,8 @@
 import multidict
 import pytest
-import testcapi
 
 pytest.importorskip("multidict._multidict")
+testcapi = pytest.importorskip("testcapi")
 
 pytestmark = pytest.mark.capi
 
