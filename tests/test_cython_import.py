@@ -5,12 +5,14 @@ from types import ModuleType
 from typing import Callable, Type
 
 import pytest
-
+import os
 from multidict import (
     MultiMapping,
     MutableMultiMapping,
 )
 
+
+skip_if_no_extensions = pytest.mark.skipif(os.environ.get("MULTIDICT_NO_EXTENSIONS"), "cython tests disabled")
 
 @cache
 def try_importing_c():
@@ -101,6 +103,7 @@ def any_cython_md_creation_func(
     return getattr(try_impotring_cython(), any_multidict_class_name.lower() + "_create")  # type: ignore
 
 
+@skip_if_no_extensions
 def test_cython_types_are_equivilent_to_c(
     cython_module: ModuleType, c_module: ModuleType
 ):
@@ -109,7 +112,7 @@ def test_cython_types_are_equivilent_to_c(
     assert cython_module.Cython_CIMultiDict == c_module.CIMultiDict  # type: ignore
     assert cython_module.Cython_CIMultiDictProxy == c_module.CIMultiDictProxy  # type: ignore
 
-
+@skip_if_no_extensions
 def test_cython_creation_of_multidict(
     cython_module: ModuleType,
     any_multidict_c_or_cython_class: Type[MutableMultiMapping[str]],
@@ -120,7 +123,7 @@ def test_cython_creation_of_multidict(
     b.add("a", 1)
     assert md == b
 
-
+@skip_if_no_extensions
 def test_cython_addition(
     any_cython_md_creation_func: Callable[[], MutableMultiMapping[str]],
     cython_module: ModuleType,
@@ -130,7 +133,7 @@ def test_cython_addition(
     cython_module.multidict_add(md)
     assert md == any_multidict_c_or_cython_class([("a", 1), ("b", 2)])
 
-
+@skip_if_no_extensions
 def test_cython_update(
     any_cython_md_creation_func: Callable[[], MutableMultiMapping[str]],
     cython_module: ModuleType,
@@ -140,7 +143,7 @@ def test_cython_update(
     cython_module.multidict_update(md, a=2, b=1)
     assert md == any_multidict_c_or_cython_class([("a", 2), ("b", 1)])
 
-
+@skip_if_no_extensions
 def test_cython_copy(
     any_cython_md_creation_func: Callable[[], MutableMultiMapping[str]],
     cython_module: ModuleType,
@@ -151,7 +154,7 @@ def test_cython_copy(
     new_md = cython_module.multidict_copy(md)
     assert new_md == any_multidict_c_or_cython_class([("a", 2), ("b", 1)])
 
-
+@skip_if_no_extensions
 def test_cython_get(
     any_cython_md_creation_func: Callable[[], MutableMultiMapping[str]],
     cython_module: ModuleType,
