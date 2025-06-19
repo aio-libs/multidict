@@ -85,7 +85,7 @@ static int MultiDict_IMPORT() {
 #define MultiDict_Add(self, key, value) \
 	MultiDictAPI->_MultiDict_Add(self, key, value)
 
-#define MutliDict_Clear(self) \
+#define MultiDict_Clear(self) \
 	MultiDictAPI->_MultiDict_Clear(self)
 
 #define MultiDict_Extend(self, args, kwargs) \
