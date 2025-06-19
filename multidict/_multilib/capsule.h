@@ -4,7 +4,6 @@
 #include "Python.h"
 #include "dict.h"
 
-// Incase this gets used for C++ stuff here's a macro for it
 #ifdef __cplusplus
 extern "C" {
 #endif
