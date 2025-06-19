@@ -95,7 +95,7 @@ cdef extern from "_multilib/capsule.h":
     int MutliDictProxy_Items(MultiDictProxy self)
     CIMultiDictProxy MultiDictProxy_Copy(MultiDictProxy self)
 
-    # ==================== MultiDictProxy Functions ====================
+    # ==================== CIMultiDictProxy Functions ====================
     
     int CIMultiDictProxy_GetAll "MultiDictProxy_GetAll" (MultiDictProxy self, object key, PyObject **ret)
     int CIMultiDictProxy_GetOne "MultiDictProxy_GetOne"(MultiDictProxy self, object key, PyObject **ret)
