@@ -11,10 +11,13 @@ _T = TypeVar("_T")
 
 class Cython_MultiDict(MultiDict[_T]):
     pass
+
 class Cython_MultiDictProxy(MultiDictProxy[_T]):
-    pass 
+    pass
+
 class Cython_CIMultiDict(CIMultiDict[_T]):
     pass
+
 class Cython_CIMultiDictProxy(CIMultiDictProxy[_T]):
     pass
 
