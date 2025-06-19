@@ -2,6 +2,8 @@
 
 ci:
   autoupdate_schedule: quarterly
+  skip:
+  - clang-format
 
 repos:
 - repo: https://github.com/python-jsonschema/check-jsonschema.git
@@ -150,5 +152,4 @@ repos:
     - --cobertura-xml-report=.tox/.tmp/.mypy/python-3.11
     - --html-report=.tox/.tmp/.mypy/python-3.11
     pass_filenames: false
-
 ...
