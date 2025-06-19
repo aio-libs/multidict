@@ -123,7 +123,7 @@ static int MultiDict_IMPORT() {
 #define MutliDictProxy_Values(self) \
 	MultiDictAPI->_MultiDict_Values(self->md)
 
-#define MutliDictProxy_Items(self) \
+#define MultiDictProxy_Items(self) \
 	MultiDictAPI->_MultiDict_Items(self->md)
 
 #define MultiDictProxy_Copy(self) \
