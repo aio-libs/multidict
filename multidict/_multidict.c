@@ -1383,7 +1383,6 @@ static MultiDict_CAPI __MultiDict_API = {
     ._MultiDict_Update = multidict_update,
 };
 
-
 /******************** Module ********************/
 
 static int
@@ -1439,7 +1438,6 @@ module_clear(PyObject *mod)
 
     return 0;
 }
-
 
 static void
 module_free(void *mod)
@@ -1543,14 +1541,17 @@ module_exec(PyObject *mod)
         goto fail;
     }
 
-    // Capsules can be confusing but turns out you have to give it 
+    // Capsules can be confusing but turns out you have to give it
     // the fullname, as long as it you do that it will import.
 
-    PyObject* py_capi_obj = PyCapsule_New((void*)(&__MultiDict_API), "multidict._multidict.multidict_CAPI", NULL);
+    PyObject *py_capi_obj =
+        PyCapsule_New((void *)(&__MultiDict_API),
+                      "multidict._multidict.multidict_CAPI",
+                      NULL);
     if (py_capi_obj == NULL) {
         goto fail;
     }
-    
+
     if (PyModule_Add(mod, "multidict_CAPI", py_capi_obj) < 0) {
         goto fail;
     };
@@ -1588,4 +1589,3 @@ PyInit__multidict(void)
 {
     return PyModuleDef_Init(&multidict_module);
 }
-
