@@ -126,7 +126,6 @@ MultiDict_IMPORT()
 
 #define MultiDictProxy_Copy(self) MultiDictAPI->_MultiDict_Copy(self->md)
 
-
 #ifdef __cplusplus
 }
 #endif
