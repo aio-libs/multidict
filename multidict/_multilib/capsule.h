@@ -35,7 +35,7 @@ typedef struct _multidict_capi {
 	// multidict_extend
 	PyObject *(*_MultiDict_Extend)(MultiDictObject *self, PyObject *args, PyObject *kwargs);
 
-	// mutlidict_copy
+	// multidict_copy
 	PyObject *(*_MultiDict_Copy)(MultiDictObject *self);
 
 	// multidict_setdefault
