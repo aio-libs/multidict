@@ -93,7 +93,7 @@ cdef extern from "_multilib/capsule.h":
     int MultiDictProxy_Keys(MultiDictProxy self)
     object MultiDictProxy_Values(MultiDictProxy self)
     int MutliDictProxy_Items(MultiDictProxy self)
-    MultiDictProxy MultiDictProxy_Copy(MultiDictProxy self)
+    CIMultiDictProxy MultiDictProxy_Copy(MultiDictProxy self)
 
     # ==================== MultiDictProxy Functions ====================
     
