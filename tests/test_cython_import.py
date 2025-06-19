@@ -187,6 +187,4 @@ def test_istr_create(cython_module: ModuleType) -> None:
 def test_istr_checkexact(cython_module: ModuleType, c_module: ModuleType) -> None:
     assert cython_module.istr_checkexact(c_module.istr("an istr"))
     sub = cython_module.istrsubcls("an istr")
-    assert not cython_module.istr_checkexact(sub), (
-        "subclassing should've raised false"
-    )
+    assert not cython_module.istr_checkexact(sub), "subclassing should've raised false"
