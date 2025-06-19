@@ -86,3 +86,9 @@ TAGS
 
 # pyenv
 .python-version
+
+# tests compiled with cython
+tests/*.c
+tests/*.so
+tests/*.pyd
+

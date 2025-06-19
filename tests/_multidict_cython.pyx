@@ -43,3 +43,17 @@ def multidict_popitem(MultiDict md):
 
 def multidict_get(MultiDict md, str key):
     return <object>MultiDict_Get(md, key)
+
+
+def istr_FromUnicode(str data):
+    return istr(data)
+
+def istr_check(object data):
+    return IStr_Check(data)
+
+def istr_checkexact(object data):
+    return IStr_CheckExact(data)
+
+# Should not pass IStr_CheckExact
+cdef class istrsubcls(istr):
+    pass

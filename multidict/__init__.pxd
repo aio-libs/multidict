@@ -36,6 +36,16 @@ cdef extern from "_multilib/dict.h":
 
 
 cdef extern from "_multilib/istr.h":
+    """
+/* From multidict.__init__.pxd for _multilib/istr.h  */
+
+/* To ensure IStr_CheckExact works as if it were a CPython function 
+ * A Simple Hack was required to bypass this issue */
+
+#define __IStr_CheckExact(obj) IStr_CheckExact(istr->state, obj);
+#define __IStr_Check(obj) IStr_Check(istr->state, obj)
+
+    """
 
     ctypedef struct istrobject:
         pass
@@ -44,6 +54,8 @@ cdef extern from "_multilib/istr.h":
         cdef object canonical
         pass
     
+    bint IStr_CheckExact "__IStr_CheckExact" (object obj)
+    bint IStr_Check "__IStr_Check" (object obj)
     
 
 cdef extern from "_multilib/capsule.h":
