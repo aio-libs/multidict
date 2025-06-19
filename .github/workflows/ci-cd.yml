@@ -364,6 +364,11 @@ jobs:
           && '.'
           || steps.wheel-file.outputs.path
         }}'
+    
+    - name: Compile Cython Test module
+      run: >-
+        pip install cython && python tools/setup_cython_test.py build_ext --inplace
+      
     - name: Run unittests
       run: >-
         python -Im pytest tests -v
