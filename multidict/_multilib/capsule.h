@@ -6,8 +6,7 @@
 
 // Incase this gets used for C++ stuff here's a macro for it
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 typedef struct _multidict_capi {
@@ -67,67 +66,48 @@ static int MultiDict_IMPORT() {
 
 /*********************  MultiDict / CIMultiDict Macros  *********************/
 
-#define MultiDict_GetAll(self, key, ret) \
-	MultiDictAPI->_MultiDict_GetAll(self, key, ret)
+#define MultiDict_GetAll(self, key, ret) MultiDictAPI->_MultiDict_GetAll(self, key, ret)
 
-#define MultiDict_GetOne(self, key, ret) \
-	MultiDictAPI->_MultiDict_GetOne(self, key, ret)
+#define MultiDict_GetOne(self, key, ret) MultiDictAPI->_MultiDict_GetOne(self, key, ret)
 
-#define MultiDict_Keys(self) \
-	MultiDictAPI->_MultiDict_Keys(self)
+#define MultiDict_Keys(self) MultiDictAPI->_MultiDict_Keys(self)
 
-#define MutliDict_Values(self) \
-	MultiDictAPI->_MultiDict_Values(self)
+#define MutliDict_Values(self) MultiDictAPI->_MultiDict_Values(self)
 
-#define MutliDict_Items(self) \
-	MultiDictAPI->_MultiDict_Items(self)
+#define MutliDict_Items(self) MultiDictAPI->_MultiDict_Items(self)
 
-#define MultiDict_Add(self, key, value) \
-	MultiDictAPI->_MultiDict_Add(self, key, value)
+#define MultiDict_Add(self, key, value) MultiDictAPI->_MultiDict_Add(self, key, value)
 
-#define MultiDict_Clear(self) \
-	MultiDictAPI->_MultiDict_Clear(self)
+#define MultiDict_Clear(self) MultiDictAPI->_MultiDict_Clear(self)
 
-#define MultiDict_Extend(self, args, kwargs) \
-	MultiDictAPI->_MultiDict_Extend(self, args, kwargs)
+#define MultiDict_Extend(self, args, kwargs) MultiDictAPI->_MultiDict_Extend(self, args, kwargs)
 
-#define MultiDict_Copy(self) \
-	MultiDictAPI->_MultiDict_Copy(self)
+#define MultiDict_Copy(self) MultiDictAPI->_MultiDict_Copy(self)
 
-#define MultiDict_SetDefault(self, key, value) \
-	MultiDictAPI->_MultiDict_SetDefault(self, key, value)
+#define MultiDict_SetDefault(self, key, value) MultiDictAPI->_MultiDict_SetDefault(self, key, value)
 
-#define MultiDict_PopOne(self, key, ret) \
-	MultiDictAPI->_MultiDict_PopOne(self, key, ret)
+#define MultiDict_PopOne(self, key, ret) MultiDictAPI->_MultiDict_PopOne(self, key, ret)
 
-#define MultiDict_PopItem(self) \
-	MultiDictAPI->_MultiDict_PopItem(self)
+#define MultiDict_PopItem(self) MultiDictAPI->_MultiDict_PopItem(self)
 
-#define MultiDict_Update(self, args, kwargs) \
-	MultiDictAPI->_MultiDict_Update(self, args, kwargs)
+#define MultiDict_Update(self, args, kwargs) MultiDictAPI->_MultiDict_Update(self, args, kwargs)
 
 
 /*********************  MultiDictProxy / CIMultiDictProxy Macros  *********************/
 
-#define MultiDictProxy_GetAll(self, key, ret) \
-	MultiDictAPI->_MultiDict_GetAll(self->md, key, ret)
+#define MultiDictProxy_GetAll(self, key, ret) MultiDictAPI->_MultiDict_GetAll(self->md, key, ret)
 
-#define MultiDictProxy_GetOne(self, key, ret) \
-	MultiDictAPI->_MultiDict_GetOne(self->md, key, ret)
+#define MultiDictProxy_GetOne(self, key, ret) MultiDictAPI->_MultiDict_GetOne(self->md, key, ret)
 
 // NOTE: MultiDictProxy_Get will be going in the __init__.pxd file
 
-#define MultiDictProxy_Keys(self, key) \
-	MultiDictAPI->_MultiDict_Keys(self->md, key)
+#define MultiDictProxy_Keys(self, key) MultiDictAPI->_MultiDict_Keys(self->md, key)
 
-#define MutliDictProxy_Values(self) \
-	MultiDictAPI->_MultiDict_Values(self->md)
+#define MutliDictProxy_Values(self) MultiDictAPI->_MultiDict_Values(self->md)
 
-#define MultiDictProxy_Items(self) \
-	MultiDictAPI->_MultiDict_Items(self->md)
+#define MultiDictProxy_Items(self) MultiDictAPI->_MultiDict_Items(self->md)
 
-#define MultiDictProxy_Copy(self) \
-	MultiDictAPI->_MultiDict_Copy(self->md)
+#define MultiDictProxy_Copy(self) MultiDictAPI->_MultiDict_Copy(self->md)
 
 
 
