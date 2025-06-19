@@ -116,8 +116,4 @@ cdef inline object MultiDict_Get(MultiDict self, object key, object default = No
     Py_INCREF(ret)
     return <object>ret
 
-# Initializes istr from another unicode object
-cdef inline istr IStr_FromUnicode(str obj):
-    return <istr>PyType_GenericNew_NoKwargs(istr, (obj,))
-
 
