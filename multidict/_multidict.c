@@ -1,15 +1,12 @@
 #include <Python.h>
 #include <structmember.h>
 
-#include "_multilib/pythoncapi_compat.h"
-
-#include "_multilib/capsule.h"
-
 #include "_multilib/dict.h"
 #include "_multilib/hashtable.h"
 #include "_multilib/istr.h"
 #include "_multilib/iter.h"
 #include "_multilib/parser.h"
+#include "_multilib/pythoncapi_compat.h"
 #include "_multilib/state.h"
 #include "_multilib/views.h"
 
