@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <structmember.h>
 
+#include "_multilib/capsule.h"
 #include "_multilib/dict.h"
 #include "_multilib/hashtable.h"
 #include "_multilib/istr.h"
