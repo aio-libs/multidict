@@ -309,6 +309,11 @@ jobs:
       uses: py-actions/py-dependency-install@v4
       with:
         path: requirements/pytest.txt
+    - name: Compile Cython Test
+      run: >
+        python tools/setup_cython_test.py
+        build_ext --inplace
+      shell: bash
     - name: Determine pre-compiled compatible wheel
       if: steps.build_type.outputs.build_type == 'wheel'
       env:
@@ -364,10 +369,6 @@ jobs:
           && '.'
           || steps.wheel-file.outputs.path
         }}'
-    - name: Install Cython Dependency
-      run: >-
-        python tools/setup_cython_test.py
-          build_ext --inplace
     - name: Run unittests
       run: >-
         python -Im pytest tests -v
