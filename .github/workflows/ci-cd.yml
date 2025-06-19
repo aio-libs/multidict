@@ -366,7 +366,7 @@ jobs:
         }}'
     - name: Install Cython Dependency
       run: >-
-        python tools/setup_cython_test.py 
+        python tools/setup_cython_test.py
           build_ext --inplace
     - name: Run unittests
       run: >-
