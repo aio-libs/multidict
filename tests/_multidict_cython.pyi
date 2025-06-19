@@ -31,9 +31,6 @@ def multidict_update(md: MultiDict, data: dict[str, Any]) -> None:
 def multidict_copy(md: MultiDict) -> MultiDict:
     ...
 
-def cimultidict_add(md: MultiDict) -> None:
-    ...
-
 def cimultidict_update(md: CIMultiDict, data: dict[str, Any]) -> None:
     ...
 
