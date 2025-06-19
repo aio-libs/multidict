@@ -12,7 +12,7 @@ from multidict import (
 )
 
 
-skip_if_no_extensions = pytest.mark.skipif(os.environ.get("MULTIDICT_NO_EXTENSIONS"), "cython tests disabled")
+skip_if_no_extensions = pytest.mark.skipif(os.environ.get("MULTIDICT_NO_EXTENSIONS"), reason="cython tests disabled")
 
 @cache
 def try_importing_c():
@@ -163,6 +163,7 @@ def test_cython_get(
     cython_module.multidict_update(md, a=2, b=1)
     assert md.get("b") == 1
     assert cython_module.multidict_get(md, "a") == 2
+    assert md.get("I DONT EXIST") == None
 
     # XXX: Broken, this sends a number when it should've been None, no clue why this happens
     # assert cython_module.multidict_get(md, "I DONT EXIST!")
