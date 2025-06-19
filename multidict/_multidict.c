@@ -1602,7 +1602,14 @@ module_exec(PyObject *mod)
         goto fail;
     }
 
-    PyObject* py_capi_obj = PyCapsule_New((void*)(&__MultiDict_API), "_multidict.multidict_CAPI", NULL);
+    // Capsules can be confusing but turns out you have to give it 
+    // the fullname, as long as it you do that it will import.
+
+    PyObject* py_capi_obj = PyCapsule_New((void*)(&__MultiDict_API), "multidict._multidict.multidict_CAPI", NULL);
+    if (py_capi_obj == NULL) {
+        goto fail;
+    }
+    
     if (PyModule_Add(mod, "multidict_CAPI", py_capi_obj) < 0) {
         goto fail;
     };

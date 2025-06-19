@@ -60,9 +60,10 @@ typedef struct _multidict_capi {
 
 static MultiDict_CAPI *MultiDictAPI = NULL;
 
-#define MultiDict_IMPORT \
-	MultiDictAPI = PyCapsule_Import("multidict._multidict.multidict_CAPI", 0)
-
+int MultiDict_IMPORT() {
+	MultiDictAPI = PyCapsule_Import("multidict._multidict.multidict_CAPI", 0);
+	return (MultiDictAPI != NULL) ? 0 : -1;
+}
 
 /*********************  MultiDict / CIMultiDict Macros  *********************/
 

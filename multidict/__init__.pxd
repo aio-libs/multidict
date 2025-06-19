@@ -21,16 +21,16 @@ cdef extern from "_multilib/dict.h":
     ctypedef struct MultiDictProxyObject:
         pass
      
-    ctypedef class _multidict.MultiDict [object MultiDictObject, check_size ignore]:
+    ctypedef class multidict.MultiDict [object MultiDictObject, check_size ignore]:
         pass
 
-    ctypedef class _multidict.MultiDictProxy [object MultiDictProxyObject, check_size ignore]:
+    ctypedef class multidict.MultiDictProxy [object MultiDictProxyObject, check_size ignore]:
         cdef MultiDict md
     
-    ctypedef class _multidict.CIMultiDict [object MultiDictObject, check_size ignore]:
+    ctypedef class multidict.CIMultiDict [object MultiDictObject, check_size ignore]:
         pass
 
-    ctypedef class _multidict.CIMultiDictProxy [object MultiDictProxyObject, check_size ignore]:
+    ctypedef class multidict.CIMultiDictProxy [object MultiDictProxyObject, check_size ignore]:
         pass
 
 
@@ -39,7 +39,7 @@ cdef extern from "_multilib/istr.h":
     ctypedef struct istrobject:
         pass
     
-    ctypedef class _multidict.istr [object istrobject, check_size ignore]:
+    ctypedef class multidict.istr [object istrobject, check_size ignore]:
         cdef object canonical
         pass
     
@@ -94,7 +94,7 @@ cdef extern from "_multilib/capsule.h":
     int MutliDictProxy_Items(MultiDictProxy self)
     MultiDictProxy MultiDictProxy_Copy(MultiDictProxy self)
 
-    # ==================== CIMultiDictProxy Functions ====================
+    # ==================== MultiDictProxy Functions ====================
     
     int CIMultiDictProxy_GetAll "MultiDictProxy_GetAll" (MultiDictProxy self, object key, PyObject **ret)
     int CIMultiDictProxy_GetOne "MultiDictProxy_GetOne"(MultiDictProxy self, object key, PyObject **ret)
@@ -104,12 +104,12 @@ cdef extern from "_multilib/capsule.h":
     CIMultiDictProxy CIMultiDictProxy_Copy "MultiDictProxy_Copy"(CIMultiDictProxy self)
 
 
-    void MultiDict_IMPORT()
+    int MultiDict_IMPORT() except -1
 
 # NOTE: Make sure you import this before using anything 
 
-cdef inline void import_multidict() noexcept:
-    MultiDict_IMPORT
+cdef inline int import_multidict() except -1:
+    return MultiDict_IMPORT()
 
 
 cdef inline object MultiDict_Get(MultiDict self, object key, PyObject* default):
