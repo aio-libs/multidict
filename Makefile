@@ -11,27 +11,8 @@ all: test
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
-
-isort-check:
-	@if ! isort --check $(SRC); then \
-	    echo "Import sort errors, run 'make fmt' to fix them!!!"; \
-	    isort --diff --check $(SRC); \
-	    false; \
-	fi
-
-black-check:
-	@if ! isort --check $(SRC); then \
-	    echo "black errors, run 'make fmt' to fix them!!!"; \
-	    black -t py35 --diff --check $(SRC); \
-	    false; \
-	fi
-
-lint: black-check isort-check
+lint:
 	python -Im pre_commit run --all-files --show-diff-on-failure
-
-fmt:
-	black -t py35 $(SRC)
-	isort $(SRC)
 
 .develop: .install-deps $(shell find multidict -type f)
 	pip install -e .

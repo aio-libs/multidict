@@ -45,12 +45,11 @@ get_mod_state_by_cls(PyTypeObject *cls)
     return state;
 }
 
-
 #if PY_VERSION_HEX < 0x030b0000
 PyObject *
 PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
 {
-    PyModuleDef * mod_def;
+    PyModuleDef *mod_def;
     if (!PyType_HasFeature(tp, Py_TPFLAGS_HEAPTYPE)) {
         goto err;
     }
@@ -78,7 +77,7 @@ PyType_GetModuleByDef(PyTypeObject *tp, PyModuleDef *def)
         if (!PyType_HasFeature((PyTypeObject *)super, Py_TPFLAGS_HEAPTYPE)) {
             continue;
         }
-        mod = PyType_GetModule((PyTypeObject*)super);
+        mod = PyType_GetModule((PyTypeObject *)super);
         if (mod == NULL) {
             PyErr_Clear();
         } else {
@@ -95,7 +94,6 @@ err:
         "PyType_GetModuleByDef: No superclass of '%s' has the given module",
         tp->tp_name);
     return NULL;
-
 }
 #endif
 
@@ -118,7 +116,6 @@ get_mod_state_by_def_checked(PyObject *self, mod_state **ret)
     return 1;
 }
 
-
 static inline mod_state *
 get_mod_state_by_def(PyObject *self)
 {
@@ -128,12 +125,11 @@ get_mod_state_by_def(PyObject *self)
     return get_mod_state(mod);
 }
 
-
-static inline uint64_t NEXT_VERSION(mod_state *state)
+static inline uint64_t
+NEXT_VERSION(mod_state *state)
 {
     return ++state->global_version;
 }
-
 
 #ifdef __cplusplus
 }

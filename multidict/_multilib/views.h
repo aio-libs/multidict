@@ -14,11 +14,9 @@ typedef struct {
     MultiDictObject *md;
 } _Multidict_ViewObject;
 
-
 #define Items_CheckExact(state, obj) Py_IS_TYPE(obj, state->ItemsViewType)
 #define Keys_CheckExact(state, obj) Py_IS_TYPE(obj, state->KeysViewType)
 #define Values_CheckExact(state, obj) Py_IS_TYPE(obj, state->ValuesViewType)
-
 
 /********** Base **********/
 
@@ -38,7 +36,8 @@ multidict_view_dealloc(_Multidict_ViewObject *self)
 }
 
 static inline int
-multidict_view_traverse(_Multidict_ViewObject *self, visitproc visit, void *arg)
+multidict_view_traverse(_Multidict_ViewObject *self, visitproc visit,
+                        void *arg)
 {
     Py_VISIT(self->md);
     return 0;
@@ -58,7 +57,8 @@ multidict_view_len(_Multidict_ViewObject *self)
 }
 
 static inline PyObject *
-multidict_view_richcompare(_Multidict_ViewObject *self, PyObject *other, int op)
+multidict_view_richcompare(_Multidict_ViewObject *self, PyObject *other,
+                           int op)
 {
     int tmp;
     Py_ssize_t self_size = md_len(self->md);
@@ -69,10 +69,9 @@ multidict_view_richcompare(_Multidict_ViewObject *self, PyObject *other, int op)
     }
     PyObject *iter = NULL;
     PyObject *item = NULL;
-    switch(op) {
+    switch (op) {
         case Py_LT:
-            if (self_size >= size)
-                Py_RETURN_FALSE;
+            if (self_size >= size) Py_RETURN_FALSE;
             return multidict_view_richcompare(self, other, Py_LE);
         case Py_LE:
             if (self_size > size) {
@@ -99,8 +98,7 @@ multidict_view_richcompare(_Multidict_ViewObject *self, PyObject *other, int op)
             }
             Py_RETURN_TRUE;
         case Py_EQ:
-            if (self_size != size)
-                Py_RETURN_FALSE;
+            if (self_size != size) Py_RETURN_FALSE;
             return multidict_view_richcompare(self, other, Py_LE);
         case Py_NE:
             item = multidict_view_richcompare(self, other, Py_EQ);
@@ -115,8 +113,7 @@ multidict_view_richcompare(_Multidict_ViewObject *self, PyObject *other, int op)
                 Py_RETURN_TRUE;
             }
         case Py_GT:
-            if (self_size <= size)
-                Py_RETURN_FALSE;
+            if (self_size <= size) Py_RETURN_FALSE;
             return multidict_view_richcompare(self, other, Py_GE);
         case Py_GE:
             if (self_size < size) {
@@ -149,14 +146,13 @@ fail:
     return NULL;
 }
 
-
 /********** Items **********/
 
 static inline PyObject *
 multidict_itemsview_new(MultiDictObject *md)
 {
-    _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, md->state->ItemsViewType);
+    _Multidict_ViewObject *mv =
+        PyObject_GC_New(_Multidict_ViewObject, md->state->ItemsViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -183,7 +179,8 @@ multidict_itemsview_repr(_Multidict_ViewObject *self)
     if (tmp > 0) {
         return PyUnicode_FromString("...");
     }
-    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    PyObject *name =
+        PyObject_GetAttrString((PyObject *)Py_TYPE(self), "__name__");
     if (name == NULL) {
         Py_ReprLeave((PyObject *)self);
         return NULL;
@@ -238,7 +235,7 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject *self, PyObject *arg,
 }
 
 static inline int
-_set_add(PyObject *set, PyObject *key, PyObject * value)
+_set_add(PyObject *set, PyObject *key, PyObject *value)
 {
     PyObject *tpl = PyTuple_Pack(2, key, value);
     if (tpl == NULL) {
@@ -274,8 +271,8 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
         goto fail;
     }
     while ((arg = PyIter_Next(iter))) {
-        int tmp = _multidict_itemsview_parse_item(self, arg,
-                                                  &identity, &key, &value);
+        int tmp = _multidict_itemsview_parse_item(
+            self, arg, &identity, &key, &value);
         if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
@@ -352,8 +349,8 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
         goto fail;
     }
     while ((arg = PyIter_Next(iter))) {
-        int tmp = _multidict_itemsview_parse_item(self, arg,
-                                                  &identity, &key, &value);
+        int tmp = _multidict_itemsview_parse_item(
+            self, arg, &identity, &key, &value);
         if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
@@ -407,7 +404,7 @@ fail:
 static inline PyObject *
 multidict_itemsview_and(PyObject *lft, PyObject *rht)
 {
-    mod_state * state;
+    mod_state *state;
     int tmp = get_mod_state_by_def_checked(lft, &state);
     if (tmp < 0) {
         return NULL;
@@ -452,8 +449,8 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
         goto fail;
     }
     while ((arg = PyIter_Next(iter))) {
-        int tmp = _multidict_itemsview_parse_item(self, arg,
-                                                  &identity, &key, &value);
+        int tmp = _multidict_itemsview_parse_item(
+            self, arg, &identity, &key, &value);
         if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
@@ -539,8 +536,8 @@ multidict_itemsview_or2(_Multidict_ViewObject *self, PyObject *other)
         goto fail;
     }
     while ((arg = PyIter_Next(iter))) {
-        int tmp = _multidict_itemsview_parse_item(self, arg,
-                                                  &identity, NULL, &value);
+        int tmp = _multidict_itemsview_parse_item(
+            self, arg, &identity, NULL, &value);
         if (tmp < 0) {
             goto fail;
         } else if (tmp > 0) {
@@ -598,7 +595,7 @@ fail:
 static inline PyObject *
 multidict_itemsview_or(PyObject *lft, PyObject *rht)
 {
-    mod_state * state;
+    mod_state *state;
     int tmp = get_mod_state_by_def_checked(lft, &state);
     if (tmp < 0) {
         return NULL;
@@ -618,7 +615,6 @@ multidict_itemsview_or(PyObject *lft, PyObject *rht)
     }
     Py_RETURN_NOTIMPLEMENTED;
 }
-
 
 static inline PyObject *
 multidict_itemsview_sub1(_Multidict_ViewObject *self, PyObject *other)
@@ -649,8 +645,8 @@ multidict_itemsview_sub1(_Multidict_ViewObject *self, PyObject *other)
         goto fail;
     }
     while ((arg = PyIter_Next(iter))) {
-        int tmp = _multidict_itemsview_parse_item(self, arg,
-                                                  &identity, NULL, &value);
+        int tmp = _multidict_itemsview_parse_item(
+            self, arg, &identity, NULL, &value);
         if (tmp < 0) {
             goto fail;
         } else if (tmp > 0) {
@@ -729,8 +725,8 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
         goto fail;
     }
     while ((arg = PyIter_Next(iter))) {
-        int tmp = _multidict_itemsview_parse_item(self, arg,
-                                                  &identity, NULL, &value);
+        int tmp = _multidict_itemsview_parse_item(
+            self, arg, &identity, NULL, &value);
         if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
@@ -757,7 +753,7 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
             }
             Py_CLEAR(value2);
         }
-        if (tmp < 0 ) {
+        if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
             if (PySet_Add(ret, arg) < 0) {
@@ -789,7 +785,7 @@ fail:
 static inline PyObject *
 multidict_itemsview_sub(PyObject *lft, PyObject *rht)
 {
-    mod_state * state;
+    mod_state *state;
     int tmp = get_mod_state_by_def_checked(lft, &state);
     if (tmp < 0) {
         return NULL;
@@ -813,7 +809,7 @@ multidict_itemsview_sub(PyObject *lft, PyObject *rht)
 static inline PyObject *
 multidict_itemsview_xor(_Multidict_ViewObject *self, PyObject *other)
 {
-    mod_state * state;
+    mod_state *state;
     int tmp = get_mod_state_by_def_checked((PyObject *)self, &state);
     if (tmp < 0) {
         return NULL;
@@ -942,7 +938,7 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
         goto done;
     }
 
- done:
+done:
     md_finder_cleanup(&finder);
     Py_CLEAR(identity);
     Py_CLEAR(key);
@@ -965,8 +961,8 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
     PyObject *value2 = NULL;
 
     while ((arg = PyIter_Next(iter))) {
-        int tmp = _multidict_itemsview_parse_item(self, arg,
-                                                  &identity, NULL, &value);
+        int tmp = _multidict_itemsview_parse_item(
+            self, arg, &identity, NULL, &value);
         if (tmp < 0) {
             goto fail;
         } else if (tmp == 0) {
@@ -1022,18 +1018,21 @@ fail:
 PyDoc_STRVAR(itemsview_isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
-
 static PyMethodDef multidict_itemsview_methods[] = {
-    {"isdisjoint", (PyCFunction)multidict_itemsview_isdisjoint,
-     METH_O, itemsview_isdisjoint_doc},
-    {NULL, NULL}   /* sentinel */
+    {"isdisjoint",
+     (PyCFunction)multidict_itemsview_isdisjoint,
+     METH_O,
+     itemsview_isdisjoint_doc},
+    {NULL, NULL} /* sentinel */
 };
 
 static inline PyObject *
-multidict_view_forbidden_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
+multidict_view_forbidden_new(PyTypeObject *type, PyObject *args,
+                             PyObject *kwargs)
 {
     PyErr_Format(PyExc_TypeError,
-                 "cannot create '%s' instances directly", type->tp_name);
+                 "cannot create '%s' instances directly",
+                 type->tp_name);
     return NULL;
 }
 
@@ -1068,14 +1067,13 @@ static PyType_Spec multidict_itemsview_spec = {
     .slots = multidict_itemsview_slots,
 };
 
-
 /********** Keys **********/
 
 static inline PyObject *
 multidict_keysview_new(MultiDictObject *md)
 {
-    _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, md->state->KeysViewType);
+    _Multidict_ViewObject *mv =
+        PyObject_GC_New(_Multidict_ViewObject, md->state->KeysViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -1095,7 +1093,8 @@ multidict_keysview_iter(_Multidict_ViewObject *self)
 static inline PyObject *
 multidict_keysview_repr(_Multidict_ViewObject *self)
 {
-    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    PyObject *name =
+        PyObject_GetAttrString((PyObject *)Py_TYPE(self), "__name__");
     if (name == NULL) {
         return NULL;
     }
@@ -1200,7 +1199,7 @@ fail:
 static inline PyObject *
 multidict_keysview_and(PyObject *lft, PyObject *rht)
 {
-    mod_state * state;
+    mod_state *state;
     int tmp = get_mod_state_by_def_checked(lft, &state);
     if (tmp < 0) {
         return NULL;
@@ -1349,7 +1348,7 @@ fail:
 static inline PyObject *
 multidict_keysview_or(PyObject *lft, PyObject *rht)
 {
-    mod_state * state;
+    mod_state *state;
     int tmp = get_mod_state_by_def_checked(lft, &state);
     if (tmp < 0) {
         return NULL;
@@ -1468,7 +1467,7 @@ fail:
 static inline PyObject *
 multidict_keysview_sub(PyObject *lft, PyObject *rht)
 {
-    mod_state * state;
+    mod_state *state;
     int tmp = get_mod_state_by_def_checked(lft, &state);
     if (tmp < 0) {
         return NULL;
@@ -1492,7 +1491,7 @@ multidict_keysview_sub(PyObject *lft, PyObject *rht)
 static inline PyObject *
 multidict_keysview_xor(_Multidict_ViewObject *self, PyObject *other)
 {
-    mod_state * state;
+    mod_state *state;
     int tmp = get_mod_state_by_def_checked((PyObject *)self, &state);
     if (tmp < 0) {
         return NULL;
@@ -1585,11 +1584,12 @@ multidict_keysview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 PyDoc_STRVAR(keysview_isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
-
 static PyMethodDef multidict_keysview_methods[] = {
-    {"isdisjoint", (PyCFunction)multidict_keysview_isdisjoint,
-     METH_O, keysview_isdisjoint_doc},
-    {NULL, NULL}   /* sentinel */
+    {"isdisjoint",
+     (PyCFunction)multidict_keysview_isdisjoint,
+     METH_O,
+     keysview_isdisjoint_doc},
+    {NULL, NULL} /* sentinel */
 };
 
 static PyType_Slot multidict_keysview_slots[] = {
@@ -1628,8 +1628,8 @@ static PyType_Spec multidict_keysview_spec = {
 static inline PyObject *
 multidict_valuesview_new(MultiDictObject *md)
 {
-    _Multidict_ViewObject *mv = PyObject_GC_New(
-        _Multidict_ViewObject, md->state->ValuesViewType);
+    _Multidict_ViewObject *mv =
+        PyObject_GC_New(_Multidict_ViewObject, md->state->ValuesViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -1656,7 +1656,8 @@ multidict_valuesview_repr(_Multidict_ViewObject *self)
     if (tmp > 0) {
         return PyUnicode_FromString("...");
     }
-    PyObject *name = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
+    PyObject *name =
+        PyObject_GetAttrString((PyObject *)Py_TYPE(self), "__name__");
     if (name == NULL) {
         Py_ReprLeave((PyObject *)self);
         return NULL;
@@ -1691,11 +1692,10 @@ static PyType_Spec multidict_valuesview_spec = {
     .slots = multidict_valuesview_slots,
 };
 
-
 static inline int
 multidict_views_init(PyObject *module, mod_state *state)
 {
-    PyObject * tmp;
+    PyObject *tmp;
     tmp = PyType_FromModuleAndSpec(module, &multidict_itemsview_spec, NULL);
     if (tmp == NULL) {
         return -1;

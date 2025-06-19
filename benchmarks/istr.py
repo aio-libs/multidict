@@ -48,7 +48,7 @@ if __name__ == "__main__":
     runner = perf.Runner(add_cmdline_args=add_impl_option)
 
     parser = runner.argparser
-    parser.description = "Allows to measure performance of " "istr implementations"
+    parser.description = "Allows to measure performance of istr implementations"
     parser.add_argument(
         "--impl",
         choices=sorted(IMPLEMENTATIONS),

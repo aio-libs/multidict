@@ -34,8 +34,7 @@ class TestMutableMultiDict:
         d = case_sensitive_multidict_class([("key", "one"), ("key", "two")])
 
         expected = (
-            f"<{case_sensitive_multidict_class.__name__}"
-            "('key': 'one', 'key': 'two')>"
+            f"<{case_sensitive_multidict_class.__name__}('key': 'one', 'key': 'two')>"
         )
         assert str(d) == expected
 
@@ -494,8 +493,7 @@ class TestCIMutableMultiDict:
         d = case_insensitive_multidict_class([("KEY", "one"), ("KEY", "two")])
 
         expected = (
-            f"<{case_insensitive_multidict_class.__name__}"
-            "('KEY': 'one', 'KEY': 'two')>"
+            f"<{case_insensitive_multidict_class.__name__}('KEY': 'one', 'KEY': 'two')>"
         )
         assert str(d) == expected
 
