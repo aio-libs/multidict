@@ -383,7 +383,7 @@ def _replace_missing_aiohttp_hdrs_reference(
     node: pending_xref,
     contnode: literal,
 ) -> "reference | None":
-    if (node.get('refdomain'), node.get('reftype')) != ("py", "mod"):
+    if (node.get("refdomain"), node.get("reftype")) != ("py", "mod"):
         return None
 
     ref_target = node.get("reftarget", "")
@@ -401,7 +401,7 @@ def _replace_missing_aiohttp_hdrs_reference(
 
 
 def setup(app: Sphinx) -> dict[str, bool | str]:
-    app.connect('missing-reference', _replace_missing_aiohttp_hdrs_reference)
+    app.connect("missing-reference", _replace_missing_aiohttp_hdrs_reference)
 
     return {
         "version": "builtin",

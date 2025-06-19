@@ -5,14 +5,13 @@
 extern "C" {
 #endif
 
-#include "pythoncapi_compat.h"
 #include "htkeys.h"
+#include "pythoncapi_compat.h"
 #include "state.h"
 
 #if PY_VERSION_HEX >= 0x030c00f0
 #define MANAGED_WEAKREFS
 #endif
-
 
 typedef struct {
     PyObject_HEAD
@@ -25,7 +24,7 @@ typedef struct {
     uint64_t version;
     bool is_ci;
 
-    htkeys_t * keys;
+    htkeys_t *keys;
 } MultiDictObject;
 
 typedef struct {
@@ -35,7 +34,6 @@ typedef struct {
 #endif
     MultiDictObject *md;
 } MultiDictProxyObject;
-
 
 #ifdef __cplusplus
 }
