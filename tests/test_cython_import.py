@@ -170,7 +170,7 @@ def test_cython_get(
     cython_module.multidict_update(md, a=2, b=1)
     assert md.get("b") == 1  # type:ignore[comparison-overlap]
     assert cython_module.multidict_get(md, "a") == 2
-    assert md.get("I DONT EXIST") == None
+    assert md.get("I DONT EXIST") is None
 
     # XXX: Broken, this sends a number when it should've been None,
     # no clue why this happens
@@ -187,6 +187,6 @@ def test_istr_create(cython_module: ModuleType) -> None:
 def test_istr_checkexact(cython_module: ModuleType, c_module: ModuleType) -> None:
     assert cython_module.istr_checkexact(c_module.istr("an istr"))
     sub = cython_module.istrsubcls("an istr")
-    assert cython_module.istr_checkexact(sub) == False, (
+    assert not cython_module.istr_checkexact(sub), (
         "subclassing should've raised false"
     )
