@@ -1,0 +1,40 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+ColumnLimit: 79
+IndentWidth: 4
+StatementAttributeLikeMacros:
+# Defined in Include/pyport.h
+- Py_DEPRECATED
+- _Py_HOT_FUNCTION
+- Py_ALWAYS_INLINE
+- Py_NO_INLINE
+- Py_ALIGNED
+- Py_GCC_ATTRIBUTE
+- _Py_NO_RETURN
+- _Py_FALLTHROUGH
+StatementMacros:
+- PyObject_HEAD
+- PyObject_VAR_HEAD
+- PyException_HEAD
+- _PyTZINFO_HEAD
+- _PyDateTime_TIMEHEAD
+- _PyDateTime_DATETIMEHEAD
+- _PyGenObject_HEAD
+- Window_NoArgNoReturnFunction
+- Window_NoArgTrueFalseFunction
+- Window_NoArgNoReturnVoidFunction
+- Window_NoArg2TupleReturnFunction
+- Window_OneArgNoReturnVoidFunction
+- Window_OneArgNoReturnFunction
+- Window_TwoArgNoReturnFunction
+TabWidth: 4
+UseTab: Never
+WhitespaceSensitiveMacros:
+- _Py_XSTRINGIFY
+- Py_STRINGIFY
+IndentExternBlock: NoIndent
+AlwaysBreakAfterReturnType: All
+BreakBeforeBraces: Linux
+BinPackArguments: false
+...
