@@ -167,3 +167,8 @@ def test_cython_get(
 
     # XXX: Broken, this sends a number when it should've been None, no clue why this happens
     # assert cython_module.multidict_get(md, "I DONT EXIST!")
+
+@skip_if_no_extensions
+def test_istr_create(cython_module: ModuleType):
+    my_istr = cython_module.istr_FromUnicode("I-am-istr")
+    assert my_istr == "I-am-istr"
