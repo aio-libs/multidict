@@ -7,7 +7,9 @@ from functools import cached_property
 from importlib import import_module
 from types import ModuleType
 from typing import Callable, Type, Union
-
+import subprocess
+import os
+import sys
 import pytest
 
 from multidict import (
@@ -16,6 +18,7 @@ from multidict import (
     MultiDictProxy,
     MultiMapping,
     MutableMultiMapping,
+    get_include
 )
 
 C_EXT_MARK = pytest.mark.c_extension
@@ -176,6 +179,19 @@ def pytest_addoption(
     )
 
 
+def compile_cython_pycapsule_test():
+    """Allows pytest to compile cython before test starts"""
+    cmd = []
+    if os.path.exists(".venv"):
+        if sys.platform == "win32":
+            cmd += [".venv\\Scripts\\activate.bat", "&&"]
+        else:
+            cmd += ["bash", ".venv/Scripts/activate.sh", ";"]
+    cmd += ["python", "tools/setup_cython_test.py", "build_ext", "--inplace"]
+    return subprocess.run(cmd, env=os.environ, check=True, shell=True, capture_output=True)
+
+    
+
 def pytest_collection_modifyitems(
     session: pytest.Session,
     config: pytest.Config,
@@ -185,6 +201,7 @@ def pytest_collection_modifyitems(
     test_c_extensions = config.getoption("--c-extensions") is True
 
     if test_c_extensions:
+        compile_cython_pycapsule_test()
         return
 
     selected_tests: list[pytest.Item] = []

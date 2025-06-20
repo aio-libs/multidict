@@ -1,4 +1,6 @@
-# cython: language_level = 3 
+# cython: language_level = 3
+# setuptools: include_dirs = MULTIDICT_HEADER_PATH
+
 from multidict cimport *
 # Always remember to import_multidict or your script WILL FAIL
 import_multidict()
@@ -21,11 +23,11 @@ def cimultidict_create():
     return md
 
 def multidictproxy_create(object inner):
-    cdef MultiDictProxy md = MultiDictProxy(inner)
+    cdef MultiDictProxy md = MultiDictProxy(inner) # type: ignore
     return md
 
 def cimultidictproxy_create(object inner):
-    cdef CIMultiDictProxy md = CIMultiDictProxy(inner)
+    cdef CIMultiDictProxy md = CIMultiDictProxy(inner) # type: ignore
     return md
 
 def multidict_add(MultiDict md):
@@ -46,7 +48,7 @@ def multidict_get(MultiDict md, str key):
 
 
 def istr_FromUnicode(str data):
-    return istr(data)
+    return istr(data) # type: ignore
 
 def istr_check(object data):
     return IStr_Check(data)
@@ -54,6 +56,4 @@ def istr_check(object data):
 def istr_checkexact(object data):
     return IStr_CheckExact(data)
 
-# Should not pass IStr_CheckExact
-cdef class istrsubcls(istr):
-    pass
+

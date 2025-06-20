@@ -6,9 +6,8 @@ from typing import Callable, Type
 
 import pytest
 import os
-from multidict import (
-    MutableMultiMapping,
-)
+from multidict import MutableMultiMapping, istr
+
 
 
 skip_if_no_extensions = pytest.mark.skipif(
@@ -183,8 +182,12 @@ def test_istr_create(cython_module: ModuleType) -> None:
     assert my_istr == "I-am-istr"
 
 
+class istrsubcls(istr):
+    pass 
+
+
 @skip_if_no_extensions
 def test_istr_checkexact(cython_module: ModuleType, c_module: ModuleType) -> None:
     assert cython_module.istr_checkexact(c_module.istr("an istr"))
-    sub = cython_module.istrsubcls("an istr")
+    sub = istrsubcls("an istr")
     assert not cython_module.istr_checkexact(sub), "subclassing should've raised false"
