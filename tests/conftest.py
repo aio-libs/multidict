@@ -179,7 +179,7 @@ def pytest_addoption(
     )
 
 
-def compile_cython_pycapsule_test():
+def compile_cython_pycapsule_test() -> None:
     """Allows pytest to compile cython before test starts"""
     cmd = []
     if os.path.exists(".venv"):
@@ -188,7 +188,7 @@ def compile_cython_pycapsule_test():
         else:
             cmd += ["bash", ".venv/Scripts/activate.sh", ";"]
     cmd += ["python", "tools/setup_cython_test.py", "build_ext", "--inplace"]
-    return subprocess.run(cmd, env=os.environ, check=True, shell=True, capture_output=True)
+    subprocess.run(cmd, env=os.environ, check=True, shell=True, capture_output=True)
 
     
 
