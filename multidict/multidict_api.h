@@ -33,18 +33,27 @@ typedef struct {
 
 #ifndef MULTIDICT_IMPL
 
+/// @brief Imports Multidict CAPI
+/// @return A Capsule Containing the Multidict CAPI Otherwise NULL
 static inline MultiDict_CAPI *
 MultiDict_Import()
 {
     return (MultiDict_CAPI *)PyCapsule_Import(MultiDict_CAPSULE_NAME, 0);
 }
 
+/// @brief Obtains the Multidict TypeObject
+/// @param api Python Capsule Pointer to the API
+/// @return A CPython `PyTypeObject` is returned as a pointer,
+/// `NULL` on failure
 static inline PyTypeObject *
 MultiDict_GetType(MultiDict_CAPI *api)
 {
     return api->MultiDict_GetType(api->state);
 }
-
+/// @brief Checks if Multidict Object Type Matches Exactly 
+/// @param api Python Capsule Pointer to the API
+/// @param op The Object to check
+/// @return 1 if `true`, 0 if `false` 
 static inline int
 MultiDict_CheckExact(MultiDict_CAPI *api, PyObject *op)
 {
@@ -54,6 +63,10 @@ MultiDict_CheckExact(MultiDict_CAPI *api, PyObject *op)
     return ret;
 }
 
+/// @brief Checks if Multidict Object Type Matches or is a subclass of itself
+/// @param api Python Capsule Pointer to the API
+/// @param op The Object to check
+/// @return 1 if `true`, 0 if `false` 
 static inline int
 MultiDict_Check(MultiDict_CAPI *api, PyObject *op)
 {
@@ -63,12 +76,22 @@ MultiDict_Check(MultiDict_CAPI *api, PyObject *op)
     return ret;
 }
 
+/// @brief Creates a New Multidict Type Object with a number entries wanted preallocated
+/// @param api Python Capsule Pointer to the API
+/// @param prealloc_size The Number of entires to preallocate for
+/// @return `MultiDict` object if sucessful, otherwise `NULL`
 static inline PyObject *
 MultiDict_New(MultiDict_CAPI *api, int prealloc_size)
 {
     return api->MultiDict_New(api->state, prealloc_size);
 }
 
+/// @brief Adds a new entry to the `multidict` object
+/// @param api Python Capsule Pointer to the API
+/// @param self the Multidict object
+/// @param key The key of the entry to add
+/// @param value The value of the entry to add
+/// @return 0 on sucess, -1 on failure
 static inline int
 MultiDict_Add(MultiDict_CAPI *api, PyObject *self, PyObject *key,
               PyObject *value)

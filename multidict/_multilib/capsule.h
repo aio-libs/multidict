@@ -18,6 +18,9 @@ _invalid_type()
     PyErr_SetString(PyExc_TypeError, "self should be a MultiDict instance");
 }
 
+/// @brief Gets the multidict type object
+/// @param state_ the module state to obtain the type from
+/// @return MultiDictType as a pointer object otherwise NULLL
 static PyTypeObject *
 MultiDict_GetType(void *state_)
 {
@@ -25,6 +28,10 @@ MultiDict_GetType(void *state_)
     return (PyTypeObject *)Py_NewRef(state->MultiDictType);
 }
 
+/// @brief Creates a new multidict with a preallocated number of entires to work with
+/// @param state_ the state to obtain the MultiDictType from
+/// @param prealloc_size the number of entries to preallocate room for
+/// @return A Multidict object otherwise NULL
 static PyObject *
 MultiDict_New(void *state_, int prealloc_size)
 {
@@ -42,6 +49,12 @@ MultiDict_New(void *state_, int prealloc_size)
     return (PyObject *)md;
 }
 
+/// @brief Adds a key and value to the mulitidict
+/// @param state_ the module state to use
+/// @param self the multidict object
+/// @param key the key
+/// @param value the value to set
+/// @return 0 if success otherwise -1 , will raise TypeError if MultiDict's Type is incorrect
 static int
 MultiDict_Add(void *state_, PyObject *self, PyObject *key, PyObject *value)
 {
@@ -53,11 +66,15 @@ MultiDict_Add(void *state_, PyObject *self, PyObject *key, PyObject *value)
     return md_add((MultiDictObject *)self, key, value);
 }
 
+/// @brief Frees the Multidict CAPI Capsule Object from 
+/// the Heap Normally you won't be needing to call this
+/// @param capi The Capsule Object To Free
 static void
 multidict_capsule_free(MultiDict_CAPI *capi)
 {
     PyMem_Free(capi);
 }
+
 
 static void
 multidict_capsule_destructor(PyObject *o)
