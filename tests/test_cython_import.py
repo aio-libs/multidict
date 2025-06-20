@@ -9,7 +9,6 @@ import os
 from multidict import MutableMultiMapping, istr
 
 
-
 skip_if_no_extensions = pytest.mark.skipif(
     bool(os.environ.get("MULTIDICT_NO_EXTENSIONS")), reason="cython tests disabled"
 )
@@ -183,7 +182,7 @@ def test_istr_create(cython_module: ModuleType) -> None:
 
 
 class istrsubcls(istr):
-    pass 
+    pass
 
 
 @skip_if_no_extensions
