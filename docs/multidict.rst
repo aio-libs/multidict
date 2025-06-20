@@ -427,6 +427,253 @@ The type of multidict keys is always :class:`str` or a class derived from a stri
 .. versionadded:: 3.7
 
 
+Cython API Reference
+====================
+
+This library is also shipped with a Cython API
+
+.. function:: int MultiDict_GetAll(MultiDict self, object key, PyObject **ret) except -1
+   
+   functions the same way as the :class:`MultiDict` *getall* function but it is binded to the C function directly under the 
+   hood. Returns -1 if the key does not exist, and the return value will be *NULL*. Know that this doesn't raise a *KeyError*
+   And it is excepted the that the end programmer would take care of that.
+
+   e.g::
+
+      from cpython.object cimport PyObject
+
+      def get_all_of(MultiDict md):
+         cdef PyObject* ret
+         # This will raise KeyError if we didn't handle the exception in a different way.
+         if MultiDict_GetAll(md, "key", &ret) < 0:
+            raise KeyError("key")
+   
+
+.. function:: int MultiDict_GetOne(MultiDict self, object key, PyObject **ret) except -1
+
+   functions the same way as :class:`MultiDict` *getone* function but is binded directly to C.
+   Returns -1 if Key was not found. This function does not raise *KeyError* and it's excepted 
+   for the end developer to take care of raising that exception.
+
+.. function:: object MultiDict_Keys(MultiDict self)
+
+   function works the same as :class:`MultiDict` *keys* function. 
+
+   e.g::
+
+      cdef iterate_md(MultiDict md):
+         cdef object key
+         for key in MultiDict_Keys(md):
+            ...
+
+
+.. function:: object MultiDict_Items(MultiDict self)
+
+   function works the same as :class:`MultiDict` *items* function.
+
+   e.g::
+
+      cdef items_md(MultiDict md):
+         cdef object key, value
+         for key, value in MultiDict_Items(md):
+            ...
+   
+
+   .. function:: object MultiDict_Values(MultiDict self)
+
+   function works the same as :class:`MultiDict` *values* function. 
+
+   e.g::
+
+      cdef iterate_md(MultiDict md):
+         cdef object value
+         for value in MultiDict_Values(md):
+            ...
+
+   .. function:: int MultiDict_Add(MultiDict self, object key, object value) except -1
+   
+   function adds a key and value to a :class:`MultiDict` returns -1 on failure
+
+   e.g::
+   
+      if MultiDict_Add(md, "foo", "spam") < 0:
+         raise RuntimeError("Failed to add (foo, spam)")
+
+
+   .. function:: PyObject* MultiDict_Extend(MultiDict self, tuple args, dict kwargs) except NULL
+   
+   function extends a multidict with both args or kwargs. Ignoring one or the other should work.
+   returns a *NULL* pointer if all else fails.
+
+   e.g::
+      
+      if MultiDict_Extend(md, [("a", 1)], {"k": 1}) == NULL:
+         ...
+   
+
+   .. function:: MultiDict MultiDict_Copy(MultiDict self)
+
+      copies a multidict and returns a new one with the copied items.
+
+   .. function:: PyObject* MultiDict_SetDefault(MultiDict self, object key, object value) except NULL
+
+      works the same as :class:`MultiDict` *setdefault*, returns `NULL` if something fails.
+   
+   .. function:: int MultiDict_PopOne(MultiDict self, object key, PyObject** ret) except -1
+
+      works the same as :class:`MultiDict` *popone*, returns -1 if something fails.
+
+   .. function:: int MultiDict_PopAll(MultiDict self, object key, PyObject** ret) except -1
+      
+      works the same as :class:`MultiDict` *popall*, returns -1 if something fails.
+
+   .. function:: object MultiDict_PopItem(MultiDict self)
+   
+      works the same as :class:`MultiDict` *popitem*, raises :exc:`KeyError` if dictionary is empty
+   
+   .. function:: PyObject* MultiDict_Update(MultiDict self, tuple args, dict kwds) except NULL
+
+      works the same as :class:`MultiDict` *update*, returns NULL if the function fails to update something
+
+      e.g::
+         
+         MultiDict_Update(md, (), {"key":"value"})
+
+
+.. function:: int CIMultiDict_GetAll(CIMultiDict self, object key, PyObject **ret) except -1
+   
+   functions the same way as the :class:`CIMultiDict` *getall* function but it is binded to the C function directly under the 
+   hood. Returns -1 if the key does not exist, and the return value will be *NULL*. Know that this doesn't raise a *KeyError*
+   And it is excepted the that the end programmer would take care of that.
+
+   e.g::
+
+      from cpython.object cimport PyObject
+
+      def get_all_of(CIMultiDict md):
+         cdef PyObject* ret
+         # This will raise KeyError if we didn't handle the exception in a different way.
+         if CIMultiDict_GetAll(md, "key", &ret) < 0:
+            raise KeyError("key")
+   
+
+.. function:: int CIMultiDict_GetOne(CIMultiDict self, object key, PyObject **ret) except -1
+
+   functions the same way as :class:`CIMultiDict` *getone* function but is binded directly to C.
+   Returns -1 if Key was not found. This function does not raise *KeyError* and it's excepted 
+   for the end developer to take care of raising that exception.
+
+.. function:: object CIMultiDict_Keys(CIMultiDict self)
+
+   function works the same as :class:`CIMultiDict` *keys* function. 
+
+   e.g::
+
+      cdef iterate_md(CIMultiDict md):
+         cdef object key
+         for key in CIMultiDict_Keys(md):
+            ...
+
+
+.. function:: object CIMultiDict_Items(CIMultiDict self)
+
+   function works the same as :class:`CIMultiDict` *items* function.
+
+   e.g::
+
+      cdef items_md(CIMultiDict md):
+         cdef object key, value
+         for key, value in CIMultiDict_Items(md):
+            ...
+   
+
+   .. function:: object CIMultiDict_Values(CIMultiDict self)
+
+   function works the same as :class:`CIMultiDict` *values* function. 
+
+   e.g::
+
+      cdef iterate_md(CIMultiDict md):
+         cdef object value
+         for value in CIMultiDict_Values(md):
+            ...
+
+   .. function:: int CIMultiDict_Add(CIMultiDict self, object key, object value) except -1
+   
+   function adds a key and value to a :class:`CIMultiDict` returns -1 on failure
+
+   e.g::
+   
+      if CIMultiDict_Add(md, "foo", "spam") < 0:
+         raise RuntimeError("Failed to add (foo, spam)")
+
+
+   .. function:: PyObject* CIMultiDict_Extend(CIMultiDict self, tuple args, dict kwargs) except NULL
+   
+   function extends a CImultidict with both args or kwargs. Ignoring one or the other should work.
+   returns a *NULL* pointer if all else fails.
+
+   e.g::
+      
+      if CIMultiDict_Extend(md, [("a", 1)], {"k": 1}) == NULL:
+         ...
+   
+
+   .. function:: CIMultiDict CIMultiDict_Copy(CIMultiDict self)
+
+      copies a CImultidict and returns a new one with the copied items.
+
+   .. function:: PyObject* CIMultiDict_SetDefault(CIMultiDict self, object key, object value) except NULL
+
+      works the same as :class:`CIMultiDict` *setdefault*, returns `NULL` if something fails.
+   
+   .. function:: int CIMultiDict_PopOne(CIMultiDict self, object key, PyObject** ret) except -1
+
+      works the same as :class:`CIMultiDict` *popone*, returns -1 if something fails.
+
+   .. function:: int CIMultiDict_PopAll(CIMultiDict self, object key, PyObject** ret) except -1
+      
+      works the same as :class:`CIMultiDict` *popall*, returns -1 if something fails.
+
+   .. function:: object CIMultiDict_PopItem(CIMultiDict self)
+   
+      works the same as :class:`CIMultiDict` *popitem*, raises :exc:`KeyError` if dictionary is empty
+   
+   .. function:: PyObject* CIMultiDict_Update(CIMultiDict self, tuple args, dict kwds) except NULL
+      
+      works the same as :class:`CIMultiDict` *update*, returns NULL if the function fails to update something
+
+      e.g::
+         
+         CIMultiDict_Update(md, (), {"key":"value"})
+
+   .. function:: int MultiDictProxy_GetAll(MultiDictProxy self, object key, PyObject **ret)
+      
+      todo...
+
+   .. function:: int MultiDictProxy_GetOne(MultiDictProxy self, object key, PyObject **ret)
+      
+      todo...
+      
+   .. function:: object MultiDictProxy_Keys(MultiDictProxy self)
+      
+      todo...
+
+   .. function:: object MultiDictProxy_Values(MultiDictProxy self)
+      
+      todo...
+
+   .. funciton:: object MultiDictProxy_Items(MultiDictProxy self)
+      
+      todo...
+
+   .. funciton:: MultiDictProxy MultiDictProxy_Copy(MultiDictProxy self)
+      
+      todo...
+   
+
+
+
 Environment variables
 =====================
 

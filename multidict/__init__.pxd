@@ -1,17 +1,11 @@
 # cython: language_level = 3, freethreading_compatible = True
 
-from cpython.exc cimport PyErr_SetObject
-from cpython.object cimport Py_TYPE, PyObject
+from cpython.object cimport PyObject
 
 
 cdef extern from "Python.h":
-    """
-/* Needed in order to ignore kwargs for a faster istr.__new__ */
-#define PyType_GenericNew_NoKwargs(type, args) PyType_GenericNew(type, args, NULL)
-    """
     void Py_INCREF(PyObject* o)
     int Py_IS_TYPE(object, type)
-    object PyType_GenericNew_NoKwargs(type, tuple args)
 
  
 cdef extern from "_multilib/dict.h":
@@ -62,20 +56,20 @@ cdef extern from "_multilib/capsule.h":
 
     # ==================== MultiDict Functions ====================
 
-    int MultiDict_GetAll(MultiDict self, object key, PyObject **ret)
-    int MultiDict_GetOne(MultiDict self, object key, PyObject **ret)
+    int MultiDict_GetAll(MultiDict self, object key, PyObject **ret) except -1
+    int MultiDict_GetOne(MultiDict self, object key, PyObject **ret) except -1
     object MultiDict_Keys(MultiDict self)
     object MultiDict_Items(MultiDict self)
     object MultiDict_Values(MultiDict self)
     int MultiDict_Add(MultiDict self, object key, object value)
-
+    
     PyObject* MultiDict_Clear(MultiDict self) except NULL
     PyObject* MultiDict_Extend(MultiDict self, tuple args, dict kwargs) except NULL
     MultiDict MultiDict_Copy(MultiDict self)
     PyObject* MultiDict_SetDefault(MultiDict self, object key, object value) except NULL
 
-    int MultiDict_PopOne(MultiDict self, object key, PyObject** ret)
-    int MultiDict_PopAll(MultiDict self, object key, PyObject** ret)
+    int MultiDict_PopOne(MultiDict self, object key, PyObject** ret) except -1
+    int MultiDict_PopAll(MultiDict self, object key, PyObject** ret) except -1
     object MultiDict_PopItem(MultiDict self)
     PyObject* MultiDict_Update(MultiDict self, tuple args, dict kwds) except NULL
 
@@ -100,20 +94,20 @@ cdef extern from "_multilib/capsule.h":
 
     # ==================== MultiDictProxy Functions ====================
 
-    int MultiDictProxy_GetAll(MultiDictProxy self, object key, PyObject **ret)
-    int MultiDictProxy_GetOne(MultiDictProxy self, object key, PyObject **ret)
+    int MultiDictProxy_GetAll(MultiDictProxy self, object key, PyObject **ret)  except -1
+    int MultiDictProxy_GetOne(MultiDictProxy self, object key, PyObject **ret) except -1
     object MultiDictProxy_Keys(MultiDictProxy self)
     object MultiDictProxy_Values(MultiDictProxy self)
-    int MultiDictProxy_Items(MultiDictProxy self)
-    CIMultiDictProxy MultiDictProxy_Copy(MultiDictProxy self)
+    object MultiDictProxy_Items(MultiDictProxy self)
+    MultiDictProxy MultiDictProxy_Copy(MultiDictProxy self)
 
     # ==================== CIMultiDictProxy Functions ====================
     
-    int CIMultiDictProxy_GetAll "MultiDictProxy_GetAll" (MultiDictProxy self, object key, PyObject **ret)
-    int CIMultiDictProxy_GetOne "MultiDictProxy_GetOne"(MultiDictProxy self, object key, PyObject **ret)
-    int CIMultiDictProxy_Keys "MultiDictProxy_Keys" (MultiDictProxy self)
-    int CIMultiDictProxy_Values "MultiDictProxy_Values" (MultiDictProxy self)
-    int CIMutliDictProxy_Items "MultiDictProxy_Items" (MultiDictProxy self)
+    int CIMultiDictProxy_GetAll "MultiDictProxy_GetAll" (MultiDictProxy self, object key, PyObject **ret) except -1
+    int CIMultiDictProxy_GetOne "MultiDictProxy_GetOne"(MultiDictProxy self, object key, PyObject **ret) except -1
+    object CIMultiDictProxy_Keys "MultiDictProxy_Keys" (MultiDictProxy self)
+    object CIMultiDictProxy_Values "MultiDictProxy_Values" (MultiDictProxy self)
+    object CIMutliDictProxy_Items "MultiDictProxy_Items" (MultiDictProxy self)
     CIMultiDictProxy CIMultiDictProxy_Copy "MultiDictProxy_Copy"(CIMultiDictProxy self)
 
     # NOTE: Make sure you import this before using anything 

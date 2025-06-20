@@ -101,6 +101,7 @@ Contents
    multidict
    benchmark
    changes
+   in-cython
 
 Indices and tables
 ==================
