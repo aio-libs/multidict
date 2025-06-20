@@ -1,2 +1,4 @@
 -e .
 -r pytest.txt
+# python capsule testing
+cython==3.1.2
