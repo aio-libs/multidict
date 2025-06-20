@@ -112,6 +112,191 @@ static int MutliDict_Del(void* state_, PyObject* self, PyObject* key){
     return md_del(self, key);
 }
 
+/// @brief Return a version of given mdict object
+/// @param state_ the module state to use
+/// @param self the mdict object
+/// @return the version flag of the object, otherwise 0 on failure
+static uint64_t MultiDict_Version(void* state_, PyObject* self){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        // Can't use -1 because version is unsigned, resort to zero...
+        return 0;
+    }
+    return md_version((MultiDictObject*)self);
+}
+
+
+// MultiDict_CreatePosMarker & MultiDict_Next Took inspiration from PyDict_Next 
+// it's implementations are held subject to being changed.
+
+/// @brief Creates a new positional marker for a multidict to iterate 
+/// with when being utlizied with `MultiDict_Next`
+/// @param state_ the module state
+/// @param self the multidict to create a positional marker for
+/// @param pos the positional marker to be created
+/// @return 0 on sucess, -1 on failure along with `TypeError` exception being thrown
+static int MultiDict_CreatePosMarker(void* state_, PyObject* self, md_pos_t* pos){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    md_init_pos((MultiDictObject*)self, pos);
+    return 0;
+}
+
+
+
+static int MultiDict_Next(void* state_, PyObject* self, 
+    md_pos_t* pos, PyObject** identity, PyObject**key, PyObject **value){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    else if (pos == NULL){
+        PyErr_SetString(PyExc_ValueError, 
+            "positional marker cannot be left NULL"
+        );
+        return -1;
+    }
+    return md_next((MultiDictObject*)self, &pos, identity, key, value);
+}
+
+/// @brief Determines if a certain key exists a multidict object
+/// @param state_ the module state
+/// @param self the multidict object
+/// @param key the key to look for
+/// @return 1 if true, 0 if false, -1 if failure had occured
+static int MultiDict_Contains(void* state_, PyObject* self, PyObject* key){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    return md_contains((MultiDictObject*)self, key, NULL);
+};
+
+
+
+static PyObject* MultiDict_GetOne(void* state_, PyObject* self, PyObject* key){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return NULL;
+    }
+    PyObject* ret;
+    if (md_get_one((MultiDictObject*)self, key, &ret) < 0){
+        PyErr_SetObject(PyExc_KeyError, key);
+    };
+    return ret;
+}
+
+static PyObject* MultiDict_GetAll(void* state_, PyObject* self, PyObject* key){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return NULL;
+    }
+    PyObject* ret;
+    if (md_get_all((MultiDictObject*)self, key, &ret) < 0){
+        PyErr_SetObject(PyExc_KeyError, key);
+    };
+    return ret;
+}
+
+static PyObject* MultiDict_PopOne(void* state_, PyObject* self, PyObject* key){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return NULL;
+    }
+    PyObject* ret;
+    if (md_pop_one((MultiDictObject*)self, key, &ret) < 0){
+        PyErr_SetObject(PyExc_KeyError, key);
+    };
+    return ret;
+}
+
+static PyObject* MultiDict_PopAll(void* state_, PyObject* self, PyObject* key){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return NULL;
+    }
+    PyObject* ret;
+    if (md_pop_all((MultiDictObject*)self, key, &ret) < 0){
+        PyErr_SetObject(PyExc_KeyError, key);
+    };
+    return ret;
+}
+
+static PyObject* MultiDict_PopItem(void* state_, PyObject* self, PyObject* key){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return NULL;
+    }
+    return md_pop_item((MultiDictObject*)self);
+}
+
+static int MultiDict_Replace(void* state_, PyObject* self, PyObject* key, PyObject* value){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return NULL;
+    }
+    return md_replace((MultiDictObject*)self, key, value);
+}
+
+
+static int MultiDict_UpdateFromMultiDict(void* state_, PyObject* self, PyObject* other, bool update){
+    mod_state* state = (mod_state*)state_;
+    // TODO: diagnose which type was wrong...
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    if (MultiDict_Check(state, other) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    return md_update_from_ht((MultiDictObject*)self, (MultiDictObject*)other, update);
+}
+
+static int MultiDict_UpdateFromDict(void* state_, PyObject* self, PyObject* kwds, bool update){
+    mod_state* state = (mod_state*)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    return md_update_from_dict((MultiDictObject*)self, kwds, update);
+}
+
+static int MultiDict_UpdateFromSequence(void* state_, PyObject* self, PyObject* seq, bool update){
+    mod_state* state = (mod_state*)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    return md_update_from_seq((MultiDictObject*)self, seq, update);
+}
+
+static int MultiDict_Equals(void* state_, PyObject* self, PyObject* other){
+    mod_state* state = (mod_state*)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    if (PyMapping_Check(other)){
+        return md_eq_to_mapping((MultiDictObject*)self, other);
+    }
+    else if (MultiDict_Check(state, other)){
+        return md_eq((MultiDictObject*)self, (MultiDictObject*)other);
+    }
+    return 0;
+}
 
 /// @brief Frees the Multidict CAPI Capsule Object from 
 /// the Heap Normally you won't be needing to call this
