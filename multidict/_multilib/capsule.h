@@ -12,6 +12,7 @@ extern "C" {
 #include "hashtable.h"
 #include "state.h"
 
+
 inline static void
 _invalid_type()
 {
@@ -66,6 +67,52 @@ MultiDict_Add(void *state_, PyObject *self, PyObject *key, PyObject *value)
     return md_add((MultiDictObject *)self, key, value);
 }
 
+/// @brief Clears a multidict object and removes all it's entries
+/// @param state_ the module state to use
+/// @param self the multidict object
+/// @return 0 if success otherwise -1 , will raise TypeError if MultiDict's Type is incorrect
+static int MultiDict_Clear(void* state_, PyObject* self){
+    // TODO: Macro for repeated steps being done?
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    return md_clear((MultiDictObject*)self);
+}
+
+/// @brief If key is in the dictionary  its the first value. 
+/// If not, insert key with a value of default and return default.
+/// @param state_ the module state to use
+/// @param self the MultiDict object
+/// @param key the key to insert
+/// @param _default the default value to have inserted
+/// @return default on sucess, NULL on failure
+PyObject* Multidict_SetDefault(void* state_, PyObject* self, PyObject* key, PyObject* _default){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return NULL;
+    }
+    return md_set_default(self, key, _default);
+}
+
+/// @brief Remove all items where key is equal to key from d. 
+/// @param state_ the module state to use
+/// @param self the MultiDict
+/// @param key the key to be removed
+/// @return 0 on success, -1 on failure followed by rasing either 
+/// `TypeError` or `KeyError` if key is not in the map.
+static int MutliDict_Del(void* state_, PyObject* self, PyObject* key){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    return md_del(self, key);
+}
+
+
 /// @brief Frees the Multidict CAPI Capsule Object from 
 /// the Heap Normally you won't be needing to call this
 /// @param capi The Capsule Object To Free
@@ -96,6 +143,7 @@ multidict_new_capsule(mod_state *state)
     capi->MultiDict_GetType = MultiDict_GetType;
     capi->MultiDict_New = MultiDict_New;
     capi->MultiDict_Add = MultiDict_Add;
+    capi->MultiDict_Clear = MultiDict_Clear;
 
     PyObject *ret =
         PyCapsule_New(capi, MultiDict_CAPSULE_NAME, multidict_capsule_destructor);

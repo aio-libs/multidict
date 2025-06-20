@@ -29,6 +29,13 @@ typedef struct {
     PyObject *(*MultiDict_New)(void *state, int prealloc_size);
     int (*MultiDict_Add)(void *state, PyObject *self, PyObject *key,
                          PyObject *value);
+    int (*MultiDict_Clear)(void* state, PyObject* self);
+
+    PyObject* (*MultiDict_SetDefault)(void* state_, PyObject* self, 
+        PyObject* key, PyObject* _default);
+    
+
+
 } MultiDict_CAPI;
 
 #ifndef MULTIDICT_IMPL
@@ -98,6 +105,45 @@ MultiDict_Add(MultiDict_CAPI *api, PyObject *self, PyObject *key,
 {
     return api->MultiDict_Add(api->state, self, key, value);
 }
+
+/// @brief Clears a multidict object and removes all it's entries
+/// @param api Python Capsule Pointer to the API
+/// @param self the multidict object
+/// @return 0 if success otherwise -1 , will raise TypeError if MultiDict's Type is incorrect
+static int MultiDict_Clear(MultiDict_CAPI* api, PyObject* self){
+    return api->MultiDict_Clear(api->state, self);
+}
+
+
+/// @brief If key is in the dictionary  its the first value. 
+/// If not, insert key with a value of default and return default.
+/// @param state_ the module state to use
+/// @param self the MultiDict object
+/// @param key the key to insert
+/// @param _default the default value to have inserted
+/// @return default on sucess, NULL on failure
+PyObject* Multidict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* _default){
+    return api->MultiDict
+}
+
+
+/// @brief If key is in the dictionary  its the first value. 
+/// If not, insert key with a value of default and return default.
+/// @param api Python Capsule Pointer to the API
+/// @param self the MultiDict object
+/// @param key the key to insert
+/// @param _default the default value to have inserted
+/// @return default on sucess, NULL on failure
+PyObject* Multidict_SetDefault(MultiDict_CAPI *api, PyObject* self, PyObject* key, PyObject* _default){
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return NULL;
+    }
+    return md_set_default(self, key, _default);
+}
+
+
 
 #endif
 
