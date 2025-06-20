@@ -5,7 +5,8 @@ from cpython.object cimport PyObject
 
 cdef extern from "Python.h":
     void Py_INCREF(PyObject* o)
-    int Py_IS_TYPE(object, type)
+    bint Py_IS_TYPE(object, type)
+    bint PyObject_TypeCheck(object, type)
 
  
 cdef extern from "_multilib/dict.h":
@@ -36,8 +37,6 @@ cdef extern from "_multilib/istr.h":
 /* To ensure IStr_CheckExact works as if it were a CPython function 
  * A Simple Hack was required to bypass this issue */
 
-#define __IStr_CheckExact(obj) IStr_CheckExact(istr->state, obj);
-#define __IStr_Check(obj) IStr_Check(istr->state, obj)
 
     """
 
@@ -48,8 +47,7 @@ cdef extern from "_multilib/istr.h":
         cdef object canonical
         pass
     
-    bint IStr_CheckExact "__IStr_CheckExact" (object obj)
-    bint IStr_Check "__IStr_Check" (object obj)
+   
     
 
 cdef extern from "_multilib/capsule.h":
@@ -122,4 +120,11 @@ cdef inline object MultiDict_Get(MultiDict self, object key, object default = No
     Py_INCREF(ret)
     return <object>ret
 
+# There is not currently good api to use for istr, 
+# so we just have to recreate what was in istr.h
+cdef inline bint IStr_CheckExact (object obj):
+    return Py_IS_TYPE(obj, istr)
+
+cdef inline bint IStr_Check (object obj):
+    return IStr_CheckExact(obj) or PyObject_TypeCheck(obj, istr)
 
