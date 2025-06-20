@@ -181,7 +181,7 @@ def pytest_addoption(
 def compile_cython_pycapsule_test() -> None:
     """Allows pytest to compile cython before test starts"""
     cmd = []
-    if os.path.exists(".venv"):
+    if sys.prefix != sys.base_prefix:
         if sys.platform == "win32":
             cmd += [".venv\\Scripts\\activate.bat", "&&"]
         else:

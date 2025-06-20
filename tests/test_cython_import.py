@@ -7,7 +7,7 @@ from typing import Callable, Type
 import pytest
 import os
 from multidict import MutableMultiMapping, istr
-
+import pyximport
 
 skip_if_no_extensions = pytest.mark.skipif(
     bool(os.environ.get("MULTIDICT_NO_EXTENSIONS")), reason="cython tests disabled"
