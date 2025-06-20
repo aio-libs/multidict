@@ -1493,7 +1493,7 @@ module_exec(PyObject *mod)
         goto fail;
     }
 
-    PyObject *capsule = new_capsule(state);
+    PyObject *capsule = multidict_new_capsule(state);
     if (capsule == NULL) {
         goto fail;
     }

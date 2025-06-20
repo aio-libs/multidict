@@ -54,20 +54,20 @@ MultiDict_Add(void *state_, PyObject *self, PyObject *key, PyObject *value)
 }
 
 static void
-capsule_free(MultiDict_CAPI *capi)
+multidict_capsule_free(MultiDict_CAPI *capi)
 {
     PyMem_Free(capi);
 }
 
 static void
-capsule_destructor(PyObject *o)
+multidict_capsule_destructor(PyObject *o)
 {
     MultiDict_CAPI *capi = PyCapsule_GetPointer(o, MultiDict_CAPSULE_NAME);
     capsule_free(capi);
 }
 
 static PyObject *
-new_capsule(mod_state *state)
+multidict_new_capsule(mod_state *state)
 {
     MultiDict_CAPI *capi =
         (MultiDict_CAPI *)PyMem_Malloc(sizeof(MultiDict_CAPI));
@@ -81,7 +81,7 @@ new_capsule(mod_state *state)
     capi->MultiDict_Add = MultiDict_Add;
 
     PyObject *ret =
-        PyCapsule_New(capi, MultiDict_CAPSULE_NAME, capsule_destructor);
+        PyCapsule_New(capi, MultiDict_CAPSULE_NAME, multidict_capsule_destructor);
     if (ret == NULL) {
         capsule_free(capi);
     }
