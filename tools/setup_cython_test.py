@@ -1,6 +1,6 @@
 from Cython.Build import cythonize
 from setuptools import Extension, setup
-import multidict 
+import multidict
 
 # to compile run
 # python tools/setup_cython_test.py build_ext --inplace

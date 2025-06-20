@@ -18,7 +18,6 @@ from multidict import (
     MultiDictProxy,
     MultiMapping,
     MutableMultiMapping,
-    get_include
 )
 
 C_EXT_MARK = pytest.mark.c_extension
@@ -188,9 +187,10 @@ def compile_cython_pycapsule_test() -> None:
         else:
             cmd += ["bash", ".venv/Scripts/activate.sh", ";"]
     cmd += ["python", "tools/setup_cython_test.py", "build_ext", "--inplace"]
-    subprocess.run(cmd, env=os.environ, check=True, shell=True, capture_output=True)
+    subprocess.run(
+        cmd, env=os.environ, check=True, shell=True, capture_output=True
+    )
 
-    
 
 def pytest_collection_modifyitems(
     session: pytest.Session,
