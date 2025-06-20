@@ -83,7 +83,7 @@ multidict_new_capsule(mod_state *state)
     PyObject *ret =
         PyCapsule_New(capi, MultiDict_CAPSULE_NAME, multidict_capsule_destructor);
     if (ret == NULL) {
-        capsule_free(capi);
+        multidict_capsule_free(capi);
     }
     return ret;
 }
