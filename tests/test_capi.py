@@ -53,12 +53,12 @@ def test_del() -> None:
         testcapi.md_del(d, "key")
 
 
-def test_md_version():
-    d = multidict.MultiDict()
+def test_md_version() -> None:
+    d = multidict.MultiDict() # type: ignore[var-annotated]
     assert testcapi.md_version(d) != 0
 
 
-def test_md_contains():
+def test_md_contains() -> None:
     d = multidict.MultiDict([("key", "one")])
     assert testcapi.md_contains(d, "key")
     testcapi.md_del(d, "key")
@@ -69,13 +69,13 @@ def test_md_contains():
 @pytest.mark.skip(
     "SystemError: <built-in function md_get> returned NULL without setting an exception"
 )
-def test_md_get():
+def test_md_get() -> None:
     d = multidict.MultiDict([("key", "one"), ("foo", "bar")])
     assert testcapi.md_get(d, "key") == "one"
     assert testcapi.md_get(d, "i dont exist") is None
 
 
-def test_md_get_all():
+def test_md_get_all() -> None:
     d = multidict.MultiDict([("key", "value1")], key="value2")
     assert len(d) == 2
 
@@ -85,8 +85,8 @@ def test_md_get_all():
         testcapi.md_get_all(d, "some_key")
 
 
-def test_md_pop():
-    d = multidict.MultiDict()
+def test_md_pop() -> None:
+    d : MultiDictStr = multidict.MultiDict()
     d.add("key", "val1")
     d.add("key", "val2")
 
