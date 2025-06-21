@@ -25,11 +25,13 @@ def test_md_add() -> None:
     assert len(md) == 1
     assert list(md.items()) == [("key", "value")]
 
+
 def test_md_clear() -> None:
     previous = multidict.MultiDict([("key", "value")])
     md: MultiDictStr = previous.copy()
     testcapi.md_clear(md)
     assert md != previous
+
 
 def test_set_default() -> None:
     md: MultiDictStr = multidict.MultiDict([("key", "one"), ("key", "two")], foo="bar")
@@ -37,6 +39,7 @@ def test_set_default() -> None:
     assert "three" == testcapi.md_set_default(md, "otherkey", "three")
     assert "otherkey" in md
     assert "three" == md["otherkey"]
+
 
 def test_del() -> None:
     d = multidict.MultiDict([("key", "one"), ("key", "two")], foo="bar")
