@@ -8,6 +8,7 @@ pytestmark = pytest.mark.capi
 
 MultiDictStr = multidict.MultiDict[str]
 
+
 # TODO: Diagnose and Fix Segfault
 @pytest.mark.skip("md_new() triggers a segfault afterwards no clue as to why...")
 def test_md_new() -> None:
