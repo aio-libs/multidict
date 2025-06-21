@@ -118,7 +118,11 @@ MultiDict_Del(void* state_, PyObject* self, PyObject* key)
         _invalid_type();
         return -1;
     }
-    return md_del(self, key);
+    if (md_del(self, key) < 0){
+        PyErr_SetObject(PyExc_KeyError, key);
+        return -1;
+    }
+    return 0;
 }
 
 /// @brief Return a version of given mdict object
