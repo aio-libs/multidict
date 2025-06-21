@@ -230,7 +230,7 @@ md_update_from_dict(
 ){
     if (nargs != 3){
         PyErr_SetString(PyExc_TypeError,
-                        "md_update_from_md should be called with md, other, and update");
+                        "md_update_from_dict should be called with md, other, and update");
         return NULL;
     }
     mod_state* state = get_mod_state(self);
@@ -249,7 +249,7 @@ md_update_from_seq(
 ){
     if (nargs != 3){
         PyErr_SetString(PyExc_TypeError,
-                        "md_update_from_md should be called with md, other, and update");
+                        "md_update_from_seq should be called with md, other, and update");
         return NULL;
     }
     mod_state* state = get_mod_state(self);
@@ -269,10 +269,15 @@ md_equals(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    if (MultiDict_Equals(state->capi, args[0], args[1])){
-        return NULL;
-    };
-    Py_RETURN_NONE;
+
+    switch (MultiDict_Equals(state->capi, args[0], args[1])) {
+        case -1:
+            return NULL;
+        case 0:
+            Py_RETURN_FALSE;
+        default:
+            Py_RETURN_TRUE;
+    }
 }
 
 
@@ -313,7 +318,7 @@ static PyMethodDef module_methods[] = {
     {"md_popall", (PyCFunction)md_popall, METH_FASTCALL},
     {"md_popitem", (PyCFunction)md_popitem, METH_O},
     {"md_replace", (PyCFunction)md_replace, METH_FASTCALL},
-    {"md_update_from_md", (PyCFunction)md_replace, METH_FASTCALL},
+    {"md_update_from_md", (PyCFunction)md_update_from_md, METH_FASTCALL},
     {"md_update_from_dict", (PyCFunction)md_update_from_dict, METH_FASTCALL},
     {"md_update_from_seq", (PyCFunction)md_update_from_seq, METH_FASTCALL},
     {"md_equals", (PyCFunction)md_equals, METH_FASTCALL},

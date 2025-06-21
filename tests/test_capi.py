@@ -66,9 +66,7 @@ def test_md_contains() -> None:
 
 
 # I will deal with this one later, Seems beyond my control...
-@pytest.mark.skip(
-    "SystemError: <built-in function md_get> returned NULL without setting an exception"
-)
+
 def test_md_get() -> None:
     d = multidict.MultiDict([("key", "one"), ("foo", "bar")])
     assert testcapi.md_get(d, "key") == "one"
@@ -77,10 +75,10 @@ def test_md_get() -> None:
 
 def test_md_get_all() -> None:
     d = multidict.MultiDict([("key", "value1")], key="value2")
-    assert len(d) == 2
-
     assert testcapi.md_get_all(d, "key") == ["value1", "value2"]
 
+def test_md_get_all_excpection() -> None:
+    d = multidict.MultiDict([("key", "value1")], key="value2")
     with pytest.raises(KeyError, match="some_key"):
         testcapi.md_get_all(d, "some_key")
 
@@ -102,7 +100,7 @@ def test_md_popone() -> None:
     assert "val1" == testcapi.md_popone(d, "key")
     assert [("key2", "val2"), ("key", "val3")] == list(d.items())
 
-def test_md_popone_raise() -> None:
+def test_md_popone_exception() -> None:
     md: MultiDictStr = multidict.MultiDict(other="val")
     with pytest.raises(KeyError, match="key"):
         testcapi.md_popone(md, "key")
@@ -144,18 +142,18 @@ def test_md_update_from_md() -> None:
     d1.add("key", "val1")
     d2: MultiDictStr = multidict.MultiDict()
     d2.add("foo", "bar")
-    testcapi.md_update_from_md(d1, d2)
+    testcapi.md_update_from_md(d1, d2, False)
     assert [("key", "val1"), ("foo", "bar")] == list(d1.items())
 
 def test_md_update_from_dict() -> None:
     d1: MultiDictStr = multidict.MultiDict()
     d1.add("key", "val1")
-    testcapi.md_update_from_dict(d1, {"foo": "bar"})
+    testcapi.md_update_from_dict(d1, {"foo": "bar"}, False)
     assert [("key", "val1"), ("foo", "bar")] == list(d1.items())
 
 def test_md_update_from_seq() -> None:
     d1: MultiDictStr = multidict.MultiDict()
-    testcapi.md_update_from_seq(d1, [("key", "val1"), ("foo", "bar")])
+    testcapi.md_update_from_seq(d1, [("key", "val1"), ("foo", "bar")], False)
     assert [("key", "val1"), ("foo", "bar")] == list(d1.items())
 
 def test_md_equals_1() -> None:

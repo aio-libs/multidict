@@ -101,7 +101,7 @@ MultiDict_SetDefault(void* state_, PyObject* self, PyObject* key,
         _invalid_type();
         return NULL;
     }
-    return md_set_default(self, key, _default);
+    return md_set_default((MultiDictObject*)self, key, _default);
 }
 
 /// @brief Remove all items where key is equal to key from d.
@@ -118,7 +118,7 @@ MultiDict_Del(void* state_, PyObject* self, PyObject* key)
         _invalid_type();
         return -1;
     }
-    if (md_del(self, key) < 0) {
+    if (md_del((MultiDictObject*) self, key) < 0) {
         PyErr_SetObject(PyExc_KeyError, key);
         return -1;
     }
@@ -141,45 +141,6 @@ MultiDict_Version(void* state_, PyObject* self)
     return md_version((MultiDictObject*)self);
 }
 
-// MultiDict_CreatePosMarker & MultiDict_Next Took inspiration from PyDict_Next
-// it's implementations are held subject to being changed.
-
-/// @brief Creates a new positional marker for a multidict to iterate
-/// with when being utlizied with `MultiDict_Next`
-/// @param state_ the module state
-/// @param self the multidict to create a positional marker for
-/// @param pos the positional marker to be created
-/// @return 0 on sucess, -1 on failure along with `TypeError` exception being
-/// thrown
-static int
-MultiDict_CreatePosMarker(void* state_, PyObject* self, md_pos_t* pos)
-{
-    mod_state* state = (mod_state*)state_;
-    if (MultiDict_Check(state, self) <= 0) {
-        _invalid_type();
-        return -1;
-    }
-    md_init_pos((MultiDictObject*)self, pos);
-    return 0;
-}
-
-// I'll fill out this documentation once I figure out if users want this...
-
-static int
-MultiDict_Next(void* state_, PyObject* self, md_pos_t* pos,
-               PyObject** identity, PyObject** key, PyObject** value)
-{
-    mod_state* state = (mod_state*)state_;
-    if (MultiDict_Check(state, self) <= 0) {
-        _invalid_type();
-        return -1;
-    } else if (pos == NULL) {
-        PyErr_SetString(PyExc_ValueError,
-                        "positional marker cannot be left NULL");
-        return -1;
-    }
-    return md_next((MultiDictObject*)self, &pos, identity, key, value);
-}
 
 /// @brief Determines if a certain key exists a multidict object
 /// @param state_ the module state
@@ -214,8 +175,10 @@ MultiDict_GetOne(void* state_, PyObject* self, PyObject* key)
     }
     PyObject* ret = NULL;
     if (md_get_one((MultiDictObject*)self, key, &ret) < 0) {
+        return NULL;
+    } else if (ret == NULL){
         PyErr_SetObject(PyExc_KeyError, key);
-    };
+    }
     return ret;
 }
 
@@ -236,9 +199,9 @@ MultiDict_Get(void* state_, PyObject* self, PyObject* key)
     }
     PyObject* ret = NULL;
     if ((md_get_one((MultiDictObject*)self, key, &ret) < 0)) {
-        Py_RETURN_NONE;
+        return NULL;
     }
-    return ret;
+    return (ret == NULL) ? Py_None : ret;
 }
 
 /// @brief Return a list of all values for *key* if *key* is in the
@@ -258,8 +221,12 @@ MultiDict_GetAll(void* state_, PyObject* self, PyObject* key)
     }
     PyObject* ret = NULL;
     if (md_get_all((MultiDictObject*)self, key, &ret) < 0) {
-        PyErr_SetObject(PyExc_KeyError, key);
+        return NULL;
     };
+    if (ret == NULL){
+        PyErr_SetObject(PyExc_KeyError, key);
+        return NULL;
+    }
     return ret;
 }
 
@@ -299,10 +266,16 @@ MultiDict_PopOne(void* state_, PyObject* self, PyObject* key)
         _invalid_type();
         return NULL;
     }
-    PyObject* ret;
+    PyObject* ret = NULL;
     if (md_pop_one((MultiDictObject*)self, key, &ret) < 0) {
         PyErr_SetObject(PyExc_KeyError, key);
-    };
+        return NULL;
+    }
+
+    if (ret == NULL){
+        PyErr_SetObject(PyExc_KeyError, key);
+        return NULL;
+    }
     return ret;
 }
 
@@ -320,10 +293,14 @@ MultiDict_PopAll(void* state_, PyObject* self, PyObject* key)
         _invalid_type();
         return NULL;
     }
-    PyObject* ret;
+    PyObject* ret = NULL;
     if (md_pop_all((MultiDictObject*)self, key, &ret) < 0) {
-        PyErr_SetObject(PyExc_KeyError, key);
+        return NULL;
     };
+    if (ret == NULL){
+        PyErr_SetObject(PyExc_KeyError, key);
+        return NULL;
+    }
     return ret;
 }
 
