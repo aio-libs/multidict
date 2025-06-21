@@ -5,7 +5,6 @@ multidict. It behaves mostly like a dict but it can have
 several values for the same key.
 """
 
-import pathlib
 from typing import TYPE_CHECKING
 
 from ._abc import MultiMapping, MutableMultiMapping
