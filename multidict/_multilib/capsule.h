@@ -118,7 +118,7 @@ MultiDict_Del(void* state_, PyObject* self, PyObject* key)
         _invalid_type();
         return -1;
     }
-    if (md_del(self, key) < 0){
+    if (md_del(self, key) < 0) {
         PyErr_SetObject(PyExc_KeyError, key);
         return -1;
     }
@@ -235,8 +235,8 @@ MultiDict_Get(void* state_, PyObject* self, PyObject* key)
         return NULL;
     }
     PyObject* ret = NULL;
-    if (md_get_one((MultiDictObject*)self, key, &ret) < 0) {
-        return Py_None;
+    if ((md_get_one((MultiDictObject*)self, key, &ret) < 0)) {
+        Py_RETURN_NONE;
     }
     return ret;
 }
@@ -252,7 +252,7 @@ static PyObject*
 MultiDict_GetAll(void* state_, PyObject* self, PyObject* key)
 {
     mod_state* state = (mod_state*)state_;
-    if (MultiDict_Check(state, self) <= 0) {
+    if (MultiDict_Check(state, self) < 0) {
         _invalid_type();
         return NULL;
     }
@@ -374,11 +374,13 @@ MultiDict_UpdateFromMultiDict(void* state_, PyObject* self, PyObject* other,
 {
     mod_state* state = (mod_state*)state_;
     if (MultiDict_Check(state, self) <= 0) {
-        PyErr_SetString(PyExc_TypeError, "self should be a MultiDict instance");
+        PyErr_SetString(PyExc_TypeError,
+                        "self should be a MultiDict instance");
         return -1;
     }
     if (MultiDict_Check(state, other) <= 0) {
-         PyErr_SetString(PyExc_TypeError, "other should be a MultiDict instance");
+        PyErr_SetString(PyExc_TypeError,
+                        "other should be a MultiDict instance");
         return -1;
     }
     return md_update_from_ht(
@@ -493,8 +495,8 @@ new_capsule(mod_state* state)
     capi->MultiDict_UpdateFromSequence = MultiDict_UpdateFromSequence;
     capi->MultiDict_Equals = MultiDict_Equals;
 
-    PyObject* ret = PyCapsule_New(
-        capi, MultiDict_CAPSULE_NAME, capsule_destructor);
+    PyObject* ret =
+        PyCapsule_New(capi, MultiDict_CAPSULE_NAME, capsule_destructor);
     if (ret == NULL) {
         capsule_free(capi);
     }
