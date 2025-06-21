@@ -8,7 +8,7 @@ extensions = [
     Extension(
         "testcapi._api",
         ["testcapi/_api.c"],
-        include_dirs=[multidict.get_include()],
+        include_dirs=[multidict.__path__],
     ),
 ]
 

@@ -59,15 +59,3 @@ else:
 
 
 upstr = istr
-
-# Inspired by Numpy
-
-
-def get_include() -> str:
-    """
-    Get multidict headers for compiling
-    multidict with other C Extensions or
-    cython code
-    """
-
-    return str(pathlib.Path(__file__).parent)
