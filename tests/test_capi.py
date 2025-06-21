@@ -9,7 +9,6 @@ pytestmark = pytest.mark.capi
 MultiDictStr = multidict.MultiDict[str]
 
 
-
 def test_md_new() -> None:
     md = testcapi.md_new(0)
     assert isinstance(md, multidict.MultiDict)
