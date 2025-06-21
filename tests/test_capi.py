@@ -92,3 +92,75 @@ def test_md_pop() -> None:
 
     assert "val1" == testcapi.md_pop(d, "key")
     assert {"key": "val2"} == d
+
+def test_md_popone() -> None:
+    d: MultiDictStr = multidict.MultiDict()
+    d.add("key", "val1")
+    d.add("key2", "val2")
+    d.add("key", "val3")
+
+    assert "val1" == testcapi.md_popone(d, "key")
+    assert [("key2", "val2"), ("key", "val3")] == list(d.items())
+
+def test_md_popone_raise() -> None:
+    md: MultiDictStr = multidict.MultiDict(other="val")
+    with pytest.raises(KeyError, match="key"):
+        testcapi.md_popone(md, "key")
+
+def test_md_popall() -> None:
+    d: MultiDictStr = multidict.MultiDict()
+
+    d.add("key1", "val1")
+    d.add("key2", "val2")
+    d.add("key1", "val3")
+    ret = testcapi.md_popall(d, "key1")
+    assert ["val1", "val3"] == ret
+    assert {"key2": "val2"} == d
+
+def test_md_popall_key_error() -> None:
+    d: MultiDictStr = multidict.MultiDict()
+    with pytest.raises(KeyError, match="key"):
+        testcapi.md_popall(d, "key")
+
+def test_md_popitem() -> None:
+    d: MultiDictStr = multidict.MultiDict()
+    d.add("key", "val1")
+    d.add("key", "val2")
+
+    assert ("key", "val2") == testcapi.md_popitem(d)
+    assert len(d) == 1
+    assert [("key", "val1")] == list(d.items())
+
+def test_md_replace() -> None:
+    d: MultiDictStr = multidict.MultiDict()
+    d.add("key", "val1")
+    testcapi.md_replace(d, "key", "val2")
+    assert "val2" == d["key"]
+    testcapi.md_replace(d, "key", "val3")
+    assert "val3" == d["key"]
+
+def test_md_update_from_md() -> None:
+    d1: MultiDictStr = multidict.MultiDict()
+    d1.add("key", "val1")
+    d2: MultiDictStr = multidict.MultiDict()
+    d2.add("foo", "bar")
+    testcapi.md_update_from_md(d1, d2)
+    assert [("key", "val1"), ("foo", "bar")] == list(d1.items())
+
+def test_md_update_from_dict() -> None:
+    d1: MultiDictStr = multidict.MultiDict()
+    d1.add("key", "val1")
+    testcapi.md_update_from_dict(d1, {"foo": "bar"})
+    assert [("key", "val1"), ("foo", "bar")] == list(d1.items())
+
+def test_md_update_from_seq() -> None:
+    d1: MultiDictStr = multidict.MultiDict()
+    testcapi.md_update_from_seq(d1, [("key", "val1"), ("foo", "bar")])
+    assert [("key", "val1"), ("foo", "bar")] == list(d1.items())
+
+def test_md_equals_1() -> None:
+    d: MultiDictStr = multidict.MultiDict([("key", "val1")])
+    assert testcapi.md_equals(d, multidict.MultiDict([("key", "val1")]))
+    assert not testcapi.md_equals(d, multidict.MultiDict([("key", "val2")]))
+    assert testcapi.md_equals(d, {"key": "val1"})
+    assert not testcapi.md_equals(d, {"key": "not it"})
