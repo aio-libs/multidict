@@ -54,7 +54,7 @@ def test_del() -> None:
 
 
 def test_md_version() -> None:
-    d = multidict.MultiDict() # type: ignore[var-annotated]
+    d = multidict.MultiDict()  # type: ignore[var-annotated]
     assert testcapi.md_version(d) != 0
 
 
@@ -86,7 +86,7 @@ def test_md_get_all() -> None:
 
 
 def test_md_pop() -> None:
-    d : MultiDictStr = multidict.MultiDict()
+    d: MultiDictStr = multidict.MultiDict()
     d.add("key", "val1")
     d.add("key", "val2")
 
