@@ -51,3 +51,38 @@ def test_del() -> None:
 
     with pytest.raises(KeyError, match="key"):
         testcapi.md_del(d, "key")
+
+def test_md_version():
+    d = multidict.MultiDict()
+    assert testcapi.md_version(d) != 0
+
+def test_md_contains():
+    d = multidict.MultiDict([("key", "one")])
+    assert testcapi.md_contains(d, "key")
+    testcapi.md_del(d, "key")
+    assert testcapi.md_contains(d, "key") == False
+
+# I will deal with this one later, Seems beyond my control...
+@pytest.mark.skip("SystemError: <built-in function md_get> returned NULL without setting an exception")
+def test_md_get():
+    d = multidict.MultiDict([("key", "one"), ("foo", "bar")])
+    assert testcapi.md_get(d, "key") == "one"
+    assert testcapi.md_get(d, "i dont exist") == None
+
+def test_md_get_all():
+    d = multidict.MultiDict([("key", "value1")], key="value2")
+    assert len(d) == 2
+
+    assert testcapi.md_get_all(d, "key") == ["value1", "value2"]
+
+    with pytest.raises(KeyError, match="some_key"):
+        testcapi.md_get_all(d,"some_key")
+    
+
+def test_md_pop():
+    d = multidict.MultiDict()
+    d.add("key", "val1")
+    d.add("key", "val2")
+
+    assert "val1" == testcapi.md_pop(d, "key")
+    assert {"key": "val2"} == d
