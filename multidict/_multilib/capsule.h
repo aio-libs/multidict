@@ -118,7 +118,7 @@ MultiDict_Del(void* state_, PyObject* self, PyObject* key)
         _invalid_type();
         return -1;
     }
-    if (md_del((MultiDictObject*) self, key) < 0) {
+    if (md_del((MultiDictObject*)self, key) < 0) {
         PyErr_SetObject(PyExc_KeyError, key);
         return -1;
     }
@@ -140,7 +140,6 @@ MultiDict_Version(void* state_, PyObject* self)
     }
     return md_version((MultiDictObject*)self);
 }
-
 
 /// @brief Determines if a certain key exists a multidict object
 /// @param state_ the module state
@@ -176,7 +175,7 @@ MultiDict_GetOne(void* state_, PyObject* self, PyObject* key)
     PyObject* ret = NULL;
     if (md_get_one((MultiDictObject*)self, key, &ret) < 0) {
         return NULL;
-    } else if (ret == NULL){
+    } else if (ret == NULL) {
         PyErr_SetObject(PyExc_KeyError, key);
     }
     return ret;
@@ -223,7 +222,7 @@ MultiDict_GetAll(void* state_, PyObject* self, PyObject* key)
     if (md_get_all((MultiDictObject*)self, key, &ret) < 0) {
         return NULL;
     };
-    if (ret == NULL){
+    if (ret == NULL) {
         PyErr_SetObject(PyExc_KeyError, key);
         return NULL;
     }
@@ -272,7 +271,7 @@ MultiDict_PopOne(void* state_, PyObject* self, PyObject* key)
         return NULL;
     }
 
-    if (ret == NULL){
+    if (ret == NULL) {
         PyErr_SetObject(PyExc_KeyError, key);
         return NULL;
     }
@@ -297,7 +296,7 @@ MultiDict_PopAll(void* state_, PyObject* self, PyObject* key)
     if (md_pop_all((MultiDictObject*)self, key, &ret) < 0) {
         return NULL;
     };
-    if (ret == NULL){
+    if (ret == NULL) {
         PyErr_SetObject(PyExc_KeyError, key);
         return NULL;
     }
