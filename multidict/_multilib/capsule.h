@@ -93,7 +93,7 @@ MultiDict_Clear(void* state_, PyObject* self)
 /// @param _default the default value to have inserted
 /// @return default on sucess, NULL on failure
 PyObject*
-Multidict_SetDefault(void* state_, PyObject* self, PyObject* key,
+MultiDict_SetDefault(void* state_, PyObject* self, PyObject* key,
                      PyObject* _default)
 {
     mod_state* state = (mod_state*)state_;
@@ -472,7 +472,7 @@ multidict_new_capsule(mod_state* state)
     capi->MultiDict_New = MultiDict_New;
     capi->MultiDict_Add = MultiDict_Add;
     capi->MultiDict_Clear = MultiDict_Clear;
-    capi->MultiDict_SetDefault = Multidict_SetDefault;
+    capi->MultiDict_SetDefault = MultiDict_SetDefault;
     capi->MultiDict_Del = MultiDict_Del;
     capi->MultiDict_Version = MultiDict_Version;
     capi->MultiDict_Contains = MultiDict_Contains;

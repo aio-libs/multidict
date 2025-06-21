@@ -292,7 +292,7 @@ MultiDict_PopAll(MultiDict_CAPI* api, PyObject* self, PyObject* key)
 /// @return an arbitray tuple on success, otherwise NULL on error along
 /// with `TypeError` or `KeyError` raised
 static PyObject*
-MultiDict_PopItem(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+MultiDict_PopItem(MultiDict_CAPI* api, PyObject* self)
 {
     return api->MultiDict_PopItem(api->state, self);
 }
