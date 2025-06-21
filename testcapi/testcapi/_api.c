@@ -17,7 +17,10 @@ get_mod_state(PyObject *mod)
 
 #define PyBool_As_CBool(obj) \
     PyObject_IsTrue(obj) ? true: false
- 
+
+#define RETURN_NULL_OR_NEWREF(ITEM) \
+    PyObject* REF = ITEM; \
+    return (REF != NULL) ? Py_NewRef(REF) : NULL
 
 
 /* module functions */
@@ -71,7 +74,7 @@ md_set_default(PyObject* self, PyObject *const *args, Py_ssize_t nargs){
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (Multidict_SetDefault(state->capi, args[0], args[1], args[2]));
+    RETURN_NULL_OR_NEWREF(Multidict_SetDefault(state->capi, args[0], args[1], args[2]));
 }
 
 static PyObject*
@@ -84,7 +87,10 @@ md_del(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (MutliDict_Del(state->capi, args[0], args[1], args[2]));
+    if ((MutliDict_Del(state->capi, args[0], args[1], args[2])) < 0){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -105,7 +111,11 @@ md_contains(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (MultiDict_Contains(state->capi, args[0], args[1], args[2]));
+    int ret = MultiDict_Contains(state->capi, args[0], args[1], args[2]);
+    if (ret == -1){
+        return NULL;
+    }
+    return PyBool_FromLong(ret);
 }
 
 static PyObject*
@@ -118,7 +128,7 @@ md_get(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (MultiDict_Contains(state->capi, args[0], args[1], args[2]));
+    RETURN_NULL_OR_NEWREF(MultiDict_Get(state->capi, args[0], args[1], args[2]));
 }
 
 static PyObject*
@@ -131,7 +141,7 @@ md_get_all(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (MultiDict_GetAll(state->capi, args[0], args[1], args[2]));
+    RETURN_NULL_OR_NEWREF(MultiDict_GetAll(state->capi, args[0], args[1], args[2]));
 }
 
 static PyObject*
@@ -144,7 +154,7 @@ md_pop(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (MultiDict_Pop(state->capi, args[0], args[1], args[2]));
+    RETURN_NULL_OR_NEWREF(MultiDict_Pop(state->capi, args[0], args[1], args[2]));
 }
 
 static PyObject*
@@ -157,7 +167,7 @@ md_popone(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (MultiDict_PopOne(state->capi, args[0], args[1]));
+    RETURN_NULL_OR_NEWREF(MultiDict_PopOne(state->capi, args[0], args[1]));
 }
 
 static PyObject*
@@ -170,7 +180,7 @@ md_popall(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (MultiDict_PopAll(state->capi, args[0], args[1]));
+    RETURN_NULL_OR_NEWREF(MultiDict_PopAll(state->capi, args[0], args[1]));
 }
 
 static PyObject*
@@ -183,7 +193,7 @@ md_popitem(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (MultiDict_PopItem(state->capi, args[0], args[1]));
+    RETURN_NULL_OR_NEWREF(MultiDict_PopItem(state->capi, args[0], args[1]));
 }
 
 static PyObject*
@@ -196,7 +206,10 @@ md_replace(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    return (MultiDict_Replace(state->capi, args[0], args[1], args[2]));
+    if (MultiDict_Replace(state->capi, args[0], args[1], args[2]) < 0){
+        return NULL;   
+    }
+    Py_RETURN_NONE;
 }
 
 static PyObject*
