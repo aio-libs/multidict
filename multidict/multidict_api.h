@@ -35,7 +35,7 @@ typedef struct {
     PyObject* (*MultiDict_SetDefault)(void* state, PyObject* self,
                                       PyObject* key, PyObject* _default);
 
-    PyObject* (*MultiDict_Del)(void* state, PyObject* self, PyObject* key);
+    int (*MultiDict_Del)(void* state, PyObject* self, PyObject* key);
     uint64_t (*MultiDict_Version)(void* state, PyObject* self);
 
     // proposed but IDK yet...

@@ -87,7 +87,7 @@ md_del(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    if ((MutliDict_Del(state->capi, args[0], args[1], args[2])) < 0){
+    if ((MutliDict_Del(state->capi, args[0], args[1])) < 0){
         return NULL;
     }
     Py_RETURN_NONE;
@@ -111,7 +111,7 @@ md_contains(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    int ret = MultiDict_Contains(state->capi, args[0], args[1], args[2]);
+    int ret = MultiDict_Contains(state->capi, args[0], args[1]);
     if (ret == -1){
         return NULL;
     }
@@ -128,7 +128,7 @@ md_get(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    RETURN_NULL_OR_NEWREF(MultiDict_Get(state->capi, args[0], args[1], args[2]));
+    RETURN_NULL_OR_NEWREF(MultiDict_Get(state->capi, args[0], args[1]));
 }
 
 static PyObject*
@@ -141,7 +141,7 @@ md_get_all(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    RETURN_NULL_OR_NEWREF(MultiDict_GetAll(state->capi, args[0], args[1], args[2]));
+    RETURN_NULL_OR_NEWREF(MultiDict_GetAll(state->capi, args[0], args[1]));
 }
 
 static PyObject*
@@ -154,7 +154,7 @@ md_pop(
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    RETURN_NULL_OR_NEWREF(MultiDict_Pop(state->capi, args[0], args[1], args[2]));
+    RETURN_NULL_OR_NEWREF(MultiDict_Pop(state->capi, args[0], args[1]));
 }
 
 static PyObject*
@@ -185,15 +185,10 @@ md_popall(
 
 static PyObject*
 md_popitem(
-    PyObject* self, PyObject *const *args, Py_ssize_t nargs
+    PyObject* self, PyObject* arg
 ){
-    if (nargs != 2){
-        PyErr_SetString(PyExc_TypeError,
-                        "md_popone should be called with md and key");
-        return NULL;
-    }
     mod_state* state = get_mod_state(self);
-    RETURN_NULL_OR_NEWREF(MultiDict_PopItem(state->capi, args[0], args[1]));
+    RETURN_NULL_OR_NEWREF(MultiDict_PopItem(state->capi, arg));
 }
 
 static PyObject*
@@ -316,7 +311,7 @@ static PyMethodDef module_methods[] = {
     {"md_pop", (PyCFunction)md_pop, METH_FASTCALL},
     {"md_popone", (PyCFunction)md_popone, METH_FASTCALL},
     {"md_popall", (PyCFunction)md_popall, METH_FASTCALL},
-    {"md_popitem", (PyCFunction)md_popitem, METH_FASTCALL},
+    {"md_popitem", (PyCFunction)md_popitem, METH_O},
     {"md_replace", (PyCFunction)md_replace, METH_FASTCALL},
     {"md_update_from_md", (PyCFunction)md_replace, METH_FASTCALL},
     {"md_update_from_dict", (PyCFunction)md_update_from_dict, METH_FASTCALL},
