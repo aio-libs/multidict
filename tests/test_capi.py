@@ -67,6 +67,7 @@ def test_md_contains() -> None:
 
 # I will deal with this one later, Seems beyond my control...
 
+
 def test_md_get() -> None:
     d = multidict.MultiDict([("key", "one"), ("foo", "bar")])
     assert testcapi.md_get(d, "key") == "one"
@@ -76,6 +77,7 @@ def test_md_get() -> None:
 def test_md_get_all() -> None:
     d = multidict.MultiDict([("key", "value1")], key="value2")
     assert testcapi.md_get_all(d, "key") == ["value1", "value2"]
+
 
 def test_md_get_all_excpection() -> None:
     d = multidict.MultiDict([("key", "value1")], key="value2")
@@ -100,6 +102,7 @@ def test_md_popone() -> None:
 
     assert "val1" == testcapi.md_popone(d, "key")
     assert [("key2", "val2"), ("key", "val3")] == list(d.items())
+
 
 def test_md_popone_exception() -> None:
     md: MultiDictStr = multidict.MultiDict(other="val")
