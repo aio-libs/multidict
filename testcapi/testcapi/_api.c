@@ -33,7 +33,7 @@ static PyObject *
 md_new(PyObject *self, PyObject *arg)
 {
     mod_state *state = get_mod_state(self);
-    return MultiDict_New(state->capi, 0);
+    return Py_NewRef(MultiDict_New(state->capi, 0));
 }
 
 static PyObject *
