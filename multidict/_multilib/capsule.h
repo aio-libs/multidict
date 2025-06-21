@@ -446,20 +446,20 @@ MultiDict_Equals(void* state_, PyObject* self, PyObject* other)
 /// the Heap Normally you won't be needing to call this
 /// @param capi The Capsule Object To Free
 static void
-multidict_capsule_free(MultiDict_CAPI* capi)
+capsule_free(MultiDict_CAPI* capi)
 {
     PyMem_Free(capi);
 }
 
 static void
-multidict_capsule_destructor(PyObject* o)
+capsule_destructor(PyObject* o)
 {
     MultiDict_CAPI* capi = PyCapsule_GetPointer(o, MultiDict_CAPSULE_NAME);
-    multidict_capsule_free(capi);
+    capsule_free(capi);
 }
 
 static PyObject*
-multidict_new_capsule(mod_state* state)
+new_capsule(mod_state* state)
 {
     MultiDict_CAPI* capi =
         (MultiDict_CAPI*)PyMem_Malloc(sizeof(MultiDict_CAPI));
@@ -490,9 +490,9 @@ multidict_new_capsule(mod_state* state)
     capi->MultiDict_Equals = MultiDict_Equals;
 
     PyObject* ret = PyCapsule_New(
-        capi, MultiDict_CAPSULE_NAME, multidict_capsule_destructor);
+        capi, MultiDict_CAPSULE_NAME, capsule_destructor);
     if (ret == NULL) {
-        multidict_capsule_free(capi);
+        capsule_free(capi);
     }
     return ret;
 }
