@@ -455,7 +455,7 @@ static void
 multidict_capsule_destructor(PyObject* o)
 {
     MultiDict_CAPI* capi = PyCapsule_GetPointer(o, MultiDict_CAPSULE_NAME);
-    capsule_free(capi);
+    multidict_capsule_free(capi);
 }
 
 static PyObject*
