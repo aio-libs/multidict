@@ -814,7 +814,7 @@ md_get_one(MultiDictObject *md, PyObject *key, PyObject **ret)
         if (tmp > 0) {
             Py_DECREF(identity);
             *ret = Py_NewRef(entry->value);
-            return 0;
+            return 1;
         } else if (tmp < 0) {
             goto fail;
         }
@@ -868,7 +868,7 @@ md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
 
     md_finder_cleanup(&finder);
     Py_DECREF(identity);
-    return 0;
+    return ret != NULL;
 fail:
     md_finder_cleanup(&finder);
     Py_XDECREF(identity);
@@ -877,9 +877,11 @@ fail:
     return -1;
 }
 
-static inline PyObject *
-md_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
+static inline int
+md_set_default(MultiDictObject *md, PyObject *key, PyObject *value,
+               PyObject **result)
 {
+    *result = NULL;
     PyObject *identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
@@ -907,7 +909,8 @@ md_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
         if (tmp > 0) {
             Py_DECREF(identity);
             ASSERT_CONSISTENT(md, false);
-            return Py_NewRef(entry->value);
+            *result = Py_NewRef(entry->value);
+            return 1;
         } else if (tmp < 0) {
             goto fail;
         }
@@ -919,10 +922,11 @@ md_set_default(MultiDictObject *md, PyObject *key, PyObject *value)
 
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
-    return Py_NewRef(value);
+    *result = Py_NewRef(value);
+    return 0;
 fail:
     Py_XDECREF(identity);
-    return NULL;
+    return -1;
 }
 
 static inline int
@@ -963,7 +967,7 @@ md_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
             *ret = value;
             md->version = NEXT_VERSION(md->state);
             ASSERT_CONSISTENT(md, false);
-            return 0;
+            return 1;
         } else if (tmp < 0) {
             goto fail;
         }
@@ -1035,7 +1039,7 @@ md_pop_all(MultiDictObject *md, PyObject *key, PyObject **ret)
     *ret = lst;
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
-    return 0;
+    return lst != NULL;
 fail:
     Py_XDECREF(identity);
     Py_XDECREF(lst);
