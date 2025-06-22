@@ -9,6 +9,7 @@ extensions = [
         "testcapi._api",
         ["testcapi/_api.c"],
         include_dirs=multidict.__path__,
+        extra_compile_args=["-O0", "-g3", "-UNDEBUG"],
     ),
 ]
 

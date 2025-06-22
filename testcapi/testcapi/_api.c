@@ -83,6 +83,29 @@ md_clear(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
     Py_RETURN_NONE;
 }
 
+static PyObject *
+md_setdefault(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    printf("000000\n");
+    mod_state *state = get_mod_state(self);
+    if (check_nargs("md_setdefault", nargs, 3) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret =
+        MultiDict_SetDefault(state->capi, args[0], args[1], args[2], &result);
+    if (ret < 0) {
+        return NULL;
+    }
+    assert(result != NULL);
+    PyObject *val = PyBool_FromLong(ret);
+    if (val == NULL) {
+        Py_CLEAR(result);
+        return NULL;
+    }
+    return PyTuple_Pack(2, result, val);
+}
+
 /* module slots */
 
 static int
@@ -108,6 +131,7 @@ static PyMethodDef module_methods[] = {
     {"md_new", (PyCFunction)md_new, METH_FASTCALL},
     {"md_add", (PyCFunction)md_add, METH_FASTCALL},
     {"md_clear", (PyCFunction)md_clear, METH_FASTCALL},
+    {"md_setdefault", (PyCFunction)md_setdefault, METH_FASTCALL},
     {NULL, NULL} /* sentinel */
 };
 

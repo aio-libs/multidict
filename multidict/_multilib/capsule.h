@@ -64,6 +64,18 @@ MultiDict_Clear(void *state_, PyObject *self)
     return md_clear((MultiDictObject *)self);
 }
 
+static inline int
+MultiDict_SetDefault(void *state_, PyObject *self, PyObject *key,
+                     PyObject *default_, PyObject **result)
+{
+    mod_state *state = (mod_state *)state_;
+    if (MultiDict_Check(state, self) <= 0) {
+        _invalid_type();
+        return -1;
+    }
+    return md_set_default((MultiDictObject *)self, key, default_, result);
+}
+
 static void
 capsule_free(MultiDict_CAPI *capi)
 {
@@ -91,6 +103,7 @@ new_capsule(mod_state *state)
     capi->MultiDict_New = MultiDict_New;
     capi->MultiDict_Add = MultiDict_Add;
     capi->MultiDict_Clear = MultiDict_Clear;
+    capi->MultiDict_SetDefault = MultiDict_SetDefault;
 
     PyObject *ret =
         PyCapsule_New(capi, MultiDict_CAPSULE_NAME, capsule_destructor);

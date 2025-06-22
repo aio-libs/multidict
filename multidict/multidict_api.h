@@ -30,6 +30,8 @@ typedef struct {
     int (*MultiDict_Add)(void *state, PyObject *self, PyObject *key,
                          PyObject *value);
     int (*MultiDict_Clear)(void *state, PyObject *self);
+    int (*MultiDict_SetDefault)(void *state, PyObject *self, PyObject *key,
+                                PyObject *default_, PyObject **result);
 } MultiDict_CAPI;
 
 #ifndef MULTIDICT_IMPL
@@ -81,6 +83,13 @@ static inline int
 MultiDict_Clear(MultiDict_CAPI *api, PyObject *self)
 {
     return api->MultiDict_Clear(api->state, self);
+}
+
+static inline int
+MultiDict_SetDefault(MultiDict_CAPI *api, PyObject *self, PyObject *key,
+                     PyObject *default_, PyObject **result)
+{
+    return api->MultiDict_SetDefault(api->state, self, key, default_, result);
 }
 
 #endif

@@ -30,3 +30,16 @@ def test_md_clear() -> None:
     md: MultiDictStr = multidict.MultiDict(key="val")
     testcapi.md_clear(md)
     assert len(md) == 0
+
+
+@pytest.mark.parametrize(
+    "key, expected",
+    [
+        pytest.param("key", ("val", True), id="found"),
+        pytest.param("key2", ("default", False), id="notfound"),
+    ],
+)
+def test_md_setdefault(key: str, expected: tuple[str, bool]) -> None:
+    md: MultiDictStr = multidict.MultiDict(key="val")
+    ret = testcapi.md_setdefault(md, key, "default")
+    assert ret == expected
