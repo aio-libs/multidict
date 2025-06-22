@@ -29,6 +29,7 @@ typedef struct {
     PyObject *(*MultiDict_New)(void *state, int prealloc_size);
     int (*MultiDict_Add)(void *state, PyObject *self, PyObject *key,
                          PyObject *value);
+    int (*MultiDict_Clear)(void *state, PyObject *self);
 } MultiDict_CAPI;
 
 #ifndef MULTIDICT_IMPL
@@ -74,6 +75,12 @@ MultiDict_Add(MultiDict_CAPI *api, PyObject *self, PyObject *key,
               PyObject *value)
 {
     return api->MultiDict_Add(api->state, self, key, value);
+}
+
+static inline int
+MultiDict_Clear(MultiDict_CAPI *api, PyObject *self)
+{
+    return api->MultiDict_Clear(api->state, self);
 }
 
 #endif

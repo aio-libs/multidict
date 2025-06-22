@@ -24,3 +24,9 @@ def test_md_add() -> None:
     testcapi.md_add(md, "key", "value")
     assert len(md) == 1
     assert list(md.items()) == [("key", "value")]
+
+
+def test_md_clear() -> None:
+    md: MultiDictStr = multidict.MultiDict(key="val")
+    testcapi.md_clear(md)
+    assert len(md) == 0
