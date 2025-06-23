@@ -110,7 +110,8 @@ jobs:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   build-wheels-for-tested-arches:
-    name: Build wheels on ${{ matrix.os }}
+    name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
+      📦 Build wheels for tested arches${{ '' }}
     needs:
     - build-pure-python-dists
     - pre-setup  # transitive, for accessing settings
@@ -544,7 +545,8 @@ jobs:
         echo "Predeploy step"
 
   build-wheels-for-odd-archs:
-    name: Build wheels on ${{ matrix.tag }} ${{ matrix.qemu }}
+    name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
+      📦 Build wheels for odd arches${{ '' }}
     needs:
     - build-pure-python-dists
     - pre-deploy
