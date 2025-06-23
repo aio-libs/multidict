@@ -49,7 +49,7 @@ class MultidictImplementation:
 
     def __str__(self) -> str:
         """Render the implementation facade instance as a string."""
-        return f"{self.tag}-module"
+        return self.tag
 
 
 @pytest.fixture(
