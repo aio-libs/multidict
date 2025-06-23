@@ -53,9 +53,13 @@ jobs:
         from hashlib import sha512
         from os import environ
         from pathlib import Path
+
         FILE_APPEND_MODE = 'a'
+
         inputs_json_str = """${{ toJSON(inputs) }}"""
+
         hash = sha512(inputs_json_str.encode()).hexdigest()
+
         with Path(environ['GITHUB_OUTPUT']).open(
                 mode=FILE_APPEND_MODE,
         ) as outputs_file:
