@@ -116,22 +116,22 @@ jobs:
     - pre-setup  # transitive, for accessing settings
     strategy:
       matrix:
-        os:
-        - ubuntu
-        - windows
+        runner-vm-os:
+        - ubuntu-latest
+        - windows-latest
         - windows-11-arm
-        - macos
+        - macos-latest
         tag:
         - ''
         - 'musllinux'
         exclude:
-        - os: windows
+        - runner-vm-os: windows-latest
           tag: 'musllinux'
-        - os: windows-11-arm
+        - runner-vm-os: windows-11-arm
           tag: 'musllinux'
-        - os: macos
+        - runner-vm-os: macos-latest
           tag: 'musllinux'
-        - os: ubuntu
+        - runner-vm-os: ubuntu-latest
           tag: >-
            ${{
            (github.event_name != 'push' || github.ref_type != 'tag')
@@ -139,7 +139,6 @@ jobs:
            }}
     uses: ./.github/workflows/reusable-cibuildwheel.yml
     with:
-      os: ${{ matrix.os }}
       tag: ${{ matrix.tag }}
       wheel-tags-to-skip: >-
         ${{
@@ -152,6 +151,7 @@ jobs:
         || (matrix.tag == 'musllinux') && '*-manylinux_* pp*'
         || '*-musllinux_* pp*'
         }}
+      runner-vm-os: ${{ matrix.runner-vm-os }}
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
