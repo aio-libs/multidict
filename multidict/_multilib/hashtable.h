@@ -207,12 +207,12 @@ _md_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
     if (oldkeys->nentries == numentries) {
         memcpy(newentries, oldentries, numentries * sizeof(entry_t));
     } else {
-        entry_t *ep = oldentries;
-        for (Py_ssize_t i = 0; i < numentries; i++) {
-            if (!update) {
-                while (ep->identity == NULL) ep++;
+        entry_t *new_ep = newentries;
+        entry_t *old_ep = oldentries;
+        for (Py_ssize_t i = 0; i < oldkeys->nentries; ++i, ++old_ep) {
+            if (old_ep->identity != NULL) {
+                *new_ep++ = *old_ep;
             }
-            newentries[i] = *ep++;
         }
     }
 
