@@ -14,6 +14,52 @@ Changelog
 
 .. towncrier release notes start
 
+6.5.1
+=====
+
+*(2025-06-24)*
+
+
+Bug fixes
+---------
+
+- Fix a bug in C implementation when during multidict resizing the function could drop
+  last item under some circumstances.
+
+  The bug was introduced by multidict 6.5.0 release.
+
+  Patch by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1195`.
+
+
+Contributor-facing changes
+--------------------------
+
+- Setup pre-commit hook for auto-formatting both Python and C code.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1123`.
+
+- Shorted fixture parametrization ids.
+
+  For example, ``test_keys_view_xor[case-insensitive-pure-python-module]`` becomes ``test_keys_view_xor[ci-py]`` -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1192`.
+
+- The :file:`reusable-cibuildwheel.yml` workflow has been refactored to
+  be more generic and :file:`ci-cd.yml` now holds all the configuration
+  toggles -- by :user:`webknjaz`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1193`.
+
+
+----
+
+
 6.5.0
 =====
 
