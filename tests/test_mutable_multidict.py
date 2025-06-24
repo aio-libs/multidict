@@ -807,12 +807,9 @@ class TestCIMutableMultiDict:
             }
         )
 
+        md2 = md.copy()
+
         md.popone("User-Agent")
+        assert md.keys() == md2.keys() - {"User-Agent"}
         md.update([("User-Agent", b"Bacon/1.0")])
-        md.popone("Cookie")
-        md.update([("Cookie", b"valued-visitor=yes;foo=bar")])
-        md.popone("X-Bar")
-        md.update([("X-Bar", b"Foo")])
-        md.popone("X-Foo")
-        md.update([("X-Foo", b"Bar")])
-        md.popone("Referer")
+        assert md.keys() == md2.keys()
