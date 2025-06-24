@@ -868,7 +868,7 @@ md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
 
     md_finder_cleanup(&finder);
     Py_DECREF(identity);
-    return ret != NULL;
+    return *ret != NULL;
 fail:
     md_finder_cleanup(&finder);
     Py_XDECREF(identity);
