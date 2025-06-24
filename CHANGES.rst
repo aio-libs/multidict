@@ -64,6 +64,11 @@ Contributor-facing changes
 
 *(2025-06-17)*
 
+.. note::
+
+  The release was yanked because of :issue:`1195`, multidict 6.5.1 should be used
+  instead.
+
 
 Features
 --------
