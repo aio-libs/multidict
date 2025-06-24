@@ -793,3 +793,26 @@ class TestCIMutableMultiDict:
 
         k, v = d.popitem()
         assert type(k) is case_insensitive_str_class
+
+    def test_issue_1195(
+        self, case_insensitive_multidict_class: type[CIMultiDict[bytes]]
+    ) -> None:
+        md = case_insensitive_multidict_class(
+            {
+                "User-Agent": b"Bacon/1.0",
+                "Cookie": b"valued-visitor=yes;foo=bar",
+                "X-Bar": b"Foo",
+                "X-Foo": b"Bar",
+                "Referer": b"https://httpie.org/",
+            }
+        )
+
+        md.popone("User-Agent")
+        md.update([("User-Agent", b"Bacon/1.0")])
+        md.popone("Cookie")
+        md.update([("Cookie", b"valued-visitor=yes;foo=bar")])
+        md.popone("X-Bar")
+        md.update([("X-Bar", b"Foo")])
+        md.popone("X-Foo")
+        md.update([("X-Foo", b"Bar")])
+        md.popone("Referer")
