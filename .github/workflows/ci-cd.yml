@@ -110,51 +110,58 @@ jobs:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   build-wheels-for-tested-arches:
-    name: Build wheels on ${{ matrix.os }}
+    name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
+      📦 Build wheels for tested arches${{ '' }}
     needs:
     - build-pure-python-dists
     - pre-setup  # transitive, for accessing settings
     strategy:
       matrix:
-        os:
-        - ubuntu
-        - windows
+        runner-vm-os:
+        - ubuntu-latest
+        - windows-latest
         - windows-11-arm
-        - macos
+        - macos-latest
         tag:
         - ''
         - 'musllinux'
         exclude:
-        - os: windows
+        - runner-vm-os: windows-latest
           tag: 'musllinux'
-        - os: windows-11-arm
+        - runner-vm-os: windows-11-arm
           tag: 'musllinux'
-        - os: macos
+        - runner-vm-os: macos-latest
           tag: 'musllinux'
-        - os: ubuntu
+        - runner-vm-os: ubuntu-latest
           tag: >-
            ${{
            (github.event_name != 'push' || github.ref_type != 'tag')
            && 'musllinux' || 'none'
            }}
-    uses: ./.github/workflows/reusable-build-wheel.yml
+    uses: ./.github/workflows/reusable-cibuildwheel.yml
     with:
-      os: ${{ matrix.os }}
-      tag: ${{ matrix.tag }}
-      wheel-tags-to-skip: >-
-        ${{
-        (github.event_name != 'push' || !contains(github.ref, 'refs/tags/'))
-        && '*_i686
-        *-macosx_universal2
-        *-musllinux_*
-        *-win32
-        pp*'
-        || (matrix.tag == 'musllinux') && '*-manylinux_* pp*'
-        || '*-musllinux_* pp*'
-        }}
+      check-name: >-
+        Build ${{ matrix.tag }} wheels on ${{ matrix.runner-vm-os }}
+      runner-vm-os: ${{ matrix.runner-vm-os }}
+      timeout-minutes: 15
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+      environment-variables: |-
+        CIBW_ARCHS_MACOS=x86_64 arm64 universal2
+
+        CIBW_SKIP<<EOF
+        ${{
+          (github.event_name != 'push' || !contains(github.ref, 'refs/tags/'))
+          && '*_i686
+          *-macosx_universal2
+          *-musllinux_*
+          *-win32'
+          || (matrix.tag == 'musllinux') && '*-manylinux_*'
+        || '*-musllinux_*'
+        }}
+        pp*
+        EOF
 
   test:
     name: >-
@@ -542,7 +549,8 @@ jobs:
         echo "Predeploy step"
 
   build-wheels-for-odd-archs:
-    name: Build wheels on ${{ matrix.tag }} ${{ matrix.qemu }}
+    name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
+      📦 Build wheels for odd arches${{ '' }}
     needs:
     - build-pure-python-dists
     - pre-deploy
@@ -557,19 +565,26 @@ jobs:
         tag:
         - ''
         - musllinux
-    uses: ./.github/workflows/reusable-build-wheel.yml
+    uses: ./.github/workflows/reusable-cibuildwheel.yml
     with:
-      qemu: ${{ matrix.qemu }}
-      tag: ${{ matrix.tag }}
-      wheel-tags-to-skip: >-
-        ${{
-        (matrix.tag == 'musllinux')
-        && '*-manylinux_* pp*'
-        || '*-musllinux_* pp*'
-        }}
+      check-name: >-
+        Build ${{ matrix.tag }} wheels for ${{ matrix.qemu }}
+      qemu: true
+      timeout-minutes: 120
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+      # CIBW_ARCHS_LINUX: Build emulated architectures if QEMU, else "auto"
+      environment-variables: |-
+        CIBW_ARCHS_LINUX=${{ matrix.qemu }}
+
+        CIBW_ARCHS_MACOS=x86_64 arm64 universal2
+
+        CIBW_SKIP=${{
+          (matrix.tag == 'musllinux')
+          && '*-manylinux_*'
+          || '*-musllinux_*'
+        }} pp*
 
   deploy:
     name: Deploy
