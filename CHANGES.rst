@@ -37,7 +37,7 @@ Bug fixes
 Contributor-facing changes
 --------------------------
 
-- Setup pre-commit hook for auto-formatting both Python and C code.
+- A pair of code formatters for Python and C have been configured in the pre-commit tool.
 
   *Related issues and pull requests on GitHub:*
   :issue:`1123`.
