@@ -23,7 +23,7 @@ Changelog
 Bug fixes
 ---------
 
-- Fix a bug in C implementation when during multidict resizing the function could drop
+- Fixed a bug in C implementation when during multidict resizing the function could drop
   last item under some circumstances.
 
   The bug was introduced by multidict 6.5.0 release.
