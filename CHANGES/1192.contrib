@@ -1,3 +1,0 @@
-Shorted fixture parametrization ids.
-
-For example, ``test_keys_view_xor[case-insensitive-pure-python-module]`` becomes ``test_keys_view_xor[ci-py]`` -- by :user:`asvetlov`.
