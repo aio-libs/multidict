@@ -985,7 +985,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         return ret
 
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
-        """Update the dictionary from *other*, overwriting existing keys."""
+        """Update the dictionary, overwriting existing keys."""
         items = self._parse_args(arg, kwargs)
         newsize = self._used + len(items)
         log2_size = estimate_log2_keysize(newsize)
