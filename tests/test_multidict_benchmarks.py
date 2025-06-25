@@ -262,6 +262,8 @@ def test_multidict_getall_str_hit(
     @benchmark
     def _run() -> None:
         for i in range(30):
+            md.getall("key1")
+            md.getall("key2")
             md.getall("key3")
 
 
@@ -275,14 +277,16 @@ def test_multidict_getall_str_miss(
     @benchmark
     def _run() -> None:
         for i in range(30):
-            md.getall("miss", ())
+            md.getall("miss1", ())
+            md.getall("miss2", ())
+            md.getall("miss3", ())
 
 
 def test_cimultidict_getall_istr_hit(
     benchmark: BenchmarkFixture,
     case_insensitive_multidict_class: Type[CIMultiDict[istr]],
 ) -> None:
-    all_istr = istr("key3")
+    all_istr = [istr("key1"), istr("key2"), istr("key3")]
     md = case_insensitive_multidict_class(
         (f"key{j}", istr(f"{i}-{j}")) for i in range(20) for j in range(5)
     )
@@ -290,14 +294,15 @@ def test_cimultidict_getall_istr_hit(
     @benchmark
     def _run() -> None:
         for i in range(30):
-            md.getall(all_istr)
+            for key in all_istr:
+                md.getall(key)
 
 
 def test_cimultidict_getall_istr_miss(
     benchmark: BenchmarkFixture,
     case_insensitive_multidict_class: Type[CIMultiDict[istr]],
 ) -> None:
-    miss_istr = istr("miss")
+    miss_istr = [istr("miss-1"), istr("miss-2"), istr("miss-3")]
     md = case_insensitive_multidict_class(
         (istr(f"key{j}"), istr(f"{i}-{j}")) for i in range(20) for j in range(5)
     )
@@ -305,7 +310,8 @@ def test_cimultidict_getall_istr_miss(
     @benchmark
     def _run() -> None:
         for i in range(30):
-            md.getall(miss_istr, ())
+            for key in miss_istr:
+                md.getall(key, ())
 
 
 def test_multidict_fetch(
