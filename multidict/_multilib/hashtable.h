@@ -1369,31 +1369,35 @@ md_update_from_dict(MultiDictObject *md, PyObject *kwds, UpdateOp op)
             goto fail;
         }
         switch (op) {
-            case Update:
+            case Update: {
                 if (_md_update(md, hash, identity, key, value) < 0) {
                     goto fail;
                 }
                 Py_CLEAR(identity);
                 Py_CLEAR(key);
                 break;
-            case Extend:
+            }
+            case Extend: {
                 int tmp = _md_add_with_hash_steal_refs(
                     md, hash, identity, key, Py_NewRef(value));
                 if (tmp < 0) {
                     Py_DECREF(value);
                     goto fail;
                 }
+
                 identity = NULL;
                 key = NULL;
                 value = NULL;
                 break;
-            case Merge:
+            }
+            case Merge: {
                 if (_md_merge(md, hash, identity, key, value) < 0) {
                     goto fail;
                 }
                 Py_CLEAR(identity);
                 Py_CLEAR(key);
                 break;
+            }
         }
     }
     return 0;
