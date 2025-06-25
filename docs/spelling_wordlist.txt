@@ -37,6 +37,8 @@ fallback
 fastpath
 filename
 formatters
+RST
+docstring
 gcc
 getitem
 github
