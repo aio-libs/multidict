@@ -261,7 +261,7 @@ def test_multidict_getall_str_hit(
 
     @benchmark
     def _run() -> None:
-        for i in range(30):
+        for i in range(100):
             md.getall("key1")
             md.getall("key2")
             md.getall("key3")
@@ -276,7 +276,7 @@ def test_multidict_getall_str_miss(
 
     @benchmark
     def _run() -> None:
-        for i in range(30):
+        for i in range(100):
             md.getall("miss1", ())
             md.getall("miss2", ())
             md.getall("miss3", ())
@@ -293,7 +293,7 @@ def test_cimultidict_getall_istr_hit(
 
     @benchmark
     def _run() -> None:
-        for i in range(30):
+        for i in range(100):
             for key in all_istr:
                 md.getall(key)
 
@@ -309,7 +309,7 @@ def test_cimultidict_getall_istr_miss(
 
     @benchmark
     def _run() -> None:
-        for i in range(30):
+        for i in range(100):
             for key in miss_istr:
                 md.getall(key, ())
 
