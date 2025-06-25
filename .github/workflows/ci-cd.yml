@@ -482,6 +482,8 @@ jobs:
       run: python -Im pip install '${{ steps.wheel-file.outputs.path }}'
     - name: Run benchmarks
       uses: CodSpeedHQ/action@v3
+      env:
+        PYTHONHASHSEED: 42
       with:
         token: ${{ secrets.CODSPEED_TOKEN }}
         run: python -Im pytest --no-cov -vvvvv --codspeed
