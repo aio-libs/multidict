@@ -37,6 +37,7 @@ fallback
 fastpath
 filename
 formatters
+htkeys
 gcc
 getitem
 github
