@@ -73,7 +73,7 @@ MultiDict
 
    .. method:: extend([other])
 
-      Extend the dictionary with the key/value pairs from *other*,
+      Extend the dictionary with the key/value pairs from *other* and *kwargs*,
       appending the pairs to this dictionary. For existing keys,
       values are added.
       Returns ``None``.
@@ -85,8 +85,35 @@ MultiDict
       ``d.extend(red=1, blue=2)``.
 
       Effectively the same as calling :meth:`add` for every
-      ``(key, value)`` pair. Also see :meth:`update`, for a version
-      that replaces existing keys.
+      ``(key, value)`` pair.
+
+      .. seealso::
+
+         * :meth:`merge`
+         * :meth:`update`
+
+   .. method:: merge([other], **kwargs)
+
+      Merge the dictionary with the key/value pairs from *other* and *kwargs*,
+      appending non-existing pairs to this dictionary. For existing keys,
+      the addition is skipped.
+      Returns ``None``.
+
+      :meth:`merge` accepts either another dictionary object or an
+      iterable of key/value pairs (as tuples or other iterables of
+      length two). If keyword arguments are specified, the dictionary
+      is then merged with those key/value pairs:
+      ``d.merge(red=1, blue=2)``.
+
+      Effectively the same as calling :meth:`add` for every
+      ``(key, value)`` pair where ``key not in self``.
+
+      .. seealso::
+
+         * :meth:`extend`
+         * :meth:`update`
+
+      .. versionadded:: 6.6
 
    .. method:: getone(key[, default])
 
@@ -179,9 +206,9 @@ MultiDict
       If not, insert *key* with a value of *default* and return *default*.
       *default* defaults to ``None``.
 
-   .. method:: update([other])
+   .. method:: update([other], **kwargs)
 
-      Update the dictionary with the key/value pairs from *other*,
+      Update the dictionary with the key/value pairs from *other* and *kwargs*,
       overwriting existing keys.
 
       Returns ``None``.
@@ -192,8 +219,10 @@ MultiDict
       dictionary is then updated with those key/value pairs:
       ``d.update(red=1, blue=2)``.
 
-      Also see :meth:`extend` for a method that adds to existing keys rather
-      than update them.
+      .. seealso::
+
+         * :meth:`extend`
+         * :meth:`merge`
 
    .. seealso::
 
@@ -444,7 +473,7 @@ Environment variables
       its C counterpart, depending on the way it's used.
 
 .. envvar:: MULTIDICT_DEBUG_BUILD
-   
+
    An environment variable that instructs the packaging scripts to compile
    the C-extension based variant of :mod:`multidict` with debug symbols.
    This is useful for debugging the C-extension code, but it will result in
