@@ -1,4 +1,4 @@
-Skipped reallocation of internal htkeys structure on inserting new items if the
+Skipped reallocation of internal ``htkeys_t`` structure on inserting new items if the
 multidict has deleted items and it could be collapsed in-place.  Removal of
 ``malloc()``/``free()`` could improve the performance a little.
 
