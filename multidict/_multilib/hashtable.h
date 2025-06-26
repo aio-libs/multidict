@@ -903,7 +903,10 @@ md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    md_finder_cleanup(&finder);
+    if (*ret != NULL) {
+        // there is no need to restore hashes if none was marked
+        md_finder_cleanup(&finder);
+    }
     Py_DECREF(identity);
     return *ret != NULL;
 fail:
