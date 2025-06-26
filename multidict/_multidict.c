@@ -795,7 +795,7 @@ PyDoc_STRVAR(multidict_popitem_doc,
              "Remove and return an arbitrary (key, value) pair.");
 
 PyDoc_STRVAR(multidict_update_doc,
-             "Update the dictionary from *other*, overwriting existing keys.");
+             "Update the dictionary, overwriting existing keys.");
 
 PyDoc_STRVAR(sizeof__doc__, "D.__sizeof__() -> size of D in memory, in bytes");
 

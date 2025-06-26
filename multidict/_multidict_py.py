@@ -657,14 +657,17 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         identity = self._identity(key)
         hash_ = hash(identity)
         res = []
-
+        restore = []
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 res.append(e.value)
                 e.hash = -1
-        self._keys.restore_hash(hash_)
+                restore.append(idx)
 
         if res:
+            entries = self._keys.entries
+            for idx in restore:
+                entries[idx].hash = hash_  # type: ignore[union-attr]
             return res
         if not res and default is not sentinel:
             return default
@@ -985,7 +988,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         return ret
 
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
-        """Update the dictionary from *other*, overwriting existing keys."""
+        """Update the dictionary, overwriting existing keys."""
         items = self._parse_args(arg, kwargs)
         newsize = self._used + len(items)
         log2_size = estimate_log2_keysize(newsize)
