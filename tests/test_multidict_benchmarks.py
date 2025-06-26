@@ -292,7 +292,7 @@ def test_multidict_getall_str_hit(
     benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class(
-        (f"key{j}", str(f"{i}-{j}")) for i in range(20) for j in range(5)
+        (f"key{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
     )
 
     keys = set(md.keys())
@@ -308,7 +308,7 @@ def test_multidict_getall_str_miss(
     benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class(
-        (f"key{j}", str(f"{i}-{j}")) for i in range(20) for j in range(5)
+        (f"key{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
     )
 
     keys = {f"{key}-miss" for key in md.keys()}
@@ -326,8 +326,8 @@ def test_cimultidict_getall_istr_hit(
 ) -> None:
     md = case_insensitive_multidict_class(
         (f"key{j}", case_insensitive_str_class(f"{i}-{j}"))
-        for i in range(20)
-        for j in range(5)
+        for i in range(100)
+        for j in range(10)
     )
 
     keys = set(md.keys())
@@ -346,8 +346,8 @@ def test_cimultidict_getall_istr_miss(
 ) -> None:
     md = case_insensitive_multidict_class(
         (case_insensitive_str_class(f"key{j}"), case_insensitive_str_class(f"{i}-{j}"))
-        for i in range(20)
-        for j in range(5)
+        for i in range(100)
+        for j in range(10)
     )
 
     keys = {case_insensitive_str_class(f"{key}-miss") for key in md.keys()}
