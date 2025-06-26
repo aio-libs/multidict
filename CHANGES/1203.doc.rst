@@ -1,0 +1,1 @@
+Replaced docstring for :meth:`multidict.MultiDict.update` to don't use RST/markdown markup.

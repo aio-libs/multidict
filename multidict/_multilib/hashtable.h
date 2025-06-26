@@ -215,7 +215,8 @@ _md_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
     } else {
         entry_t *new_ep = newentries;
         entry_t *old_ep = oldentries;
-        for (Py_ssize_t i = 0; i < oldkeys->nentries; ++i, ++old_ep) {
+        Py_ssize_t oldnumentries = oldkeys->nentries;
+        for (Py_ssize_t i = 0; i < oldnumentries; ++i, ++old_ep) {
             if (old_ep->identity != NULL) {
                 *new_ep++ = *old_ep;
             }
@@ -239,15 +240,51 @@ _md_resize(MultiDictObject *md, uint8_t log2_newsize, bool update)
 }
 
 static inline int
+_md_shrink(MultiDictObject *md, bool update)
+{
+    htkeys_t *keys = md->keys;
+    Py_ssize_t nentries = keys->nentries;
+    entry_t *entries = htkeys_entries(keys);
+    entry_t *new_ep = entries;
+    entry_t *old_ep = entries;
+    Py_ssize_t newnentries = nentries;
+    for (Py_ssize_t i = 0; i < nentries; ++i, ++old_ep) {
+        if (old_ep->identity != NULL) {
+            if (new_ep != old_ep) {
+                *new_ep++ = *old_ep;
+            }
+        } else {
+            newnentries -= 1;
+        }
+    }
+    keys->nentries = newnentries;
+    keys->usable += nentries - newnentries;
+    memset(&keys->indices[0], 0xff, ((size_t)1 << keys->log2_index_bytes));
+    if (htkeys_build_indices(keys, entries, newnentries, update) < 0) {
+        return -1;
+    }
+    ASSERT_CONSISTENT(md, update);
+    return 0;
+}
+
+static inline int
 _md_resize_for_insert(MultiDictObject *md)
 {
-    return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), false);
+    if (md->used < md->keys->nentries) {
+        return _md_shrink(md, false);
+    } else {
+        return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), false);
+    }
 }
 
 static inline int
 _md_resize_for_update(MultiDictObject *md)
 {
-    return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), true);
+    if (md->used < md->keys->nentries) {
+        return _md_shrink(md, true);
+    } else {
+        return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), true);
+    }
 }
 
 static inline int

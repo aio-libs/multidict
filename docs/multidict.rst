@@ -71,50 +71,6 @@ MultiDict
 
       Return a shallow copy of the dictionary.
 
-   .. method:: extend([other])
-
-      Extend the dictionary with the key/value pairs from *other* and *kwargs*,
-      appending the pairs to this dictionary. For existing keys,
-      values are added.
-      Returns ``None``.
-
-      :meth:`extend` accepts either another dictionary object or an
-      iterable of key/value pairs (as tuples or other iterables of
-      length two). If keyword arguments are specified, the dictionary
-      is then extended with those key/value pairs:
-      ``d.extend(red=1, blue=2)``.
-
-      Effectively the same as calling :meth:`add` for every
-      ``(key, value)`` pair.
-
-      .. seealso::
-
-         * :meth:`merge`
-         * :meth:`update`
-
-   .. method:: merge([other], **kwargs)
-
-      Merge the dictionary with the key/value pairs from *other* and *kwargs*,
-      appending non-existing pairs to this dictionary. For existing keys,
-      the addition is skipped.
-      Returns ``None``.
-
-      :meth:`merge` accepts either another dictionary object or an
-      iterable of key/value pairs (as tuples or other iterables of
-      length two). If keyword arguments are specified, the dictionary
-      is then merged with those key/value pairs:
-      ``d.merge(red=1, blue=2)``.
-
-      Effectively the same as calling :meth:`add` for every
-      ``(key, value)`` pair where ``key not in self``.
-
-      .. seealso::
-
-         * :meth:`extend`
-         * :meth:`update`
-
-      .. versionadded:: 6.6
-
    .. method:: getone(key[, default])
 
       Return the **first** value for *key* if *key* is in the
@@ -206,6 +162,50 @@ MultiDict
       If not, insert *key* with a value of *default* and return *default*.
       *default* defaults to ``None``.
 
+   .. method:: extend([other], **kwargs)
+
+      Extend the dictionary with the key/value pairs from *other* and *kwargs*,
+      appending the pairs to this dictionary. For existing keys,
+      values are added.
+
+      Returns ``None``.
+
+      :meth:`extend` accepts either another dictionary object or an
+      iterable of key/value pairs (as tuples or other iterables of
+      length two). If keyword arguments are specified, the dictionary
+      is then extended with those key/value pairs:
+      ``d.extend(red=1, blue=2)``.
+
+      Effectively the same as calling :meth:`add` for every
+      ``(key, value)`` pair.
+
+      .. seealso::
+
+         :meth:`merge` and :meth:`update`
+
+   .. method:: merge([other], **kwargs)
+
+      Merge the dictionary with the key/value pairs from *other* and *kwargs*,
+      appending non-existing pairs to this dictionary. For existing keys,
+      the addition is skipped.
+
+      Returns ``None``.
+
+      :meth:`merge` accepts either another dictionary object or an
+      iterable of key/value pairs (as tuples or other iterables of
+      length two). If keyword arguments are specified, the dictionary
+      is then merged with those key/value pairs:
+      ``d.merge(red=1, blue=2)``.
+
+      Effectively the same as calling :meth:`add` for every
+      ``(key, value)`` pair where ``key not in self``.
+
+      .. seealso::
+
+         :meth:`extend` and :meth:`update`
+
+      .. versionadded:: 6.6
+
    .. method:: update([other], **kwargs)
 
       Update the dictionary with the key/value pairs from *other* and *kwargs*,
@@ -221,8 +221,7 @@ MultiDict
 
       .. seealso::
 
-         * :meth:`extend`
-         * :meth:`merge`
+         :meth:`extend` and :meth:`merge`
 
    .. seealso::
 
