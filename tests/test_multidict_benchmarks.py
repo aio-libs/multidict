@@ -295,13 +295,12 @@ def test_multidict_getall_str_hit(
         (f"key{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
     )
 
-    keys = set(md.keys())
+    key = "key5"
 
     @benchmark
     def _run() -> None:
-        for i in range(100):
-            for key in keys:
-                md.getall(key)
+        for i in range(1000):
+            md.getall(key)
 
 
 def test_multidict_getall_str_miss(
@@ -311,11 +310,11 @@ def test_multidict_getall_str_miss(
         (f"key{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
     )
 
-    keys = {f"{key}-miss" for key in md.keys()}
+    key = "key-miss"
 
     @benchmark
     def _run() -> None:
-        for key in keys:
+        for i in range(1000):
             md.getall(key, ())
 
 
@@ -330,13 +329,12 @@ def test_cimultidict_getall_istr_hit(
         for j in range(10)
     )
 
-    keys = set(md.keys())
+    key = case_insensitive_str_class("key5")
 
     @benchmark
     def _run() -> None:
-        for i in range(100):
-            for key in keys:
-                md.getall(key)
+        for i in range(1000):
+            md.getall(key)
 
 
 def test_cimultidict_getall_istr_miss(
@@ -350,13 +348,12 @@ def test_cimultidict_getall_istr_miss(
         for j in range(10)
     )
 
-    keys = {case_insensitive_str_class(f"{key}-miss") for key in md.keys()}
+    key = case_insensitive_str_class("key-miss")
 
     @benchmark
     def _run() -> None:
-        for i in range(100):
-            for key in keys:
-                md.getall(key, ())
+        for i in range(1000):
+            md.getall(key, ())
 
 
 def test_multidict_fetch(
