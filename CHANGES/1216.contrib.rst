@@ -1,0 +1,1 @@
+Fixed ``setuptools`` deprecation warning about the license specification -- by :user:`asvetlov`.
