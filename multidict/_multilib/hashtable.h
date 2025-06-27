@@ -30,6 +30,12 @@ typedef struct _md_finder {
     PyObject *identity;  // borrowed ref
 } md_finder_t;
 
+typedef enum _UpdateOp {
+    Extend,
+    Update,
+    Merge,
+} UpdateOp;
+
 /*
 The multidict's implementation is close to Python's dict except for multiple
 keys.
@@ -903,7 +909,10 @@ md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
         goto fail;
     }
 
-    md_finder_cleanup(&finder);
+    if (*ret != NULL) {
+        // there is no need to restore hashes if none was marked
+        md_finder_cleanup(&finder);
+    }
     Py_DECREF(identity);
     return *ret != NULL;
 fail:
@@ -1203,7 +1212,7 @@ _md_update(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
     bool found = false;
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index == DKIX_DUMMY) {
+        if (iter.index < 0) {
             continue;
         }
         entry_t *entry = entries + iter.index;
@@ -1247,6 +1256,38 @@ fail:
 }
 
 static inline int
+_md_merge(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
+          PyObject *key, PyObject *value)
+{
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, md->keys, hash);
+    entry_t *entries = htkeys_entries(md->keys);
+
+    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter.index < 0) {
+            continue;
+        }
+        entry_t *entry = entries + iter.index;
+        if (hash != entry->hash) {
+            continue;
+        }
+        int tmp = _str_cmp(identity, entry->identity);
+        if (tmp > 0) {
+            return 0;
+        } else if (tmp < 0) {
+            goto fail;
+        }
+    }
+
+    if (_md_add_for_upd(md, hash, identity, key, value) < 0) {
+        goto fail;
+    }
+    return 0;
+fail:
+    return -1;
+}
+
+static inline int
 md_post_update(MultiDictObject *md)
 {
     htkeys_t *keys = md->keys;
@@ -1276,7 +1317,7 @@ md_post_update(MultiDictObject *md)
 }
 
 static inline int
-md_update_from_ht(MultiDictObject *md, MultiDictObject *other, bool update)
+md_update_from_ht(MultiDictObject *md, MultiDictObject *other, UpdateOp op)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
@@ -1314,14 +1355,23 @@ md_update_from_ht(MultiDictObject *md, MultiDictObject *other, bool update)
             hash = entry->hash;
             key = entry->key;
         }
-        if (update) {
-            if (_md_update(md, hash, identity, key, entry->value) < 0) {
-                goto fail;
-            }
-        } else {
-            if (_md_add_with_hash(md, hash, identity, key, entry->value) < 0) {
-                goto fail;
-            }
+        switch (op) {
+            case Update:
+                if (_md_update(md, hash, identity, key, entry->value) < 0) {
+                    goto fail;
+                }
+                break;
+            case Extend:
+                if (_md_add_with_hash(md, hash, identity, key, entry->value) <
+                    0) {
+                    goto fail;
+                }
+                break;
+            case Merge:
+                if (_md_merge(md, hash, identity, key, entry->value) < 0) {
+                    goto fail;
+                }
+                break;
         }
         if (recalc_identity) {
             Py_CLEAR(identity);
@@ -1338,7 +1388,7 @@ fail:
 }
 
 static inline int
-md_update_from_dict(MultiDictObject *md, PyObject *kwds, bool update)
+md_update_from_dict(MultiDictObject *md, PyObject *kwds, UpdateOp op)
 {
     Py_ssize_t pos = 0;
     PyObject *identity = NULL;
@@ -1358,22 +1408,36 @@ md_update_from_dict(MultiDictObject *md, PyObject *kwds, bool update)
         if (hash == -1) {
             goto fail;
         }
-        if (update) {
-            if (_md_update(md, hash, identity, key, value) < 0) {
-                goto fail;
+        switch (op) {
+            case Update: {
+                if (_md_update(md, hash, identity, key, value) < 0) {
+                    goto fail;
+                }
+                Py_CLEAR(identity);
+                Py_CLEAR(key);
+                break;
             }
-            Py_CLEAR(identity);
-            Py_CLEAR(key);
-        } else {
-            int tmp = _md_add_with_hash_steal_refs(
-                md, hash, identity, key, Py_NewRef(value));
-            if (tmp < 0) {
-                Py_DECREF(value);
-                goto fail;
+            case Extend: {
+                int tmp = _md_add_with_hash_steal_refs(
+                    md, hash, identity, key, Py_NewRef(value));
+                if (tmp < 0) {
+                    Py_DECREF(value);
+                    goto fail;
+                }
+
+                identity = NULL;
+                key = NULL;
+                value = NULL;
+                break;
             }
-            identity = NULL;
-            key = NULL;
-            value = NULL;
+            case Merge: {
+                if (_md_merge(md, hash, identity, key, value) < 0) {
+                    goto fail;
+                }
+                Py_CLEAR(identity);
+                Py_CLEAR(key);
+                break;
+            }
         }
     }
     return 0;
@@ -1463,7 +1527,7 @@ fail:
 }
 
 static inline int
-md_update_from_seq(MultiDictObject *md, PyObject *seq, bool update)
+md_update_from_seq(MultiDictObject *md, PyObject *seq, UpdateOp op)
 {
     PyObject *it = NULL;
     PyObject *item = NULL;  // seq[i]
@@ -1543,21 +1607,32 @@ md_update_from_seq(MultiDictObject *md, PyObject *seq, bool update)
             goto fail;
         }
 
-        if (update) {
-            if (_md_update(md, hash, identity, key, value) < 0) {
-                goto fail;
-            }
-            Py_CLEAR(identity);
-            Py_CLEAR(key);
-            Py_CLEAR(value);
-        } else {
-            if (_md_add_with_hash_steal_refs(md, hash, identity, key, value) <
-                0) {
-                goto fail;
-            }
-            identity = NULL;
-            key = NULL;
-            value = NULL;
+        switch (op) {
+            case Update:
+                if (_md_update(md, hash, identity, key, value) < 0) {
+                    goto fail;
+                }
+                Py_CLEAR(identity);
+                Py_CLEAR(key);
+                Py_CLEAR(value);
+                break;
+            case Extend:
+                if (_md_add_with_hash_steal_refs(
+                        md, hash, identity, key, value) < 0) {
+                    goto fail;
+                }
+                identity = NULL;
+                key = NULL;
+                value = NULL;
+                break;
+            case Merge:
+                if (_md_merge(md, hash, identity, key, value) < 0) {
+                    goto fail;
+                }
+                Py_CLEAR(identity);
+                Py_CLEAR(key);
+                Py_CLEAR(value);
+                break;
         }
         Py_CLEAR(item);
     }

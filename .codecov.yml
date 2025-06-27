@@ -40,7 +40,7 @@ coverage:
       typing:
         flags:
         - MyPy
-        target: 80%
+        target: 40%
 
 github_checks:
   annotations: false

@@ -1,7 +1,0 @@
-Stopped reallocating memory for the internal ``htkeys_t`` structure when inserting new items if the
-multidict has deleted items and it could be collapsed in-place.  Removal of
-``malloc()``/``free()`` improves the performance slightly.
-
-The change affects C implementation only, pure Python code is not changed.
-
-Patch by :user:`asvetlov`.
