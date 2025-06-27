@@ -1,5 +1,6 @@
 #include <Python.h>
 #include <multidict_api.h>
+#include <stdbool.h>
 
 typedef struct {
     MultiDict_CAPI *capi;
@@ -11,6 +12,12 @@ get_mod_state(PyObject *mod)
     mod_state *state = (mod_state *)PyModule_GetState(mod);
     assert(state != NULL);
     return state;
+}
+
+static inline MultiDict_CAPI *
+get_capi(PyObject *mod)
+{
+    return get_mod_state(mod)->capi;
 }
 
 static int
@@ -27,75 +34,19 @@ check_nargs(const char *name, Py_ssize_t nargs, Py_ssize_t required)
     return 0;
 }
 
-/* module functions */
+// Took the most repetative part and put it right here to help
+// you can get rid of this comment before the pr is finished,
+// Using a function was less confusing here than a macro - Vizonex
 
 static PyObject *
-md_type(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+handle_result(int ret, PyObject *result)
 {
-    mod_state *state = get_mod_state(self);
-    if (check_nargs("md_type", nargs, 0) < 0) {
-        return NULL;
-    }
-    return Py_NewRef(MultiDict_GetType(state->capi));
-}
-
-static PyObject *
-md_new(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
-{
-    mod_state *state = get_mod_state(self);
-    if (check_nargs("md_new", nargs, 1) < 0) {
-        return NULL;
-    }
-    long prealloc_size = PyLong_AsLong(args[0]);
-    if (prealloc_size < 0) {
-        if (!PyErr_Occurred()) {
-            PyErr_SetString(PyExc_ValueError,
-                            "Negative prealloc_size is not allowed");
-        }
-        return NULL;
-    }
-    return MultiDict_New(state->capi, prealloc_size);
-}
-
-static PyObject *
-md_add(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
-{
-    mod_state *state = get_mod_state(self);
-    if (check_nargs("md_add", nargs, 3) < 0) {
-        return NULL;
-    }
-    if (MultiDict_Add(state->capi, args[0], args[1], args[2]) < 0) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
-
-static PyObject *
-md_clear(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
-{
-    mod_state *state = get_mod_state(self);
-    if (check_nargs("md_clear", nargs, 1) < 0) {
-        return NULL;
-    }
-    if (MultiDict_Clear(state->capi, args[0]) < 0) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
-
-static PyObject *
-md_setdefault(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
-{
-    printf("000000\n");
-    mod_state *state = get_mod_state(self);
-    if (check_nargs("md_setdefault", nargs, 3) < 0) {
-        return NULL;
-    }
-    PyObject *result = NULL;
-    int ret =
-        MultiDict_SetDefault(state->capi, args[0], args[1], args[2], &result);
     if (ret < 0) {
         return NULL;
+    }
+    // Test if we missed
+    if (ret == 0) {
+        return PyTuple_Pack(2, Py_None, Py_False);
     }
     assert(result != NULL);
     PyObject *val = PyBool_FromLong(ret);
@@ -104,6 +55,205 @@ md_setdefault(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
         return NULL;
     }
     return PyTuple_Pack(2, result, val);
+}
+
+/* module functions */
+
+static PyObject *
+md_type(PyObject *self, PyObject *unused)
+{
+    return Py_NewRef(MultiDict_GetType(get_capi(self)));
+}
+
+static PyObject *
+md_new(PyObject *self, PyObject *arg)
+{
+    long prealloc_size = PyLong_AsLong(arg);
+    if (prealloc_size < 0) {
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError,
+                            "Negative prealloc_size is not allowed");
+        }
+        return NULL;
+    }
+    return MultiDict_New(get_capi(self), prealloc_size);
+}
+
+static PyObject *
+md_add(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_add", nargs, 3) < 0) {
+        return NULL;
+    }
+    if (MultiDict_Add(get_capi(self), args[0], args[1], args[2]) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+md_clear(PyObject *self, PyObject *arg)
+{
+    if (MultiDict_Clear(get_capi(self), arg) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+md_setdefault(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_setdefault", nargs, 3) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = MultiDict_SetDefault(
+        get_capi(self), args[0], args[1], args[2], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+md_del(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    // handle this check first so that there's an immediate exit
+    // rather than waiting for the state to be obtained
+    if (check_nargs("md_del", nargs, 2) < 0) {
+        return NULL;
+    }
+    if ((MutliDict_Del(get_capi(self), args[0], args[1])) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+md_version(PyObject *self, PyObject *arg)
+{
+    return PyLong_FromUnsignedLongLong(MultiDict_Version(get_capi(self), arg));
+}
+
+static PyObject *
+md_contains(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_contains", nargs, 2) < 0) {
+        return NULL;
+    }
+    int ret = MultiDict_Contains(get_capi(self), args[0], args[1]);
+    if (ret == -1) {
+        return NULL;
+    }
+    return PyBool_FromLong(ret);
+}
+
+static PyObject *
+md_getone(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_getone", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = MultiDict_GetOne(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+md_getall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_getall", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = MultiDict_GetAll(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+md_popone(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_popone", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = MultiDict_PopOne(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+md_popall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_popall", nargs, 2) < 0) {
+        return NULL;
+    }
+    mod_state *state = get_mod_state(self);
+    PyObject *result = NULL;
+    int ret = MultiDict_PopAll(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+md_popitem(PyObject *self, PyObject *arg)
+{
+    mod_state *state = get_mod_state(self);
+    PyObject *REF = MultiDict_PopItem(get_capi(self), arg);
+    if (REF != NULL) {
+        Py_INCREF(REF);
+    }
+    return REF;
+}
+
+static PyObject *
+md_replace(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_replace", nargs, 3) < 0) {
+        return NULL;
+    }
+
+    if (MultiDict_Replace(get_capi(self), args[0], args[1], args[2]) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+md_update_from_md(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_update_from_md", nargs, 3) < 0) {
+        return NULL;
+    }
+
+    if (MultiDict_UpdateFromMultiDict(
+            get_capi(self), args[0], args[1], PyLong_AsLong(args[2])) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+md_update_from_dict(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_update_from_dict", nargs, 3) < 0) {
+        return NULL;
+    }
+    mod_state *state = get_mod_state(self);
+
+    if (MultiDict_UpdateFromDict(
+            get_capi(self), args[0], args[1], PyLong_AsLong(args[2])) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+md_update_from_seq(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_update_from_seq", nargs, 3) < 0) {
+        return NULL;
+    }
+    if (MultiDict_UpdateFromSequence(
+            get_capi(self), args[0], args[1], PyLong_AsLong(args[2]))) {
+        return NULL;
+    };
+    Py_RETURN_NONE;
 }
 
 /* module slots */
@@ -127,11 +277,23 @@ module_free(void *mod)
 }
 
 static PyMethodDef module_methods[] = {
-    {"md_type", (PyCFunction)md_type, METH_FASTCALL},
-    {"md_new", (PyCFunction)md_new, METH_FASTCALL},
+    {"md_type", (PyCFunction)md_type, METH_NOARGS},
+    {"md_new", (PyCFunction)md_new, METH_O},
     {"md_add", (PyCFunction)md_add, METH_FASTCALL},
-    {"md_clear", (PyCFunction)md_clear, METH_FASTCALL},
+    {"md_clear", (PyCFunction)md_clear, METH_O},
     {"md_setdefault", (PyCFunction)md_setdefault, METH_FASTCALL},
+    {"md_del", (PyCFunction)md_del, METH_FASTCALL},
+    {"md_version", (PyCFunction)md_version, METH_O},
+    {"md_contains", (PyCFunction)md_contains, METH_FASTCALL},
+    {"md_getone", (PyCFunction)md_getone, METH_FASTCALL},
+    {"md_getall", (PyCFunction)md_getall, METH_FASTCALL},
+    {"md_popone", (PyCFunction)md_popone, METH_FASTCALL},
+    {"md_popall", (PyCFunction)md_popall, METH_FASTCALL},
+    {"md_popitem", (PyCFunction)md_popitem, METH_O},
+    {"md_replace", (PyCFunction)md_replace, METH_FASTCALL},
+    {"md_update_from_md", (PyCFunction)md_update_from_md, METH_FASTCALL},
+    {"md_update_from_dict", (PyCFunction)md_update_from_dict, METH_FASTCALL},
+    {"md_update_from_seq", (PyCFunction)md_update_from_seq, METH_FASTCALL},
     {NULL, NULL} /* sentinel */
 };
 
