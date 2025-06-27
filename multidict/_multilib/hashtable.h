@@ -1310,7 +1310,7 @@ md_post_update(MultiDictObject *md)
             assert(entry->hash != -1);
         }
     }
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(md, false);
 }
 
 static inline int
