@@ -181,7 +181,30 @@ MultiDict
 
       .. seealso::
 
-         :meth:`update`
+         :meth:`merge` and :meth:`update`
+
+   .. method:: merge([other], **kwargs)
+
+      Merge the dictionary with the key/value pairs from *other* and *kwargs*,
+      appending non-existing pairs to this dictionary. For existing keys,
+      the addition is skipped.
+
+      Returns ``None``.
+
+      :meth:`merge` accepts either another dictionary object or an
+      iterable of key/value pairs (as tuples or other iterables of
+      length two). If keyword arguments are specified, the dictionary
+      is then merged with those key/value pairs:
+      ``d.merge(red=1, blue=2)``.
+
+      Effectively the same as calling :meth:`add` for every
+      ``(key, value)`` pair where ``key not in self``.
+
+      .. seealso::
+
+         :meth:`extend` and :meth:`update`
+
+      .. versionadded:: 6.6
 
    .. method:: update([other], **kwargs)
 
@@ -198,7 +221,7 @@ MultiDict
 
       .. seealso::
 
-         :meth:`extend`
+         :meth:`extend` and :meth:`merge`
 
    .. seealso::
 

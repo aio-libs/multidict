@@ -1,0 +1,2 @@
+Added :meth:`multidict.MultiDict.merge` which copies all items from arguments if its key
+not exist in the dictionary -- by :user:`asvetlov`.

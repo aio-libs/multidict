@@ -429,6 +429,51 @@ class TestMutableMultiDict:
         d2 = case_sensitive_multidict_class(p)
         assert d2 == d
 
+    def test_merge(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[Union[str, int]]],
+    ) -> None:
+        d = case_sensitive_multidict_class({"key": "one"})
+        assert d == {"key": "one"}
+
+        d.merge([("key", "other"), ("key2", "two")], key2=3, foo="bar")
+        assert 4 == len(d)
+        itms = d.items()
+        # we can't guarantee order of kwargs
+        assert ("key", "one") in itms
+        assert ("key2", "two") in itms
+        assert ("key2", 3) in itms
+        assert ("foo", "bar") in itms
+
+        other = case_sensitive_multidict_class({"key": "other"}, bar="baz")
+
+        d.merge(other)
+        assert ("bar", "baz") in d.items()
+
+        d.merge({"key": "other", "boo": "moo"})
+        assert ("boo", "moo") in d.items()
+
+        d.merge()
+        assert 6 == len(d)
+
+        assert ("key", "other") not in d.items()
+
+        with pytest.raises(TypeError):
+            d.merge("foo", "bar")  # type: ignore[arg-type, call-arg]
+
+    def test_merge_from_proxy(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[str]],
+        case_sensitive_multidict_proxy_class: type[MultiDictProxy[str]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("a", "a"), ("b", "b")])
+        proxy = case_sensitive_multidict_proxy_class(d)
+
+        d2 = case_sensitive_multidict_class()
+        d2.merge(proxy)
+
+        assert [("a", "a"), ("b", "b")] == list(d2.items())
+
 
 class TestCIMutableMultiDict:
     def test_getall(
