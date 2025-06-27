@@ -1,0 +1,2 @@
+If :meth:`multidict.MultiDict.extend`, :meth:`multidict.MultiDict.merge`, or :meth:`multidict.MultiDict.update` raises an exception, now the multidict internal state is correctly restored.
+Patch by :user:`asvetlov`.
