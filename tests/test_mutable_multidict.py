@@ -858,3 +858,17 @@ class TestCIMutableMultiDict:
         assert md.keys() == md2.keys() - {"User-Agent"}
         md.update([("User-Agent", b"Bacon/1.0")])
         assert md.keys() == md2.keys()
+
+    def test_update_with_crash_in_the_middle(
+        self, case_insensitive_multidict_class: type[CIMultiDict[str]]
+    ) -> None:
+        class Hack(str):
+            def lower(self) -> str:
+                raise RuntimeError
+
+        d = case_insensitive_multidict_class([("a", "a"), ("b", "b")])
+        with pytest.raises(RuntimeError):
+            lst = [("c", "c"), ("a", "a2"), (Hack("b"), "b2")]
+            d.update(lst)
+
+        assert [("a", "a2"), ("b", "b"), ("c", "c")] == list(d.items())

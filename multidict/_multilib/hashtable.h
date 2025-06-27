@@ -151,10 +151,10 @@ _ci_key_to_identity(mod_state *state, PyObject *key)
         }
         return ret;
     }
-fail:
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
                     "or subclasses of str");
+fail:
     return NULL;
 }
 
@@ -1287,7 +1287,7 @@ fail:
     return -1;
 }
 
-static inline int
+static inline void
 md_post_update(MultiDictObject *md)
 {
     htkeys_t *keys = md->keys;
@@ -1306,14 +1306,11 @@ md_post_update(MultiDictObject *md)
             }
             if (entry->hash == -1) {
                 entry->hash = _unicode_hash(entry->identity);
-                if (entry->hash == -1) {
-                    // hash of string always exists but still
-                    return -1;
-                }
             }
+            assert(entry->hash != -1);
         }
     }
-    return 0;
+    ASSERT_CONSISTENT(md, false);
 }
 
 static inline int
