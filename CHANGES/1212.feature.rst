@@ -1,1 +1,0 @@
-C implementation of :class:`multidict.MultiDict.getall` now is slightly faster if it returns nothing -- by :user:`asvetlov`.
