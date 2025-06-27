@@ -91,15 +91,18 @@ _multidict_extend(MultiDictObject *self, PyObject *arg, PyObject *kwds,
     }
 
     if (op != Extend) {  // Update or Merge
-        if (md_post_update(self) < 0) {
-            goto fail;
-        }
+        md_post_update(self);
     }
 
     ASSERT_CONSISTENT(self, false);
     Py_CLEAR(seq);
     return 0;
 fail:
+    if (op != Extend) {  // Update or Merge
+        // Cleanup soft-deleted items
+        md_post_update(self);
+    }
+    ASSERT_CONSISTENT(self, false);
     Py_CLEAR(seq);
     return -1;
 }
