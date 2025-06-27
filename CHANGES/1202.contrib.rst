@@ -1,1 +1,0 @@
-Set up ``PYTHONHASHSEED`` for benchmarks execution to make measured times stable -- by :user:`asvetlov`.

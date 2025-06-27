@@ -1,1 +1,0 @@
-Improved documentation for :meth:`multidict.MultiDict.extend` and :meth:`multidict.MultiDict.update` -- by :user:`asvetlov`.

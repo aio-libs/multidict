@@ -14,6 +14,70 @@ Changelog
 
 .. towncrier release notes start
 
+6.6.0
+=====
+
+*(2025-06-27)*
+
+
+Features
+--------
+
+- Added :meth:`multidict.MultiDict.merge` which copies all items from arguments if its key
+  not exist in the dictionary -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`292`.
+
+- Stopped reallocating memory for the internal ``htkeys_t`` structure when inserting new items if the
+  multidict has deleted items and it could be collapsed in-place.  Removal of
+  ``malloc()``/``free()`` improves the performance slightly.
+
+  The change affects C implementation only, pure Python code is not changed.
+
+  Patch by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1200`.
+
+- C implementation of :class:`multidict.MultiDict.getall` now is slightly faster if it returns nothing -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1212`.
+
+
+Improved documentation
+----------------------
+
+- Replaced docstring for :meth:`multidict.MultiDict.update` to don't use RST/markdown markup.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1203`.
+
+- Improved documentation for :meth:`multidict.MultiDict.extend` and :meth:`multidict.MultiDict.update` -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1205`.
+
+
+Contributor-facing changes
+--------------------------
+
+- When building wheels, the source distribution is now passed directly
+  to the ``cibuildwheel`` invocation -- by :user:`webknjaz`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1199`.
+
+- Set up ``PYTHONHASHSEED`` for benchmarks execution to make measured times stable -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1202`.
+
+
+----
+
+
 6.5.1
 =====
 
