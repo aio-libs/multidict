@@ -64,7 +64,21 @@ typedef struct {
     int (*MultiDict_UpdateFromSequence)(void* state, PyObject* self,
                                         PyObject* kwds, UpdateOp op);
 
+    PyObject* (*MultiDictProxy_New)(void* state, PyObject* md);
+    int (*MultiDictProxy_Contains)(void* state, PyObject* self, PyObject* key);
+    int (*MultiDictProxy_GetAll)(void* state, PyObject* self, PyObject* key,
+                                 PyObject** result);
+    int (*MultiDictProxy_GetOne)(void* state, PyObject* self, PyObject* key,
+                                 PyObject** result);
+    PyTypeObject* (*MultiDictProxy_GetType)(void* state);
+
 } MultiDict_CAPI;
+
+// TODO (Vizonex): cleanup Docstrings We can put the function documentation
+// into the cython c-api simillar to what cython did with cpython in the
+// future... I see no reason to use doxygen styled documentation. And if we
+// decide to keep it then it should be transformed into the sphinx-styled
+// documentation instead.
 
 #ifndef MULTIDICT_IMPL
 
@@ -182,23 +196,6 @@ MultiDict_Version(MultiDict_CAPI* api, PyObject* self)
 {
     return api->MultiDict_Version(api->state, self);
 }
-
-// Under debate as concept
-
-// /// @brief Creates a new positional marker for a multidict to iterate
-// /// with when being utlizied with `MultiDict_Next`
-// /// @param api Python Capsule Pointer
-// /// @param self the multidict to create a positional marker for
-// /// @param pos the positional marker to be created
-// /// @return 0 on success, -1 on failure along with `TypeError` exception
-// being thrown static inline int MultiDict_CreatePosMarker(MultiDict_CAPI*
-// api, PyObject* self, md_pos_t* pos){
-//     return api->MultiDict_CreatePosMarker(api->state, self, pos);
-// }
-// static inline int MultiDict_Next(MultiDict_CAPI* api, PyObject* self,
-//     md_pos_t* pos, PyObject** identity, PyObject**key, PyObject **value){
-//     return api->MultiDict_Next(api->state, self, pos, identity, key, value);
-// };
 
 /// @brief Determines if a certain key exists a multidict object
 /// @param api Python Capsule Pointer
@@ -332,6 +329,38 @@ MultiDict_UpdateFromSequence(MultiDict_CAPI* api, PyObject* self,
 {
     return api->MultiDict_UpdateFromSequence(api->state, self, seq, op);
 };
+
+static inline PyObject*
+MultiDictProxy_New(MultiDict_CAPI* api, PyObject* md)
+{
+    return api->MultiDictProxy_New(api->state, md);
+}
+
+static inline int
+MultiDictProxy_Contains(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+{
+    return api->MultiDictProxy_Contains(api->state, self, key);
+}
+
+static inline int
+MultiDictProxy_GetAll(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                      PyObject** result)
+{
+    return api->MultiDictProxy_GetAll(api->state, self, key, result);
+}
+
+static inline int
+MultiDictProxy_GetOne(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                      PyObject** result)
+{
+    return api->MultiDictProxy_GetOne(api->state, self, key, result);
+}
+
+static inline PyTypeObject*
+MultiDictProxy_GetType(MultiDict_CAPI* api)
+{
+    return api->MultiDictProxy_GetType(api->state);
+}
 
 #endif
 

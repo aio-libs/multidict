@@ -256,6 +256,53 @@ md_update_from_seq(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
     Py_RETURN_NONE;
 }
 
+static PyObject *
+md_proxy_new(PyObject *self, PyObject *arg)
+{
+    return MultiDictProxy_New(get_capi(self), arg);
+}
+
+static PyObject *
+md_proxy_contains(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_proxy_contains", nargs, 2) < 0) {
+        return NULL;
+    }
+    int ret = MultiDictProxy_Contains(get_capi(self), args[0], args[1]);
+    if (ret == -1) {
+        return NULL;
+    }
+    return PyBool_FromLong(ret);
+}
+
+static PyObject *
+md_proxy_getall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_proxy_getall", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = MultiDictProxy_GetAll(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+md_proxy_getone(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("md_proxy_getone", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = MultiDictProxy_GetOne(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+md_proxy_type(PyObject *self, PyObject *unused)
+{
+    return Py_NewRef(MultiDictProxy_GetType(get_capi(self)));
+}
+
 /* module slots */
 
 static int
@@ -294,6 +341,11 @@ static PyMethodDef module_methods[] = {
     {"md_update_from_md", (PyCFunction)md_update_from_md, METH_FASTCALL},
     {"md_update_from_dict", (PyCFunction)md_update_from_dict, METH_FASTCALL},
     {"md_update_from_seq", (PyCFunction)md_update_from_seq, METH_FASTCALL},
+    {"md_proxy_new", (PyCFunction)md_proxy_new, METH_O},
+    {"md_proxy_type", (PyCFunction)md_proxy_type, METH_NOARGS},
+    {"md_proxy_contains", (PyCFunction)md_proxy_contains, METH_FASTCALL},
+    {"md_proxy_getall", (PyCFunction)md_proxy_getall, METH_FASTCALL},
+    {"md_proxy_getone", (PyCFunction)md_proxy_getone, METH_FASTCALL},
     {NULL, NULL} /* sentinel */
 };
 

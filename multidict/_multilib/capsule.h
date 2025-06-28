@@ -23,6 +23,16 @@ extern "C" {
         return ON_FAIL;                                              \
     }
 
+#define __MULTIDICTPROXY_VALIDATION_CHECK(SELF, STATE, ON_FAIL)           \
+    if (MultiDictProxy_Check(((mod_state*)STATE), (SELF)) <= 0) {         \
+        PyErr_Format(PyExc_TypeError,                                     \
+                     #SELF " should be a MultiDictProxy instance not %s", \
+                     Py_TYPE(SELF)->tp_name);                             \
+        return ON_FAIL;                                                   \
+    }
+
+#define __MULTIDICTPROXY_GET_MD(SELF) ((MultiDictProxyObject*)SELF)->md
+
 static PyTypeObject*
 MultiDict_GetType(void* state_)
 {
@@ -190,6 +200,69 @@ MultiDict_UpdateFromSequence(void* state_, PyObject* self, PyObject* seq,
     return ret;
 }
 
+static PyObject*
+MultiDictProxy_New(void* state_, PyObject* md)
+{
+    // This is meant to be a more optimized version of
+    // multidict_proxy_tp_init(...)
+
+    mod_state* state = (mod_state*)state_;
+    PyObject* self =
+        state->MultiDictProxyType->tp_alloc(&state->MultiDictProxyType, 0);
+    if (self == NULL) {
+        return NULL;
+    }
+    if (!AnyMultiDictProxy_Check(((mod_state*)state_), md) &&
+        !AnyMultiDict_Check(state, md)) {
+        PyErr_Format(PyExc_TypeError,
+                     "md requires MultiDict or MultiDictProxy instance, "
+                     "not <class '%s'>",
+                     Py_TYPE(md)->tp_name);
+        goto fail;
+    }
+    if (AnyMultiDictProxy_Check(state, md)) {
+        md = ((MultiDictProxyObject*)md)->md;
+    } else {
+        md = (MultiDictObject*)md;
+    }
+    Py_INCREF(md);
+    ((MultiDictProxyObject*)self)->md = md;
+    return self;
+fail:
+    Py_XDECREF(self);
+    return NULL;
+}
+
+static int
+MultiDictProxy_Contains(void* state_, PyObject* self, PyObject* key)
+{
+    __MULTIDICTPROXY_VALIDATION_CHECK(self, state_, -1);
+    return md_contains(__MULTIDICTPROXY_GET_MD(self), key, NULL);
+}
+
+static int
+MultiDictProxy_GetAll(void* state_, PyObject* self, PyObject* key,
+                      PyObject** result)
+{
+    __MULTIDICTPROXY_VALIDATION_CHECK(self, state_, -1);
+    return md_get_all(__MULTIDICTPROXY_GET_MD(self), key, result);
+}
+
+static int
+MultiDictProxy_GetOne(void* state_, PyObject* self, PyObject* key,
+                      PyObject** result)
+{
+    __MULTIDICTPROXY_VALIDATION_CHECK(self, state_, -1);
+    return md_get_one(__MULTIDICTPROXY_GET_MD(self), key, result);
+}
+
+static PyTypeObject*
+MultiDictProxy_GetType(void* state_)
+{
+    mod_state* state = (mod_state*)state_;
+    return (PyTypeObject*)Py_NewRef(state->MultiDictProxyType);
+}
+
 static void
 capsule_free(MultiDict_CAPI* capi)
 {
@@ -230,6 +303,12 @@ new_capsule(mod_state* state)
     capi->MultiDict_UpdateFromMultiDict = MultiDict_UpdateFromMultiDict;
     capi->MultiDict_UpdateFromDict = MultiDict_UpdateFromDict;
     capi->MultiDict_UpdateFromSequence = MultiDict_UpdateFromSequence;
+
+    capi->MultiDictProxy_New = MultiDictProxy_New;
+    capi->MultiDictProxy_Contains = MultiDictProxy_Contains;
+    capi->MultiDictProxy_GetAll = MultiDictProxy_GetAll;
+    capi->MultiDictProxy_GetOne = MultiDictProxy_GetOne;
+    capi->MultiDictProxy_GetType = MultiDictProxy_GetType;
 
     PyObject* ret =
         PyCapsule_New(capi, MultiDict_CAPSULE_NAME, capsule_destructor);
