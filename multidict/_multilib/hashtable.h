@@ -251,8 +251,9 @@ _md_shrink(MultiDictObject *md, bool update)
     for (Py_ssize_t i = 0; i < nentries; ++i, ++old_ep) {
         if (old_ep->identity != NULL) {
             if (new_ep != old_ep) {
-                *new_ep++ = *old_ep;
+                *new_ep = *old_ep;
             }
+            new_ep++;
         } else {
             newnentries -= 1;
         }

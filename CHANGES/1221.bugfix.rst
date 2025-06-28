@@ -1,0 +1,1 @@
+Fixed a memory corruption issue in the C implementation of ``_md_shrink()`` that could lead to segmentation faults and data loss when items were deleted from a :class:`~multidict.MultiDict`. The issue was an edge case in the pointer arithmetic during the compaction phase -- by :user:`bdraco`.
