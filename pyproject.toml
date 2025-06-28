@@ -11,4 +11,6 @@ skip = "pp*"
 enable = ["cpython-freethreading"]
 
 [tool.cibuildwheel.linux]
+# Re-enable 32-bit builds (disabled by default in cibuildwheel 3.0)
+archs = ["auto", "auto32"]
 before-all = "yum install -y libffi-devel || apk add --upgrade libffi-dev || apt-get install libffi-dev"
