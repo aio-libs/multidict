@@ -44,7 +44,6 @@ MultiDict_New(void* state_, int prealloc_size)
         Py_CLEAR(md);
         return NULL;
     }
-    PyObject_GC_Track(md);
     return (PyObject*)md;
 }
 

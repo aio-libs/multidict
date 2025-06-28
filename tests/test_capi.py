@@ -67,9 +67,6 @@ def test_md_getone_miss() -> None:
     assert testcapi.md_getone(d, "x")[1] is False
 
 
-@pytest.mark.skip(
-    "GC/WeakRef Releated Bug: SEE: https://github.com/aio-libs/multidict/pull/1190#discussion_r2162536248"
-)
 def test_md_new() -> None:
     md = testcapi.md_new(0)
     assert isinstance(md, multidict.MultiDict)
