@@ -875,6 +875,7 @@ md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
     int tmp;
     PyObject *value = NULL;
+
     *ret = NULL;
 
     md_finder_t finder = {0};
