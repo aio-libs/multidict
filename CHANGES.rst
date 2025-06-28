@@ -14,6 +14,39 @@ Changelog
 
 .. towncrier release notes start
 
+6.6.1
+=====
+
+*(2025-06-28)*
+
+
+Bug fixes
+---------
+
+- If :meth:`multidict.MultiDict.extend`, :meth:`multidict.MultiDict.merge`, or :meth:`multidict.MultiDict.update` raises an exception, now the multidict internal state is correctly restored.
+  Patch by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1215`.
+
+
+Contributor-facing changes
+--------------------------
+
+- Fixed ``setuptools`` deprecation warning about the license specification -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1216`.
+
+- Fix compiler warnings and convert them to errors -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1217`.
+
+
+----
+
+
 6.6.0
 =====
 

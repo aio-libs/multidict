@@ -81,12 +81,12 @@ GROWTH_RATE(MultiDictObject *md)
     return md->used * 3;
 }
 
+#ifndef NDEBUG
 static inline int
 _md_check_consistency(MultiDictObject *md, bool update);
 static inline int
 _md_dump(MultiDictObject *md);
 
-#ifndef NDEBUG
 #define ASSERT_CONSISTENT(md, update) assert(_md_check_consistency(md, update))
 #else
 #define ASSERT_CONSISTENT(md, update) assert(1)
@@ -868,6 +868,8 @@ fail:
 static inline int
 md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
 {
+    int tmp;
+    PyObject *value = NULL;
     *ret = NULL;
 
     md_finder_t finder = {0};
@@ -881,9 +883,6 @@ md_get_all(MultiDictObject *md, PyObject *key, PyObject **ret)
         assert(PyErr_Occurred());
         goto fail;
     }
-
-    int tmp;
-    PyObject *value = NULL;
 
     while ((tmp = md_find_next(&finder, NULL, &value)) > 0) {
         if (*ret == NULL) {
@@ -1895,6 +1894,8 @@ md_clear(MultiDictObject *md)
     return 0;
 }
 
+#ifndef NDEBUG
+
 static inline int
 _md_check_consistency(MultiDictObject *md, bool update)
 {
@@ -1987,6 +1988,7 @@ _md_dump(MultiDictObject *md)
     printf("\n");
     return 1;
 }
+#endif  // NDEBUG
 
 #ifdef __cplusplus
 }

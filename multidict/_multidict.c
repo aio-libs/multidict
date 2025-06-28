@@ -112,7 +112,7 @@ _multidict_extend_parse_args(mod_state *state, PyObject *args, PyObject *kwds,
                              const char *name, PyObject **parg)
 {
     Py_ssize_t size = 0;
-    Py_ssize_t s;
+    Py_ssize_t s = 0;
     if (args) {
         s = PyTuple_GET_SIZE(args);
         if (s > 1) {
