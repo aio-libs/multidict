@@ -1,0 +1,1 @@
+Re-enabled 32-bit Linux wheel builds that were disabled by default in cibuildwheel 3.0.0 -- by :user:`bdraco`.
