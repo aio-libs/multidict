@@ -1,0 +1,1 @@
+Added public C API for the library -- by :user:`Vizonex` and :user:`asvetlov`.
