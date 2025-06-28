@@ -1,1 +1,1 @@
-Fixed format string compilation errors in debug builds on 32-bit platforms by using portable `%zd` format specifiers for `Py_ssize_t` values instead of `%ld` -- by :user:`bdraco`.
+Fixed format string compilation errors in debug builds on 32-bit platforms by using portable ``%zd`` format specifiers for ``Py_ssize_t`` values instead of ``%ld`` -- by :user:`bdraco`.
