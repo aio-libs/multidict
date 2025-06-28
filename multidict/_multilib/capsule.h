@@ -208,7 +208,7 @@ MultiDictProxy_New(void* state_, PyObject* md)
 
     mod_state* state = (mod_state*)state_;
     PyObject* self =
-        state->MultiDictProxyType->tp_alloc(&state->MultiDictProxyType, 0);
+        state->MultiDictProxyType->tp_alloc(state->MultiDictProxyType, 0);
     if (self == NULL) {
         return NULL;
     }
@@ -220,13 +220,14 @@ MultiDictProxy_New(void* state_, PyObject* md)
                      Py_TYPE(md)->tp_name);
         goto fail;
     }
+    MultiDictObject* md_object;
     if (AnyMultiDictProxy_Check(state, md)) {
-        md = ((MultiDictProxyObject*)md)->md;
+        md_object = ((MultiDictProxyObject*)md)->md;
     } else {
-        md = (MultiDictObject*)md;
+        md_object = (MultiDictObject*)md;
     }
-    Py_INCREF(md);
-    ((MultiDictProxyObject*)self)->md = md;
+    Py_INCREF(md_object);
+    ((MultiDictProxyObject*)self)->md = md_object;
     return self;
 fail:
     Py_XDECREF(self);

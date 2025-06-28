@@ -198,9 +198,6 @@ def test_md_version() -> None:
     assert testcapi.md_version(d) != 0
 
 
-@pytest.mark.skip(
-    reason="Throws MemoryError after state->MultiDictProxyType->tp_alloc(...) is called"
-)
 def test_md_proxy_new() -> None:
     mdp = testcapi.md_proxy_new(MultiDict({"a": 1}))
     assert mdp.getone("a") == 1
