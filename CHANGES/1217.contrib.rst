@@ -1,1 +1,0 @@
-Fix compiler warnings and convert them to errors -- by :user:`asvetlov`.
