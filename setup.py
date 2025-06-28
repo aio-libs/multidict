@@ -15,12 +15,13 @@ CFLAGS = ["-O0", "-g3", "-UNDEBUG"] if DEBUG_BUILD else ["-O3"]
 if platform.system() != "Windows":
     CFLAGS.extend(
         [
-            "-std=c99",
+            "-std=c11",
             "-Wall",
             "-Wsign-compare",
             "-Wconversion",
             "-fno-strict-aliasing",
-            "-pedantic",
+            "-Wno-conversion",
+            "-Werror",
         ]
     )
 
