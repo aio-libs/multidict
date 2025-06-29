@@ -73,7 +73,7 @@ typedef struct {
     PyTypeObject* (*MultiDictProxy_GetType)(void* state);
 
     PyObject* (*IStr_FromUnicode)(void* state_, PyObject* str);
-    PyObject* (*IStr_FromStringAndSize)(void* state_, PyObject* str,
+    PyObject* (*IStr_FromStringAndSize)(void* state_, const char* str,
                                         Py_ssize_t size);
     PyObject* (*IStr_FromString)(void* state_, const char* str);
     PyTypeObject* (*IStr_GetType)(void* state_);
