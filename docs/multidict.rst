@@ -615,6 +615,20 @@ The library is also shipped with a C-API, the header files can be compiled using
    :retval 0: if false,
    :retval -1: if failure had occurred
 
+
+.. c:function:: PyObject* MultiDict_GetAll(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject** result)
+
+   Return the all values corresponding to *key* if *key* is in the
+   dictionary, else *NULL*.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`MultiDict` object
+   :param key: the key to get one item from
+   :param result: the object to attached the obtained object to.
+   :retval 1: on success
+   :retval 0: on failure (No exceptions are raised)
+   :retval -1: on :exc:`TypeError` raised
+
 .. c:function:: PyObject* MultiDict_GetOne(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject** result)
 
    Return the **first** value for *key* if *key* is in the
@@ -707,3 +721,61 @@ The library is also shipped with a C-API, the header files can be compiled using
    :param op: :c:enum:`UpdateOp` operation for extending, updating, or merging values.
    :retval 0: on success
    :retval -1: on failure
+
+
+.. c:function:: PyObject* MultiDictProxy_New(MultiDict_CAPI* api, PyObject* md)
+
+   Initalizes a MultiDictProxy from any other Multidict object 
+   making it immutable
+
+   :param api: Python Capsule Pointer
+   :param md: the :class:`MultiDict` object to make immutable
+   :returns: a :class:`MultiDictProxy` on success
+   :retval NULL: on failure and raises :exc:`TypeError`
+
+
+.. c:function:: int MultiDictProxy_Contains(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+
+   Determines if a certain key exists a MultiDictProxy object
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`MultiDictProxy` object
+   :param key: the key to look for
+   :retval 1: if true
+   :retval 0: if false,
+   :retval -1: if failure had occurred
+
+.. c:function:: PyObject* MultiDictProxy_GetAll(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject** result)
+
+   Return the all values corresponding to *key* if *key* is in the
+   dictionary, else *NULL*.
+   
+   :param api: Python Capsule Pointer
+   :param self: the :class:`MultiDictProxy` object
+   :param key: the key to get one item from
+   :param result: the object to attached the obtained object to.
+   :retval 1: on success
+   :retval 0: on failure (No exceptions are raised)
+   :retval -1: on :exc:`TypeError` raised
+
+.. c:function:: PyObject* MultiDictProxy_GetOne(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject** result)
+
+   Return the **first** value for *key* if *key* is in the
+   dictionary, else *NULL*.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`MultiDictProxy` object
+   :param key: the key to get one item from
+   :param result: the object to attached the obtained object to.
+   :retval 1: on success
+   :retval 0: on failure (No exceptions are raised)
+   :retval -1: on :exc:`TypeError` raised
+
+.. c:function:: PyTypeObject* MultiDictProxy_GetType(MultiDict_CAPI* api)
+
+   Obtains the :class:`MultiDictProxy` TypeObject.
+
+   :param api: Python Capsule Pointer
+   :returns: return A CPython `PyTypeObject` is returned as a pointer
+   :retval NULL: if an exception was raised
+
