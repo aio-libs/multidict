@@ -95,7 +95,8 @@ class TraceableBinaryExtensionCmd(build_ext):
                 ),
                 encoding='utf-8',
             )
-            breakpoint()
+            # TODO: PWD dir hack — https://maskray.me/blog/2023-04-25-compiler-output-files
+            # breakpoint()
             self.copy_file(
                 tracing_data_file_in_tmp_dir_absolute,
                 tracing_data_file_in_package_dir,
