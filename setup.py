@@ -1,3 +1,4 @@
+import json
 import os
 import pathlib
 import platform
@@ -75,7 +76,6 @@ class TraceableBinaryExtensionCmd(build_ext):
             package_dir = pathlib.Path(build_py.get_package_dir(package))
             tracing_data_file_in_tmp_dir = pathlib.Path(*modpath).with_suffix('.gcno')  # `.o` file is unnecessary for gcovr to function
             tracing_data_in_package_dir = package_dir / '__tracing-data__'
-            breakpoint()
 
             tracing_data_file_in_tmp_dir_absolute = pathlib.Path(self.build_temp) / tracing_data_file_in_tmp_dir
             tracing_data_file_in_package_dir = tracing_data_in_package_dir / tracing_data_file_in_tmp_dir
@@ -83,6 +83,19 @@ class TraceableBinaryExtensionCmd(build_ext):
             tracing_data_file_in_package_dir.parent.mkdir(exist_ok=True, parents=True)
             (tracing_data_in_package_dir / '.gitignore').write_text('*\n')
 
+            log.info(f'GCOV_PREFIX={tracing_data_in_package_dir !s}')
+            log.info(f'GCOV_PREFIX_STRIP={len(pathlib.Path(self.build_temp).parents) !s}')
+            build_meta_json_path = (tracing_data_in_package_dir / 'build-metadata.json')
+            build_meta_json_path.write_text(
+                json.dumps(
+                    {
+                        'GCOV_PREFIX': str(tracing_data_in_package_dir),
+                        'GCOV_PREFIX_STRIP': str(len(pathlib.Path(self.build_temp).parents)),
+                    },
+                ),
+                encoding='utf-8',
+            )
+            breakpoint()
             self.copy_file(
                 tracing_data_file_in_tmp_dir_absolute,
                 tracing_data_file_in_package_dir,
@@ -93,7 +106,8 @@ class TraceableBinaryExtensionCmd(build_ext):
         # GCOV_PREFIX=ext/ GCOV_PREFIX_STRIP=3 some-venv/bin/python -Im pytest tests/test_istr.py
         # GCOV_PREFIX=__tracing-data__/ GCOV_PREFIX_STRIP=2 some-venv/bin/python -Im pytest tests/test_istr.py
         # GCOV_PREFIX=multidict/__tracing-data__/ GCOV_PREFIX_STRIP=3 some-venv/bin/python -Im pytest
-        # *FINAL*: GCOV_PREFIX=multidict/__tracing-data__/multidict/ GCOV_PREFIX_STRIP=3 some-venv/bin/python -Im pytest
+        # GCOV_PREFIX=multidict/__tracing-data__/multidict/ GCOV_PREFIX_STRIP=3 some-venv/bin/python -Im pytest
+        # *FINAL*: GCOV_PREFIX=multidict/__tracing-data__/ GCOV_PREFIX_STRIP=2 some-venv/bin/python -Im pytest
 
 
 if not NO_EXTENSIONS:
