@@ -252,6 +252,7 @@ _md_shrink(MultiDictObject *md, bool update)
         if (old_ep->identity != NULL) {
             if (new_ep != old_ep) {
                 *new_ep = *old_ep;
+                old_ep->identity = NULL;
             }
             new_ep++;
         } else {
