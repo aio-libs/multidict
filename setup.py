@@ -68,6 +68,10 @@ class TraceableBinaryExtensionCmd(build_ext):
         log.info(f'{self.build_lib=}')
         log.info(f'{self.build_temp=}')
 
+        if not DEBUG_BUILD:
+            log.info('Not a debug build. Exiting early...')
+            return
+
         for ext in self.extensions:
             fullname = self.get_ext_fullname(ext.name)
             modpath = fullname.split('.')
