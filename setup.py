@@ -1,4 +1,5 @@
 import os
+import pathlib
 import platform
 import sys
 
@@ -23,7 +24,7 @@ if DEBUG_BUILD:
     CFLAGS.extend(['--coverage', '-coverage', '-fprofile-arcs', '-ftest-coverage', '-fPIC'])
     # CFLAGS.extend(['-fprofile-dir=./multidict/'])
 
-LDFLAGS = ['--coverage', '-coverage', '-lgcov'] if DEBUG_BUILD else []
+# LDFLAGS = ['--coverage', '-coverage', '-lgcov'] if DEBUG_BUILD else []
 
 # CFLAGS = ["-O2"]
 # CFLAGS.extend(['--coverage', '-g', '-O0'])
@@ -60,45 +61,31 @@ from setuptools.command.build_ext import build_ext
 
 
 class TraceableBinaryExtensionCmd(build_ext):
-    # def initialize_options(self):  # ??
-    # def finalize_options(self):  # ??
-    #     super().finalize_options()
-    #     # self._pkg_dir = self.get_finalized_command('build_py').get_package_dir('multidict')
-    #     # self.build_temp = f'{self.build_lib}/{self._pkg_dir}/__debug-symbols__'
-    #     # self.build_temp = self.build_lib
-    #     # breakpoint()
-
     def run(self):
         super().run()
         from distutils import log
         log.info(f'{self.build_lib=}')
         log.info(f'{self.build_temp=}')
-        # self.copy_file(f'{self.build_temp}/multidict/_multidict.o', f'multidict/_multidict.o', level=self.verbose)  # `.o` file seems unnecessary for gcovr to function
 
         for ext in self.extensions:
             fullname = self.get_ext_fullname(ext.name)
-            # breakpoint()
-            filename = self.get_ext_filename(fullname)
             modpath = fullname.split('.')
             package = '.'.join(modpath[:-1])
             build_py = self.get_finalized_command('build_py')  # ??
-            package_dir = build_py.get_package_dir(package)
-            inplace_file = os.path.join(package_dir, os.path.basename(filename))
-            regular_file = os.path.join(self.build_lib, filename)
-            tracing_data_file_in_tmp_dir = os.path.join(*modpath) + '.gcno'
-            # f'{self.build_temp}/{package_dir}/'
-            tracing_data_in_tmp_dir = f'{self.build_temp}/{package_dir}/'
-            tracing_data_in_package_dir = f'{package_dir}/__tracing-data__/'
-            # breakpoint()
+            package_dir = pathlib.Path(build_py.get_package_dir(package))
+            tracing_data_file_in_tmp_dir = pathlib.Path(*modpath).with_suffix('.gcno')  # `.o` file is unnecessary for gcovr to function
+            tracing_data_in_package_dir = package_dir / '__tracing-data__'
+            breakpoint()
 
-            os.makedirs(os.path.join(tracing_data_in_package_dir, os.path.dirname(tracing_data_file_in_tmp_dir)), exist_ok=True)
-            with open(os.path.join(tracing_data_in_package_dir, '.gitignore'), 'w') as gitignore_fd:
-                gitignore_fd.writelines(('*', ))
+            tracing_data_file_in_tmp_dir_absolute = pathlib.Path(self.build_temp) / tracing_data_file_in_tmp_dir
+            tracing_data_file_in_package_dir = tracing_data_in_package_dir / tracing_data_file_in_tmp_dir
+
+            tracing_data_file_in_package_dir.parent.mkdir(exist_ok=True, parents=True)
+            (tracing_data_in_package_dir / '.gitignore').write_text('*\n')
 
             self.copy_file(
-                # os.path.join(tracing_data_in_tmp_dir, '_multidict.gcno'),  # `.o` file is unnecessary for gcovr to function
-                os.path.join(self.build_temp, tracing_data_file_in_tmp_dir),  # `.o` file is unnecessary for gcovr to function
-                os.path.join(tracing_data_in_package_dir, tracing_data_file_in_tmp_dir),
+                tracing_data_file_in_tmp_dir_absolute,
+                tracing_data_file_in_package_dir,
                 level=self.verbose,
             )
         # GCOV_PREFIX=multidict/ GCOV_PREFIX_STRIP=4 some-venv/bin/python -Im pytest tests/test_istr.py
