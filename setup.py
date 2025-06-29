@@ -76,8 +76,7 @@ class TraceableBinaryExtensionCmd(build_ext):
             fullname = self.get_ext_fullname(ext.name)
             modpath = fullname.split('.')
             package = '.'.join(modpath[:-1])
-            build_py = self.get_finalized_command('build_py')  # ??
-            package_dir = pathlib.Path(build_py.get_package_dir(package))
+            package_dir = pathlib.Path(self.build_lib)
             tracing_data_file_in_tmp_dir = pathlib.Path(*modpath).with_suffix('.gcno')  # `.o` file is unnecessary for gcovr to function
             tracing_data_in_package_dir = package_dir / '__tracing-data__'
 
