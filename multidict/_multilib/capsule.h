@@ -268,7 +268,7 @@ static PyObject*
 IStr_FromUnicode(void* state_, PyObject* str)
 {
     if (!PyUnicode_Check(str)) {
-        PyErr_Format(&PyExc_TypeError,
+        PyErr_Format(PyExc_TypeError,
                      "str argument should be a str type object not \"%s\"",
                      Py_TYPE(str)->tp_name);
         return NULL;
