@@ -14,3 +14,6 @@ enable = ["cpython-freethreading"]
 # Re-enable 32-bit builds (disabled by default in cibuildwheel 3.0)
 archs = ["auto", "auto32"]
 before-all = "yum install -y ccache libffi-devel || apk add --upgrade ccache libffi-dev || apt-get install ccache libffi-dev"
+
+[tool.cibuildwheel.linux.environment]
+MULTIDICT_DEBUG_BUILD = "1"
