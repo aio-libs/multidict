@@ -725,8 +725,8 @@ The library is also shipped with a C-API, the header files can be compiled using
 
 .. c:function:: PyObject* MultiDictProxy_New(MultiDict_CAPI* api, PyObject* md)
 
-   Initalizes a MultiDictProxy from any other Multidict object 
-   making it immutable
+   Initalizes a :class:`MultiDictProxy` from any other Multidict object 
+   making an immutable version of it.
 
    :param api: Python Capsule Pointer
    :param md: the :class:`MultiDict` object to make immutable
@@ -736,7 +736,7 @@ The library is also shipped with a C-API, the header files can be compiled using
 
 .. c:function:: int MultiDictProxy_Contains(MultiDict_CAPI* api, PyObject* self, PyObject* key)
 
-   Determines if a certain key exists a MultiDictProxy object
+   Determines if a certain key exists a :class:`MultiDictProxy` object
 
    :param api: Python Capsule Pointer
    :param self: the :class:`MultiDictProxy` object
