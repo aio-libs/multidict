@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import importlib.resources
+import json
+import os
 import pickle
 from dataclasses import dataclass
 from functools import cached_property
@@ -69,10 +72,32 @@ def multidict_implementation(request: pytest.FixtureRequest) -> MultidictImpleme
 
 
 @pytest.fixture(scope="session")
+def _gcov_configuration() -> None:
+    """Configure the C-extension gcda write location in debug mode."""
+    # NOTE: This is not using `monkeypatch` because it's unavailable with the
+    # NOTE: session scope. Additionally, we need these environment variables
+    # NOTE: to survive until the module gets to writing data to disk.
+    # NOTE: We don't currently run with `pytest-xdist` but might have to
+    # NOTE: improve this if we start, to avoid data races. Also, should we
+    # NOTE: integrate `tmp_path` instead of writing to `site-packages/`?
+
+    build_meta_json_path = (
+        importlib.resources.files('multidict')  # FIXME: read from `pyproject.toml`?
+        / '__tracing-data__'
+        / 'build-metadata.json'
+    )
+    gcov_env = json.loads(build_meta_json_path.read_text(encoding='utf-8'))
+    os.environ.update(gcov_env)
+
+
+@pytest.fixture(scope="session")
 def multidict_module(
     multidict_implementation: MultidictImplementation,
+    request: pytest.FixtureRequest,
 ) -> ModuleType:
     """Return a pre-imported module containing a multidict variant."""
+    if not multidict_implementation.is_pure_python:
+        request.getfixturevalue('_gcov_configuration')
     return multidict_implementation.imported_module
 
 
