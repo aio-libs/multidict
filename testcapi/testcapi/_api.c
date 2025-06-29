@@ -303,6 +303,56 @@ md_proxy_type(PyObject *self, PyObject *unused)
     return Py_NewRef(MultiDictProxy_GetType(get_capi(self)));
 }
 
+static PyObject *
+istr_from_unicode(PyObject *self, PyObject *str)
+{
+    return IStr_FromUnicode(get_capi(self), str);
+}
+
+static PyObject *
+istr_from_string_and_size(PyObject *self, PyObject *const *args,
+                          Py_ssize_t nargs)
+{
+    if (check_nargs("istr_from_string_and_size", nargs, 2) < 0) {
+        return NULL;
+    }
+
+    Py_ssize_t size = PyLong_AsSsize_t(args[1]);
+    if (size < 0) {
+        return NULL;
+    }
+
+    // we should be able to test this as a PyBuffer
+    Py_buffer view;
+    if (PyObject_GetBuffer(args[0], &view, PyBUF_SIMPLE) < 0) {
+        return NULL;
+    }
+
+    PyObject *istr =
+        IStr_FromStringAndSize(get_capi(self), (const char *)view.buf, size);
+    PyBuffer_Release(&view);
+    return istr;
+}
+
+static PyObject *
+istr_from_string(PyObject *self, PyObject *buffer)
+{
+    Py_buffer view;
+    if (PyObject_GetBuffer(buffer, &view, PyBUF_SIMPLE) < 0) {
+        return NULL;
+    }
+
+    PyObject *ret = IStr_FromString(get_capi(self), (const char *)view.buf);
+    PyBuffer_Release(&view);
+    return ret;
+}
+
+static PyObject *
+istr_get_type(PyObject *self, PyObject *unused)
+{
+    return Py_NewRef(IStr_GetType(get_capi(self)));
+}
+
 /* module slots */
 
 static int
@@ -341,11 +391,20 @@ static PyMethodDef module_methods[] = {
     {"md_update_from_md", (PyCFunction)md_update_from_md, METH_FASTCALL},
     {"md_update_from_dict", (PyCFunction)md_update_from_dict, METH_FASTCALL},
     {"md_update_from_seq", (PyCFunction)md_update_from_seq, METH_FASTCALL},
+
     {"md_proxy_new", (PyCFunction)md_proxy_new, METH_O},
     {"md_proxy_type", (PyCFunction)md_proxy_type, METH_NOARGS},
     {"md_proxy_contains", (PyCFunction)md_proxy_contains, METH_FASTCALL},
     {"md_proxy_getall", (PyCFunction)md_proxy_getall, METH_FASTCALL},
     {"md_proxy_getone", (PyCFunction)md_proxy_getone, METH_FASTCALL},
+
+    {"istr_from_unicode", (PyCFunction)istr_from_unicode, METH_O},
+    {"istr_from_string", (PyCFunction)istr_from_string, METH_O},
+    {"istr_from_string_and_size",
+     (PyCFunction)istr_from_string_and_size,
+     METH_FASTCALL},
+    {"istr_get_type", (PyCFunction)istr_get_type, METH_NOARGS},
+
     {NULL, NULL} /* sentinel */
 };
 

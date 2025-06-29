@@ -1,5 +1,6 @@
-from multidict import MultiDict, MultiDictProxy
 import pytest
+
+from multidict import MultiDict, MultiDictProxy, istr
 
 pytest.importorskip("multidict._multidict")
 testcapi = pytest.importorskip("testcapi")
@@ -238,3 +239,26 @@ def test_md_proxy_getone_miss() -> None:
 
 def test_md_proxy_type() -> None:
     assert testcapi.md_proxy_type() is MultiDictProxy
+
+
+def test_istr_from_unicode() -> None:
+    i = testcapi.istr_from_unicode("aBcD")
+    assert isinstance(i, istr)
+    assert i == "aBcD"
+
+
+def test_istr_from_string() -> None:
+    # bytes are used to represent char* in C...
+    i = testcapi.istr_from_string(b"aBcD")
+    assert isinstance(i, istr)
+    assert i == "aBcD"
+
+
+def test_istr_from_string_and_size() -> None:
+    i = testcapi.istr_from_string_and_size(b"testingDO_NOT_SHOW", 7)
+    assert isinstance(i, istr)
+    assert i == "testing"
+
+
+def test_istr_get_type() -> None:
+    assert istr == testcapi.istr_get_type()

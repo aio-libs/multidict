@@ -72,6 +72,12 @@ typedef struct {
                                  PyObject** result);
     PyTypeObject* (*MultiDictProxy_GetType)(void* state);
 
+    PyObject* (*IStr_FromUnicode)(void* state_, PyObject* str);
+    PyObject* (*IStr_FromStringAndSize)(void* state_, PyObject* str,
+                                        Py_ssize_t size);
+    PyObject* (*IStr_FromString)(void* state_, const char* str);
+    PyTypeObject* (*IStr_GetType)(void* state_);
+
 } MultiDict_CAPI;
 
 // TODO (Vizonex): cleanup Docstrings We can put the function documentation
@@ -360,6 +366,30 @@ static inline PyTypeObject*
 MultiDictProxy_GetType(MultiDict_CAPI* api)
 {
     return api->MultiDictProxy_GetType(api->state);
+}
+
+static PyObject*
+IStr_FromUnicode(MultiDict_CAPI* api, PyObject* str)
+{
+    return api->IStr_FromUnicode(api->state, str);
+}
+
+static PyObject*
+IStr_FromStringAndSize(MultiDict_CAPI* api, const char* str, Py_ssize_t size)
+{
+    return api->IStr_FromStringAndSize(api->state, str, size);
+}
+
+static PyObject*
+IStr_FromString(MultiDict_CAPI* api, const char* str)
+{
+    return api->IStr_FromString(api->state, str);
+}
+
+static inline PyTypeObject*
+IStr_GetType(MultiDict_CAPI* api)
+{
+    return api->IStr_GetType(api->state);
 }
 
 #endif
