@@ -776,12 +776,18 @@ new_capsule(mod_state* state)
     capi->MultiDict_UpdateFromMultiDict = MultiDict_UpdateFromMultiDict;
     capi->MultiDict_UpdateFromDict = MultiDict_UpdateFromDict;
     capi->MultiDict_UpdateFromSequence = MultiDict_UpdateFromSequence;
+    capi->MultiDict_InitPos = MultiDict_InitPos;
+    capi->MultiDict_Next = MultiDict_Next;
+    capi->MultiDict_FreePos = MultiDict_FreePos;
 
     capi->MultiDictProxy_New = MultiDictProxy_New;
     capi->MultiDictProxy_Contains = MultiDictProxy_Contains;
     capi->MultiDictProxy_GetAll = MultiDictProxy_GetAll;
     capi->MultiDictProxy_GetOne = MultiDictProxy_GetOne;
     capi->MultiDictProxy_GetType = MultiDictProxy_GetType;
+    capi->MultiDictProxy_InitPos = MultiDictProxy_InitPos;
+    capi->MultiDictProxy_Next = MultiDictProxy_Next;
+    capi->MultiDictProxy_FreePos = MultiDictProxy_FreePos;
 
     capi->IStr_FromUnicode = IStr_FromUnicode;
     capi->IStr_FromStringAndSize = IStr_FromStringAndSize;
@@ -805,12 +811,18 @@ new_capsule(mod_state* state)
     capi->CIMultiDict_UpdateFromMultiDict = CIMultiDict_UpdateFromMultiDict;
     capi->CIMultiDict_UpdateFromDict = CIMultiDict_UpdateFromDict;
     capi->CIMultiDict_UpdateFromSequence = CIMultiDict_UpdateFromSequence;
+    capi->CIMultiDict_InitPos = CIMultiDict_InitPos;
+    capi->CIMultiDict_Next = CIMultiDict_Next;
+    capi->CIMultiDict_FreePos = CIMultiDict_FreePos;
 
     capi->CIMultiDictProxy_New = CIMultiDictProxy_New;
     capi->CIMultiDictProxy_Contains = CIMultiDictProxy_Contains;
     capi->CIMultiDictProxy_GetAll = CIMultiDictProxy_GetAll;
     capi->CIMultiDictProxy_GetOne = CIMultiDictProxy_GetOne;
     capi->CIMultiDictProxy_GetType = CIMultiDictProxy_GetType;
+    capi->CIMultiDictProxy_InitPos = CIMultiDictProxy_InitPos;
+    capi->CIMultiDictProxy_Next = CIMultiDictProxy_Next;
+    capi->CIMultiDictProxy_FreePos = CIMultiDictProxy_FreePos;
 
     PyObject* ret =
         PyCapsule_New(capi, MultiDict_CAPSULE_NAME, capsule_destructor);
