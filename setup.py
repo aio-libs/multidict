@@ -22,10 +22,8 @@ CFLAGS = ["-O0", "-g3", "-UNDEBUG"] if DEBUG_BUILD else ["-O3", "-DNDEBUG"]
 # https://gcc.gnu.org/onlinedocs/gcc/Invoking-Gcov.html
 # `-fkeep-inline-functions`
 # `-fkeep-static-functions`
-# NOTE: Moving `_multidict.gcno` and `_multidict.o` under `multidict/` before running `pytest`, and `_multidict.gcda` after, worked. Prior to running gcovr.
 if DEBUG_BUILD:
     CFLAGS.extend(['--coverage', '-coverage', '-fprofile-arcs', '-ftest-coverage', '-fPIC'])
-    # CFLAGS.extend(['-fprofile-dir=./multidict/'])
 
 # CFLAGS = ["-O2"]
 # CFLAGS.extend(['--coverage', '-g', '-O0'])
