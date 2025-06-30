@@ -19,6 +19,7 @@ cChardet
 changelog
 charset
 charsetdetect
+cibuildwheel
 CPython
 criterias
 css

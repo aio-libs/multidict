@@ -246,8 +246,9 @@ _md_shrink(MultiDictObject *md, bool update)
     for (Py_ssize_t i = 0; i < nentries; ++i, ++old_ep) {
         if (old_ep->identity != NULL) {
             if (new_ep != old_ep) {
-                *new_ep++ = *old_ep;
+                *new_ep = *old_ep;
             }
+            new_ep++;
         } else {
             newnentries -= 1;
         }
@@ -1957,7 +1958,7 @@ static inline int
 _md_dump(MultiDictObject *md)
 {
     htkeys_t *keys = md->keys;
-    printf("Dump %p [%ld from %ld usable %ld nentries %ld]\n",
+    printf("Dump %p [%zd from %zd usable %zd nentries %zd]\n",
            (void *)md,
            md->used,
            htkeys_nslots(keys),
@@ -1965,7 +1966,7 @@ _md_dump(MultiDictObject *md)
            keys->nentries);
     for (Py_ssize_t i = 0; i < htkeys_nslots(keys); i++) {
         Py_ssize_t ix = htkeys_get_index(keys, i);
-        printf("  %ld -> %ld\n", i, ix);
+        printf("  %zd -> %zd\n", i, ix);
     }
     printf("  --------\n");
     entry_t *entries = htkeys_entries(keys);
@@ -1974,9 +1975,9 @@ _md_dump(MultiDictObject *md)
         PyObject *identity = entry->identity;
 
         if (identity == NULL) {
-            printf("  %ld [deleted]\n", i);
+            printf("  %zd [deleted]\n", i);
         } else {
-            printf("  %ld h=%20ld, i=\'", i, entry->hash);
+            printf("  %zd h=%20zd, i=\'", i, entry->hash);
             PyObject_Print(entry->identity, stdout, Py_PRINT_RAW);
             printf("\', k=\'");
             PyObject_Print(entry->key, stdout, Py_PRINT_RAW);

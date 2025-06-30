@@ -3,7 +3,6 @@ import sys
 from typing import Union
 
 import pytest
-
 from multidict import (
     CIMultiDict,
     CIMultiDictProxy,
@@ -872,3 +871,47 @@ class TestCIMutableMultiDict:
             d.update(lst)
 
         assert [("a", "a2"), ("b", "b"), ("c", "c")] == list(d.items())
+
+
+def test_multidict_shrink_regression() -> None:
+    """
+    Regression test for _md_shrink pointer increment bug in 6.6.0.
+
+    The bug was introduced in PR #1200 which added _md_shrink to optimize
+    memory usage. The bug occurs when new_ep == old_ep (first non-deleted
+    entry), causing new_ep to not be incremented. This results in the first
+    entry being overwritten and memory corruption.
+
+    See: https://github.com/aio-libs/multidict/issues/1221
+    """
+    # Test case that reproduces the corruption
+    md: MultiDict[str] = MultiDict()
+
+    # Create pattern: [kept, deleted, kept, kept, ...]
+    # This triggers new_ep == old_ep on first iteration of _md_shrink
+    for i in range(10):
+        md[f"k{i}"] = f"v{i}"
+
+    # Delete some entries but keep the first one
+    # This creates the exact condition for the bug
+    for i in range(1, 10, 2):
+        del md[f"k{i}"]
+
+    # Trigger shrink by adding many entries
+    # When the internal array needs to resize, it will call _md_shrink
+    # because md->used < md->keys->nentries
+    for i in range(50):
+        md[f"new{i}"] = f"val{i}"
+
+    # The bug would cause k0 to be lost due to memory corruption!
+    assert "k0" in md, "First entry k0 was lost due to memory corruption!"
+    assert md["k0"] == "v0", "First entry value was corrupted!"
+
+    # Verify all other kept entries survived
+    for i in range(0, 10, 2):
+        assert f"k{i}" in md, f"Entry k{i} missing!"
+        assert md[f"k{i}"] == f"v{i}", f"Entry k{i} has wrong value!"
+
+    # Verify new entries
+    for i in range(50):
+        assert md[f"new{i}"] == f"val{i}"
