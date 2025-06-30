@@ -10,7 +10,7 @@ DEBUG_BUILD = bool(os.environ.get("MULTIDICT_DEBUG_BUILD"))
 if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
 
-CFLAGS = ["-O0", "-g3", "-UNDEBUG"] if DEBUG_BUILD else ["-O3"]
+CFLAGS = ["-O0", "-g3", "-UNDEBUG"] if DEBUG_BUILD else ["-O3", "-DNDEBUG"]
 
 if platform.system() != "Windows":
     CFLAGS.extend(
