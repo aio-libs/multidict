@@ -60,6 +60,29 @@ extern "C" {
 
 #define __CIMULTIDICTPROXY_GET_MD(SELF) ((MultiDictProxyObject*)SELF)->md
 
+#define __CAPI_NULL_CHECK(POS, ON_FAIL) \
+    if (POS == NULL) {                  \
+        PyErr_NoMemory();               \
+        return ON_FAIL;                 \
+    }
+
+#define __CAPI_ALLOC_POS(POS)                       \
+    md_pos_t* POS = PyMem_Malloc(sizeof(md_pos_t)); \
+    __CAPI_NULL_CHECK(POS, NULL)
+
+#define __CAPI_FREE_POS(POS, SELF, TYPENAME)                                  \
+    if (pos != NULL) {                                                        \
+        if (((md_pos_t*)pos)->version != ((MultiDictObject*)self)->version) { \
+            PyErr_Format(PyExc_RuntimeError,                                  \
+                         "%s changed during cleanup after iteration",         \
+                         #TYPENAME);                                          \
+            return -1;                                                        \
+        }                                                                     \
+        PyMem_Free(pos);                                                      \
+    }
+
+/* ================= MultiDict ================= */
+
 static PyTypeObject*
 MultiDict_GetType(void* state_)
 {
@@ -227,6 +250,45 @@ MultiDict_UpdateFromSequence(void* state_, PyObject* self, PyObject* seq,
     return ret;
 }
 
+/* allocates `md_pos`, calls `md_init_pos()`, and returns the allocated
+structure. The rettype is void* to hide implementation details */
+static void*
+MultiDict_InitPos(void* state, PyObject* self)
+{
+    __MULTIDICT_VALIDATION_CHECK(self, state, NULL);
+    __CAPI_ALLOC_POS(pos);
+    md_init_pos((MultiDictObject*)self, pos);
+    return (void*)pos;
+}
+
+/* returns the next key/value pair, moves pos, returns -1 for error, 0 for end
+ * of iteration, 1 otherwise */
+static int
+MultiDict_Next(void* state, PyObject* self, void* pos, PyObject** key,
+               PyObject** value)
+{
+    __MULTIDICT_VALIDATION_CHECK(self, state, -1);
+    // Maybe a better error like typeerror could be used but for now
+    // NoMemory is probably a best case scenario for why it's NULL
+    __CAPI_NULL_CHECK(pos, -1);
+    return md_next((MultiDictObject*)self, (md_pos_t*)pos, NULL, key, value);
+}
+
+/* rettype seems redundant as the impl never fails;
+plus the current implementation doesn't need 'md'.
+I have a feeling that 'md' will be required for locks
+in free-threaded build, plus a reservation for telling
+about potential error is a good thing. */
+static int
+MultiDict_FreePos(void* state, PyObject* self, void* pos)
+{
+    __MULTIDICT_VALIDATION_CHECK(self, state, -1);
+    __CAPI_FREE_POS(pos, self, MultiDict);
+    return 0;
+}
+
+/* ================= MultiDictProxy ================= */
+
 static PyObject*
 MultiDictProxy_New(void* state_, PyObject* md)
 {
@@ -290,6 +352,35 @@ MultiDictProxy_GetType(void* state_)
     mod_state* state = (mod_state*)state_;
     return (PyTypeObject*)Py_NewRef(state->MultiDictProxyType);
 }
+
+static void*
+MultiDictProxy_InitPos(void* state, PyObject* self)
+{
+    __MULTIDICTPROXY_VALIDATION_CHECK(self, state, NULL);
+    __CAPI_ALLOC_POS(pos);
+    md_init_pos(__MULTIDICTPROXY_GET_MD(self), pos);
+    return (void*)pos;
+}
+
+static int
+MultiDictProxy_Next(void* state, PyObject* self, void* pos, PyObject** key,
+                    PyObject** value)
+{
+    __MULTIDICTPROXY_VALIDATION_CHECK(self, state, -1);
+    __CAPI_NULL_CHECK(pos, -1);
+    return md_next(
+        __MULTIDICTPROXY_GET_MD(self), (md_pos_t*)pos, NULL, key, value);
+}
+
+static int
+MultiDictProxy_FreePos(void* state, PyObject* self, void* pos)
+{
+    __MULTIDICTPROXY_VALIDATION_CHECK(self, state, -1);
+    __CAPI_FREE_POS(pos, __MULTIDICTPROXY_GET_MD(self), MultiDictProxy);
+    return 0;
+}
+
+/* ================= istr ================= */
 
 static PyObject*
 IStr_FromUnicode(void* state_, PyObject* str)
@@ -367,6 +458,8 @@ IStr_GetType(void* state_)
     mod_state* state = (mod_state*)state_;
     return (PyTypeObject*)Py_NewRef(state->IStrType);
 }
+
+/* ================= CIMultiDict ================= */
 
 static PyTypeObject*
 CIMultiDict_GetType(void* state_)
@@ -527,6 +620,34 @@ CIMultiDict_UpdateFromSequence(void* state_, PyObject* self, PyObject* seq,
     return ret;
 }
 
+static void*
+CIMultiDict_InitPos(void* state, PyObject* self)
+{
+    __CIMULTIDICT_VALIDATION_CHECK(self, state, NULL);
+    __CAPI_ALLOC_POS(pos);
+    md_init_pos((MultiDictObject*)self, pos);
+    return (void*)pos;
+}
+
+static int
+CIMultiDict_Next(void* state, PyObject* self, void* pos, PyObject** key,
+                 PyObject** value)
+{
+    __CIMULTIDICT_VALIDATION_CHECK(self, state, -1);
+    __CAPI_NULL_CHECK(pos, -1);
+    return md_next((MultiDictObject*)self, (md_pos_t*)pos, NULL, key, value);
+}
+
+static int
+CIMultiDict_FreePos(void* state, PyObject* self, void* pos)
+{
+    __CIMULTIDICT_VALIDATION_CHECK(self, state, -1);
+    __CAPI_FREE_POS(pos, self, CIMultiDict);
+    return 0;
+}
+
+/* ================= CIMultiDictProxy ================= */
+
 static PyObject*
 CIMultiDictProxy_New(void* state_, PyObject* md)
 {
@@ -586,6 +707,33 @@ CIMultiDictProxy_GetType(void* state_)
 {
     mod_state* state = (mod_state*)state_;
     return (PyTypeObject*)Py_NewRef(state->CIMultiDictProxyType);
+}
+
+static void*
+CIMultiDictProxy_InitPos(void* state, PyObject* self)
+{
+    __CIMULTIDICTPROXY_VALIDATION_CHECK(self, state, NULL);
+    __CAPI_ALLOC_POS(pos);
+    md_init_pos(__MULTIDICTPROXY_GET_MD(self), pos);
+    return (void*)pos;
+}
+
+static int
+CIMultiDictProxy_Next(void* state, PyObject* self, void* pos, PyObject** key,
+                      PyObject** value)
+{
+    __CIMULTIDICTPROXY_VALIDATION_CHECK(self, state, -1);
+    __CAPI_NULL_CHECK(pos, -1);
+    return md_next(
+        __MULTIDICTPROXY_GET_MD(self), (md_pos_t*)pos, NULL, key, value);
+}
+
+static int
+CIMultiDictProxy_FreePos(void* state, PyObject* self, void* pos)
+{
+    __CIMULTIDICTPROXY_VALIDATION_CHECK(self, state, -1);
+    __CAPI_FREE_POS(pos, self, CIMultiDict);
+    return 0;
 }
 
 static void
