@@ -27,8 +27,6 @@ if DEBUG_BUILD:
     CFLAGS.extend(['--coverage', '-coverage', '-fprofile-arcs', '-ftest-coverage', '-fPIC'])
     # CFLAGS.extend(['-fprofile-dir=./multidict/'])
 
-# LDFLAGS = ['--coverage', '-coverage', '-lgcov'] if DEBUG_BUILD else []
-
 # CFLAGS = ["-O2"]
 # CFLAGS.extend(['--coverage', '-g', '-O0'])
 # CFLAGS = ['-g']
@@ -48,14 +46,12 @@ if platform.system() != "Windows" and False:
 
 os.environ['CC'] = 'ccache gcc'
 os.environ['CFLAGS'] = ' '.join(CFLAGS)
-# os.environ['LDFLAGS'] = ' '.join(LDFLAGS)
 
 extensions = [
     Extension(
         "multidict._multidict",
         ["multidict/_multidict.c"],
         extra_compile_args=CFLAGS,
-        # extra_link_args=LDFLAGS,
     ),
 ]
 
