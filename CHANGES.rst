@@ -14,6 +14,38 @@ Changelog
 
 .. towncrier release notes start
 
+6.6.2
+=====
+
+*(2025-06-28)*
+
+
+Bug fixes
+---------
+
+- Fixed a memory corruption issue in the C implementation of ``_md_shrink()`` that could lead to segmentation faults and data loss when items were deleted from a :class:`~multidict.MultiDict`. The issue was an edge case in the pointer arithmetic during the compaction phase -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1221`, :issue:`1222`.
+
+- Fixed format string compilation errors in debug builds on 32-bit platforms by using portable ``%zd`` format specifiers for ``Py_ssize_t`` values instead of ``%ld`` -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1225`, :issue:`1226`.
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Re-enabled 32-bit Linux wheel builds that were disabled by default in cibuildwheel 3.0.0 -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1225`, :issue:`1227`.
+
+
+----
+
+
 6.6.1
 =====
 
