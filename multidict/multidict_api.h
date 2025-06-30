@@ -37,6 +37,7 @@ typedef struct {
     PyObject* (*MultiDict_New)(void* state, int prealloc_size);
     int (*MultiDict_Add)(void* state, PyObject* self, PyObject* key,
                          PyObject* value);
+
     int (*MultiDict_Clear)(void* state, PyObject* self);
 
     int (*MultiDict_SetDefault)(void* state, PyObject* self, PyObject* key,
@@ -46,13 +47,13 @@ typedef struct {
     uint64_t (*MultiDict_Version)(void* state, PyObject* self);
 
     int (*MultiDict_Contains)(void* state, PyObject* self, PyObject* key);
-    int (*MultiDict_GetOne)(void* state_, PyObject* self, PyObject* key,
+    int (*MultiDict_GetOne)(void* state, PyObject* self, PyObject* key,
                             PyObject** result);
-    int (*MultiDict_GetAll)(void* state_, PyObject* self, PyObject* key,
+    int (*MultiDict_GetAll)(void* state, PyObject* self, PyObject* key,
                             PyObject** result);
-    int (*MultiDict_PopOne)(void* state_, PyObject* self, PyObject* key,
+    int (*MultiDict_PopOne)(void* state, PyObject* self, PyObject* key,
                             PyObject** result);
-    int (*MultiDict_PopAll)(void* state_, PyObject* self, PyObject* key,
+    int (*MultiDict_PopAll)(void* state, PyObject* self, PyObject* key,
                             PyObject** result);
     PyObject* (*MultiDict_PopItem)(void* state, PyObject* self);
     int (*MultiDict_Replace)(void* state, PyObject* self, PyObject* key,
@@ -72,43 +73,69 @@ typedef struct {
                                  PyObject** result);
     PyTypeObject* (*MultiDictProxy_GetType)(void* state);
 
-    PyObject* (*IStr_FromUnicode)(void* state_, PyObject* str);
-    PyObject* (*IStr_FromStringAndSize)(void* state_, const char* str,
+    PyObject* (*IStr_FromUnicode)(void* state, PyObject* str);
+    PyObject* (*IStr_FromStringAndSize)(void* state, const char* str,
                                         Py_ssize_t size);
-    PyObject* (*IStr_FromString)(void* state_, const char* str);
-    PyTypeObject* (*IStr_GetType)(void* state_);
+    PyObject* (*IStr_FromString)(void* state, const char* str);
+    PyTypeObject* (*IStr_GetType)(void* state);
+
+    PyTypeObject* (*CIMultiDict_GetType)(void* state);
+
+    PyObject* (*CIMultiDict_New)(void* state, int prealloc_size);
+    int (*CIMultiDict_Add)(void* state, PyObject* self, PyObject* key,
+                           PyObject* value);
+    int (*CIMultiDict_Clear)(void* state, PyObject* self);
+
+    int (*CIMultiDict_SetDefault)(void* state, PyObject* self, PyObject* key,
+                                  PyObject* default_, PyObject** result);
+
+    int (*CIMultiDict_Del)(void* state, PyObject* self, PyObject* key);
+    uint64_t (*CIMultiDict_Version)(void* state, PyObject* self);
+
+    int (*CIMultiDict_Contains)(void* state, PyObject* self, PyObject* key);
+    int (*CIMultiDict_GetOne)(void* state, PyObject* self, PyObject* key,
+                              PyObject** result);
+    int (*CIMultiDict_GetAll)(void* state, PyObject* self, PyObject* key,
+                              PyObject** result);
+    int (*CIMultiDict_PopOne)(void* state, PyObject* self, PyObject* key,
+                              PyObject** result);
+    int (*CIMultiDict_PopAll)(void* state, PyObject* self, PyObject* key,
+                              PyObject** result);
+    PyObject* (*CIMultiDict_PopItem)(void* state, PyObject* self);
+    int (*CIMultiDict_Replace)(void* state, PyObject* self, PyObject* key,
+                               PyObject* value);
+    int (*CIMultiDict_UpdateFromMultiDict)(void* state, PyObject* self,
+                                           PyObject* other, UpdateOp op);
+    int (*CIMultiDict_UpdateFromDict)(void* state, PyObject* self,
+                                      PyObject* kwds, UpdateOp op);
+    int (*CIMultiDict_UpdateFromSequence)(void* state, PyObject* self,
+                                          PyObject* kwds, UpdateOp op);
+
+    PyObject* (*CIMultiDictProxy_New)(void* state, PyObject* md);
+    int (*CIMultiDictProxy_Contains)(void* state, PyObject* self,
+                                     PyObject* key);
+    int (*CIMultiDictProxy_GetAll)(void* state, PyObject* self, PyObject* key,
+                                   PyObject** result);
+    int (*CIMultiDictProxy_GetOne)(void* state, PyObject* self, PyObject* key,
+                                   PyObject** result);
+    PyTypeObject* (*CIMultiDictProxy_GetType)(void* state);
 
 } MultiDict_CAPI;
 
-// TODO (Vizonex): cleanup Docstrings We can put the function documentation
-// into the cython c-api simillar to what cython did with cpython in the
-// future... I see no reason to use doxygen styled documentation. And if we
-// decide to keep it then it should be transformed into the sphinx-styled
-// documentation instead.
-
 #ifndef MULTIDICT_IMPL
 
-/// @brief Imports Multidict CAPI
-/// @return A Capsule Containing the Multidict CAPI Otherwise NULL
 static inline MultiDict_CAPI*
 MultiDict_Import()
 {
     return (MultiDict_CAPI*)PyCapsule_Import(MultiDict_CAPSULE_NAME, 0);
 }
 
-/// @brief Obtains the Multidict TypeObject
-/// @param api Python Capsule Pointer to the API
-/// @return A CPython `PyTypeObject` is returned as a pointer,
-/// `NULL` on failure
 static inline PyTypeObject*
 MultiDict_GetType(MultiDict_CAPI* api)
 {
     return api->MultiDict_GetType(api->state);
 }
-/// @brief Checks if Multidict Object Type Matches Exactly
-/// @param api Python Capsule Pointer to the API
-/// @param op The Object to check
-/// @return 1 if `true`, 0 if `false`
+
 static inline int
 MultiDict_CheckExact(MultiDict_CAPI* api, PyObject* op)
 {
@@ -118,10 +145,6 @@ MultiDict_CheckExact(MultiDict_CAPI* api, PyObject* op)
     return ret;
 }
 
-/// @brief Checks if Multidict Object Type Matches or is a subclass of itself
-/// @param api Python Capsule Pointer to the API
-/// @param op The Object to check
-/// @return 1 if `true`, 0 if `false`
 static inline int
 MultiDict_Check(MultiDict_CAPI* api, PyObject* op)
 {
@@ -131,23 +154,12 @@ MultiDict_Check(MultiDict_CAPI* api, PyObject* op)
     return ret;
 }
 
-/// @brief Creates a New Multidict Type Object with a number entries wanted
-/// preallocated
-/// @param api Python Capsule Pointer to the API
-/// @param prealloc_size The Number of entires to preallocate for
-/// @return `MultiDict` object if successful, otherwise `NULL`
 static inline PyObject*
 MultiDict_New(MultiDict_CAPI* api, int prealloc_size)
 {
     return api->MultiDict_New(api->state, prealloc_size);
 }
 
-/// @brief Adds a new entry to the `multidict` object
-/// @param api Python Capsule Pointer to the API
-/// @param self the Multidict object
-/// @param key The key of the entry to add
-/// @param value The value of the entry to add
-/// @return 0 on success, -1 on failure
 static inline int
 MultiDict_Add(MultiDict_CAPI* api, PyObject* self, PyObject* key,
               PyObject* value)
@@ -155,25 +167,12 @@ MultiDict_Add(MultiDict_CAPI* api, PyObject* self, PyObject* key,
     return api->MultiDict_Add(api->state, self, key, value);
 }
 
-/// @brief Clears a multidict object and removes all it's entries
-/// @param api Python Capsule Pointer to the API
-/// @param self the multidict object
-/// @return 0 if success otherwise -1 , will raise TypeError if MultiDict's
-/// Type is incorrect
 static inline int
 MultiDict_Clear(MultiDict_CAPI* api, PyObject* self)
 {
     return api->MultiDict_Clear(api->state, self);
 }
 
-/// XXX: Documentation is incorrect I will need to edit in a bit - Vizonex
-/// @brief If key is in the dictionary  its the first value.
-/// If not, insert key with a value of default and return default.
-/// @param api Python Capsule Pointer
-/// @param self the MultiDict object
-/// @param key the key to insert
-/// @param _default the default value to have inserted
-/// @return default on success, NULL on failure
 static inline int
 MultiDict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key,
                      PyObject* default_, PyObject** result)
@@ -181,46 +180,24 @@ MultiDict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key,
     return api->MultiDict_SetDefault(api->state, self, key, default_, result);
 }
 
-/// @brief Remove all items where key is equal to key from d.
-/// @param api Python Capsule Pointer
-/// @param self the MultiDict
-/// @param key the key to be removed
-/// @return 0 on success, -1 on failure followed by rasing either
-/// `TypeError` or `KeyError` if key is not in the map.
 static inline int
 MutliDict_Del(MultiDict_CAPI* api, PyObject* self, PyObject* key)
 {
     return api->MultiDict_Del(api->state, self, key);
 }
 
-/// @brief Return a version of given mdict object
-/// @param api Python Capsule Pointer
-/// @param self the mdict object
-/// @return the version flag of the object, otherwise 0 on failure
 static uint64_t
 MultiDict_Version(MultiDict_CAPI* api, PyObject* self)
 {
     return api->MultiDict_Version(api->state, self);
 }
 
-/// @brief Determines if a certain key exists a multidict object
-/// @param api Python Capsule Pointer
-/// @param self the multidict object
-/// @param key the key to look for
-/// @return 1 if true, 0 if false, -1 if failure had occured
 static inline int
 MultiDict_Contains(MultiDict_CAPI* api, PyObject* self, PyObject* key)
 {
     return api->MultiDict_Contains(api->state, self, key);
 }
 
-/// @brief  Return the **first** value for *key* if *key* is in the
-/// dictionary, else *default*.
-/// @param api Python Capsule Pointer
-/// @param self the multidict object
-/// @param key the key to get one item from
-/// @return returns a default value on success, -1 with `KeyError` or
-/// `TypeError` on failure
 static inline int
 MultiDict_GetOne(MultiDict_CAPI* api, PyObject* self, PyObject* key,
                  PyObject** result)
@@ -228,13 +205,6 @@ MultiDict_GetOne(MultiDict_CAPI* api, PyObject* self, PyObject* key,
     return api->MultiDict_GetOne(api->state, self, key, result);
 }
 
-/// @brief Return a list of all values for *key* if *key* is in the
-/// dictionary, else *default*.
-/// @param api Python Capsule Pointer
-/// @param self the multidict obeject
-/// @param key the key to obtain all the items from
-/// @return a list of all the values, otherwise NULL on error
-/// raises either `KeyError` or `TypeError`
 static inline int
 MultiDict_GetAll(MultiDict_CAPI* api, PyObject* self, PyObject* key,
                  PyObject** result)
@@ -242,13 +212,6 @@ MultiDict_GetAll(MultiDict_CAPI* api, PyObject* self, PyObject* key,
     return api->MultiDict_GetAll(api->state, self, key, result);
 }
 
-/// @brief  If `key` is in the dictionary, remove it and return its the
-/// `first` value, else return `default`.
-/// @param api Python Capsule Pointer
-/// @param self the multidict object
-/// @param key the key to pop
-/// @return object on success, otherwise NULL on error along
-/// with `KeyError` or `TypeError` being raised
 static inline int
 MultiDict_PopOne(MultiDict_CAPI* api, PyObject* self, PyObject* key,
                  PyObject** result)
@@ -256,12 +219,6 @@ MultiDict_PopOne(MultiDict_CAPI* api, PyObject* self, PyObject* key,
     return api->MultiDict_PopOne(api->state, self, key, result);
 }
 
-/// @brief Pops all related objects corresponding to `key`
-/// @param api Python Capsule Pointer
-/// @param self the multidict object
-/// @param key the key to pop all of
-/// @return list object on success, otherwise NULL, on error and raises either
-/// `KeyError` or `TyperError`
 static inline int
 MultiDict_PopAll(MultiDict_CAPI* api, PyObject* self, PyObject* key,
                  PyObject** result)
@@ -269,24 +226,12 @@ MultiDict_PopAll(MultiDict_CAPI* api, PyObject* self, PyObject* key,
     return api->MultiDict_PopAll(api->state, self, key, result);
 }
 
-/// @brief Remove and return an arbitrary `(key, value)` pair from the
-/// dictionary.
-/// @param api Python Capsule Pointer
-/// @param self the multidict object
-/// @return an arbitray tuple on success, otherwise NULL on error along
-/// with `TypeError` or `KeyError` raised
 static inline PyObject*
 MultiDict_PopItem(MultiDict_CAPI* api, PyObject* self)
 {
     return api->MultiDict_PopItem(api->state, self);
 }
 
-/// @brief Replaces a set object with another object
-/// @param api Python Capsule Pointer
-/// @param self the multidict object
-/// @param key the key to lookup for replacement
-/// @param value the value to replace with
-/// @return 0 on sucess, -1 on Failure and raises TypeError
 static inline int
 MultiDict_Replace(MultiDict_CAPI* api, PyObject* self, PyObject* key,
                   PyObject* value)
@@ -294,13 +239,6 @@ MultiDict_Replace(MultiDict_CAPI* api, PyObject* self, PyObject* key,
     return api->MultiDict_Replace(api->state, self, key, value);
 };
 
-/// @brief Updates Multidict object using another MultiDict Object
-/// @param api Python Capsule Pointer
-/// @param self the multidict object
-/// @param other a multidict object to update corresponding object with
-/// @param update if true append references and stack them, otherwise steal all
-/// references.
-/// @return 0 on sucess, -1 on failure
 static inline int
 MultiDict_UpdateFromMultiDict(MultiDict_CAPI* api, PyObject* self,
                               PyObject* other, UpdateOp op)
@@ -308,13 +246,6 @@ MultiDict_UpdateFromMultiDict(MultiDict_CAPI* api, PyObject* self,
     return api->MultiDict_UpdateFromMultiDict(api->state, self, other, op);
 };
 
-/// @brief Updates Multidict object using another Dictionary Object
-/// @param api Python Capsule Pointer
-/// @param self the multidict object
-/// @param kwds the keywords or Dictionary object to merge
-/// @param update if true append references and stack them, otherwise steal all
-/// references.
-/// @return 0 on sucess, -1 on failure
 static inline int
 MultiDict_UpdateFromDict(MultiDict_CAPI* api, PyObject* self, PyObject* other,
                          UpdateOp op)
@@ -322,13 +253,6 @@ MultiDict_UpdateFromDict(MultiDict_CAPI* api, PyObject* self, PyObject* other,
     return api->MultiDict_UpdateFromDict(api->state, self, other, op);
 };
 
-/// @brief Updates Multidict object using a sequence object
-/// @param api Python Capsule Pointer
-/// @param self the multidict object
-/// @param seq the sequence to merge with.
-/// @param update if true append references and stack them, otherwise steal all
-/// references.
-/// @return 0 on sucess, -1 on failure
 static inline int
 MultiDict_UpdateFromSequence(MultiDict_CAPI* api, PyObject* self,
                              PyObject* seq, UpdateOp op)
@@ -340,6 +264,24 @@ static inline PyObject*
 MultiDictProxy_New(MultiDict_CAPI* api, PyObject* md)
 {
     return api->MultiDictProxy_New(api->state, md);
+}
+
+static inline int
+MultiDictProxy_CheckExact(MultiDict_CAPI* api, PyObject* op)
+{
+    PyTypeObject* type = api->MultiDict_GetType(api->state);
+    int ret = Py_IS_TYPE(op, type);
+    Py_DECREF(type);
+    return ret;
+}
+
+static inline int
+MultiDictProxy_Check(MultiDict_CAPI* api, PyObject* op)
+{
+    PyTypeObject* type = api->MultiDictProxy_GetType(api->state);
+    int ret = Py_IS_TYPE(op, type) || PyObject_TypeCheck(op, type);
+    Py_DECREF(type);
+    return ret;
 }
 
 static inline int
@@ -368,6 +310,24 @@ MultiDictProxy_GetType(MultiDict_CAPI* api)
     return api->MultiDictProxy_GetType(api->state);
 }
 
+static inline int
+IStr_CheckExact(MultiDict_CAPI* api, PyObject* op)
+{
+    PyTypeObject* type = api->IStr_GetType(api->state);
+    int ret = Py_IS_TYPE(op, type);
+    Py_DECREF(type);
+    return ret;
+}
+
+static inline int
+IStr_Check(MultiDict_CAPI* api, PyObject* op)
+{
+    PyTypeObject* type = api->IStr_GetType(api->state);
+    int ret = Py_IS_TYPE(op, type) || PyObject_TypeCheck(op, type);
+    Py_DECREF(type);
+    return ret;
+}
+
 static PyObject*
 IStr_FromUnicode(MultiDict_CAPI* api, PyObject* str)
 {
@@ -390,6 +350,187 @@ static inline PyTypeObject*
 IStr_GetType(MultiDict_CAPI* api)
 {
     return api->IStr_GetType(api->state);
+}
+
+static inline PyTypeObject*
+CIMultiDict_GetType(MultiDict_CAPI* api)
+{
+    return api->CIMultiDict_GetType(api->state);
+}
+
+static inline int
+CIMultiDict_CheckExact(MultiDict_CAPI* api, PyObject* op)
+{
+    PyTypeObject* type = api->MultiDict_GetType(api->state);
+    int ret = Py_IS_TYPE(op, type);
+    Py_DECREF(type);
+    return ret;
+}
+
+static inline int
+CIMultiDict_Check(MultiDict_CAPI* api, PyObject* op)
+{
+    PyTypeObject* type = api->MultiDict_GetType(api->state);
+    int ret = Py_IS_TYPE(op, type) || PyObject_TypeCheck(op, type);
+    Py_DECREF(type);
+    return ret;
+}
+
+static inline PyObject*
+CIMultiDict_New(MultiDict_CAPI* api, int prealloc_size)
+{
+    return api->CIMultiDict_New(api->state, prealloc_size);
+}
+
+static inline int
+CIMultiDict_Add(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                PyObject* value)
+{
+    return api->CIMultiDict_Add(api->state, self, key, value);
+}
+
+static inline int
+CIMultiDict_Clear(MultiDict_CAPI* api, PyObject* self)
+{
+    return api->CIMultiDict_Clear(api->state, self);
+}
+
+static inline int
+CIMultiDict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                       PyObject* default_, PyObject** result)
+{
+    return api->CIMultiDict_SetDefault(
+        api->state, self, key, default_, result);
+}
+
+static inline int
+CIMutliDict_Del(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+{
+    return api->CIMultiDict_Del(api->state, self, key);
+}
+
+static uint64_t
+CIMultiDict_Version(MultiDict_CAPI* api, PyObject* self)
+{
+    return api->CIMultiDict_Version(api->state, self);
+}
+
+static inline int
+CIMultiDict_Contains(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+{
+    return api->CIMultiDict_Contains(api->state, self, key);
+}
+
+static inline int
+CIMultiDict_GetOne(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                   PyObject** result)
+{
+    return api->CIMultiDict_GetOne(api->state, self, key, result);
+}
+
+static inline int
+CIMultiDict_GetAll(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                   PyObject** result)
+{
+    return api->CIMultiDict_GetAll(api->state, self, key, result);
+}
+
+static inline int
+CIMultiDict_PopOne(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                   PyObject** result)
+{
+    return api->CIMultiDict_PopOne(api->state, self, key, result);
+}
+
+static inline int
+CIMultiDict_PopAll(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                   PyObject** result)
+{
+    return api->CIMultiDict_PopAll(api->state, self, key, result);
+}
+
+static inline PyObject*
+CIMultiDict_PopItem(MultiDict_CAPI* api, PyObject* self)
+{
+    return api->CIMultiDict_PopItem(api->state, self);
+}
+
+static inline int
+CIMultiDict_Replace(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                    PyObject* value)
+{
+    return api->CIMultiDict_Replace(api->state, self, key, value);
+};
+
+static inline int
+CIMultiDict_UpdateFromMultiDict(MultiDict_CAPI* api, PyObject* self,
+                                PyObject* other, UpdateOp op)
+{
+    return api->CIMultiDict_UpdateFromMultiDict(api->state, self, other, op);
+};
+
+static inline int
+CIMultiDict_UpdateFromDict(MultiDict_CAPI* api, PyObject* self,
+                           PyObject* other, UpdateOp op)
+{
+    return api->CIMultiDict_UpdateFromDict(api->state, self, other, op);
+};
+
+static inline int
+CIMultiDict_UpdateFromSequence(MultiDict_CAPI* api, PyObject* self,
+                               PyObject* seq, UpdateOp op)
+{
+    return api->CIMultiDict_UpdateFromSequence(api->state, self, seq, op);
+};
+
+static inline PyObject*
+CIMultiDictProxy_New(MultiDict_CAPI* api, PyObject* md)
+{
+    return api->CIMultiDictProxy_New(api->state, md);
+}
+
+static inline int
+CIMultiDictProxy_CheckExact(MultiDict_CAPI* api, PyObject* op)
+{
+    PyTypeObject* type = api->CIMultiDictProxy_GetType(api->state);
+    int ret = Py_IS_TYPE(op, type);
+    Py_DECREF(type);
+    return ret;
+}
+
+static inline int
+CIMultiDictProxy_Check(MultiDict_CAPI* api, PyObject* op)
+{
+    PyTypeObject* type = api->CIMultiDictProxy_GetType(api->state);
+    int ret = Py_IS_TYPE(op, type) || PyObject_TypeCheck(op, type);
+    Py_DECREF(type);
+    return ret;
+}
+
+static inline int
+CIMultiDictProxy_Contains(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+{
+    return api->CIMultiDictProxy_Contains(api->state, self, key);
+}
+
+static inline int
+CIMultiDictProxy_GetAll(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                        PyObject** result)
+{
+    return api->CIMultiDictProxy_GetAll(api->state, self, key, result);
+}
+
+static inline int
+CIMultiDictProxy_GetOne(MultiDict_CAPI* api, PyObject* self, PyObject* key,
+                        PyObject** result)
+{
+    return api->CIMultiDictProxy_GetOne(api->state, self, key, result);
+}
+
+static inline PyTypeObject*
+CIMultiDictProxy_GetType(MultiDict_CAPI* api)
+{
+    return api->CIMultiDictProxy_GetType(api->state);
 }
 
 #endif

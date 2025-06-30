@@ -353,6 +353,253 @@ istr_get_type(PyObject *self, PyObject *unused)
     return Py_NewRef(IStr_GetType(get_capi(self)));
 }
 
+static PyObject *
+ci_md_type(PyObject *self, PyObject *unused)
+{
+    return Py_NewRef(CIMultiDict_GetType(get_capi(self)));
+}
+
+static PyObject *
+ci_md_new(PyObject *self, PyObject *arg)
+{
+    long prealloc_size = PyLong_AsLong(arg);
+    if (prealloc_size < 0) {
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_ValueError,
+                            "Negative prealloc_size is not allowed");
+        }
+        return NULL;
+    }
+    return CIMultiDict_New(get_capi(self), prealloc_size);
+}
+
+static PyObject *
+ci_md_add(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_add", nargs, 3) < 0) {
+        return NULL;
+    }
+    if (CIMultiDict_Add(get_capi(self), args[0], args[1], args[2]) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ci_md_clear(PyObject *self, PyObject *arg)
+{
+    if (CIMultiDict_Clear(get_capi(self), arg) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ci_md_setdefault(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_setdefault", nargs, 3) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = CIMultiDict_SetDefault(
+        get_capi(self), args[0], args[1], args[2], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+ci_md_del(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    // handle this check first so that there's an immediate exit
+    // rather than waiting for the state to be obtained
+    if (check_nargs("ci_md_del", nargs, 2) < 0) {
+        return NULL;
+    }
+    if ((MutliDict_Del(get_capi(self), args[0], args[1])) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ci_md_version(PyObject *self, PyObject *arg)
+{
+    return PyLong_FromUnsignedLongLong(
+        CIMultiDict_Version(get_capi(self), arg));
+}
+
+static PyObject *
+ci_md_contains(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_contains", nargs, 2) < 0) {
+        return NULL;
+    }
+    int ret = CIMultiDict_Contains(get_capi(self), args[0], args[1]);
+    if (ret == -1) {
+        return NULL;
+    }
+    return PyBool_FromLong(ret);
+}
+
+static PyObject *
+ci_md_getone(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_getone", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = CIMultiDict_GetOne(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+ci_md_getall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_getall", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = CIMultiDict_GetAll(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+ci_md_popone(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_popone", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret = CIMultiDict_PopOne(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+ci_md_popall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_popall", nargs, 2) < 0) {
+        return NULL;
+    }
+    mod_state *state = get_mod_state(self);
+    PyObject *result = NULL;
+    int ret = CIMultiDict_PopAll(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+ci_md_popitem(PyObject *self, PyObject *arg)
+{
+    mod_state *state = get_mod_state(self);
+    PyObject *REF = CIMultiDict_PopItem(get_capi(self), arg);
+    if (REF != NULL) {
+        Py_INCREF(REF);
+    }
+    return REF;
+}
+
+static PyObject *
+ci_md_replace(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_replace", nargs, 3) < 0) {
+        return NULL;
+    }
+
+    if (CIMultiDict_Replace(get_capi(self), args[0], args[1], args[2]) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ci_md_update_from_md(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_update_from_md", nargs, 3) < 0) {
+        return NULL;
+    }
+
+    if (CIMultiDict_UpdateFromMultiDict(
+            get_capi(self), args[0], args[1], PyLong_AsLong(args[2])) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ci_md_update_from_dict(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_update_from_dict", nargs, 3) < 0) {
+        return NULL;
+    }
+    mod_state *state = get_mod_state(self);
+
+    if (CIMultiDict_UpdateFromDict(
+            get_capi(self), args[0], args[1], PyLong_AsLong(args[2])) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ci_md_update_from_seq(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_update_from_seq", nargs, 3) < 0) {
+        return NULL;
+    }
+    if (CIMultiDict_UpdateFromSequence(
+            get_capi(self), args[0], args[1], PyLong_AsLong(args[2]))) {
+        return NULL;
+    };
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+ci_md_proxy_new(PyObject *self, PyObject *arg)
+{
+    return CIMultiDictProxy_New(get_capi(self), arg);
+}
+
+static PyObject *
+ci_md_proxy_contains(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_proxy_contains", nargs, 2) < 0) {
+        return NULL;
+    }
+    int ret = CIMultiDictProxy_Contains(get_capi(self), args[0], args[1]);
+    if (ret == -1) {
+        return NULL;
+    }
+    return PyBool_FromLong(ret);
+}
+
+static PyObject *
+ci_md_proxy_getall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_proxy_getall", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret =
+        CIMultiDictProxy_GetAll(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+ci_md_proxy_getone(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    if (check_nargs("ci_md_proxy_getone", nargs, 2) < 0) {
+        return NULL;
+    }
+    PyObject *result = NULL;
+    int ret =
+        CIMultiDictProxy_GetOne(get_capi(self), args[0], args[1], &result);
+    return handle_result(ret, result);
+}
+
+static PyObject *
+ci_md_proxy_type(PyObject *self, PyObject *unused)
+{
+    return Py_NewRef(CIMultiDictProxy_GetType(get_capi(self)));
+}
+
 /* module slots */
 
 static int
@@ -404,6 +651,34 @@ static PyMethodDef module_methods[] = {
      (PyCFunction)istr_from_string_and_size,
      METH_FASTCALL},
     {"istr_get_type", (PyCFunction)istr_get_type, METH_NOARGS},
+
+    {"ci_md_type", (PyCFunction)ci_md_type, METH_NOARGS},
+    {"ci_md_new", (PyCFunction)ci_md_new, METH_O},
+    {"ci_md_add", (PyCFunction)ci_md_add, METH_FASTCALL},
+    {"ci_md_clear", (PyCFunction)ci_md_clear, METH_O},
+    {"ci_md_setdefault", (PyCFunction)ci_md_setdefault, METH_FASTCALL},
+    {"ci_md_del", (PyCFunction)ci_md_del, METH_FASTCALL},
+    {"ci_md_version", (PyCFunction)ci_md_version, METH_O},
+    {"ci_md_contains", (PyCFunction)ci_md_contains, METH_FASTCALL},
+    {"ci_md_getone", (PyCFunction)ci_md_getone, METH_FASTCALL},
+    {"ci_md_getall", (PyCFunction)ci_md_getall, METH_FASTCALL},
+    {"ci_md_popone", (PyCFunction)ci_md_popone, METH_FASTCALL},
+    {"ci_md_popall", (PyCFunction)ci_md_popall, METH_FASTCALL},
+    {"ci_md_popitem", (PyCFunction)ci_md_popitem, METH_O},
+    {"ci_md_replace", (PyCFunction)ci_md_replace, METH_FASTCALL},
+    {"ci_md_update_from_md", (PyCFunction)ci_md_update_from_md, METH_FASTCALL},
+    {"ci_md_update_from_dict",
+     (PyCFunction)ci_md_update_from_dict,
+     METH_FASTCALL},
+    {"ci_md_update_from_seq",
+     (PyCFunction)ci_md_update_from_seq,
+     METH_FASTCALL},
+
+    {"ci_md_proxy_new", (PyCFunction)ci_md_proxy_new, METH_O},
+    {"ci_md_proxy_type", (PyCFunction)ci_md_proxy_type, METH_NOARGS},
+    {"ci_md_proxy_contains", (PyCFunction)ci_md_proxy_contains, METH_FASTCALL},
+    {"ci_md_proxy_getall", (PyCFunction)ci_md_proxy_getall, METH_FASTCALL},
+    {"ci_md_proxy_getone", (PyCFunction)ci_md_proxy_getone, METH_FASTCALL},
 
     {NULL, NULL} /* sentinel */
 };
