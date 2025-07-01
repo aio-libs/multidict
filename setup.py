@@ -73,7 +73,7 @@ class TraceableBinaryExtensionCmd(build_ext):
         fullname = self.get_ext_fullname(ext.name)
         return fullname.split('.')
 
-    def _ext_tracing_file_for(self, ext) -> Path:
+    def _ext_tracing_file_for(self, ext) -> pathlib.Path:
         if not DEBUG_BUILD:
             raise LookupError
 
