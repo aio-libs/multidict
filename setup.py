@@ -33,11 +33,7 @@ if DEBUG_BUILD:
         '-fprofile-abs-path',
     ])
 
-# LDFLAGS = ['-coverage'] if DEBUG_BUILD else []
 LDFLAGS = ['--coverage'] if DEBUG_BUILD else []
-
-# CFLAGS = ["-O2"]
-# CFLAGS.extend(['--coverage', '-g', '-O0'])
 
 if platform.system() != "Windows" and False:
     CFLAGS.extend(
