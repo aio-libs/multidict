@@ -81,11 +81,17 @@ def _gcov_configuration() -> None:
     # NOTE: improve this if we start, to avoid data races. Also, should we
     # NOTE: integrate `tmp_path` instead of writing to `site-packages/`?
 
-    build_meta_json_path = (
-        importlib.resources.files('multidict')  # FIXME: read from `pyproject.toml`?
+    tracing_data_dir_path = (
+        # FIXME: read from `pyproject.toml`?
+        importlib.resources.files('multidict')
         / '__tracing-data__'
-        / 'build-metadata.json'
     )
+    if not tracing_data_dir_path.is_dir():
+        # NOTE: The C-extention was probably compiled without tracing or
+        # NOTE: packaging is borked.
+        return
+
+    build_meta_json_path = tracing_data_dir_path / 'build-metadata.json'
     gcov_env = json.loads(build_meta_json_path.read_text(encoding='utf-8'))
     os.environ.update(gcov_env)
 
