@@ -22,14 +22,22 @@ CFLAGS = ["-O0", "-g3", "-UNDEBUG"] if DEBUG_BUILD else ["-O3", "-DNDEBUG"]
 # https://gcc.gnu.org/onlinedocs/gcc/Invoking-Gcov.html
 # `-fkeep-inline-functions`
 # `-fkeep-static-functions`
+# `-fprofile-prefix-map=old=new`
+# `--coverage` is an alias for `-fprofile-arcs -ftest-coverage` when compiling and `-lgcov` when linking; `-coverage` seems to be its synonym.
+# `-fprofile-abs-path` makes `gcovr` more robust — https://gcovr.com/en/stable/guide/compiling.html#compiler-options
 if DEBUG_BUILD:
-    CFLAGS.extend(['--coverage', '-coverage', '-fprofile-arcs', '-ftest-coverage', '-fPIC'])
+    CFLAGS.extend([
+        '--coverage',
+        '-fkeep-inline-functions',
+        '-fkeep-static-functions',
+        '-fprofile-abs-path',
+    ])
 
-LDFLAGS = ['--coverage', '-coverage', '-lgcov'] if DEBUG_BUILD else []
+# LDFLAGS = ['-coverage'] if DEBUG_BUILD else []
+LDFLAGS = ['--coverage'] if DEBUG_BUILD else []
 
 # CFLAGS = ["-O2"]
 # CFLAGS.extend(['--coverage', '-g', '-O0'])
-# CFLAGS = ['-g']
 
 if platform.system() != "Windows" and False:
     CFLAGS.extend(
