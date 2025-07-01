@@ -61,27 +61,6 @@ extern "C" {
 
 #define __CIMULTIDICTPROXY_GET_MD(SELF) ((MultiDictProxyObject*)SELF)->md
 
-#define __CAPI_NULL_CHECK(POS, ON_FAIL) \
-    if (POS == NULL) {                  \
-        PyErr_NoMemory();               \
-        return ON_FAIL;                 \
-    }
-
-#define __CAPI_ALLOC_POS(POS)                       \
-    md_pos_t* POS = PyMem_Malloc(sizeof(md_pos_t)); \
-    __CAPI_NULL_CHECK(POS, NULL)
-
-#define __CAPI_FREE_POS(POS, SELF, TYPENAME)                                  \
-    if (pos != NULL) {                                                        \
-        if (((md_pos_t*)pos)->version != ((MultiDictObject*)self)->version) { \
-            PyErr_Format(PyExc_RuntimeError,                                  \
-                         "%s changed during cleanup after iteration",         \
-                         #TYPENAME);                                          \
-            return -1;                                                        \
-        }                                                                     \
-        PyMem_Free(pos);                                                      \
-    }
-
 /* ================= MultiDict ================= */
 
 static PyTypeObject*
@@ -337,6 +316,7 @@ IStr_FromUnicode(void* state_, PyObject* str)
     return IStr_New(state, str, canonical);
 }
 
+// TODO: These comments should belong in the documentation portion as well...
 // Anybody using a bytes/buffer object or another C datatype should be able to
 // convert to istr without issue so making a IStr_FromStringAndSize function
 // made sense.
@@ -350,7 +330,8 @@ IStr_FromStringAndSize(void* state_, const char* str, Py_ssize_t size)
 {
     // Better done sooner than sorry...
     if (size == PY_SSIZE_T_MAX) {
-        return PyErr_NoMemory();
+        PyErr_NoMemory();
+        return NULL;
     }
 
     PyUnicodeWriter* lc_writer = PyUnicodeWriter_Create(size);

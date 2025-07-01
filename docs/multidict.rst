@@ -779,3 +779,300 @@ The library is also shipped with a C-API, the header files can be compiled using
    :returns: return A CPython `PyTypeObject` is returned as a pointer
    :retval NULL: if an exception was raised
 
+
+.. c:function:: PyTypeObject* CIMultiDict_GetType(MultiDict_CAPI* api)
+
+   Obtains the :class:`CIMultiDict` TypeObject.
+
+   :param api: Python Capsule Pointer
+   :returns: return A CPython `PyTypeObject` is returned as a pointer
+   :retval NULL: if an exception was raised
+
+
+.. c:function:: int CIMultiDict_CheckExact(MultiDict_CAPI* api, PyObject* op)
+
+   Checks if :class:`CIMultiDict` object type matches exactly.
+
+   :param api: Python Capsule Pointer
+   :param op: The Object to check
+   :retval 1: if true
+   :retval 0: if false
+   :retval -1: if exception was raised
+
+.. c:function:: int CIMultiDict_Add(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* value)
+
+   Adds a new entry to the :class:`CIMultiDict` object.
+
+   :param api: Python Capsule Pointer
+   :param self: the Multidict object
+   :param key: The key of the entry to add
+   :param value: The value of the entry to add
+   :retval 0: on success
+   :reval -1: on failure
+
+.. c:function:: int CIMultiDict_Clear(MultiDict_CAPI* api, PyObject* self)
+
+   Clears a :class:`CIMultiDict` object and removes all it's entries.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :retval 0: if success
+   :retval -1: on failure and will raise :exc:`TypeError` if :class:`CIMultiDict` Type is incorrect
+
+
+.. c:function:: PyObject* Multidict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* _default)
+
+   If key is in the dictionary its the first value.
+   If not, insert key with a value of default and return default.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param key: the key to insert
+   :param _default: the default value to have inserted
+   :returns: the default object on success
+   :retval NULL: on failure
+
+.. c:function:: int MutliDict_Del(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+
+   Remove all items where key is equal to key from d.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param key: the key to be removed
+   :retval 0: on success,
+   :retval -1: on failure followed by raising either :exc:`TypeError` or :exc:`KeyError` if key is not in the map.
+
+.. c:function:: uint64_t CIMultiDict_Version(MultiDict_CAPI* api, PyObject* self)
+
+   Return a version of given :class:`CIMultiDict` object
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :returns: the version flag of the object, otherwise 0 on failure
+
+.. c:function:: int CIMultiDict_Contains(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+
+   Determines if a certain key exists a multidict object
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param key: the key to look for
+   :retval 1: if true
+   :retval 0: if false,
+   :retval -1: if failure had occurred
+
+
+.. c:function:: PyObject* CIMultiDict_GetAll(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject** result)
+
+   Return the all values corresponding to *key* if *key* is in the
+   dictionary, else *NULL*.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param key: the key to get one item from
+   :param result: the object to attached the obtained object to.
+   :retval 1: on success
+   :retval 0: on failure (No exceptions are raised)
+   :retval -1: on :exc:`TypeError` raised
+
+.. c:function:: PyObject* CIMultiDict_GetOne(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject** result)
+
+   Return the **first** value for *key* if *key* is in the
+   dictionary, else *NULL*.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param key: the key to get one item from
+   :param result: the object to attached the obtained object to.
+   :retval 1: on success
+   :retval 0: on failure (No exceptions are raised)
+   :retval -1: on :exc:`TypeError` raised
+
+.. c:function:: PyObject* CIMultiDict_PopOne(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+
+   Remove and return a value from the dictionary.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param key: the key to remove
+   :returns: corresponding value on success or None
+   :retval NULL: on failure and raises :exc:`TypeError`
+
+.. c:function:: PyObject* CIMultiDict_PopAll(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+
+   Pops all related objects corresponding to `key`
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param key: the key to pop all of
+   :returns: :class:`list` object on success
+   :retval NULL: on error and raises either :exc:`KeyError` or :exc:`TypeError`
+
+
+.. c:function:: PyObject* CIMultiDict_PopItem(MultiDict_CAPI* api, PyObject* self)
+
+   Remove and return an arbitrary ``(key, value)`` pair from the
+   dictionary.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :returns: an arbitrary tuple on success
+   :retval NULL: on error along with :exc:`TypeError` or :exc:`KeyError` raised
+
+
+.. c:function:: int CIMultiDict_Replace(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* value)
+
+   Replaces a set object with another object
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param key: the key to lookup for replacement
+   :param value: the value to replace with
+   :retval 0: on success
+   :retval -1: on failure and raises :exc:`TypeError`
+
+
+.. c:function:: int CIMultiDict_UpdateFromMultiDict(MultiDict_CAPI* api, PyObject* self, PyObject* other, UpdateOp op)
+
+   Updates Multidict object using another MultiDict Object
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param other: a multidict object to update corresponding object with
+   :param op: :c:enum:`UpdateOp` operation for extending, updating, or merging values.
+   :retval 0: on success
+   :retval -1: on failure
+
+
+
+.. c:function:: int CIMultiDict_UpdateFromDict(MultiDict_CAPI* api, PyObject* self, PyObject* kwds, UpdateOp op)
+
+   Updates Multidict object using another Dictionary Object
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param kwds: the keywords or Dictionary object to merge
+   :param op: :c:enum:`UpdateOp` operation for extending, updating, or merging values.
+   :retval 0: on success
+   :retval -1: on failure
+
+
+.. c:function:: int CIMultiDict_UpdateFromSequence(MultiDict_CAPI* api, PyObject* self, PyObject* seq, UpdateOp op)
+
+   Updates Multidict object using a sequence object
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDict` object
+   :param seq: the sequence to merge with.
+   :param op: :c:enum:`UpdateOp` operation for extending, updating, or merging values.
+   :retval 0: on success
+   :retval -1: on failure
+
+
+.. c:function:: PyObject* CIMultiDictProxy_New(MultiDict_CAPI* api, PyObject* md)
+
+   creates a :class:`CIMultiDictProxy` from any other Multidict object 
+   making an immutable version of it.
+
+   :param api: Python Capsule Pointer
+   :param md: the :class:`CIMultiDict` object to make immutable
+   :returns: a :class:`CIMultiDictProxy` on success
+   :retval NULL: on failure and raises :exc:`TypeError`
+
+
+.. c:function:: int CIMultiDictProxy_Contains(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+
+   Determines if a certain key exists a :class:`CIMultiDictProxy` object
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDictProxy` object
+   :param key: the key to look for
+   :retval 1: if true
+   :retval 0: if false,
+   :retval -1: if failure had occurred
+
+.. c:function:: PyObject* CIMultiDictProxy_GetAll(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject** result)
+
+   Return the all values corresponding to *key* if *key* is in the
+   dictionary, else *NULL*.
+   
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDictProxy` object
+   :param key: the key to get one item from
+   :param result: the object to attached the obtained object to.
+   :retval 1: on success
+   :retval 0: on failure (No exceptions are raised)
+   :retval -1: on :exc:`TypeError` raised
+
+.. c:function:: PyObject* CIMultiDictProxy_GetOne(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject** result)
+
+   Return the **first** value for *key* if *key* is in the
+   dictionary, else *NULL*.
+
+   :param api: Python Capsule Pointer
+   :param self: the :class:`CIMultiDictProxy` object
+   :param key: the key to get one item from
+   :param result: the object to attached the obtained object to.
+   :retval 1: on success
+   :retval 0: on failure (No exceptions are raised)
+   :retval -1: on :exc:`TypeError` raised
+
+.. c:function:: PyTypeObject* CIMultiDictProxy_GetType(MultiDict_CAPI* api)
+
+   Obtains the :class:`CIMultiDictProxy` TypeObject.
+
+   :param api: Python Capsule Pointer
+   :returns: return A CPython `PyTypeObject` is returned as a pointer
+   :retval NULL: if an exception was raised
+
+.. c:function:: PyObject* IStr_FromUnicode(MultiDict_CAPI* api, PyObject* str)
+   
+   Creates a :class:`istr` object from a unicode object.
+
+   :param api: Python Capsule Pointer
+   :param str: the string object
+   :returns: A :class:`istr` object on success
+   :retval NULL: if an exception was raised
+
+.. c:function:: PyObject* IStr_FromStringAndSize(MultiDict_CAPI* api, const char* str, Py_ssize_t size)
+   
+   Creates a :class:`istr` object from an array of characters or c buffer.
+   
+   :param api: Python Capsule Pointer
+   :param str: the array of characters
+   :param size: the number of characters to use
+   :returns: A :class:`istr` object on success
+   :retval NULL: if an exception was raised
+
+.. c:function:: PyObject* IStr_FromString(MultiDict_CAPI* api, const char* str)
+
+   Create a :class:`istr` object from an array of characters or c buffer.
+   :param api: Python Capsule Pointer
+   :param str: the array of characters
+   :returns: A :class:`istr` object on success
+   :retval NULL: if an exception was raised
+
+.. c:function:: PyTypeObject* IStr_GetType(MultiDict_CAPI* api)
+
+   Obtains the :class:`istr` TypeObject.
+
+   :param api: Python Capsule Pointer
+   :returns: return A CPython `PyTypeObject` is returned as a pointer
+   :retval NULL: if an exception was raised
+
+.. c:function:: PyObject* MultiDictIter_New(MultiDict_CAPI* api, PyObject* self)
+
+   Creates a new iterator from :class:`MultiDict`, :class:`CIMultiDict`, :class:`MutliDictProxy` or :class:`CIMultiDictProxy`
+   
+   :param api: Python Capsule Pointer
+   :returns: A new iteratable object
+   :reval NULL: if an exception was raised
+
+.. c:function:: int MultiDictIter_Next(MultiDict_CAPI* api, PyObject* self, PyObject** key, PyObject** value)
+
+   Obtains the next key and value from the iterable object.
+
+   :param api: Python Capsule Pointer
+   :retval 1: iterable has more items
+   :reval 0: the iterable object is done
+   :reval -1: if an exception was raised
