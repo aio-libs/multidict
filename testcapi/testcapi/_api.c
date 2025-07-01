@@ -57,6 +57,20 @@ handle_result(int ret, PyObject *result)
     return PyTuple_Pack(2, result, val);
 }
 
+static PyObject *
+handle_result_pair(int ret, PyObject *key, PyObject *value)
+{
+    if (ret < 0) {
+        return NULL;
+    }
+    // Test if we missed
+    if (ret == 0) {
+        return PyTuple_Pack(3, Py_None, Py_None, Py_False);
+    }
+    assert(key != NULL || value != NULL);
+    return PyTuple_Pack(3, key, value, Py_True);
+}
+
 /* module functions */
 
 static PyObject *
@@ -600,6 +614,22 @@ ci_md_proxy_type(PyObject *self, PyObject *unused)
     return Py_NewRef(CIMultiDictProxy_GetType(get_capi(self)));
 }
 
+/* MultiDictIter */
+
+static PyObject *
+md_iter_new(PyObject *self, PyObject *any_md)
+{
+    return MultiDictIter_New(get_capi(self), any_md);
+}
+
+static PyObject *
+md_iter_next(PyObject *self, PyObject *md_iter)
+{
+    PyObject *key = NULL, *value = NULL;
+    int ret = MultiDictIter_Next(get_capi(self), md_iter, &key, &value);
+    return handle_result_pair(ret, key, value);
+}
+
 /* module slots */
 
 static int
@@ -680,6 +710,8 @@ static PyMethodDef module_methods[] = {
     {"ci_md_proxy_getall", (PyCFunction)ci_md_proxy_getall, METH_FASTCALL},
     {"ci_md_proxy_getone", (PyCFunction)ci_md_proxy_getone, METH_FASTCALL},
 
+    {"md_iter_new", (PyCFunction)md_iter_new, METH_O},
+    {"md_iter_next", (PyCFunction)md_iter_next, METH_O},
     {NULL, NULL} /* sentinel */
 };
 

@@ -64,10 +64,6 @@ typedef struct {
                                     PyObject* kwds, UpdateOp op);
     int (*MultiDict_UpdateFromSequence)(void* state, PyObject* self,
                                         PyObject* kwds, UpdateOp op);
-    void* (*MultiDict_InitPos)(void* state, PyObject* self);
-    int (*MultiDict_Next)(void* state, PyObject* self, void* pos,
-                          PyObject** key, PyObject** value);
-    int (*MultiDict_FreePos)(void* state, PyObject* self, void* pos);
 
     PyObject* (*MultiDictProxy_New)(void* state, PyObject* md);
     int (*MultiDictProxy_Contains)(void* state, PyObject* self, PyObject* key);
@@ -76,10 +72,6 @@ typedef struct {
     int (*MultiDictProxy_GetOne)(void* state, PyObject* self, PyObject* key,
                                  PyObject** result);
     PyTypeObject* (*MultiDictProxy_GetType)(void* state);
-    void* (*MultiDictProxy_InitPos)(void* state, PyObject* self);
-    int (*MultiDictProxy_Next)(void* state, PyObject* self, void* pos,
-                               PyObject** key, PyObject** value);
-    int (*MultiDictProxy_FreePos)(void* state, PyObject* self, void* pos);
 
     PyObject* (*IStr_FromUnicode)(void* state, PyObject* str);
     PyObject* (*IStr_FromStringAndSize)(void* state, const char* str,
@@ -118,10 +110,6 @@ typedef struct {
                                       PyObject* kwds, UpdateOp op);
     int (*CIMultiDict_UpdateFromSequence)(void* state, PyObject* self,
                                           PyObject* kwds, UpdateOp op);
-    void* (*CIMultiDict_InitPos)(void* state, PyObject* self);
-    int (*CIMultiDict_Next)(void* state, PyObject* self, void* pos,
-                            PyObject** key, PyObject** value);
-    int (*CIMultiDict_FreePos)(void* state, PyObject* self, void* pos);
 
     PyObject* (*CIMultiDictProxy_New)(void* state, PyObject* md);
     int (*CIMultiDictProxy_Contains)(void* state, PyObject* self,
@@ -131,10 +119,10 @@ typedef struct {
     int (*CIMultiDictProxy_GetOne)(void* state, PyObject* self, PyObject* key,
                                    PyObject** result);
     PyTypeObject* (*CIMultiDictProxy_GetType)(void* state);
-    void* (*CIMultiDictProxy_InitPos)(void* state, PyObject* self);
-    int (*CIMultiDictProxy_Next)(void* state, PyObject* self, void* pos,
-                                 PyObject** key, PyObject** value);
-    int (*CIMultiDictProxy_FreePos)(void* state, PyObject* self, void* pos);
+
+    PyObject* (*MultiDictIter_New)(void* state_, PyObject* self);
+    int (*MultiDictIter_Next)(void* state_, PyObject* self, PyObject** key,
+                              PyObject** value);
 
 } MultiDict_CAPI;
 
@@ -276,24 +264,6 @@ MultiDict_UpdateFromSequence(MultiDict_CAPI* api, PyObject* self,
     return api->MultiDict_UpdateFromSequence(api->state, self, seq, op);
 };
 
-static inline void*
-MultiDict_InitPos(MultiDict_CAPI* api, PyObject* self)
-{
-    return api->MultiDict_InitPos(api->state, self);
-}
-
-static inline void*
-MultiDict_Next(MultiDict_CAPI* api, PyObject* self, void* pos, PyObject** key,
-               PyObject** value)
-{
-    return api->MultiDict_Next(api->state, self, pos, key, value);
-}
-static inline int
-MultiDict_FreePos(MultiDict_CAPI* api, PyObject* self, void* pos)
-{
-    return api->MultiDict_FreePos(api->state, self, pos);
-}
-
 static inline PyObject*
 MultiDictProxy_New(MultiDict_CAPI* api, PyObject* md)
 {
@@ -342,25 +312,6 @@ static inline PyTypeObject*
 MultiDictProxy_GetType(MultiDict_CAPI* api)
 {
     return api->MultiDictProxy_GetType(api->state);
-}
-
-static inline void*
-MultiDictProxy_InitPos(MultiDict_CAPI* api, PyObject* self)
-{
-    return api->MultiDictProxy_InitPos(api->state, self);
-}
-
-static inline void*
-MultiDictProxy_Next(MultiDict_CAPI* api, PyObject* self, void* pos,
-                    PyObject** key, PyObject** value)
-{
-    return api->MultiDictProxy_Next(api->state, self, pos, key, value);
-}
-
-static inline int
-MultiDictProxy_FreePos(MultiDict_CAPI* api, PyObject* self, void* pos)
-{
-    return api->MultiDictProxy_FreePos(api->state, self, pos);
 }
 
 static inline int
@@ -536,25 +487,6 @@ CIMultiDict_UpdateFromSequence(MultiDict_CAPI* api, PyObject* self,
     return api->CIMultiDict_UpdateFromSequence(api->state, self, seq, op);
 };
 
-static inline void*
-CIMultiDict_InitPos(MultiDict_CAPI* api, PyObject* self)
-{
-    return api->CIMultiDict_InitPos(api->state, self);
-}
-
-static inline void*
-CIMultiDict_Next(MultiDict_CAPI* api, PyObject* self, void* pos,
-                 PyObject** key, PyObject** value)
-{
-    return api->CIMultiDict_Next(api->state, self, pos, key, value);
-}
-
-static inline int
-CIMultiDict_FreePos(MultiDict_CAPI* api, PyObject* self, void* pos)
-{
-    return api->CIMultiDict_FreePos(api->state, self, pos);
-}
-
 static inline PyObject*
 CIMultiDictProxy_New(MultiDict_CAPI* api, PyObject* md)
 {
@@ -605,22 +537,17 @@ CIMultiDictProxy_GetType(MultiDict_CAPI* api)
     return api->CIMultiDictProxy_GetType(api->state);
 }
 
-static inline void*
-CIMultiDictProxy_InitPos(MultiDict_CAPI* api, PyObject* self)
+static inline PyObject*
+MultiDictIter_New(MultiDict_CAPI* api, PyObject* self)
 {
-    return api->CIMultiDictProxy_InitPos(api->state, self);
+    return api->MultiDictIter_New(api->state, self);
 }
 
-static inline void*
-CIMultiDictProxy_Next(MultiDict_CAPI* api, PyObject* self, void* pos,
-                      PyObject** key, PyObject** value)
-{
-    return api->CIMultiDictProxy_Next(api->state, self, pos, key, value);
-}
 static inline int
-CIMultiDictProxy_FreePos(MultiDict_CAPI* api, PyObject* self, void* pos)
+MultiDictIter_Next(MultiDict_CAPI* api, PyObject* self, PyObject** key,
+                   PyObject** value)
 {
-    return api->CIMultiDictProxy_FreePos(api->state, self, pos);
+    return api->MultiDictIter_Next(api->state, self, key, value);
 }
 
 #endif

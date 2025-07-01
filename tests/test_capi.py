@@ -497,3 +497,18 @@ def test_ci_md_proxy_getone_miss() -> None:
 
 def test_ci_md_proxy_type() -> None:
     assert testcapi.ci_md_proxy_type() is CIMultiDictProxy
+
+
+def test_md_iter_new() -> None:
+    md = MultiDict([("key", "value1")], key="value2")
+    it = testcapi.md_iter_new(md.copy())
+    for k, _ in it:
+        assert k in md
+
+
+def test_md_iter_next() -> None:
+    md = MultiDict([("key", "value1")], key="value2")
+    it = testcapi.md_iter_new(md.copy())
+    assert testcapi.md_iter_next(it) == ("key", "value1", True)
+    assert testcapi.md_iter_next(it) == ("key", "value2", True)
+    assert testcapi.md_iter_next(it) == (None, None, False)
