@@ -8,8 +8,8 @@ import sys
 from distutils import log
 from setuptools import Extension, setup
 
-DEBUG_BUILD = bool(os.environ.get("MULTIDICT_DEBUG_BUILD"))
 NO_EXTENSIONS = bool(os.environ.get("MULTIDICT_NO_EXTENSIONS"))
+DEBUG_BUILD = bool(os.environ.get("MULTIDICT_DEBUG_BUILD"))
 
 if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
