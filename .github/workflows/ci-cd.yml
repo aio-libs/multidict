@@ -371,12 +371,29 @@ jobs:
         --cov-report xml
         --junitxml=.test-results/pytest/test.xml
         --${{ matrix.no-extensions == 'Y' && 'no-' || '' }}c-extensions
+    - name: Experimentally find gcda/gcno [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        find . -name '*.gc*'
+    - name: Experimentally find gcda/gcno in site-packages [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        find "$(python -Ic 'import importlib.resources; print(str(importlib.resources.files("multidict")))')" -name '*.gc*'
+    - name: Experimentally install Gcovr [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        gcovr
     - name: Experimentally run Gcovr [FIXME]
       if: >-
         !cancelled()
         && runner.os == 'Linux'
       run: |
-        pip install gcovr
         gcovr
     - name: Produce markdown test summary from JUnit
       if: >-
