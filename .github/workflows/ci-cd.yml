@@ -371,6 +371,13 @@ jobs:
         --cov-report xml
         --junitxml=.test-results/pytest/test.xml
         --${{ matrix.no-extensions == 'Y' && 'no-' || '' }}c-extensions
+    - name: Experimentally run Gcovr [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        pip install gcovr
+        gcovr
     - name: Produce markdown test summary from JUnit
       if: >-
         !cancelled()
