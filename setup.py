@@ -44,7 +44,9 @@ if platform.system() != "Windows" and False:
         ]
     )
 
-os.environ['CC'] = 'ccache gcc'
+if DEBUG_BUILD:
+    # https://gcovr.com/en/stable/cookbook.html#how-to-collect-coverage-for-c-extensions-in-python
+    os.environ['CC'] = 'ccache gcc'  # no distutils/setuptools equivalent
 
 extensions = [
     Extension(
