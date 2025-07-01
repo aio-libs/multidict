@@ -820,7 +820,7 @@ The library is also shipped with a C-API, the header files can be compiled using
    :retval -1: on failure and will raise :exc:`TypeError` if :class:`CIMultiDict` Type is incorrect
 
 
-.. c:function:: PyObject* Multidict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* _default)
+.. c:function:: PyObject* CIMultidict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* _default)
 
    If key is in the dictionary its the first value.
    If not, insert key with a value of default and return default.
@@ -832,7 +832,7 @@ The library is also shipped with a C-API, the header files can be compiled using
    :returns: the default object on success
    :retval NULL: on failure
 
-.. c:function:: int MutliDict_Del(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+.. c:function:: int CIMutliDict_Del(MultiDict_CAPI* api, PyObject* self, PyObject* key)
 
    Remove all items where key is equal to key from d.
 
@@ -1062,7 +1062,7 @@ The library is also shipped with a C-API, the header files can be compiled using
 
 .. c:function:: PyObject* MultiDictIter_New(MultiDict_CAPI* api, PyObject* self)
 
-   Creates a new iterator from :class:`MultiDict`, :class:`CIMultiDict`, :class:`MutliDictProxy` or :class:`CIMultiDictProxy`
+   Creates a new iterator from :class:`MultiDict`, :class:`CIMultiDict`, :class:`MultiDictProxy` or :class:`CIMultiDictProxy`
    
    :param api: Python Capsule Pointer
    :returns: A new iteratable object
