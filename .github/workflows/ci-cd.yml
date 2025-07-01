@@ -365,6 +365,8 @@ jobs:
           && '.'
           || steps.wheel-file.outputs.path
         }}'
+    - name: Experimental display of multidict files  [FIXME]
+      run: pip show multidict --files
     - name: Run unittests
       run: >-
         python -Im pytest tests -v
