@@ -8,6 +8,8 @@ import pickle
 from dataclasses import dataclass
 from functools import cached_property
 from importlib import import_module
+from pathlib import Path
+from shutil import copytree
 from types import ModuleType
 from typing import Callable, Type, Union
 
@@ -91,8 +93,16 @@ def _gcov_configuration() -> None:
         # NOTE: packaging is borked.
         return
 
+    project_root = Path(__file__).parent.parent.resolve()
+
     build_meta_json_path = tracing_data_dir_path / 'build-metadata.json'
     gcov_env = json.loads(build_meta_json_path.read_text(encoding='utf-8'))
+
+    in_project_tracing_data_dir_path = project_root / gcov_env['GCOV_PREFIX']
+    gcov_env['GCOV_PREFIX'] = str(in_project_tracing_data_dir_path)
+
+    copytree(tracing_data_dir_path, in_project_tracing_data_dir_path, dirs_exist_ok=True)
+
     os.environ.update(gcov_env)
 
 
