@@ -355,6 +355,12 @@ jobs:
       run: >-
         make clean
       shell: bash
+    - name: Pre-install ccache for gcov  [FIXME]
+      if: steps.build_type.outputs.build_type == 'source'
+      run: >-
+        apt update -y
+        && apt install -y ccache
+      shell: bash
     - name: Self-install (from ${{ steps.build_type.outputs.build_type }})
       env:
         MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
