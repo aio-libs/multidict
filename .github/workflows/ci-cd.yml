@@ -408,7 +408,7 @@ jobs:
         !cancelled()
         && runner.os == 'Linux'
       run: |
-        gcovr
+        gcovr --verbose
     - name: Produce markdown test summary from JUnit
       if: >-
         !cancelled()
