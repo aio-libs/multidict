@@ -533,6 +533,14 @@ The library is also shipped with a C-API, the header files can be compiled using
    :returns: A Capsule Containing the Multidict CAPI
    :retval NULL: if object fails to import
 
+.. c:function:: PyObject* MultiDict_New(MultiDict_CAPI* api, int prealloc_size)
+
+   Creates a Multidict of a pre-allocated size
+
+   :param api: Python Capsule Pointer
+   :param prealloc_size: the number of elements to allocate on the heap
+   :retval NULL: if an exception was raised
+
 
 .. c:function:: PyTypeObject* MultiDict_GetType(MultiDict_CAPI* api)
 
@@ -562,7 +570,7 @@ The library is also shipped with a C-API, the header files can be compiled using
    :param key: The key of the entry to add
    :param value: The value of the entry to add
    :retval 0: on success
-   :reval -1: on failure
+   :retval -1: on failure
 
 .. c:function:: int MultiDict_Clear(MultiDict_CAPI* api, PyObject* self)
 
@@ -574,7 +582,7 @@ The library is also shipped with a C-API, the header files can be compiled using
    :retval -1: on failure and will raise :exc:`TypeError` if :class:`MultiDict` Type is incorrect
 
 
-.. c:function:: PyObject* Multidict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* _default)
+.. c:function:: PyObject* MultiDict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* _default)
 
    If key is in the dictionary its the first value.
    If not, insert key with a value of default and return default.
@@ -586,7 +594,7 @@ The library is also shipped with a C-API, the header files can be compiled using
    :returns: the default object on success
    :retval NULL: on failure
 
-.. c:function:: int MutliDict_Del(MultiDict_CAPI* api, PyObject* self, PyObject* key)
+.. c:function:: int MultiDict_Del(MultiDict_CAPI* api, PyObject* self, PyObject* key)
 
    Remove all items where key is equal to key from d.
 
@@ -779,6 +787,14 @@ The library is also shipped with a C-API, the header files can be compiled using
    :returns: return A CPython `PyTypeObject` is returned as a pointer
    :retval NULL: if an exception was raised
 
+.. c:function:: PyObject* CIMultiDict_New(MultiDict_CAPI* api, int prealloc_size)
+
+   Creates a :class:`CIMultiDict` of a pre-allocated size
+   
+   :param api: Python Capsule Pointer
+   :param prealloc_size: the number of elements to allocate on the heap
+   :retval NULL: if an exception was raised
+
 
 .. c:function:: PyTypeObject* CIMultiDict_GetType(MultiDict_CAPI* api)
 
@@ -808,7 +824,7 @@ The library is also shipped with a C-API, the header files can be compiled using
    :param key: The key of the entry to add
    :param value: The value of the entry to add
    :retval 0: on success
-   :reval -1: on failure
+   :retval -1: on failure
 
 .. c:function:: int CIMultiDict_Clear(MultiDict_CAPI* api, PyObject* self)
 
@@ -820,7 +836,7 @@ The library is also shipped with a C-API, the header files can be compiled using
    :retval -1: on failure and will raise :exc:`TypeError` if :class:`CIMultiDict` Type is incorrect
 
 
-.. c:function:: PyObject* CIMultidict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* _default)
+.. c:function:: PyObject* CIMultiDict_SetDefault(MultiDict_CAPI* api, PyObject* self, PyObject* key, PyObject* _default)
 
    If key is in the dictionary its the first value.
    If not, insert key with a value of default and return default.
@@ -1027,7 +1043,7 @@ The library is also shipped with a C-API, the header files can be compiled using
 
 .. c:function:: PyObject* IStr_FromUnicode(MultiDict_CAPI* api, PyObject* str)
    
-   Creates a :class:`istr` object from a unicode object.
+   Creates a :class:`istr` object from a string object.
 
    :param api: Python Capsule Pointer
    :param str: the string object
@@ -1047,6 +1063,7 @@ The library is also shipped with a C-API, the header files can be compiled using
 .. c:function:: PyObject* IStr_FromString(MultiDict_CAPI* api, const char* str)
 
    Create a :class:`istr` object from an array of characters or c buffer.
+   
    :param api: Python Capsule Pointer
    :param str: the array of characters
    :returns: A :class:`istr` object on success
@@ -1065,14 +1082,16 @@ The library is also shipped with a C-API, the header files can be compiled using
    Creates a new iterator from :class:`MultiDict`, :class:`CIMultiDict`, :class:`MultiDictProxy` or :class:`CIMultiDictProxy`
    
    :param api: Python Capsule Pointer
+   :param self: A :class:`MultiDict`, :class:`CIMultiDict`, :class:`MultiDictProxy` or :class:`CIMultiDictProxy` object to iterate over
    :returns: A new iteratable object
-   :reval NULL: if an exception was raised
+   :retval NULL: if an exception was raised
 
 .. c:function:: int MultiDictIter_Next(MultiDict_CAPI* api, PyObject* self, PyObject** key, PyObject** value)
 
    Obtains the next key and value from the iterable object.
 
    :param api: Python Capsule Pointer
+   :param self: an iterable object created from :c:func:`MultiDictIter_New`
    :retval 1: iterable has more items
-   :reval 0: the iterable object is done
-   :reval -1: if an exception was raised
+   :retval 0: the iterable object is done
+   :retval -1: if an exception was raised
