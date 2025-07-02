@@ -392,7 +392,7 @@ jobs:
         !cancelled()
         && runner.os == 'Linux'
       run: |
-        gcovr
+        pip install gcovr
     - name: Experimentally run Gcovr [FIXME]
       if: >-
         !cancelled()
