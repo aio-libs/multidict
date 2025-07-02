@@ -397,6 +397,12 @@ jobs:
         && runner.os == 'Linux'
       run: |
         pip install gcovr
+    - name: Experimentally make a coverage dir [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        mkdir -pv coverage
     - name: Experimentally run Gcovr [FIXME]
       if: >-
         !cancelled()
