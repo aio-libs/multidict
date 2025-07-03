@@ -1083,7 +1083,7 @@ The library is also shipped with a C-API, the header files can be compiled using
    
    :param api: Python Capsule Pointer
    :param self: A :class:`MultiDict`, :class:`CIMultiDict`, :class:`MultiDictProxy` or :class:`CIMultiDictProxy` object to iterate over
-   :returns: A new iteratable object
+   :returns: A new iterable object
    :retval NULL: if an exception was raised
 
 .. c:function:: int MultiDictIter_Next(MultiDict_CAPI* api, PyObject* self, PyObject** key, PyObject** value)
