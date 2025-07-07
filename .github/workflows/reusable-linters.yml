@@ -4,10 +4,6 @@ name: Linters
 
 on:
   workflow_call:
-    secrets:
-      codecov-token:
-        description: Mandatory token for uploading to Codecov
-        required: true
 
 env:
   COLOR: >-  # Supposedly, pytest or coveragepy use this
@@ -60,18 +56,18 @@ jobs:
     - name: Run linters
       run: |
         make lint
-    - name: Send coverage data to Codecov
-      uses: codecov/codecov-action@v5
+    - name: Send coverage data to Coveralls
+      uses: coverallsapp/github-action@v2
       with:
-        token: ${{ secrets.codecov-token }}
+        debug: ${{ runner.debug == 1 && true || false }}
+        fail-on-error: ${{ runner.debug == 1 && false || true }}
         files: >-
-          .tox/.tmp/.mypy/python-3.13/cobertura.xml,
-          .tox/.tmp/.mypy/python-3.11/cobertura.xml,
+          .tox/.tmp/.mypy/python-3.13/cobertura.xml
+          .tox/.tmp/.mypy/python-3.11/cobertura.xml
           .tox/.tmp/.mypy/python-3.9/cobertura.xml
-        flags: >-
-          CI-GHA,
-          MyPy
-        fail_ci_if_error: true
+        flag-name: MyPy
+        format: cobertura
+        measure: ${{ runner.debug == 1 && true || false }}
     - name: Install spell checker
       run: |
         pip install -r requirements/doc.txt
