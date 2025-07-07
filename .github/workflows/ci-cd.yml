@@ -409,12 +409,18 @@ jobs:
         && runner.os == 'Linux'
       run: |
         gcovr --verbose
-    - name: See Gcovr leftovers [FIXME]
+    - name: See Gcovr leftovers at home [FIXME]
       if: >-
         !cancelled()
         && runner.os == 'Linux'
       run: |
         find ~/ -type f -name '*.gcov.json.gz'
+    - name: See Gcovr leftovers in workdir [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        find ../.. -type f -name '*.gcov.json.gz'
     - name: Produce markdown test summary from JUnit
       if: >-
         !cancelled()
