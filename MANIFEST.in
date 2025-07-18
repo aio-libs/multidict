@@ -12,6 +12,7 @@ graft requirements
 graft tests
 global-exclude *.pyc
 include multidict/*.c
+include multidict/__init__.pxd
 exclude multidict/_multidict.html
 exclude multidict/*.so
 exclude multidict/*.pyd
