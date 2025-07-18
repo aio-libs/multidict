@@ -17,5 +17,5 @@ include multidict/multidict_api.h
 exclude multidict/_multidict.html
 exclude multidict/*.so
 exclude multidict/*.pyd
-exclude multidict/_multilib/*
 prune docs/_build
+prune multidict/_multilib
