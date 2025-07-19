@@ -146,6 +146,17 @@ def test_md_update_from_md() -> None:
         d.items()
     )
 
+
+def test_md_update_from_mdproxy() -> None:
+    d1: MultiDictStr = MultiDict({"key": "val1", "k": "v1"})
+    d2: MultiDictProxyStr = MultiDictProxy(MultiDict({"foo": "bar", "k": "v2"}))
+
+    d = d1.copy()
+    testcapi.md_update_from_md(d, d2, 0)
+    assert [("key", "val1"), ("k", "v1"), ("foo", "bar"), ("k", "v2")] == list(
+        d.items()
+    )
+
     d = d1.copy()
     testcapi.md_update_from_md(d, d2, 1)
     assert [("key", "val1"), ("k", "v2"), ("foo", "bar")] == list(d.items())
@@ -405,6 +416,25 @@ def test_ci_md_update_from_md() -> None:
 
     d = d1.copy()
     testcapi.ci_md_update_from_md(d, d2, 2)
+    assert [("key", "val1"), ("k", "v1"), ("foo", "bar")] == list(d.items())
+
+
+def test_ci_md_update_from_ci_mdproxy() -> None:
+    d1: MultiDictStr = CIMultiDict({"key": "val1", "k": "v1"})
+    d2: MultiDictProxyStr = CIMultiDictProxy(CIMultiDict({"foo": "bar", "k": "v2"}))
+
+    d = d1.copy()
+    testcapi.md_update_from_md(d, d2, 0)
+    assert [("key", "val1"), ("k", "v1"), ("foo", "bar"), ("k", "v2")] == list(
+        d.items()
+    )
+
+    d = d1.copy()
+    testcapi.md_update_from_md(d, d2, 1)
+    assert [("key", "val1"), ("k", "v2"), ("foo", "bar")] == list(d.items())
+
+    d = d1.copy()
+    testcapi.md_update_from_md(d, d2, 2)
     assert [("key", "val1"), ("k", "v1"), ("foo", "bar")] == list(d.items())
 
 

@@ -700,7 +700,7 @@ The library is also shipped with a C-API, the header files can be compiled using
 
    :param api: Python Capsule Pointer
    :param self: the :class:`MultiDict` object
-   :param other: a multidict object to update corresponding object with
+   :param other: a :class:`MultiDict`, :class:`CIMultiDict`, :class:`MultiDictProxy` or :class:`CIMultiDictProxy` object to update corresponding object with
    :param op: :c:enum:`UpdateOp` operation for extending, updating, or merging values.
    :retval 0: on success
    :retval -1: on failure
@@ -954,7 +954,7 @@ The library is also shipped with a C-API, the header files can be compiled using
 
    :param api: Python Capsule Pointer
    :param self: the :class:`CIMultiDict` object
-   :param other: a multidict object to update corresponding object with
+   :param other: a :class:`MultiDict`, :class:`CIMultiDict`, :class:`MultiDictProxy` or :class:`CIMultiDictProxy` object to update corresponding object with
    :param op: :c:enum:`UpdateOp` operation for extending, updating, or merging values.
    :retval 0: on success
    :retval -1: on failure

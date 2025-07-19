@@ -190,10 +190,22 @@ static int
 MultiDict_UpdateFromMultiDict(void* state_, PyObject* self, PyObject* other,
                               UpdateOp op)
 {
+    mod_state* state = (mod_state*)state_;
+    MultiDictObject* md;
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    __MULTIDICT_VALIDATION_CHECK(other, state_, -1);
-    int ret =
-        md_update_from_ht((MultiDictObject*)self, (MultiDictObject*)other, op);
+    if (MultiDict_Check(state, other) || CIMultiDict_Check(state, other)) {
+        md = (MultiDictObject*)other;
+    } else if (MultiDictProxy_Check(state, other) ||
+               CIMultiDictProxy_Check(state, other)) {
+        md = __MULTIDICTPROXY_GET_MD(other);
+    } else {
+        PyErr_Format(PyExc_TypeError,
+                     "Expected MultiDict, CIMultiDict, MultiDictProxy"
+                     " or CIMultiDictProxy type object not %s",
+                     Py_TYPE(other)->tp_name);
+        return -1;
+    }
+    int ret = md_update_from_ht((MultiDictObject*)self, md, op);
     if (op != Extend) {
         md_post_update((MultiDictObject*)self);
     }
@@ -498,10 +510,23 @@ static int
 CIMultiDict_UpdateFromMultiDict(void* state_, PyObject* self, PyObject* other,
                                 UpdateOp op)
 {
+    mod_state* state = (mod_state*)state_;
+    MultiDictObject* md;
     __CIMULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    __ANYMULTIDICT_VALIDATION_CHECK(other, state_, -1);
-    int ret =
-        md_update_from_ht((MultiDictObject*)self, (MultiDictObject*)other, op);
+    if (MultiDict_Check(state, other) || CIMultiDict_Check(state, other)) {
+        md = (MultiDictObject*)other;
+    } else if (MultiDictProxy_Check(state, other) ||
+               CIMultiDictProxy_Check(state, other)) {
+        md = __MULTIDICTPROXY_GET_MD(other);
+    } else {
+        PyErr_Format(PyExc_TypeError,
+                     "Expected MultiDict, CIMultiDict, MultiDictProxy"
+                     " or CIMultiDictProxy type object not %s",
+                     Py_TYPE(other)->tp_name);
+        return -1;
+    }
+
+    int ret = md_update_from_ht((MultiDictObject*)self, md, op);
     if (op != Extend) {
         md_post_update((MultiDictObject*)self);
     }
