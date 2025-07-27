@@ -7,10 +7,12 @@ import psutil
 import os
 from multidict import MultiDict
 
+
 def get_memory_usage():
     process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
     return memory_info.rss / (1024 * 1024)
+
 
 keys = [f"X-Any-{i}" for i in range(1000)]
 headers = {key: key * 2 for key in keys}
@@ -34,6 +36,6 @@ def _run_isolated_case() -> None:
             sys.exit(1)
     sys.exit(0)
 
+
 if __name__ == "__main__":
     _run_isolated_case()
-
