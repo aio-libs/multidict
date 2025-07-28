@@ -9,46 +9,10 @@ import psutil
 import os
 import ctypes
 from multidict import MultiDict
-from typing import Optional
 
 
 # Code was borrowed for testing with windows and other operating systems respectively.
 # SEE: https://stackoverflow.com/a/79150440
-
-
-def trim_windows_process_memory(pid: Optional[int] = None) -> bool:
-    """Causes effect similar to malloc_trim on -nix."""
-
-    SIZE_T = ctypes.c_uint32 if ctypes.sizeof(ctypes.c_void_p) == 4 else ctypes.c_uint64
-
-    # Get a handle to the current process
-    if not pid:
-        pid = ctypes.windll.kernel32.GetCurrentProcess()
-
-    # Sometimes FileNotFoundError can appear so the code was
-    # changed to handle that workaround.
-
-    ctypes.windll.kernel32.SetProcessWorkingSetSizeEx.argtypes = [
-        ctypes.c_void_p,  # Process handle
-        SIZE_T,  # Minimum working set size
-        SIZE_T,  # Maximum working set size
-        ctypes.c_ulong,  # Flags
-    ]
-    ctypes.windll.kernel32.SetProcessWorkingSetSizeEx.restype = ctypes.c_bool
-
-    # Define constants for SetProcessWorkingSetSizeEx
-    QUOTA_LIMITS_HARDWS_MIN_DISABLE = 0x00000002
-
-    # Attempt to set the working set size
-    if not ctypes.windll.kernel32.SetProcessWorkingSetSizeEx(
-        pid, SIZE_T(-1), SIZE_T(-1), QUOTA_LIMITS_HARDWS_MIN_DISABLE
-    ):
-        # Retrieve the error code
-        error_code = ctypes.windll.kernel32.GetLastError()
-        # let's print it since we aren't using a logger...
-        print(f"SetProcessWorkingSetSizeEx failed with error code: {error_code}")
-        return False
-    return True
 
 
 def trim_ram() -> None:
@@ -57,7 +21,38 @@ def trim_ram() -> None:
 
     gc.collect()
     if sys.platform == "win32":
-        assert trim_windows_process_memory(), "trim_ram failed"
+        SIZE_T = (
+            ctypes.c_uint32 if ctypes.sizeof(ctypes.c_void_p) == 4 else ctypes.c_uint64
+        )
+
+        # Get a handle to the current process
+
+        pid = ctypes.windll.kernel32.GetCurrentProcess()
+
+        # Sometimes FileNotFoundError can appear so the code was
+        # changed to handle that workaround.
+
+        ctypes.windll.kernel32.SetProcessWorkingSetSizeEx.argtypes = [
+            ctypes.c_void_p,  # Process handle
+            SIZE_T,  # Minimum working set size
+            SIZE_T,  # Maximum working set size
+            ctypes.c_ulong,  # Flags
+        ]
+        ctypes.windll.kernel32.SetProcessWorkingSetSizeEx.restype = ctypes.c_bool
+
+        # Define constants for SetProcessWorkingSetSizeEx
+        QUOTA_LIMITS_HARDWS_MIN_DISABLE = 0x00000002
+
+        # Attempt to set the working set size
+        if not ctypes.windll.kernel32.SetProcessWorkingSetSizeEx(
+            pid, SIZE_T(-1), SIZE_T(-1), QUOTA_LIMITS_HARDWS_MIN_DISABLE
+        ):
+            # Retrieve the error code
+            error_code = ctypes.windll.kernel32.GetLastError()
+            raise RuntimeError(
+                f"SetProcessWorkingSetSizeEx failed with error code: {error_code}"
+            )
+        return
     else:
         try:
             ctypes.CDLL("libc.so.6").malloc_trim(0)
