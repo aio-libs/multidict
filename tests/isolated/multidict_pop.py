@@ -55,9 +55,9 @@ def trim_ram() -> None:
         return
     else:
         try:
-            ctypes.CDLL("libc.so.6").malloc_trim(0)
+            ctypes.CDLL("libc.so").malloc_trim(0)
         except Exception as e:
-            print(" attempt failed")
+            print("FAILED: ", e)
             raise e
 
 
