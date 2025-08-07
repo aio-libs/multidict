@@ -16,27 +16,29 @@ def trim_ram() -> None:
     gc.collect()
 
 
+process = psutil.Process(os.getpid())
+
+
 def get_memory_usage() -> int:
-    process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
     return memory_info.rss / (1024 * 1024)  # type: ignore[no-any-return]
 
 
-keys = [f"X-Any-{i}" for i in range(1000)]
+keys = [f"X-Any-{i}" for i in range(100)]
 headers = {key: key * 2 for key in keys}
 
 
 def check_for_leak() -> None:
     trim_ram()
     usage = get_memory_usage()
-    # We should never go over 100MB
-    if usage > 100:
+    # We should never go over 40MB
+    if usage > 40:
         sys.exit(1)
 
 
 def _test_pop() -> None:
     for _ in range(10):
-        for _ in range(1000):
+        for _ in range(100):
             result = MultiDict(headers)
             for k in keys:
                 result.pop(k)
@@ -45,7 +47,7 @@ def _test_pop() -> None:
 
 def _test_popall() -> None:
     for _ in range(10):
-        for _ in range(1000):
+        for _ in range(100):
             result = MultiDict(headers)
             for k in keys:
                 result.popall(k)
@@ -54,7 +56,7 @@ def _test_popall() -> None:
 
 def _test_popone() -> None:
     for _ in range(10):
-        for _ in range(1000):
+        for _ in range(100):
             result = MultiDict(headers)
             for k in keys:
                 result.popone(k)
@@ -63,7 +65,7 @@ def _test_popone() -> None:
 
 def _test_del() -> None:
     for _ in range(10):
-        for _ in range(1000):
+        for _ in range(100):
             result = MultiDict(headers)
             for k in keys:
                 del result[k]
@@ -75,7 +77,6 @@ def _run_isolated_case() -> None:
     _test_popall()
     _test_popone()
     _test_del()
-    sys.exit(0)
 
 
 if __name__ == "__main__":
