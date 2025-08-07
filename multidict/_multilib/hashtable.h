@@ -91,8 +91,8 @@ static inline int
 _md_check_consistency(MultiDictObject *md, bool update);
 static inline int
 _md_dump(MultiDictObject *md);
-static inline int
-_md_refdump(MultiDictObject *md);
+// static inline int
+// _md_refdump(MultiDictObject *md);
 
 #define ASSERT_CONSISTENT(md, update) assert(_md_check_consistency(md, update))
 #else
@@ -1997,42 +1997,42 @@ _md_dump(MultiDictObject *md)
     return 1;
 }
 
-static inline int
-_md_refdump(MultiDictObject *md)
-{
-    htkeys_t *keys = md->keys;
-    printf("Refcounts Dump %p [%zd from %zd usable %zd nentries %zd]\n",
-           (void *)md,
-           md->used,
-           htkeys_nslots(keys),
-           keys->usable,
-           keys->nentries);
-    for (Py_ssize_t i = 0; i < htkeys_nslots(keys); i++) {
-        Py_ssize_t ix = htkeys_get_index(keys, i);
-        printf("  %zd -> %zd\n", i, ix);
-    }
-    printf("  --------\n");
-    entry_t *entries = htkeys_entries(keys);
-    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-        entry_t *entry = &entries[i];
-        PyObject *identity = entry->identity;
-        PyObject *key = entry->key;
-        PyObject *value = entry->value;
-        if (identity == NULL) {
-            printf("  %zd [should be deleted]", i);
-        } else {
-            printf("  %zd h=%20zd", i, entry->hash);
-        }
-        if (key != NULL) {
-            printf(", k=%zd", key->ob_refcnt);
-        }
-        if (value != NULL) {
-            printf(", v=%zd", value->ob_refcnt);
-        }
-    }
-    printf("\n");
-    return 1;
-}
+// static inline int
+// _md_refdump(MultiDictObject *md)
+// {
+//     htkeys_t *keys = md->keys;
+//     printf("Refcounts Dump %p [%zd from %zd usable %zd nentries %zd]\n",
+//            (void *)md,
+//            md->used,
+//            htkeys_nslots(keys),
+//            keys->usable,
+//            keys->nentries);
+//     for (Py_ssize_t i = 0; i < htkeys_nslots(keys); i++) {
+//         Py_ssize_t ix = htkeys_get_index(keys, i);
+//         printf("  %zd -> %zd\n", i, ix);
+//     }
+//     printf("  --------\n");
+//     entry_t *entries = htkeys_entries(keys);
+//     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
+//         entry_t *entry = &entries[i];
+//         PyObject *identity = entry->identity;
+//         PyObject *key = entry->key;
+//         PyObject *value = entry->value;
+//         if (identity == NULL) {
+//             printf("  %zd [should be deleted]", i);
+//         } else {
+//             printf("  %zd h=%20zd", i, entry->hash);
+//         }
+//         if (key != NULL) {
+//             printf(", k=%zd", key->ob_refcnt);
+//         }
+//         if (value != NULL) {
+//             printf(", v=%zd", value->ob_refcnt);
+//         }
+//     }
+//     printf("\n");
+//     return 1;
+// }
 
 #endif  // NDEBUG
 
