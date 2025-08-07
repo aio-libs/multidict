@@ -91,6 +91,8 @@ static inline int
 _md_check_consistency(MultiDictObject *md, bool update);
 static inline int
 _md_dump(MultiDictObject *md);
+static inline int
+_md_refdump(MultiDictObject *md);
 
 #define ASSERT_CONSISTENT(md, update) assert(_md_check_consistency(md, update))
 #else
@@ -102,12 +104,12 @@ _str_cmp(PyObject *s1, PyObject *s2)
 {
     PyObject *ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
     if (Py_IsTrue(ret)) {
-        Py_DECREF(ret);
+        Py_XDECREF(ret);
         return 1;
     } else if (ret == NULL) {
         return -1;
     } else {
-        Py_DECREF(ret);
+        Py_XDECREF(ret);
         return 0;
     }
 }
@@ -481,7 +483,7 @@ static inline int
 _md_add_for_upd(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                 PyObject *key, PyObject *value)
 {
-    Py_INCREF(identity);
+    // Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
     return _md_add_for_upd_steal_refs(md, hash, identity, key, value);
@@ -500,6 +502,7 @@ md_add(MultiDictObject *md, PyObject *key, PyObject *value)
     }
     int ret = _md_add_with_hash(md, hash, identity, key, value);
     ASSERT_CONSISTENT(md, false);
+    Py_DECREF(key);
     Py_DECREF(identity);
     return ret;
 fail:
@@ -1010,16 +1013,15 @@ md_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
             if (_md_del_at(md, iter.slot, entry) < 0) {
                 goto fail;
             }
-            Py_DECREF(identity);
             *ret = value;
             md->version = NEXT_VERSION(md->state);
-            ASSERT_CONSISTENT(md, false);
+            Py_DECREF(identity);
             return 1;
         } else if (tmp < 0) {
             goto fail;
         }
     }
-
+    Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
     return 0;
 fail:
@@ -1084,7 +1086,7 @@ md_pop_all(MultiDictObject *md, PyObject *key, PyObject **ret)
     }
 
     *ret = lst;
-    Py_DECREF(identity);
+    Py_XDECREF(identity);
     ASSERT_CONSISTENT(md, false);
     return lst != NULL;
 fail:
@@ -1877,19 +1879,19 @@ md_traverse(MultiDictObject *md, visitproc visit, void *arg)
 static inline int
 md_clear(MultiDictObject *md)
 {
-    if (md->used == 0) {
-        return 0;
-    }
+    // Remove This because sometimes tweaked multidicts or memory leaks speap
+    // through the cracks. if (md->used == 0) {
+    //     return 0;
+    // }
     md->version = NEXT_VERSION(md->state);
 
     entry_t *entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
-        if (entry->identity != NULL) {
-            Py_CLEAR(entry->identity);
-            Py_CLEAR(entry->key);
-            Py_CLEAR(entry->value);
-        }
+        // Py_CLEAR has null checks of it's own making it easier to free.
+        Py_CLEAR(entry->identity);
+        Py_CLEAR(entry->key);
+        Py_CLEAR(entry->value);
     }
 
     md->used = 0;
@@ -1995,6 +1997,44 @@ _md_dump(MultiDictObject *md)
     printf("\n");
     return 1;
 }
+
+static inline int
+_md_refdump(MultiDictObject *md)
+{
+    htkeys_t *keys = md->keys;
+    printf("Refcounts Dump %p [%zd from %zd usable %zd nentries %zd]\n",
+           (void *)md,
+           md->used,
+           htkeys_nslots(keys),
+           keys->usable,
+           keys->nentries);
+    for (Py_ssize_t i = 0; i < htkeys_nslots(keys); i++) {
+        Py_ssize_t ix = htkeys_get_index(keys, i);
+        printf("  %zd -> %zd\n", i, ix);
+    }
+    printf("  --------\n");
+    entry_t *entries = htkeys_entries(keys);
+    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
+        entry_t *entry = &entries[i];
+        PyObject *identity = entry->identity;
+        PyObject *key = entry->key;
+        PyObject *value = entry->value;
+        if (identity == NULL) {
+            printf("  %zd [should be deleted]", i);
+        } else {
+            printf("  %zd h=%20zd", i, entry->hash);
+        }
+        if (key != NULL) {
+            printf(", k=%zd", key->ob_refcnt);
+        }
+        if (value != NULL) {
+            printf(", v=%zd", value->ob_refcnt);
+        }
+    }
+    printf("\n");
+    return 1;
+}
+
 #endif  // NDEBUG
 
 #ifdef __cplusplus
