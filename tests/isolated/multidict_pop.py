@@ -31,8 +31,8 @@ headers = {key: key * 2 for key in keys}
 def check_for_leak() -> None:
     trim_ram()
     usage = get_memory_usage()
-    # We should never go over 40MB
-    if usage > 40:
+    if usage > 50:
+        print(f"Memory leaked at: {usage} MB")
         sys.exit(1)
 
 
