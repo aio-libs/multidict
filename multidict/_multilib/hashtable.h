@@ -483,7 +483,7 @@ static inline int
 _md_add_for_upd(MultiDictObject *md, Py_hash_t hash, PyObject *identity,
                 PyObject *key, PyObject *value)
 {
-    // Py_INCREF(identity);
+    Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
     return _md_add_for_upd_steal_refs(md, hash, identity, key, value);
@@ -502,7 +502,6 @@ md_add(MultiDictObject *md, PyObject *key, PyObject *value)
     }
     int ret = _md_add_with_hash(md, hash, identity, key, value);
     ASSERT_CONSISTENT(md, false);
-    Py_DECREF(key);
     Py_DECREF(identity);
     return ret;
 fail:
@@ -1021,7 +1020,7 @@ md_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
             goto fail;
         }
     }
-    Py_DECREF(identity);
+    Py_XDECREF(identity);
     ASSERT_CONSISTENT(md, false);
     return 0;
 fail:
@@ -1879,21 +1878,23 @@ md_traverse(MultiDictObject *md, visitproc visit, void *arg)
 static inline int
 md_clear(MultiDictObject *md)
 {
-    // Remove This because sometimes tweaked multidicts or memory leaks speap
-    // through the cracks. if (md->used == 0) {
-    //     return 0;
-    // }
+    if ((
+            // (md->used == 0) &&
+            (md->keys == &empty_htkeys)) ||
+        (md->state == NULL)) {
+        return 0;
+    }
     md->version = NEXT_VERSION(md->state);
-
     entry_t *entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
         // Py_CLEAR has null checks of it's own making it easier to free.
-        Py_CLEAR(entry->identity);
-        Py_CLEAR(entry->key);
-        Py_CLEAR(entry->value);
+        if (entry->identity != NULL) {
+            Py_CLEAR(entry->identity);
+            Py_CLEAR(entry->key);
+            Py_CLEAR(entry->value);
+        }
     }
-
     md->used = 0;
     if (md->keys != &empty_htkeys) {
         htkeys_free(md->keys);
@@ -1912,7 +1913,6 @@ _md_check_consistency(MultiDictObject *md, bool update)
 
 #define CHECK(expr) assert(expr)
     //    do { if (!(expr)) { assert(0 && Py_STRINGIFY(expr)); } } while (0)
-
     htkeys_t *keys = md->keys;
     CHECK(keys != NULL);
     Py_ssize_t calc_usable = USABLE_FRACTION(htkeys_nslots(keys));
@@ -1931,7 +1931,6 @@ _md_check_consistency(MultiDictObject *md, bool update)
         Py_ssize_t ix = htkeys_get_index(keys, i);
         CHECK(DKIX_DUMMY <= ix && ix <= calc_usable);
     }
-
     entry_t *entries = htkeys_entries(keys);
     for (Py_ssize_t i = 0; i < calc_usable; i++) {
         entry_t *entry = &entries[i];

@@ -719,8 +719,6 @@ multidict_pop(MultiDictObject *self, PyObject *const *args, Py_ssize_t nargs,
             return NULL;
         }
     } else {
-        // Py_DECREF(key);
-        // printf("%zu\n", ret_val->ob_refcnt);
         return ret_val;
     }
 }
@@ -756,8 +754,6 @@ multidict_popall(MultiDictObject *self, PyObject *const *args,
             return NULL;
         }
     } else {
-        // printf("%zu", key->ob_refcnt);
-        // printf("%zu", ret_val->ob_refcnt);
         return ret_val;
     }
 }
