@@ -5,7 +5,6 @@
 # of memory leaks can be prevented in the future.
 
 import gc
-import sys
 import psutil
 import os
 from multidict import MultiDict
@@ -31,9 +30,7 @@ headers = {key: key * 2 for key in keys}
 def check_for_leak() -> None:
     trim_ram()
     usage = get_memory_usage()
-    if usage > 50:
-        print(f"Memory leaked at: {usage} MB")
-        sys.exit(1)
+    assert usage < 50, f"Memory leaked at: {usage} MB"
 
 
 def _test_pop() -> None:

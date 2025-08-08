@@ -1878,10 +1878,7 @@ md_traverse(MultiDictObject *md, visitproc visit, void *arg)
 static inline int
 md_clear(MultiDictObject *md)
 {
-    if ((
-            // (md->used == 0) &&
-            (md->keys == &empty_htkeys)) ||
-        (md->state == NULL)) {
+    if ((md->keys == &empty_htkeys) || (md->state == NULL)) {
         return 0;
     }
     md->version = NEXT_VERSION(md->state);
@@ -1889,11 +1886,9 @@ md_clear(MultiDictObject *md)
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
         // Py_CLEAR has null checks of it's own making it easier to free.
-        if (entry->identity != NULL) {
-            Py_CLEAR(entry->identity);
-            Py_CLEAR(entry->key);
-            Py_CLEAR(entry->value);
-        }
+        Py_CLEAR(entry->identity);
+        Py_CLEAR(entry->key);
+        Py_CLEAR(entry->value);
     }
     md->used = 0;
     if (md->keys != &empty_htkeys) {
