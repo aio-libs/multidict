@@ -256,6 +256,7 @@ _md_shrink(MultiDictObject *md, bool update)
     keys->nentries = newnentries;
     keys->usable += nentries - newnentries;
     memset(&keys->indices[0], 0xff, ((size_t)1 << keys->log2_index_bytes));
+    memset(new_ep, 0, sizeof(entry_t) * (size_t)(nentries - newnentries));
     if (htkeys_build_indices(keys, entries, newnentries, update) < 0) {
         return -1;
     }
@@ -1871,7 +1872,7 @@ md_traverse(MultiDictObject *md, visitproc visit, void *arg)
 static inline int
 md_clear(MultiDictObject *md)
 {
-    if (md->used == 0) {
+    if (md->keys == NULL || md->keys == &empty_htkeys) {
         return 0;
     }
     md->version = NEXT_VERSION(md->state);

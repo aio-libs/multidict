@@ -130,6 +130,8 @@ repos:
     - pytest_codspeed
     - Sphinx >= 5.3.0
     - sphinxcontrib-spelling
+    - types-psutil
+    - psutil
     args:
     - --python-version=3.13
     - --txt-report=.tox/.tmp/.mypy/python-3.13
@@ -146,6 +148,8 @@ repos:
     - pytest_codspeed
     - Sphinx >= 5.3.0
     - sphinxcontrib-spelling
+    - types-psutil
+    - psutil
     args:
     - --python-version=3.11
     - --txt-report=.tox/.tmp/.mypy/python-3.11
