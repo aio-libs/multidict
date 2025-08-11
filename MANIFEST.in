@@ -14,8 +14,8 @@ global-exclude *.pyc
 include multidict/*.c
 include multidict/__init__.pxd
 include multidict/multidict_api.h
+include multidict/_multilib/*.h
 exclude multidict/_multidict.html
 exclude multidict/*.so
 exclude multidict/*.pyd
 prune docs/_build
-prune multidict/_multilib
