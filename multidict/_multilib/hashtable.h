@@ -1881,6 +1881,7 @@ md_clear(MultiDictObject *md)
         return 0;
     }
     md->version = NEXT_VERSION(md->state);
+    
     entry_t *entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t *entry = entries + pos;
@@ -1889,6 +1890,7 @@ md_clear(MultiDictObject *md)
         Py_CLEAR(entry->key);
         Py_CLEAR(entry->value);
     }
+    
     md->used = 0;
     if (md->keys != &empty_htkeys) {
         htkeys_free(md->keys);
@@ -1907,6 +1909,7 @@ _md_check_consistency(MultiDictObject *md, bool update)
 
 #define CHECK(expr) assert(expr)
     //    do { if (!(expr)) { assert(0 && Py_STRINGIFY(expr)); } } while (0)
+    
     htkeys_t *keys = md->keys;
     CHECK(keys != NULL);
     Py_ssize_t calc_usable = USABLE_FRACTION(htkeys_nslots(keys));
@@ -1925,6 +1928,7 @@ _md_check_consistency(MultiDictObject *md, bool update)
         Py_ssize_t ix = htkeys_get_index(keys, i);
         CHECK(DKIX_DUMMY <= ix && ix <= calc_usable);
     }
+    
     entry_t *entries = htkeys_entries(keys);
     for (Py_ssize_t i = 0; i < calc_usable; i++) {
         entry_t *entry = &entries[i];
@@ -1990,7 +1994,6 @@ _md_dump(MultiDictObject *md)
     printf("\n");
     return 1;
 }
-
 #endif  // NDEBUG
 
 #ifdef __cplusplus
