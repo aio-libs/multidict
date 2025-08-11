@@ -23,7 +23,7 @@ Changelog
 Bug fixes
 ---------
 
-- Fix ``MutliDict`` & ``CIMultiDict`` memory leak when deleting values or clearing them 
+- Fixed ``MutliDict`` & ``CIMultiDict`` memory leak when deleting values or clearing them 
   -- by :user:`Vizonex`
 
   *Related issues and pull requests on GitHub:*
