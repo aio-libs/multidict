@@ -674,6 +674,7 @@ multidict_popone(MultiDictObject *self, PyObject *const *args,
     if (md_pop_one(self, key, &ret_val) < 0) {
         return NULL;
     }
+
     ASSERT_CONSISTENT(self, false);
     if (ret_val == NULL) {
         if (_default != NULL) {
