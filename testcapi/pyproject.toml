@@ -1,3 +1,4 @@
 [build-system]
-requires = ["setuptools >= 40"]
+# TODO: Fix requirements to use root folder for multidict dependency
+requires = ["setuptools >= 40", "multidict @ git+https://github.com/Vizonex/multidict@capi"]
 build-backend = "setuptools.build_meta"
