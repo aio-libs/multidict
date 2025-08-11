@@ -1,2 +1,0 @@
-Added memory leak test for popping or deleting attributes from a multidict to prevent future issues or bogus claims.
--- by :user:`Vizonex`
