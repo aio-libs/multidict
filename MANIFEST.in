@@ -1,4 +1,5 @@
 include .coveragerc
+include gcovr.cfg
 include pyproject.toml
 include pytest.ini
 include LICENSE
