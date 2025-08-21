@@ -8,6 +8,7 @@ import pytest
 IS_PYPY = platform.python_implementation() == "PyPy"
 GIL_ENABLED = getattr(sys, "_is_gil_enabled", lambda: True)()
 
+
 @pytest.mark.parametrize(
     ("script"),
     (
