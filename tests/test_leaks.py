@@ -6,7 +6,6 @@ import sys
 import pytest
 
 IS_PYPY = platform.python_implementation() == "PyPy"
-GIL_ENABLED = getattr(sys, "_is_gil_enabled", lambda: True)()
 
 
 @pytest.mark.parametrize(
@@ -21,10 +20,6 @@ GIL_ENABLED = getattr(sys, "_is_gil_enabled", lambda: True)()
 )
 @pytest.mark.leaks
 @pytest.mark.skipif(IS_PYPY, reason="leak testing is not supported on PyPy")
-@pytest.mark.skipif(
-    not GIL_ENABLED,
-    reason="free threading has different GC implementation",
-)
 def test_leak(script: str) -> None:
     """Run isolated leak test script and check for leaks."""
     leak_test_script = pathlib.Path(__file__).parent.joinpath("isolated", script)
