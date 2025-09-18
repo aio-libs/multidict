@@ -365,9 +365,6 @@ jobs:
           && '.'
           || steps.wheel-file.outputs.path
         }}'
-    - name: Compile Testcapi Module
-      run: >-
-        cd testcapi && python -Im pip install -e .
     - name: Run unittests
       run: >-
         python -Im pytest tests -v
