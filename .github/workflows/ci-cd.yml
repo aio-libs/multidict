@@ -421,6 +421,8 @@ jobs:
       uses: py-actions/py-dependency-install@v4
       with:
         path: requirements/pytest.txt
+    - name: install-testcapi
+      run: python -m pip install -e testcapi
     - name: Self-install
       run: python -m pip install -e .
     - name: Run benchmarks
