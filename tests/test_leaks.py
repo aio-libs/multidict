@@ -16,14 +16,16 @@ IS_PYPY = platform.python_implementation() == "PyPy"
         "multidict_extend_tuple.py",
         "multidict_update_multidict.py",
         "multidict_pop.py",
-    ) if sys.version_info != (3, 13) else ( 
+    )
+    if sys.version_info != (3, 13)
+    else (
         # Psutil is unsupported on 3.13t free-threaded builds
         # so there's no good way to test multidict_pop for memory leaks.
         "multidict_extend_dict.py",
         "multidict_extend_multidict.py",
         "multidict_extend_tuple.py",
         "multidict_update_multidict.py",
-    )
+    ),
 )
 @pytest.mark.leaks
 @pytest.mark.skipif(IS_PYPY, reason="leak testing is not supported on PyPy")
