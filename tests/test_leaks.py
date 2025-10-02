@@ -16,7 +16,7 @@ IS_PYPY = platform.python_implementation() == "PyPy"
         "multidict_extend_tuple.py",
         "multidict_update_multidict.py",
         "multidict_pop.py",
-    )
+    ),
 )
 @pytest.mark.leaks
 @pytest.mark.skipif(IS_PYPY, reason="leak testing is not supported on PyPy")
