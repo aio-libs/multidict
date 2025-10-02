@@ -35,8 +35,8 @@ extensions = [
     Extension(
         "multidict._testcapi",
         ["multidict/_testcapi.c"],
-         extra_compile_args=CFLAGS,
-    )
+        extra_compile_args=CFLAGS,
+    ),
 ]
 
 
