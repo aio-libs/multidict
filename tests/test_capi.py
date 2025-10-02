@@ -3,7 +3,10 @@ import pytest
 from multidict import MultiDict, MultiDictProxy, istr, CIMultiDict, CIMultiDictProxy
 
 pytest.importorskip("multidict._multidict")
-testcapi = pytest.importorskip("testcapi")
+# We need this extension since there was no other decent way to 
+# compile it as a seperate project. the only logical solution was
+# to inject it directly.
+testcapi = pytest.importorskip("multidict._testcapi")
 
 pytestmark = pytest.mark.capi
 

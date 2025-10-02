@@ -31,6 +31,12 @@ extensions = [
         ["multidict/_multidict.c"],
         extra_compile_args=CFLAGS,
     ),
+    # Pytest only do not use normally.
+    Extension(
+        "multidict._testcapi",
+        ["multidict/_testcapi.c"],
+         extra_compile_args=CFLAGS,
+    )
 ]
 
 
