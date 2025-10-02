@@ -248,7 +248,7 @@ jobs:
       uses: deadsnakes/action@v3.2.0
       with:
         python-version: 3.13-dev
-        nogil: true
+        nogil: false
     - name: Compute runtime Python version
       id: python-install
       run: |
