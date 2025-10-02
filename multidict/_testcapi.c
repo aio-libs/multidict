@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <stdbool.h>
 
+#include "_multilib/pythoncapi_compat.h"
 #include "multidict_api.h"
 
 /* In order to ensure it compiles originally this was going to be a seperate
