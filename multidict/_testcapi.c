@@ -1,13 +1,14 @@
 #include <Python.h>
-#include "multidict_api.h"
 #include <stdbool.h>
 
-/* In order to ensure it compiles originally this was going to be a seperate library 
- * the problem is hacking it in is on a completely different level and there is no 
- * Rational way to inject a sperate module to the workflow. 
- * and introduces a new can of worms when it needs to be tested with pytest
- * you should not use or interact with this module normally 
-*/
+#include "multidict_api.h"
+
+/* In order to ensure it compiles originally this was going to be a seperate
+ * library the problem is hacking it in is on a completely different level and
+ * there is no Rational way to inject a sperate module to the workflow. and
+ * introduces a new can of worms when it needs to be tested with pytest you
+ * should not use or interact with this module normally
+ */
 
 typedef struct {
     MultiDict_CAPI *capi;
@@ -205,7 +206,6 @@ md_popall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
     if (check_nargs("md_popall", nargs, 2) < 0) {
         return NULL;
     }
-    mod_state *state = get_mod_state(self);
     PyObject *result = NULL;
     int ret = MultiDict_PopAll(get_capi(self), args[0], args[1], &result);
     return handle_result(ret, result);
@@ -214,7 +214,6 @@ md_popall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
 static PyObject *
 md_popitem(PyObject *self, PyObject *arg)
 {
-    mod_state *state = get_mod_state(self);
     PyObject *REF = MultiDict_PopItem(get_capi(self), arg);
     if (REF != NULL) {
         Py_INCREF(REF);
@@ -255,7 +254,6 @@ md_update_from_dict(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
     if (check_nargs("md_update_from_dict", nargs, 3) < 0) {
         return NULL;
     }
-    mod_state *state = get_mod_state(self);
 
     if (MultiDict_UpdateFromDict(
             get_capi(self), args[0], args[1], PyLong_AsLong(args[2])) < 0) {
@@ -500,7 +498,6 @@ ci_md_popall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
     if (check_nargs("ci_md_popall", nargs, 2) < 0) {
         return NULL;
     }
-    mod_state *state = get_mod_state(self);
     PyObject *result = NULL;
     int ret = CIMultiDict_PopAll(get_capi(self), args[0], args[1], &result);
     return handle_result(ret, result);
@@ -509,7 +506,6 @@ ci_md_popall(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
 static PyObject *
 ci_md_popitem(PyObject *self, PyObject *arg)
 {
-    mod_state *state = get_mod_state(self);
     PyObject *REF = CIMultiDict_PopItem(get_capi(self), arg);
     if (REF != NULL) {
         Py_INCREF(REF);
@@ -550,7 +546,6 @@ ci_md_update_from_dict(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
     if (check_nargs("ci_md_update_from_dict", nargs, 3) < 0) {
         return NULL;
     }
-    mod_state *state = get_mod_state(self);
 
     if (CIMultiDict_UpdateFromDict(
             get_capi(self), args[0], args[1], PyLong_AsLong(args[2])) < 0) {
