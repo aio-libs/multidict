@@ -176,7 +176,7 @@ jobs:
         pyver:
         - 3.14t
         - 3.14
-        - 3.13t
+        # - 3.13t pytest-codspeed depedency with cffi 2.0.0 unsupported
         - 3.13
         - 3.12
         - 3.11
@@ -192,10 +192,10 @@ jobs:
           no-extensions: Y
         - os: windows
           no-extensions: Y
-        - os: macos
-          pyver: 3.13t  # this is still tested within cibuildwheel
-        - os: windows
-          pyver: 3.13t  # this is still tested within cibuildwheel
+        # - os: macos
+        #   pyver: 3.13t  # this is still tested within cibuildwheel
+        # - os: windows
+        #   pyver: 3.13t  # this is still tested within cibuildwheel
         - no-extensions: Y
           debug: Y
         include:
@@ -301,15 +301,9 @@ jobs:
             matrix.debug
           }}
     - name: Install dependencies
-      # NOTE: CFFI 2.0.0 with 3.13t breaks things because of pytest-codspeed
-      #   so this cannot be properly tested on...
-      #   Hopefully someone does manage to support this version in CFFI
-      #   Or provides a better workaround, until then we're stuck without it.
-      if: ${{ matrix.pyver != '3.13t' }}
       uses: py-actions/py-dependency-install@v4
       with:
         path: requirements/pytest.txt
-
     - name: Determine pre-compiled compatible wheel
       if: steps.build_type.outputs.build_type == 'wheel'
       env:
@@ -356,7 +350,6 @@ jobs:
         make clean
       shell: bash
     - name: Self-install (from ${{ steps.build_type.outputs.build_type }})
-      if: ${{ matrix.pyver != '3.13t' }}
       env:
         MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         MULTIDICT_DEBUG_BUILD: 1  # Always on for source builds
@@ -367,9 +360,6 @@ jobs:
           || steps.wheel-file.outputs.path
         }}'
     - name: Run unittests
-      # Cant be run 3.13t because of pytest-codspeed
-      # with CFFI 2.0.0 because it's unsupported.
-      if: ${{ matrix.pyver != '3.13t' }}
       run: >-
         python -Im pytest tests -v
         --cov-report xml
@@ -377,14 +367,13 @@ jobs:
         --${{ matrix.no-extensions == 'Y' && 'no-' || '' }}c-extensions
     - name: Produce markdown test summary from JUnit
       if: >-
-         ${{ matrix.pyver != '3.13t' }} && !cancelled()
+        !cancelled()
       uses: test-summary/action@v2.4
       with:
         paths: .test-results/pytest/test.xml
-
     - name: Append coverage results to Job Summary
       if: >-
-        ${{ matrix.pyver != '3.13t' }} && !cancelled()
+        !cancelled()
       run: >-
         python -Im coverage report --format=markdown
         >> "${GITHUB_STEP_SUMMARY}"
@@ -402,7 +391,7 @@ jobs:
     - name: Prepare coverage artifact
       # combining Linux and Windows paths is tricky, left this exercise for
       # others multidict has no Windows or macOS specific code paths anyway
-      if: ${{ matrix.pyver != '3.13t' }} && ${{ matrix.os == 'ubuntu' }}
+      if: ${{ matrix.os == 'ubuntu' }}
       uses: aio-libs/prepare-coverage@v24.9.2
 
 
