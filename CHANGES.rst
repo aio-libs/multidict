@@ -14,6 +14,24 @@ Changelog
 
 .. towncrier release notes start
 
+6.7.0
+=====
+
+*(2025-10-05)*
+
+
+Contributor-facing changes
+--------------------------
+
+- Updated tests and added CI for CPython 3.14 -- by :user:`kumaraditya303`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1235`.
+
+
+----
+
+
 6.6.4
 =====
 
