@@ -418,7 +418,7 @@ jobs:
     - name: Self-install
       run: python -m pip install -e .
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v3
+      uses: CodSpeedHQ/action@v4
       env:
         PYTHONHASHSEED: 0
       with:
