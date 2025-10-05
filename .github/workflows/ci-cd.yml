@@ -67,7 +67,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v5
     - name: Set up Python ${{ env.PYTHON_LATEST }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ env.PYTHON_LATEST }}
     - name: Install core libraries for build
@@ -239,7 +239,7 @@ jobs:
         path: dist
 
     - name: Setup Python ${{ matrix.pyver }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.pyver }}
         allow-prereleases: true
@@ -406,7 +406,7 @@ jobs:
       uses: actions/checkout@v5
     - name: Setup Python 3.13
       id: python-install
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: 3.13
         cache: pip
