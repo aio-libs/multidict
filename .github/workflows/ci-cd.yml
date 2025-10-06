@@ -141,7 +141,7 @@ jobs:
       check-name: >-
         Build ${{ matrix.tag }} wheels on ${{ matrix.runner-vm-os }}
       runner-vm-os: ${{ matrix.runner-vm-os }}
-      timeout-minutes: 15
+      timeout-minutes: 25
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
