@@ -1,4 +1,0 @@
-[build-system]
-# TODO: Fix requirements to use root folder for multidict dependency
-requires = ["setuptools >= 40", "multidict @ git+file:///../../multidict"]
-build-backend = "setuptools.build_meta"
