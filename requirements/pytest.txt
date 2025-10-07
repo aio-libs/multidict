@@ -1,5 +1,6 @@
 objgraph==3.6.2
 pytest==8.4.0
 pytest-codspeed==3.2.0
+cffi == 1.17.1; python_version=="3.13" # CFFI-2.0.0 breaks workflows under 3.13t
 pytest-cov==6.1.0
-psutil==7.0.0
+psutil==7.1.0
