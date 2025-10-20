@@ -3,4 +3,4 @@ objgraph==3.6.2
 pytest==8.4.2
 pytest-codspeed==4.1.1
 pytest-cov==6.1.0
-psutil==7.1.0
+psutil==7.1.1
