@@ -232,7 +232,7 @@ jobs:
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
       if: steps.build_type.outputs.build_type == 'wheel'
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
         merge-multiple: true
@@ -451,7 +451,7 @@ jobs:
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         pattern: coverage*
         merge-multiple: true
@@ -556,7 +556,7 @@ jobs:
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
 
     - name: Download distributions
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
         merge-multiple: true
