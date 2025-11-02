@@ -59,7 +59,7 @@ Regular mutable (``MultiDict`` and ``CIMultiDict``) classes
 implement ``collections.abc.MutableMapping`` and allows them to change
 their own content.
 
-
+.. highlight:: python
 *Case insensitive* (``CIMultiDict`` and
 ``CIMultiDictProxy``) assume the *keys* are case
 insensitive, e.g.::
