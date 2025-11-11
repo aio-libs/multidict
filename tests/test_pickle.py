@@ -1,13 +1,8 @@
 import pickle
 from pathlib import Path
-from typing import TYPE_CHECKING
-
 import pytest
 
 from multidict import MultiDict, MultiDictProxy, istr
-
-if TYPE_CHECKING:
-    from conftest import MultidictImplementation
 
 here = Path(__file__).resolve().parent
 
@@ -43,42 +38,21 @@ def test_pickle_istr(
 
 
 def test_load_from_file(
-    any_multidict_class: type[MultiDict[int]],
-    multidict_implementation: "MultidictImplementation",
-    pickle_protocol: int,
+    # any_multidict_class: type[MultiDict[int]],
+    # multidict_implementation: "MultidictImplementation",
+    # pickle_protocol: int,
+    pickle_protocol_multidict: tuple[bytes, type[MultiDict[int]]],
 ) -> None:
-    multidict_class_name = any_multidict_class.__name__
-    pickle_file_basename = "-".join(
-        (
-            multidict_class_name.lower(),
-            multidict_implementation.tag,
-        )
-    )
+    buf, any_multidict_class = pickle_protocol_multidict
     d = any_multidict_class([("a", 1), ("a", 2)])
-    fname = f"{pickle_file_basename}.pickle.{pickle_protocol}"
-    p = here / fname
-    with p.open("rb") as f:
-        obj = pickle.load(f)
+    obj = pickle.loads(buf)
     assert d == obj
     assert isinstance(obj, any_multidict_class)
 
 
-def test_load_istr_from_file(
-    case_insensitive_str_class: type[istr],
-    multidict_implementation: "MultidictImplementation",
-    pickle_protocol: int,
-) -> None:
-    istr_class_name = case_insensitive_str_class.__name__
-    pickle_file_basename = "-".join(
-        (
-            istr_class_name.lower(),
-            multidict_implementation.tag,
-        )
-    )
-    s = case_insensitive_str_class("str")
-    fname = f"{pickle_file_basename}.pickle.{pickle_protocol}"
-    p = here / fname
-    with p.open("rb") as f:
-        obj = pickle.load(f)
-    assert s == obj
-    assert isinstance(obj, case_insensitive_str_class)
+def test_load_istr_from_file(pickle_protocol_istr: tuple[bytes, type[istr]]) -> None:
+    buf, case_incasive_str = pickle_protocol_istr
+    d = case_incasive_str("str")
+    obj = pickle.loads(buf)
+    assert d == obj
+    assert isinstance(obj, case_incasive_str)
