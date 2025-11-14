@@ -9,6 +9,7 @@ from types import ModuleType
 from typing import Callable, Type, Union
 
 import pytest
+from pytest_harvest import saved_fixture
 
 from multidict import (
     CIMultiDict,
@@ -16,6 +17,7 @@ from multidict import (
     MultiDictProxy,
     MultiMapping,
     MutableMultiMapping,
+    istr,
 )
 
 C_EXT_MARK = pytest.mark.c_extension
@@ -156,6 +158,33 @@ def multidict_getversion_callable(
     return multidict_module.getversion  # type: ignore[no-any-return]
 
 
+@pytest.fixture(scope="session", params=range(pickle.HIGHEST_PROTOCOL + 1), ids=str)
+def pickle_protocol(request: pytest.FixtureRequest) -> int:
+    return request.param  # type: ignore[no-any-return]
+
+
+@pytest.fixture(scope="session")
+@saved_fixture
+def pickle_protocol_multidict(
+    pickle_protocol: int,
+    any_multidict_class: type[MultiDict[int]],
+) -> tuple[bytes, type[MultiDict[int]]]:
+    return pickle.dumps(
+        any_multidict_class([("a", 1), ("a", 2)]), pickle_protocol
+    ), any_multidict_class
+
+
+@pytest.fixture(scope="session")
+@saved_fixture
+def pickle_protocol_istr(
+    pickle_protocol: int,
+    case_insensitive_str_class: type[istr],
+) -> tuple[bytes, type[istr]]:
+    return pickle.dumps(
+        case_insensitive_str_class("str"), pickle_protocol
+    ), case_insensitive_str_class
+
+
 def pytest_addoption(
     parser: pytest.Parser,
     pluginmanager: pytest.PytestPluginManager,
@@ -206,10 +235,3 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers",
         f"{C_EXT_MARK.name}: tests running against the C-extension implementation.",
     )
-
-
-def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    if "pickle_protocol" in metafunc.fixturenames:
-        metafunc.parametrize(
-            "pickle_protocol", list(range(pickle.HIGHEST_PROTOCOL + 1)), scope="session"
-        )

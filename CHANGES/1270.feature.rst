@@ -1,0 +1,2 @@
+Started using pytest-harvest for caching pickles instead of loading them from a file
+-- by :user:`Vizonex`
