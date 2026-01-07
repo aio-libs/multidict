@@ -87,6 +87,8 @@ refactored
 regex
 regexs
 repo
+riscv
+riscv64
 runtime
 runtimes
 str
