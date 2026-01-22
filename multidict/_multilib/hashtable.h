@@ -1020,6 +1020,7 @@ md_pop_one(MultiDictObject *md, PyObject *key, PyObject **ret)
         }
     }
 
+    Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
     return 0;
 fail:
