@@ -61,6 +61,14 @@ def _test_popone() -> None:
                 result.popone(k)
         check_for_leak()
 
+# SEE: https://github.com/aio-libs/multidict/issues/1273
+def _test_pop_with_default() -> None:
+    for _ in range(10):
+        for _ in range(100):
+            result = MultiDict(headers)
+            for k in keys:
+                result.pop(k, None)
+        check_for_leak()
 
 def _test_del() -> None:
     for _ in range(10):
@@ -75,6 +83,7 @@ def _run_isolated_case() -> None:
     _test_pop()
     _test_popall()
     _test_popone()
+    _test_pop_with_default()
     _test_del()
 
 
