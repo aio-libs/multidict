@@ -5,8 +5,9 @@
 # of memory leaks can be prevented in the future.
 
 import gc
-import psutil
 import os
+
+import psutil
 from multidict import MultiDict
 
 
@@ -20,7 +21,7 @@ process = psutil.Process(os.getpid())
 
 def get_memory_usage() -> int:
     memory_info = process.memory_info()
-    return memory_info.rss / (1024 * 1024)  # type: ignore[no-any-return]
+    return memory_info.rss // (1024 * 1024)
 
 
 initial_memory_usage = get_memory_usage()
