@@ -1,2 +1,2 @@
-Fixed slow memory leak caused by identity by adding ``Py_DECREF`` to identity value before leaving ``md_pop_one`` on success.
--- by :user:`Vizonex`
+Fixed slow memory leak caused by identity by adding ``Py_DECREF`` to identity value before leaving ``md_pop_one`` on success
+-- by :user:`Vizonex`.
