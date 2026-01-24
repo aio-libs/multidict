@@ -64,12 +64,10 @@ def _test_popone() -> None:
 
 # SEE: https://github.com/aio-libs/multidict/issues/1273
 def _test_pop_with_default() -> None:
-    for _ in range(10):
-        for _ in range(100):
-            result = MultiDict(headers)
-            for k in keys:
-                result.pop(k, None)
-        check_for_leak()
+    result = MultiDict()
+    for i in range(100_000):
+        result.pop(f"missing_key_{i}", None)
+    check_for_leak()
 
 def _test_del() -> None:
     for _ in range(10):
