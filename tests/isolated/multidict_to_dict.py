@@ -1,35 +1,39 @@
 """Memory leak test for to_dict()."""
 
 import gc
-import tracemalloc
+import os
 
+import psutil
 from multidict import MultiDict
 
 
-def get_mem() -> int:
+process = psutil.Process(os.getpid())
+
+
+def trim_ram() -> None:
     gc.collect()
-    gc.collect()
-    gc.collect()
-    return tracemalloc.get_traced_memory()[0]
+
+
+def get_memory_usage() -> int:
+    memory_info = process.memory_info()
+    return memory_info.rss // (1024 * 1024)
 
 
 def test_to_dict_leak() -> None:
-    tracemalloc.start()
     for _ in range(100):
         d = MultiDict([("a", 1), ("b", 2)])
         d.to_dict()
-    get_mem()
+    trim_ram()
 
-    mem_before = get_mem()
+    mem_before = get_memory_usage()
     for _ in range(1_000_000):
         d = MultiDict([("a", 1), ("b", 2)])
         d.to_dict()
-    mem_after = get_mem()
-
-    tracemalloc.stop()
+    trim_ram()
+    mem_after = get_memory_usage()
 
     growth = mem_after - mem_before
-    assert growth < 50_000, f"Memory grew by {growth} bytes, possible leak"
+    assert growth < 50, f"Memory grew by {growth} MB, possible leak"
 
 
 if __name__ == "__main__":
