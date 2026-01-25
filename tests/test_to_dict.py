@@ -1,4 +1,5 @@
 """Test to_dict functionality for all multidict types."""
+
 from typing import Any, Type
 
 import pytest
@@ -100,9 +101,12 @@ class TestMultiDictProxyToDict(BaseToDictTests):
         def make_proxy(*args: Any, **kwargs: Any) -> MultiDictProxy[Any]:
             md = multidict_module.MultiDict(*args, **kwargs)
             return multidict_module.MultiDictProxy(md)  # type: ignore[no-any-return]
+
         return make_proxy
 
-    def test_to_dict_proxy_mutation_isolation(self, cls: Any, multidict_module: Any) -> None:
+    def test_to_dict_proxy_mutation_isolation(
+        self, cls: Any, multidict_module: Any
+    ) -> None:
         """Test that modifying returned dict does not affect the proxy."""
         md = multidict_module.MultiDict([("a", 1)])
         proxy = multidict_module.MultiDictProxy(md)
@@ -119,6 +123,7 @@ class TestCIMultiDictProxyToDict(BaseToDictTests):
         def make_proxy(*args: Any, **kwargs: Any) -> CIMultiDictProxy[Any]:
             md = multidict_module.CIMultiDict(*args, **kwargs)
             return multidict_module.CIMultiDictProxy(md)  # type: ignore[no-any-return]
+
         return make_proxy
 
     def test_to_dict_case_insensitive_grouping(self, cls: Any) -> None:
@@ -133,7 +138,9 @@ class TestCIMultiDictProxyToDict(BaseToDictTests):
         assert result[key_a] == [1, 2]
         assert result[key_b] == [3]
 
-    def test_to_dict_proxy_mutation_isolation(self, cls: Any, multidict_module: Any) -> None:
+    def test_to_dict_proxy_mutation_isolation(
+        self, cls: Any, multidict_module: Any
+    ) -> None:
         """Test that modifying returned dict does not affect the proxy."""
         md = multidict_module.CIMultiDict([("a", 1)])
         proxy = multidict_module.CIMultiDictProxy(md)
