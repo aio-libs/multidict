@@ -10,6 +10,12 @@ class MultiDictLeakTests(psleak.MemoryLeakTestCase):
 
 @pytest.mark.c_extension
 class TestMultiDictLeaks(MultiDictLeakTests):
+    def test_multidict_to_dict(self):
+        def worker():
+            d = _multidict.MultiDict([("a", 1), ("b", 2)])
+            d.to_dict()
+        self.execute(worker)
+
     def test_multidict_create(self):
         def worker():
             _multidict.MultiDict()
@@ -158,6 +164,12 @@ class TestMultiDictLeaks(MultiDictLeakTests):
 
 @pytest.mark.c_extension
 class TestCIMultiDictLeaks(MultiDictLeakTests):
+    def test_cimultidict_to_dict(self):
+        def worker():
+            d = _multidict.CIMultiDict([("a", 1), ("B", 2)])
+            d.to_dict()
+        self.execute(worker)
+
     def test_cimultidict_create(self):
         def worker():
             _multidict.CIMultiDict()
@@ -285,6 +297,13 @@ class TestCIMultiDictLeaks(MultiDictLeakTests):
 
 @pytest.mark.c_extension
 class TestMultiDictProxyLeaks(MultiDictLeakTests):
+    def test_proxy_to_dict(self):
+        d = _multidict.MultiDict([("a", 1), ("b", 2)])
+        p = _multidict.MultiDictProxy(d)
+        def worker():
+            p.to_dict()
+        self.execute(worker)
+
     def test_proxy_create(self):
         d = _multidict.MultiDict({"a": 1})
         def worker():
