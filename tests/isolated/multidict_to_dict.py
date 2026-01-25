@@ -20,7 +20,7 @@ def test_to_dict_leak() -> None:
     get_mem()
 
     mem_before = get_mem()
-    for _ in range(100_000):
+    for _ in range(1_000_000):
         d = MultiDict([("a", 1), ("b", 2)])
         d.to_dict()
     mem_after = get_mem()
@@ -28,7 +28,7 @@ def test_to_dict_leak() -> None:
     tracemalloc.stop()
 
     growth = mem_after - mem_before
-    assert growth < 100_000, f"Memory grew by {growth} bytes, possible leak"
+    assert growth < 50_000, f"Memory grew by {growth} bytes, possible leak"
 
 
 if __name__ == "__main__":
