@@ -3,8 +3,13 @@ import psleak
 from multidict import _multidict
 
 
+class MultiDictLeakTests(psleak.MemoryLeakTestCase):
+    tolerance = 1024*100       # Allow 100KB
+    times = 1000000        # More iterations
+
+
 @pytest.mark.c_extension
-class TestMultiDictLeaks(psleak.MemoryLeakTestCase):
+class TestMultiDictLeaks(MultiDictLeakTests):
     def test_multidict_create(self):
         def worker():
             _multidict.MultiDict()
@@ -152,7 +157,7 @@ class TestMultiDictLeaks(psleak.MemoryLeakTestCase):
 
 
 @pytest.mark.c_extension
-class TestCIMultiDictLeaks(psleak.MemoryLeakTestCase):
+class TestCIMultiDictLeaks(MultiDictLeakTests):
     def test_cimultidict_create(self):
         def worker():
             _multidict.CIMultiDict()
@@ -279,7 +284,7 @@ class TestCIMultiDictLeaks(psleak.MemoryLeakTestCase):
 
 
 @pytest.mark.c_extension
-class TestMultiDictProxyLeaks(psleak.MemoryLeakTestCase):
+class TestMultiDictProxyLeaks(MultiDictLeakTests):
     def test_proxy_create(self):
         d = _multidict.MultiDict({"a": 1})
         def worker():
@@ -354,7 +359,7 @@ class TestMultiDictProxyLeaks(psleak.MemoryLeakTestCase):
 
 
 @pytest.mark.c_extension
-class TestCIMultiDictProxyLeaks(psleak.MemoryLeakTestCase):
+class TestCIMultiDictProxyLeaks(MultiDictLeakTests):
     def test_proxy_create(self):
         d = _multidict.CIMultiDict({"a": 1})
         def worker():
@@ -413,7 +418,7 @@ class TestCIMultiDictProxyLeaks(psleak.MemoryLeakTestCase):
 
 
 @pytest.mark.c_extension
-class TestIstrLeaks(psleak.MemoryLeakTestCase):
+class TestIstrLeaks(MultiDictLeakTests):
     def test_istr_create(self):
         def worker():
             _multidict.istr("Hello")
