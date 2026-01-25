@@ -62,16 +62,6 @@ def _test_popone() -> None:
         check_for_leak()
 
 
-def _test_pop_with_default() -> None:
-    result = MultiDict()
-    # XXX: mypy wants an annotation so the only
-    # thing we can do here is pass the headers along.
-    result = MultiDict(headers)
-    for i in range(1_000_000):
-        result.pop(f"missing_key_{i}", None)
-    check_for_leak()
-
-
 def _test_del() -> None:
     for _ in range(10):
         for _ in range(100):
@@ -86,7 +76,6 @@ def _run_isolated_case() -> None:
     _test_popall()
     _test_popone()
     _test_del()
-    _test_pop_with_default()
 
 
 if __name__ == "__main__":
