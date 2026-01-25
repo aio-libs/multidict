@@ -785,7 +785,6 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 result[first_key].append(e.value)
         return result
 
-
     def add(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity)

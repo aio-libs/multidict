@@ -61,6 +61,7 @@ def _test_popone() -> None:
                 result.popone(k)
         check_for_leak()
 
+
 def _test_pop_with_default() -> None:
     result = MultiDict()
     # XXX: mypy wants an annotation so the only
@@ -69,6 +70,7 @@ def _test_pop_with_default() -> None:
     for i in range(1_000_000):
         result.pop(f"missing_key_{i}", None)
     check_for_leak()
+
 
 def _test_del() -> None:
     for _ in range(10):

@@ -1,4 +1,3 @@
-
 import gc
 import psutil
 import os
@@ -29,7 +28,6 @@ def check_for_leak() -> None:
     assert usage < 50, f"Memory leaked at: {usage} MB"
 
 
-
 def _test_pop_missing(cls: type[MultiDict[str] | CIMultiDict[str]], count: int) -> None:
     # Use dynamic keys for missing checks to ensure unique objects
     # if there is a ref leak on identity.
@@ -47,7 +45,7 @@ def _run_isolated_case() -> None:
     # Warmup
     _test_pop_missing(MultiDict, max(100, 10))
     check_for_leak()
-    
+
     # Run loop
     for _ in range(20):
         _test_pop_missing(MultiDict, 1000)

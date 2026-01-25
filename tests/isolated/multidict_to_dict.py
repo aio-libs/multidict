@@ -1,4 +1,5 @@
 """Memory leak test for to_dict()."""
+
 import gc
 import tracemalloc
 

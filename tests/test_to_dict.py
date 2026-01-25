@@ -1,4 +1,5 @@
 """Test to_dict functionality for all multidict types."""
+
 import pytest
 
 
@@ -96,6 +97,7 @@ class TestMultiDictProxyToDict(BaseToDictTests):
         def make_proxy(*args, **kwargs):
             md = multidict_module.MultiDict(*args, **kwargs)
             return multidict_module.MultiDictProxy(md)
+
         return make_proxy
 
     def test_to_dict_proxy_mutation_isolation(self, cls, multidict_module):
@@ -115,6 +117,7 @@ class TestCIMultiDictProxyToDict(BaseToDictTests):
         def make_proxy(*args, **kwargs):
             md = multidict_module.CIMultiDict(*args, **kwargs)
             return multidict_module.CIMultiDictProxy(md)
+
         return make_proxy
 
     def test_to_dict_case_insensitive_grouping(self, cls):
@@ -136,4 +139,3 @@ class TestCIMultiDictProxyToDict(BaseToDictTests):
         result = proxy.to_dict()
         result["a"].append(999)
         assert proxy.getall("a") == [1]
-
