@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <structmember.h>
 
+#include "_multilib/capsule.h"
 #include "_multilib/dict.h"
 #include "_multilib/hashtable.h"
 #include "_multilib/istr.h"
@@ -9,34 +10,6 @@
 #include "_multilib/pythoncapi_compat.h"
 #include "_multilib/state.h"
 #include "_multilib/views.h"
-
-#define MultiDict_CheckExact(state, obj) Py_IS_TYPE(obj, state->MultiDictType)
-#define MultiDict_Check(state, obj)      \
-    (MultiDict_CheckExact(state, obj) || \
-     PyObject_TypeCheck(obj, state->MultiDictType))
-#define CIMultiDict_CheckExact(state, obj) \
-    Py_IS_TYPE(obj, state->CIMultiDictType)
-#define CIMultiDict_Check(state, obj)      \
-    (CIMultiDict_CheckExact(state, obj) || \
-     PyObject_TypeCheck(obj, state->CIMultiDictType))
-#define AnyMultiDict_Check(state, obj)     \
-    (MultiDict_CheckExact(state, obj) ||   \
-     CIMultiDict_CheckExact(state, obj) || \
-     PyObject_TypeCheck(obj, state->MultiDictType))
-#define MultiDictProxy_CheckExact(state, obj) \
-    Py_IS_TYPE(obj, state->MultiDictProxyType)
-#define MultiDictProxy_Check(state, obj)      \
-    (MultiDictProxy_CheckExact(state, obj) || \
-     PyObject_TypeCheck(obj, state->MultiDictProxyType))
-#define CIMultiDictProxy_CheckExact(state, obj) \
-    Py_IS_TYPE(obj, state->CIMultiDictProxyType)
-#define CIMultiDictProxy_Check(state, obj)      \
-    (CIMultiDictProxy_CheckExact(state, obj) || \
-     PyObject_TypeCheck(obj, state->CIMultiDictProxyType))
-#define AnyMultiDictProxy_Check(state, obj)     \
-    (MultiDictProxy_CheckExact(state, obj) ||   \
-     CIMultiDictProxy_CheckExact(state, obj) || \
-     PyObject_TypeCheck(obj, state->MultiDictProxyType))
 
 /******************** Internal Methods ********************/
 
@@ -1553,6 +1526,15 @@ module_exec(PyObject *mod)
         goto fail;
     }
     if (PyModule_AddType(mod, state->ValuesViewType) < 0) {
+        goto fail;
+    }
+
+    PyObject *capsule = new_capsule(state);
+    if (capsule == NULL) {
+        goto fail;
+    }
+
+    if (PyModule_Add(mod, MultiDict_CAPI_NAME, capsule) < 0) {
         goto fail;
     }
 
