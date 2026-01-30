@@ -772,6 +772,19 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def __reduce__(self) -> tuple[type[Self], tuple[list[tuple[str, _V]]]]:
         return (self.__class__, (list(self.items()),))
 
+    def to_dict(self) -> dict[str, list[_V]]:
+        """Return a dict with lists of all values for each key."""
+        result: dict[str, list[_V]] = {}
+        seen_identities: dict[str, str] = {}
+        for e in self._keys.iter_entries():
+            first_key = seen_identities.get(e.identity)
+            if first_key is None:
+                seen_identities[e.identity] = self._key(e.key)
+                result[self._key(e.key)] = [e.value]
+            else:
+                result[first_key].append(e.value)
+        return result
+
     def add(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity)
@@ -1211,6 +1224,10 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
     def __repr__(self) -> str:
         body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
         return f"<{self.__class__.__name__}({body})>"
+
+    def to_dict(self) -> dict[str, list[_V]]:
+        """Return a dict with lists of all values for each key."""
+        return self._md.to_dict()
 
     def copy(self) -> MultiDict[_V]:
         """Return a copy of itself."""
