@@ -1,2 +1,3 @@
 Fixed a missing space in the :exc:`ValueError` message
-raised by :func:`_parse_args` -- by :user:`veeceey`.
+raised when constructing a multidict from a sequence
+-- by :user:`veeceey`.
