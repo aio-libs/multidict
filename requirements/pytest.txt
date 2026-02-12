@@ -1,6 +1,6 @@
 cffi<2.0.0;python_version<"3.14"
 objgraph==3.6.2
 pytest==8.4.2
-pytest-codspeed==4.2.0
+pytest-codspeed==4.3.0
 pytest-cov==6.1.0
-psutil==7.2.1
+psutil==7.2.2

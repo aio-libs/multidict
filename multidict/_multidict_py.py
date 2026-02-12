@@ -1006,7 +1006,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         log2_size = estimate_log2_keysize(newsize)
         if log2_size > 17:  # pragma: no cover
             # Don't overallocate really huge keys space in update,
-            # duplicate keys could reduce the resulting anount of entries
+            # duplicate keys could reduce the resulting amount of entries
             log2_size = 17
         if log2_size > self._keys.log2_size:
             self._resize(log2_size, False)
@@ -1057,7 +1057,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         log2_size = estimate_log2_keysize(newsize)
         if log2_size > 17:  # pragma: no cover
             # Don't overallocate really huge keys space in update,
-            # duplicate keys could reduce the resulting anount of entries
+            # duplicate keys could reduce the resulting amount of entries
             log2_size = 17
         if log2_size > self._keys.log2_size:
             self._resize(log2_size, False)
