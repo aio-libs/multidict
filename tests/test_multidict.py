@@ -294,13 +294,6 @@ class BaseMultiDictTest:
         self,
         cls: type[MutableMultiMapping[str]],
     ) -> None:
-        with pytest.raises(ValueError, match="multidict update sequence element"):
-            cls([(1, 2, 3)])  # type: ignore[call-arg]
-
-    def test_invalid_sequence_element_error_message_spacing(
-        self,
-        cls: type[MutableMultiMapping[str]],
-    ) -> None:
         with pytest.raises(
             ValueError,
             match=r"^multidict update sequence element #0 has length 3; 2 is required$",
