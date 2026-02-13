@@ -720,7 +720,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         return _KeysView(self)
 
     def items(self) -> ItemsView[str, _V]:
-        """Return a new view of the dictionary's items ((key, value) pairs)."""
+        """Return a new view of the dictionary's items (key, value) pairs."""
         return _ItemsView(self)
 
     def values(self) -> _ValuesView[_V]:
@@ -1194,7 +1194,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
         return self._md.keys()
 
     def items(self) -> ItemsView[str, _V]:
-        """Return a new view of the dictionary's items ((key, value) pairs)."""
+        """Return a new view of the dictionary's items (key, value) pairs."""
         return self._md.items()
 
     def values(self) -> _ValuesView[_V]:
