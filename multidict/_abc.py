@@ -42,6 +42,10 @@ class MultiMapping(Mapping[str, _V_co]):
     def getone(self, key: str, default: _T = ...) -> Union[_V_co, _T]:
         """Return first value for key."""
 
+    @abc.abstractmethod
+    def to_dict(self) -> dict[str, list[_V_co]]:
+        """Return a dict with lists of all values for each key."""
+
 
 class MutableMultiMapping(MultiMapping[_V], MutableMapping[str, _V]):
     @abc.abstractmethod
