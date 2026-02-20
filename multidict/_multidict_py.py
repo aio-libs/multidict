@@ -831,7 +831,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 for pos, item in enumerate(arg):
                     if not len(item) == 2:
                         raise ValueError(
-                            f"multidict update sequence element #{pos}"
+                            f"multidict update sequence element #{pos} "
                             f"has length {len(item)}; 2 is required"
                         )
                     identity = identity_func(item[0])
