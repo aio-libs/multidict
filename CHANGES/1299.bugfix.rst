@@ -1,0 +1,2 @@
+Fixed broken RST markup in ``items()`` docstrings
+-- by :user:`veeceey`.

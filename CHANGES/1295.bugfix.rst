@@ -1,0 +1,3 @@
+Fixed a missing space in the :exc:`ValueError` message
+raised when constructing a multidict from a sequence
+-- by :user:`veeceey`.

@@ -720,7 +720,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         return _KeysView(self)
 
     def items(self) -> ItemsView[str, _V]:
-        """Return a new view of the dictionary's items *(key, value) pairs)."""
+        """Return a new view of the dictionary's items as ``(key, value)`` pairs."""
         return _ItemsView(self)
 
     def values(self) -> _ValuesView[_V]:
@@ -844,7 +844,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 for pos, item in enumerate(arg):
                     if not len(item) == 2:
                         raise ValueError(
-                            f"multidict update sequence element #{pos}"
+                            f"multidict update sequence element #{pos} "
                             f"has length {len(item)}; 2 is required"
                         )
                     identity = identity_func(item[0])
@@ -1207,7 +1207,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
         return self._md.keys()
 
     def items(self) -> ItemsView[str, _V]:
-        """Return a new view of the dictionary's items *(key, value) pairs)."""
+        """Return a new view of the dictionary's items as ``(key, value)`` pairs."""
         return self._md.items()
 
     def values(self) -> _ValuesView[_V]:

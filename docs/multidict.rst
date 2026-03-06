@@ -354,7 +354,7 @@ CIMultiDictProxy
 
    Raises :exc:`TypeError` if *multidict* is not :class:`CIMultiDict` instance.
 
-   The class is inherited from :class:`MultiDict`.
+   The class is inherited from :class:`MultiDictProxy`.
 
 
 Version
@@ -387,7 +387,7 @@ For more effective processing it should know if the *key* is already
 case-folded to skip the :meth:`~str.lower()` call.
 
 The performant code may create
-case-folded string keys explicitly hand, e.g::
+case-folded string keys explicitly by hand, e.g::
 
    >>> key = istr('Key')
    >>> key
