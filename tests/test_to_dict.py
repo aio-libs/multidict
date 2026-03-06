@@ -1,13 +1,17 @@
 """Test to_dict functionality for all multidict types."""
 
-from typing import Type, Iterable
-from multidict import MultiMapping
+from collections.abc import Iterable
+from typing import Protocol, Type
 
+import pytest
 
-from typing import Protocol
-
-
-from multidict import MultiDict, CIMultiDict, MultiDictProxy, CIMultiDictProxy
+from multidict import (
+    CIMultiDict,
+    CIMultiDictProxy,
+    MultiDict,
+    MultiDictProxy,
+    MultiMapping,
+)
 
 
 class MultidictModule(Protocol):
@@ -20,12 +24,8 @@ class MultidictModule(Protocol):
 class DictFactory(Protocol):
     def __call__(
         self, arg: Iterable[tuple[str, object]] | None = None
-    ) -> MultiMapping[object]: ...
-
-
-import pytest
-
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+    ) -> MultiMapping[object]:
+        raise NotImplementedError
 
 
 class BaseToDictTests:
