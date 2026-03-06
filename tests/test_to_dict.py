@@ -1,7 +1,7 @@
 """Test to_dict functionality for all multidict types."""
 
 from collections.abc import Iterable
-from typing import Protocol, Type
+from typing import Optional, Protocol, Type
 
 import pytest
 
@@ -23,7 +23,7 @@ class MultidictModule(Protocol):
 
 class DictFactory(Protocol):
     def __call__(
-        self, arg: Iterable[tuple[str, object]] | None = None
+        self, arg: Optional[Iterable[tuple[str, object]]] = None
     ) -> MultiMapping[object]:
         raise NotImplementedError
 
@@ -120,7 +120,7 @@ class TestMultiDictProxyToDict(BaseToDictTests):
     @pytest.fixture
     def cls(self, multidict_module: MultidictModule) -> DictFactory:
         def make_proxy(
-            arg: Iterable[tuple[str, object]] | None = None,
+            arg: Optional[Iterable[tuple[str, object]]] = None,
         ) -> MultiMapping[object]:
             md: MultiDict[object] = (
                 multidict_module.MultiDict(arg) if arg else multidict_module.MultiDict()
@@ -146,7 +146,7 @@ class TestCIMultiDictProxyToDict(BaseToDictTests):
     @pytest.fixture
     def cls(self, multidict_module: MultidictModule) -> DictFactory:
         def make_proxy(
-            arg: Iterable[tuple[str, object]] | None = None,
+            arg: Optional[Iterable[tuple[str, object]]] = None,
         ) -> MultiMapping[object]:
             md: CIMultiDict[object] = (
                 multidict_module.CIMultiDict(arg)
