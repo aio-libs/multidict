@@ -1,14 +1,14 @@
 """Test to_dict functionality for all multidict types."""
 
-from typing import Any, Callable, Type, Iterable
+from typing import Type, Iterable
 from multidict import MultiMapping
 
 
 from typing import Protocol
 
 
-from typing import Protocol, Type
 from multidict import MultiDict, CIMultiDict, MultiDictProxy, CIMultiDictProxy
+
 
 class MultidictModule(Protocol):
     MultiDict: Type[MultiDict[object]]
@@ -16,8 +16,12 @@ class MultidictModule(Protocol):
     MultiDictProxy: Type[MultiDictProxy[object]]
     CIMultiDictProxy: Type[CIMultiDictProxy[object]]
 
+
 class DictFactory(Protocol):
-    def __call__(self, arg: Iterable[tuple[str, object]] | None = None) -> MultiMapping[object]: ...
+    def __call__(
+        self, arg: Iterable[tuple[str, object]] | None = None
+    ) -> MultiMapping[object]: ...
+
 
 import pytest
 
@@ -45,9 +49,7 @@ class BaseToDictTests:
         result = d.to_dict()
         assert result == {}
 
-    def test_to_dict_returns_new_dict(
-        self, cls: DictFactory
-    ) -> None:
+    def test_to_dict_returns_new_dict(self, cls: DictFactory) -> None:
         """Test that each call returns a new dictionary instance."""
         d = cls([("a", 1)])
         result1 = d.to_dict()
@@ -62,9 +64,7 @@ class BaseToDictTests:
         result2 = d.to_dict()
         assert result1["a"] is not result2["a"]
 
-    def test_to_dict_order_preservation(
-        self, cls: DictFactory
-    ) -> None:
+    def test_to_dict_order_preservation(self, cls: DictFactory) -> None:
         """Test that value lists maintain insertion order."""
         d = cls([("x", 3), ("x", 1), ("x", 2)])
         result = d.to_dict()
@@ -78,9 +78,7 @@ class BaseToDictTests:
         assert len(result) == 100
         assert all(len(v) == 100 for v in result.values())
 
-    def test_to_dict_mixed_value_types(
-        self, cls: DictFactory
-    ) -> None:
+    def test_to_dict_mixed_value_types(self, cls: DictFactory) -> None:
         """Test to_dict with mixed value types (str, int) to verify generic _V."""
         d = cls([("a", 1), ("a", "two"), ("b", 3.14)])
         result = d.to_dict()
@@ -103,9 +101,7 @@ class TestCIMultiDictToDict(BaseToDictTests):
     def cls(self, multidict_module: MultidictModule) -> Type[CIMultiDict[object]]:
         return multidict_module.CIMultiDict
 
-    def test_to_dict_case_insensitive_grouping(
-        self, cls: DictFactory
-    ) -> None:
+    def test_to_dict_case_insensitive_grouping(self, cls: DictFactory) -> None:
         """Test that case variants are grouped under the same key."""
         d = cls([("A", 1), ("a", 2), ("B", 3)])
         result = d.to_dict()
@@ -123,8 +119,12 @@ class TestMultiDictProxyToDict(BaseToDictTests):
 
     @pytest.fixture
     def cls(self, multidict_module: MultidictModule) -> DictFactory:
-        def make_proxy(arg: Iterable[tuple[str, object]] | None = None) -> MultiMapping[object]:
-            md: MultiDict[object] = multidict_module.MultiDict(arg) if arg else multidict_module.MultiDict()
+        def make_proxy(
+            arg: Iterable[tuple[str, object]] | None = None,
+        ) -> MultiMapping[object]:
+            md: MultiDict[object] = (
+                multidict_module.MultiDict(arg) if arg else multidict_module.MultiDict()
+            )
             return multidict_module.MultiDictProxy(md)
 
         return make_proxy
@@ -145,15 +145,19 @@ class TestCIMultiDictProxyToDict(BaseToDictTests):
 
     @pytest.fixture
     def cls(self, multidict_module: MultidictModule) -> DictFactory:
-        def make_proxy(arg: Iterable[tuple[str, object]] | None = None) -> MultiMapping[object]:
-            md: CIMultiDict[object] = multidict_module.CIMultiDict(arg) if arg else multidict_module.CIMultiDict()
+        def make_proxy(
+            arg: Iterable[tuple[str, object]] | None = None,
+        ) -> MultiMapping[object]:
+            md: CIMultiDict[object] = (
+                multidict_module.CIMultiDict(arg)
+                if arg
+                else multidict_module.CIMultiDict()
+            )
             return multidict_module.CIMultiDictProxy(md)
 
         return make_proxy
 
-    def test_to_dict_case_insensitive_grouping(
-        self, cls: DictFactory
-    ) -> None:
+    def test_to_dict_case_insensitive_grouping(self, cls: DictFactory) -> None:
         """Test that case variants are grouped under the same key."""
         d = cls([("A", 1), ("a", 2), ("B", 3)])
         result = d.to_dict()
