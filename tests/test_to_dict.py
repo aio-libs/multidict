@@ -29,7 +29,9 @@ class BaseToDictTests:
         result = d.to_dict()
         assert result == {}
 
-    def test_to_dict_returns_new_dict(self, cls: Callable[..., MultiMapping[Any]]) -> None:
+    def test_to_dict_returns_new_dict(
+        self, cls: Callable[..., MultiMapping[Any]]
+    ) -> None:
         """Test that each call returns a new dictionary instance."""
         d = cls([("a", 1)])
         result1 = d.to_dict()
@@ -44,7 +46,9 @@ class BaseToDictTests:
         result2 = d.to_dict()
         assert result1["a"] is not result2["a"]
 
-    def test_to_dict_order_preservation(self, cls: Callable[..., MultiMapping[Any]]) -> None:
+    def test_to_dict_order_preservation(
+        self, cls: Callable[..., MultiMapping[Any]]
+    ) -> None:
         """Test that value lists maintain insertion order."""
         d = cls([("x", 3), ("x", 1), ("x", 2)])
         result = d.to_dict()
@@ -58,7 +62,9 @@ class BaseToDictTests:
         assert len(result) == 100
         assert all(len(v) == 100 for v in result.values())
 
-    def test_to_dict_mixed_value_types(self, cls: Callable[..., MultiMapping[Any]]) -> None:
+    def test_to_dict_mixed_value_types(
+        self, cls: Callable[..., MultiMapping[Any]]
+    ) -> None:
         """Test to_dict with mixed value types (str, int) to verify generic _V."""
         d = cls([("a", 1), ("a", "two"), ("b", 3.14)])
         result = d.to_dict()
@@ -81,7 +87,9 @@ class TestCIMultiDictToDict(BaseToDictTests):
     def cls(self, multidict_module: Any) -> Type[CIMultiDict[Any]]:
         return multidict_module.CIMultiDict  # type: ignore[no-any-return]
 
-    def test_to_dict_case_insensitive_grouping(self, cls: Callable[..., MultiMapping[Any]]) -> None:
+    def test_to_dict_case_insensitive_grouping(
+        self, cls: Callable[..., MultiMapping[Any]]
+    ) -> None:
         """Test that case variants are grouped under the same key."""
         d = cls([("A", 1), ("a", 2), ("B", 3)])
         result = d.to_dict()
@@ -127,7 +135,9 @@ class TestCIMultiDictProxyToDict(BaseToDictTests):
 
         return make_proxy
 
-    def test_to_dict_case_insensitive_grouping(self, cls: Callable[..., MultiMapping[Any]]) -> None:
+    def test_to_dict_case_insensitive_grouping(
+        self, cls: Callable[..., MultiMapping[Any]]
+    ) -> None:
         """Test that case variants are grouped under the same key."""
         d = cls([("A", 1), ("a", 2), ("B", 3)])
         result = d.to_dict()
