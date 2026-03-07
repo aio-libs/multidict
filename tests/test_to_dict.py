@@ -25,7 +25,7 @@ class DictFactory(Protocol):
     def __call__(
         self, arg: Optional[Iterable[tuple[str, object]]] = None
     ) -> MultiMapping[object]:
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 class BaseToDictTests:
