@@ -349,6 +349,12 @@ jobs:
       run: >-
         make clean
       shell: bash
+    - name: Pre-install ccache for gcov  [FIXME]
+      if: steps.build_type.outputs.build_type == 'source'
+      run: >-
+        sudo apt update -y
+        && sudo apt install -y ccache
+      shell: bash
     - name: Self-install (from ${{ steps.build_type.outputs.build_type }})
       env:
         MULTIDICT_NO_EXTENSIONS: ${{ matrix.no-extensions }}
@@ -359,12 +365,56 @@ jobs:
           && '.'
           || steps.wheel-file.outputs.path
         }}'
+    - name: Experimental display of multidict files  [FIXME]
+      run: pip show multidict --files
     - name: Run unittests
       run: >-
         python -Im pytest tests -v
         --cov-report xml
         --junitxml=.test-results/pytest/test.xml
         --${{ matrix.no-extensions == 'Y' && 'no-' || '' }}c-extensions
+    - name: Experimentally find gcda/gcno [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        find . -name '*.gc*'
+    - name: Experimentally find gcda/gcno in site-packages [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        find "$(python -Ic 'import importlib.resources; print(str(importlib.resources.files("multidict")))')" -name '*.gc*'
+    - name: Experimentally install Gcovr [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        pip install gcovr
+    - name: Experimentally make a coverage dir [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        mkdir -pv coverage
+    - name: Experimentally run Gcovr [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        gcovr --verbose
+    - name: See Gcovr leftovers at home [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        find ~/ -type f -name '*.gcov.json.gz'
+    - name: See Gcovr leftovers in workdir [FIXME]
+      if: >-
+        !cancelled()
+        && runner.os == 'Linux'
+      run: |
+        find ../.. -type f -name '*.gcov.json.gz'
     - name: Produce markdown test summary from JUnit
       if: >-
         !cancelled()
