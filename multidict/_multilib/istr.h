@@ -23,8 +23,8 @@ static inline void
 istr_dealloc(istrobject *self)
 {
     Py_XDECREF(self->canonical);
-    Py_DECREF(Py_TYPE(self));
     PyUnicode_Type.tp_dealloc((PyObject *)self);
+    Py_XDECREF(Py_TYPE(self));
 }
 
 static inline PyObject *
