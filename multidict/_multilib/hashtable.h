@@ -1470,8 +1470,8 @@ _err_cannot_fetch(Py_ssize_t i, const char *name)
     PyErr_Format(PyExc_ValueError,
                  "multidict update sequence element #%zd's "
                  "%s could not be fetched",
-                 name,
-                 i);
+                 i,
+                 name);
 }
 
 static int
