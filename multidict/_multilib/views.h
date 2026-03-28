@@ -32,6 +32,7 @@ multidict_view_dealloc(_Multidict_ViewObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_XDECREF(self->md);
+    Py_DECREF(Py_TYPE(self));
     PyObject_GC_Del(self);
 }
 

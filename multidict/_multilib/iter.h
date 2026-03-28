@@ -136,6 +136,7 @@ multidict_iter_dealloc(MultidictIter *self)
 {
     PyObject_GC_UnTrack(self);
     Py_XDECREF(self->md);
+    Py_DECREF(Py_TYPE(self));
     PyObject_GC_Del(self);
 }
 
