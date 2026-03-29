@@ -3,6 +3,9 @@ requires = ["setuptools >= 40"]
 build-backend = "setuptools.build_meta"
 
 
+[tool.ruff]
+target-version = "py39"
+
 [tool.cibuildwheel]
 test-requires = "-r requirements/pytest.txt"
 test-command = 'pytest -m "not leaks" --no-cov {project}/tests'
