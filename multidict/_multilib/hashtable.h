@@ -652,9 +652,15 @@ md_next(MultiDictObject *md, md_pos_t *pos, PyObject **pidentity,
     ++pos->pos;
     return 1;
 cleanup:
-    Py_CLEAR(*pidentity);
-    Py_CLEAR(*pkey);
-    Py_CLEAR(*pvalue);
+    if (pidentity) {
+        *pidentity = NULL;
+    }
+    if (pkey) {
+        *pkey = NULL;
+    }
+    if (pvalue) {
+        *pvalue = NULL;
+    }
     return ret;
 }
 

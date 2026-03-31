@@ -30,10 +30,11 @@ _init_view(_Multidict_ViewObject *self, MultiDictObject *md)
 static inline void
 multidict_view_dealloc(_Multidict_ViewObject *self)
 {
+    PyTypeObject *tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     Py_XDECREF(self->md);
-    Py_DECREF(Py_TYPE(self));
-    PyObject_GC_Del(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 static inline int
@@ -1679,6 +1680,7 @@ static PyType_Slot multidict_valuesview_slots[] = {
     {Py_tp_traverse, multidict_view_traverse},
     {Py_tp_clear, multidict_view_clear},
     {Py_tp_iter, multidict_valuesview_iter},
+    {Py_tp_free, PyObject_GC_Del},
     {0, NULL},
 };
 

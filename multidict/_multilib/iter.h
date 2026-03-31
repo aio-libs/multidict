@@ -134,10 +134,11 @@ multidict_keys_iter_iternext(MultidictIter *self)
 static inline void
 multidict_iter_dealloc(MultidictIter *self)
 {
+    PyTypeObject *tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     Py_XDECREF(self->md);
-    Py_DECREF(Py_TYPE(self));
-    PyObject_GC_Del(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 static inline int
@@ -222,6 +223,7 @@ static PyType_Slot multidict_keys_iter_slots[] = {
     {Py_tp_clear, multidict_iter_clear},
     {Py_tp_iter, PyObject_SelfIter},
     {Py_tp_iternext, multidict_keys_iter_iternext},
+    {Py_tp_free, PyObject_GC_Del},
     {0, NULL},
 };
 
