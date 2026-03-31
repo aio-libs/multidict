@@ -1,2 +1,2 @@
-fix segfault that can be triggered when getting data from `__getitem__`.
+fix segfault that can be triggered when getting data from getting an item.
 -- by :user:`Vizonex`
