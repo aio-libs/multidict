@@ -9,7 +9,7 @@ class BadItem:
         return 2
 
     def __getitem__(self, i: int) -> object:
-        raise RuntimeError("intentional getitem failure")
+        raise IndexError("intentional getitem failure")
 
 
 if __name__ == "__main__":
