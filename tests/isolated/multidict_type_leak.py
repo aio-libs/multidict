@@ -15,7 +15,8 @@ def test_iterator_type_leak() -> bool:
         list(it)
         del it
     after = sys.getrefcount(iter_type)
-    return after - baseline == 0
+    # On Freethreaded Mode this value can be negative
+    return (after - baseline) <= 0
 
 
 def test_view_type_leak() -> bool:
@@ -26,7 +27,7 @@ def test_view_type_leak() -> bool:
         v = md.keys()
         del v
     after = sys.getrefcount(view_type)
-    return after - baseline == 0
+    return (after - baseline) <= 0
 
 
 # Test istr type leak
@@ -36,7 +37,7 @@ def test_istr_type_leak() -> bool:
         s = istr("hello")
         del s
     after = sys.getrefcount(istr)
-    return after - baseline == 0
+    return (after - baseline) <= 0
 
 
 def main() -> None:
