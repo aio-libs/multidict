@@ -1,2 +1,2 @@
-fix segfault caused by `_err_cannot_fetch`
+fix segfault that can be triggered when getting data from `__getitem__`.
 -- by :user:`Vizonex`
