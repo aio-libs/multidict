@@ -3,9 +3,8 @@ import sys
 
 md = MultiDict([("a", "1"), ("b", "2")])
 
-
-# Test iterator type leak
-def test_iterator_type_leak() -> bool:
+if __name__ == "__main__":
+    # XXX: Code Coverage misbehaves so do this instead
     it = iter(md.keys())
     iter_type = type(it)
     del it
@@ -15,11 +14,10 @@ def test_iterator_type_leak() -> bool:
         list(it)
         del it
     after = sys.getrefcount(iter_type)
-    # On Freethreaded Mode this value can be negative
-    return (after - baseline) <= 0
 
+    # NOTE: On Freethreaded Mode this value can be negative
+    assert (after - baseline) <= 0, "iterator type leaked"
 
-def test_view_type_leak() -> bool:
     # Test view type leak
     view_type = type(md.keys())
     baseline = sys.getrefcount(view_type)
@@ -27,24 +25,11 @@ def test_view_type_leak() -> bool:
         v = md.keys()
         del v
     after = sys.getrefcount(view_type)
-    return (after - baseline) <= 0
+    assert (after - baseline) <= 0, "view type leaked"
 
-
-# Test istr type leak
-def test_istr_type_leak() -> bool:
     baseline = sys.getrefcount(istr)
     for i in range(1000):
         s = istr("hello")
         del s
     after = sys.getrefcount(istr)
-    return (after - baseline) <= 0
-
-
-def main() -> None:
-    assert test_iterator_type_leak(), "iterator type leaked"
-    assert test_view_type_leak(), "view type leaked"
-    assert test_istr_type_leak(), "istr type leaked"
-
-
-if __name__ == "__main__":
-    main()
+    assert (after - baseline) <= 0, "istr type leaked"
