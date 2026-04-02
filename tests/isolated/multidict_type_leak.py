@@ -9,7 +9,7 @@ if __name__ == "__main__":
     iter_type = type(it)
     del it
     baseline = sys.getrefcount(iter_type)
-    for i in range(1000):
+    for _ in range(1000):
         it = iter(md.keys())
         list(it)
         del it
@@ -21,14 +21,14 @@ if __name__ == "__main__":
     # Test view type leak
     view_type = type(md.keys())
     baseline = sys.getrefcount(view_type)
-    for i in range(1000):
+    for _ in range(1000):
         v = md.keys()
         del v
     after = sys.getrefcount(view_type)
     assert (after - baseline) <= 0, "view type leaked"
 
     baseline = sys.getrefcount(istr)
-    for i in range(1000):
+    for _ in range(1000):
         s = istr("hello")
         del s
     after = sys.getrefcount(istr)
