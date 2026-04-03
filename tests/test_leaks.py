@@ -1,7 +1,6 @@
 import pathlib
 import platform
 import subprocess
-import sys
 
 import pytest
 
@@ -25,7 +24,7 @@ def test_leak(script: str) -> None:
     leak_test_script = pathlib.Path(__file__).parent.joinpath("isolated", script)
 
     subprocess.run(
-        [sys.executable, "-u", str(leak_test_script)],
+        ["coverage", "run", str(leak_test_script)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=True,
