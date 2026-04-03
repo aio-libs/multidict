@@ -1,0 +1,2 @@
+Added support for collecting code coverage of isolated multdict tests
+-- by :user:`Vizonex`
