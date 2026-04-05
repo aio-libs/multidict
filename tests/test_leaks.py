@@ -1,7 +1,7 @@
-import sys
 import pathlib
 import platform
 import subprocess
+import sys
 
 import pytest
 
