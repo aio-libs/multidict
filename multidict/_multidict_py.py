@@ -834,8 +834,16 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                             f"multidict update sequence element #{pos} "
                             f"has length {len(item)}; 2 is required"
                         )
-                    identity = identity_func(item[0])
-                    yield _Entry(hash(identity), identity, item[0], item[1])
+                    try:
+                        key = item[0]
+                        value = item[1]
+                    except Exception as exc:
+                        raise ValueError(
+                            f"multidict update sequence element #{pos}'s "
+                            f"key could not be fetched"
+                        ) from exc
+                    identity = identity_func(key)
+                    yield _Entry(hash(identity), identity, key, value)
         else:
             yield len(kwargs)
             for key, value in kwargs.items():

@@ -300,6 +300,23 @@ class BaseMultiDictTest:
         ):
             cls([(1, 2, 3)])  # type: ignore[call-arg]
 
+    def test_cannot_create_from_item_with_failing_getitem(
+        self,
+        cls: type[MutableMultiMapping[str]],
+    ) -> None:
+        class BadItem:
+            def __len__(self) -> int:
+                return 2
+
+            def __getitem__(self, i: int) -> object:
+                raise RuntimeError("intentional getitem failure")
+
+        with pytest.raises(
+            ValueError,
+            match=r"^multidict update sequence element #0's key could not be fetched$",
+        ):
+            cls([BadItem()])  # type: ignore[list-item]
+
     def test_keys_is_set_less(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
 
