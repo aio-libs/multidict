@@ -315,7 +315,7 @@ class BaseMultiDictTest:
             ValueError,
             match=r"^multidict update sequence element #0's key could not be fetched$",
         ):
-            cls([BadItem()])  # type: ignore[list-item]
+            cls([BadItem()])  # type: ignore[call-arg]
 
     def test_keys_is_set_less(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
