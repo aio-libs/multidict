@@ -24,9 +24,8 @@ istr_dealloc(istrobject *self)
 {
     PyTypeObject *tp = Py_TYPE(self);
     Py_XDECREF(self->canonical);
-    PyUnicode_Type.tp_dealloc((PyObject *)(&self->str));
-    /* Clear it because sometimes this might appear NULL */
-    Py_CLEAR(tp);
+    PyUnicode_Type.tp_dealloc((PyObject *)self);
+    Py_DECREF(tp);
 }
 
 static inline PyObject *
