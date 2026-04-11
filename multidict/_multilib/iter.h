@@ -144,6 +144,7 @@ multidict_iter_dealloc(MultidictIter *self)
 static inline int
 multidict_iter_traverse(MultidictIter *self, visitproc visit, void *arg)
 {
+    Py_VISIT(Py_TYPE(self));
     Py_VISIT(self->md);
     return 0;
 }
@@ -223,7 +224,6 @@ static PyType_Slot multidict_keys_iter_slots[] = {
     {Py_tp_clear, multidict_iter_clear},
     {Py_tp_iter, PyObject_SelfIter},
     {Py_tp_iternext, multidict_keys_iter_iternext},
-    {Py_tp_free, PyObject_GC_Del},
     {0, NULL},
 };
 

@@ -41,6 +41,7 @@ static inline int
 multidict_view_traverse(_Multidict_ViewObject *self, visitproc visit,
                         void *arg)
 {
+    Py_VISIT(Py_TYPE(self));
     Py_VISIT(self->md);
     return 0;
 }
@@ -1680,7 +1681,6 @@ static PyType_Slot multidict_valuesview_slots[] = {
     {Py_tp_traverse, multidict_view_traverse},
     {Py_tp_clear, multidict_view_clear},
     {Py_tp_iter, multidict_valuesview_iter},
-    {Py_tp_free, PyObject_GC_Del},
     {0, NULL},
 };
 
