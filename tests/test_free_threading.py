@@ -35,7 +35,7 @@ def test_race_condition_iterator_vs_mutation(
                 target[f"k-{i % 64}"] = f"v{i}"
             except RuntimeError:
                 pass  # "MultiDict is changed during iteration" is expected
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 import traceback
 
                 errors.append(
@@ -52,7 +52,7 @@ def test_race_condition_iterator_vs_mutation(
                 # "MultiDict is changed during iteration" is exactly the expected
                 # and memory-safe outcome when iterating a resizing dictionary.
                 pass
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 errors.append(("reader", i, type(e).__name__, str(e), ""))
 
     threads = [
