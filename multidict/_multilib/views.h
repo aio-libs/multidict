@@ -331,7 +331,7 @@ multidict_itemsview_and1(_Multidict_ViewObject *self, PyObject *other)
     if (PyErr_Occurred()) {
         failed = 1;
     }
-cs_done:
+cs_done:;
     if (failed) {
         md_finder_cleanup(&finder);
         Py_CLEAR(key2);
@@ -423,7 +423,7 @@ multidict_itemsview_and2(_Multidict_ViewObject *self, PyObject *other)
     if (PyErr_Occurred()) {
         failed = 1;
     }
-cs_done:
+cs_done:;
     if (failed) {
         md_finder_cleanup(&finder);
         Py_CLEAR(value2);
@@ -545,7 +545,7 @@ multidict_itemsview_or1(_Multidict_ViewObject *self, PyObject *other)
     if (PyErr_Occurred()) {
         failed = 1;
     }
-cs_done:
+cs_done:;
     if (failed) {
         md_finder_cleanup(&finder);
         Py_CLEAR(value2);
@@ -847,7 +847,7 @@ multidict_itemsview_sub2(_Multidict_ViewObject *self, PyObject *other)
     if (PyErr_Occurred()) {
         failed = 1;
     }
-cs_done:
+cs_done:;
     if (failed) {
         md_finder_cleanup(&finder);
         Py_CLEAR(value2);
@@ -1027,7 +1027,7 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
         goto cs_done;
     }
 
-cs_done:
+cs_done:;
     md_finder_cleanup(&finder);
     Py_END_CRITICAL_SECTION();
 done:
@@ -1095,7 +1095,7 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
     if (PyErr_Occurred()) {
         failed = 1;
     }
-cs_done:
+cs_done:;
     md_finder_cleanup(&finder);
     Py_END_CRITICAL_SECTION();
     Py_CLEAR(iter);
