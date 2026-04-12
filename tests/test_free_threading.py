@@ -33,7 +33,7 @@ def test_race_condition_iterator_vs_mutation(
         for i in range(256):
             try:
                 target[f"k-{i % 64}"] = f"v{i}"
-            except RuntimeError:
+            except RuntimeError:  # pragma: no cover
                 pass  # "MultiDict is changed during iteration" is expected
             except Exception as e:  # pragma: no cover
                 import traceback
