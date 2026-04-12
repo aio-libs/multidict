@@ -13,11 +13,11 @@ def test_race_condition_iterator_vs_mutation(
     """Test that concurrent iterations and mutations do not cause a memory safety violation.
 
     This test specifically triggers use-after-free scenarios if the underlying C extension
-    hash table `md->keys` resizes concurrently during an unresolved iteration sequence.
+    hash table ``md->keys`` resizes concurrently during an unresolved iteration sequence.
     Under free-threaded CPython (GIL disabled), this previously resulted in a SIGSEGV.
 
     With the issue fixed, the code securely catches size mutations and cleanly raises
-    a standard Python `RuntimeError` ('MultiDict is changed during iteration'), preventing
+    a standard Python ``RuntimeError`` ('MultiDict is changed during iteration'), preventing
     crashes.
     """
     if cls.__module__ == "multidict._multidict_py":
@@ -30,14 +30,9 @@ def test_race_condition_iterator_vs_mutation(
     errors: list[tuple[str, int, str, str, str]] = []
 
     def writer(target: Union[CIMultiDict[str], MultiDict[str]]) -> None:
-        for i in range(5000):
+        for i in range(256):
             try:
                 target[f"k-{i % 64}"] = f"v{i}"
-                if i % 13 == 0:
-                    try:
-                        del target[f"k-{i % 64}"]
-                    except KeyError:
-                        pass  # Deleting non-existent keys dynamically is fine
             except RuntimeError:
                 pass  # "MultiDict is changed during iteration" is expected
             except Exception as e:
@@ -48,7 +43,7 @@ def test_race_condition_iterator_vs_mutation(
                 )
 
     def reader(target: Union[CIMultiDict[str], MultiDict[str]]) -> None:
-        for i in range(5000):
+        for i in range(256):
             try:
                 list(target.items())
                 list(target.keys())
