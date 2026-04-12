@@ -68,6 +68,33 @@ indices still has O(1) amortized time, it is ok.
 in the left and right arguments.
 
 `.copy()` and constuction from multidict is super fast.
+
+Thread Safety (CPython 3.13t+ free-threaded mode)
+==================================================
+
+This module declares Py_MOD_GIL_NOT_USED, opting into free-threaded execution
+on CPython 3.13t+.  All public entry points that read or write md->keys are
+protected by Py_BEGIN_CRITICAL_SECTION(md) / Py_END_CRITICAL_SECTION(), which
+acquires CPython's per-object mutex (a no-op on pre-3.13 builds via the
+pythoncapi_compat.h shim).
+
+Locking granularity follows CPython's own dict pattern: each public-facing
+method (in _multidict.c, iter.h, views.h) acquires the critical section on
+the MultiDictObject.  Internal helpers (_md_resize, md_next, _md_add_with_hash,
+etc.) remain unlocked — they are always called from within an already-locked
+public entry point.
+
+Re-entrancy constraint: Py_BEGIN_CRITICAL_SECTION uses a NON-RECURSIVE mutex.
+Several operations call back into Python code while holding the lock:
+  - _ci_key_to_identity() calls PyObject_CallMethodNoArgs(key, "lower")
+  - _str_cmp() calls PyUnicode_RichCompare()
+  - md_repr() calls PyUnicodeWriter_WriteRepr() / PyObject_Repr()
+These callbacks are safe because they never re-enter any multidict method on
+the SAME MultiDictObject instance.  str.lower() returns a new string without
+touching the dict, and value __repr__/__eq__ should not mutate the container.
+If a user subclass violates this invariant (e.g., a value's __repr__ mutates
+the multidict it belongs to), the result is a deadlock on 3.13t+ — the same
+constraint that CPython's built-in dict has.
 */
 
 /* GROWTH_RATE. Growth rate upon hitting maximum load.
