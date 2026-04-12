@@ -618,7 +618,7 @@ multidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         goto cs_done;
     }
     ret = 0;
-cs_done:
+cs_done:;
     Py_END_CRITICAL_SECTION();
 done:
     Py_CLEAR(arg);
@@ -668,7 +668,7 @@ multidict_extend(MultiDictObject *self, PyObject *args, PyObject *kwds)
         failed = 1;
         goto cs_done;
     }
-cs_done:
+cs_done:;
     Py_END_CRITICAL_SECTION();
     Py_CLEAR(arg);
     if (failed) {
@@ -883,7 +883,7 @@ multidict_update(MultiDictObject *self, PyObject *args, PyObject *kwds)
         failed = 1;
         goto cs_done;
     }
-cs_done:
+cs_done:;
     Py_END_CRITICAL_SECTION();
     Py_CLEAR(arg);
     if (failed) {
@@ -915,7 +915,7 @@ multidict_merge(MultiDictObject *self, PyObject *args, PyObject *kwds)
         failed = 1;
         goto cs_done;
     }
-cs_done:
+cs_done:;
     Py_END_CRITICAL_SECTION();
     Py_CLEAR(arg);
     if (failed) {
@@ -1139,7 +1139,7 @@ cimultidict_tp_init(MultiDictObject *self, PyObject *args, PyObject *kwds)
         goto cs_done;
     }
     ret = 0;
-cs_done:
+cs_done:;
     Py_END_CRITICAL_SECTION();
 done:
     Py_CLEAR(arg);
