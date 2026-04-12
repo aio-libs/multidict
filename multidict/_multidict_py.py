@@ -481,7 +481,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
     log2_size: int
     usable: int
 
-    indices: array  # type: ignore[type-arg] # in py3.9 array is not generic
+    indices: array[int]
     entries: list[Optional[_Entry[_V]]]
 
     @functools.cached_property
