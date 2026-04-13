@@ -468,7 +468,7 @@ class _Entry(Generic[_V]):
 
 
 @dataclass
-class _HtKeys(Generic[_V]):
+class _HtKeys(Generic[_V]):  # type: ignore[misc]
     LOG_MINSIZE: ClassVar[int] = 3
     MINSIZE: ClassVar[int] = 8
     PREALLOCATED_INDICES: ClassVar[dict[int, array]] = {  # type: ignore[type-arg]
@@ -481,7 +481,7 @@ class _HtKeys(Generic[_V]):
     log2_size: int
     usable: int
 
-    indices: array[int]
+    indices: array  # type: ignore[type-arg] # in py3.9 array is not generic
     entries: list[Optional[_Entry[_V]]]
 
     @functools.cached_property
@@ -574,8 +574,8 @@ class _HtKeys(Generic[_V]):
         while ix != -1:
             if ix != -2:
                 e = entries[ix]
-                if e.hash == hash_:  # type: ignore[union-attr]
-                    yield i, ix, e  # type: ignore[misc]
+                if e.hash == hash_:
+                    yield i, ix, e
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
@@ -605,8 +605,8 @@ class _HtKeys(Generic[_V]):
         while ix != -1:
             if ix != -2:
                 entry = entries[ix]
-                if entry.hash == -1:  # type: ignore[union-attr]
-                    entry.hash = hash_  # type: ignore[union-attr]
+                if entry.hash == -1:
+                    entry.hash = hash_
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
@@ -1029,7 +1029,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 e2 = entries[idx]
                 assert e2 is not None
                 if e2.key is None:
-                    entries[idx] = None  # type: ignore[unreachable]
+                    entries[idx] = None
                     indices[slot] = -2
                     self._used -= 1
                 if e2.hash == -1:
