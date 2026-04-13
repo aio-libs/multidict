@@ -468,7 +468,7 @@ class _Entry(Generic[_V]):
 
 
 @dataclass
-class _HtKeys(Generic[_V]):  # type: ignore[misc]
+class _HtKeys(Generic[_V]):
     LOG_MINSIZE: ClassVar[int] = 3
     MINSIZE: ClassVar[int] = 8
     PREALLOCATED_INDICES: ClassVar[dict[int, array]] = {  # type: ignore[type-arg]
@@ -574,8 +574,8 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         while ix != -1:
             if ix != -2:
                 e = entries[ix]
-                if e.hash == hash_:
-                    yield i, ix, e
+                if e.hash == hash_:  # type: ignore[union-attr]
+                    yield i, ix, e  # type: ignore[misc]
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
@@ -605,8 +605,8 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
         while ix != -1:
             if ix != -2:
                 entry = entries[ix]
-                if entry.hash == -1:
-                    entry.hash = hash_
+                if entry.hash == -1:  # type: ignore[union-attr]
+                    entry.hash = hash_  # type: ignore[union-attr]
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
@@ -1029,7 +1029,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 e2 = entries[idx]
                 assert e2 is not None
                 if e2.key is None:
-                    entries[idx] = None
+                    entries[idx] = None  # type: ignore[unreachable]
                     indices[slot] = -2
                     self._used -= 1
                 if e2.hash == -1:
