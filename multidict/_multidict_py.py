@@ -836,11 +836,17 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                         )
                     try:
                         key = item[0]
-                        value = item[1]
                     except Exception as exc:
                         raise ValueError(
                             f"multidict update sequence element #{pos}'s "
                             f"key could not be fetched"
+                        ) from exc
+                    try:
+                        value = item[1]
+                    except Exception as exc:
+                        raise ValueError(
+                            f"multidict update sequence element #{pos}'s "
+                            f"value could not be fetched"
                         ) from exc
                     identity = identity_func(key)
                     yield _Entry(hash(identity), identity, key, value)
