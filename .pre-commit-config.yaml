@@ -2,8 +2,6 @@
 
 ci:
   autoupdate_schedule: quarterly
-  skip:
-  - clang-format
 
 repos:
 - repo: https://github.com/python-jsonschema/check-jsonschema.git
@@ -113,10 +111,11 @@ repos:
     types:
     - file
     - rst
-- repo: https://github.com/cpp-linter/cpp-linter-hooks
-  rev: v0.8.0
+- repo: https://github.com/pre-commit/mirrors-clang-format
+  rev: v16.0.6
   hooks:
   - id: clang-format
+    types_or: [c, c++]
 - repo: https://github.com/pre-commit/mirrors-mypy.git
   rev: v1.15.0
   hooks:

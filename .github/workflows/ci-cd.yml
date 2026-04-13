@@ -181,7 +181,6 @@ jobs:
         - 3.12
         - 3.11
         - "3.10"
-        - 3.9
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         debug: ['', 'Y']
@@ -199,7 +198,7 @@ jobs:
         - no-extensions: Y
           debug: Y
         include:
-        - pyver: pypy-3.9
+        - pyver: pypy-3.10
           no-extensions: Y
           os: ubuntu
           debug: ''
