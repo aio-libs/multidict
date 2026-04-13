@@ -105,7 +105,7 @@ multidict_view_richcompare(_Multidict_ViewObject *self, PyObject *other,
             if (item == NULL) {
                 goto fail;
             }
-            if (item == Py_True) {
+            if (Py_IsTrue(item)) {
                 Py_DECREF(item);
                 Py_RETURN_FALSE;
             } else {
