@@ -2069,7 +2069,7 @@ PyConfig_Get(const char *name)
 
 #define PYTHONCAPI_COMPAT_SPEC(MEMBER, TYPE, sys_attr)                \
     {                                                                 \
-#MEMBER, offsetof(PyConfig, MEMBER), _PyConfig_MEMBER_##TYPE, \
+        #MEMBER, offsetof(PyConfig, MEMBER), _PyConfig_MEMBER_##TYPE, \
             sys_attr                                                  \
     }
 
