@@ -9,8 +9,6 @@ target-version = "py310"
 [tool.cibuildwheel]
 test-requires = "-r requirements/pytest.txt"
 test-command = 'pytest -m "not leaks" --no-cov {project}/tests'
-# don't build PyPy wheels, install from source instead
-skip = "pp*"
 enable = ["cpython-freethreading"]
 
 [tool.cibuildwheel.linux]
