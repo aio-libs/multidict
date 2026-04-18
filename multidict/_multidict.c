@@ -245,6 +245,77 @@ _multidict_proxy_copy(MultiDictProxyObject *self, PyTypeObject *type)
     return multidict_copy(self->md);
 }
 
+PyDoc_STRVAR(multidict_to_dict_doc,
+             "Return a dict with lists of all values for each key.");
+
+static PyObject *
+multidict_to_dict(MultiDictObject *self)
+{
+    PyObject *result = PyDict_New();
+    if (result == NULL) {
+        return NULL;
+    }
+
+    PyObject *seen = PyDict_New();
+    if (seen == NULL) {
+        Py_DECREF(result);
+        return NULL;
+    }
+
+    md_pos_t pos;
+    md_init_pos(self, &pos);
+    PyObject *identity = NULL;
+    PyObject *key = NULL;
+    PyObject *value = NULL;
+
+    int tmp;
+    while ((tmp = md_next(self, &pos, &identity, &key, &value)) > 0) {
+        PyObject *first_key = PyDict_GetItem(seen, identity);
+        if (first_key == NULL) {
+            PyObject *lst = PyList_New(1);
+            if (lst == NULL) {
+                goto fail;
+            }
+            PyList_SET_ITEM(lst, 0, value);
+            value = NULL;
+            if (PyDict_SetItem(seen, identity, key) < 0) {
+                Py_DECREF(lst);
+                goto fail;
+            }
+            if (PyDict_SetItem(result, key, lst) < 0) {
+                Py_DECREF(lst);
+                goto fail;
+            }
+            Py_DECREF(lst);
+        } else {
+            PyObject *lst = PyDict_GetItem(result, first_key);
+            if (lst == NULL || PyList_Append(lst, value) < 0) {
+                goto fail;
+            }
+            Py_DECREF(value);
+            value = NULL;
+        }
+        Py_DECREF(identity);
+        Py_DECREF(key);
+        identity = NULL;
+        key = NULL;
+    }
+    if (tmp < 0) {
+        goto fail;
+    }
+
+    Py_DECREF(seen);
+    return result;
+
+fail:
+    Py_XDECREF(identity);
+    Py_XDECREF(key);
+    Py_XDECREF(value);
+    Py_DECREF(seen);
+    Py_DECREF(result);
+    return NULL;
+}
+
 /******************** Base Methods ********************/
 
 static inline PyObject *
@@ -887,6 +958,10 @@ static PyMethodDef multidict_methods[] = {
      METH_FASTCALL | METH_KEYWORDS,
      multidict_add_doc},
     {"copy", (PyCFunction)multidict_copy, METH_NOARGS, multidict_copy_doc},
+    {"to_dict",
+     (PyCFunction)multidict_to_dict,
+     METH_NOARGS,
+     multidict_to_dict_doc},
     {"extend",
      (PyCFunction)multidict_extend,
      METH_VARARGS | METH_KEYWORDS,
@@ -1144,6 +1219,12 @@ multidict_proxy_reduce(MultiDictProxyObject *self)
     return NULL;
 }
 
+static PyObject *
+multidict_proxy_to_dict(MultiDictProxyObject *self)
+{
+    return multidict_to_dict(self->md);
+}
+
 static Py_ssize_t
 multidict_proxy_mp_len(MultiDictProxyObject *self)
 {
@@ -1245,6 +1326,10 @@ static PyMethodDef multidict_proxy_methods[] = {
      (PyCFunction)Py_GenericAlias,
      METH_O | METH_CLASS,
      NULL},
+    {"to_dict",
+     (PyCFunction)multidict_proxy_to_dict,
+     METH_NOARGS,
+     multidict_to_dict_doc},
     {NULL, NULL} /* sentinel */
 };
 
