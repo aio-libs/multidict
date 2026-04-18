@@ -1,0 +1,2 @@
+A segmentation fault that could be triggered when getting an item is now fixed
+-- by :user:`Vizonex`.

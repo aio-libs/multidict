@@ -1470,8 +1470,8 @@ _err_cannot_fetch(Py_ssize_t i, const char *name)
     PyErr_Format(PyExc_ValueError,
                  "multidict update sequence element #%zd's "
                  "%s could not be fetched",
-                 name,
-                 i);
+                 i,
+                 name);
 }
 
 static int
@@ -1507,11 +1507,11 @@ _md_parse_item(Py_ssize_t i, PyObject *item, PyObject **pkey,
             goto fail;
         }
         *pkey = PySequence_ITEM(item, 0);
-        *pvalue = PySequence_ITEM(item, 1);
         if (*pkey == NULL) {
             _err_cannot_fetch(i, "key");
             goto fail;
         }
+        *pvalue = PySequence_ITEM(item, 1);
         if (*pvalue == NULL) {
             _err_cannot_fetch(i, "value");
             goto fail;
