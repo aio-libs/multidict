@@ -1,0 +1,1 @@
+Added support for reversing keys, values, and items views via ``reversed()`` -- implements :issue:`448`.
