@@ -30,15 +30,18 @@ _init_view(_Multidict_ViewObject *self, MultiDictObject *md)
 static inline void
 multidict_view_dealloc(_Multidict_ViewObject *self)
 {
+    PyTypeObject *tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     Py_XDECREF(self->md);
-    PyObject_GC_Del(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 static inline int
 multidict_view_traverse(_Multidict_ViewObject *self, visitproc visit,
                         void *arg)
 {
+    Py_VISIT(Py_TYPE(self));
     Py_VISIT(self->md);
     return 0;
 }

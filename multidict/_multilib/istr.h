@@ -22,8 +22,10 @@ PyDoc_STRVAR(istr__doc__, "istr class implementation");
 static inline void
 istr_dealloc(istrobject *self)
 {
+    PyTypeObject *tp = Py_TYPE(self);
     Py_XDECREF(self->canonical);
     PyUnicode_Type.tp_dealloc((PyObject *)self);
+    Py_DECREF(tp);
 }
 
 static inline PyObject *
