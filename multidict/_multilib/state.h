@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <stdatomic.h>
+
 /* State of the _multidict module */
 typedef struct {
     PyTypeObject *IStrType;
@@ -128,7 +130,7 @@ get_mod_state_by_def(PyObject *self)
 static inline uint64_t
 NEXT_VERSION(mod_state *state)
 {
-    return ++state->global_version;
+    return atomic_fetch_add_explicit((_Atomic(uint64_t)*)&state->global_version, 1, memory_order_relaxed);
 }
 
 #ifdef __cplusplus
