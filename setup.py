@@ -24,6 +24,13 @@ if platform.system() != "Windows":
             "-Werror",
         ]
     )
+else:
+    CFLAGS.extend(
+        [
+            "/std:c11",
+            "/experimental:c11atomics",
+        ]
+    )
 
 extensions = [
     Extension(
