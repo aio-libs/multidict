@@ -28,7 +28,7 @@ typedef struct {
     PyObject *str_lower;
     PyObject *str_name;
 
-    uint64_t global_version;
+    _Atomic uint64_t global_version;
 } mod_state;
 
 static inline mod_state *
@@ -131,7 +131,7 @@ static inline uint64_t
 NEXT_VERSION(mod_state *state)
 {
     return atomic_fetch_add_explicit(
-        (_Atomic(uint64_t) *)&state->global_version, 1, memory_order_relaxed);
+        &state->global_version, 1, memory_order_relaxed);
 }
 
 #ifdef __cplusplus
