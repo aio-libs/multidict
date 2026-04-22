@@ -45,6 +45,7 @@ extensions = [
     Extension(
         "multidict._multidict",
         ["multidict/_multidict.c"],
+        extra_compile_args=[],
     ),
 ]
 
