@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from functools import cached_property
 from importlib import import_module
 from types import ModuleType
-from typing import Type, Union
 from collections.abc import Callable
 
 import pytest

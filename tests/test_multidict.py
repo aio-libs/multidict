@@ -741,11 +741,11 @@ class TestMultiDict(BaseMultiDictTest):
         d = cls()
         _cls = type(d)
 
-        assert str(d) == "<%s()>" % _cls.__name__
+        assert str(d) == f"<{_cls.__name__}()>"
 
         d = cls([("key", "one"), ("key", "two")])
 
-        assert str(d) == "<%s('key': 'one', 'key': 'two')>" % _cls.__name__
+        assert str(d) == f"<{_cls.__name__}('key': 'one', 'key': 'two')>"
 
     def test__repr___recursive(
         self, any_multidict_class: type[MultiDict[object]]
@@ -756,7 +756,7 @@ class TestMultiDict(BaseMultiDictTest):
         d = any_multidict_class()
         d["key"] = d
 
-        assert str(d) == "<%s('key': ...)>" % _cls.__name__
+        assert str(d) == f"<{_cls.__name__}('key': ...)>"
 
     def test_getall(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
@@ -868,7 +868,7 @@ class TestCIMultiDict(BaseMultiDictTest):
         d = cls([("KEY", "value1")], key="value2")
         _cls = type(d)
 
-        expected = "<%s('KEY': 'value1', 'key': 'value2')>" % _cls.__name__
+        expected = f"<{_cls.__name__}('KEY': 'value1', 'key': 'value2')>"
         assert str(d) == expected
 
     def test_items__repr__(self, cls: type[CIMultiDict[str]]) -> None:

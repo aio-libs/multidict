@@ -22,7 +22,7 @@ class SupportsIKeys(Protocol[_V_co]):
     def __getitem__(self, key: istr, /) -> _V_co: ...
 
 
-MDArg = Union[SupportsKeys[_V], SupportsIKeys[_V], Iterable[tuple[str, _V]], None]
+MDArg = SupportsKeys[_V] | SupportsIKeys[_V] | Iterable[tuple[str, _V]] | None
 
 
 class MultiMapping(Mapping[str, _V_co]):

@@ -1,7 +1,5 @@
 """codspeed benchmarks for multidict."""
 
-from typing import Dict, Type, Union
-
 from pytest_codspeed import BenchmarkFixture
 
 from multidict import (

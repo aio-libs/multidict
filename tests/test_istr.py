@@ -1,6 +1,5 @@
 import gc
 import sys
-from typing import Type
 from collections.abc import Callable
 
 import pytest

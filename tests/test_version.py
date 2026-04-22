@@ -6,9 +6,7 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 _T = TypeVar("_T")
-_MD_Types = Union[
-    MultiDict[_T], CIMultiDict[_T], MultiDictProxy[_T], CIMultiDictProxy[_T]
-]
+_MD_Types = MultiDict[_T] | CIMultiDict[_T] | MultiDictProxy[_T] | CIMultiDictProxy[_T]
 GetVersion = Callable[[_MD_Types[_T]], int]
 
 
