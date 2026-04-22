@@ -1,7 +1,8 @@
+import sysconfig
 import threading
+
 import multidict
 from multidict import MultiDict
-import sysconfig
 
 FREETHREADED = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
