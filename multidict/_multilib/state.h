@@ -130,8 +130,11 @@ get_mod_state_by_def(PyObject *self)
 static inline uint64_t
 NEXT_VERSION(mod_state *state)
 {
-    /* relaxed is fine here as we only care about the atomicity of the RMW itself */
-    return atomic_fetch_add_explicit(&state->global_version, 1, memory_order_relaxed) + 1
+    /* relaxed is fine here as we only care about the atomicity of the RMW
+     * itself */
+    return atomic_fetch_add_explicit(
+               &state->global_version, 1, memory_order_relaxed) +
+           1
 }
 
 #ifdef __cplusplus
