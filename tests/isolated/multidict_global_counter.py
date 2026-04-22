@@ -4,8 +4,7 @@ from multidict import MultiDict
 import sysconfig
 
 FREETHREADED = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
-if not FREETHREADED:
-    raise SystemExit(0)
+
 
 md: MultiDict[int] = MultiDict()
 N, M = 3, 100
@@ -17,7 +16,7 @@ def worker(tid: int) -> None:
         md[f"k{tid}_{i}"] = i
 
 
-if __name__ == "__main__":
+if (__name__ == "__main__") and FREETHREADED:
     threads = [threading.Thread(target=worker, args=(tid,)) for tid in range(N)]
     for t in threads:
         t.start()
