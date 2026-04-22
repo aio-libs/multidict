@@ -134,7 +134,7 @@ NEXT_VERSION(mod_state *state)
      * itself */
     return atomic_fetch_add_explicit(
                &state->global_version, 1, memory_order_relaxed) +
-           1
+           1;
 }
 
 #ifdef __cplusplus
