@@ -18,9 +18,7 @@ from typing import (
     ClassVar,
     Generic,
     NoReturn,
-    Optional,
     TypeVar,
-    Union,
     cast,
     overload,
 )
@@ -1129,7 +1127,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 
     _md: MultiDict[_V]
 
-    def __init__(self, arg: Union[MultiDict[_V], "MultiDictProxy[_V]"]):
+    def __init__(self, arg: MultiDict[_V] | "MultiDictProxy[_V]"):
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
                 f"ctor requires MultiDict or MultiDictProxy instance, not {type(arg)}"
