@@ -47,10 +47,7 @@ def chained_callable(
             value = element(value)
 
         return cast(
-            Union[
-                MultiMapping[Union[int, str]],
-                MutableMultiMapping[Union[int, str]],
-            ],
+            MultiMapping[int | str] | MutableMultiMapping[int | str],
             value,
         )
 
@@ -82,7 +79,7 @@ def test_exposed_names(any_multidict_class_name: str) -> None:
     indirect=["cls"],
 )
 def test__iter__types(
-    cls: type[MultiDict[Union[str, int]]],
+    cls: type[MultiDict[str | int]],
     key_cls: type[str],
 ) -> None:
     d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
@@ -136,7 +133,7 @@ class BaseMultiDictTest:
     def test_instantiate__from_arg0(
         self,
         cls: type[MultiDict[str]],
-        arg0: Union[list[tuple[str, str]], dict[str, str]],
+        arg0: list[tuple[str, str]] | dict[str, str],
     ) -> None:
         d = cls(arg0)
 
@@ -159,7 +156,7 @@ class BaseMultiDictTest:
         assert sorted(d.items()) == [("key", "value1"), ("key2", "value2")]
 
     def test_instantiate__from_generator(
-        self, cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]]
+        self, cls: type[MultiDict[int]] | type[CIMultiDict[int]]
     ) -> None:
         d = cls((str(i), i) for i in range(2))
 
@@ -212,20 +209,14 @@ class BaseMultiDictTest:
 
     def test__iter__(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
         assert list(d) == ["key", "key2", "key"]
 
     def test__contains(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
 
@@ -239,10 +230,7 @@ class BaseMultiDictTest:
 
     def test_keys__contains(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
 
@@ -256,10 +244,7 @@ class BaseMultiDictTest:
 
     def test_values__contains(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key", "two"), ("key", 3)])
 
@@ -273,10 +258,7 @@ class BaseMultiDictTest:
 
     def test_items__contains(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key", "two"), ("key", 3)])
 
@@ -482,7 +464,7 @@ class BaseMultiDictTest:
         assert d1 != d2
 
     def test_eq_bad_mapping_len(
-        self, cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]]
+        self, cls: type[MultiDict[int]] | type[CIMultiDict[int]]
     ) -> None:
         class BadMapping(Mapping[str, int]):
             def __getitem__(self, key: str) -> int:
@@ -501,7 +483,7 @@ class BaseMultiDictTest:
 
     def test_eq_bad_mapping_getitem(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         class BadMapping(Mapping[str, int]):
             def __getitem__(self, key: str) -> int:
@@ -690,7 +672,7 @@ class BaseMultiDictTest:
 
     def test_iter_length_hint_keys(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.keys())
@@ -698,7 +680,7 @@ class BaseMultiDictTest:
 
     def test_iter_length_hint_items(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.items())
@@ -706,7 +688,7 @@ class BaseMultiDictTest:
 
     def test_iter_length_hint_values(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.values())
@@ -714,7 +696,7 @@ class BaseMultiDictTest:
 
     def test_ctor_list_arg_and_kwds(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         arg = [("a", 1)]
         obj = cls(arg, b=2)
@@ -723,7 +705,7 @@ class BaseMultiDictTest:
 
     def test_ctor_tuple_arg_and_kwds(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         arg = (("a", 1),)
         obj = cls(arg, b=2)
@@ -732,7 +714,7 @@ class BaseMultiDictTest:
 
     def test_ctor_deque_arg_and_kwds(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         arg = deque([("a", 1)])
         obj = cls(arg, b=2)
@@ -792,10 +774,10 @@ class TestMultiDict(BaseMultiDictTest):
 
     def test_preserve_stable_ordering(
         self,
-        cls: type[MultiDict[Union[str, int]]],
+        cls: type[MultiDict[str | int]],
     ) -> None:
         d = cls([("a", 1), ("b", "2"), ("a", 3)])
-        s = "&".join("{}={}".format(k, v) for k, v in d.items())
+        s = "&".join(f"{k}={v}" for k, v in d.items())
 
         assert s == "a=1&b=2&a=3"
 
