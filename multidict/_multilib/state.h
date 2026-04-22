@@ -131,7 +131,8 @@ static inline uint64_t
 NEXT_VERSION(mod_state *state)
 {
     return atomic_fetch_add_explicit(
-        &state->global_version, 1, memory_order_relaxed) + 1;
+               &state->global_version, 1, memory_order_relaxed) +
+           1;
 }
 
 #ifdef __cplusplus
