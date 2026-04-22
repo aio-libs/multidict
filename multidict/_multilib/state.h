@@ -130,9 +130,10 @@ get_mod_state_by_def(PyObject *self)
 static inline uint64_t
 NEXT_VERSION(mod_state *state)
 {
-    return atomic_fetch_add_explicit(
-               &state->global_version, 1, memory_order_relaxed) +
-           1;
+    /* threads have the ability to screw with the global version,
+     * using an atomic variable ensures the global version is
+     * always accurate. */
+    return atomic_fetch_add(&state->global_version, 1) + 1;
 }
 
 #ifdef __cplusplus
