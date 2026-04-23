@@ -176,6 +176,7 @@ jobs:
         pyver:
         - 3.14t
         - 3.14
+        # Skipping 3.13t because cibuildwheel dropped support
         - 3.13
         - 3.12
         - 3.11
