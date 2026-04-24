@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import TypeVar, Union
+from typing import TypeVar
 
 import pytest
 

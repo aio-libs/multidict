@@ -1,5 +1,4 @@
 from collections import deque
-from typing import Union
 
 from multidict import CIMultiDict, MultiDict
 

@@ -8,7 +8,7 @@ import weakref
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator, KeysView, Mapping
 from types import ModuleType
-from typing import TypeVar, Union, cast
+from typing import TypeVar, cast
 
 import pytest
 

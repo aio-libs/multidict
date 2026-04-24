@@ -1,6 +1,5 @@
 import string
 import sys
-from typing import Union
 
 import pytest
 from multidict import (
