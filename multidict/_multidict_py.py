@@ -99,6 +99,15 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._md._key(e.key), e.value
 
+    def __reversed__(self) -> Iterator[tuple[str, _V]]:
+        return _Iter(len(self), self._iter_reversed(self._md._version))
+
+    def _iter_reversed(self, version: int) -> Iterator[tuple[str, _V]]:
+        for e in self._md._keys.iter_entries_reverse():
+            if version != self._md._version:
+                raise RuntimeError("Dictionary changed during iteration")
+            yield self._md._key(e.key), e.value
+
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
         lst = []
@@ -268,6 +277,15 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
                 raise RuntimeError("Dictionary changed during iteration")
             yield e.value
 
+    def __reversed__(self) -> Iterator[_V]:
+        return _Iter(len(self), self._iter_reversed(self._md._version))
+
+    def _iter_reversed(self, version: int) -> Iterator[_V]:
+        for e in self._md._keys.iter_entries_reverse():
+            if version != self._md._version:
+                raise RuntimeError("Dictionary changed during iteration")
+            yield e.value
+
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
         lst = []
@@ -293,6 +311,15 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 
     def _iter(self, version: int) -> Iterator[str]:
         for e in self._md._keys.iter_entries():
+            if version != self._md._version:
+                raise RuntimeError("Dictionary changed during iteration")
+            yield self._md._key(e.key)
+
+    def __reversed__(self) -> Iterator[str]:
+        return _Iter(len(self), self._iter_reversed(self._md._version))
+
+    def _iter_reversed(self, version: int) -> Iterator[str]:
+        for e in self._md._keys.iter_entries_reverse():
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._md._key(e.key)
@@ -590,6 +617,9 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
 
     def iter_entries(self) -> Iterator[_Entry[_V]]:
         return filter(None, self.entries)
+
+    def iter_entries_reverse(self) -> Iterator[_Entry[_V]]:
+        return filter(None, reversed(self.entries))
 
     def restore_hash(self, hash_: int) -> None:
         mask = self.mask
