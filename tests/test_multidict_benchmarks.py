@@ -1,7 +1,5 @@
 """codspeed benchmarks for multidict."""
 
-from typing import Dict, Type, Union
-
 from pytest_codspeed import BenchmarkFixture
 
 from multidict import (
@@ -19,7 +17,7 @@ _SENTINEL = object()
 
 
 def test_multidict_insert_str(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class()
     items = [str(i) for i in range(100)]
@@ -32,7 +30,7 @@ def test_multidict_insert_str(
 
 def test_cimultidict_insert_istr(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class()
@@ -45,7 +43,7 @@ def test_cimultidict_insert_istr(
 
 
 def test_multidict_add_str(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     base_md = any_multidict_class()
     items = [str(i) for i in range(100)]
@@ -60,7 +58,7 @@ def test_multidict_add_str(
 
 def test_cimultidict_add_istr(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     base_md = case_insensitive_multidict_class()
@@ -75,7 +73,7 @@ def test_cimultidict_add_istr(
 
 
 def test_multidict_pop_str(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md_base = any_multidict_class((str(i), str(i)) for i in range(200))
     items = [str(i) for i in range(50, 150)]
@@ -89,7 +87,7 @@ def test_multidict_pop_str(
 
 def test_cimultidict_pop_istr(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md_base = case_insensitive_multidict_class(
@@ -106,7 +104,7 @@ def test_cimultidict_pop_istr(
 
 
 def test_multidict_popitem_str(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md_base = any_multidict_class((str(i), str(i)) for i in range(100))
 
@@ -118,7 +116,7 @@ def test_multidict_popitem_str(
 
 
 def test_multidict_clear_str(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class((str(i), str(i)) for i in range(100))
 
@@ -128,7 +126,7 @@ def test_multidict_clear_str(
 
 
 def test_multidict_update_str(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class((str(i), str(i)) for i in range(150))
     items = {str(i): str(i) for i in range(100, 200)}
@@ -140,14 +138,14 @@ def test_multidict_update_str(
 
 def test_cimultidict_update_istr(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class(
         (case_insensitive_str_class(i), case_insensitive_str_class(i))
         for i in range(150)
     )
-    items: Dict[Union[str, istr], istr] = {
+    items: dict[str | istr, istr] = {
         case_insensitive_str_class(i): case_insensitive_str_class(i)
         for i in range(100, 200)
     }
@@ -158,7 +156,7 @@ def test_cimultidict_update_istr(
 
 
 def test_multidict_update_str_with_kwargs(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class((str(i), str(i)) for i in range(150))
     items = {str(i): str(i) for i in range(100, 200)}
@@ -171,14 +169,14 @@ def test_multidict_update_str_with_kwargs(
 
 def test_cimultidict_update_istr_with_kwargs(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class(
         (case_insensitive_str_class(i), case_insensitive_str_class(i))
         for i in range(150)
     )
-    items: Dict[Union[str, istr], istr] = {
+    items: dict[str | istr, istr] = {
         case_insensitive_str_class(i): case_insensitive_str_class(i)
         for i in range(100, 200)
     }
@@ -190,7 +188,7 @@ def test_cimultidict_update_istr_with_kwargs(
 
 
 def test_multidict_extend_str(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     base_md = any_multidict_class((str(i), str(i)) for i in range(100))
     items = {str(i): str(i) for i in range(200)}
@@ -204,7 +202,7 @@ def test_multidict_extend_str(
 
 def test_cimultidict_extend_istr(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     base_md = case_insensitive_multidict_class(
@@ -223,7 +221,7 @@ def test_cimultidict_extend_istr(
 
 
 def test_multidict_extend_str_with_kwargs(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     base_md = any_multidict_class((str(i), str(i)) for i in range(100))
     items = {str(i): str(i) for i in range(200)}
@@ -238,7 +236,7 @@ def test_multidict_extend_str_with_kwargs(
 
 def test_cimultidict_extend_istr_with_kwargs(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     base_md = case_insensitive_multidict_class(
@@ -258,7 +256,7 @@ def test_cimultidict_extend_istr_with_kwargs(
 
 
 def test_multidict_delitem_str(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md_base = any_multidict_class((str(i), str(i)) for i in range(100))
     items = [str(i) for i in range(100)]
@@ -272,7 +270,7 @@ def test_multidict_delitem_str(
 
 def test_cimultidict_delitem_istr(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md_base = case_insensitive_multidict_class(
@@ -289,7 +287,7 @@ def test_cimultidict_delitem_istr(
 
 
 def test_multidict_getall_str_hit(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class(
         (f"key{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
@@ -304,7 +302,7 @@ def test_multidict_getall_str_hit(
 
 
 def test_multidict_getall_str_miss(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class(
         (f"key{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
@@ -320,7 +318,7 @@ def test_multidict_getall_str_miss(
 
 def test_cimultidict_getall_istr_hit(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class(
@@ -339,7 +337,7 @@ def test_cimultidict_getall_istr_hit(
 
 def test_cimultidict_getall_istr_miss(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class(
@@ -357,7 +355,7 @@ def test_cimultidict_getall_istr_miss(
 
 
 def test_multidict_fetch(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class((str(i), str(i)) for i in range(100))
     items = [str(i) for i in range(100)]
@@ -370,7 +368,7 @@ def test_multidict_fetch(
 
 def test_cimultidict_fetch_istr(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class(
@@ -386,7 +384,7 @@ def test_cimultidict_fetch_istr(
 
 
 def test_multidict_get_hit(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class((str(i), str(i)) for i in range(100))
     items = [str(i) for i in range(100)]
@@ -398,7 +396,7 @@ def test_multidict_get_hit(
 
 
 def test_multidict_get_miss(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class((str(i), str(i)) for i in range(100))
     items = [str(i) for i in range(100, 200)]
@@ -411,7 +409,7 @@ def test_multidict_get_miss(
 
 def test_cimultidict_get_istr_hit(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class(
@@ -428,7 +426,7 @@ def test_cimultidict_get_istr_hit(
 
 def test_cimultidict_get_istr_miss(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class(
@@ -444,7 +442,7 @@ def test_cimultidict_get_istr_miss(
 
 
 def test_multidict_get_hit_with_default(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class((str(i), str(i)) for i in range(100))
     items = [str(i) for i in range(100)]
@@ -457,7 +455,7 @@ def test_multidict_get_hit_with_default(
 
 def test_cimultidict_get_istr_hit_with_default(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class(
@@ -474,7 +472,7 @@ def test_cimultidict_get_istr_hit_with_default(
 
 def test_cimultidict_get_istr_with_default_miss(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     md = case_insensitive_multidict_class(
@@ -490,7 +488,7 @@ def test_cimultidict_get_istr_with_default_miss(
 
 
 def test_multidict_repr(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     items = [str(i) for i in range(100)]
     md = any_multidict_class([(i, i) for i in items])
@@ -501,7 +499,7 @@ def test_multidict_repr(
 
 
 def test_create_empty_multidict(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     @benchmark
     def _run() -> None:
@@ -509,7 +507,7 @@ def test_create_empty_multidict(
 
 
 def test_create_multidict_with_items(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     items = [(str(i), str(i)) for i in range(100)]
 
@@ -520,7 +518,7 @@ def test_create_multidict_with_items(
 
 def test_create_cimultidict_with_items_istr(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     items = [
@@ -534,7 +532,7 @@ def test_create_cimultidict_with_items_istr(
 
 
 def test_create_multidict_with_dict(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     dct = {str(i): str(i) for i in range(100)}
 
@@ -545,7 +543,7 @@ def test_create_multidict_with_dict(
 
 def test_create_cimultidict_with_dict_istr(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     dct = {
@@ -558,7 +556,7 @@ def test_create_cimultidict_with_dict_istr(
 
 
 def test_create_multidict_with_items_with_kwargs(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     items = [(str(i), str(i)) for i in range(100)]
     kwargs = {str(i): str(i) for i in range(100)}
@@ -570,7 +568,7 @@ def test_create_multidict_with_items_with_kwargs(
 
 def test_create_cimultidict_with_items_istr_with_kwargs(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     items = [
@@ -628,7 +626,7 @@ def test_create_cimultidictproxy(
 
 def test_create_from_existing_cimultidict(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     existing = case_insensitive_multidict_class(
@@ -642,7 +640,7 @@ def test_create_from_existing_cimultidict(
 
 def test_copy_from_existing_cimultidict(
     benchmark: BenchmarkFixture,
-    case_insensitive_multidict_class: Type[CIMultiDict[istr]],
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
     existing = case_insensitive_multidict_class(
@@ -655,7 +653,7 @@ def test_copy_from_existing_cimultidict(
 
 
 def test_iterate_multidict(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     items = [(str(i), str(i)) for i in range(100)]
     md = any_multidict_class(items)
@@ -667,7 +665,7 @@ def test_iterate_multidict(
 
 
 def test_iterate_multidict_keys(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     items = [(str(i), str(i)) for i in range(100)]
     md = any_multidict_class(items)
@@ -679,7 +677,7 @@ def test_iterate_multidict_keys(
 
 
 def test_iterate_multidict_values(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     items = [(str(i), str(i)) for i in range(100)]
     md = any_multidict_class(items)
@@ -691,7 +689,7 @@ def test_iterate_multidict_values(
 
 
 def test_iterate_multidict_items(
-    benchmark: BenchmarkFixture, any_multidict_class: Type[MultiDict[str]]
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     items = [(str(i), str(i)) for i in range(100)]
     md = any_multidict_class(items)

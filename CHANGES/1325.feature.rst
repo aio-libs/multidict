@@ -1,0 +1,2 @@
+Enable automatic upgrades from ruff after each python version that is dropped
+-- by :user:`Vizonex`.

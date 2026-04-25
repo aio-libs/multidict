@@ -29,7 +29,6 @@ def test_leak(script: str) -> None:
 
     subprocess.run(
         [sys.executable, "-u", "-m", "coverage", "run", str(leak_test_script)],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=True,
     )
