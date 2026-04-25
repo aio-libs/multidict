@@ -131,6 +131,34 @@ NEXT_VERSION(mod_state *state)
     return ++state->global_version;
 }
 
+#define MultiDict_CheckExact(state, obj) Py_IS_TYPE(obj, state->MultiDictType)
+#define MultiDict_Check(state, obj)      \
+    (MultiDict_CheckExact(state, obj) || \
+     PyObject_TypeCheck(obj, state->MultiDictType))
+#define CIMultiDict_CheckExact(state, obj) \
+    Py_IS_TYPE(obj, state->CIMultiDictType)
+#define CIMultiDict_Check(state, obj)      \
+    (CIMultiDict_CheckExact(state, obj) || \
+     PyObject_TypeCheck(obj, state->CIMultiDictType))
+#define AnyMultiDict_Check(state, obj)     \
+    (MultiDict_CheckExact(state, obj) ||   \
+     CIMultiDict_CheckExact(state, obj) || \
+     PyObject_TypeCheck(obj, state->MultiDictType))
+#define MultiDictProxy_CheckExact(state, obj) \
+    Py_IS_TYPE(obj, state->MultiDictProxyType)
+#define MultiDictProxy_Check(state, obj)      \
+    (MultiDictProxy_CheckExact(state, obj) || \
+     PyObject_TypeCheck(obj, state->MultiDictProxyType))
+#define CIMultiDictProxy_CheckExact(state, obj) \
+    Py_IS_TYPE(obj, state->CIMultiDictProxyType)
+#define CIMultiDictProxy_Check(state, obj)      \
+    (CIMultiDictProxy_CheckExact(state, obj) || \
+     PyObject_TypeCheck(obj, state->CIMultiDictProxyType))
+#define AnyMultiDictProxy_Check(state, obj)     \
+    (MultiDictProxy_CheckExact(state, obj) ||   \
+     CIMultiDictProxy_CheckExact(state, obj) || \
+     PyObject_TypeCheck(obj, state->MultiDictProxyType))
+
 #ifdef __cplusplus
 }
 #endif
