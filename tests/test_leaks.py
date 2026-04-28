@@ -11,6 +11,7 @@ IS_PYPY = platform.python_implementation() == "PyPy"
 @pytest.mark.parametrize(
     ("script"),
     (
+        "multidict_repr_ft.py",
         "multidict_extend_dict.py",
         "multidict_extend_multidict.py",
         "multidict_extend_tuple.py",
