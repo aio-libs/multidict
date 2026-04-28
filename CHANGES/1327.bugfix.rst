@@ -1,0 +1,2 @@
+Fixed hashtable insertion race on free-threaded mode.
+-- by :user:`Vizonex`
