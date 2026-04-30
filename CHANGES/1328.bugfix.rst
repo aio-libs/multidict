@@ -1,2 +1,2 @@
-Fixed global counter system using an atomic variable.
+Fixed global counter system using an atomic variable
 -- by :user:`Vizonex`.
