@@ -1,2 +1,3 @@
 Fixed race when calling for a string representation of a :class:`MultiDict` object.
+
 -- by :user:`Vizonex`
