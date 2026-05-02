@@ -10,18 +10,22 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 @pytest.mark.parametrize(
     ("items", "expected"),
     (
-        pytest.param([("a", 1), ("b", 2)], {"a": [1], "b": [2]}, id="unique-keys"),
         pytest.param(
-            [("a", 1), ("b", 2), ("a", 3)],
-            {"a": [1, 3], "b": [2]},
+            [("a", "1"), ("b", "2")],
+            {"a": ["1"], "b": ["2"]},
+            id="unique-keys",
+        ),
+        pytest.param(
+            [("a", "1"), ("b", "2"), ("a", "3")],
+            {"a": ["1", "3"], "b": ["2"]},
             id="multi-values",
         ),
     ),
 )
 def test_to_dict(
     any_multidict_class: type[MultiDict[str]] | type[CIMultiDict[str]],
-    items: list[tuple[str, int]],
-    expected: dict[str, list[int]],
+    items: list[tuple[str, str]],
+    expected: dict[str, list[str]],
 ) -> None:
     """Test basic to_dict conversion with unique and duplicate keys."""
     d = any_multidict_class(items)
