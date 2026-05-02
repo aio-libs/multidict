@@ -101,8 +101,7 @@ def test_to_dict_case_insensitive_grouping(
 
 def test_to_dict_proxy(
     any_multidict_class: type[MultiDict[str]] | type[CIMultiDict[str]],
-    any_multidict_proxy_class: type[MultiDictProxy[str]]
-    | type[CIMultiDictProxy[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]] | type[CIMultiDictProxy[str]],
 ) -> None:
     """Test to_dict works through a proxy."""
     md = any_multidict_class([("a", "1"), ("b", "2"), ("a", "3")])
@@ -112,8 +111,7 @@ def test_to_dict_proxy(
 
 def test_to_dict_proxy_mutation_isolation(
     any_multidict_class: type[MultiDict[str]] | type[CIMultiDict[str]],
-    any_multidict_proxy_class: type[MultiDictProxy[str]]
-    | type[CIMultiDictProxy[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]] | type[CIMultiDictProxy[str]],
 ) -> None:
     """Test that modifying returned dict does not affect the proxy."""
     md = any_multidict_class([("a", "1")])
