@@ -1,14 +1,15 @@
+from __future__ import annotations
+
 import threading
-from typing import Type, Union
 
 import pytest
 
-from multidict import CIMultiDict, MultiDict
+from multidict import CIMultiDict, MultiDict, MutableMultiMapping
 
 
-@pytest.mark.parametrize("cls", [CIMultiDict, MultiDict])
+@pytest.mark.c_extension
 def test_race_condition_iterator_vs_mutation(
-    cls: Union[Type[CIMultiDict[str]], Type[MultiDict[str]]],
+    any_multidict_class: type[CIMultiDict[str]] | type[MultiDict[str]],
 ) -> None:
     """Test that concurrent iterations and mutations do not cause a memory safety violation.
 
@@ -20,21 +21,22 @@ def test_race_condition_iterator_vs_mutation(
     a standard Python ``RuntimeError`` ('MultiDict is changed during iteration'), preventing
     crashes.
     """
-    if cls.__module__ == "multidict._multidict_py":
+    if getattr(any_multidict_class, "__module__", "").endswith("_multidict_py"):
         pytest.skip("Test is only applicable to the C extension")
 
-    md: Union[CIMultiDict[str], MultiDict[str]] = cls()
+    md: MutableMultiMapping[str] = any_multidict_class()
     for i in range(8):
         md[f"init-{i}"] = f"v{i}"
 
     errors: list[tuple[str, int, str, str, str]] = []
 
-    def writer(target: Union[CIMultiDict[str], MultiDict[str]]) -> None:
+    def writer(target: MutableMultiMapping[str]) -> None:
         for i in range(256):
             try:
                 target[f"k-{i % 64}"] = f"v{i}"
             except RuntimeError:  # pragma: no cover
-                pass  # "MultiDict is changed during iteration" is expected
+                # "MultiDict changed during iteration" is expected under contention
+                pass
             except Exception as e:  # pragma: no cover
                 import traceback
 
@@ -42,14 +44,14 @@ def test_race_condition_iterator_vs_mutation(
                     ("writer", i, type(e).__name__, str(e), traceback.format_exc())
                 )
 
-    def reader(target: Union[CIMultiDict[str], MultiDict[str]]) -> None:
+    def reader(target: MutableMultiMapping[str]) -> None:
         for i in range(256):
             try:
                 list(target.items())
                 list(target.keys())
                 list(target.values())
             except RuntimeError:
-                # "MultiDict is changed during iteration" is exactly the expected
+                # "MultiDict changed during iteration" is exactly the expected
                 # and memory-safe outcome when iterating a resizing dictionary.
                 pass
             except Exception as e:  # pragma: no cover
