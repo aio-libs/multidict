@@ -134,14 +134,17 @@ multidict_keys_iter_iternext(MultidictIter *self)
 static inline void
 multidict_iter_dealloc(MultidictIter *self)
 {
+    PyTypeObject *tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     Py_XDECREF(self->md);
-    PyObject_GC_Del(self);
+    tp->tp_free(self);
+    Py_DECREF(tp);
 }
 
 static inline int
 multidict_iter_traverse(MultidictIter *self, visitproc visit, void *arg)
 {
+    Py_VISIT(Py_TYPE(self));
     Py_VISIT(self->md);
     return 0;
 }

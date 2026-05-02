@@ -1,6 +1,5 @@
 import string
 import sys
-from typing import Union
 
 import pytest
 from multidict import (
@@ -28,7 +27,7 @@ class TestMutableMultiDict:
         case_sensitive_multidict_class: type[MultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
-        assert str(d) == "<%s()>" % case_sensitive_multidict_class.__name__
+        assert str(d) == f"<{case_sensitive_multidict_class.__name__}()>"
 
         d = case_sensitive_multidict_class([("key", "one"), ("key", "two")])
 
@@ -77,7 +76,7 @@ class TestMutableMultiDict:
 
     def test_extend(
         self,
-        case_sensitive_multidict_class: type[MultiDict[Union[str, int]]],
+        case_sensitive_multidict_class: type[MultiDict[str | int]],
     ) -> None:
         d = case_sensitive_multidict_class()
         assert d == {}
@@ -348,7 +347,7 @@ class TestMutableMultiDict:
 
     def test_update(
         self,
-        case_sensitive_multidict_class: type[MultiDict[Union[str, int]]],
+        case_sensitive_multidict_class: type[MultiDict[str | int]],
     ) -> None:
         d = case_sensitive_multidict_class()
         assert d == {}
@@ -430,7 +429,7 @@ class TestMutableMultiDict:
 
     def test_merge(
         self,
-        case_sensitive_multidict_class: type[MultiDict[Union[str, int]]],
+        case_sensitive_multidict_class: type[MultiDict[str | int]],
     ) -> None:
         d = case_sensitive_multidict_class({"key": "one"})
         assert d == {"key": "one"}
@@ -532,7 +531,7 @@ class TestCIMutableMultiDict:
         case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
-        assert str(d) == "<%s()>" % case_insensitive_multidict_class.__name__
+        assert str(d) == f"<{case_insensitive_multidict_class.__name__}()>"
 
         d = case_insensitive_multidict_class([("KEY", "one"), ("KEY", "two")])
 
@@ -575,7 +574,7 @@ class TestCIMutableMultiDict:
 
     def test_extend(
         self,
-        case_insensitive_multidict_class: type[CIMultiDict[Union[str, int]]],
+        case_insensitive_multidict_class: type[CIMultiDict[str | int]],
     ) -> None:
         d = case_insensitive_multidict_class()
         assert d == {}

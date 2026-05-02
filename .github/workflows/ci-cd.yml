@@ -91,7 +91,7 @@ jobs:
         }
         >> "${GITHUB_OUTPUT}"
     - name: Upload built artifacts for testing
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         if-no-files-found: error
         name: ${{ needs.pre-setup.outputs.dists-artifact-name  }}
@@ -181,7 +181,6 @@ jobs:
         - 3.12
         - 3.11
         - "3.10"
-        - 3.9
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         debug: ['', 'Y']
@@ -199,7 +198,7 @@ jobs:
         - no-extensions: Y
           debug: Y
         include:
-        - pyver: pypy-3.9
+        - pyver: pypy-3.10
           no-extensions: Y
           os: ubuntu
           debug: ''
@@ -232,7 +231,7 @@ jobs:
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download distributions
       if: steps.build_type.outputs.build_type == 'wheel'
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
         merge-multiple: true
@@ -451,7 +450,7 @@ jobs:
         workflow-artifact-name: >-
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Download artifacts
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         pattern: coverage*
         merge-multiple: true
@@ -469,7 +468,7 @@ jobs:
         coverage xml
       shell: bash
     - name: Send coverage data to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         fail_ci_if_error: true
         files: coverage.xml
@@ -557,7 +556,7 @@ jobs:
           ${{ needs.pre-setup.outputs.dists-artifact-name }}
 
     - name: Download distributions
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
         merge-multiple: true
@@ -588,7 +587,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v3.2.0
+      uses: sigstore/gh-action-sigstore-python@v3.3.0
       with:
         inputs: >-
           ./dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
@@ -598,7 +597,7 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         # dist/ contains the built packages, which smoketest-artifacts/
         # contains the signatures and certificates.

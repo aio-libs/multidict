@@ -18,9 +18,7 @@ from typing import (
     ClassVar,
     Generic,
     NoReturn,
-    Optional,
     TypeVar,
-    Union,
     cast,
     overload,
 )
@@ -37,7 +35,7 @@ class istr(str):
     """Case insensitive str."""
 
     __is_istr__ = True
-    __istr_identity__: Optional[str] = None
+    __istr_identity__: str | None = None
 
 
 _V = TypeVar("_V")
@@ -109,9 +107,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
-    def _parse_item(
-        self, arg: Union[tuple[str, _V], _T]
-    ) -> Optional[tuple[int, str, str, _V]]:
+    def _parse_item(self, arg: tuple[str, _V] | _T) -> tuple[int, str, str, _V] | None:
         if not isinstance(arg, tuple):
             return None
         if len(arg) != 2:
@@ -167,14 +163,14 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                     break
         return ret
 
-    def __or__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
-        ret: set[Union[tuple[str, _V], _T]] = set(self)
+    def __or__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
+        ret: set[tuple[str, _V] | _T] = set(self)
         try:
             it = iter(other)
         except TypeError:
             return NotImplemented
         for arg in it:
-            item: Optional[tuple[int, str, str, _V]] = self._parse_item(arg)
+            item: tuple[int, str, str, _V] | None = self._parse_item(arg)
             if item is None:
                 ret.add(arg)
                 continue
@@ -186,9 +182,9 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add(arg)
         return ret
 
-    def __ror__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
+    def __ror__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         try:
-            ret: set[Union[tuple[str, _V], _T]] = set(other)
+            ret: set[tuple[str, _V] | _T] = set(other)
         except TypeError:
             return NotImplemented
         tmp = self._tmp_set(ret)
@@ -198,8 +194,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add((e.key, e.value))
         return ret
 
-    def __sub__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
-        ret: set[Union[tuple[str, _V], _T]] = set()
+    def __sub__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
+        ret: set[tuple[str, _V] | _T] = set()
         try:
             it = iter(other)
         except TypeError:
@@ -232,12 +228,12 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add(arg)
         return ret
 
-    def __xor__(self, other: Iterable[_T]) -> set[Union[tuple[str, _V], _T]]:
+    def __xor__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         try:
             rgt = set(other)
         except TypeError:
             return NotImplemented
-        ret: set[Union[tuple[str, _V], _T]] = self - rgt
+        ret: set[tuple[str, _V] | _T] = self - rgt
         ret |= rgt - self
         return ret
 
@@ -338,8 +334,8 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(key)
         return cast(set[_T], ret)
 
-    def __or__(self, other: Iterable[_T]) -> set[Union[str, _T]]:
-        ret: set[Union[str, _T]] = set(self)
+    def __or__(self, other: Iterable[_T]) -> set[str | _T]:
+        ret: set[str | _T] = set(self)
         try:
             it = iter(other)
         except TypeError:
@@ -352,9 +348,9 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(key)
         return ret
 
-    def __ror__(self, other: Iterable[_T]) -> set[Union[str, _T]]:
+    def __ror__(self, other: Iterable[_T]) -> set[str | _T]:
         try:
-            ret: set[Union[str, _T]] = set(other)
+            ret: set[str | _T] = set(other)
         except TypeError:
             return NotImplemented
 
@@ -399,12 +395,12 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.discard(key)  # type: ignore[arg-type]
         return ret
 
-    def __xor__(self, other: Iterable[_T]) -> set[Union[str, _T]]:
+    def __xor__(self, other: Iterable[_T]) -> set[str | _T]:
         try:
             rgt = set(other)
         except TypeError:
             return NotImplemented
-        ret: set[Union[str, _T]] = self - rgt  # type: ignore[assignment]
+        ret: set[str | _T] = self - rgt  # type: ignore[assignment]
         ret |= rgt - self
         return ret
 
@@ -481,8 +477,8 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
     log2_size: int
     usable: int
 
-    indices: array  # type: ignore[type-arg] # in py3.9 array is not generic
-    entries: list[Optional[_Entry[_V]]]
+    indices: array  # type: ignore[type-arg] # TODO(PY312): array[int]
+    entries: list[_Entry[_V] | None]
 
     @functools.cached_property
     def nslots(self) -> int:
@@ -502,7 +498,7 @@ class _HtKeys(Generic[_V]):  # type: ignore[misc]
             )
 
     @classmethod
-    def new(cls, log2_size: int, entries: list[Optional[_Entry[_V]]]) -> Self:
+    def new(cls, log2_size: int, entries: list[_Entry[_V] | None]) -> Self:
         size = 1 << log2_size
         usable = (size << 1) // 3
         if log2_size < 10:
@@ -649,10 +645,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     @overload
     def getall(self, key: str) -> list[_V]: ...
     @overload
-    def getall(self, key: str, default: _T) -> Union[list[_V], _T]: ...
-    def getall(
-        self, key: str, default: Union[_T, _SENTINEL] = sentinel
-    ) -> Union[list[_V], _T]:
+    def getall(self, key: str, default: _T) -> list[_V] | _T: ...
+    def getall(self, key: str, default: _T | _SENTINEL = sentinel) -> list[_V] | _T:
         """Return a list of all values matching the key."""
         identity = self._identity(key)
         hash_ = hash(identity)
@@ -671,15 +665,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             return res
         if not res and default is not sentinel:
             return default
-        raise KeyError("Key not found: %r" % key)
+        raise KeyError(f"Key not found: {key!r}")
 
     @overload
     def getone(self, key: str) -> _V: ...
     @overload
-    def getone(self, key: str, default: _T) -> Union[_V, _T]: ...
-    def getone(
-        self, key: str, default: Union[_T, _SENTINEL] = sentinel
-    ) -> Union[_V, _T]:
+    def getone(self, key: str, default: _T) -> _V | _T: ...
+    def getone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
         """Get first value matching the key.
 
         Raises KeyError if the key is not found and no default is provided.
@@ -691,7 +683,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 return e.value
         if default is not sentinel:
             return default
-        raise KeyError("Key not found: %r" % key)
+        raise KeyError(f"Key not found: {key!r}")
 
     # Mapping interface #
 
@@ -699,10 +691,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         return self.getone(key)
 
     @overload
-    def get(self, key: str, /) -> Union[_V, None]: ...
+    def get(self, key: str, /) -> _V | None: ...
     @overload
-    def get(self, key: str, /, default: _T) -> Union[_V, _T]: ...
-    def get(self, key: str, default: Union[_T, None] = None) -> Union[_V, _T, None]:
+    def get(self, key: str, /, default: _T) -> _V | _T: ...
+    def get(self, key: str, default: _T | None = None) -> _V | _T | None:
         """Get first value matching the key.
 
         If the key is not found, returns the default (or None if no default is provided)
@@ -812,7 +804,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self,
         arg: MDArg[_V],
         kwargs: Mapping[str, _V],
-    ) -> Iterator[Union[int, _Entry[_V]]]:
+    ) -> Iterator[int | _Entry[_V]]:
         identity_func = self._identity
         if arg:
             if isinstance(arg, MultiDictProxy):
@@ -847,8 +839,22 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                             f"multidict update sequence element #{pos} "
                             f"has length {len(item)}; 2 is required"
                         )
-                    identity = identity_func(item[0])
-                    yield _Entry(hash(identity), identity, item[0], item[1])
+                    try:
+                        key = item[0]
+                    except Exception as exc:
+                        raise ValueError(
+                            f"multidict update sequence element #{pos}'s "
+                            f"key could not be fetched"
+                        ) from exc
+                    try:
+                        value = item[1]
+                    except Exception as exc:
+                        raise ValueError(
+                            f"multidict update sequence element #{pos}'s "
+                            f"value could not be fetched"
+                        ) from exc
+                    identity = identity_func(key)
+                    yield _Entry(hash(identity), identity, key, value)
         else:
             yield len(kwargs)
             for key, value in kwargs.items():
@@ -904,11 +910,11 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     @overload
     def setdefault(
-        self: "MultiDict[Union[_T, None]]", key: str, default: None = None
-    ) -> Union[_T, None]: ...
+        self: "MultiDict[_T | None]", key: str, default: None = None
+    ) -> _T | None: ...
     @overload
     def setdefault(self, key: str, default: _V) -> _V: ...
-    def setdefault(self, key: str, default: Union[_V, None] = None) -> Union[_V, None]:  # type: ignore[misc]
+    def setdefault(self, key: str, default: _V | None = None) -> _V | None:  # type: ignore[misc]
         """Return value for key, set value to default if key is not present."""
         identity = self._identity(key)
         hash_ = hash(identity)
@@ -921,10 +927,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     @overload
     def popone(self, key: str) -> _V: ...
     @overload
-    def popone(self, key: str, default: _T) -> Union[_V, _T]: ...
-    def popone(
-        self, key: str, default: Union[_T, _SENTINEL] = sentinel
-    ) -> Union[_V, _T]:
+    def popone(self, key: str, default: _T) -> _V | _T: ...
+    def popone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
         """Remove specified key and return the corresponding value.
 
         If key is not found, d is returned if given, otherwise
@@ -951,10 +955,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     @overload
     def popall(self, key: str) -> list[_V]: ...
     @overload
-    def popall(self, key: str, default: _T) -> Union[list[_V], _T]: ...
-    def popall(
-        self, key: str, default: Union[_T, _SENTINEL] = sentinel
-    ) -> Union[list[_V], _T]:
+    def popall(self, key: str, default: _T) -> list[_V] | _T: ...
+    def popall(self, key: str, default: _T | _SENTINEL = sentinel) -> list[_V] | _T:
         """Remove all occurrences of key and return the list of corresponding
         values.
 
@@ -1138,7 +1140,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 
     _md: MultiDict[_V]
 
-    def __init__(self, arg: Union[MultiDict[_V], "MultiDictProxy[_V]"]):
+    def __init__(self, arg: "MultiDict[_V] | MultiDictProxy[_V]"):
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
                 f"ctor requires MultiDict or MultiDictProxy instance, not {type(arg)}"
@@ -1154,10 +1156,8 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
     @overload
     def getall(self, key: str) -> list[_V]: ...
     @overload
-    def getall(self, key: str, default: _T) -> Union[list[_V], _T]: ...
-    def getall(
-        self, key: str, default: Union[_T, _SENTINEL] = sentinel
-    ) -> Union[list[_V], _T]:
+    def getall(self, key: str, default: _T) -> list[_V] | _T: ...
+    def getall(self, key: str, default: _T | _SENTINEL = sentinel) -> list[_V] | _T:
         """Return a list of all values matching the key."""
         if default is not sentinel:
             return self._md.getall(key, default)
@@ -1167,10 +1167,8 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
     @overload
     def getone(self, key: str) -> _V: ...
     @overload
-    def getone(self, key: str, default: _T) -> Union[_V, _T]: ...
-    def getone(
-        self, key: str, default: Union[_T, _SENTINEL] = sentinel
-    ) -> Union[_V, _T]:
+    def getone(self, key: str, default: _T) -> _V | _T: ...
+    def getone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
         """Get first value matching the key.
 
         Raises KeyError if the key is not found and no default is provided.
@@ -1186,10 +1184,10 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
         return self.getone(key)
 
     @overload
-    def get(self, key: str, /) -> Union[_V, None]: ...
+    def get(self, key: str, /) -> _V | None: ...
     @overload
-    def get(self, key: str, /, default: _T) -> Union[_V, _T]: ...
-    def get(self, key: str, default: Union[_T, None] = None) -> Union[_V, _T, None]:
+    def get(self, key: str, /, default: _T) -> _V | _T: ...
+    def get(self, key: str, default: _T | None = None) -> _V | _T | None:
         """Get first value matching the key.
 
         If the key is not found, returns the default (or None if no default is provided)
@@ -1237,7 +1235,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
     """Read-only proxy for CIMultiDict instance."""
 
-    def __init__(self, arg: Union[MultiDict[_V], MultiDictProxy[_V]]):
+    def __init__(self, arg: MultiDict[_V] | MultiDictProxy[_V]):
         if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
             raise TypeError(
                 "ctor requires CIMultiDict or CIMultiDictProxy instance"
@@ -1251,7 +1249,7 @@ class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
         return CIMultiDict(self._md)
 
 
-def getversion(md: Union[MultiDict[object], MultiDictProxy[object]]) -> int:
+def getversion(md: MultiDict[object] | MultiDictProxy[object]) -> int:
     if isinstance(md, MultiDictProxy):
         md = md._md
     elif not isinstance(md, MultiDict):

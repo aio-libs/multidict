@@ -8,7 +8,7 @@ import weakref
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator, KeysView, Mapping
 from types import ModuleType
-from typing import TypeVar, Union, cast
+from typing import TypeVar, cast
 
 import pytest
 
@@ -47,10 +47,7 @@ def chained_callable(
             value = element(value)
 
         return cast(
-            Union[
-                MultiMapping[Union[int, str]],
-                MutableMultiMapping[Union[int, str]],
-            ],
+            MultiMapping[int | str] | MutableMultiMapping[int | str],
             value,
         )
 
@@ -82,7 +79,7 @@ def test_exposed_names(any_multidict_class_name: str) -> None:
     indirect=["cls"],
 )
 def test__iter__types(
-    cls: type[MultiDict[Union[str, int]]],
+    cls: type[MultiDict[str | int]],
     key_cls: type[str],
 ) -> None:
     d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
@@ -136,7 +133,7 @@ class BaseMultiDictTest:
     def test_instantiate__from_arg0(
         self,
         cls: type[MultiDict[str]],
-        arg0: Union[list[tuple[str, str]], dict[str, str]],
+        arg0: list[tuple[str, str]] | dict[str, str],
     ) -> None:
         d = cls(arg0)
 
@@ -159,7 +156,7 @@ class BaseMultiDictTest:
         assert sorted(d.items()) == [("key", "value1"), ("key2", "value2")]
 
     def test_instantiate__from_generator(
-        self, cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]]
+        self, cls: type[MultiDict[int]] | type[CIMultiDict[int]]
     ) -> None:
         d = cls((str(i), i) for i in range(2))
 
@@ -212,20 +209,14 @@ class BaseMultiDictTest:
 
     def test__iter__(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
         assert list(d) == ["key", "key2", "key"]
 
     def test__contains(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
 
@@ -239,10 +230,7 @@ class BaseMultiDictTest:
 
     def test_keys__contains(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
 
@@ -256,10 +244,7 @@ class BaseMultiDictTest:
 
     def test_values__contains(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key", "two"), ("key", 3)])
 
@@ -273,10 +258,7 @@ class BaseMultiDictTest:
 
     def test_items__contains(
         self,
-        cls: Union[
-            type[MultiDict[Union[str, int]]],
-            type[CIMultiDict[Union[str, int]]],
-        ],
+        cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key", "two"), ("key", 3)])
 
@@ -299,6 +281,42 @@ class BaseMultiDictTest:
             match=r"^multidict update sequence element #0 has length 3; 2 is required$",
         ):
             cls([(1, 2, 3)])  # type: ignore[call-arg]
+
+    def test_cannot_create_from_item_with_failing_getitem(
+        self,
+        cls: type[MutableMultiMapping[str]],
+    ) -> None:
+        class BadItem:
+            def __len__(self) -> int:
+                return 2
+
+            def __getitem__(self, i: int) -> object:
+                raise RuntimeError("intentional getitem failure")
+
+        with pytest.raises(
+            ValueError,
+            match=r"^multidict update sequence element #0's key could not be fetched$",
+        ):
+            cls([BadItem()])  # type: ignore[call-arg]
+
+    def test_cannot_create_from_item_with_failing_getitem_value(
+        self,
+        cls: type[MutableMultiMapping[str]],
+    ) -> None:
+        class BadValueItem:
+            def __len__(self) -> int:
+                return 2
+
+            def __getitem__(self, i: int) -> object:
+                if i == 0:
+                    return "key"
+                raise RuntimeError("intentional getitem failure")
+
+        with pytest.raises(
+            ValueError,
+            match=r"^multidict update sequence element #0's value could not be fetched$",
+        ):
+            cls([BadValueItem()])  # type: ignore[call-arg]
 
     def test_keys_is_set_less(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])
@@ -446,7 +464,7 @@ class BaseMultiDictTest:
         assert d1 != d2
 
     def test_eq_bad_mapping_len(
-        self, cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]]
+        self, cls: type[MultiDict[int]] | type[CIMultiDict[int]]
     ) -> None:
         class BadMapping(Mapping[str, int]):
             def __getitem__(self, key: str) -> int:
@@ -465,7 +483,7 @@ class BaseMultiDictTest:
 
     def test_eq_bad_mapping_getitem(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         class BadMapping(Mapping[str, int]):
             def __getitem__(self, key: str) -> int:
@@ -654,7 +672,7 @@ class BaseMultiDictTest:
 
     def test_iter_length_hint_keys(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.keys())
@@ -662,7 +680,7 @@ class BaseMultiDictTest:
 
     def test_iter_length_hint_items(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.items())
@@ -670,7 +688,7 @@ class BaseMultiDictTest:
 
     def test_iter_length_hint_values(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         md = cls(a=1, b=2)
         it = iter(md.values())
@@ -678,7 +696,7 @@ class BaseMultiDictTest:
 
     def test_ctor_list_arg_and_kwds(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         arg = [("a", 1)]
         obj = cls(arg, b=2)
@@ -687,7 +705,7 @@ class BaseMultiDictTest:
 
     def test_ctor_tuple_arg_and_kwds(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         arg = (("a", 1),)
         obj = cls(arg, b=2)
@@ -696,7 +714,7 @@ class BaseMultiDictTest:
 
     def test_ctor_deque_arg_and_kwds(
         self,
-        cls: Union[type[MultiDict[int]], type[CIMultiDict[int]]],
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
     ) -> None:
         arg = deque([("a", 1)])
         obj = cls(arg, b=2)
@@ -723,11 +741,11 @@ class TestMultiDict(BaseMultiDictTest):
         d = cls()
         _cls = type(d)
 
-        assert str(d) == "<%s()>" % _cls.__name__
+        assert str(d) == f"<{_cls.__name__}()>"
 
         d = cls([("key", "one"), ("key", "two")])
 
-        assert str(d) == "<%s('key': 'one', 'key': 'two')>" % _cls.__name__
+        assert str(d) == f"<{_cls.__name__}('key': 'one', 'key': 'two')>"
 
     def test__repr___recursive(
         self, any_multidict_class: type[MultiDict[object]]
@@ -738,7 +756,7 @@ class TestMultiDict(BaseMultiDictTest):
         d = any_multidict_class()
         d["key"] = d
 
-        assert str(d) == "<%s('key': ...)>" % _cls.__name__
+        assert str(d) == f"<{_cls.__name__}('key': ...)>"
 
     def test_getall(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
@@ -756,10 +774,10 @@ class TestMultiDict(BaseMultiDictTest):
 
     def test_preserve_stable_ordering(
         self,
-        cls: type[MultiDict[Union[str, int]]],
+        cls: type[MultiDict[str | int]],
     ) -> None:
         d = cls([("a", 1), ("b", "2"), ("a", 3)])
-        s = "&".join("{}={}".format(k, v) for k, v in d.items())
+        s = "&".join(f"{k}={v}" for k, v in d.items())
 
         assert s == "a=1&b=2&a=3"
 
@@ -850,7 +868,7 @@ class TestCIMultiDict(BaseMultiDictTest):
         d = cls([("KEY", "value1")], key="value2")
         _cls = type(d)
 
-        expected = "<%s('KEY': 'value1', 'key': 'value2')>" % _cls.__name__
+        expected = f"<{_cls.__name__}('KEY': 'value1', 'key': 'value2')>"
         assert str(d) == expected
 
     def test_items__repr__(self, cls: type[CIMultiDict[str]]) -> None:
