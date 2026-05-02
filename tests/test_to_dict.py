@@ -15,15 +15,15 @@ from multidict import (
 
 
 class MultidictModule(Protocol):
-    MultiDict: Type[MultiDict[object]]
-    CIMultiDict: Type[CIMultiDict[object]]
-    MultiDictProxy: Type[MultiDictProxy[object]]
-    CIMultiDictProxy: Type[CIMultiDictProxy[object]]
+    MultiDict: type[MultiDict[object]]
+    CIMultiDict: type[CIMultiDict[object]]
+    MultiDictProxy: type[MultiDictProxy[object]]
+    CIMultiDictProxy: type[CIMultiDictProxy[object]]
 
 
 class DictFactory(Protocol):
     def __call__(
-        self, arg: Optional[Iterable[tuple[str, object]]] = None
+        self, arg: Iterable[tuple[str, object]] | None = None
     ) -> MultiMapping[object]:
         raise NotImplementedError  # pragma: no cover
 
@@ -90,7 +90,7 @@ class TestMultiDictToDict(BaseToDictTests):
     """Tests for MultiDict.to_dict()."""
 
     @pytest.fixture
-    def cls(self, multidict_module: MultidictModule) -> Type[MultiDict[object]]:
+    def cls(self, multidict_module: MultidictModule) -> type[MultiDict[object]]:
         return multidict_module.MultiDict
 
 
@@ -98,7 +98,7 @@ class TestCIMultiDictToDict(BaseToDictTests):
     """Tests for CIMultiDict.to_dict()."""
 
     @pytest.fixture
-    def cls(self, multidict_module: MultidictModule) -> Type[CIMultiDict[object]]:
+    def cls(self, multidict_module: MultidictModule) -> type[CIMultiDict[object]]:
         return multidict_module.CIMultiDict
 
     def test_to_dict_case_insensitive_grouping(self, cls: DictFactory) -> None:
@@ -120,7 +120,7 @@ class TestMultiDictProxyToDict(BaseToDictTests):
     @pytest.fixture
     def cls(self, multidict_module: MultidictModule) -> DictFactory:
         def make_proxy(
-            arg: Optional[Iterable[tuple[str, object]]] = None,
+            arg: Iterable[tuple[str, object]] | None = None,
         ) -> MultiMapping[object]:
             md: MultiDict[object] = (
                 multidict_module.MultiDict(arg) if arg else multidict_module.MultiDict()
@@ -146,7 +146,7 @@ class TestCIMultiDictProxyToDict(BaseToDictTests):
     @pytest.fixture
     def cls(self, multidict_module: MultidictModule) -> DictFactory:
         def make_proxy(
-            arg: Optional[Iterable[tuple[str, object]]] = None,
+            arg: Iterable[tuple[str, object]] | None = None,
         ) -> MultiMapping[object]:
             md: CIMultiDict[object] = (
                 multidict_module.CIMultiDict(arg)
