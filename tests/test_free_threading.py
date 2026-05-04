@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import threading
 
 import pytest
@@ -70,3 +73,30 @@ def test_race_condition_iterator_vs_mutation(
     # If the C-extension is thread-safe, no Python exceptions other than RuntimeError
     # (handled above) should inadvertently surface to the user.
     assert not errors, f"Unexpected errors during concurrent execution: {errors}"
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 13),
+    reason="Free-threaded CPython warning requires Python 3.13+",
+)
+def test_pure_python_free_threaded_warning() -> None:
+    """Test that a RuntimeWarning is emitted on free-threaded CPython without C ext."""
+    script = (
+        "import sys\n"
+        "sys._is_gil_enabled = lambda: False\n"
+        "import warnings\n"
+        "with warnings.catch_warnings(record=True) as w:\n"
+        "    warnings.simplefilter('always')\n"
+        "    import multidict\n"
+        "msgs = [str(x.message) for x in w if issubclass(x.category, RuntimeWarning)]\n"
+        "assert any('not thread-safe' in m for m in msgs), "
+        "f'Expected thread-safety warning, got: {msgs}'\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        env={**os.environ, "MULTIDICT_NO_EXTENSIONS": "1"},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
