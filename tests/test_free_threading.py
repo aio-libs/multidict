@@ -99,4 +99,3 @@ def test_pure_python_free_threaded_warning() -> None:
         text=True,
     )
     assert result.returncode == 0, result.stderr
-
