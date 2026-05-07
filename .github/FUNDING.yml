@@ -6,6 +6,7 @@ github:
 - webknjaz
 - Dreamsorcerer
 open_collective: aiohttp
+tidelift: pypi/multidict
 custom:
 - https://opencollective.com/aio-libs
 
