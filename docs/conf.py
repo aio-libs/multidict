@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 #
 # multidict documentation build configuration file, created by
 # sphinx-quickstart on Wed Mar  5 12:35:35 2014.
@@ -382,7 +381,7 @@ def _replace_missing_aiohttp_hdrs_reference(
     env: BuildEnvironment,
     node: pending_xref,
     contnode: literal,
-) -> "reference | None":
+) -> reference | None:
     if (node.get("refdomain"), node.get("reftype")) != ("py", "mod"):
         return None
 
