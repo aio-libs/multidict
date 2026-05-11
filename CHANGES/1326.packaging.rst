@@ -1,1 +1,1 @@
-CHANGES/1326.breaking.rst
+Dropped support for free-threaded Python 3.13 -- by :user:`ngoldbaum`.
