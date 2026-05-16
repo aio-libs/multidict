@@ -1,5 +1,5 @@
 Added an ``AGENTS.md`` orientation file at the repository root, covering the
-aio-libs pull request template, the ``CHANGES/`` news fragment conventions,
-the draft-PR / human-review workflow, and the dual pure-Python and
-C-extension parity rule, so LLM contributors land changes that match project
-style -- by :user:`bdraco`.
+pull request template, the ``CHANGES/`` news fragment conventions, the
+draft-PR / human-review workflow, and the dual pure-Python and C-extension
+parity rule, so LLM contributors land changes that match project style
+-- by :user:`bdraco`.
