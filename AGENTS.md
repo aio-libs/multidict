@@ -1,5 +1,27 @@
 # Notes for LLM contributors
 
+## Rule zero: prove it works before opening the PR
+
+**Your job is to deliver code that is proven to work.** If you
+have not proven the change works, it is not time to open the PR
+yet. "It compiles", "type checks pass", and "the diff looks
+right" are not proof. Proof is: the relevant tests run locally
+and pass, the new behaviour is exercised by a test you added or
+extended, and any user-visible path you touched has been
+executed end-to-end. For multidict specifically, that means the
+suite passes under **both** the default C-extension build **and**
+the pure-Python build (`MULTIDICT_NO_EXTENSIONS=1`); see the
+[Tests](#tests) section for the exact commands. If you cannot
+run the suite in your environment, say so explicitly in the PR
+body rather than implying coverage you did not actually achieve.
+Opening a PR that turns out not to work wastes the reviewer's
+time and is the single fastest way to lose trust on this repo.
+
+The rest of this document covers how to dress up that proven
+change for review. None of it matters if rule zero is not met.
+
+---
+
 Read this before opening a pull request against `aio-libs/multidict`.
 Agents keep getting the same things wrong in this repo, so the rules
 below are not optional. If you are about to skip a section because it
@@ -149,25 +171,36 @@ Picking the number for the filename:
   git add CHANGES/1339.bugfix.rst
   ```
 
-### 3. Open the PR as a draft
+### 3. Open the PR as a draft, and leave it that way
 
-Use `gh pr create --draft`. Maintainers will not look at draft
-PRs, so the PR stays in draft until the human supervising the
-agent has fully reviewed the change end-to-end; only then does
-that human flip it to ready-for-review. **The agent must never
-mark its own PR ready** and must not request reviewers.
+Use `gh pr create --draft`. **Every LLM-authored submission
+must be fully reviewed by a human before it is marked ready
+out of draft, with no exceptions.** That review is the
+responsibility of the person running the agent, not of the
+project maintainers; do not shift the burden of reviewing LLM
+work onto them. Maintainers do not look at drafts, so the
+draft state is the agent's hand-off to the operator's review,
+not a request for the project to review the code on the
+operator's behalf. Do not mark the PR ready yourself, and do
+not request reviewers from the agent session; the human who
+reviewed the change and flipped it out of draft is the one who
+routes it.
 
-### 4. Disclose the agent, keep agent output out of the summary
+### 4. Disclose the agent, do not advertise it
 
-Disclosure is welcome. Put one plain line naming the agent that
+Disclosure is required, advertising is not welcome. Put one
+plain line at the bottom of the PR body naming the agent that
 drafted the change, for example:
 
 ```
 Drafted with <agent name and version>; reviewed by <human handle>.
 ```
 
-Beyond that:
+That single line is enough. Beyond that:
 
+- **No `Co-Authored-By:` trailers** for an LLM or any AI tool, in
+  commits or in the PR body. Attribution goes to the human who
+  reviewed the change.
 - **Agent output goes in a footer below the PR summary, ideally
   in a collapsed `<details>` block.** The aio-libs template
   sections (What / Are there changes in behavior / etc.) come
@@ -186,9 +219,11 @@ Beyond that:
   Lint: <command and result>
   </details>
   ```
-- **No `Co-Authored-By:` trailers** for an LLM or any AI tool, in
-  commits or in the PR body. Attribution goes to the human who
-  reviewed the change.
+
+  What is not OK is mixing this content into the template
+  sections themselves, or pushing it above the human-readable
+  summary so reviewers have to scroll past it. The shape and
+  content of the footer is otherwise up to the agent.
 - No emoji decoration (`🤖`, `✨`, `🚀`) in commit messages, PR
   titles, PR bodies, or news fragments. Project style is plain prose.
 - Commit messages and PR prose should read as if a human contributor
@@ -294,23 +329,34 @@ in the PR body.
 
 ## Things not to do
 
-- Do not invent a `## What / ## Why / ## How / ## Testing` PR body;
-  use the aio-libs template above.
-- Do not skip the `CHANGES/` fragment "because the change is small".
-  Even a one-line bugfix needs one.
+- Do not open a PR for code you have not proven works (see
+  _Rule zero_ at the top of this file). Run the relevant tests
+  on **both** backends, cover the new behaviour with a test,
+  exercise the user-visible path end-to-end, and say so honestly
+  in the PR body if any of that was not possible in your
+  environment.
+- Do not invent a `## What / ## Why / ## How / ## Testing` PR
+  body; use the aio-libs template above.
+- Do not skip the `CHANGES/` fragment "because the change is
+  small". Even a one-line bugfix needs one.
 - Do not add `Co-Authored-By` trailers for LLM tools, in either
   commits or the PR body.
-- Do not paste an agent-generated "Quality Report", "Test plan
-  summary", or "Generated by <pipeline>" block **inside the PR
-  summary**. If you must include it, drop it in a collapsed
-  `<details>` footer below the summary so reviewers can skip it.
-- Do not use em-dashes or sentence-separating dashes in PR prose or
-  commit messages.
+- Do not mix agent-generated scan output, test summaries, or
+  pipeline reports into the template sections. Put them in a
+  collapsed `<details>` footer below the PR summary instead.
+- Do not use em-dashes or sentence-separating dashes in PR prose
+  or commit messages.
 - Do not edit `multidict/_multilib/pythoncapi_compat.h`; it is
   vendored upstream.
 - Do not commit build artefacts (`*.so`, `__pycache__`,
   `multidict/_multilib/views.h.old`).
 - Do not change one backend without checking the other; see
   "Dual-backend discipline" above.
-- Do not request reviewers from the agent session; leave the PR as
-  a draft and let the maintainer route it.
+- Do not mark the PR ready for review yourself; that is the
+  call of the human running the agent, not the agent itself.
+  Maintainers do not look at drafts, but that does not mean
+  they should be doing your review; the operator is responsible
+  for reviewing the LLM-authored change before flipping the PR
+  out of draft.
+- Do not request reviewers from the agent session; the human
+  who flips the PR out of draft will route it.
