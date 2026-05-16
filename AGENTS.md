@@ -1,139 +1,230 @@
-# AGENTS.md
+# Notes for LLM contributors
 
-Orientation for LLM contributors working in this repo. Read this before editing
-code or opening a PR. Modeled after the structured-PR convention in
-[#1336](https://github.com/aio-libs/multidict/pull/1336).
+Read this before opening a pull request against `aio-libs/multidict`.
+Agents keep getting the same things wrong in this repo, so the rules
+below are not optional. If you are about to skip a section because it
+sounds like boilerplate, that is the section to re-read.
+
+Human-facing contributor docs live under
+[CHANGES/README.rst](CHANGES/README.rst); this file is the short
+orientation for agents.
 
 ## What this project is
 
-`multidict` is the case-insensitive, multi-value mapping that backs `aiohttp`,
-`yarl`, and other `aio-libs` projects. It ships **two parallel implementations**
-that MUST stay behaviourally identical:
+`multidict` is the case-insensitive, multi-value mapping used by
+`aiohttp`, `yarl`, and the rest of the `aio-libs` stack. It is small,
+widely deployed, and performance sensitive. It ships **two parallel
+implementations that must stay behaviourally identical**:
 
-- **Pure Python**: `multidict/_multidict_py.py`
-- **C extension**: `multidict/_multidict.c` plus headers in `multidict/_multilib/`
-  (`hashtable.h`, `htkeys.h`, `dict.h`, `istr.h`, `iter.h`, `parser.h`,
-  `state.h`, `views.h`)
+- Pure Python: `multidict/_multidict_py.py`
+- C extension: `multidict/_multidict.c`, plus headers in
+  `multidict/_multilib/`
 
-`MULTIDICT_NO_EXTENSIONS=1` forces the pure-Python build; the default build is
-C-accelerated. The test suite runs against whichever implementation is
-installed, so **you must test both**.
+Useful entry points:
 
-`multidict/_multilib/pythoncapi_compat.h` is vendored upstream — do not edit it.
-`multidict/_multilib/views.h.old` is a stale artifact that should be left alone
-(don't commit, don't delete in unrelated PRs).
+| Path                                  | What                                                            |
+| ------------------------------------- | --------------------------------------------------------------- |
+| `multidict/__init__.py`               | public surface; chooses C vs. pure-Python impl at import time   |
+| `multidict/_abc.py`                   | `MultiMapping`, `MutableMultiMapping`, type protocols           |
+| `multidict/_multidict_py.py`          | pure-Python `MultiDict`, `CIMultiDict`, `istr`, proxies         |
+| `multidict/_multidict.c`              | C implementation entry points and type definitions              |
+| `multidict/_multilib/hashtable.h`     | core hash table (``md_*`` functions, resize, lookup)            |
+| `multidict/_multilib/htkeys.h`        | key-storage layout, ``estimate_log2_keysize``                   |
+| `multidict/_multilib/istr.h`          | C ``istr`` (case-insensitive str)                               |
+| `multidict/_multilib/iter.h`          | views and iterators for the C impl                              |
+| `multidict/_multilib/parser.h`        | argument parsing for ``extend`` / ``update`` / constructors     |
+| `multidict/_multilib/pythoncapi_compat.h` | vendored upstream; do not edit                              |
+| `tests/`                              | pytest suite, parametrised across both backends                 |
+| `CHANGES/`                            | towncrier news fragments, one per PR                            |
 
-## Dual-backend discipline (the #1 thing agents get wrong)
+`MULTIDICT_NO_EXTENSIONS=1` forces the pure-Python build at install
+time; the default is the C extension. `MULTIDICT_DEBUG_BUILD=1` builds
+the C extension with `-O0 -g3 -UNDEBUG`.
 
-When you change behaviour in one implementation, check whether the other needs
-the same change. Two common patterns:
+## Pull request rules
 
-- A bug fix in `_multidict_py.py` often needs a matching fix in `_multidict.c`
-  / `_multilib/hashtable.h`. If the C path is genuinely unaffected, say so
-  explicitly in the PR's **How** section (see #1336 for an example: "The C
-  extension uses a different code path and is not affected").
-- A new public API must land in both backends with identical signatures,
-  type hints (`_abc.py`), and docstrings.
+These are the rules agents most often violate. Treat them as mandatory.
 
-If you can only fix one backend in scope, file a follow-up issue and call it
-out in the PR body. Don't silently leave the implementations divergent.
+### 1. Use the aio-libs pull request template
 
-## PR format (use this verbatim)
+`multidict` follows the standard `aio-libs` PR template. Even though
+this repo does not ship its own `.github/PULL_REQUEST_TEMPLATE.md`,
+maintainers expect every PR body to follow the structure below.
+Do not invent your own `## What / ## Why / ## How / ## Testing`
+layout; that is the marker that the PR was written by an agent
+without reading the conventions. See the cautionary example at
+[aio-libs/multidict#1336](https://github.com/aio-libs/multidict/pull/1336),
+which was closed for exactly this reason.
 
-This repo has **no PR template**. Use the freeform structure from #1336:
+Fill out the template verbatim, like so:
 
 ```markdown
-## What
+<!-- Thank you for your contribution! -->
 
-<One paragraph: what behaviour changes from the user's perspective.>
+## What do these changes do?
 
-## Why
+<short prose describing the change>
 
-<Root cause. For bugs, include a minimal reproducer in a fenced ```python
-block and describe the observable symptom vs. the correct behaviour.>
+## Are there changes in behavior for the user?
 
-## How
+<yes or no, plus a sentence if yes>
 
-<What the fix does. Call out what's intentionally unchanged (e.g. "the
-MultiDict branch was already correct", "the C extension uses a different
-code path and is not affected"). Keep the scope honest.>
+## Is it a substantial burden for the maintainers to support this?
 
-## Testing
+<no, plus a sentence on why if relevant>
 
-<Which existing tests cover this, or which new tests you added. State that
-you ran the suite under BOTH `MULTIDICT_NO_EXTENSIONS=1` and the default
-C-extension build.>
+## Related issue number
+
+Fixes #NNNN
+<!-- or a bare reference if related but not closing -->
+
+## Checklist
+
+- [x] I think the code is well written
+- [x] Unit tests for the changes exist
+- [x] Documentation reflects the changes
+- [ ] If you provide code modification, please add yourself to `CONTRIBUTORS.txt`
+- [x] Add a new news fragment into the `CHANGES/` folder
 ```
 
-### Disclosing LLM involvement
+Tick the boxes that actually apply. If a row does not apply (e.g. a
+CI-only change with no tests, or no `CONTRIBUTORS.txt` in this repo),
+write `N/A` next to it rather than silently leaving it blank.
 
-If you used an LLM to draft the PR, **mention which agent / model in one
-short line in the PR body** (e.g. "Drafted with Claude Opus 4.7"). Plain
-prose only. Do NOT:
+For a real filled-out example in a sibling aio-libs repo, see
+[aio-libs/yarl#1681](https://github.com/aio-libs/yarl/pull/1681).
 
-- Add `Co-Authored-By:` trailers attributing commits to an LLM.
-- Append advertising / branded footers (`🤖 Generated with …`, "Generated
-  by <pipeline> quality report", and similar).
+### 2. Add a CHANGES fragment
 
-Transparency about authorship is welcome; turning the commit graph or PR
-body into vendor marketing is not.
+Every user-visible or contributor-visible PR needs a towncrier news
+fragment in `CHANGES/`, named `<pr_number>.<category>.rst`. Categories
+(defined in [CHANGES/README.rst](CHANGES/README.rst) and
+[towncrier.toml](towncrier.toml)):
 
-## Changelog (towncrier — required for almost every PR)
+| Category       | When to use                                                     |
+| -------------- | --------------------------------------------------------------- |
+| `bugfix`       | corrects undesired behaviour                                    |
+| `feature`      | new public API or behaviour                                     |
+| `deprecation`  | announces a future removal                                      |
+| `breaking`     | removes or changes something public in a breaking way           |
+| `doc`          | documentation structure or build process                        |
+| `packaging`    | downstream-visible packaging or build changes                   |
+| `contrib`      | contributor experience (CI, dev env, test invocation)           |
+| `misc`         | does not fit any of the above                                   |
 
-Add a file to `CHANGES/` named `<pr_number>.<category>.rst`. If you don't yet
-know the PR number, use the issue number, or pick a placeholder and rename
-after opening the PR.
+Conventions for the fragment body:
 
-Categories (from `towncrier.toml`):
+- Use the past tense (`Fixed`, `Added`, `Bumped`), since it is read as
+  a "what changed since the previous release" digest.
+- Use reStructuredText, not Markdown.
+- Do not include the issue or PR number in the body; towncrier adds
+  it automatically from the filename.
+- Sign with `` -- by :user:`github-handle` `` at the end.
+- For multiple fragments in the same category, append a sequence
+  number: `1326.breaking.rst`, `1326.breaking.1.rst`.
 
-| Category | Use when |
-|---|---|
-| `bugfix` | Correcting undesired behaviour |
-| `feature` | New public API or behaviour |
-| `deprecation` | Announcing future removal |
-| `breaking` | Removing/changing public API in a breaking way |
-| `doc` | Notable documentation changes |
-| `packaging` | Wheel/sdist/runtime assumptions visible to downstreams |
-| `contrib` | Contributor-facing: tests, dev env, CI |
-| `misc` | Internal changes that don't fit above |
+Example (`CHANGES/1310.bugfix.rst` style):
 
-Rules:
+```rst
+A segmentation fault that could be triggered when getting an item
+is now fixed -- by :user:`Vizonex`.
+```
 
-- **Past tense**, end-user-facing language ("Fixed …", "Added …", "Dropped …").
-- reStructuredText syntax. Use ``inline code`` and `:py:meth:` / `:py:class:`
-  roles where helpful.
-- Do NOT include the PR/issue number inside the body — towncrier inlines it
-  from the filename.
-- Optionally sign with `` -- by :user:`your-github-handle` `` at the end.
-- One file per category; if a PR is both a bugfix and a feature, add two.
-- For multiple entries in the same category, use a sequence number:
-  `1326.breaking.rst`, `1326.breaking.1.rst`.
+You do not know the PR number before pushing. Open the PR first to
+get the number, then rename the file in a follow-up commit on the
+same branch (or use the issue number if one exists).
 
-Skip the changelog only for pure-refactor / internal-only PRs that have zero
-user-visible or contributor-visible impact, and say so in the PR body.
+### 3. Open the PR as a draft
 
-## Code style
+Use `gh pr create --draft`. The maintainer will mark it ready once
+they have looked it over. Do not request reviewers yourself.
 
-- `pyproject.toml` sets `[tool.ruff]` `target-version = "py310"` with only the
-  `UP` (pyupgrade) lint group enabled. Don't enable other lint groups in a
-  drive-by.
-- Minimum Python is **3.10**. Use `from __future__ import annotations`-style
-  syntax only where it already exists; otherwise match the surrounding file.
-- Don't add docstrings or comments that just restate the code. Match the
-  existing terse style in `_multidict_py.py`.
-- The C extension is compiled with `-Werror -Wsign-compare -Wconversion
-  -std=c11` (see `setup.py`). Casts must be explicit; signed/unsigned
-  comparisons will fail the build.
+### 4. Disclose the agent, do not advertise it
 
-## Running tests and local dev
+Disclosure is required, advertising is not welcome. Put one plain
+line at the bottom of the PR body naming the agent that drafted the
+change, for example:
+
+```
+Drafted with <agent name and version>; reviewed by <human handle>.
+```
+
+That single line is enough. Beyond that:
+
+- **No `Co-Authored-By:` trailers** for an LLM or any AI tool, in
+  commits or in the PR body. Attribution goes to the human who
+  reviewed the change.
+- No "Generated by", "Quality Report", "Test summary by <agent>",
+  or similar footers in the PR body. The closed `#1336` had exactly
+  this kind of footer and it was the giveaway that closed the PR.
+- No emoji decoration (`🤖`, `✨`, `🚀`) in commit messages, PR
+  titles, PR bodies, or news fragments. Project style is plain prose.
+- Commit messages and PR prose should read as if a human contributor
+  wrote them. Specifically:
+  - **No em-dashes (`—`)** and no dashes used as sentence separators
+    (`foo - bar`). Use a semicolon or a comma. This is the strongest
+    tell for AI-generated prose in this project, and reviewers do
+    read for it.
+  - No "Let me", "I'll", or first-person narration of what the agent
+    did. Describe the change, not the author.
+  - No filler sections ("Overview", "Summary of changes", "Key
+    takeaways") on top of the template. The template already has
+    the right sections.
+
+### 5. Keep the PR body short
+
+A couple of sentences per template section is plenty. If the change
+is non-obvious, a short reproducer or a paragraph on root cause is
+welcome. Long, multi-section essays with bolded sub-headings are not
+the style here.
+
+### 6. Commit hygiene
+
+- One logical change per PR. If a refactor and a bugfix are bundled
+  together, split them.
+- Pre-commit hooks (ruff, clang-format, mypy, yamllint, the changelog
+  filename check, and others under
+  [`.pre-commit-config.yaml`](.pre-commit-config.yaml)) rewrite files
+  in place and may abort the commit; when that happens, re-stage and
+  commit again. Do not pass `--no-verify`.
+- The repo does **not** use Conventional Commits as a CI gate. Recent
+  landed subjects are short imperative or descriptive prose (e.g.
+  `Drop 3.13t support`, `Bump pytest-codspeed from 5.0.1 to 5.0.2`).
+  Match that style; do not force `feat:` / `fix:` prefixes onto every
+  commit.
+
+## Dual-backend discipline
+
+This is the single biggest source of broken multidict PRs from agents.
+
+When you change behaviour in one implementation, check whether the
+other needs the same change:
+
+- A bug fix in `_multidict_py.py` usually needs a matching fix in
+  `_multidict.c` / `_multilib/hashtable.h`. If the C path is
+  genuinely unaffected (different code path, different invariant),
+  say so explicitly in the "What do these changes do?" section.
+- A new public API must land in both backends with identical
+  signatures, identical behaviour, identical type hints in
+  `_abc.py`, and matching docstrings.
+- Tests in `tests/` are parametrised across both backends by
+  `tests/conftest.py`, so a divergence will surface as a test
+  failure on one of the two legs.
+
+If you can only fix one backend in scope, file a follow-up issue
+and call it out in the PR body. Do not silently leave the
+implementations divergent.
+
+## Tests
+
+Install dev deps and run the suite:
 
 ```bash
-make install-dev          # editable install + dev requirements
-make lint                 # pre-commit on all files
-make test                 # pytest -q (against whichever build is installed)
+make install-dev   # installs deps and builds the C extension in place
+make test          # pytest -q against whichever build is installed
 ```
 
-To exercise both backends:
+To exercise both backends explicitly:
 
 ```bash
 # C extension (default)
@@ -145,37 +236,49 @@ MULTIDICT_NO_EXTENSIONS=1 pip install -e . --force-reinstall --no-deps
 pytest -q
 ```
 
-For C-extension debugging, build with `MULTIDICT_DEBUG_BUILD=1` (sets
-`-O0 -g3 -UNDEBUG`).
+`make lint` runs the full pre-commit suite across the tree;
+`make cov-dev` runs the suite with coverage.
+
+The C extension is compiled with `-Werror -Wsign-compare -Wconversion
+-std=c11` (see [setup.py](setup.py)). Casts must be explicit;
+signed/unsigned comparisons will fail the build, not just warn.
+
+CI runs across the supported CPython versions plus a wheel build for
+manylinux, musllinux, macOS, Windows, iOS, and Android, plus a
+pure-Python leg under `MULTIDICT_NO_EXTENSIONS=1`. Do not regress
+the benchmarks under `benchmarks/` without flagging the trade-off
+in the PR body.
+
+## Code style
+
+- `pyproject.toml` sets `[tool.ruff]` `target-version = "py310"` with
+  only the `UP` (pyupgrade) lint group enabled. Do not enable other
+  lint groups as a drive-by; that is its own PR.
+- Minimum Python is **3.10**. Match the surrounding file's import
+  and typing conventions; do not introduce `from __future__ import
+  annotations` to files that do not already use it.
+- Do not add docstrings or comments that just restate the code.
+  Match the existing terse style in `_multidict_py.py`.
 
 ## Things not to do
 
-- Don't edit `multidict/_multilib/pythoncapi_compat.h` (vendored).
-- Don't commit `*.so` build artifacts, `__pycache__`, or `views.h.old`.
-- Don't change one backend without checking the other (see above).
-- Don't put PR/issue numbers inside the body of a `CHANGES/*.rst` fragment.
-- Don't add `Co-Authored-By:` trailers attributing commits to an LLM
-  (a plain one-line disclosure in the PR body is the right place; see above).
-- Don't append auto-generated quality/summary or branded "generated by"
-  footers to PR descriptions.
-- Don't enable new ruff lint groups, retarget to a different Python, or bump
-  the minimum Python version as a side effect of an unrelated PR.
-- Don't introduce `try`/`except` around things that can't fail or
-  "compatibility shims" for behaviour the codebase doesn't actually need.
-
-## Useful entry points
-
-| File | What lives there |
-|---|---|
-| `multidict/__init__.py` | Public surface; chooses C vs. pure-Python impl |
-| `multidict/_abc.py` | `MultiMapping`, `MutableMultiMapping`, type protocols |
-| `multidict/_multidict_py.py` | Pure-Python `MultiDict`, `CIMultiDict`, `istr`, proxies |
-| `multidict/_multidict.c` | C implementation entry points and type definitions |
-| `multidict/_multilib/hashtable.h` | Core hash table (`md_*` functions, resize, lookup) |
-| `multidict/_multilib/htkeys.h` | Key-storage layout, `estimate_log2_keysize` |
-| `multidict/_multilib/istr.h` | C `istr` (case-insensitive str) |
-| `multidict/_multilib/iter.h` | Views/iterators for the C impl |
-| `multidict/_multilib/parser.h` | Argument parsing for `extend` / `update` / constructors |
-| `tests/conftest.py` | Parametrises tests across C and pure-Python backends |
-| `CHANGES/README.rst` | Full towncrier conventions |
-| `towncrier.toml` | Authoritative list of changelog categories |
+- Do not invent a `## What / ## Why / ## How / ## Testing` PR body;
+  use the aio-libs template above.
+- Do not skip the `CHANGES/` fragment "because the change is small".
+  Even a one-line bugfix needs one.
+- Do not add `Co-Authored-By` trailers for LLM tools, in either
+  commits or the PR body.
+- Do not paste an agent-generated "Quality Report", "Test plan
+  summary", or "Generated by <pipeline>" block at the bottom of the
+  PR body. A one-line disclosure naming the agent is fine and
+  expected; a marketing footer is not.
+- Do not use em-dashes or sentence-separating dashes in PR prose or
+  commit messages.
+- Do not edit `multidict/_multilib/pythoncapi_compat.h`; it is
+  vendored upstream.
+- Do not commit build artefacts (`*.so`, `__pycache__`,
+  `multidict/_multilib/views.h.old`).
+- Do not change one backend without checking the other; see
+  "Dual-backend discipline" above.
+- Do not request reviewers from the agent session; leave the PR as
+  a draft and let the maintainer route it.
