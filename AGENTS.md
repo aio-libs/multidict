@@ -151,8 +151,11 @@ Picking the number for the filename:
 
 ### 3. Open the PR as a draft
 
-Use `gh pr create --draft`. The maintainer will mark it ready once
-they have looked it over. Do not request reviewers yourself.
+Use `gh pr create --draft`. **A human marks the PR ready, never
+the agent.** The PR stays in draft until a human has fully
+reviewed the change end-to-end; only then do they flip it to
+ready-for-review. The agent must not mark its own PR ready and
+must not request reviewers.
 
 ### 4. Disclose the agent, keep agent output out of the summary
 
