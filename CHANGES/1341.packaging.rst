@@ -1,0 +1,3 @@
+Parallelized C extension compilation by defaulting ``build_ext.parallel``
+to ``os.cpu_count()`` so per-file compilations run concurrently instead of
+serially -- by :user:`bdraco`.
