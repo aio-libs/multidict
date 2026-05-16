@@ -1,0 +1,4 @@
+Added an ``AGENTS.md`` file with orientation for LLM contributors, covering the
+dual pure-Python and C-extension implementations, the ``CHANGES/`` towncrier
+conventions, and the structured ``What``/``Why``/``How``/``Testing`` pull
+request body format -- by :user:`bdraco`.
