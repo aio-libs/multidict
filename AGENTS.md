@@ -166,26 +166,26 @@ drafted the change, for example:
 Drafted with <agent name and version>; reviewed by <human handle>.
 ```
 
-If you need to include additional agent-generated output (a test
-plan summary, a code-scan result, a "Quality Report" block, links
-to a CI run, etc.), put it in a **footer below the PR summary**,
-wrapped in a collapsed `<details>` block so human reviewers can
-skip past it:
-
-```markdown
-<details>
-<summary>Agent output</summary>
-
-...test plan, scan results, etc...
-
-</details>
-```
-
-The summary itself must stay short and human-readable; agent
-boilerplate goes after it, never inside it.
-
 Beyond that:
 
+- **Agent output goes in a footer below the PR summary, ideally
+  in a collapsed `<details>` block.** The aio-libs template
+  sections (What / Are there changes in behavior / etc.) come
+  first and read like a human wrote them. Anything the agent
+  wants to surface for reviewers (scan results, test logs,
+  branch hygiene notes, pipeline output) goes underneath that.
+  A collapsed `<details>` block at the very bottom is the
+  recommended shape; it keeps the summary readable while still
+  letting a curious reviewer expand the agent's work:
+
+  ```markdown
+  <details>
+  <summary>Agent run details (optional, for reviewers)</summary>
+
+  Tests: <command and result>
+  Lint: <command and result>
+  </details>
+  ```
 - **No `Co-Authored-By:` trailers** for an LLM or any AI tool, in
   commits or in the PR body. Attribution goes to the human who
   reviewed the change.
