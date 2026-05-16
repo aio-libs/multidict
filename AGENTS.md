@@ -74,8 +74,7 @@ this repo does not ship its own `.github/PULL_REQUEST_TEMPLATE.md`,
 maintainers expect every PR body to follow the structure below.
 Do not invent your own `## What / ## Why / ## How / ## Testing`
 layout; that is the marker that the PR was written by an agent
-without reading the conventions, and PRs that use it have been
-closed on sight.
+without reading the conventions.
 
 Fill out the template verbatim, like so:
 
@@ -152,23 +151,30 @@ A segmentation fault that could be triggered when getting an item
 is now fixed -- by :user:`Vizonex`.
 ```
 
-Picking the number for the filename:
+Pick the number for the fragment filename as follows:
 
-- **If there is a linked issue**, name the fragment with the issue
-  number (e.g. `CHANGES/1284.bugfix.rst`). Issue numbers are
-  stable and known before the PR exists.
-- **If there is no linked issue**, you will not know the PR number
-  before pushing. Open the PR first to get the number, then add
-  the fragment as `CHANGES/<pr_number>.<category>.rst` in a
-  follow-up commit on the same branch.
-- **If both exist** (linked issue plus a known PR number), keep the
-  fragment file at the issue number and add a symlink from
-  `CHANGES/<pr_number>.<category>.rst` to the issue-numbered file
-  so towncrier picks up the cross-reference:
+- **If the change has a linked issue, name the fragment after
+  the issue number** (e.g. `CHANGES/1284.bugfix.rst` for a fix
+  that closes `#1284`). The issue number is stable and known
+  before the PR is opened.
+- **If there is no linked issue,** you have two options:
+  - Open the PR first, then add the fragment as a follow-up
+    commit on the same branch using the assigned PR number; or
+  - Guess the next PR number (scan
+    `gh pr list --state all --limit 5` for the current top of
+    the range), include the fragment in your initial push, and
+    rename in a follow-up commit if the guess was off by the
+    time the PR opened. This PR (`1339.contrib.rst`, opened as
+    `#1339`) is an example of the guess-and-pray path working
+    on the first try.
+- **If both an issue and a PR number are in play and you want
+  both to resolve,** keep the issue-numbered file as the real
+  fragment and add a symlink at `CHANGES/<pr_number>.<category>.rst`
+  pointing to it, so towncrier and the GitHub cross-reference
+  both find the entry:
 
   ```bash
-  ln -s 1284.bugfix.rst CHANGES/1339.bugfix.rst
-  git add CHANGES/1339.bugfix.rst
+  ln -s 1284.bugfix.rst CHANGES/1340.bugfix.rst
   ```
 
 ### 3. Open the PR as a draft, and leave it that way
