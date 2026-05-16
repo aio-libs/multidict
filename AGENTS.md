@@ -52,9 +52,8 @@ this repo does not ship its own `.github/PULL_REQUEST_TEMPLATE.md`,
 maintainers expect every PR body to follow the structure below.
 Do not invent your own `## What / ## Why / ## How / ## Testing`
 layout; that is the marker that the PR was written by an agent
-without reading the conventions. See the cautionary example at
-[aio-libs/multidict#1336](https://github.com/aio-libs/multidict/pull/1336),
-which was closed for exactly this reason.
+without reading the conventions, and PRs that use it have been
+closed on sight.
 
 Fill out the template verbatim, like so:
 
@@ -91,8 +90,9 @@ Tick the boxes that actually apply. If a row does not apply (e.g. a
 CI-only change with no tests, or no `CONTRIBUTORS.txt` in this repo),
 write `N/A` next to it rather than silently leaving it blank.
 
-For a real filled-out example in a sibling aio-libs repo, see
-[aio-libs/yarl#1681](https://github.com/aio-libs/yarl/pull/1681).
+For real filled-out examples in this repo, see
+[#1316](https://github.com/aio-libs/multidict/pull/1316) and
+[#1326](https://github.com/aio-libs/multidict/pull/1326).
 
 ### 2. Add a CHANGES fragment
 
@@ -130,9 +130,24 @@ A segmentation fault that could be triggered when getting an item
 is now fixed -- by :user:`Vizonex`.
 ```
 
-You do not know the PR number before pushing. Open the PR first to
-get the number, then rename the file in a follow-up commit on the
-same branch (or use the issue number if one exists).
+Picking the number for the filename:
+
+- **If there is a linked issue**, name the fragment with the issue
+  number (e.g. `CHANGES/1284.bugfix.rst`). Issue numbers are
+  stable and known before the PR exists.
+- **If there is no linked issue**, you will not know the PR number
+  before pushing. Open the PR first to get the number, then add
+  the fragment as `CHANGES/<pr_number>.<category>.rst` in a
+  follow-up commit on the same branch.
+- **If both exist** (linked issue plus a known PR number), keep the
+  fragment file at the issue number and add a symlink from
+  `CHANGES/<pr_number>.<category>.rst` to the issue-numbered file
+  so towncrier picks up the cross-reference:
+
+  ```bash
+  ln -s 1284.bugfix.rst CHANGES/1339.bugfix.rst
+  git add CHANGES/1339.bugfix.rst
+  ```
 
 ### 3. Open the PR as a draft
 
