@@ -143,6 +143,50 @@ class TestMutableMultiDict:
         with pytest.raises(KeyError, match="key"):
             del d["key"]
 
+    def test_reversed_after_del(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[int]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("a", 1), ("b", 2), ("c", 3), ("d", 4)])
+        del d["b"]
+        assert list(reversed(d.keys())) == ["d", "c", "a"]  # type: ignore[call-overload]
+        assert list(reversed(d.items())) == [  # type: ignore[call-overload]
+            ("d", 4),
+            ("c", 3),
+            ("a", 1),
+        ]
+        assert list(reversed(d.values())) == [4, 3, 1]
+
+    def test_reversed_raises_on_mutation_keys(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[int]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("a", 1), ("b", 2)])
+        it = reversed(d.keys())  # type: ignore[call-overload]
+        d["c"] = 3
+        with pytest.raises(RuntimeError):
+            next(iter(it))
+
+    def test_reversed_raises_on_mutation_items(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[int]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("a", 1), ("b", 2)])
+        it = reversed(d.items())  # type: ignore[call-overload]
+        d["c"] = 3
+        with pytest.raises(RuntimeError):
+            next(iter(it))
+
+    def test_reversed_raises_on_mutation_values(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[int]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("a", 1), ("b", 2)])
+        it = reversed(d.values())
+        d["c"] = 3
+        with pytest.raises(RuntimeError):
+            next(iter(it))
+
     def test_set_default(
         self,
         case_sensitive_multidict_class: type[MultiDict[str]],

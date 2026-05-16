@@ -13,6 +13,7 @@ typedef struct multidict_iter {
     PyObject_HEAD
     MultiDictObject *md;  // MultiDict or CIMultiDict
     md_pos_t current;
+    int reverse;
 } MultidictIter;
 
 static inline void
@@ -21,7 +22,18 @@ _init_iter(MultidictIter *it, MultiDictObject *md)
     Py_INCREF(md);
 
     it->md = md;
+    it->reverse = 0;
     md_init_pos(md, &it->current);
+}
+
+static inline void
+_init_iter_reverse(MultidictIter *it, MultiDictObject *md)
+{
+    Py_INCREF(md);
+
+    it->md = md;
+    it->reverse = 1;
+    md_init_pos_reverse(md, &it->current);
 }
 
 static inline PyObject *
@@ -70,13 +82,60 @@ multidict_values_iter_new(MultiDictObject *md)
 }
 
 static inline PyObject *
+multidict_items_iter_new_reverse(MultiDictObject *md)
+{
+    MultidictIter *it =
+        PyObject_GC_New(MultidictIter, md->state->ItemsIterType);
+    if (it == NULL) {
+        return NULL;
+    }
+
+    _init_iter_reverse(it, md);
+
+    PyObject_GC_Track(it);
+    return (PyObject *)it;
+}
+
+static inline PyObject *
+multidict_keys_iter_new_reverse(MultiDictObject *md)
+{
+    MultidictIter *it =
+        PyObject_GC_New(MultidictIter, md->state->KeysIterType);
+    if (it == NULL) {
+        return NULL;
+    }
+
+    _init_iter_reverse(it, md);
+
+    PyObject_GC_Track(it);
+    return (PyObject *)it;
+}
+
+static inline PyObject *
+multidict_values_iter_new_reverse(MultiDictObject *md)
+{
+    MultidictIter *it =
+        PyObject_GC_New(MultidictIter, md->state->ValuesIterType);
+    if (it == NULL) {
+        return NULL;
+    }
+
+    _init_iter_reverse(it, md);
+
+    PyObject_GC_Track(it);
+    return (PyObject *)it;
+}
+
+static inline PyObject *
 multidict_items_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
     PyObject *value = NULL;
     PyObject *ret = NULL;
 
-    int res = md_next(self->md, &self->current, NULL, &key, &value);
+    int res = self->reverse
+                  ? md_prev(self->md, &self->current, NULL, &key, &value)
+                  : md_next(self->md, &self->current, NULL, &key, &value);
     if (res < 0) {
         return NULL;
     }
@@ -102,7 +161,9 @@ multidict_values_iter_iternext(MultidictIter *self)
 {
     PyObject *value = NULL;
 
-    int res = md_next(self->md, &self->current, NULL, NULL, &value);
+    int res = self->reverse
+                  ? md_prev(self->md, &self->current, NULL, NULL, &value)
+                  : md_next(self->md, &self->current, NULL, NULL, &value);
     if (res < 0) {
         return NULL;
     }
@@ -119,7 +180,9 @@ multidict_keys_iter_iternext(MultidictIter *self)
 {
     PyObject *key = NULL;
 
-    int res = md_next(self->md, &self->current, NULL, &key, NULL);
+    int res = self->reverse
+                  ? md_prev(self->md, &self->current, NULL, &key, NULL)
+                  : md_next(self->md, &self->current, NULL, &key, NULL);
     if (res < 0) {
         return NULL;
     }
