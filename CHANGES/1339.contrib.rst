@@ -1,4 +1,5 @@
-Added an ``AGENTS.md`` file with orientation for LLM contributors, covering the
-dual pure-Python and C-extension implementations, the ``CHANGES/`` towncrier
-conventions, and the structured ``What``/``Why``/``How``/``Testing`` pull
-request body format -- by :user:`bdraco`.
+Added an ``AGENTS.md`` orientation file at the repository root, covering the
+aio-libs pull request template, the ``CHANGES/`` news fragment conventions,
+the draft-PR / human-review workflow, and the dual pure-Python and
+C-extension parity rule, so LLM contributors land changes that match project
+style -- by :user:`bdraco`.
