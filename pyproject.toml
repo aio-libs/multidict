@@ -7,7 +7,17 @@ build-backend = "setuptools.build_meta"
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["UP"]
+# Keep this list small and intentional. Each entry is enforced
+# repo-wide; do not enable additional lint groups as a drive-by.
+select = [
+  # Import sorting. Replaces a dedicated isort hook so the formatter
+  # (ruff format) and the import sorter (ruff check --select I) come
+  # from the same tool and rev.
+  "I",
+  # pyupgrade: enforce modern Python syntax for the current
+  # ``target-version`` (currently py310).
+  "UP",
+]
 
 [tool.cibuildwheel]
 test-requires = "-r requirements/pytest.txt"
