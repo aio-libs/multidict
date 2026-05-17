@@ -14,6 +14,12 @@ select = [
   # (ruff format) and the import sorter (ruff check --select I) come
   # from the same tool and rev.
   "I",
+  # Imports must live at the top of the module. Late/inside-function
+  # imports must be opted into explicitly with `# noqa: PLC0415` and a
+  # comment explaining why (e.g. avoiding a heavy optional dependency
+  # in the import path). Enforced because AI-assisted contributions
+  # frequently introduce function-scoped imports that are unnecessary.
+  "PLC0415",
   # pyupgrade: enforce modern Python syntax for the current
   # ``target-version`` (currently py310).
   "UP",
