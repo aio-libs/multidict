@@ -39,6 +39,7 @@ fallback
 fastpath
 filename
 formatters
+frontend
 RST
 docstring
 gcc

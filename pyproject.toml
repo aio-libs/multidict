@@ -26,6 +26,13 @@ select = [
 ]
 
 [tool.cibuildwheel]
+# `build[uv]` makes cibuildwheel use `uv` for every venv it provisions,
+# both on the build side (passed to `python -m build` as `--installer=uv`)
+# and when materializing the test environment. uv resolves and installs
+# the wheel plus `requirements/pytest.txt` in roughly a second; the previous
+# pip-based path took noticeably longer per ABI and ran once per matrix
+# cell.
+build-frontend = "build[uv]"
 test-requires = "-r requirements/pytest.txt"
 test-command = 'pytest -m "not leaks" --no-cov {project}/tests'
 # don't build PyPy wheels, install from source instead

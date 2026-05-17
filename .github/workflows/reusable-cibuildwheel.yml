@@ -110,6 +110,11 @@ jobs:
     - name: Build wheels
       uses: pypa/cibuildwheel@v3.4.1
       with:
+        # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
+        # available on the runner for Windows and macOS. Installing
+        # cibuildwheel with the `uv` extra bundles uv with it; Linux
+        # already has uv inside the manylinux/musllinux container.
+        extras: uv
         package-dir: >-  # not necessarily a dir, we pass an acceptable sdist
           dist/${{ inputs.source-tarball-name }}
 
