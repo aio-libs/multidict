@@ -96,9 +96,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
     def __reversed__(self) -> _Iter[tuple[str, _V]]:
         return _Iter(len(self), self._iter(self._md._version, reverse=True))
 
-    def _iter(
-        self, version: int, reverse: bool = False
-    ) -> Iterator[tuple[str, _V]]:
+    def _iter(self, version: int, reverse: bool = False) -> Iterator[tuple[str, _V]]:
         entries = (
             self._md._keys.iter_entries_reverse()
             if reverse
