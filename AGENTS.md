@@ -266,6 +266,29 @@ the style here.
   Match that style; do not force `feat:` / `fix:` prefixes onto every
   commit.
 
+### 7. Run the docs spell check before pushing
+
+CI builds the docs with `sphinxcontrib.spelling` and treats any
+unknown word as a hard failure. The spell checker reads every
+`CHANGES/*.rst` fragment as part of the build, so a technical word
+in your news fragment (`unparseable`, `parametrization`, `repr`,
+and so on) that is not in
+[`docs/spelling_wordlist.txt`](docs/spelling_wordlist.txt)
+will fail `make doc-spelling` and burn a CI run before a human
+even sees the PR.
+
+Before pushing:
+
+```bash
+make doc-spelling
+```
+
+If it flags a word you actually meant to use, add it to
+`docs/spelling_wordlist.txt` (one word per line, roughly
+alphabetical) in the same commit as the fragment. If it flags
+a typo, fix the typo. Do not paper over real misspellings by
+adding them to the wordlist.
+
 ## Dual-backend discipline
 
 This is the single biggest source of broken multidict PRs from agents.
