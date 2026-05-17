@@ -2,5 +2,3 @@ Added :py:func:`reversed` support to the keys, values, and items views of
 :class:`~multidict.MultiDict`, :class:`~multidict.CIMultiDict`, and their
 proxies in both the C-extension and pure-Python implementations
 -- by :user:`aiolibsbot`.
-
-This implements :issue:`448`.
