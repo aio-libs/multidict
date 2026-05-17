@@ -130,6 +130,16 @@ jobs:
           tag: 'musllinux'
         - runner-vm-os: macos-latest
           tag: 'musllinux'
+        # Skip windows-11-arm wheel build on PRs/pushes — tests run on
+        # windows-latest only, so the arm64 wheel is build-only and adds
+        # ~6 minutes of runner time per CI run. It is rebuilt at release
+        # time via ``build-wheels-for-odd-archs``.
+        - runner-vm-os: windows-11-arm
+          tag: >-
+           ${{
+           (github.event_name != 'push' || github.ref_type != 'tag')
+           && '' || 'none'
+           }}
         - runner-vm-os: ubuntu-latest
           tag: >-
            ${{
@@ -191,7 +201,14 @@ jobs:
           no-extensions: Y
         - os: windows
           no-extensions: Y
-        - no-extensions: Y
+        # Debug builds verify Py_DEBUG refcount/bounds checks against the
+        # C extension. The extension source is platform-portable, so the
+        # ubuntu debug matrix already covers the same code paths. Dropping
+        # debug on macOS and Windows removes 12 jobs (the two slowest
+        # runner pools) from every CI run.
+        - os: macos
+          debug: Y
+        - os: windows
           debug: Y
         include:
         - pyver: pypy-3.10
