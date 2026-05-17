@@ -1,0 +1,5 @@
+Fixed ``__repr__`` of :class:`~multidict.MultiDict`,
+:class:`~multidict.CIMultiDict`, their proxies, and the keys/items views
+producing unparseable output when keys contained quote characters --
+keys are now formatted with :func:`repr` so the result is a valid Python
+string literal -- by :user:`aiolibsbot`.

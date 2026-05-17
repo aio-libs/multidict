@@ -1809,14 +1809,9 @@ md_repr(MultiDictObject *md, PyObject *name, bool show_keys, bool show_values)
             }
         }
         if (show_keys) {
-            if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
-                goto fail;
-            }
-            /* Don't need to convert key to istr, the text is the same*/
-            if (PyUnicodeWriter_WriteStr(writer, key) < 0) {
-                goto fail;
-            }
-            if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
+            /* Use repr() so keys containing quotes produce parseable output.
+             */
+            if (PyUnicodeWriter_WriteRepr(writer, key) < 0) {
                 goto fail;
             }
         }
