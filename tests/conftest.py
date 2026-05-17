@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import argparse
 import pickle
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from importlib import import_module
 from types import ModuleType
-from collections.abc import Callable
 
 import pytest
 
