@@ -1,4 +1,9 @@
-Documented the docs spell check in ``AGENTS.md`` so LLM
-contributors run ``make doc-spelling`` before pushing rather than
-burning a CI run on a missing dictionary entry
+Documented three common agent failure modes in
+:file:`AGENTS.md`: the docs spell check
+(``make doc-spelling``) catches unknown words in news fragments
+before CI does; coverage runs over the test tree too, so
+unreachable defensive ``raise`` guards and one-sided cleanup
+branches in tests will surface as uncovered on the codecov
+patch report; and branch creation is restricted on
+``aio-libs/multidict``, so PRs must be pushed from a fork
 -- by :user:`bdraco`.
