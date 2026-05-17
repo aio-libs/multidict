@@ -1,7 +1,1 @@
-Documented in :file:`AGENTS.md` that coverage is collected over
-the test tree as well as ``multidict/`` (so unreachable
-defensive ``raise`` guards and one-sided cleanup branches in
-tests will surface as uncovered on the codecov patch report),
-and that branch creation is restricted on ``aio-libs/multidict``
-so all PRs must be pushed from a fork
--- by :user:`bdraco`.
+1343.contrib.rst
