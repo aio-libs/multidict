@@ -1,0 +1,2 @@
+Fixed a memory-safety race condition resulting in segmentation faults (Use-After-Free) when iterating and modifying a :class:`~multidict.MultiDict` concurrently in CPython free-threaded mode (3.13t+). Read/Write accesses to the internal ``keys`` buffer are now wrapped in ``Py_BEGIN_CRITICAL_SECTION``
+-- by :user:`rodrigobnogueira`.
