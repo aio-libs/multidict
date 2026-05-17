@@ -322,6 +322,46 @@ pure-Python leg under `MULTIDICT_NO_EXTENSIONS=1`. Do not regress
 the benchmarks under `benchmarks/` without flagging the trade-off
 in the PR body.
 
+### Every line in a test must be covered
+
+Coverage in this repo is collected over `source = .` (see
+[`.coveragerc`](.coveragerc)), so test files are measured the
+same as `multidict/`. Codecov reports the patch coverage on
+every PR, and a test that contains a branch or statement the
+suite never reaches will surface there as uncovered. This
+catches a class of mistake agents make all the time: a defensive
+`raise` inside a monkeypatched stub, a cleanup branch behind an
+`if hasattr(...):` guard that the happy path never enters, an
+`else` arm guarding a condition that is always true under the
+fixture, a backend-specific cleanup that only runs on one of
+the two builds. From the perspective of a unit suite all of
+those lines are dead code, and the coverage report flags them
+the same as dead code in `multidict/`.
+
+Design tests so every line runs:
+
+- Drive the fixture deterministically so both arms of any
+  conditional are hit, or drop the conditional entirely and
+  assert the single shape you actually set up.
+- Do not add `raise TypeError("must not be invoked")` guards
+  inside stubs the test installs; if the stub is never meant to
+  fire, either omit it or assert at the call site that it did
+  not. An unreachable `raise` is the most common form of this
+  failure.
+- Cleanup branches that only run when setup took a particular
+  shape (`if had_own_X: ...` style restores) need a second test,
+  or a parametrize, that exercises the other shape. If you
+  cannot justify the second case, unconditionally restore
+  instead.
+- Remember the dual-backend matrix: a branch you reach only
+  under the C extension or only under `MULTIDICT_NO_EXTENSIONS=1`
+  will look uncovered on the other leg. Either gate the branch
+  on the backend with a parametrize that covers both, or write
+  the test so the same lines run on both builds.
+- Prefer `monkeypatch` (which auto-reverts) over hand-rolled
+  save/restore blocks; the auto-revert path has no untaken
+  branch for coverage to flag.
+
 ## Code style
 
 - `pyproject.toml` sets `[tool.ruff]` `target-version = "py310"` with
@@ -358,6 +398,12 @@ in the PR body.
   `multidict/_multilib/views.h.old`).
 - Do not change one backend without checking the other; see
   "Dual-backend discipline" above.
+- Do not leave unreachable lines in tests (defensive `raise`
+  inside a stub the suite never invokes, cleanup branches that
+  only run for a setup shape the test does not exercise,
+  backend-specific arms that the matrix never enters). Coverage
+  measures test code; see _Every line in a test must be covered_
+  above.
 - Do not mark the PR ready for review yourself; that is the
   call of the human running the agent, not the agent itself.
   Maintainers do not look at drafts, but that does not mean

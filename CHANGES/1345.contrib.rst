@@ -1,0 +1,5 @@
+Documented in :file:`AGENTS.md` that coverage is collected over
+the test tree as well as ``multidict/``, so unreachable
+defensive ``raise`` guards and one-sided cleanup branches in
+tests will surface as uncovered on the codecov patch report
+-- by :user:`bdraco`.
