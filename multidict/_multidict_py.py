@@ -1,6 +1,5 @@
 import enum
 import functools
-import re
 import reprlib
 import sys
 from array import array
@@ -46,17 +45,6 @@ _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
 
 _version = array("Q", [0])
-
-
-# Matches any character that ``repr()`` would escape inside single quotes.
-_repr_needs_repr = re.compile(r"[^\x20-\x26\x28-\x5b\x5d-\x7e]").search
-
-
-def _key_repr(key: str) -> str:
-    # Skip ``repr()`` for the common case where single-quote wrapping suffices.
-    if _repr_needs_repr(key) is None:
-        return f"'{key}'"
-    return repr(key)
 
 
 class _Iter(Generic[_T]):
@@ -115,7 +103,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
-            lst.append(f"{_key_repr(e.key)}: {e.value!r}")
+            lst.append(f"{e.key!r}: {e.value!r}")
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
@@ -312,7 +300,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
-            lst.append(_key_repr(e.key))
+            lst.append(repr(e.key))
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
@@ -766,7 +754,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
         body = ", ".join(
-            f"{_key_repr(e.key)}: {e.value!r}" for e in self._keys.iter_entries()
+            f"{e.key!r}: {e.value!r}" for e in self._keys.iter_entries()
         )
         return f"<{self.__class__.__name__}({body})>"
 
@@ -1221,7 +1209,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
-        body = ", ".join(f"{_key_repr(k)}: {v!r}" for k, v in self.items())
+        body = ", ".join(f"{k!r}: {v!r}" for k, v in self.items())
         return f"<{self.__class__.__name__}({body})>"
 
     def copy(self) -> MultiDict[_V]:
