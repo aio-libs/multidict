@@ -177,7 +177,29 @@ Pick the number for the fragment filename as follows:
   ln -s 1284.bugfix.rst CHANGES/1340.bugfix.rst
   ```
 
-### 3. Open the PR as a draft, and leave it that way
+### 3. Push from a fork, not to upstream
+
+Branch creation on `aio-libs/multidict` is restricted; you
+**cannot** push a feature branch directly to upstream, and
+trying gets you a `GH013: Cannot create ref due to creations
+being restricted` error from the remote. All PRs must come
+from a fork. The standard setup is:
+
+```bash
+# one-time: add your fork as a remote alongside `origin`
+git remote add <your-handle> https://github.com/<your-handle>/multidict
+
+# per-PR: push the branch to your fork, then open the PR
+git push -u <your-handle> <branch-name>
+gh pr create --draft --repo aio-libs/multidict
+```
+
+`gh pr create` against `aio-libs/multidict` from a fork branch
+will pick up the right base and head automatically. Do not try
+to work around the restriction with `--force` or by retargeting
+`origin`; the rule is intentional.
+
+### 4. Open the PR as a draft, and leave it that way
 
 Use `gh pr create --draft`. **Every LLM-authored submission
 must be fully reviewed by a human before it is marked ready
@@ -192,7 +214,7 @@ not request reviewers from the agent session; the human who
 reviewed the change and flipped it out of draft is the one who
 routes it.
 
-### 4. Disclose the agent, do not advertise it
+### 5. Disclose the agent, do not advertise it
 
 Disclosure is required, advertising is not welcome. Put one
 plain line at the bottom of the PR body naming the agent that
@@ -244,14 +266,37 @@ That single line is enough. Beyond that:
     takeaways") on top of the template. The template already has
     the right sections.
 
-### 5. Keep the PR body short
+### 6. Keep the PR body short
 
 A couple of sentences per template section is plenty. If the change
 is non-obvious, a short reproducer or a paragraph on root cause is
 welcome. Long, multi-section essays with bolded sub-headings are not
 the style here.
 
-### 6. Commit hygiene
+### 7. Run the docs spell check before pushing
+
+CI builds the docs with `sphinxcontrib.spelling` and treats any
+unknown word as a hard failure. The spell checker reads every
+`CHANGES/*.rst` fragment as part of the build, so a technical word
+in your news fragment (`unparseable`, `parametrization`, `repr`,
+and so on) that is not in
+[`docs/spelling_wordlist.txt`](docs/spelling_wordlist.txt)
+will fail `make doc-spelling` and burn a CI run before a human
+even sees the PR.
+
+Before pushing:
+
+```bash
+make doc-spelling
+```
+
+If it flags a word you actually meant to use, add it to
+`docs/spelling_wordlist.txt` (one word per line, roughly
+alphabetical) in the same commit as the fragment. If it flags
+a typo, fix the typo. Do not paper over real misspellings by
+adding them to the wordlist.
+
+### 8. Commit hygiene
 
 - One logical change per PR. If a refactor and a bugfix are bundled
   together, split them.
@@ -383,6 +428,14 @@ Design tests so every line runs:
   environment.
 - Do not invent a `## What / ## Why / ## How / ## Testing` PR
   body; use the aio-libs template above.
+- Do not try to push a feature branch to `aio-libs/multidict`;
+  upstream rejects branch creation. Push to your fork and open
+  the PR cross-repo. See _Push from a fork, not to upstream_
+  above.
+- Do not push without running `make doc-spelling` first if you
+  edited any `.rst` file (including `CHANGES/`). The docs build
+  fails on unknown words and burns a CI run; see _Run the docs
+  spell check before pushing_ above.
 - Do not skip the `CHANGES/` fragment "because the change is
   small". Even a one-line bugfix needs one.
 - Do not add `Co-Authored-By` trailers for LLM tools, in either

@@ -1,0 +1,4 @@
+Documented the docs spell check in ``AGENTS.md`` so LLM
+contributors run ``make doc-spelling`` before pushing rather than
+burning a CI run on a missing dictionary entry
+-- by :user:`bdraco`.
