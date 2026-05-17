@@ -437,7 +437,7 @@ multidict_sq_contains(MultiDictObject *self, PyObject *key)
 static PyObject *
 multidict_tp_iter(MultiDictObject *self)
 {
-    return multidict_keys_iter_new(self);
+    return multidict_keys_iter_new(self, 0);
 }
 
 static PyObject *
@@ -1165,7 +1165,7 @@ multidict_proxy_sq_contains(MultiDictProxyObject *self, PyObject *key)
 static PyObject *
 multidict_proxy_tp_iter(MultiDictProxyObject *self)
 {
-    return multidict_keys_iter_new(self->md);
+    return multidict_keys_iter_new(self->md, 0);
 }
 
 static PyObject *

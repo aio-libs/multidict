@@ -17,27 +17,21 @@ typedef struct multidict_iter {
 } MultidictIter;
 
 static inline void
-_init_iter(MultidictIter *it, MultiDictObject *md)
+_init_iter(MultidictIter *it, MultiDictObject *md, int reverse)
 {
     Py_INCREF(md);
 
     it->md = md;
-    it->reverse = 0;
-    md_init_pos(md, &it->current);
-}
-
-static inline void
-_init_iter_reverse(MultidictIter *it, MultiDictObject *md)
-{
-    Py_INCREF(md);
-
-    it->md = md;
-    it->reverse = 1;
-    md_init_pos_reverse(md, &it->current);
+    it->reverse = reverse;
+    if (reverse) {
+        md_init_pos_reverse(md, &it->current);
+    } else {
+        md_init_pos(md, &it->current);
+    }
 }
 
 static inline PyObject *
-multidict_items_iter_new(MultiDictObject *md)
+multidict_items_iter_new(MultiDictObject *md, int reverse)
 {
     MultidictIter *it =
         PyObject_GC_New(MultidictIter, md->state->ItemsIterType);
@@ -45,14 +39,14 @@ multidict_items_iter_new(MultiDictObject *md)
         return NULL;
     }
 
-    _init_iter(it, md);
+    _init_iter(it, md, reverse);
 
     PyObject_GC_Track(it);
     return (PyObject *)it;
 }
 
 static inline PyObject *
-multidict_keys_iter_new(MultiDictObject *md)
+multidict_keys_iter_new(MultiDictObject *md, int reverse)
 {
     MultidictIter *it =
         PyObject_GC_New(MultidictIter, md->state->KeysIterType);
@@ -60,14 +54,14 @@ multidict_keys_iter_new(MultiDictObject *md)
         return NULL;
     }
 
-    _init_iter(it, md);
+    _init_iter(it, md, reverse);
 
     PyObject_GC_Track(it);
     return (PyObject *)it;
 }
 
 static inline PyObject *
-multidict_values_iter_new(MultiDictObject *md)
+multidict_values_iter_new(MultiDictObject *md, int reverse)
 {
     MultidictIter *it =
         PyObject_GC_New(MultidictIter, md->state->ValuesIterType);
@@ -75,52 +69,7 @@ multidict_values_iter_new(MultiDictObject *md)
         return NULL;
     }
 
-    _init_iter(it, md);
-
-    PyObject_GC_Track(it);
-    return (PyObject *)it;
-}
-
-static inline PyObject *
-multidict_items_iter_new_reverse(MultiDictObject *md)
-{
-    MultidictIter *it =
-        PyObject_GC_New(MultidictIter, md->state->ItemsIterType);
-    if (it == NULL) {
-        return NULL;
-    }
-
-    _init_iter_reverse(it, md);
-
-    PyObject_GC_Track(it);
-    return (PyObject *)it;
-}
-
-static inline PyObject *
-multidict_keys_iter_new_reverse(MultiDictObject *md)
-{
-    MultidictIter *it =
-        PyObject_GC_New(MultidictIter, md->state->KeysIterType);
-    if (it == NULL) {
-        return NULL;
-    }
-
-    _init_iter_reverse(it, md);
-
-    PyObject_GC_Track(it);
-    return (PyObject *)it;
-}
-
-static inline PyObject *
-multidict_values_iter_new_reverse(MultiDictObject *md)
-{
-    MultidictIter *it =
-        PyObject_GC_New(MultidictIter, md->state->ValuesIterType);
-    if (it == NULL) {
-        return NULL;
-    }
-
-    _init_iter_reverse(it, md);
+    _init_iter(it, md, reverse);
 
     PyObject_GC_Track(it);
     return (PyObject *)it;

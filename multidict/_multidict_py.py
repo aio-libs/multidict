@@ -93,17 +93,18 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
     def __iter__(self) -> _Iter[tuple[str, _V]]:
         return _Iter(len(self), self._iter(self._md._version))
 
-    def _iter(self, version: int) -> Iterator[tuple[str, _V]]:
-        for e in self._md._keys.iter_entries():
-            if version != self._md._version:
-                raise RuntimeError("Dictionary changed during iteration")
-            yield self._md._key(e.key), e.value
-
     def __reversed__(self) -> _Iter[tuple[str, _V]]:
-        return _Iter(len(self), self._iter_reversed(self._md._version))
+        return _Iter(len(self), self._iter(self._md._version, reverse=True))
 
-    def _iter_reversed(self, version: int) -> Iterator[tuple[str, _V]]:
-        for e in self._md._keys.iter_entries_reverse():
+    def _iter(
+        self, version: int, reverse: bool = False
+    ) -> Iterator[tuple[str, _V]]:
+        entries = (
+            self._md._keys.iter_entries_reverse()
+            if reverse
+            else self._md._keys.iter_entries()
+        )
+        for e in entries:
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._md._key(e.key), e.value
@@ -271,17 +272,16 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
     def __iter__(self) -> _Iter[_V]:
         return _Iter(len(self), self._iter(self._md._version))
 
-    def _iter(self, version: int) -> Iterator[_V]:
-        for e in self._md._keys.iter_entries():
-            if version != self._md._version:
-                raise RuntimeError("Dictionary changed during iteration")
-            yield e.value
-
     def __reversed__(self) -> _Iter[_V]:
-        return _Iter(len(self), self._iter_reversed(self._md._version))
+        return _Iter(len(self), self._iter(self._md._version, reverse=True))
 
-    def _iter_reversed(self, version: int) -> Iterator[_V]:
-        for e in self._md._keys.iter_entries_reverse():
+    def _iter(self, version: int, reverse: bool = False) -> Iterator[_V]:
+        entries = (
+            self._md._keys.iter_entries_reverse()
+            if reverse
+            else self._md._keys.iter_entries()
+        )
+        for e in entries:
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield e.value
@@ -309,17 +309,16 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
     def __iter__(self) -> _Iter[str]:
         return _Iter(len(self), self._iter(self._md._version))
 
-    def _iter(self, version: int) -> Iterator[str]:
-        for e in self._md._keys.iter_entries():
-            if version != self._md._version:
-                raise RuntimeError("Dictionary changed during iteration")
-            yield self._md._key(e.key)
-
     def __reversed__(self) -> _Iter[str]:
-        return _Iter(len(self), self._iter_reversed(self._md._version))
+        return _Iter(len(self), self._iter(self._md._version, reverse=True))
 
-    def _iter_reversed(self, version: int) -> Iterator[str]:
-        for e in self._md._keys.iter_entries_reverse():
+    def _iter(self, version: int, reverse: bool = False) -> Iterator[str]:
+        entries = (
+            self._md._keys.iter_entries_reverse()
+            if reverse
+            else self._md._keys.iter_entries()
+        )
+        for e in entries:
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._md._key(e.key)

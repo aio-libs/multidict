@@ -169,7 +169,7 @@ multidict_itemsview_new(MultiDictObject *md)
 static inline PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_items_iter_new(self->md);
+    return multidict_items_iter_new(self->md, 0);
 }
 
 static inline PyObject *
@@ -1025,7 +1025,7 @@ static inline PyObject *
 multidict_itemsview_reversed(_Multidict_ViewObject *self,
                              PyObject *Py_UNUSED(ignored))
 {
-    return multidict_items_iter_new_reverse(self->md);
+    return multidict_items_iter_new(self->md, 1);
 }
 
 PyDoc_STRVAR(view_reversed_doc, "Return a reverse iterator over the view.");
@@ -1103,7 +1103,7 @@ multidict_keysview_new(MultiDictObject *md)
 static inline PyObject *
 multidict_keysview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_keys_iter_new(self->md);
+    return multidict_keys_iter_new(self->md, 0);
 }
 
 static inline PyObject *
@@ -1604,7 +1604,7 @@ static inline PyObject *
 multidict_keysview_reversed(_Multidict_ViewObject *self,
                             PyObject *Py_UNUSED(ignored))
 {
-    return multidict_keys_iter_new_reverse(self->md);
+    return multidict_keys_iter_new(self->md, 1);
 }
 
 static PyMethodDef multidict_keysview_methods[] = {
@@ -1670,7 +1670,7 @@ multidict_valuesview_new(MultiDictObject *md)
 static inline PyObject *
 multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_values_iter_new(self->md);
+    return multidict_values_iter_new(self->md, 0);
 }
 
 static inline PyObject *
@@ -1699,7 +1699,7 @@ static inline PyObject *
 multidict_valuesview_reversed(_Multidict_ViewObject *self,
                               PyObject *Py_UNUSED(ignored))
 {
-    return multidict_values_iter_new_reverse(self->md);
+    return multidict_values_iter_new(self->md, 1);
 }
 
 static PyMethodDef multidict_valuesview_methods[] = {
