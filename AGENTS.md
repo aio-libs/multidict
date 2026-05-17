@@ -177,7 +177,29 @@ Pick the number for the fragment filename as follows:
   ln -s 1284.bugfix.rst CHANGES/1340.bugfix.rst
   ```
 
-### 3. Open the PR as a draft, and leave it that way
+### 3. Push from a fork, not to upstream
+
+Branch creation on `aio-libs/multidict` is restricted; you
+**cannot** push a feature branch directly to upstream, and
+trying gets you a `GH013: Cannot create ref due to creations
+being restricted` error from the remote. All PRs must come
+from a fork. The standard setup is:
+
+```bash
+# one-time: add your fork as a remote alongside `origin`
+git remote add <your-handle> https://github.com/<your-handle>/multidict
+
+# per-PR: push the branch to your fork, then open the PR
+git push -u <your-handle> <branch-name>
+gh pr create --draft --repo aio-libs/multidict
+```
+
+`gh pr create` against `aio-libs/multidict` from a fork branch
+will pick up the right base and head automatically. Do not try
+to work around the restriction with `--force` or by retargeting
+`origin`; the rule is intentional.
+
+### 4. Open the PR as a draft, and leave it that way
 
 Use `gh pr create --draft`. **Every LLM-authored submission
 must be fully reviewed by a human before it is marked ready
@@ -192,7 +214,7 @@ not request reviewers from the agent session; the human who
 reviewed the change and flipped it out of draft is the one who
 routes it.
 
-### 4. Disclose the agent, do not advertise it
+### 5. Disclose the agent, do not advertise it
 
 Disclosure is required, advertising is not welcome. Put one
 plain line at the bottom of the PR body naming the agent that
@@ -244,14 +266,37 @@ That single line is enough. Beyond that:
     takeaways") on top of the template. The template already has
     the right sections.
 
-### 5. Keep the PR body short
+### 6. Keep the PR body short
 
 A couple of sentences per template section is plenty. If the change
 is non-obvious, a short reproducer or a paragraph on root cause is
 welcome. Long, multi-section essays with bolded sub-headings are not
 the style here.
 
-### 6. Commit hygiene
+### 7. Run the docs spell check before pushing
+
+CI builds the docs with `sphinxcontrib.spelling` and treats any
+unknown word as a hard failure. The spell checker reads every
+`CHANGES/*.rst` fragment as part of the build, so a technical word
+in your news fragment (`unparseable`, `parametrization`, `repr`,
+and so on) that is not in
+[`docs/spelling_wordlist.txt`](docs/spelling_wordlist.txt)
+will fail `make doc-spelling` and burn a CI run before a human
+even sees the PR.
+
+Before pushing:
+
+```bash
+make doc-spelling
+```
+
+If it flags a word you actually meant to use, add it to
+`docs/spelling_wordlist.txt` (one word per line, roughly
+alphabetical) in the same commit as the fragment. If it flags
+a typo, fix the typo. Do not paper over real misspellings by
+adding them to the wordlist.
+
+### 8. Commit hygiene
 
 - One logical change per PR. If a refactor and a bugfix are bundled
   together, split them.
@@ -322,6 +367,46 @@ pure-Python leg under `MULTIDICT_NO_EXTENSIONS=1`. Do not regress
 the benchmarks under `benchmarks/` without flagging the trade-off
 in the PR body.
 
+### Every line in a test must be covered
+
+Coverage in this repo is collected over `source = .` (see
+[`.coveragerc`](.coveragerc)), so test files are measured the
+same as `multidict/`. Codecov reports the patch coverage on
+every PR, and a test that contains a branch or statement the
+suite never reaches will surface there as uncovered. This
+catches a class of mistake agents make all the time: a defensive
+`raise` inside a monkeypatched stub, a cleanup branch behind an
+`if hasattr(...):` guard that the happy path never enters, an
+`else` arm guarding a condition that is always true under the
+fixture, a backend-specific cleanup that only runs on one of
+the two builds. From the perspective of a unit suite all of
+those lines are dead code, and the coverage report flags them
+the same as dead code in `multidict/`.
+
+Design tests so every line runs:
+
+- Drive the fixture deterministically so both arms of any
+  conditional are hit, or drop the conditional entirely and
+  assert the single shape you actually set up.
+- Do not add `raise TypeError("must not be invoked")` guards
+  inside stubs the test installs; if the stub is never meant to
+  fire, either omit it or assert at the call site that it did
+  not. An unreachable `raise` is the most common form of this
+  failure.
+- Cleanup branches that only run when setup took a particular
+  shape (`if had_own_X: ...` style restores) need a second test,
+  or a parametrize, that exercises the other shape. If you
+  cannot justify the second case, unconditionally restore
+  instead.
+- Remember the dual-backend matrix: a branch you reach only
+  under the C extension or only under `MULTIDICT_NO_EXTENSIONS=1`
+  will look uncovered on the other leg. Either gate the branch
+  on the backend with a parametrize that covers both, or write
+  the test so the same lines run on both builds.
+- Prefer `monkeypatch` (which auto-reverts) over hand-rolled
+  save/restore blocks; the auto-revert path has no untaken
+  branch for coverage to flag.
+
 ## Code style
 
 - `pyproject.toml` sets `[tool.ruff]` `target-version = "py310"` with
@@ -343,6 +428,14 @@ in the PR body.
   environment.
 - Do not invent a `## What / ## Why / ## How / ## Testing` PR
   body; use the aio-libs template above.
+- Do not try to push a feature branch to `aio-libs/multidict`;
+  upstream rejects branch creation. Push to your fork and open
+  the PR cross-repo. See _Push from a fork, not to upstream_
+  above.
+- Do not push without running `make doc-spelling` first if you
+  edited any `.rst` file (including `CHANGES/`). The docs build
+  fails on unknown words and burns a CI run; see _Run the docs
+  spell check before pushing_ above.
 - Do not skip the `CHANGES/` fragment "because the change is
   small". Even a one-line bugfix needs one.
 - Do not add `Co-Authored-By` trailers for LLM tools, in either
@@ -358,6 +451,12 @@ in the PR body.
   `multidict/_multilib/views.h.old`).
 - Do not change one backend without checking the other; see
   "Dual-backend discipline" above.
+- Do not leave unreachable lines in tests (defensive `raise`
+  inside a stub the suite never invokes, cleanup branches that
+  only run for a setup shape the test does not exercise,
+  backend-specific arms that the matrix never enters). Coverage
+  measures test code; see _Every line in a test must be covered_
+  above.
 - Do not mark the PR ready for review yourself; that is the
   call of the human running the agent, not the agent itself.
   Maintainers do not look at drafts, but that does not mean

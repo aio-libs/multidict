@@ -20,6 +20,7 @@ changelog
 charset
 charsetdetect
 cibuildwheel
+codecov
 CPython
 criterias
 css
