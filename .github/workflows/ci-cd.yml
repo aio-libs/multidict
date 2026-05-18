@@ -67,7 +67,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
     - name: Set up Python ${{ env.PYTHON_LATEST }}
-      uses: astral-sh/setup-uv@v8
+      uses: astral-sh/setup-uv@v8.1.0
       with:
         python-version: ${{ env.PYTHON_LATEST }}
         activate-environment: true
@@ -252,7 +252,7 @@ jobs:
         path: dist
 
     - name: Setup Python ${{ matrix.pyver }}
-      uses: astral-sh/setup-uv@v8
+      uses: astral-sh/setup-uv@v8.1.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
