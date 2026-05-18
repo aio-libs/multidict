@@ -67,9 +67,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
     - name: Set up Python ${{ env.PYTHON_LATEST }}
-      uses: actions/setup-python@v6
+      uses: astral-sh/setup-uv@v8
       with:
         python-version: ${{ env.PYTHON_LATEST }}
+        activate-environment: true
     - name: Install core libraries for build
       run: python -Im pip install build
     - name: Build sdists and pure-python wheel
@@ -251,10 +252,10 @@ jobs:
         path: dist
 
     - name: Setup Python ${{ matrix.pyver }}
-      uses: actions/setup-python@v6
+      uses: astral-sh/setup-uv@v8
       with:
         python-version: ${{ matrix.pyver }}
-        allow-prereleases: true
+        activate-environment: true
     - name: Compute runtime Python version
       id: python-install
       run: |
