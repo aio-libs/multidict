@@ -32,6 +32,7 @@ deallocation
 decrementation
 dev
 dict
+dists
 docstrings
 downstreams
 eof
