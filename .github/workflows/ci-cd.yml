@@ -530,10 +530,14 @@ jobs:
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
       # CIBW_ARCHS_LINUX: Build emulated architectures if QEMU, else "auto"
+      # CIBW_BUILD_FRONTEND: override pyproject.toml's `build[uv]` because
+      # the pypa odd-arch containers do not ship `uv` preinstalled
       environment-variables: |-
         CIBW_ARCHS_LINUX=${{ matrix.qemu }}
 
         CIBW_ARCHS_MACOS=x86_64 arm64 universal2
+
+        CIBW_BUILD_FRONTEND=build
 
         CIBW_SKIP=${{
           (matrix.tag == 'musllinux')
