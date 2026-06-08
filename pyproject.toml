@@ -7,9 +7,32 @@ build-backend = "setuptools.build_meta"
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["UP"]
+# Keep this list small and intentional. Each entry is enforced
+# repo-wide; do not enable additional lint groups as a drive-by.
+select = [
+  # Import sorting. Replaces a dedicated isort hook so the formatter
+  # (ruff format) and the import sorter (ruff check --select I) come
+  # from the same tool and rev.
+  "I",
+  # Imports must live at the top of the module. Late/inside-function
+  # imports must be opted into explicitly with `# noqa: PLC0415` and a
+  # comment explaining why (e.g. avoiding a heavy optional dependency
+  # in the import path). Enforced because AI-assisted contributions
+  # frequently introduce function-scoped imports that are unnecessary.
+  "PLC0415",
+  # pyupgrade: enforce modern Python syntax for the current
+  # ``target-version`` (currently py310).
+  "UP",
+]
 
 [tool.cibuildwheel]
+# `build[uv]` makes cibuildwheel use `uv` for every venv it provisions,
+# both on the build side (passed to `python -m build` as `--installer=uv`)
+# and when materializing the test environment. uv resolves and installs
+# the wheel plus `requirements/pytest.txt` in roughly a second; the previous
+# pip-based path took noticeably longer per ABI and ran once per matrix
+# cell.
+build-frontend = "build[uv]"
 test-requires = "-r requirements/pytest.txt"
 test-command = 'pytest -m "not leaks" --no-cov {project}/tests'
 # don't build PyPy wheels, install from source instead
