@@ -817,7 +817,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     arg = list(arg)
                     arg.extend(list(kwargs.items()))
                 try:
-                    yield len(arg) + len(kwargs)  # type: ignore[arg-type]
+                    yield len(arg)  # type: ignore[arg-type]
                 except TypeError:
                     yield 0
                 for pos, item in enumerate(arg):

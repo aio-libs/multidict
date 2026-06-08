@@ -3,7 +3,6 @@ import textwrap
 
 import pyperf
 
-
 IMPLEMENTATIONS = {
     "dict": """\
     cls = dict

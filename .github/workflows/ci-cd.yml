@@ -130,6 +130,16 @@ jobs:
           tag: 'musllinux'
         - runner-vm-os: macos-latest
           tag: 'musllinux'
+        # Skip windows-11-arm wheel build on PRs/pushes — tests run on
+        # windows-latest only, so the arm64 wheel is build-only and adds
+        # ~6 minutes of runner time per CI run. It is rebuilt at release
+        # time via ``build-wheels-for-odd-archs``.
+        - runner-vm-os: windows-11-arm
+          tag: >-
+           ${{
+           (github.event_name != 'push' || github.ref_type != 'tag')
+           && '' || 'none'
+           }}
         - runner-vm-os: ubuntu-latest
           tag: >-
            ${{
@@ -176,7 +186,7 @@ jobs:
         pyver:
         - 3.14t
         - 3.14
-        - 3.13t
+        # Skipping 3.13t because cibuildwheel dropped support
         - 3.13
         - 3.12
         - 3.11
@@ -191,11 +201,14 @@ jobs:
           no-extensions: Y
         - os: windows
           no-extensions: Y
+        # Debug builds verify Py_DEBUG refcount/bounds checks against the
+        # C extension. The extension source is platform-portable, so the
+        # ubuntu debug matrix already covers the same code paths. Dropping
+        # debug on macOS and Windows removes 12 jobs (the two slowest
+        # runner pools) from every CI run.
         - os: macos
-          pyver: 3.13t  # this is still tested within cibuildwheel
+          debug: Y
         - os: windows
-          pyver: 3.13t  # this is still tested within cibuildwheel
-        - no-extensions: Y
           debug: Y
         include:
         - pyver: pypy-3.10
@@ -367,7 +380,7 @@ jobs:
     - name: Produce markdown test summary from JUnit
       if: >-
         !cancelled()
-      uses: test-summary/action@v2.4
+      uses: test-summary/action@v2.6
       with:
         paths: .test-results/pytest/test.xml
     - name: Append coverage results to Job Summary
@@ -507,20 +520,51 @@ jobs:
         tag:
         - ''
         - musllinux
+        include:
+        # Build aarch64 natively on the GH-hosted ARM runner instead of
+        # x86_64-under-QEMU; this drops the build from ~40 min of emulation
+        # to a few minutes of native execution. Each `(qemu, tag)` combo
+        # is listed explicitly so the include unambiguously augments the
+        # existing matrix cell rather than relying on the partial-key
+        # merge behaviour of `matrix.include`.
+        - qemu: aarch64
+          tag: ''
+          runner-vm-os: ubuntu-24.04-arm
+          native-arch: true
+        - qemu: aarch64
+          tag: musllinux
+          runner-vm-os: ubuntu-24.04-arm
+          native-arch: true
+        # armv7l also builds on aarch64 hosts. We still register QEMU so
+        # binfmt picks up the 32-bit ARM userspace handler regardless of
+        # whether the host kernel has CONFIG_COMPAT enabled. Even with
+        # emulation, aarch64-on-aarch64 hosting beats x86_64 by a wide
+        # margin.
+        - qemu: armv7l
+          tag: ''
+          runner-vm-os: ubuntu-24.04-arm
+        - qemu: armv7l
+          tag: musllinux
+          runner-vm-os: ubuntu-24.04-arm
     uses: ./.github/workflows/reusable-cibuildwheel.yml
     with:
       check-name: >-
         Build ${{ matrix.tag }} wheels for ${{ matrix.qemu }}
-      qemu: true
+      qemu: ${{ ! matrix.native-arch }}
+      runner-vm-os: ${{ matrix.runner-vm-os || 'ubuntu-latest' }}
       timeout-minutes: 120
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
       # CIBW_ARCHS_LINUX: Build emulated architectures if QEMU, else "auto"
+      # CIBW_BUILD_FRONTEND: override pyproject.toml's `build[uv]` because
+      # the pypa odd-arch containers do not ship `uv` preinstalled
       environment-variables: |-
         CIBW_ARCHS_LINUX=${{ matrix.qemu }}
 
         CIBW_ARCHS_MACOS=x86_64 arm64 universal2
+
+        CIBW_BUILD_FRONTEND=build
 
         CIBW_SKIP=${{
           (matrix.tag == 'musllinux')
@@ -566,7 +610,29 @@ jobs:
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+    - name: Check whether the GitHub Release already exists
+      # Allows re-running the deploy job after a partial failure (e.g. PyPI
+      # upload error) without the Make Release step failing with HTTP 422
+      # because the tag/release was created on a prior attempt. Treat
+      # only the literal `release not found` reply as "does not exist";
+      # other failures (auth, rate-limit, network) re-raise so the job
+      # fails loudly instead of falling through to Make Release.
+      id: gh-release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.ref_name }}
+      run: |
+        if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
+            >/dev/null 2>err; then
+          echo 'exists=true' >> "${GITHUB_OUTPUT}"
+        elif grep -qx 'release not found' err; then
+          echo 'exists=false' >> "${GITHUB_OUTPUT}"
+        else
+          cat err >&2
+          exit 1
+        fi
     - name: Make Release
+      if: steps.gh-release.outputs.exists != 'true'
       uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.rst
@@ -585,6 +651,10 @@ jobs:
     - name: >-
         Publish 🐍📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        # Allow re-running the deploy job after a partial PyPI upload
+        # without failing on dists that were already published.
+        skip-existing: true
 
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v3.3.0
