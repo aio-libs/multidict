@@ -1,0 +1,1 @@
+Made `istr` slotted in the Python implementation to prevent excessive creations of instance dictionaries -- by :user:`jonathandung4`.
