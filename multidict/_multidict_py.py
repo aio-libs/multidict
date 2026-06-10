@@ -441,7 +441,7 @@ class _CIMixin:
 
     def _identity(self, key: str) -> str:
         if isinstance(key, istr):
-            ret = getattr(key, '__istr_identity__', None)
+            ret = getattr(key, "__istr_identity__", None)
             if ret is None:
                 ret = key.lower()
                 key.__istr_identity__ = ret
