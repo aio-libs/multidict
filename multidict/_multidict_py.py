@@ -34,7 +34,7 @@ else:
 class istr(str):
     """Case insensitive str."""
 
-    __slots__ = ()
+    __slots__ = ("__istr_identity__",)
 
     __is_istr__ = True
     __istr_identity__: str | None = None
