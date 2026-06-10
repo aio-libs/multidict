@@ -37,7 +37,7 @@ class istr(str):
     __slots__ = ("__istr_identity__",)
 
     __is_istr__ = True
-    __istr_identity__: str | None = None
+    __istr_identity__: str | None
 
 
 _V = TypeVar("_V")
@@ -441,7 +441,7 @@ class _CIMixin:
 
     def _identity(self, key: str) -> str:
         if isinstance(key, istr):
-            ret = key.__istr_identity__
+            ret = getattr(key, '__istr_identity__', None)
             if ret is None:
                 ret = key.lower()
                 key.__istr_identity__ = ret
