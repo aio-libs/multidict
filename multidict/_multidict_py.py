@@ -38,10 +38,12 @@ class istr(str):
 
     __is_istr__ = True
     __istr_identity__: str | None
+
     def __new__(cls, s: Any, /):
         self = super().__new__(cls, s)
         self.__istr_identity__ = None
         return self
+
 
 _V = TypeVar("_V")
 _T = TypeVar("_T")
