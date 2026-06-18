@@ -412,6 +412,7 @@ _md_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash,
                              PyObject *identity, PyObject *key,
                              PyObject *value)
 {
+    Py_BEGIN_CRITICAL_SECTION(md);
     htkeys_t *keys = md->keys;
     if (keys->usable <= 0 || keys == &empty_htkeys) {
         /* Need to resize. */
@@ -435,6 +436,7 @@ _md_add_with_hash_steal_refs(MultiDictObject *md, Py_hash_t hash,
     md->used += 1;
     keys->usable -= 1;
     keys->nentries += 1;
+    Py_END_CRITICAL_SECTION();
     return 0;
 }
 
