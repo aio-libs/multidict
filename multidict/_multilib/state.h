@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <stdatomic.h>
+
 /* State of the _multidict module */
 typedef struct {
     PyTypeObject *IStrType;
@@ -26,7 +28,7 @@ typedef struct {
     PyObject *str_lower;
     PyObject *str_name;
 
-    uint64_t global_version;
+    _Atomic uint64_t global_version;
 } mod_state;
 
 static inline mod_state *
@@ -128,7 +130,11 @@ get_mod_state_by_def(PyObject *self)
 static inline uint64_t
 NEXT_VERSION(mod_state *state)
 {
-    return ++state->global_version;
+    /* relaxed is fine here as we only care about the atomicity of the RMW
+     * itself */
+    return atomic_fetch_add_explicit(
+               &state->global_version, 1, memory_order_relaxed) +
+           1;
 }
 
 #ifdef __cplusplus
