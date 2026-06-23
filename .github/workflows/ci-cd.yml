@@ -65,7 +65,7 @@ jobs:
         ${{ steps.dist-filenames-detection.outputs.wheel-filename }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
     - name: Set up Python ${{ env.PYTHON_LATEST }}
       uses: actions/setup-python@v6
       with:
@@ -415,7 +415,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - name: Checkout project
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
     - name: Setup Python 3.13
       id: python-install
       uses: actions/setup-python@v6
@@ -481,7 +481,7 @@ jobs:
         coverage xml
       shell: bash
     - name: Send coverage data to Codecov
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         fail_ci_if_error: true
         files: coverage.xml
@@ -657,7 +657,7 @@ jobs:
         skip-existing: true
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v3.3.0
+      uses: sigstore/gh-action-sigstore-python@v3.4.0
       with:
         inputs: >-
           ./dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
