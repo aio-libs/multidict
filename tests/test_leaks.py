@@ -18,6 +18,7 @@ IS_PYPY = platform.python_implementation() == "PyPy"
         "multidict_type_leak.py",
         "multidict_type_leak_items_values.py",
         "multidict_pop.py",
+        "multidict_to_dict.py",
     ),
 )
 @pytest.mark.leaks
