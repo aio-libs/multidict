@@ -34,8 +34,15 @@ else:
 class istr(str):
     """Case insensitive str."""
 
+    __slots__ = ("__istr_identity__",)
+
     __is_istr__ = True
-    __istr_identity__: str | None = None
+    __istr_identity__: str | None
+
+    def __new__(cls, s: Any, /):
+        self = super().__new__(cls, s)
+        self.__istr_identity__ = None
+        return self
 
 
 _V = TypeVar("_V")
@@ -441,8 +448,7 @@ class _CIMixin:
         if isinstance(key, istr):
             ret = key.__istr_identity__
             if ret is None:
-                ret = key.lower()
-                key.__istr_identity__ = ret
+                key.__istr_identity__ = ret = key.lower()
             return ret
         if isinstance(key, str):
             return key.lower()
