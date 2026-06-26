@@ -1769,6 +1769,7 @@ md_repr(MultiDictObject *md, PyObject *name, bool show_keys, bool show_values)
     PyObject *key = NULL;
     PyObject *value = NULL;
 
+    Py_BEGIN_CRITICAL_SECTION(md);
     bool comma = false;
     uint64_t version = md->version;
 
@@ -1850,6 +1851,7 @@ fail:
     Py_CLEAR(key);
     Py_CLEAR(value);
     PyUnicodeWriter_Discard(writer);
+    Py_END_CRITICAL_SECTION();
     return NULL;
 }
 
