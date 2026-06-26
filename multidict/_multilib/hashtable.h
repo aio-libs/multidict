@@ -664,6 +664,73 @@ cleanup:
     return ret;
 }
 
+static inline void
+md_init_pos_reverse(MultiDictObject *md, md_pos_t *pos)
+{
+    pos->pos = md->keys->nentries - 1;
+    pos->version = md->version;
+}
+
+static inline int
+md_prev(MultiDictObject *md, md_pos_t *pos, PyObject **pidentity,
+        PyObject **pkey, PyObject **pvalue)
+{
+    int ret = 0;
+
+    if (pos->version != md->version) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "MultiDict is changed during iteration");
+        ret = -1;
+        goto cleanup;
+    }
+
+    if (pos->pos < 0) {
+        goto cleanup;
+    }
+
+    entry_t *entries = htkeys_entries(md->keys);
+    entry_t *entry = entries + pos->pos;
+
+    while (entry->identity == NULL) {
+        pos->pos -= 1;
+        if (pos->pos < 0) {
+            goto cleanup;
+        }
+        entry -= 1;
+    }
+
+    if (pidentity) {
+        *pidentity = Py_NewRef(entry->identity);
+    }
+
+    if (pkey) {
+        assert(entry->key != NULL);
+        *pkey = _md_ensure_key(md, entry);
+        if (*pkey == NULL) {
+            assert(PyErr_Occurred());
+            ret = -1;
+            goto cleanup;
+        }
+    }
+    if (pvalue) {
+        *pvalue = Py_NewRef(entry->value);
+    }
+
+    --pos->pos;
+    return 1;
+cleanup:
+    if (pidentity) {
+        *pidentity = NULL;
+    }
+    if (pkey) {
+        *pkey = NULL;
+    }
+    if (pvalue) {
+        *pvalue = NULL;
+    }
+    return ret;
+}
+
 static inline int
 md_init_finder(MultiDictObject *md, PyObject *identity, md_finder_t *finder)
 {
