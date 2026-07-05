@@ -4,8 +4,8 @@ import gc
 import os
 
 import psutil
-from multidict import MultiDict
 
+from multidict import MultiDict
 
 process = psutil.Process(os.getpid())
 
