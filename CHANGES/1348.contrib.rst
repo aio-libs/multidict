@@ -1,0 +1,7 @@
+Enabled the ``I`` (import sorting) rule in
+``[tool.ruff.lint]`` so ``ruff check`` covers import order on top
+of the existing ``UP`` (pyupgrade) group, and updated the
+``ruff-check`` pre-commit hook to run with
+``--fix --exit-non-zero-on-fix --show-fixes`` so import-order
+fixes apply on commit. Sorted imports in four ``tests/`` files
+to match the new rule -- by :user:`bdraco`.

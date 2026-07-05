@@ -2,6 +2,7 @@ import string
 import sys
 
 import pytest
+
 from multidict import (
     CIMultiDict,
     CIMultiDictProxy,

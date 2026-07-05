@@ -1,0 +1,4 @@
+Overrode ``CIBW_BUILD_FRONTEND=build`` for the odd-arch wheel
+matrix; the upstream ``manylinux``/``musllinux`` images for
+those arches do not ship ``uv``
+-- by :user:`bdraco`.
