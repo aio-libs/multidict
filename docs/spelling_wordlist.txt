@@ -1,4 +1,5 @@
 armv
+aarch
 aarch64
 i686
 ppc64le
@@ -20,6 +21,7 @@ changelog
 charset
 charsetdetect
 cibuildwheel
+codecov
 CPython
 criterias
 css
@@ -31,6 +33,7 @@ deallocation
 decrementation
 dev
 dict
+dists
 docstrings
 downstreams
 eof
@@ -38,6 +41,7 @@ fallback
 fastpath
 filename
 formatters
+frontend
 RST
 docstring
 gcc
@@ -62,6 +66,7 @@ keepalives
 keepaliving
 lockfile
 lookups
+macOS
 manylinux
 middleware
 middlewares
@@ -82,6 +87,7 @@ proxied
 pyenv
 pyinstaller
 pytest
+pyupgrade
 refactor
 refactored
 regex

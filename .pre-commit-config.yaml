@@ -34,7 +34,14 @@ repos:
   rev: v0.15.8
   hooks:
   - id: ruff-check
-    args: ["--fix"]
+    # Uses the [tool.ruff] config in pyproject.toml. ``--fix`` is on
+    # so the ``I`` (import sorting) rule applies on commit; runs before
+    # ruff-format. See:
+    # https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+    args:
+    - --exit-non-zero-on-fix
+    - --fix
+    - --show-fixes
     exclude: >-
       (?x)
       ^

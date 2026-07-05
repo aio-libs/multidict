@@ -1,0 +1,3 @@
+Renamed the benchmark script from ``benchmarks/becnhmark.py`` to
+``benchmarks/benchmark.py`` so it matches the invocation documented in
+:doc:`benchmark` -- by :user:`aiolibsbot`.

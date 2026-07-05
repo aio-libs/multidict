@@ -3,7 +3,6 @@ import textwrap
 
 import perf
 
-
 IMPLEMENTATIONS = {
     "c": """\
     from multidict._multidict import istr
