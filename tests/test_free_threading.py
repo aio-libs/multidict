@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import threading
+import traceback
 
 import pytest
 
@@ -41,8 +42,6 @@ def test_race_condition_iterator_vs_mutation(
                 # "MultiDict changed during iteration" is expected under contention
                 pass
             except Exception as e:  # pragma: no cover
-                import traceback
-
                 errors.append(
                     ("writer", i, type(e).__name__, str(e), traceback.format_exc())
                 )
