@@ -1,0 +1,3 @@
+Added ``unparseable`` to the docs spelling list so news
+fragments can use the word without failing the spell check
+build -- by :user:`pctablet505`.
