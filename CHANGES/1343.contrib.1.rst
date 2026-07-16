@@ -1,3 +1,4 @@
-Added ``unparseable`` to the docs spelling list so news
-fragments can use the word without failing the spell check
-build -- by :user:`pctablet505`.
+Added ``init``, ``installable``, ``instantiation``, ``parametrization``,
+``parametrized``, ``postfix``, and ``unparseable`` to the docs spelling list
+so news fragments and docs can use these words without failing the spell
+check build -- by :user:`pctablet505`.
