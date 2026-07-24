@@ -1,0 +1,3 @@
+Fixed a segfault when constructing a multidict iterator type directly, e.g. ``type(iter(md.keys())).__new__(...)``. Such an iterator had a NULL internal pointer that ``next()`` dereferenced. The iterator types now forbid direct instantiation, the same way the view types were fixed in :issue:`1161`.
+
+-- by :user:`devdanzin`
