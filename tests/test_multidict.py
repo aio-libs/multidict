@@ -1332,6 +1332,50 @@ def test_init_does_not_alter_refcount(
     assert sys.getrefcount(original) == original_refcount
 
 
+@pytest.mark.c_extension
+@pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
+def test_items_contains_does_not_leak_key_on_error() -> None:
+    """`x in md.items()` must not leak the first element when reading the
+    second one raises.  The C items-view `__contains__` fetched element 0,
+    then returned on an element-1 failure without releasing element 0.  This
+    is a C-extension-only concern (the pure-Python version relies on the GC)."""
+    md = multidict.MultiDict([("a", "1")])
+
+    key = object()
+
+    class BadSeq:
+        def __len__(self) -> int:
+            return 2
+
+        def __getitem__(self, index: int) -> object:
+            if index == 0:
+                return key
+            raise ValueError("boom")
+
+    baseline = sys.getrefcount(key)
+    for _ in range(1000):
+        with pytest.raises(ValueError):
+            BadSeq() in md.items()  # type: ignore[operator]  # noqa: B015
+    assert sys.getrefcount(key) == baseline
+
+
+@pytest.mark.c_extension
+def test_repr_raises_when_mutated_during_iteration() -> None:
+    """`repr()` of a MultiDict whose value mutates it mid-iteration raises
+    RuntimeError (and, in the C extension, must not leak the writer)."""
+    md: MultiDict[object] = MultiDict()
+
+    class Evil:
+        def __repr__(self) -> str:
+            md.add("x", 1)  # bump the version mid-repr
+            return "e"
+
+    md.add("k", Evil())
+    md.add("k2", Evil())
+    with pytest.raises(RuntimeError, match="changed during iteration"):
+        repr(md)
+
+
 def test_subclassed_multidict(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
