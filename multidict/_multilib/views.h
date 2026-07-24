@@ -67,6 +67,9 @@ multidict_view_richcompare(_Multidict_ViewObject *self, PyObject *other,
     Py_ssize_t self_size = md_len(self->md);
     Py_ssize_t size = PyObject_Length(other);
     if (size < 0) {
+        if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
+            return NULL;  // propagate MemoryError / KeyboardInterrupt / etc.
+        }
         PyErr_Clear();
         Py_RETURN_NOTIMPLEMENTED;
     }
@@ -895,6 +898,9 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
     } else {
         tmp = PyObject_Length(obj);
         if (tmp < 0) {
+            if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
+                return -1;  // propagate MemoryError / KeyboardInterrupt / etc.
+            }
             PyErr_Clear();
             return 0;
         }
@@ -913,6 +919,10 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
 
     identity = md_calc_identity(self->md, key);
     if (identity == NULL) {
+        if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
+            ret = -1;  // propagate MemoryError / KeyboardInterrupt / etc.
+            goto done;
+        }
         PyErr_Clear();
         ret = 0;
         goto done;
