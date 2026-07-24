@@ -101,9 +101,10 @@ parse2(const char *fname, PyObject *const *args, Py_ssize_t nargs,
                 // nargs == 0
                 if (PyUnicode_CompareWithASCIIString(argname, arg1name) == 0) {
                     if (minargs == 2) {
-                        /* Only one argument was supplied (by keyword), but this
-                           function requires two: arg2 is missing.  Without this
-                           check arg2 stays NULL and the caller dereferences it. */
+                        /* Only one argument was supplied (by keyword), but
+                           this function requires two: arg2 is missing. Without
+                           this check arg2 stays NULL and the caller
+                           dereferences it. */
                         return raise_missing_posarg(fname, arg2name);
                     }
                     *arg1 = args[0];
