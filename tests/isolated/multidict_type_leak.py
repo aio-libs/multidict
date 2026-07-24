@@ -1,6 +1,7 @@
 import gc
 import sys
 import sysconfig
+from collections.abc import Callable
 
 from multidict import (
     CIMultiDict,
@@ -59,7 +60,7 @@ if __name__ == "__main__":
     # type from every instance; tp_dealloc must release it.  The iterator,
     # view and istr types above were fixed previously, but the four core
     # container/proxy types were missed.
-    core_type_factories = {
+    core_type_factories: dict[str, Callable[[], object]] = {
         "MultiDict": lambda: MultiDict(),
         "CIMultiDict": lambda: CIMultiDict(),
         "MultiDictProxy": lambda: MultiDictProxy(MultiDict()),
