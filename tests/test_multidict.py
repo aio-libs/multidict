@@ -1392,7 +1392,7 @@ def test_non_typeerror_exceptions_are_not_swallowed() -> None:
 
     # items-view __contains__ probes len(candidate)
     with pytest.raises(MemoryError):
-        BadLen() in md.items()  # type: ignore[operator]  # noqa: B015
+        md.items().__contains__(BadLen())
 
     # extend()/constructor probes arg.items()
     class BadItems:
@@ -1406,7 +1406,7 @@ def test_non_typeerror_exceptions_are_not_swallowed() -> None:
             return 1
 
     with pytest.raises(MemoryError):
-        multidict.MultiDict(BadItems())  # type: ignore[arg-type]
+        multidict.MultiDict(BadItems())
 
     # __eq__ against a non-mapping still works (AttributeError is cleared)
     assert md != [("a", "1")]
