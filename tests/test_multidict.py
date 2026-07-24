@@ -1353,9 +1353,10 @@ def test_items_contains_does_not_leak_key_on_error() -> None:
             raise ValueError("boom")
 
     baseline = sys.getrefcount(key)
+    items = md.items()
     for _ in range(1000):
         with pytest.raises(ValueError):
-            BadSeq() in md.items()  # type: ignore[comparison-overlap]  # noqa: B015
+            items.__contains__(BadSeq())
     assert sys.getrefcount(key) == baseline
 
 
