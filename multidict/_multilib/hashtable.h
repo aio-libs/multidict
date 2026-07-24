@@ -1880,7 +1880,12 @@ md_clear(MultiDictObject *md)
     if (md->keys == NULL || md->keys == &empty_htkeys) {
         return 0;
     }
-    md->version = NEXT_VERSION(md->state);
+    /* NOTE: the version counter is NOT bumped here.  md_clear() runs both from
+       the user-facing clear() (which must bump the version to invalidate live
+       iterators -- it does so itself) and from tp_clear()/tp_dealloc() while
+       the object is being torn down.  At interpreter shutdown the module state
+       can be freed before the last instances, so touching md->state (as
+       NEXT_VERSION does) during teardown is a use-after-free. */
 
     entry_t *entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
