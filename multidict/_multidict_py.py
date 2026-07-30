@@ -34,8 +34,10 @@ else:
 class istr(str):
     """Case insensitive str."""
 
+    # Avoid per-instance __dict__ when used as dict keys (issue #1360).
+    __slots__ = ("__istr_identity__",)
+
     __is_istr__ = True
-    __istr_identity__: str | None = None
 
 
 _V = TypeVar("_V")
