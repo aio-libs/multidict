@@ -1249,6 +1249,12 @@ def test_create_multidict_from_existing_multidict_new_pairs() -> None:
     assert "h4" not in original
 
 
+def test_istr_has_no_instance_dict(
+    case_insensitive_str_class: type[istr],
+) -> None:
+    assert not hasattr(case_insensitive_str_class("key"), "__dict__")
+
+
 def test_convert_multidict_to_cimultidict_and_back(
     case_sensitive_multidict_class: type[MultiDict[str]],
     case_insensitive_multidict_class: type[CIMultiDict[str]],
