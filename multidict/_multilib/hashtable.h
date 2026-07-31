@@ -641,6 +641,11 @@ md_next(MultiDictObject *md, md_pos_t *pos, PyObject **pidentity,
         *pkey = _md_ensure_key(md, entry);
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
+            // *pidentity was already set above; release it before cleanup
+            // NULLs it, otherwise the identity reference leaks.
+            if (pidentity) {
+                Py_CLEAR(*pidentity);
+            }
             ret = -1;
             goto cleanup;
         }
@@ -1791,7 +1796,7 @@ md_repr(MultiDictObject *md, PyObject *name, bool show_keys, bool show_values)
         if (version != md->version) {
             PyErr_SetString(PyExc_RuntimeError,
                             "MultiDict changed during iteration");
-            return NULL;
+            goto fail;  // discard the writer instead of leaking it
         }
         entry_t *entry = entries + pos;
         if (entry->identity == NULL) {

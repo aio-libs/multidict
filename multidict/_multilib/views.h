@@ -907,6 +907,7 @@ multidict_itemsview_contains(_Multidict_ViewObject *self, PyObject *obj)
         }
         value = PySequence_GetItem(obj, 1);
         if (value == NULL) {
+            Py_DECREF(key);  // key is owned here; do not leak it
             return -1;
         }
     }
