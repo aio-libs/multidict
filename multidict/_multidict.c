@@ -101,6 +101,12 @@ _multidict_extend(MultiDictObject *self, PyObject *arg, PyObject *kwds,
         } else {
             seq = PyMapping_Items(arg);
             if (seq == NULL) {
+                if (!PyErr_ExceptionMatches(PyExc_AttributeError) &&
+                    !PyErr_ExceptionMatches(PyExc_TypeError)) {
+                    // propagate MemoryError / KeyboardInterrupt / etc.
+                    goto fail;
+                }
+                // arg is not a mapping; fall back to treating it as a sequence
                 PyErr_Clear();
                 seq = Py_NewRef(arg);
             }
@@ -469,9 +475,12 @@ multidict_tp_richcompare(MultiDictObject *self, PyObject *other, int op)
             PyObject *keys = PyMapping_Keys(other);
             if (keys != NULL) {
                 fits = true;
-            } else {
-                // reset AttributeError exception
+            } else if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+                // other is not a mapping (no keys()); treat as not equal
                 PyErr_Clear();
+            } else {
+                // propagate MemoryError / KeyboardInterrupt / etc.
+                return NULL;
             }
             Py_CLEAR(keys);
         }
