@@ -493,11 +493,17 @@ multidict_tp_richcompare(MultiDictObject *self, PyObject *other, int op)
 static void
 multidict_tp_dealloc(MultiDictObject *self)
 {
+    /* Cache the type before tp_free frees the instance: heap types keep a
+       reference to their type from every instance, which must be released
+       here.  Py_DECREF(tp) has to stay inside the trashcan block because no
+       code may run after Py_TRASHCAN_END. */
+    PyTypeObject *tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
         PyObject_ClearWeakRefs((PyObject *)self);
     md_clear(self);
-    Py_TYPE(self)->tp_free((PyObject *)self);
+    tp->tp_free((PyObject *)self);
+    Py_DECREF(tp);
     Py_TRASHCAN_END  // there should be no code after this
 }
 
@@ -612,6 +618,11 @@ multidict_clear(MultiDictObject *self)
     if (md_clear(self) < 0) {
         return NULL;
     }
+    /* Bump the version so that iterators created before this clear() detect
+       the mutation.  md_clear() itself no longer touches the module state, so
+       the bump lives here, on the user-facing entry point where the module is
+       guaranteed to still be alive. */
+    self->version = NEXT_VERSION(self->state);
 
     ASSERT_CONSISTENT(self, false);
     Py_RETURN_NONE;
@@ -1178,10 +1189,13 @@ multidict_proxy_tp_richcompare(MultiDictProxyObject *self, PyObject *other,
 static void
 multidict_proxy_tp_dealloc(MultiDictProxyObject *self)
 {
+    PyTypeObject *tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     PyObject_ClearWeakRefs((PyObject *)self);
     Py_XDECREF(self->md);
-    Py_TYPE(self)->tp_free((PyObject *)self);
+    tp->tp_free((PyObject *)self);
+    /* Release the reference each heap-type instance holds on its type. */
+    Py_DECREF(tp);
 }
 
 static int
