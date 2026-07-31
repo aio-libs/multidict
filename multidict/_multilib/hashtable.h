@@ -12,6 +12,7 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
+#include "../multidict_api.h"
 #include "dict.h"
 #include "htkeys.h"
 #include "istr.h"
@@ -29,12 +30,6 @@ typedef struct _md_finder {
     Py_hash_t hash;
     PyObject *identity;  // borrowed ref
 } md_finder_t;
-
-typedef enum _UpdateOp {
-    Extend,
-    Update,
-    Merge,
-} UpdateOp;
 
 /*
 The multidict's implementation is close to Python's dict except for multiple
