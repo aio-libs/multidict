@@ -106,4 +106,3 @@ def test_load_istr_as_cimultidict_key(
     d[obj] = "v"
     assert d[obj] == "v"
     assert d["STR"] == "v"
-
