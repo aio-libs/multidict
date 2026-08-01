@@ -34,8 +34,18 @@ else:
 class istr(str):
     """Case insensitive str."""
 
+    __slots__ = ("__istr_identity__",)
+    __istr_identity__: str | None
+
     __is_istr__ = True
-    __istr_identity__: str | None = None
+
+    def __new__(cls, value: object = "") -> Self:
+        self = super().__new__(cls, value)
+        self.__istr_identity__ = None
+        return self
+
+    def __reduce__(self) -> tuple[type[Self], tuple[str]]:
+        return type(self), (str(self),)
 
 
 _V = TypeVar("_V")
@@ -439,7 +449,9 @@ class _CIMixin:
 
     def _identity(self, key: str) -> str:
         if isinstance(key, istr):
-            ret = key.__istr_identity__
+            # Protocol 0/1 unpickling bypasses istr.__new__, so the slot may
+            # be unset; getattr keeps those keys usable in CIMultiDict.
+            ret = getattr(key, "__istr_identity__", None)
             if ret is None:
                 ret = key.lower()
                 key.__istr_identity__ = ret
