@@ -449,7 +449,9 @@ class _CIMixin:
 
     def _identity(self, key: str) -> str:
         if isinstance(key, istr):
-            ret = key.__istr_identity__
+            # Protocol 0/1 unpickling bypasses istr.__new__, so the slot may
+            # be unset; getattr keeps those keys usable in CIMultiDict.
+            ret = getattr(key, "__istr_identity__", None)
             if ret is None:
                 ret = key.lower()
                 key.__istr_identity__ = ret

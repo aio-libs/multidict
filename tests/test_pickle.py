@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from multidict import MultiDict, MultiDictProxy, istr
+from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 
 if TYPE_CHECKING:
     from conftest import MultidictImplementation
@@ -82,3 +82,28 @@ def test_load_istr_from_file(
         obj = pickle.load(f)
     assert s == obj
     assert isinstance(obj, case_insensitive_str_class)
+
+
+def test_load_istr_as_cimultidict_key(
+    case_insensitive_str_class: type[istr],
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+    multidict_implementation: "MultidictImplementation",
+    pickle_protocol: int,
+) -> None:
+    """Unpickled istr (incl. protocol 0/1) must work as a CIMultiDict key."""
+    istr_class_name = case_insensitive_str_class.__name__
+    pickle_file_basename = "-".join(
+        (
+            istr_class_name.lower(),
+            multidict_implementation.tag,
+        )
+    )
+    fname = f"{pickle_file_basename}.pickle.{pickle_protocol}"
+    p = here / fname
+    with p.open("rb") as f:
+        obj = pickle.load(f)
+    d = case_insensitive_multidict_class()
+    d[obj] = "v"
+    assert d[obj] == "v"
+    assert d["STR"] == "v"
+
