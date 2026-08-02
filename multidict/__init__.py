@@ -35,6 +35,21 @@ if TYPE_CHECKING or not USE_EXTENSIONS:
         getversion,
         istr,
     )
+
+    if not TYPE_CHECKING:
+        import sys
+        import warnings
+
+        if sys.version_info >= (3, 13) and not sys._is_gil_enabled():
+            warnings.warn(
+                "The multidict C extension is not available. "
+                "The pure-Python fallback is not thread-safe "
+                "under free-threaded CPython (GIL disabled). "
+                "Avoid concurrent iteration and mutation of the same "
+                "MultiDict instance across threads.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 else:
     from collections.abc import ItemsView, KeysView, ValuesView
 
