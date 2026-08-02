@@ -71,6 +71,20 @@ MultiDict
 
       Return a shallow copy of the dictionary.
 
+   .. method:: to_dict()
+
+      Return a :class:`dict` mapping each key to a list of all its
+      values, preserving insertion order, e.g.::
+
+         >>> d = MultiDict([('a', 1), ('b', 2), ('a', 3)])
+         >>> d.to_dict()
+         {'a': [1, 3], 'b': [2]}
+
+      The result is a new dictionary with fresh lists; mutating it
+      does not affect the multidict.
+
+      .. versionadded:: 6.8
+
    .. method:: getone(key[, default])
 
       Return the **first** value for *key* if *key* is in the
@@ -300,6 +314,13 @@ MultiDictProxy
    .. method:: copy()
 
       Return a shallow copy of the underlying multidict.
+
+   .. method:: to_dict()
+
+      Return a :class:`dict` mapping each key to a list of all its
+      values, preserving insertion order.
+
+      .. versionadded:: 6.8
 
    .. method:: getone(key[, default])
 
