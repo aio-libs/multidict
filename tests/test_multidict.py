@@ -635,6 +635,24 @@ class BaseMultiDictTest:
 
             assert sys.exc_info()[1] == e  # noqa: PT017
 
+    def test__repr__quotes_keys(self, cls: type[MultiDict[str]]) -> None:
+        # Keys containing quotes must be repr'd as parseable Python literals,
+        # not naively wrapped in single quotes.
+        d = cls([("a'b", "v")])
+        _cls = type(d)
+
+        # repr("a'b") == '"a\'b"' (Python uses double quotes when the string
+        # contains a single quote and no double quote).
+        assert str(d) == f"<{_cls.__name__}(\"a'b\": 'v')>"
+
+    def test_items__repr__quotes_keys(self, cls: type[MultiDict[str]]) -> None:
+        d = cls([("a'b", "v")])
+        assert repr(d.items()) == "<_ItemsView(\"a'b\": 'v')>"
+
+    def test_keys__repr__quotes_keys(self, cls: type[MultiDict[str]]) -> None:
+        d = cls([("a'b", "v")])
+        assert repr(d.keys()) == '<_KeysView("a\'b")>'
+
     @pytest.mark.parametrize(
         "op",
         (operator.or_, operator.and_, operator.sub, operator.xor),

@@ -1809,15 +1809,39 @@ md_repr(MultiDictObject *md, PyObject *name, bool show_keys, bool show_values)
             }
         }
         if (show_keys) {
-            if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
-                goto fail;
+            /* Fast path: ASCII keys without characters that would be escaped
+             * by repr() can be wrapped in single quotes directly. Falls back
+             * to PyUnicodeWriter_WriteRepr for keys containing quotes,
+             * backslashes, or non-printable characters so the output stays
+             * a valid Python string literal. */
+            int fast = 0;
+            if (PyUnicode_IS_ASCII(key)) {
+                Py_ssize_t klen = PyUnicode_GET_LENGTH(key);
+                const unsigned char *kdata =
+                    (const unsigned char *)PyUnicode_DATA(key);
+                fast = 1;
+                for (Py_ssize_t ki = 0; ki < klen; ++ki) {
+                    unsigned char c = kdata[ki];
+                    if (c < 0x20 || c == 0x7f || c == '\'' || c == '\\') {
+                        fast = 0;
+                        break;
+                    }
+                }
             }
-            /* Don't need to convert key to istr, the text is the same*/
-            if (PyUnicodeWriter_WriteStr(writer, key) < 0) {
-                goto fail;
-            }
-            if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
-                goto fail;
+            if (fast) {
+                if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
+                    goto fail;
+                }
+                if (PyUnicodeWriter_WriteStr(writer, key) < 0) {
+                    goto fail;
+                }
+                if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
+                    goto fail;
+                }
+            } else {
+                if (PyUnicodeWriter_WriteRepr(writer, key) < 0) {
+                    goto fail;
+                }
             }
         }
         if (show_keys && show_values) {
