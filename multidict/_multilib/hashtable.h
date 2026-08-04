@@ -1327,9 +1327,27 @@ md_update_from_ht(MultiDictObject *md, MultiDictObject *other, UpdateOp op)
         return 0;
     }
 
-    entry_t *entries = htkeys_entries(other->keys);
+    if (md == other && op != Extend) {
+        /* update(self) and merge(self) leave the dict unchanged: every key
+           already maps to its own values.  Short-circuit -- doing the work in
+           place would soft-delete and reinsert the very entries we iterate. */
+        return 0;
+    }
 
-    for (pos = 0; pos < other->keys->nentries; pos++) {
+    /* Pre-allocate room for other's items so the inserts below cannot trigger
+       a resize of md->keys.  This is what makes extend(self) (md IS other,
+       e.g. ``d.extend(d)``) safe: a resize would free the very entries array
+       we iterate here, a use-after-free.  Reserving up front also lets us
+       snapshot the entry count so self-extension does not reprocess the
+       entries it just appended. */
+    if (md_reserve(md, other->used) < 0) {
+        return -1;
+    }
+
+    entry_t *entries = htkeys_entries(other->keys);
+    Py_ssize_t nentries = other->keys->nentries;
+
+    for (pos = 0; pos < nentries; pos++) {
         entry_t *entry = entries + pos;
         if (entry->identity == NULL) {
             continue;
@@ -1562,7 +1580,11 @@ md_update_from_seq(MultiDictObject *md, PyObject *seq, UpdateOp op)
     for (i = 0;; ++i) {  // i - index into seq of current element
         switch (kind) {
             case LIST:
-                if (i >= size) {
+                /* Re-read the length every iteration.  Building the identity
+                   below can run arbitrary Python (a str-subclass key's
+                   .lower(), an __eq__), which may shrink seq; a stale cached
+                   size would let PyList_GET_ITEM read past the end. */
+                if (i >= PyList_GET_SIZE(seq)) {
                     goto exit;
                 }
                 item = PyList_GET_ITEM(seq, i);
