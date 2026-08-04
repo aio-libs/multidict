@@ -121,7 +121,12 @@ get_mod_state_by_def(PyObject *self)
 {
     PyTypeObject *tp = Py_TYPE(self);
     PyObject *mod = PyType_GetModuleByDef(tp, &multidict_module);
-    assert(mod != NULL);
+    if (mod == NULL) {
+        if (PyErr_ExceptionMatches(PyExc_TypeError)) {
+            PyErr_Clear();
+        }
+        return NULL;
+    }
     return get_mod_state(mod);
 }
 
