@@ -169,7 +169,7 @@ multidict_itemsview_new(MultiDictObject *md)
 static inline PyObject *
 multidict_itemsview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_items_iter_new(self->md);
+    return multidict_items_iter_new(self->md, 0);
 }
 
 static inline PyObject *
@@ -1021,11 +1021,24 @@ fail:
 PyDoc_STRVAR(itemsview_isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
+static inline PyObject *
+multidict_itemsview_reversed(_Multidict_ViewObject *self,
+                             PyObject *Py_UNUSED(ignored))
+{
+    return multidict_items_iter_new(self->md, 1);
+}
+
+PyDoc_STRVAR(view_reversed_doc, "Return a reverse iterator over the view.");
+
 static PyMethodDef multidict_itemsview_methods[] = {
     {"isdisjoint",
      (PyCFunction)multidict_itemsview_isdisjoint,
      METH_O,
      itemsview_isdisjoint_doc},
+    {"__reversed__",
+     (PyCFunction)multidict_itemsview_reversed,
+     METH_NOARGS,
+     view_reversed_doc},
     {NULL, NULL} /* sentinel */
 };
 
@@ -1090,7 +1103,7 @@ multidict_keysview_new(MultiDictObject *md)
 static inline PyObject *
 multidict_keysview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_keys_iter_new(self->md);
+    return multidict_keys_iter_new(self->md, 0);
 }
 
 static inline PyObject *
@@ -1587,11 +1600,22 @@ multidict_keysview_isdisjoint(_Multidict_ViewObject *self, PyObject *other)
 PyDoc_STRVAR(keysview_isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
+static inline PyObject *
+multidict_keysview_reversed(_Multidict_ViewObject *self,
+                            PyObject *Py_UNUSED(ignored))
+{
+    return multidict_keys_iter_new(self->md, 1);
+}
+
 static PyMethodDef multidict_keysview_methods[] = {
     {"isdisjoint",
      (PyCFunction)multidict_keysview_isdisjoint,
      METH_O,
      keysview_isdisjoint_doc},
+    {"__reversed__",
+     (PyCFunction)multidict_keysview_reversed,
+     METH_NOARGS,
+     view_reversed_doc},
     {NULL, NULL} /* sentinel */
 };
 
@@ -1646,7 +1670,7 @@ multidict_valuesview_new(MultiDictObject *md)
 static inline PyObject *
 multidict_valuesview_iter(_Multidict_ViewObject *self)
 {
-    return multidict_values_iter_new(self->md);
+    return multidict_values_iter_new(self->md, 0);
 }
 
 static inline PyObject *
@@ -1671,6 +1695,21 @@ multidict_valuesview_repr(_Multidict_ViewObject *self)
     return ret;
 }
 
+static inline PyObject *
+multidict_valuesview_reversed(_Multidict_ViewObject *self,
+                              PyObject *Py_UNUSED(ignored))
+{
+    return multidict_values_iter_new(self->md, 1);
+}
+
+static PyMethodDef multidict_valuesview_methods[] = {
+    {"__reversed__",
+     (PyCFunction)multidict_valuesview_reversed,
+     METH_NOARGS,
+     view_reversed_doc},
+    {NULL, NULL} /* sentinel */
+};
+
 static PyType_Slot multidict_valuesview_slots[] = {
     {Py_tp_new, multidict_view_forbidden_new},
     {Py_tp_dealloc, multidict_view_dealloc},
@@ -1681,6 +1720,7 @@ static PyType_Slot multidict_valuesview_slots[] = {
     {Py_tp_traverse, multidict_view_traverse},
     {Py_tp_clear, multidict_view_clear},
     {Py_tp_iter, multidict_valuesview_iter},
+    {Py_tp_methods, multidict_valuesview_methods},
     {0, NULL},
 };
 

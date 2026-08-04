@@ -694,6 +694,52 @@ class BaseMultiDictTest:
         it = iter(md.values())
         assert it.__length_hint__() == 2
 
+    def test_reversed_keys(
+        self,
+        cls: type[MultiDict[int | str]] | type[CIMultiDict[int | str]],
+    ) -> None:
+        d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
+        assert list(reversed(d.keys())) == ["key", "key2", "key"]  # type: ignore[call-overload]
+
+    def test_reversed_values(
+        self,
+        cls: type[MultiDict[int | str]] | type[CIMultiDict[int | str]],
+    ) -> None:
+        d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
+        assert list(reversed(d.values())) == [3, "two", "one"]
+
+    def test_reversed_items(
+        self,
+        cls: type[MultiDict[int | str]] | type[CIMultiDict[int | str]],
+    ) -> None:
+        d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
+        assert list(reversed(d.items())) == [  # type: ignore[call-overload]
+            ("key", 3),
+            ("key2", "two"),
+            ("key", "one"),
+        ]
+
+    def test_reversed_empty(
+        self,
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
+    ) -> None:
+        d = cls()
+        assert list(reversed(d.keys())) == []  # type: ignore[call-overload]
+        assert list(reversed(d.values())) == []
+        assert list(reversed(d.items())) == []  # type: ignore[call-overload]
+
+    def test_reversed_length_hint(
+        self,
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
+    ) -> None:
+        md = cls(a=1, b=2)
+        keys_it = reversed(md.keys())  # type: ignore[call-overload]
+        items_it = reversed(md.items())  # type: ignore[call-overload]
+        values_it = reversed(md.values())
+        assert keys_it.__length_hint__() == 2
+        assert items_it.__length_hint__() == 2
+        assert values_it.__length_hint__() == 2
+
     def test_ctor_list_arg_and_kwds(
         self,
         cls: type[MultiDict[int]] | type[CIMultiDict[int]],
