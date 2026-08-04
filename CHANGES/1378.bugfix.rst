@@ -1,0 +1,3 @@
+Fixed a segfault when using a :py:class:`~multidict.MultiDict` or :py:class:`~multidict.CIMultiDict` created via ``__new__`` without calling ``__init__`` (for example a subclass that does not call ``super().__init__()``). The internal state was left as NULL pointers that the first method call dereferenced. ``tp_new`` now initialises the object to a valid empty mapping.
+
+-- by :user:`devdanzin`

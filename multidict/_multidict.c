@@ -567,6 +567,32 @@ fail:
 }
 
 static PyObject *
+multidict_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    /* Initialise the object to a valid empty state here rather than relying on
+       tp_init.  Otherwise ``MultiDict.__new__(MultiDict)`` (or a subclass that
+       skips ``super().__init__()``) leaves md->state / md->keys NULL, and the
+       first method call dereferences NULL and segfaults.  The empty state uses
+       the shared &empty_htkeys sentinel (no allocation), so the subsequent
+       md_init() from tp_init does not leak. */
+    PyObject *mod = PyType_GetModuleByDef(type, &multidict_module);
+    if (mod == NULL) {
+        return NULL;
+    }
+    mod_state *state = get_mod_state(mod);
+    bool is_ci = PyType_IsSubtype(type, state->CIMultiDictType);
+    MultiDictObject *self = (MultiDictObject *)type->tp_alloc(type, 0);
+    if (self == NULL) {
+        return NULL;
+    }
+    if (md_init(self, state, is_ci, 0) < 0) {
+        Py_DECREF(self);
+        return NULL;
+    }
+    return (PyObject *)self;
+}
+
+static PyObject *
 multidict_add(MultiDictObject *self, PyObject *const *args, Py_ssize_t nargs,
               PyObject *kwnames)
 {
@@ -968,7 +994,7 @@ static PyType_Slot multidict_slots[] = {
     {Py_tp_methods, multidict_methods},
     {Py_tp_init, multidict_tp_init},
     {Py_tp_alloc, PyType_GenericAlloc},
-    {Py_tp_new, PyType_GenericNew},
+    {Py_tp_new, multidict_tp_new},
     {Py_tp_free, PyObject_GC_Del},
 
 #ifndef MANAGED_WEAKREFS
