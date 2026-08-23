@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools >= 47"]  # Minimum required for `version = attr:`
+requires = [
+  "setuptools >= 47",  # Minimum required for `version = attr:`
+]
 build-backend = "setuptools.build_meta"
 
 
