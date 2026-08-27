@@ -1,3 +1,3 @@
-Clarified that :class:`istr` preserves the original casing and
-compares as a regular :class:`str`; case-insensitive matching is
-handled by :class:`CIMultiDict`.
+Clarified that ``istr`` preserves the original casing and
+compares as a regular ``str``; case-insensitive matching is
+handled by ``CIMultiDict`` -- by :user:`gyanu2507`.
