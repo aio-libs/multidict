@@ -1321,6 +1321,21 @@ def test_extend_does_not_alter_refcount(
     assert sys.getrefcount(original) == original_refcount
 
 
+@pytest.mark.parametrize("use_proxy", (False, True), ids=("self", "proxy"))
+def test_extend_with_itself(
+    any_multidict_class: type[MultiDict[int]],
+    any_multidict_proxy_class: type[MultiDictProxy[int]],
+    use_proxy: bool,
+) -> None:
+    md = any_multidict_class((str(index), index) for index in range(6))
+    source = any_multidict_proxy_class(md) if use_proxy else md
+
+    md.extend(source)
+
+    expected = [(str(index), index) for index in range(6)]
+    assert list(md.items()) == expected * 2
+
+
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_update_does_not_alter_refcount(
     case_sensitive_multidict_class: type[MultiDict[str]],
