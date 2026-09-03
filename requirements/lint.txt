@@ -2,4 +2,3 @@
 -r towncrier.txt
 
 pre-commit==4.6.1
-mypy==1.15.0
