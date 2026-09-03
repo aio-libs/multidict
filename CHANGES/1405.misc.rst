@@ -1,0 +1,12 @@
+Explicitly marked empty_htkeys as const.
+
+Moved the structure to .rodata linker section.
+
+Unexpected modification of the structure will lead to segfault instead
+of corrupting the data and fail fast.
+
+.rodata is mount as read-only-mapped, it is shared well across
+multiple threads without cache misses.
+
+The change is pretty trivial, it is made for the sake of correctness,
+not for speedup.
