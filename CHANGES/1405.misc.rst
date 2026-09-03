@@ -10,3 +10,6 @@ multiple threads without cache misses.
 
 The change is pretty trivial, it is made for the sake of correctness,
 not for speedup.
+
+-- by :user:`asvetlov`.
+
