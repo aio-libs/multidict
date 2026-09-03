@@ -1,0 +1,2 @@
+Enabled strict mypy error mode
+-- by :user:`asvetlov`.
