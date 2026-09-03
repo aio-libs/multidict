@@ -131,6 +131,7 @@ repos:
     name: MyPy, for Python 3.13
     additional_dependencies:
     - types-docutils
+    - types-objgraph
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest >= 8.4.0
     - pytest_codspeed
@@ -149,6 +150,7 @@ repos:
     name: MyPy, for Python 3.11
     additional_dependencies:
     - types-docutils
+    - types-objgraph
     - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
     - pytest >= 8.4.0
     - pytest_codspeed
