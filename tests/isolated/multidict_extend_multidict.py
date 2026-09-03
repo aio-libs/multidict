@@ -1,7 +1,7 @@
 import gc
 import sys
 
-import objgraph  # type: ignore[import-untyped]
+import objgraph
 
 from multidict import MultiDict
 

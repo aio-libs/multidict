@@ -2,7 +2,7 @@ import gc
 import sys
 from typing import Any
 
-import objgraph  # type: ignore[import-untyped]
+import objgraph
 
 from multidict import MultiDict
 

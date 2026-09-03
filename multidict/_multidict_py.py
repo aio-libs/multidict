@@ -464,7 +464,7 @@ class _Entry(Generic[_V]):
 
 
 @dataclass
-class _HtKeys(Generic[_V]):  # type: ignore[misc]
+class _HtKeys(Generic[_V]):
     LOG_MINSIZE: ClassVar[int] = 3
     MINSIZE: ClassVar[int] = 8
     PREALLOCATED_INDICES: ClassVar[dict[int, array]] = {  # type: ignore[type-arg]
