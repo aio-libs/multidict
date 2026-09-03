@@ -17,7 +17,6 @@ extern "C" {
 #include "istr.h"
 #include "state.h"
 
-
 typedef struct _md_pos {
     Py_ssize_t pos;
     uint64_t version;
