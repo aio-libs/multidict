@@ -30,7 +30,14 @@ branch = true
 # `filterwarnings = error` that turns each test into an error. `ctrace`
 # reports `supports_dynamic_contexts`, and falls back to `pytrace` (which
 # also supports them) where the C tracer is unavailable, such as PyPy.
-core = ctrace
+# NOTE: Coveragepy is incompatible with dynamic context that gets enabled via
+# NOTE: `pytest-cov` through a CLI arg to pytest. Refs:
+# * https://github.com/aio-libs/multidict/pull/1393
+# * https://github.com/pytest-dev/pytest-cov/issues/755
+# * https://coverage.rtfd.io/en/latest/changes.html#version-7-15-3-2026-08-02
+# * https://github.com/coveragepy/coveragepy/issues/2200
+# * https://github.com/coveragepy/coveragepy/pull/2234
+core = ${COVERAGE_CORE-ctrace}
 cover_pylib = false
 # https://coverage.rtfd.io/en/latest/contexts.html#dynamic-contexts
 # dynamic_context = test_function  # conflicts with `pytest-cov` if set here
