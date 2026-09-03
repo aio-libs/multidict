@@ -17,6 +17,7 @@ extern "C" {
 #include "istr.h"
 #include "state.h"
 
+
 typedef struct _md_pos {
     Py_ssize_t pos;
     uint64_t version;
@@ -100,16 +101,27 @@ _md_dump(MultiDictObject *md);
 static inline int
 _str_cmp(PyObject *s1, PyObject *s2)
 {
-    PyObject *ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
-    if (Py_IsTrue(ret)) {
-        Py_DECREF(ret);
+    /* implementation is borrowed from PyUnicode_Equal() but without
+       type checks, arguments are identities that are always strings */
+    assert(PyUnicode_Check(s1));
+    assert(PyUnicode_Check(s2));
+
+    if (s1 == s2) {
         return 1;
-    } else if (ret == NULL) {
-        return -1;
-    } else {
-        Py_DECREF(ret);
+    }
+    Py_ssize_t len = PyUnicode_GET_LENGTH(s1);
+    if (PyUnicode_GET_LENGTH(s2) != len) {
         return 0;
     }
+
+    int kind = PyUnicode_KIND(s1);
+    if (PyUnicode_KIND(s2) != kind) {
+        return 0;
+    }
+
+    const void *data1 = PyUnicode_DATA(s1);
+    const void *data2 = PyUnicode_DATA(s2);
+    return (memcmp(data1, data2, len * kind) == 0);
 }
 
 static inline PyObject *
