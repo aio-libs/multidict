@@ -44,18 +44,3 @@ skip = "pp*"
 # Re-enable 32-bit builds (disabled by default in cibuildwheel 3.0)
 archs = ["auto", "auto32"]
 before-all = "yum install -y libffi-devel || apk add --upgrade libffi-dev || apt-get install libffi-dev"
-
-[tool.mypy]
-strict = true
-show_error_codes = true
-warn_unused_configs = true
-warn_incomplete_stub = true
-ignore_missing_imports = false
-enable_error_code = ["possibly-undefined"]
-files = ["docs", "multidict", "tests"]
-pretty = true
-
-
-[[tool.mypy.overrides]]
-module = "test_incorrect_args"
-disable_error_code = ["arg-type", "call-overload"]
