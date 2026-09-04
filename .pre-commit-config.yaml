@@ -124,7 +124,7 @@ repos:
   - id: clang-format
     types_or: [c, c++]
 - repo: https://github.com/pre-commit/mirrors-mypy.git
-  rev: v1.15.0
+  rev: v2.3.1
   hooks:
   - id: mypy
     alias: mypy-py313
