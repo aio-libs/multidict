@@ -52,8 +52,3 @@ warn_unused_configs = true
 ignore_missing_imports = false
 files = ["docs", "multidict", "tests"]
 pretty = true
-
-[[tool.mypy.overrides]]
-module = "docs.conf"
-ignore_missing_imports = true
-follow_untyped_imports = true

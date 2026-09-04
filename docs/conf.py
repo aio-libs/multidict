@@ -19,7 +19,7 @@ import re
 from contextlib import suppress
 from pathlib import Path
 
-import alabaster
+import alabaster  # type: ignore[import-untyped]
 from sphinx.addnodes import pending_xref
 from sphinx.application import Sphinx
 from sphinx.environment import BuildEnvironment
@@ -81,7 +81,7 @@ extensions = [
 
 with suppress(ImportError):
     # spelling extension is optional, only add it when installed
-    import sphinxcontrib.spelling  # noqa
+    import sphinxcontrib.spelling  # type: ignore[import-untyped]  # noqa
 
     extensions.append("sphinxcontrib.spelling")
 
