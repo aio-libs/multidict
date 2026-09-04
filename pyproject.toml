@@ -51,6 +51,7 @@ show_error_codes = true
 warn_unused_configs = true
 warn_incomplete_stub = true
 ignore_missing_imports = false
+enable_error_code = ["possibly-undefined"]
 files = ["docs", "multidict", "tests"]
 pretty = true
 
