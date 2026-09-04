@@ -7,7 +7,7 @@ import pytest
 from multidict import MultiDict, MultiDictProxy, istr
 
 if TYPE_CHECKING:
-    from conftest import MultidictImplementation
+    from tests.conftest import MultidictImplementation
 
 here = Path(__file__).resolve().parent
 

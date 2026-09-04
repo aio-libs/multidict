@@ -50,5 +50,10 @@ strict = true
 show_error_codes = true
 warn_unused_configs = true
 ignore_missing_imports = false
-files = ["docs", "multidict", "tests"]
+packages = ["docs", "multidict", "tests"]
 pretty = true
+
+
+[[tool.mypy.overrides]]
+module = "tests.test_incorrect_args"
+disable_error_code = ["arg-type", "call-overload"]
