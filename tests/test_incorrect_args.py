@@ -55,8 +55,8 @@ def test_getall_args(
 ) -> None:
     with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.getall(
-            tested_method_args.positional,
-            tested_method_args.keyword,
+            *tested_method_args.positional,
+            **tested_method_args.keyword,
         )
 
 
@@ -66,8 +66,8 @@ def test_getone_args(
 ) -> None:
     with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.getone(
-            tested_method_args.positional,
-            tested_method_args.keyword,
+            *tested_method_args.positional,
+            **tested_method_args.keyword,
         )
 
 
@@ -77,8 +77,8 @@ def test_get_args(
 ) -> None:
     with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.get(
-            tested_method_args.positional,
-            tested_method_args.keyword,
+            *tested_method_args.positional,
+            **tested_method_args.keyword,
         )
 
 
@@ -88,8 +88,8 @@ def test_setdefault_args(
 ) -> None:
     with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.setdefault(
-            tested_method_args.positional,
-            tested_method_args.keyword,
+            *tested_method_args.positional,
+            **tested_method_args.keyword,
         )
 
 
@@ -99,8 +99,8 @@ def test_popone_args(
 ) -> None:
     with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.popone(
-            tested_method_args.positional,
-            tested_method_args.keyword,
+            *tested_method_args.positional,
+            **tested_method_args.keyword,
         )
 
 
@@ -110,8 +110,8 @@ def test_pop_args(
 ) -> None:
     with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.pop(
-            tested_method_args.positional,
-            tested_method_args.keyword,
+            *tested_method_args.positional,
+            **tested_method_args.keyword,
         )
 
 
@@ -121,6 +121,6 @@ def test_popall_args(
 ) -> None:
     with pytest.raises(TypeError, match=r".*argument.*"):
         multidict_object.popall(
-            tested_method_args.positional,
-            tested_method_args.keyword,
+            *tested_method_args.positional,
+            **tested_method_args.keyword,
         )
