@@ -31,6 +31,7 @@ cython
 Deprecations
 deallocation
 decrementation
+dependabot
 dev
 dict
 dists
@@ -101,6 +102,7 @@ str
 subclassable
 subclassed
 subclassing
+subdirectory
 subprotocol
 subprotocols
 Svetlov
