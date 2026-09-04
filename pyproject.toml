@@ -49,6 +49,7 @@ before-all = "yum install -y libffi-devel || apk add --upgrade libffi-dev || apt
 strict = true
 show_error_codes = true
 warn_unused_configs = true
+warn_incomplete_stub = true
 ignore_missing_imports = false
 packages = ["docs", "multidict", "tests"]
 pretty = true
