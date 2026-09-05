@@ -76,16 +76,16 @@ _multidict_extend(MultiDictObject* self, PyObject* arg, PyObject* kwds,
     }
 
     if (arg != NULL) {
-        MultiDictObject *other = NULL;
+        MultiDictObject* other = NULL;
         if (AnyMultiDict_Check(state, arg)) {
-            other = (MultiDictObject *)arg;
+            other = (MultiDictObject*)arg;
         } else if (AnyMultiDictProxy_Check(state, arg)) {
-            other = ((MultiDictProxyObject *)arg)->md;
+            other = ((MultiDictProxyObject*)arg)->md;
         }
 
         if (other != NULL) {
             if (other == self) {
-                PyObject *items = multidict_itemsview_new(other);
+                PyObject* items = multidict_itemsview_new(other);
                 if (items == NULL) {
                     goto fail;
                 }
