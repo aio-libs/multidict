@@ -1,2 +1,2 @@
 Fixed a segmentation fault when extending a multidict with itself
--- by :user:`cananoo`.
+-- by :user:`cananoo` and :user:`asvetlov`.
