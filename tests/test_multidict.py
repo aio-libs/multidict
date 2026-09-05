@@ -1450,6 +1450,38 @@ def test_view_direct_instantiation_segfault() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.parametrize("cls_name", ("MultiDict", "CIMultiDict"))
+def test_new_without_init_is_valid_empty(cls_name: str) -> None:
+    """A container built with ``__new__`` but no ``__init__`` (or a subclass
+    that skips ``super().__init__()``) must be a usable empty mapping, not a
+    segfault.  ``tp_new`` initialises the internal state to empty."""
+    cls = getattr(multidict, cls_name)
+
+    d = cls.__new__(cls)
+    assert len(d) == 0
+    assert d.get("k") is None
+    with pytest.raises(KeyError):
+        d["k"]
+    d["a"] = "1"
+    assert d["a"] == "1"
+
+    # case-insensitivity is preserved for CIMultiDict built this way
+    if cls_name == "CIMultiDict":
+        e = cls.__new__(cls)
+        e["A"] = "1"
+        assert e["a"] == "1"
+
+    # a subclass that forgets to call super().__init__() is also safe
+    class Sub(cls):  # type: ignore[valid-type, misc]
+        def __init__(self) -> None:
+            pass
+
+    s = Sub()
+    assert len(s) == 0
+    assert s.get("missing") is None
+
+
+@pytest.mark.c_extension
 def test_iter_direct_instantiation_segfault() -> None:
     """Iterator objects cannot be instantiated directly (issue: segfault).
 
