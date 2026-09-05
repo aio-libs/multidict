@@ -319,7 +319,7 @@ md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
     htkeys_t* new_keys;
 
     if (minused <= USABLE_FRACTION(HT_MINSIZE)) {
-        md->keys = (htkeys_t *)&empty_htkeys;
+        md->keys = (htkeys_t*)&empty_htkeys;
         ASSERT_CONSISTENT(md, false);
         return 0;
     }
@@ -364,7 +364,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
         }
         md->keys = keys;
     } else {
-        md->keys = (htkeys_t *)&empty_htkeys;
+        md->keys = (htkeys_t*)&empty_htkeys;
     }
     ASSERT_CONSISTENT(md, false);
     return 0;
@@ -1895,7 +1895,7 @@ md_clear(MultiDictObject* md)
     md->used = 0;
     if (md->keys != &empty_htkeys) {
         htkeys_free(md->keys);
-        md->keys = (htkeys_t *)&empty_htkeys;
+        md->keys = (htkeys_t*)&empty_htkeys;
     }
     ASSERT_CONSISTENT(md, false);
     return 0;
