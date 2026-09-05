@@ -84,8 +84,7 @@ parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
             } else {
                 return raise_unexpected_kwarg(fname, argname);
             }
-        } else {
-            // kwsize == 1
+        } else if (kwsize == 1) {
             argname = PyTuple_GetItem(kwnames, 0);
             if (argname == NULL) {
                 return -1;
@@ -101,6 +100,13 @@ parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
             } else {
                 // nargs == 0
                 if (PyUnicode_CompareWithASCIIString(argname, arg1name) == 0) {
+                    if (minargs == 2) {
+                        /* Only one argument was supplied (by keyword), but
+                           this function requires two: arg2 is missing. Without
+                           this check arg2 stays NULL and the caller
+                           dereferences it. */
+                        return raise_missing_posarg(fname, arg2name);
+                    }
                     *arg1 = args[0];
                     *arg2 = NULL;
                     return 0;
@@ -108,6 +114,27 @@ parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
                     return raise_missing_posarg(fname, arg1name);
                 }
             }
+        } else {
+            /* kwsize < 1 is never produced (CPython passes a NULL kwnames when
+               there are no keyword arguments); kwsize > 2 means more keyword
+               arguments than this function accepts.  At most two names are
+               valid, so report the first unexpected one. */
+            for (Py_ssize_t i = 0; i < kwsize; i++) {
+                argname = PyTuple_GetItem(kwnames, i);
+                if (argname == NULL) {
+                    return -1;
+                }
+                if (PyUnicode_CompareWithASCIIString(argname, arg1name) != 0 &&
+                    PyUnicode_CompareWithASCIIString(argname, arg2name) != 0) {
+                    return raise_unexpected_kwarg(fname, argname);
+                }
+            }
+            // Unreachable from Python code, could be called only for
+            // hand-built vectorcall
+            PyErr_Format(PyExc_TypeError,
+                         "%.150s() got more than 2 expected arguments",
+                         fname);
+            return -1;
         }
     } else {
         if (nargs < 1) {
