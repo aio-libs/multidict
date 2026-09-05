@@ -106,6 +106,12 @@ _multidict_extend(MultiDictObject* self, PyObject* arg, PyObject* kwds,
         } else {
             seq = PyMapping_Items(arg);
             if (seq == NULL) {
+                if (!PyErr_ExceptionMatches(PyExc_AttributeError) &&
+                    !PyErr_ExceptionMatches(PyExc_TypeError)) {
+                    // propagate MemoryError / KeyboardInterrupt / etc.
+                    goto fail;
+                }
+                // arg is not a mapping; fall back to treating it as a sequence
                 PyErr_Clear();
                 seq = Py_NewRef(arg);
             }
@@ -474,9 +480,12 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
             PyObject* keys = PyMapping_Keys(other);
             if (keys != NULL) {
                 fits = true;
-            } else {
-                // reset AttributeError exception
+            } else if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+                // other is not a mapping (no keys()); treat as not equal
                 PyErr_Clear();
+            } else {
+                // propagate MemoryError / KeyboardInterrupt / etc.
+                return NULL;
             }
             Py_CLEAR(keys);
         }
@@ -498,11 +507,13 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
 static void
 multidict_tp_dealloc(MultiDictObject* self)
 {
+    PyTypeObject* tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
         PyObject_ClearWeakRefs((PyObject*)self);
     md_clear(self);
-    Py_TYPE(self)->tp_free((PyObject*)self);
+    tp->tp_free((PyObject*)self);
+    Py_DECREF(tp);
     Py_TRASHCAN_END  // there should be no code after this
 }
 
@@ -1183,10 +1194,12 @@ multidict_proxy_tp_richcompare(MultiDictProxyObject* self, PyObject* other,
 static void
 multidict_proxy_tp_dealloc(MultiDictProxyObject* self)
 {
+    PyTypeObject* tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     PyObject_ClearWeakRefs((PyObject*)self);
     Py_XDECREF(self->md);
-    Py_TYPE(self)->tp_free((PyObject*)self);
+    tp->tp_free((PyObject*)self);
+    Py_DECREF(tp);
 }
 
 static int

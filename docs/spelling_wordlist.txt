@@ -32,6 +32,7 @@ Deprecations
 deallocation
 decrementation
 dependabot
+dereferenced
 dev
 dict
 dists
