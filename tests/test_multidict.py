@@ -1450,6 +1450,28 @@ def test_view_direct_instantiation_segfault() -> None:
 
 
 @pytest.mark.c_extension
+def test_iter_direct_instantiation_segfault() -> None:
+    """Iterator objects cannot be instantiated directly (issue: segfault).
+
+    Companion to ``test_view_direct_instantiation_segfault``: the iterator
+    types share the same hole -- ``type(iter(md.keys())).__new__(t)`` used to
+    build an uninitialised iterator whose ``next()`` dereferenced a NULL
+    ``md`` pointer and segfaulted.  This test only applies to the C extension.
+    """
+    md = multidict.MultiDict([("a", "1")])
+    for view_name, iter_name in (
+        ("keys", "_keysiter"),
+        ("items", "_itemsiter"),
+        ("values", "_valuesiter"),
+    ):
+        iter_type = type(iter(getattr(md, view_name)()))
+        with pytest.raises(
+            TypeError, match=f"cannot create '.*{iter_name}' instances directly"
+        ):
+            iter_type.__new__(iter_type)  # type: ignore[call-overload]
+
+
+@pytest.mark.c_extension
 def test_non_typeerror_exceptions_are_not_swallowed() -> None:
     """Feature-detection fallbacks (probing ``__len__``/``keys``/``items``)
     must clear only the expected TypeError/AttributeError, not swallow every
