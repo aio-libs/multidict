@@ -140,7 +140,6 @@ class TestMutableMultiDict:
         del d["key"]
         assert d == {"foo": "bar"}
         assert list(d.items()) == [("foo", "bar")]
-
         with pytest.raises(KeyError, match="key"):
             del d["key"]
 
