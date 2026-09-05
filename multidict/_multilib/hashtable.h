@@ -118,8 +118,8 @@ _str_cmp(PyObject* s1, PyObject* s2)
         return 0;
     }
 
-    const void *data1 = PyUnicode_DATA(s1);
-    const void *data2 = PyUnicode_DATA(s2);
+    const void* data1 = PyUnicode_DATA(s1);
+    const void* data2 = PyUnicode_DATA(s2);
     return (memcmp(data1, data2, len * kind) == 0);
 }
 
