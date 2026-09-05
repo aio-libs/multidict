@@ -582,8 +582,8 @@ fail:
     return -1;
 }
 
-static PyObject *
-multidict_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+static PyObject*
+multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     /* Initialise the object to a valid empty state here rather than relying on
        tp_init.  Otherwise ``MultiDict.__new__(MultiDict)`` (or a subclass that
@@ -591,13 +591,13 @@ multidict_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
        first method call dereferences NULL and segfaults.  The empty state uses
        the shared &empty_htkeys sentinel (no allocation), so the subsequent
        md_init() from tp_init does not leak. */
-    PyObject *mod = PyType_GetModuleByDef(type, &multidict_module);
+    PyObject* mod = PyType_GetModuleByDef(type, &multidict_module);
     if (mod == NULL) {
         return NULL;
     }
-    mod_state *state = get_mod_state(mod);
+    mod_state* state = get_mod_state(mod);
     bool is_ci = PyType_IsSubtype(type, state->CIMultiDictType);
-    MultiDictObject *self = (MultiDictObject *)type->tp_alloc(type, 0);
+    MultiDictObject* self = (MultiDictObject*)type->tp_alloc(type, 0);
     if (self == NULL) {
         return NULL;
     }
@@ -605,12 +605,12 @@ multidict_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_DECREF(self);
         return NULL;
     }
-    return (PyObject *)self;
+    return (PyObject*)self;
 }
 
-static PyObject *
-multidict_add(MultiDictObject *self, PyObject *const *args, Py_ssize_t nargs,
-              PyObject *kwnames)
+static PyObject*
+multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
+              PyObject* kwnames)
 {
     PyObject *key = NULL, *val = NULL;
 
