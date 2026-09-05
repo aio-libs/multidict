@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 static inline int
-raise_unexpected_kwarg(const char *fname, PyObject *argname)
+raise_unexpected_kwarg(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() got an unexpected keyword argument '%.150U'",
@@ -16,7 +16,7 @@ raise_unexpected_kwarg(const char *fname, PyObject *argname)
 }
 
 static inline int
-raise_missing_posarg(const char *fname, const char *argname)
+raise_missing_posarg(const char* fname, const char* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() missing 1 required positional argument: '%.150s'",
@@ -36,9 +36,9 @@ The parser accepts three forms:
 */
 
 static inline int
-parse2(const char *fname, PyObject *const *args, Py_ssize_t nargs,
-       PyObject *kwnames, Py_ssize_t minargs, const char *arg1name,
-       PyObject **arg1, const char *arg2name, PyObject **arg2)
+parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
+       PyObject* kwnames, Py_ssize_t minargs, const char* arg1name,
+       PyObject** arg1, const char* arg2name, PyObject** arg2)
 {
     assert(minargs >= 1);
     assert(minargs <= 2);
@@ -48,7 +48,7 @@ parse2(const char *fname, PyObject *const *args, Py_ssize_t nargs,
         if (kwsize < 0) {
             return -1;
         }
-        PyObject *argname;  // borrowed ref
+        PyObject* argname;  // borrowed ref
         if (kwsize == 2) {
             /* All args are passed by keyword, possible combinations:
                arg1, arg2 and arg2, arg1 */
@@ -141,7 +141,7 @@ parse2(const char *fname, PyObject *const *args, Py_ssize_t nargs,
             return -1;
         }
         if (nargs < minargs || nargs > 2) {
-            const char *txt;
+            const char* txt;
             if (minargs == 2) {
                 txt = "from 1 to 2 positional arguments";
             } else {
