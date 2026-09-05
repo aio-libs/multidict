@@ -1,0 +1,3 @@
+Wheels for iOS and Android are now published on release-tag builds, so
+downstreams on those platforms no longer need a local compiler to
+install ``multidict`` -- by :user:`aiolibsbot`.
