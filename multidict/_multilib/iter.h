@@ -175,9 +175,9 @@ static PyMethodDef multidict_iter_methods[] = {
 
 /***********************************************************************/
 
-static PyObject *
-multidict_iter_forbidden_new(PyTypeObject *type, PyObject *args,
-                             PyObject *kwargs)
+static PyObject*
+multidict_iter_forbidden_new(PyTypeObject* type, PyObject* args,
+                             PyObject* kwargs)
 {
     PyErr_Format(PyExc_TypeError,
                  "cannot create '%s' instances directly",
