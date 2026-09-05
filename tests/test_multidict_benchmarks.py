@@ -301,6 +301,21 @@ def test_multidict_getall_str_hit(
             md.getall(key)
 
 
+def test_multidict_getall_str_hit_nonascii(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    md = any_multidict_class(
+        (f"ключ{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
+    )
+
+    key = "ключ5"
+
+    @benchmark
+    def _run() -> None:
+        for i in range(1000):
+            md.getall(key)
+
+
 def test_multidict_getall_str_miss(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
