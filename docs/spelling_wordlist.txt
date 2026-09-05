@@ -52,7 +52,10 @@ google
 gunicorn
 Gunicorn
 Indices
+init
 inplace
+installable
+instantiation
 ionaries
 IP
 IPv
@@ -79,10 +82,13 @@ Multipart
 mypy
 Nikolay
 param
+parametrization
+parametrized
 params
 performant
 pickable
 pickleable
+postfix
 pre
 proxied
 pyenv
@@ -111,6 +117,7 @@ toolset
 tuples
 un
 uncompiled
+unparseable
 upstr
 url
 urlencoded
