@@ -1322,6 +1322,7 @@ def test_reinitialize_releases_previous_values(
 
     d.__init__([("new", "value")])  # type: ignore[misc]
 
+    gc.collect()
     assert value_ref() is None
     assert list(d.items()) == [("new", "value")]
 
