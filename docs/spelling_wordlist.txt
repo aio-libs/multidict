@@ -31,8 +31,8 @@ cython
 Deprecations
 deallocation
 decrementation
-dereferenced
 dependabot
+dereferenced
 dev
 dict
 dists
