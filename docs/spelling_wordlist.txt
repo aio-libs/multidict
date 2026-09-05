@@ -54,7 +54,6 @@ gunicorn
 Gunicorn
 Indices
 init
-initialises
 inplace
 installable
 instantiation
