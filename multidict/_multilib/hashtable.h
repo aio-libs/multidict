@@ -97,19 +97,30 @@ _md_dump(MultiDictObject* md);
 #define ASSERT_CONSISTENT(md, update) assert(1)
 #endif
 
-static inline int
+static inline bool
 _str_cmp(PyObject* s1, PyObject* s2)
 {
-    PyObject* ret = PyUnicode_RichCompare(s1, s2, Py_EQ);
-    if (Py_IsTrue(ret)) {
-        Py_DECREF(ret);
-        return 1;
-    } else if (ret == NULL) {
-        return -1;
-    } else {
-        Py_DECREF(ret);
-        return 0;
+    /* implementation is borrowed from PyUnicode_Equal() but without
+       type checks, arguments are identities that are always strings */
+    assert(PyUnicode_Check(s1));
+    assert(PyUnicode_Check(s2));
+
+    if (s1 == s2) {
+        return true;
     }
+    Py_ssize_t len = PyUnicode_GET_LENGTH(s1);
+    if (PyUnicode_GET_LENGTH(s2) != len) {
+        return false;
+    }
+
+    int kind = PyUnicode_KIND(s1);
+    if (PyUnicode_KIND(s2) != kind) {
+        return false;
+    }
+
+    const void* data1 = PyUnicode_DATA(s1);
+    const void* data2 = PyUnicode_DATA(s2);
+    return (memcmp(data1, data2, len * kind) == 0);
 }
 
 static inline PyObject*
@@ -563,11 +574,7 @@ md_del(MultiDictObject* md, PyObject* key)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(entry->identity, identity);
-        if (tmp < 0) {
-            goto fail;
-        }
-        if (tmp == 0) {
+        if (!_str_cmp(entry->identity, identity)) {
             continue;
         }
 
@@ -716,12 +723,7 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
         if (entry->hash != finder->hash) {
             continue;
         }
-        int tmp = _str_cmp(finder->identity, entry->identity);
-        if (tmp < 0) {
-            ret = -1;
-            goto cleanup;
-        }
-        if (tmp == 0) {
+        if (!_str_cmp(finder->identity, entry->identity)) {
             continue;
         }
 
@@ -802,8 +804,7 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(identity, entry->identity);
-        if (tmp > 0) {
+        if (_str_cmp(identity, entry->identity)) {
             Py_DECREF(identity);
             if (pret != NULL) {
                 *pret = _md_ensure_key(md, entry);
@@ -812,8 +813,6 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
                 }
             }
             return 1;
-        } else if (tmp < 0) {
-            goto fail;
         }
     }
 
@@ -855,13 +854,10 @@ md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(identity, entry->identity);
-        if (tmp > 0) {
+        if (_str_cmp(identity, entry->identity)) {
             Py_DECREF(identity);
             *ret = Py_NewRef(entry->value);
             return 1;
-        } else if (tmp < 0) {
-            goto fail;
         }
     }
 
@@ -952,14 +948,11 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(identity, entry->identity);
-        if (tmp > 0) {
+        if (_str_cmp(identity, entry->identity)) {
             Py_DECREF(identity);
             ASSERT_CONSISTENT(md, false);
             *result = Py_NewRef(entry->value);
             return 1;
-        } else if (tmp < 0) {
-            goto fail;
         }
     }
 
@@ -1004,8 +997,7 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(identity, entry->identity);
-        if (tmp > 0) {
+        if (_str_cmp(identity, entry->identity)) {
             value = Py_NewRef(entry->value);
             if (_md_del_at(md, iter.slot, entry) < 0) {
                 goto fail;
@@ -1015,8 +1007,6 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
             md->version = NEXT_VERSION(md->state);
             ASSERT_CONSISTENT(md, false);
             return 1;
-        } else if (tmp < 0) {
-            goto fail;
         }
     }
     Py_DECREF(identity);
@@ -1061,8 +1051,7 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(identity, entry->identity);
-        if (tmp > 0) {
+        if (_str_cmp(identity, entry->identity)) {
             if (lst == NULL) {
                 lst = PyList_New(1);
                 if (lst == NULL) {
@@ -1078,8 +1067,6 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
                 goto fail;
             }
             md->version = NEXT_VERSION(md->state);
-        } else if (tmp < 0) {
-            goto fail;
         }
     }
 
@@ -1220,8 +1207,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(identity, entry->identity);
-        if (tmp > 0) {
+        if (_str_cmp(identity, entry->identity)) {
             if (!found) {
                 found = true;
                 if (entry->key == NULL) {
@@ -1241,8 +1227,6 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     goto fail;
                 }
             }
-        } else if (tmp < 0) {
-            goto fail;
         }
     }
 
@@ -1272,11 +1256,8 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         if (hash != entry->hash) {
             continue;
         }
-        int tmp = _str_cmp(identity, entry->identity);
-        if (tmp > 0) {
+        if (_str_cmp(identity, entry->identity)) {
             return 0;
-        } else if (tmp < 0) {
-            goto fail;
         }
     }
 
@@ -1683,15 +1664,12 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
             return 0;
         }
 
-        int cmp = _str_cmp(entry1->identity, entry2->identity);
-        if (cmp < 0) {
-            return -1;
-        };
-        if (cmp == 0) {
+        if (!_str_cmp(entry1->identity, entry2->identity)) {
             return 0;
         }
 
-        cmp = PyObject_RichCompareBool(entry1->value, entry2->value, Py_EQ);
+        int cmp =
+            PyObject_RichCompareBool(entry1->value, entry2->value, Py_EQ);
         if (cmp < 0) {
             return -1;
         };
