@@ -569,6 +569,7 @@ multidict_itemsview_or2(_Multidict_ViewObject *self, PyObject *other)
                 goto fail;
             }
             tmp = PySet_Contains(tmp_set, tpl);
+            Py_DECREF(tpl);
             if (tmp < 0) {
                 goto fail;
             }
@@ -678,6 +679,7 @@ multidict_itemsview_sub1(_Multidict_ViewObject *self, PyObject *other)
                 goto fail;
             }
             tmp = PySet_Contains(tmp_set, tpl);
+            Py_DECREF(tpl);
             if (tmp < 0) {
                 goto fail;
             }
