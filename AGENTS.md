@@ -105,6 +105,7 @@ Fixes #NNNN
 - [x] Documentation reflects the changes
 - [ ] If you provide code modification, please add yourself to `CONTRIBUTORS.txt`
 - [x] Add a new news fragment into the `CHANGES/` folder
+- [x] `make doc-spelling` passes and any new technical words are added to `docs/spelling_wordlist.txt`
 ```
 
 Tick the boxes that actually apply. If a row does not apply (e.g. a
