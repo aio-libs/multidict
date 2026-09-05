@@ -270,7 +270,7 @@ class BaseMultiDictTest:
 
         assert ("foo", "bar") not in d.items()
         assert (42, 3) not in d.items()  # type: ignore[comparison-overlap]
-        assert 42 not in d.items()  # type: ignore[comparison-overlap]
+        assert 42 not in d.items()  # type: ignore[operator]
 
     def test_cannot_create_from_unaccepted(
         self,

@@ -402,7 +402,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 continue
             if key in self._md:
-                ret.discard(key)  # type: ignore[arg-type]
+                ret.discard(key)
         return ret
 
     def __xor__(self, other: Iterable[_T]) -> set[str | _T]:
@@ -476,7 +476,7 @@ class _Entry(Generic[_V]):
 
 
 @dataclass
-class _HtKeys(Generic[_V]):  # type: ignore[misc]
+class _HtKeys(Generic[_V]):
     LOG_MINSIZE: ClassVar[int] = 3
     MINSIZE: ClassVar[int] = 8
     PREALLOCATED_INDICES: ClassVar[dict[int, array]] = {  # type: ignore[type-arg]
