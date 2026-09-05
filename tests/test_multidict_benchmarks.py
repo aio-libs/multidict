@@ -350,6 +350,25 @@ def test_cimultidict_getall_istr_hit(
             md.getall(key)
 
 
+def test_cimultidict_getall_istr_hit_nonascii(
+    benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
+    case_insensitive_str_class: type[istr],
+) -> None:
+    md = case_insensitive_multidict_class(
+        (f"ключ{j}", case_insensitive_str_class(f"{i}-{j}"))
+        for i in range(100)
+        for j in range(10)
+    )
+
+    key = case_insensitive_str_class("ключ5")
+
+    @benchmark
+    def _run() -> None:
+        for i in range(1000):
+            md.getall(key)
+
+
 def test_cimultidict_getall_istr_miss(
     benchmark: BenchmarkFixture,
     case_insensitive_multidict_class: type[CIMultiDict[istr]],
