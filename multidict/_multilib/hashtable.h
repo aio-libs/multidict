@@ -1330,11 +1330,11 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op)
         return -1;
     }
 
-    entry_t *entries = htkeys_entries(other->keys);
+    entry_t* entries = htkeys_entries(other->keys);
     Py_ssize_t nentries = other->keys->nentries;
 
     for (pos = 0; pos < nentries; pos++) {
-        entry_t *entry = entries + pos;
+        entry_t* entry = entries + pos;
         if (entry->identity == NULL) {
             continue;
         }

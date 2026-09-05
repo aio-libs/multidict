@@ -1490,7 +1490,7 @@ def test_update_from_list_mutated_by_key_lookup() -> None:
     multidict.CIMultiDict(seq)  # type: ignore[arg-type]
 
 
-@pytest.mark.c_extension  
+@pytest.mark.c_extension
 @pytest.mark.parametrize("cls_name", ("MultiDict", "CIMultiDict"))
 def test_new_without_init_is_valid_empty(cls_name: str) -> None:
     """A container built with ``__new__`` but no ``__init__`` (or a subclass
