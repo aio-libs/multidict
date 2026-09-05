@@ -41,9 +41,6 @@
 /******************** Internal Methods ********************/
 
 static inline PyObject*
-multidict_copy(MultiDictObject* self);
-
-static inline PyObject*
 _multidict_getone(MultiDictObject* self, PyObject* key, PyObject* _default)
 {
     PyObject* val = NULL;
@@ -88,13 +85,7 @@ _multidict_extend(MultiDictObject* self, PyObject* arg, PyObject* kwds,
 
         if (other != NULL) {
             if (other == self) {
-                PyObject* copy = multidict_copy(self);
-                if (copy == NULL) {
-                    goto fail;
-                }
-                int ret = md_update_from_ht(self, (MultiDictObject*)copy, op);
-                Py_DECREF(copy);
-                if (ret < 0) {
+                if (op == Extend && md_extend_self(self) < 0) {
                     goto fail;
                 }
             } else if (md_update_from_ht(self, other, op) < 0) {

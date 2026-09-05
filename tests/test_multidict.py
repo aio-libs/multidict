@@ -1322,18 +1322,39 @@ def test_extend_does_not_alter_refcount(
 
 
 @pytest.mark.parametrize("use_proxy", (False, True), ids=("self", "proxy"))
+@pytest.mark.parametrize("deleted", (False, True), ids=("full", "deleted"))
 def test_extend_with_itself(
     any_multidict_class: type[MultiDict[int]],
     any_multidict_proxy_class: type[MultiDictProxy[int]],
     use_proxy: bool,
+    deleted: bool,
 ) -> None:
     md = any_multidict_class((str(index), index) for index in range(6))
+    if deleted:
+        del md["0"]
     source = any_multidict_proxy_class(md) if use_proxy else md
 
     md.extend(source)
 
-    expected = [(str(index), index) for index in range(6)]
+    expected = [(str(index), index) for index in range(1 if deleted else 0, 6)]
     assert list(md.items()) == expected * 2
+
+
+@pytest.mark.parametrize("use_proxy", (False, True), ids=("self", "proxy"))
+@pytest.mark.parametrize("method", ("update", "merge"))
+def test_update_and_merge_with_itself(
+    any_multidict_class: type[MultiDict[int]],
+    any_multidict_proxy_class: type[MultiDictProxy[int]],
+    use_proxy: bool,
+    method: str,
+) -> None:
+    expected = [("key", 1), ("key", 2)]
+    md = any_multidict_class(expected)
+    source = any_multidict_proxy_class(md) if use_proxy else md
+
+    getattr(md, method)(source)
+
+    assert list(md.items()) == expected
 
 
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
