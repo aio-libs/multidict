@@ -1478,7 +1478,7 @@ def test_non_typeerror_exceptions_are_not_swallowed() -> None:
             raise MemoryError("boom")
 
         def __getitem__(self, key: str) -> int:
-            return 1
+            return 1  # pragma: no cover
 
     with pytest.raises(MemoryError):
         multidict.MultiDict(BadItems())
