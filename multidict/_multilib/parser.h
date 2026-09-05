@@ -130,7 +130,7 @@ parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
                 }
             }
             PyErr_Format(PyExc_TypeError,
-                         "%.150s() got more than 2 expected arguments'",
+                         "%.150s() got more than 2 expected arguments",
                          fname);
             return -1;
         }
