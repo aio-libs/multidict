@@ -1465,9 +1465,7 @@ def test_iter_direct_instantiation_segfault() -> None:
             iter_type.__new__(iter_type)  # type: ignore[call-overload]
 
 
-pytest.mark.c_extension
-
-
+@pytest.mark.c_extension
 def test_non_typeerror_exceptions_are_not_swallowed() -> None:
     """Feature-detection fallbacks (probing ``__len__``/``keys``/``items``)
     must clear only the expected TypeError/AttributeError, not swallow every
