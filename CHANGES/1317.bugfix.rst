@@ -1,0 +1,20 @@
+Fixed a memory-safety race condition resulting in segmentation faults
+(use-after-free) when iterating and modifying a :class:`~multidict.MultiDict`
+concurrently in CPython free-threaded mode (3.13t+). Read and write accesses
+to the internal ``md->keys`` buffer are now wrapped in
+:c:macro:`Py_BEGIN_CRITICAL_SECTION`.
+
+Operations that read a second multidict, namely the copy constructors,
+:meth:`~multidict.MultiDict.extend`, :meth:`~multidict.MultiDict.update` and
+:meth:`~multidict.MultiDict.merge`, now lock both objects with
+:c:macro:`Py_BEGIN_CRITICAL_SECTION2`. Previously only the destination was
+locked, so a concurrent insertion could resize the source and free the entry
+array being walked.
+
+The consistency checks compiled into debug builds no longer run outside the
+critical section they belong to. They walk the whole table, so on a debug
+free-threaded build one thread could abort on another thread's transient
+state, or read an array a third thread had already freed. Most of them
+duplicated a check that the ``md_*`` helpers already perform under the lock
+and were removed
+-- by :user:`rodrigobnogueira`.

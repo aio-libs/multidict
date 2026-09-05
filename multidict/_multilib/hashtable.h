@@ -68,6 +68,63 @@ indices still has O(1) amortized time, it is ok.
 in the left and right arguments.
 
 `.copy()` and constuction from multidict is super fast.
+
+Thread Safety (CPython 3.13t+ free-threaded mode)
+==================================================
+
+This module declares Py_MOD_GIL_NOT_USED, opting into free-threaded execution
+on CPython 3.13t+.  All public entry points that read or write md->keys are
+protected by Py_BEGIN_CRITICAL_SECTION(md) / Py_END_CRITICAL_SECTION(), which
+acquires CPython's per-object mutex (a no-op on pre-3.13 builds via the
+pythoncapi_compat.h shim).
+
+Locking granularity follows CPython's own dict pattern: each public-facing
+method (in _multidict.c, iter.h, views.h) acquires the critical section on
+the MultiDictObject.  Internal helpers (_md_resize, md_next, _md_add_with_hash,
+etc.) remain unlocked — they are always called from within an already-locked
+public entry point.
+
+Operations that read a SECOND multidict must lock both objects with
+Py_BEGIN_CRITICAL_SECTION2(self, other), the way CPython's dict_merge() does.
+md_update_from_ht(), md_clone_from_ht() and md_eq() all take a raw entry_t*
+into other->keys and walk it, so an unlocked concurrent insert on `other` can
+resize it and free the array out from under the walk.  Because critical
+sections are NOT reentrant, the second lock cannot be taken inside those
+helpers (the caller already holds `self`); it is taken by the public entry
+point instead — the constructors, extend(), update(), merge() and
+tp_richcompare.  _multidict_extend_source() resolves the argument once, and
+that same pointer is both locked and walked, so the object the lock protects
+is by construction the object the walk reads.
+
+ASSERT_CONSISTENT() walks the whole table, so it must only ever be evaluated
+while the object's critical section is held.  Evaluating it outside is not a
+stale read but an unsynchronised walk of a buffer another thread may resize
+and free.  Most md_* helpers already assert under the lock, so public entry
+points do not repeat it; multidict_copy() is the exception and asserts a
+freshly built object that is not yet reachable from another thread.
+
+Known gap: a critical section is SUSPENDED whenever the holding thread
+detaches, which includes any blocking call and every stop-the-world safepoint.
+It is therefore not enough on its own wherever the table is left in a
+transiently violated state across a call into Python.  md_find_next() marks
+visited entries with entry->hash = -1 and md_finder_cleanup() restores them,
+and the value comparisons in views.h run user code inside that window, so
+another thread can still observe a marked entry (getall() dropping a value,
+for one).  Closing that needs the markers restored before each callback, or
+the callbacks hoisted out of the marked window the way CPython's dict does;
+locking alone does not do it.
+
+Re-entrancy constraint: Py_BEGIN_CRITICAL_SECTION uses a NON-RECURSIVE mutex.
+Several operations call back into Python code while holding the lock:
+  - _ci_key_to_identity() calls PyObject_CallMethodNoArgs(key, "lower")
+  - _str_cmp() calls PyUnicode_RichCompare()
+  - md_repr() calls PyUnicodeWriter_WriteRepr() / PyObject_Repr()
+These callbacks are safe because they never re-enter any multidict method on
+the SAME MultiDictObject instance.  str.lower() returns a new string without
+touching the dict, and value __repr__/__eq__ should not mutate the container.
+If a user subclass violates this invariant (e.g., a value's __repr__ mutates
+the multidict it belongs to), the result is a deadlock on 3.13t+ — the same
+constraint that CPython's built-in dict has.
 */
 
 /* GROWTH_RATE. Growth rate upon hitting maximum load.
