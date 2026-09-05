@@ -218,12 +218,6 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 15
-    env:
-      # Python 3.14 defaults coverage.py to sysmon, which does not support
-      # pytest-cov's dynamic test contexts. PyPy does not ship CTracer, so
-      # use its pytrace core instead.
-      COVERAGE_CORE: >-
-        ${{ startsWith(matrix.pyver, 'pypy') && 'pytrace' || 'ctrace' }}
 
     continue-on-error: >-
       ${{
