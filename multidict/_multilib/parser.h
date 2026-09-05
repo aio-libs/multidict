@@ -129,6 +129,7 @@ parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
                     return raise_unexpected_kwarg(fname, argname);
                 }
             }
+            // Unreachable from Python code, could be called only for hand-built vectorcall
             PyErr_Format(PyExc_TypeError,
                          "%.150s() got more than 2 expected arguments",
                          fname);
