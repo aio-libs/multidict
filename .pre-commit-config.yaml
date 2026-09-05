@@ -123,6 +123,11 @@ repos:
   hooks:
   - id: clang-format
     types_or: [c, c++]
+    exclude: >-
+      (?x)
+      ^
+        multidict/_multilib/pythoncapi_compat\.h
+      $
 - repo: https://github.com/pre-commit/mirrors-mypy.git
   rev: v2.3.1
   hooks:
