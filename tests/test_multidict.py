@@ -1472,7 +1472,7 @@ def test_non_typeerror_exceptions_are_not_swallowed() -> None:
     # extend()/constructor probes arg.items()
     class BadItems:
         def keys(self) -> list[str]:
-            return ["x"]
+            return ["x"]  # pragma: no cover
 
         def items(self) -> object:
             raise MemoryError("boom")
