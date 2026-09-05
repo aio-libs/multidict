@@ -17,6 +17,7 @@ IS_PYPY = platform.python_implementation() == "PyPy"
         "multidict_update_multidict.py",
         "multidict_type_leak.py",
         "multidict_type_leak_items_values.py",
+        "multidict_itemsview_set_operations.py",
         "multidict_pop.py",
     ),
 )
