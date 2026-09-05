@@ -430,7 +430,7 @@ jobs:
     - name: Self-install
       run: python -m pip install -e .
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v4
+      uses: CodSpeedHQ/action@v5.2.1
       env:
         PYTHONHASHSEED: 0
       with:
@@ -572,10 +572,43 @@ jobs:
           || '*-musllinux_*'
         }} pp*
 
+  build-wheels-for-mobile-archs:
+    name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
+      📦 Build wheels for mobile arches${{ '' }}
+    needs:
+    - build-pure-python-dists
+    - pre-deploy
+    - pre-setup  # transitive, for accessing settings
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: ios
+          runner-vm-os: macos-latest
+        - platform: android
+          runner-vm-os: ubuntu-latest
+    uses: ./.github/workflows/reusable-cibuildwheel.yml
+    with:
+      check-name: >-
+        Build ${{ matrix.platform }} wheels on ${{ matrix.runner-vm-os }}
+      runner-vm-os: ${{ matrix.runner-vm-os }}
+      timeout-minutes: 60
+      source-tarball-name: >-
+        ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+      dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+      # iOS and Android wheels target Python 3.13+ (PEP 730, PEP 738).
+      # Tests are skipped here because mobile testing requires
+      # simulator/emulator setup outside the scope of this job.
+      environment-variables: |-
+        CIBW_PLATFORM=${{ matrix.platform }}
+
+        CIBW_TEST_SKIP=*
+
   deploy:
     name: Deploy
     needs:
     - build-pure-python-dists
+    - build-wheels-for-mobile-archs
     - build-wheels-for-odd-archs
     - build-wheels-for-tested-arches
     - pre-setup  # transitive, for accessing settings
@@ -657,7 +690,7 @@ jobs:
         skip-existing: true
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v3.4.0
+      uses: sigstore/gh-action-sigstore-python@v3.5.0
       with:
         inputs: >-
           ./dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
