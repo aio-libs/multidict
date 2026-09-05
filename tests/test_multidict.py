@@ -721,6 +721,18 @@ class BaseMultiDictTest:
         assert list(obj.items()) == [("a", 1), ("b", 2)]
         assert arg == deque([("a", 1)])
 
+    def test_ucs2_ucs4_comparison(self, cls: type[MultiDict[str]]) -> None:
+        expected = [
+            ("k\u00e9y", "1"),  # UCS-1
+            ("k\u4f60y", "2"),  # UCS-2
+            ("k\U0001f600y", "3"),  # UCS-4
+            ("k\U0001f600y1", "4"),  # UCS-4
+            ("k\U0001f600y2", "5"),  # UCS-4
+        ]
+        obj = cls(expected)
+        for k, v in expected:
+            assert obj[k] == v
+
 
 class TestMultiDict(BaseMultiDictTest):
     @pytest.fixture(
