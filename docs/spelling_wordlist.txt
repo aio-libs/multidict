@@ -31,6 +31,8 @@ cython
 Deprecations
 deallocation
 decrementation
+dependabot
+dereferenced
 dev
 dict
 dists
@@ -51,7 +53,10 @@ google
 gunicorn
 Gunicorn
 Indices
+init
 inplace
+installable
+instantiation
 ionaries
 IP
 IPv
@@ -78,10 +83,13 @@ Multipart
 mypy
 Nikolay
 param
+parametrization
+parametrized
 params
 performant
 pickable
 pickleable
+postfix
 pre
 proxied
 pyenv
@@ -101,6 +109,7 @@ str
 subclassable
 subclassed
 subclassing
+subdirectory
 subprotocol
 subprotocols
 Svetlov
@@ -109,6 +118,7 @@ toolset
 tuples
 un
 uncompiled
+unparseable
 upstr
 url
 urlencoded
