@@ -507,11 +507,13 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
 static void
 multidict_tp_dealloc(MultiDictObject* self)
 {
+    PyTypeObject* tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
         PyObject_ClearWeakRefs((PyObject*)self);
     md_clear(self);
-    Py_TYPE(self)->tp_free((PyObject*)self);
+    tp->tp_free((PyObject*)self);
+    Py_DECREF(tp);
     Py_TRASHCAN_END  // there should be no code after this
 }
 
@@ -1192,10 +1194,12 @@ multidict_proxy_tp_richcompare(MultiDictProxyObject* self, PyObject* other,
 static void
 multidict_proxy_tp_dealloc(MultiDictProxyObject* self)
 {
+    PyTypeObject* tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     PyObject_ClearWeakRefs((PyObject*)self);
     Py_XDECREF(self->md);
-    Py_TYPE(self)->tp_free((PyObject*)self);
+    tp->tp_free((PyObject*)self);
+    Py_DECREF(tp);
 }
 
 static int
