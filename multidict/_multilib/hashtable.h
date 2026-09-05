@@ -1372,6 +1372,30 @@ fail:
 }
 
 static inline int
+md_extend_self(MultiDictObject* md)
+{
+    if (md_reserve(md, md->keys->nentries) < 0) {
+        return -1;
+    }
+
+    Py_ssize_t nentries = md->keys->nentries;
+    entry_t* entries = htkeys_entries(md->keys);
+    for (Py_ssize_t pos = 0; pos < nentries; pos++) {
+        entry_t* entry = entries + pos;
+        if (entry->identity != NULL) {
+            if (_md_add_with_hash(md,
+                                  entry->hash,
+                                  entry->identity,
+                                  entry->key,
+                                  entry->value) < 0) {
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
+static inline int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op)
 {
     Py_ssize_t pos = 0;

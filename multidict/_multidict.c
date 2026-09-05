@@ -76,14 +76,19 @@ _multidict_extend(MultiDictObject* self, PyObject* arg, PyObject* kwds,
     }
 
     if (arg != NULL) {
+        MultiDictObject* other = NULL;
         if (AnyMultiDict_Check(state, arg)) {
-            MultiDictObject* other = (MultiDictObject*)arg;
-            if (md_update_from_ht(self, other, op) < 0) {
-                goto fail;
-            }
+            other = (MultiDictObject*)arg;
         } else if (AnyMultiDictProxy_Check(state, arg)) {
-            MultiDictObject* other = ((MultiDictProxyObject*)arg)->md;
-            if (md_update_from_ht(self, other, op) < 0) {
+            other = ((MultiDictProxyObject*)arg)->md;
+        }
+
+        if (other != NULL) {
+            if (other == self) {
+                if (op == Extend && md_extend_self(self) < 0) {
+                    goto fail;
+                }
+            } else if (md_update_from_ht(self, other, op) < 0) {
                 goto fail;
             }
         } else if (PyDict_CheckExact(arg)) {

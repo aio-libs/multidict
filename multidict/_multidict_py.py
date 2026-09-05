@@ -793,6 +793,11 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         kwargs: Mapping[str, _V],
     ) -> Iterator[int | _Entry[_V]]:
         identity_func = self._identity
+        if isinstance(arg, MultiDictProxy):
+            if arg._md is self:
+                arg = [(e.key, e.value) for e in self._keys.iter_entries()]
+        elif arg is self:
+            arg = [(e.key, e.value) for e in self._keys.iter_entries()]
         if arg:
             if isinstance(arg, MultiDictProxy):
                 arg = arg._md
