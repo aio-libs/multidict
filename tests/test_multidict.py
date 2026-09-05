@@ -1459,10 +1459,10 @@ def test_iter_direct_instantiation_segfault() -> None:
     ``md`` pointer and segfaulted.  This test only applies to the C extension.
     """
     md = multidict.MultiDict([("a", "1")])
-    for view_name in ("keys", "items", "values"):
-        iter_type = type(iter(getattr(md, view_name)()))
-        with pytest.raises(TypeError, match="cannot create '.*' instances directly"):
-            iter_type.__new__(iter_type)  # type: ignore[call-overload]
+for view_name, iter_name in (("keys", "_keysiter"), ("items", "_itemsiter"), ("values", "_valuesiter")):
+    iter_type = type(iter(getattr(md, view_name)()))
+    with pytest.raises(TypeError, match=f"cannot create '.*{iter_name}' instances directly"):
+        iter_type.__new__(iter_type)  # type: ignore[call-overload]
 
 
 @pytest.mark.c_extension
