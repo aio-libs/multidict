@@ -1479,9 +1479,9 @@ def test_new_without_init_is_valid_empty(cls_name: str) -> None:
     s = Sub()
     assert len(s) == 0
     assert s.get("missing") is None
-    
 
-@pytest.mark.c_extension   
+
+@pytest.mark.c_extension
 def test_iter_direct_instantiation_segfault() -> None:
     """Iterator objects cannot be instantiated directly (issue: segfault).
 
