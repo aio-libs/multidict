@@ -545,7 +545,7 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (size < 0) {
         goto fail;
     }
-    int tmp = _multidict_clone_fast(state, self, false, args, kwds);
+    int tmp = _multidict_clone_fast(state, self, false, arg, kwds);
     if (tmp < 0) {
         goto fail;
     } else if (tmp == 1) {
@@ -1003,7 +1003,7 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (size < 0) {
         goto fail;
     }
-    int tmp = _multidict_clone_fast(state, self, true, args, kwds);
+    int tmp = _multidict_clone_fast(state, self, true, arg, kwds);
     if (tmp < 0) {
         goto fail;
     } else if (tmp == 1) {
