@@ -240,7 +240,7 @@ estimate_log2_keysize(Py_ssize_t n)
  * See https://github.com/python/cpython/pull/127568#discussion_r1868070614
  * for the rationale of using log2_index_bytes=3 instead of 0.
  */
-static htkeys_t empty_htkeys = {
+static const htkeys_t empty_htkeys = {
     0, /* log2_size */
     3, /* log2_index_bytes */
     0, /* usable (immutable) */
