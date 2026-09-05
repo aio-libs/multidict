@@ -1,0 +1,6 @@
+Added a :meth:`~multidict.MultiDict.to_dict` method returning a plain
+:class:`dict` that maps every key to the list of all its values. Unlike
+``dict(md)``, which keeps only the first value per key, and unlike a
+``{k: md.getall(k) for k in md}`` comprehension, which emits one entry per
+spelling of a case-insensitive key, it groups by key identity
+-- by :user:`rodrigobnogueira`.

@@ -71,6 +71,41 @@ MultiDict
 
       Return a shallow copy of the dictionary.
 
+   .. method:: to_dict()
+
+      Return a :class:`dict` mapping each key to a list of all its
+      values, preserving insertion order, e.g.::
+
+         >>> d = MultiDict([('a', 1), ('b', 2), ('a', 3)])
+         >>> d.to_dict()
+         {'a': [1, 3], 'b': [2]}
+
+      The result is a new dictionary with fresh lists; mutating it
+      does not affect the multidict.
+
+      Every key maps to a list, even a key with a single value, so feeding
+      the result back does not reproduce the original:
+      ``MultiDict(d.to_dict())`` builds a multidict whose *values* are
+      lists. This differs from
+      :class:`dict`\\ ``(d)``, which keeps only the **first** value for each
+      key::
+
+         >>> dict(d)
+         {'a': 1, 'b': 2}
+
+      For :class:`CIMultiDict` the values are grouped by key identity, so
+      each key appears once under its first-seen spelling. That is what a
+      ``{k: d.getall(k) for k in d}`` comprehension gets wrong: it emits a
+      separate entry for every spelling, each holding the full list::
+
+         >>> ci = CIMultiDict([('A', '1'), ('a', '2')])
+         >>> ci.to_dict()
+         {'A': ['1', '2']}
+         >>> {k: ci.getall(k) for k in ci}
+         {'A': ['1', '2'], 'a': ['1', '2']}
+
+      .. versionadded:: 6.8
+
    .. method:: getone(key[, default])
 
       Return the **first** value for *key* if *key* is in the
@@ -300,6 +335,13 @@ MultiDictProxy
    .. method:: copy()
 
       Return a shallow copy of the underlying multidict.
+
+   .. method:: to_dict()
+
+      Return a :class:`dict` mapping each key to a list of all its
+      values, preserving insertion order.
+
+      .. versionadded:: 6.8
 
    .. method:: getone(key[, default])
 
