@@ -5,4 +5,4 @@ Python 3.14+ but without redundant type checks.
 
 Benchmarks for ``getall()`` shows 10% speedup for this change. 
 
--- by :user:`asvetlov`.
+-- by :user:`asvetlov`
