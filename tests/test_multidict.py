@@ -1463,3 +1463,41 @@ def test_iter_direct_instantiation_segfault() -> None:
         iter_type = type(iter(getattr(md, view_name)()))
         with pytest.raises(TypeError, match="cannot create '.*' instances directly"):
             iter_type.__new__(iter_type)  # type: ignore[call-overload]
+
+
+pytest.mark.c_extension
+def test_non_typeerror_exceptions_are_not_swallowed() -> None:
+    """Feature-detection fallbacks (probing ``__len__``/``keys``/``items``)
+    must clear only the expected TypeError/AttributeError, not swallow every
+    exception -- a ``MemoryError`` or ``KeyboardInterrupt`` raised by the
+    probed object has to propagate."""
+    md = multidict.MultiDict([("a", "1")])
+
+    class BadLen:
+        def __len__(self) -> int:
+            raise MemoryError("boom")
+
+    # view richcompare probes len(other)
+    with pytest.raises(MemoryError):
+        md.keys() <= BadLen()  # type: ignore[operator]  # noqa: B015
+
+    # items-view __contains__ probes len(candidate)
+    with pytest.raises(MemoryError):
+        md.items().__contains__(BadLen())  # type: ignore[operator]
+
+    # extend()/constructor probes arg.items()
+    class BadItems:
+        def keys(self) -> list[str]:
+            return ["x"]  # pragma: no cover
+
+        def items(self) -> object:
+            raise MemoryError("boom")
+
+        def __getitem__(self, key: str) -> int:
+            return 1  # pragma: no cover
+
+    with pytest.raises(MemoryError):
+        multidict.MultiDict(BadItems())
+
+    # __eq__ against a non-mapping still works (AttributeError is cleared)
+    assert md != [("a", "1")]
