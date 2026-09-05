@@ -31,6 +31,7 @@ cython
 Deprecations
 deallocation
 decrementation
+dereferenced
 dependabot
 dev
 dict
@@ -53,6 +54,7 @@ gunicorn
 Gunicorn
 Indices
 init
+initialises
 inplace
 installable
 instantiation
