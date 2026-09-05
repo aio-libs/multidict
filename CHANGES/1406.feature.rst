@@ -1,7 +1,7 @@
 Optimized key identity comparison for C Extension.
 
 Now it uses fast path that is equal to ``PyUnicode_Equal()`` from
-Python 3.14+ but without redundant tyupe checks.
+Python 3.14+ but without redundant type checks.
 
 Benchmarks for ``getall()`` shows 10% speedup for this change. 
 
