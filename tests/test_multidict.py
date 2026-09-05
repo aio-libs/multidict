@@ -1309,6 +1309,33 @@ def test_convert_multidict_to_cimultidict_eq(
     )
 
 
+def test_reinitialize_releases_previous_values(
+    any_multidict_class: type[MultiDict[object]],
+) -> None:
+    class Value:
+        pass
+
+    value = Value()
+    value_ref = weakref.ref(value)
+    d = any_multidict_class([("old", value)])
+    del value
+
+    d.__init__([("new", "value")])  # type: ignore[misc]
+
+    gc.collect()
+    assert value_ref() is None
+    assert list(d.items()) == [("new", "value")]
+
+    source = any_multidict_class([("source", "value")])
+    d.__init__(source)  # type: ignore[misc]
+
+    assert list(d.items()) == [("source", "value")]
+
+    d.__init__(d)  # type: ignore[misc]
+
+    assert list(d.items()) == [("source", "value")]
+
+
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_extend_does_not_alter_refcount(
     case_sensitive_multidict_class: type[MultiDict[str]],

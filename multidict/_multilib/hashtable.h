@@ -317,35 +317,36 @@ md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 }
 
 static inline int
+md_clear(MultiDictObject* md);
+
+static inline int
 md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
 {
+    const uint8_t log2_max_presize = 17;
+    const Py_ssize_t max_presize = ((Py_ssize_t)1) << log2_max_presize;
+    uint8_t log2_newsize;
+    htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
+
+    if (minused > USABLE_FRACTION(HT_MINSIZE)) {
+        /* There are no strict guarantee that returned dict can contain minused
+         * items without resize.  So we create medium size dict instead of very
+         * large dict or MemoryError.
+         */
+        if (minused > USABLE_FRACTION(max_presize)) {
+            log2_newsize = log2_max_presize;
+        } else {
+            log2_newsize = estimate_log2_keysize(minused);
+        }
+
+        new_keys = htkeys_new(log2_newsize);
+        if (new_keys == NULL) return -1;
+    }
+
+    md_clear(md);
     md->state = state;
     md->is_ci = is_ci;
     md->used = 0;
     md->version = NEXT_VERSION(md->state);
-
-    const uint8_t log2_max_presize = 17;
-    const Py_ssize_t max_presize = ((Py_ssize_t)1) << log2_max_presize;
-    uint8_t log2_newsize;
-    htkeys_t* new_keys;
-
-    if (minused <= USABLE_FRACTION(HT_MINSIZE)) {
-        md->keys = (htkeys_t*)&empty_htkeys;
-        ASSERT_CONSISTENT(md, false);
-        return 0;
-    }
-    /* There are no strict guarantee that returned dict can contain minused
-     * items without resize.  So we create medium size dict instead of very
-     * large dict or MemoryError.
-     */
-    if (minused > USABLE_FRACTION(max_presize)) {
-        log2_newsize = log2_max_presize;
-    } else {
-        log2_newsize = estimate_log2_keysize(minused);
-    }
-
-    new_keys = htkeys_new(log2_newsize);
-    if (new_keys == NULL) return -1;
     md->keys = new_keys;
     ASSERT_CONSISTENT(md, false);
     return 0;
@@ -355,13 +356,14 @@ static inline int
 md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 {
     ASSERT_CONSISTENT(other, false);
-    md->state = other->state;
-    md->used = other->used;
-    md->version = other->version;
-    md->is_ci = other->is_ci;
+    mod_state* state = other->state;
+    Py_ssize_t used = other->used;
+    uint64_t version = other->version;
+    bool is_ci = other->is_ci;
+    htkeys_t* keys = (htkeys_t*)&empty_htkeys;
     if (other->keys != &empty_htkeys) {
         size_t size = htkeys_sizeof(other->keys);
-        htkeys_t* keys = PyMem_Malloc(size);
+        keys = PyMem_Malloc(size);
         if (keys == NULL) {
             PyErr_NoMemory();
             return -1;
@@ -373,10 +375,13 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
             Py_XINCREF(entry->key);
             Py_XINCREF(entry->value);
         }
-        md->keys = keys;
-    } else {
-        md->keys = (htkeys_t*)&empty_htkeys;
     }
+    md_clear(md);
+    md->state = state;
+    md->used = used;
+    md->version = version;
+    md->is_ci = is_ci;
+    md->keys = keys;
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
