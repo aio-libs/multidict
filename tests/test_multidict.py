@@ -1467,7 +1467,7 @@ def test_non_typeerror_exceptions_are_not_swallowed() -> None:
 
     # items-view __contains__ probes len(candidate)
     with pytest.raises(MemoryError):
-        md.items().__contains__(BadLen())
+        md.items().__contains__(BadLen())  # type: ignore[operator] 
 
     # extend()/constructor probes arg.items()
     class BadItems:
