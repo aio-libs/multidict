@@ -1433,7 +1433,7 @@ def test_items_contains_does_not_leak_key_on_error() -> None:
     items = md.items()
     for _ in range(1000):
         with pytest.raises(ValueError):
-            items.__contains__(BadSeq())  # noqa  # type:ignore[operator] 
+            items.__contains__(BadSeq())  # noqa  # type:ignore[operator]
     assert sys.getrefcount(key) == baseline
 
 
