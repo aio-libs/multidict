@@ -666,7 +666,7 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
 {
     PyObject* key = NULL;
     PyObject* _default = NULL;
-    bool decref_default = false;
+    bool decref_none_default = false;
     PyObject* ret = NULL;
 
     if (parse2("setdefault",
@@ -685,14 +685,14 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
         if (_default == NULL) {
             return NULL;
         }
-        decref_default = true;
+        decref_none_default = true;
     }
     ASSERT_CONSISTENT(self, false);
     if (md_set_default(self, key, _default, &ret) < 0) {
-        return NULL;
+        assert(ret == NULL);
     }
-    if (decref_default) {
-        Py_CLEAR(_default);
+    if (decref_none_default) {
+        Py_CLEAR(_default);  // never raises exception
     }
     return ret;
 }
