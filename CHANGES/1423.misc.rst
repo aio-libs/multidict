@@ -1,0 +1,2 @@
+Drop dead code, ``_md_del_at()`` and ``_md_del_at_for_update()`` never fails
+-- by :user:`asvetlov`
