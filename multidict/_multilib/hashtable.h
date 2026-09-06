@@ -726,6 +726,12 @@ md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
             ret = -1;
+            // *pidentity was already set above; release it before cleanup
+            // NULLs it, otherwise the identity reference leaks.
+            if (pidentity) {
+                Py_CLEAR(*pidentity);
+            }
+
             goto cleanup;
         }
     }
