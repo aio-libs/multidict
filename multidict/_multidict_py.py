@@ -1,6 +1,5 @@
 import enum
 import functools
-import re
 import reprlib
 import sys
 from array import array
