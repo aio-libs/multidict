@@ -77,6 +77,7 @@ def test_create_cimultidict_proxy_from_cimultidict_proxy_from_ci(
     FREETHREADED,
     reason="getrefcount is not meaningful under the free-threaded build",
 )
+@pytest.mark.c_extension
 @pytest.mark.parametrize(
     ("dict_class_name", "proxy_class_name"),
     (("MultiDict", "MultiDictProxy"), ("CIMultiDict", "CIMultiDictProxy")),
