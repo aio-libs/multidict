@@ -721,6 +721,18 @@ class BaseMultiDictTest:
         assert list(obj.items()) == [("a", 1), ("b", 2)]
         assert arg == deque([("a", 1)])
 
+    def test_ucs2_ucs4_comparison(self, cls: type[MultiDict[str]]) -> None:
+        expected = [
+            ("k\u00e9y", "1"),  # UCS-1
+            ("k\u4f60y", "2"),  # UCS-2
+            ("k\U0001f600y", "3"),  # UCS-4
+            ("k\U0001f600y1", "4"),  # UCS-4
+            ("k\U0001f600y2", "5"),  # UCS-4
+        ]
+        obj = cls(expected)
+        for k, v in expected:
+            assert obj[k] == v
+
 
 class TestMultiDict(BaseMultiDictTest):
     @pytest.fixture(
@@ -1297,6 +1309,33 @@ def test_convert_multidict_to_cimultidict_eq(
     )
 
 
+def test_reinitialize_releases_previous_values(
+    any_multidict_class: type[MultiDict[object]],
+) -> None:
+    class Value:
+        pass
+
+    value = Value()
+    value_ref = weakref.ref(value)
+    d = any_multidict_class([("old", value)])
+    del value
+
+    d.__init__([("new", "value")])  # type: ignore[misc]
+
+    gc.collect()
+    assert value_ref() is None
+    assert list(d.items()) == [("new", "value")]
+
+    source = any_multidict_class([("source", "value")])
+    d.__init__(source)  # type: ignore[misc]
+
+    assert list(d.items()) == [("source", "value")]
+
+    d.__init__(d)  # type: ignore[misc]
+
+    assert list(d.items()) == [("source", "value")]
+
+
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_extend_does_not_alter_refcount(
     case_sensitive_multidict_class: type[MultiDict[str]],
@@ -1307,6 +1346,42 @@ def test_extend_does_not_alter_refcount(
     original_refcount = sys.getrefcount(original)
     new.extend(original)
     assert sys.getrefcount(original) == original_refcount
+
+
+@pytest.mark.parametrize("use_proxy", (False, True), ids=("self", "proxy"))
+@pytest.mark.parametrize("deleted", (False, True), ids=("full", "deleted"))
+def test_extend_with_itself(
+    any_multidict_class: type[MultiDict[int]],
+    any_multidict_proxy_class: type[MultiDictProxy[int]],
+    use_proxy: bool,
+    deleted: bool,
+) -> None:
+    md = any_multidict_class((str(index), index) for index in range(6))
+    if deleted:
+        del md["0"]
+    source = any_multidict_proxy_class(md) if use_proxy else md
+
+    md.extend(source)
+
+    expected = [(str(index), index) for index in range(1 if deleted else 0, 6)]
+    assert list(md.items()) == expected * 2
+
+
+@pytest.mark.parametrize("use_proxy", (False, True), ids=("self", "proxy"))
+@pytest.mark.parametrize("method", ("update", "merge"))
+def test_update_and_merge_with_itself(
+    any_multidict_class: type[MultiDict[int]],
+    any_multidict_proxy_class: type[MultiDictProxy[int]],
+    use_proxy: bool,
+    method: str,
+) -> None:
+    expected = [("key", 1), ("key", 2)]
+    md = any_multidict_class(expected)
+    source = any_multidict_proxy_class(md) if use_proxy else md
+
+    getattr(md, method)(source)
+
+    assert list(md.items()) == expected
 
 
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
@@ -1372,3 +1447,136 @@ def test_view_direct_instantiation_segfault() -> None:
         TypeError, match="cannot create '.*_ValuesView' instances directly"
     ):
         multidict._ValuesView()  # type: ignore[attr-defined]
+
+
+@pytest.mark.c_extension
+def test_extend_update_merge_self_reference() -> None:
+    """Updating a multidict from itself must not crash.  The C extension
+    cached a raw pointer into the source table and then inserted into the
+    destination; when they are the same object a resize freed the table being
+    iterated (use-after-free).  ``extend(self)`` doubles the contents;
+    ``update(self)``/``merge(self)`` leave it unchanged."""
+    d = multidict.MultiDict([(f"k{i}", i) for i in range(64)])
+    d.extend(d)
+    assert len(d) == 128
+    assert d.getall("k0") == [0, 0]
+
+    d2 = multidict.MultiDict([("a", 1), ("a", 2), ("b", 3)])
+    d2.update(d2)
+    assert sorted(d2.items()) == [("a", 1), ("a", 2), ("b", 3)]
+
+    d3 = multidict.CIMultiDict([("A", 1), ("b", 2)])
+    d3.merge(d3)
+    assert sorted(d3.items()) == [("A", 1), ("b", 2)]
+    d3.extend(d3)
+    assert len(d3) == 4
+
+
+@pytest.mark.c_extension
+def test_update_from_list_mutated_by_key_lookup() -> None:
+    """A case-insensitive key whose ``.lower()`` shrinks the source list must
+    not read past the end.  The C list fast-path cached the size once and then
+    indexed with a stale value after the callback mutated the list."""
+    seq: list[list[object]] = []
+
+    class EvilKey(str):
+        def lower(self) -> str:
+            del seq[1:]  # shrink the list while it is being consumed
+            return "x"
+
+    for i in range(32):
+        seq.append([EvilKey(f"K{i}"), i])
+    # Must not segfault; the exact result is unspecified, only memory safety.
+    multidict.CIMultiDict(seq)  # type: ignore[arg-type]
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize("cls_name", ("MultiDict", "CIMultiDict"))
+def test_new_without_init_is_valid_empty(cls_name: str) -> None:
+    """A container built with ``__new__`` but no ``__init__`` (or a subclass
+    that skips ``super().__init__()``) must be a usable empty mapping, not a
+    segfault.  ``tp_new`` initialises the internal state to empty."""
+    cls = getattr(multidict, cls_name)
+
+    d = cls.__new__(cls)
+    assert len(d) == 0
+    assert d.get("k") is None
+    with pytest.raises(KeyError):
+        d["k"]
+    d["a"] = "1"
+    assert d["a"] == "1"
+
+    # case-insensitivity is preserved for CIMultiDict built this way
+    if cls_name == "CIMultiDict":
+        e = cls.__new__(cls)
+        e["A"] = "1"
+        assert e["a"] == "1"
+
+    # a subclass that forgets to call super().__init__() is also safe
+    class Sub(cls):  # type: ignore[valid-type, misc]
+        def __init__(self) -> None:
+            pass
+
+    s = Sub()
+    assert len(s) == 0
+    assert s.get("missing") is None
+
+
+@pytest.mark.c_extension
+def test_iter_direct_instantiation_segfault() -> None:
+    """Iterator objects cannot be instantiated directly (issue: segfault).
+
+    Companion to ``test_view_direct_instantiation_segfault``: the iterator
+    types share the same hole -- ``type(iter(md.keys())).__new__(t)`` used to
+    build an uninitialised iterator whose ``next()`` dereferenced a NULL
+    ``md`` pointer and segfaulted.  This test only applies to the C extension.
+    """
+    md = multidict.MultiDict([("a", "1")])
+    for view_name, iter_name in (
+        ("keys", "_keysiter"),
+        ("items", "_itemsiter"),
+        ("values", "_valuesiter"),
+    ):
+        iter_type = type(iter(getattr(md, view_name)()))
+        with pytest.raises(
+            TypeError, match=f"cannot create '.*{iter_name}' instances directly"
+        ):
+            iter_type.__new__(iter_type)  # type: ignore[call-overload]
+
+
+@pytest.mark.c_extension
+def test_non_typeerror_exceptions_are_not_swallowed() -> None:
+    """Feature-detection fallbacks (probing ``__len__``/``keys``/``items``)
+    must clear only the expected TypeError/AttributeError, not swallow every
+    exception -- a ``MemoryError`` or ``KeyboardInterrupt`` raised by the
+    probed object has to propagate."""
+    md = multidict.MultiDict([("a", "1")])
+
+    class BadLen:
+        def __len__(self) -> int:
+            raise MemoryError("boom")
+
+    # view richcompare probes len(other)
+    with pytest.raises(MemoryError):
+        md.keys() <= BadLen()  # type: ignore[operator]  # noqa: B015
+
+    # items-view __contains__ probes len(candidate)
+    with pytest.raises(MemoryError):
+        md.items().__contains__(BadLen())  # type: ignore[operator]
+
+    # extend()/constructor probes arg.items()
+    class BadItems:
+        def keys(self) -> list[str]:
+            return ["x"]  # pragma: no cover
+
+        def items(self) -> object:
+            raise MemoryError("boom")
+
+        def __getitem__(self, key: str) -> int:
+            return 1  # pragma: no cover
+
+    with pytest.raises(MemoryError):
+        multidict.MultiDict(BadItems())
+
+    # __eq__ against a non-mapping still works (AttributeError is cleared)
+    assert md != [("a", "1")]
