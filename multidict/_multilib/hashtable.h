@@ -1817,8 +1817,8 @@ md_repr(MultiDictObject *md, PyObject *name, bool show_keys, bool show_values)
             int fast = 0;
             if (PyUnicode_IS_ASCII(key)) {
                 Py_ssize_t klen = PyUnicode_GET_LENGTH(key);
-                const unsigned char *kdata =
-                    (const unsigned char *)PyUnicode_DATA(key);
+                const unsigned char* kdata =
+                    (const unsigned char*)PyUnicode_DATA(key);
                 fast = 1;
                 for (Py_ssize_t ki = 0; ki < klen; ++ki) {
                     unsigned char c = kdata[ki];
