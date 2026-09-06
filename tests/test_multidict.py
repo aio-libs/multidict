@@ -756,7 +756,7 @@ class BaseMultiDictTest:
         values_it = reversed(md.values())
         assert keys_it.__length_hint__() == 2
         assert items_it.__length_hint__() == 2
-        assert values_it.__length_hint__() == 2
+        assert values_it.__length_hint__() == 2  # type: ignore[attr-defined]
 
     def test_ctor_list_arg_and_kwds(
         self,
