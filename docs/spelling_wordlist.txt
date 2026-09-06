@@ -30,6 +30,7 @@ Ctrl
 cython
 Deprecations
 deallocation
+decref
 decrementation
 dependabot
 dereferenced
