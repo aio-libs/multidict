@@ -1450,6 +1450,47 @@ def test_view_direct_instantiation_segfault() -> None:
 
 
 @pytest.mark.c_extension
+def test_extend_update_merge_self_reference() -> None:
+    """Updating a multidict from itself must not crash.  The C extension
+    cached a raw pointer into the source table and then inserted into the
+    destination; when they are the same object a resize freed the table being
+    iterated (use-after-free).  ``extend(self)`` doubles the contents;
+    ``update(self)``/``merge(self)`` leave it unchanged."""
+    d = multidict.MultiDict([(f"k{i}", i) for i in range(64)])
+    d.extend(d)
+    assert len(d) == 128
+    assert d.getall("k0") == [0, 0]
+
+    d2 = multidict.MultiDict([("a", 1), ("a", 2), ("b", 3)])
+    d2.update(d2)
+    assert sorted(d2.items()) == [("a", 1), ("a", 2), ("b", 3)]
+
+    d3 = multidict.CIMultiDict([("A", 1), ("b", 2)])
+    d3.merge(d3)
+    assert sorted(d3.items()) == [("A", 1), ("b", 2)]
+    d3.extend(d3)
+    assert len(d3) == 4
+
+
+@pytest.mark.c_extension
+def test_update_from_list_mutated_by_key_lookup() -> None:
+    """A case-insensitive key whose ``.lower()`` shrinks the source list must
+    not read past the end.  The C list fast-path cached the size once and then
+    indexed with a stale value after the callback mutated the list."""
+    seq: list[list[object]] = []
+
+    class EvilKey(str):
+        def lower(self) -> str:
+            del seq[1:]  # shrink the list while it is being consumed
+            return "x"
+
+    for i in range(32):
+        seq.append([EvilKey(f"K{i}"), i])
+    # Must not segfault; the exact result is unspecified, only memory safety.
+    multidict.CIMultiDict(seq)  # type: ignore[arg-type]
+
+
+@pytest.mark.c_extension
 @pytest.mark.parametrize("cls_name", ("MultiDict", "CIMultiDict"))
 def test_new_without_init_is_valid_empty(cls_name: str) -> None:
     """A container built with ``__new__`` but no ``__init__`` (or a subclass
