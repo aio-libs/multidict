@@ -1,6 +1,6 @@
 Slightly reorganized multidict creating process.
 
 1. Removed unnecessary calculations when ``md_init()`` creates an empty multidict.
-2. Now tp_new slot is used in object cloning instead of bare :c:func:`PyObject_GenericNew` call.
+2. Now tp_new slot is used in object cloning instead of bare :c:func:`PyType_GenericNew` call.
 
 -- by :user:`asvetlov`   
