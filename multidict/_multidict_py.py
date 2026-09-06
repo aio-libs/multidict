@@ -300,7 +300,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
-            lst.append(_key_repr(e.key))
+            lst.append(e.key!r)
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
