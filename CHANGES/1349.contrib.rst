@@ -1,0 +1,8 @@
+Enabled the ``PLC0415`` (import-outside-top-level) rule in
+``[tool.ruff.lint]``. Function-scoped imports must now opt in
+with ``# noqa: PLC0415`` plus a comment explaining the reason
+(typically avoiding a heavy optional dependency at import time).
+This catches a pattern that LLM contributors frequently introduce.
+There are currently no opt-outs in the tree, so the rule is
+enforced everywhere ``ruff check`` runs
+-- by :user:`bdraco`.

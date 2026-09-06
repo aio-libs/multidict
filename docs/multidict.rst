@@ -384,10 +384,10 @@ istr
 lookups but uses case-folded (lower-cased) strings for the comparison internally.
 
 For more effective processing it should know if the *key* is already
-case-folded to skip the :meth:`~str.lower()` call.
+an :class:`istr` instance so it can skip the :meth:`~str.lower()` call.
 
 The performant code may create
-case-folded string keys explicitly by hand, e.g::
+:class:`istr` keys explicitly by hand, e.g::
 
    >>> key = istr('Key')
    >>> key
@@ -398,13 +398,17 @@ case-folded string keys explicitly by hand, e.g::
    >>> mdict[key]
    'value'
 
+``istr`` itself compares like a regular :class:`str`.
+``istr('Key') == 'key'`` is ``False``; case-insensitive matching is
+handled by :class:`CIMultiDict`, not by ``istr`` equality.
+
 For performance :class:`istr` strings should be created once and
 stored somewhere for the later usage, see :mod:`aiohttp:aiohttp.hdrs` for example.
 
 .. class:: istr(object='')
            istr(bytes_or_buffer[, encoding[, errors]])
 
-      Create a new **case-folded** string object from the given
+      Create a new :class:`istr` string from the given
       *object*. If *encoding* or *errors* are specified, then the
       object must expose a data buffer that will be decoded using the
       given encoding and error handler.
@@ -416,6 +420,9 @@ stored somewhere for the later usage, see :mod:`aiohttp:aiohttp.hdrs` for exampl
 
       *errors* defaults to ``'strict'``.
 
+      The original casing is preserved. :class:`CIMultiDict` keeps a
+      lower-cased identity internally for lookups.
+
       The class is inherited from :class:`str` and has all regular
       string methods.
 
@@ -425,8 +432,9 @@ stored somewhere for the later usage, see :mod:`aiohttp:aiohttp.hdrs` for exampl
 
 .. versionchanged:: 3.7
 
-   :class:`istr` doesn't title-case its argument anymore but uses
-   internal lower-cased data for fast case-insensitive comparison.
+   :class:`istr` no longer title-cases its argument. The original
+   casing is kept; :class:`CIMultiDict` uses an internal lower-cased
+   identity for case-insensitive lookups.
 
 
 Abstract Base Classes

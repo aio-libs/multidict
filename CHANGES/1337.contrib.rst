@@ -1,0 +1,2 @@
+Added a release-tag-gated CI job that cross-compiles the C extension
+for iOS and Android through ``cibuildwheel`` -- by :user:`aiolibsbot`.
