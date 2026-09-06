@@ -1,0 +1,2 @@
+Reduced the memory used by pure-Python ``istr`` instances
+-- by :user:`ltsyk`.
