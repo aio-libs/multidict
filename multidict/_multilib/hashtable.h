@@ -682,15 +682,15 @@ cleanup:
 }
 
 static inline void
-md_init_pos_reverse(MultiDictObject *md, md_pos_t *pos)
+md_init_pos_reverse(MultiDictObject* md, md_pos_t* pos)
 {
     pos->pos = md->keys->nentries - 1;
     pos->version = md->version;
 }
 
 static inline int
-md_prev(MultiDictObject *md, md_pos_t *pos, PyObject **pidentity,
-        PyObject **pkey, PyObject **pvalue)
+md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
+        PyObject** pkey, PyObject** pvalue)
 {
     int ret = 0;
 
@@ -705,8 +705,8 @@ md_prev(MultiDictObject *md, md_pos_t *pos, PyObject **pidentity,
         goto cleanup;
     }
 
-    entry_t *entries = htkeys_entries(md->keys);
-    entry_t *entry = entries + pos->pos;
+    entry_t* entries = htkeys_entries(md->keys);
+    entry_t* entry = entries + pos->pos;
 
     while (entry->identity == NULL) {
         pos->pos -= 1;

@@ -1034,9 +1034,9 @@ fail:
 PyDoc_STRVAR(itemsview_isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
-static inline PyObject *
-multidict_itemsview_reversed(_Multidict_ViewObject *self,
-                             PyObject *Py_UNUSED(ignored))
+static inline PyObject*
+multidict_itemsview_reversed(_Multidict_ViewObject* self,
+                             PyObject* Py_UNUSED(ignored))
 {
     return multidict_items_iter_new(self->md, 1);
 }
@@ -1613,9 +1613,9 @@ multidict_keysview_isdisjoint(_Multidict_ViewObject* self, PyObject* other)
 PyDoc_STRVAR(keysview_isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
-static inline PyObject *
-multidict_keysview_reversed(_Multidict_ViewObject *self,
-                            PyObject *Py_UNUSED(ignored))
+static inline PyObject*
+multidict_keysview_reversed(_Multidict_ViewObject* self,
+                            PyObject* Py_UNUSED(ignored))
 {
     return multidict_keys_iter_new(self->md, 1);
 }
@@ -1708,9 +1708,9 @@ multidict_valuesview_repr(_Multidict_ViewObject* self)
     return ret;
 }
 
-static inline PyObject *
-multidict_valuesview_reversed(_Multidict_ViewObject *self,
-                              PyObject *Py_UNUSED(ignored))
+static inline PyObject*
+multidict_valuesview_reversed(_Multidict_ViewObject* self,
+                              PyObject* Py_UNUSED(ignored))
 {
     return multidict_values_iter_new(self->md, 1);
 }

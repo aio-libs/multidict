@@ -17,7 +17,7 @@ typedef struct multidict_iter {
 } MultidictIter;
 
 static inline void
-_init_iter(MultidictIter *it, MultiDictObject *md, int reverse)
+_init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
 {
     Py_INCREF(md);
 
@@ -30,8 +30,8 @@ _init_iter(MultidictIter *it, MultiDictObject *md, int reverse)
     }
 }
 
-static inline PyObject *
-multidict_items_iter_new(MultiDictObject *md, int reverse)
+static inline PyObject*
+multidict_items_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it =
         PyObject_GC_New(MultidictIter, md->state->ItemsIterType);
@@ -45,8 +45,8 @@ multidict_items_iter_new(MultiDictObject *md, int reverse)
     return (PyObject*)it;
 }
 
-static inline PyObject *
-multidict_keys_iter_new(MultiDictObject *md, int reverse)
+static inline PyObject*
+multidict_keys_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it =
         PyObject_GC_New(MultidictIter, md->state->KeysIterType);
@@ -60,8 +60,8 @@ multidict_keys_iter_new(MultiDictObject *md, int reverse)
     return (PyObject*)it;
 }
 
-static inline PyObject *
-multidict_values_iter_new(MultiDictObject *md, int reverse)
+static inline PyObject*
+multidict_values_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it =
         PyObject_GC_New(MultidictIter, md->state->ValuesIterType);
