@@ -1,2 +1,2 @@
-Drop dead code, ``_md_del_at()`` and ``_md_del_at_for_update()`` never fails
+Drop dead code, ``_md_del_at()`` and ``_md_del_at_for_upd()`` never fails
 -- by :user:`asvetlov`
