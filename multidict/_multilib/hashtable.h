@@ -523,7 +523,7 @@ fail:
     return -1;
 }
 
-static inline int
+static inline void
 _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
 {
     htkeys_t* keys = md->keys;
@@ -533,10 +533,9 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
     Py_CLEAR(entry->value);
     htkeys_set_index(keys, slot, DKIX_DUMMY);
     md->used -= 1;
-    return 0;
 }
 
-static inline int
+static inline void
 _md_del_at_for_upd(MultiDictObject* md, size_t slot, entry_t* entry)
 {
     /* half deletion,
@@ -548,7 +547,6 @@ _md_del_at_for_upd(MultiDictObject* md, size_t slot, entry_t* entry)
     assert(md->keys != &empty_htkeys);
     Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
-    return 0;
 }
 
 static inline int
@@ -584,9 +582,7 @@ md_del(MultiDictObject* md, PyObject* key)
         }
 
         found = true;
-        if (_md_del_at(md, iter.slot, entry) < 0) {
-            goto fail;
-        }
+        _md_del_at(md, iter.slot, entry);
     }
 
     if (!found) {
@@ -1082,9 +1078,7 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
         }
         if (_str_cmp(identity, entry->identity)) {
             value = Py_NewRef(entry->value);
-            if (_md_del_at(md, iter.slot, entry) < 0) {
-                goto fail;
-            }
+            _md_del_at(md, iter.slot, entry);
             Py_DECREF(identity);
             *ret = value;
             md->version = NEXT_VERSION(md->state);
@@ -1146,9 +1140,7 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
             } else if (PyList_Append(lst, entry->value) < 0) {
                 goto fail;
             }
-            if (_md_del_at(md, iter.slot, entry) < 0) {
-                goto fail;
-            }
+            _md_del_at(md, iter.slot, entry);
             md->version = NEXT_VERSION(md->state);
         }
     }
@@ -1196,9 +1188,7 @@ md_pop_item(MultiDictObject* md)
 
     for (; iter.index != pos; htkeysiter_next(&iter)) {
     }
-    if (_md_del_at(md, iter.slot, entry) < 0) {
-        return NULL;
-    }
+    _md_del_at(md, iter.slot, entry);
     md->version = NEXT_VERSION(md->state);
     ASSERT_CONSISTENT(md, false);
     return ret;
@@ -1227,9 +1217,7 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
             Py_SETREF(entry->value, Py_NewRef(value));
             entry->hash = -1;
         } else {
-            if (_md_del_at(md, md_finder_slot(&finder), entry) < 0) {
-                goto fail;
-            }
+            _md_del_at(md, md_finder_slot(&finder), entry);
         }
     }
     if (tmp < 0) {
@@ -1306,9 +1294,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                 }
                 entry->hash = -1;
             } else {
-                if (_md_del_at_for_upd(md, iter.slot, entry) < 0) {
-                    goto fail;
-                }
+                _md_del_at_for_upd(md, iter.slot, entry);
             }
         }
     }
