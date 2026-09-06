@@ -1209,7 +1209,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
-        body = ", ".join(f"{_key_repr(k)}: {v!r}" for k, v in self.items())
+        body = ", ".join(f"{k!r}: {v!r}" for k, v in self.items())
         return f"<{self.__class__.__name__}({body})>"
 
     def copy(self) -> MultiDict[_V]:
