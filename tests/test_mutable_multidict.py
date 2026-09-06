@@ -2,6 +2,7 @@ import string
 import sys
 
 import pytest
+
 from multidict import (
     CIMultiDict,
     CIMultiDictProxy,
@@ -73,6 +74,28 @@ class TestMutableMultiDict:
         d.add("foo", "bar")
         assert 3 == len(d)
         assert d.getall("foo") == ["bar"]
+
+    def test_add_missing_required_argument(
+        self,
+        any_multidict_class: type[MultiDict[str]],
+    ) -> None:
+        # ``add`` takes two required arguments.  Supplying only one of them,
+        # even by keyword, must raise TypeError -- matching the pure-Python
+        # implementation.  Regression test: the C argument parser (parse2() in
+        # _multilib/parser.h) left ``value`` as a NULL pointer and the caller
+        # dereferenced it, segfaulting the interpreter.
+        d = any_multidict_class()
+        with pytest.raises(TypeError, match="value"):
+            d.add(key="k")  # type: ignore[call-arg]
+        with pytest.raises(TypeError, match="extra"):
+            d.add(key="k", value="v", extra="e")  # type: ignore[call-arg]
+        # The valid keyword forms keep working.
+        d.add("pos", "1")
+        d.add("k2", value="2")
+        d.add(key="k3", value="3")
+        d.add(value="4", key="k4")
+        assert d.getall("k2") == ["2"]
+        assert d.getall("k4") == ["4"]
 
     def test_extend(
         self,

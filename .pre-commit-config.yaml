@@ -5,7 +5,7 @@ ci:
 
 repos:
 - repo: https://github.com/python-jsonschema/check-jsonschema.git
-  rev: 0.32.1
+  rev: 0.38.0
   hooks:
   - id: check-github-workflows
     files: ^\.github/workflows/[^/]+$
@@ -23,7 +23,7 @@ repos:
   - id: check-readthedocs
 
 - repo: https://github.com/adrienverge/yamllint.git
-  rev: v1.37.0
+  rev: v1.38.0
   hooks:
   - id: yamllint
     args:
@@ -31,10 +31,17 @@ repos:
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
-  rev: v0.15.8
+  rev: v0.16.6
   hooks:
   - id: ruff-check
-    args: ["--fix"]
+    # Uses the [tool.ruff] config in pyproject.toml. ``--fix`` is on
+    # so the ``I`` (import sorting) rule applies on commit; runs before
+    # ruff-format. See:
+    # https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+    args:
+    - --exit-non-zero-on-fix
+    - --fix
+    - --show-fixes
     exclude: >-
       (?x)
       ^
@@ -112,12 +119,17 @@ repos:
     - file
     - rst
 - repo: https://github.com/pre-commit/mirrors-clang-format
-  rev: v16.0.6
+  rev: v23.1.0
   hooks:
   - id: clang-format
     types_or: [c, c++]
+    exclude: >-
+      (?x)
+      ^
+        multidict/_multilib/pythoncapi_compat\.h
+      $
 - repo: https://github.com/pre-commit/mirrors-mypy.git
-  rev: v1.15.0
+  rev: v2.3.1
   hooks:
   - id: mypy
     alias: mypy-py313

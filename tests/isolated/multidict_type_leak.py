@@ -2,7 +2,7 @@ import gc
 import sys
 import sysconfig
 
-from multidict import MultiDict, istr
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 
 # sys.getrefcount is not meaningful under the free-threaded build:
 # refcounts are biased per-thread and types may be immortalized, so
@@ -27,6 +27,31 @@ if __name__ == "__main__":
     gc.collect()
     after = sys.getrefcount(iter_type)
     assert after == baseline, f"iterator type leaked: {after - baseline}"
+
+    # MultiDict type leak
+    for md_type in (MultiDict, CIMultiDict):
+        gc.collect()
+        baseline = sys.getrefcount(md_type)
+        for _ in range(1000):
+            md_type()
+        gc.collect()
+        after = sys.getrefcount(md_type)
+        assert after == baseline, f"{md_type.__name__} type leaked: {after - baseline}"
+
+    # MultiDictProxy type leak
+    for proxy_type, proxy_md in (
+        (MultiDictProxy, md),
+        (CIMultiDictProxy, CIMultiDict(md)),
+    ):
+        gc.collect()
+        baseline = sys.getrefcount(proxy_type)
+        for _ in range(1000):
+            proxy_type(proxy_md)
+        gc.collect()
+        after = sys.getrefcount(proxy_type)
+        assert after == baseline, (
+            f"{proxy_type.__name__} type leaked: {after - baseline}"
+        )
 
     # View type leak
     view_type = type(md.keys())

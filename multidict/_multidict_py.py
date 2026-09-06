@@ -106,7 +106,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
-            lst.append(f"'{e.key}': {e.value!r}")
+            lst.append(f"{e.key!r}: {e.value!r}")
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
@@ -309,7 +309,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
-            lst.append(f"'{e.key}'")
+            lst.append(f"{e.key!r}")
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
@@ -401,7 +401,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 continue
             if key in self._md:
-                ret.discard(key)  # type: ignore[arg-type]
+                ret.discard(key)
         return ret
 
     def __xor__(self, other: Iterable[_T]) -> set[str | _T]:
@@ -473,7 +473,7 @@ class _Entry(Generic[_V]):
 
 
 @dataclass
-class _HtKeys(Generic[_V]):  # type: ignore[misc]
+class _HtKeys(Generic[_V]):
     LOG_MINSIZE: ClassVar[int] = 3
     MINSIZE: ClassVar[int] = 8
     PREALLOCATED_INDICES: ClassVar[dict[int, array]] = {  # type: ignore[type-arg]
@@ -763,7 +763,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
-        body = ", ".join(f"'{e.key}': {e.value!r}" for e in self._keys.iter_entries())
+        body = ", ".join(f"{e.key!r}: {e.value!r}" for e in self._keys.iter_entries())
         return f"<{self.__class__.__name__}({body})>"
 
     if sys.implementation.name != "pypy":
@@ -803,6 +803,11 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         kwargs: Mapping[str, _V],
     ) -> Iterator[int | _Entry[_V]]:
         identity_func = self._identity
+        if isinstance(arg, MultiDictProxy):
+            if arg._md is self:
+                arg = [(e.key, e.value) for e in self._keys.iter_entries()]
+        elif arg is self:
+            arg = [(e.key, e.value) for e in self._keys.iter_entries()]
         if arg:
             if isinstance(arg, MultiDictProxy):
                 arg = arg._md
@@ -1217,7 +1222,7 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 
     @reprlib.recursive_repr()
     def __repr__(self) -> str:
-        body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
+        body = ", ".join(f"{k!r}: {v!r}" for k, v in self.items())
         return f"<{self.__class__.__name__}({body})>"
 
     def copy(self) -> MultiDict[_V]:

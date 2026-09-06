@@ -1,0 +1,5 @@
+Wheels for iOS and Android (CPython 3.13+) are now published on
+release-tag builds, so downstreams on those platforms no longer need a
+local compiler to install ``multidict``; these wheels are build-verified
+only, since running the test suite on mobile needs a simulator or an
+emulator -- by :user:`aiolibsbot`.
