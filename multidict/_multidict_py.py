@@ -47,17 +47,6 @@ sentinel = _SENTINEL.sentinel
 _version = array("Q", [0])
 
 
-# Matches any character that ``repr()`` would escape inside single quotes.
-_repr_needs_repr = re.compile(r"[^\x20-\x26\x28-\x5b\x5d-\x7e]").search
-
-
-def _key_repr(key: str) -> str:
-    # Skip ``repr()`` for the common case where single-quote wrapping suffices.
-    if _repr_needs_repr(key) is None:
-        return f"'{key}'"
-    return repr(key)
-
-
 class _Iter(Generic[_T]):
     __slots__ = ("_size", "_iter")
 
