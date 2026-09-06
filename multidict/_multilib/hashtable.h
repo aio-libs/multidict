@@ -322,12 +322,12 @@ md_clear(MultiDictObject* md);
 static inline int
 md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
 {
-    const uint8_t log2_max_presize = 17;
-    const Py_ssize_t max_presize = ((Py_ssize_t)1) << log2_max_presize;
-    uint8_t log2_newsize;
     htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
 
     if (minused > USABLE_FRACTION(HT_MINSIZE)) {
+        const uint8_t log2_max_presize = 17;
+        const Py_ssize_t max_presize = ((Py_ssize_t)1) << log2_max_presize;
+        uint8_t log2_newsize;
         /* There are no strict guarantee that returned dict can contain minused
          * items without resize.  So we create medium size dict instead of very
          * large dict or MemoryError.
