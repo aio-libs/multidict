@@ -234,7 +234,10 @@ done:
 static inline PyObject*
 multidict_copy(MultiDictObject* self)
 {
-    PyObject* ret = PyType_GenericNew(Py_TYPE(self), NULL, NULL);
+    PyTypeObject* tp = Py_TYPE(self);
+    PyObject* ret = NULL;
+
+    ret = tp->tp_alloc(tp, 0);
     if (ret == NULL) {
         goto fail;
     }
@@ -585,23 +588,21 @@ fail:
 static PyObject*
 multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
-    /* Initialise the object to a valid empty state here rather than relying on
-       tp_init.  Otherwise ``MultiDict.__new__(MultiDict)`` (or a subclass that
-       skips ``super().__init__()``) leaves md->state / md->keys NULL, and the
-       first method call dereferences NULL and segfaults.  The empty state uses
-       the shared &empty_htkeys sentinel (no allocation), so the subsequent
-       md_init() from tp_init does not leak. */
+    /* Initialize the object to a valid empty container.
+       Otherwise ``MultiDict.__new__(MultiDict)`` (or a subclass that
+       skips ``super().__init__()``) without subsequent ``md.__init__()``
+       call leaves the object in incorrect state,
+       any its usage leads to segfault. */
     PyObject* mod = PyType_GetModuleByDef(type, &multidict_module);
     if (mod == NULL) {
         return NULL;
     }
     mod_state* state = get_mod_state(mod);
-    bool is_ci = PyType_IsSubtype(type, state->CIMultiDictType);
     MultiDictObject* self = (MultiDictObject*)type->tp_alloc(type, 0);
     if (self == NULL) {
         return NULL;
     }
-    if (md_init(self, state, is_ci, 0) < 0) {
+    if (md_init(self, state, false, 0) < 0) {
         Py_DECREF(self);
         return NULL;
     }
@@ -1035,6 +1036,18 @@ static PyType_Spec multidict_spec = {
 
 /******************** CIMultiDict ********************/
 
+static PyObject*
+cimultidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    MultiDictObject* self =
+        (MultiDictObject*)multidict_tp_new(type, args, kwds);
+    if (self == NULL) {
+        return NULL;
+    }
+    self->is_ci = true;
+    return (PyObject*)self;
+}
+
 static int
 cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
@@ -1073,6 +1086,7 @@ PyDoc_STRVAR(
 static PyType_Slot cimultidict_slots[] = {
     {Py_tp_doc, (void*)CIMultDict_doc},
     {Py_tp_init, cimultidict_tp_init},
+    {Py_tp_new, cimultidict_tp_new},
     {0, NULL},
 };
 
