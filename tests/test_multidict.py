@@ -1408,7 +1408,7 @@ def test_init_does_not_alter_refcount(
 
 
 @pytest.mark.c_extension
-@pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
+@pytest.mark.skipif(IS_PYPY or "free-threading" in sys.version, reason="getrefcount is not supported")
 def test_items_contains_does_not_leak_key_on_error() -> None:
     """`x in md.items()` must not leak the first element when reading the
     second one raises.  The C items-view `__contains__` fetched element 0,
