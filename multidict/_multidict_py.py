@@ -103,7 +103,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
-            lst.append(f"{_key_repr(e.key)}: {e.value!r}")
+            lst.append(f"{e.key!r}: {e.value!r}")
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
