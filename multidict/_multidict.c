@@ -1085,7 +1085,7 @@ multidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         md = (MultiDictObject *)arg;
     }
     Py_INCREF(md);
-    self->md = md;
+    Py_XSETREF(self->md, md);
 
     return 0;
 }
@@ -1339,7 +1339,7 @@ cimultidict_proxy_tp_init(MultiDictProxyObject *self, PyObject *args,
         md = (MultiDictObject *)arg;
     }
     Py_INCREF(md);
-    self->md = md;
+    Py_XSETREF(self->md, md);
 
     return 0;
 }
