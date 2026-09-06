@@ -237,7 +237,7 @@ multidict_copy(MultiDictObject* self)
     PyTypeObject* tp = Py_TYPE(self);
     PyObject* ret = NULL;
 
-    ret = type->tp_alloc(tp, 0);
+    ret = tp->tp_alloc(tp, 0);
     if (ret == NULL) {
         goto fail;
     }
