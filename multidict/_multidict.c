@@ -237,6 +237,7 @@ multidict_copy(MultiDictObject* self)
     PyTypeObject* tp = Py_TYPE(self);
     PyObject* args = NULL;
     PyObject* kwargs = NULL;
+    PyObject* ret = NULL;
     args = PyTuple_New(0);
     if (args == NULL) {
         goto fail;
@@ -245,7 +246,7 @@ multidict_copy(MultiDictObject* self)
     if (kwargs == NULL) {
         goto fail;
     }
-    PyObject* ret = tp->tp_new(tp, args, kwargs);
+    ret = tp->tp_new(tp, args, kwargs);
     if (ret == NULL) {
         goto fail;
     }
