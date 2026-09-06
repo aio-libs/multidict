@@ -235,18 +235,9 @@ static inline PyObject*
 multidict_copy(MultiDictObject* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
-    PyObject* args = NULL;
-    PyObject* kwargs = NULL;
     PyObject* ret = NULL;
-    args = PyTuple_New(0);
-    if (args == NULL) {
-        goto fail;
-    }
-    kwargs = PyDict_New();
-    if (kwargs == NULL) {
-        goto fail;
-    }
-    ret = tp->tp_new(tp, args, kwargs);
+
+    ret = type->tp_alloc(tp, 0);
     if (ret == NULL) {
         goto fail;
     }
@@ -259,8 +250,6 @@ multidict_copy(MultiDictObject* self)
     return ret;
 fail:
     Py_XDECREF(ret);
-    Py_XDECREF(kwargs);
-    Py_XDECREF(args);
     return NULL;
 }
 
