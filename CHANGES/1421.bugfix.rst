@@ -1,0 +1,3 @@
+Fix missing decref for :data:`None` on error in :meth:`MultiDict.setdefault`
+-- by :user:`asvetlov`
+
