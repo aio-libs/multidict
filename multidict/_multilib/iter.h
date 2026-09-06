@@ -82,9 +82,12 @@ multidict_items_iter_iternext(MultidictIter* self)
     PyObject* value = NULL;
     PyObject* ret = NULL;
 
-    int res = self->reverse
-                  ? md_prev(self->md, &self->current, NULL, &key, &value)
-                  : md_next(self->md, &self->current, NULL, &key, &value);
+    int res;
+    Py_BEGIN_CRITICAL_SECTION(self->md);
+    res = self->reverse
+              ? md_prev(self->md, &self->current, NULL, &key, &value)
+              : md_next(self->md, &self->current, NULL, &key, &value);
+    Py_END_CRITICAL_SECTION();
     if (res < 0) {
         return NULL;
     }
@@ -110,9 +113,12 @@ multidict_values_iter_iternext(MultidictIter* self)
 {
     PyObject* value = NULL;
 
-    int res = self->reverse
-                  ? md_prev(self->md, &self->current, NULL, NULL, &value)
-                  : md_next(self->md, &self->current, NULL, NULL, &value);
+    int res;
+    Py_BEGIN_CRITICAL_SECTION(self->md);
+    res = self->reverse
+              ? md_prev(self->md, &self->current, NULL, NULL, &value)
+              : md_next(self->md, &self->current, NULL, NULL, &value);
+    Py_END_CRITICAL_SECTION();
     if (res < 0) {
         return NULL;
     }
@@ -129,9 +135,11 @@ multidict_keys_iter_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;
 
-    int res = self->reverse
-                  ? md_prev(self->md, &self->current, NULL, &key, NULL)
-                  : md_next(self->md, &self->current, NULL, &key, NULL);
+    int res;
+    Py_BEGIN_CRITICAL_SECTION(self->md);
+    res = self->reverse ? md_prev(self->md, &self->current, NULL, &key, NULL)
+                        : md_next(self->md, &self->current, NULL, &key, NULL);
+    Py_END_CRITICAL_SECTION();
     if (res < 0) {
         return NULL;
     }
@@ -171,7 +179,11 @@ multidict_iter_clear(MultidictIter* self)
 static inline PyObject*
 multidict_iter_len(MultidictIter* self)
 {
-    return PyLong_FromLong(md_len(self->md));
+    Py_ssize_t len;
+    Py_BEGIN_CRITICAL_SECTION(self->md);
+    len = md_len(self->md);
+    Py_END_CRITICAL_SECTION();
+    return PyLong_FromLong(len);
 }
 
 PyDoc_STRVAR(length_hint_doc,

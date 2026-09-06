@@ -35,6 +35,26 @@ if TYPE_CHECKING or not USE_EXTENSIONS:
         getversion,
         istr,
     )
+
+    if not TYPE_CHECKING:
+        import sys
+        import warnings
+
+        # ``sys._is_gil_enabled`` is CPython-private, and this branch is taken
+        # on alternative implementations too (``_compat`` forces it on PyPy),
+        # so probe for the attribute rather than inferring it from the version.
+        # A diagnostic must not be able to break the import it diagnoses.
+        if not getattr(sys, "_is_gil_enabled", lambda: True)():
+            warnings.warn(
+                "The multidict C extension is not in use, either because it "
+                "is unavailable or because MULTIDICT_NO_EXTENSIONS is set. "
+                "The pure-Python fallback is not thread-safe under "
+                "free-threaded CPython (GIL disabled): concurrent mutation "
+                "can leave a MultiDict internally inconsistent, so confine "
+                "each instance to one thread.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 else:
     from collections.abc import ItemsView, KeysView, ValuesView
 
