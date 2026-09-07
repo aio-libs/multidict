@@ -34,6 +34,11 @@ else:
 class istr(str):
     """Case insensitive str."""
 
+    # Implementation note:
+    # The class doesn't use __slots__ because slot-based memory model
+    # is ~20% slower than classic __dict__-based one.
+    # See also: https://github.com/aio-libs/multidict/pull/1386
+
     __is_istr__ = True
     __istr_identity__: str | None = None
 
