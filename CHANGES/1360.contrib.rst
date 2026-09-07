@@ -1,1 +1,2 @@
-Add your info here
+Document design principle for pure-Python :class:`~multidict.istr` implementation
+-- by :user:`asvetlov`
