@@ -1,0 +1,3 @@
+Fixed a segfault when calling :py:meth:`~multidict.MultiDict.add` with only one of its two required arguments supplied by keyword, e.g. ``d.add(key="k")``. Extra keyword arguments passed to the lookup and removal methods are also now rejected with :exc:`TypeError` instead of being silently ignored.
+
+-- by :user:`devdanzin`

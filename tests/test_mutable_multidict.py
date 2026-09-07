@@ -1,8 +1,8 @@
 import string
 import sys
-from typing import Union
 
 import pytest
+
 from multidict import (
     CIMultiDict,
     CIMultiDictProxy,
@@ -28,7 +28,7 @@ class TestMutableMultiDict:
         case_sensitive_multidict_class: type[MultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
-        assert str(d) == "<%s()>" % case_sensitive_multidict_class.__name__
+        assert str(d) == f"<{case_sensitive_multidict_class.__name__}()>"
 
         d = case_sensitive_multidict_class([("key", "one"), ("key", "two")])
 
@@ -75,9 +75,31 @@ class TestMutableMultiDict:
         assert 3 == len(d)
         assert d.getall("foo") == ["bar"]
 
+    def test_add_missing_required_argument(
+        self,
+        any_multidict_class: type[MultiDict[str]],
+    ) -> None:
+        # ``add`` takes two required arguments.  Supplying only one of them,
+        # even by keyword, must raise TypeError -- matching the pure-Python
+        # implementation.  Regression test: the C argument parser (parse2() in
+        # _multilib/parser.h) left ``value`` as a NULL pointer and the caller
+        # dereferenced it, segfaulting the interpreter.
+        d = any_multidict_class()
+        with pytest.raises(TypeError, match="value"):
+            d.add(key="k")  # type: ignore[call-arg]
+        with pytest.raises(TypeError, match="extra"):
+            d.add(key="k", value="v", extra="e")  # type: ignore[call-arg]
+        # The valid keyword forms keep working.
+        d.add("pos", "1")
+        d.add("k2", value="2")
+        d.add(key="k3", value="3")
+        d.add(value="4", key="k4")
+        assert d.getall("k2") == ["2"]
+        assert d.getall("k4") == ["4"]
+
     def test_extend(
         self,
-        case_sensitive_multidict_class: type[MultiDict[Union[str, int]]],
+        case_sensitive_multidict_class: type[MultiDict[str | int]],
     ) -> None:
         d = case_sensitive_multidict_class()
         assert d == {}
@@ -143,6 +165,50 @@ class TestMutableMultiDict:
 
         with pytest.raises(KeyError, match="key"):
             del d["key"]
+
+    def test_reversed_after_del(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[int]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("a", 1), ("b", 2), ("c", 3), ("d", 4)])
+        del d["b"]
+        assert list(reversed(d.keys())) == ["d", "c", "a"]  # type: ignore[call-overload]
+        assert list(reversed(d.items())) == [  # type: ignore[call-overload]
+            ("d", 4),
+            ("c", 3),
+            ("a", 1),
+        ]
+        assert list(reversed(d.values())) == [4, 3, 1]
+
+    def test_reversed_raises_on_mutation_keys(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[int]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("a", 1), ("b", 2)])
+        it = reversed(d.keys())  # type: ignore[call-overload]
+        d["c"] = 3
+        with pytest.raises(RuntimeError):
+            next(iter(it))
+
+    def test_reversed_raises_on_mutation_items(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[int]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("a", 1), ("b", 2)])
+        it = reversed(d.items())  # type: ignore[call-overload]
+        d["c"] = 3
+        with pytest.raises(RuntimeError):
+            next(iter(it))
+
+    def test_reversed_raises_on_mutation_values(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[int]],
+    ) -> None:
+        d = case_sensitive_multidict_class([("a", 1), ("b", 2)])
+        it = reversed(d.values())
+        d["c"] = 3
+        with pytest.raises(RuntimeError):
+            next(iter(it))
 
     def test_set_default(
         self,
@@ -348,7 +414,7 @@ class TestMutableMultiDict:
 
     def test_update(
         self,
-        case_sensitive_multidict_class: type[MultiDict[Union[str, int]]],
+        case_sensitive_multidict_class: type[MultiDict[str | int]],
     ) -> None:
         d = case_sensitive_multidict_class()
         assert d == {}
@@ -430,7 +496,7 @@ class TestMutableMultiDict:
 
     def test_merge(
         self,
-        case_sensitive_multidict_class: type[MultiDict[Union[str, int]]],
+        case_sensitive_multidict_class: type[MultiDict[str | int]],
     ) -> None:
         d = case_sensitive_multidict_class({"key": "one"})
         assert d == {"key": "one"}
@@ -532,7 +598,7 @@ class TestCIMutableMultiDict:
         case_insensitive_multidict_class: type[CIMultiDict[str]],
     ) -> None:
         d = case_insensitive_multidict_class()
-        assert str(d) == "<%s()>" % case_insensitive_multidict_class.__name__
+        assert str(d) == f"<{case_insensitive_multidict_class.__name__}()>"
 
         d = case_insensitive_multidict_class([("KEY", "one"), ("KEY", "two")])
 
@@ -575,7 +641,7 @@ class TestCIMutableMultiDict:
 
     def test_extend(
         self,
-        case_insensitive_multidict_class: type[CIMultiDict[Union[str, int]]],
+        case_insensitive_multidict_class: type[CIMultiDict[str | int]],
     ) -> None:
         d = case_insensitive_multidict_class()
         assert d == {}

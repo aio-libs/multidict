@@ -14,6 +14,25 @@ Changelog
 
 .. towncrier release notes start
 
+6.7.1
+=====
+
+*(2026-01-25)*
+
+
+Bug fixes
+---------
+
+- Fixed slow memory leak caused by identity by adding ``Py_DECREF`` to identity value before leaving ``md_pop_one`` on success
+  -- by :user:`Vizonex`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1284`.
+
+
+----
+
+
 6.7.0
 =====
 

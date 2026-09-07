@@ -3,7 +3,6 @@ import textwrap
 
 import perf
 
-
 IMPLEMENTATIONS = {
     "c": """\
     from multidict._multidict import istr
@@ -33,10 +32,7 @@ istr(val)
 
 
 def benchmark_name(name, ctx, prefix=None, use_prefix=False):
-    if use_prefix:
-        return "%s%s" % (prefix % ctx, name)
-
-    return name
+    return f"{prefix % ctx}{name}" if use_prefix else name
 
 
 def add_impl_option(cmd, args):

@@ -1,0 +1,7 @@
+Fixed the pure-Python :class:`~multidict.MultiDict` constructor and
+:py:meth:`~multidict.MultiDict.extend`,
+:py:meth:`~multidict.MultiDict.update`, and
+:py:meth:`~multidict.MultiDict.merge` methods over-allocating their
+internal hash table when called with both a positional argument and
+keyword arguments, because keyword arguments were counted twice in the
+size estimate -- by :user:`aiolibsbot`.

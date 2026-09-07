@@ -1,0 +1,6 @@
+Optimized key identity comparison for C Extension.
+
+Now it uses fast path that is equal to :c:func:`PyUnicode_Equal` from
+Python 3.14+ but without redundant type checks.
+
+-- by :user:`asvetlov`

@@ -1,0 +1,2 @@
+Fixed a memory leak when destroying C-extension multidict instances
+and proxies -- by :user:`asvetlov`.

@@ -1,0 +1,3 @@
+Fixed ``CIMultiDictProxy`` documentation to state it inherits from
+``MultiDictProxy`` (not ``MultiDict``), and fixed missing word in
+``istr`` section -- by :user:`veeceey`.

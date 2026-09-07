@@ -1,0 +1,2 @@
+Fixed a reference leak in items-view set operations
+-- by :user:`asvetlov`.

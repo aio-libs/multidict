@@ -1,0 +1,2 @@
+Switched to ``mirrors-clang-format`` and enabled clang-format in ``pre-commit.ci``
+-- by :user:`bdraco`.

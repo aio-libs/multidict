@@ -1,0 +1,5 @@
+Pinned ``coverage`` to the ``ctrace`` measurement core so the test suite runs
+on Python 3.14. Coverage picks ``sysmon`` there, which cannot record the
+dynamic contexts ``pytest-cov`` switches at runtime, and the resulting warning
+became an error under the suite's ``filterwarnings`` setting
+-- by :user:`rodrigobnogueira`.

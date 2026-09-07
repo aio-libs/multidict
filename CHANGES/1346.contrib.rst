@@ -1,0 +1,4 @@
+Trimmed the CI test matrix to drop redundant ``Py_DEBUG`` jobs on
+macOS and Windows and to gate the ``windows-11-arm`` wheel build to
+release-time only, cutting CI wall-clock by roughly a third without
+reducing code coverage -- by :user:`aiolibsbot`.
