@@ -1,2 +1,2 @@
-Document design principle for pure-Python :class:`~multidict.istr` implementation
+Documented design principles for pure-Python :class:`~multidict.istr` implementation
 -- by :user:`asvetlov`
