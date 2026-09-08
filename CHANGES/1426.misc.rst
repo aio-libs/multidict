@@ -1,0 +1,5 @@
+In the pure-Python implementation, a temporarily removed hash table entry
+is now marked by flipping the high bit of its hash instead of overwriting
+it with a sentinel value, so restoring the entry no longer needs to
+recompute the hash
+-- by :user:`asvetlov`
