@@ -32,15 +32,9 @@ else:
 
 MAXSIZE = sys.maxsize
 
-# hash() never returns a value outside [-(MAXSIZE + 1), MAXSIZE]. Entry
-# hashes are stored folded into that range's non-negative half by masking
-# with MAXSIZE (& MAXSIZE), same as the probing code already does to turn
-# a hash into a table index: it only ever looks at the low bits, so the
-# fold is invisible to it. Once an entry's hash is always non-negative,
-# HASH_MARK (its range's high bit) can be OR-ed in to mark it temporarily
-# invalid (its slot is being processed) and AND-ed out with MAXSIZE to
-# restore it, both cheap and unambiguous: a real folded hash never has
-# that bit set to begin with.
+# Entry hashes are folded non-negative (& MAXSIZE) so HASH_MARK, the
+# hash range's high bit, can mark a hash as temporarily invalid: OR it in,
+# AND it out with MAXSIZE. A real folded hash never has that bit set.
 HASH_MARK = MAXSIZE + 1
 
 
