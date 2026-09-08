@@ -564,10 +564,7 @@ class _HtKeys(Generic[_V]):
             assert e is not None
             hash_ = e.hash
             if update:
-                if hash_ & HASH_MARK:
-                    hash_ &= MAXSIZE
-            else:
-                assert not (hash_ & HASH_MARK)
+                hash_ &= MAXSIZE
             i = hash_ & mask
             perturb = hash_
             while indices[i] != -1:
