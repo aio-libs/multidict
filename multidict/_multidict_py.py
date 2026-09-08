@@ -562,7 +562,13 @@ class _HtKeys(Generic[_V]):
             entries=entries,
         )
 
-    def build_indices(self, update: bool, *, _hash_mask: int = HASH_MARK) -> None:
+    def build_indices(
+        self,
+        update: bool,
+        *,
+        _hash_mask: int = HASH_MARK,
+        _maxsize: int = MAXSIZE,
+    ) -> None:
         mask = self.mask
         indices = self.indices
         for idx, e in enumerate(self.entries):
@@ -574,17 +580,17 @@ class _HtKeys(Generic[_V]):
             else:
                 assert not (hash_ >= _hash_mask or hash_ < -_hash_mask)
             i = hash_ & mask
-            perturb = hash_ & MAXSIZE
+            perturb = hash_ & _maxsize
             while indices[i] != -1:
                 perturb >>= 5
                 i = mask & (i * 5 + perturb + 1)
             indices[i] = idx
 
-    def find_empty_slot(self, hash_: int) -> int:
+    def find_empty_slot(self, hash_: int, *, _maxsize: int = MAXSIZE) -> int:
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & MAXSIZE
+        perturb = hash_ & _maxsize
         ix = indices[i]
         while ix != -1:
             perturb >>= 5
@@ -592,12 +598,14 @@ class _HtKeys(Generic[_V]):
             ix = indices[i]
         return i
 
-    def iter_hash(self, hash_: int) -> Iterator[tuple[int, int, _Entry[_V]]]:
+    def iter_hash(
+        self, hash_: int, *, _maxsize: int = MAXSIZE
+    ) -> Iterator[tuple[int, int, _Entry[_V]]]:
         mask = self.mask
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & MAXSIZE
+        perturb = hash_ & _maxsize
         ix = indices[i]
         while ix != -1:
             if ix != -2:
@@ -608,11 +616,11 @@ class _HtKeys(Generic[_V]):
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
 
-    def del_idx(self, hash_: int, idx: int) -> None:
+    def del_idx(self, hash_: int, idx: int, *, _maxsize: int = MAXSIZE) -> None:
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & MAXSIZE
+        perturb = hash_ & _maxsize
         ix = indices[i]
         while ix != idx:
             perturb >>= 5
@@ -624,12 +632,18 @@ class _HtKeys(Generic[_V]):
         entries = reversed(self.entries) if reverse else self.entries
         return filter(None, entries)
 
-    def restore_hash(self, hash_: int, *, _hash_mask: int = HASH_MARK) -> None:
+    def restore_hash(
+        self,
+        hash_: int,
+        *,
+        _hash_mask: int = HASH_MARK,
+        _maxsize: int = MAXSIZE,
+    ) -> None:
         mask = self.mask
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & MAXSIZE
+        perturb = hash_ & _maxsize
         ix = indices[i]
         while ix != -1:
             if ix != -2:
