@@ -30,6 +30,17 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
+MAXSIZE = sys.maxsize
+
+# hash() never returns a value outside [-(MAXSIZE + 1), MAXSIZE]. XORing a
+# real hash with its highest bit always pushes the result outside that
+# range, so it can be used to mark an entry's hash as temporarily invalid
+# (its slot is being processed) without losing the original bits: XORing
+# the same bit again restores the exact original hash, no recomputation
+# needed. A plain OR/AND wouldn't do: Python ints are arbitrary precision,
+# so any negative hash already reads that bit as set.
+HASH_MARK = MAXSIZE + 1
+
 
 class istr(str):
     """Case insensitive str."""
@@ -148,7 +159,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 continue
             hash_, identity, key, value = item
             for slot, idx, e in self._md._keys.iter_hash(hash_):
-                e.hash = -1
+                e.hash ^= HASH_MARK
                 if e.identity == identity and e.value == value:
                     ret.add((e.key, e.value))
             self._md._keys.restore_hash(hash_)
@@ -551,12 +562,12 @@ class _HtKeys(Generic[_V]):
             assert e is not None
             hash_ = e.hash
             if update:
-                if hash_ == -1:
-                    hash_ = hash(e.identity)
+                if hash_ > MAXSIZE or hash_ < -HASH_MARK:
+                    hash_ ^= HASH_MARK
             else:
-                assert hash_ != -1
+                assert not (hash_ > MAXSIZE or hash_ < -HASH_MARK)
             i = hash_ & mask
-            perturb = hash_ & sys.maxsize
+            perturb = hash_ & MAXSIZE
             while indices[i] != -1:
                 perturb >>= 5
                 i = mask & (i * 5 + perturb + 1)
@@ -566,7 +577,7 @@ class _HtKeys(Generic[_V]):
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & sys.maxsize
+        perturb = hash_ & MAXSIZE
         ix = indices[i]
         while ix != -1:
             perturb >>= 5
@@ -579,7 +590,7 @@ class _HtKeys(Generic[_V]):
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & sys.maxsize
+        perturb = hash_ & MAXSIZE
         ix = indices[i]
         while ix != -1:
             if ix != -2:
@@ -594,7 +605,7 @@ class _HtKeys(Generic[_V]):
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & sys.maxsize
+        perturb = hash_ & MAXSIZE
         ix = indices[i]
         while ix != idx:
             perturb >>= 5
@@ -611,13 +622,13 @@ class _HtKeys(Generic[_V]):
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & sys.maxsize
+        perturb = hash_ & MAXSIZE
         ix = indices[i]
         while ix != -1:
             if ix != -2:
                 entry = entries[ix]
-                if entry.hash == -1:
-                    entry.hash = hash_
+                if entry.hash > MAXSIZE or entry.hash < -HASH_MARK:
+                    entry.hash ^= HASH_MARK
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
@@ -670,13 +681,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 res.append(e.value)
-                e.hash = -1
+                e.hash ^= HASH_MARK
                 restore.append(idx)
 
         if res:
             entries = self._keys.entries
             for idx in restore:
-                entries[idx].hash = hash_  # type: ignore[union-attr]
+                entries[idx].hash ^= HASH_MARK  # type: ignore[union-attr]
             return res
         if not res and default is not sentinel:
             return default
@@ -891,10 +902,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 if not found:
                     e.key = key
                     e.value = value
-                    e.hash = -1
+                    e.hash ^= HASH_MARK
                     found = True
                     self._incr_version()
-                elif e.hash != -1:  # pragma: no branch
+                elif not (e.hash > MAXSIZE or e.hash < -HASH_MARK):  # pragma: no branch
                     self._del_at(slot, idx)
 
         if not found:
@@ -1035,7 +1046,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                         found = True
                         e.key = entry.key
                         e.value = entry.value
-                        e.hash = -1
+                        e.hash ^= HASH_MARK
                     else:
                         self._del_at_for_upd(e)
             if not found:
@@ -1054,8 +1065,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     entries[idx] = None
                     indices[slot] = -2
                     self._used -= 1
-                if e2.hash == -1:
-                    e2.hash = hash(e2.identity)
+                if e2.hash > MAXSIZE or e2.hash < -HASH_MARK:
+                    e2.hash ^= HASH_MARK
 
         self._incr_version()
 
@@ -1120,7 +1131,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         keys = self._keys
         slot = keys.find_empty_slot(entry.hash)
         keys.indices[slot] = len(keys.entries)
-        entry.hash = -1
+        entry.hash ^= HASH_MARK
         keys.entries.append(entry)
         self._incr_version()
         self._used += 1
