@@ -569,7 +569,7 @@ class _HtKeys(Generic[_V]):
             else:
                 assert not (hash_ & HASH_MARK)
             i = hash_ & mask
-            perturb = hash_ & MAXSIZE
+            perturb = hash_
             while indices[i] != -1:
                 perturb >>= 5
                 i = mask & (i * 5 + perturb + 1)
@@ -579,7 +579,7 @@ class _HtKeys(Generic[_V]):
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & MAXSIZE
+        perturb = hash_
         ix = indices[i]
         while ix != -1:
             perturb >>= 5
@@ -592,7 +592,7 @@ class _HtKeys(Generic[_V]):
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & MAXSIZE
+        perturb = hash_
         ix = indices[i]
         while ix != -1:
             if ix != -2:
@@ -607,7 +607,7 @@ class _HtKeys(Generic[_V]):
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & MAXSIZE
+        perturb = hash_
         ix = indices[i]
         while ix != idx:
             perturb >>= 5
@@ -624,7 +624,7 @@ class _HtKeys(Generic[_V]):
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & MAXSIZE
+        perturb = hash_
         ix = indices[i]
         while ix != -1:
             if ix != -2:
