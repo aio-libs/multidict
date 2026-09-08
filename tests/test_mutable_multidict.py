@@ -484,6 +484,22 @@ class TestMutableMultiDict:
         d = case_sensitive_multidict_class((str(i), i) for i in range(size))
         assert d[str(size // 2)] == size // 2
 
+    def test_update_resizes_mid_update_on_capped_huge_md(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[int]],
+    ) -> None:
+        # The upfront size estimate in update()/merge() is capped to avoid
+        # overallocating on huge inputs, so a multidict already at that cap
+        # can run out of usable slots while update() is still processing
+        # new keys, forcing a resize in the middle of the update instead of
+        # upfront.
+        size = 87381  # usable slot count once the size estimate hits its cap
+        d = case_sensitive_multidict_class((str(i), i) for i in range(size))
+        d.update({"newkey": -1})
+        assert d["newkey"] == -1
+        assert d[str(size // 2)] == size // 2
+        assert len(d) == size + 1
+
     def test_create_from_proxy(
         self,
         case_sensitive_multidict_class: type[MultiDict[int]],
