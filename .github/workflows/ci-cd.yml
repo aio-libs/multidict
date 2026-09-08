@@ -168,7 +168,6 @@ jobs:
           || (matrix.tag == 'musllinux') && '*-manylinux_*'
         || '*-musllinux_*'
         }}
-        pp*
         EOF
 
   test:
@@ -570,7 +569,7 @@ jobs:
           (matrix.tag == 'musllinux')
           && '*-manylinux_*'
           || '*-musllinux_*'
-        }} pp*
+        }}
 
   build-wheels-for-mobile-archs:
     name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category

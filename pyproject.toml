@@ -37,8 +37,6 @@ select = [
 build-frontend = "build[uv]"
 test-requires = "-r requirements/pytest.txt"
 test-command = 'pytest -m "not leaks" --no-cov {project}/tests'
-# don't build PyPy wheels, install from source instead
-skip = "pp*"
 
 [tool.cibuildwheel.linux]
 # Re-enable 32-bit builds (disabled by default in cibuildwheel 3.0)
