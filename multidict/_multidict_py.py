@@ -160,8 +160,9 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             if item is None:
                 continue
             hash_, identity, key, value = item
+            marked = hash_ | HASH_MARK
             for slot, idx, e in self._md._keys.iter_hash(hash_):
-                e.hash |= HASH_MARK
+                e.hash = marked
                 if e.identity == identity and e.value == value:
                     ret.add((e.key, e.value))
             self._md._keys.restore_hash(hash_)
@@ -627,7 +628,7 @@ class _HtKeys(Generic[_V]):
             if ix != -2:
                 entry = entries[ix]
                 if entry.hash & HASH_MARK:
-                    entry.hash &= MAXSIZE
+                    entry.hash = hash_
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
@@ -675,18 +676,19 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """Return a list of all values matching the key."""
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
+        marked = hash_ | HASH_MARK
         res = []
         restore = []
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 res.append(e.value)
-                e.hash |= HASH_MARK
+                e.hash = marked
                 restore.append(idx)
 
         if res:
             entries = self._keys.entries
             for idx in restore:
-                entries[idx].hash &= MAXSIZE  # type: ignore[union-attr]
+                entries[idx].hash = hash_  # type: ignore[union-attr]
             return res
         if not res and default is not sentinel:
             return default
@@ -901,7 +903,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 if not found:
                     e.key = key
                     e.value = value
-                    e.hash |= HASH_MARK
+                    e.hash = hash_ | HASH_MARK
                     found = True
                     self._incr_version()
                 elif not (e.hash & HASH_MARK):  # pragma: no branch
@@ -1045,7 +1047,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                         found = True
                         e.key = entry.key
                         e.value = entry.value
-                        e.hash |= HASH_MARK
+                        e.hash = hash_ | HASH_MARK
                     else:
                         self._del_at_for_upd(e)
             if not found:
@@ -1064,8 +1066,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     entries[idx] = None
                     indices[slot] = -2
                     self._used -= 1
-                if e2.hash & HASH_MARK:
-                    e2.hash &= MAXSIZE
+                h = e2.hash
+                if h & HASH_MARK:
+                    e2.hash = h & MAXSIZE
 
         self._incr_version()
 
@@ -1128,9 +1131,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         if self._keys.usable <= 0:
             self._resize((self._used * 3 | _HtKeys.MINSIZE - 1).bit_length(), True)
         keys = self._keys
-        slot = keys.find_empty_slot(entry.hash)
+        hash_ = entry.hash
+        slot = keys.find_empty_slot(hash_)
         keys.indices[slot] = len(keys.entries)
-        entry.hash |= HASH_MARK
+        entry.hash = hash_ | HASH_MARK
         keys.entries.append(entry)
         self._incr_version()
         self._used += 1
