@@ -41,12 +41,6 @@ MAXSIZE = sys.maxsize
 # invalid (its slot is being processed) and AND-ed out with MAXSIZE to
 # restore it, both cheap and unambiguous: a real folded hash never has
 # that bit set to begin with.
-#
-# Functions on the hot path take these as hidden ``_hash_mask`` /
-# ``_maxsize`` default arguments rather than reading them off the module
-# each time: default values are bound once, at function definition time,
-# so referencing them inside the function body is a fast local access
-# instead of a global one.
 HASH_MARK = MAXSIZE + 1
 
 
@@ -100,7 +94,7 @@ class _ViewBase(Generic[_V]):
 
 
 class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
-    def __contains__(self, item: object, *, _maxsize: int = MAXSIZE) -> bool:
+    def __contains__(self, item: object) -> bool:
         if not isinstance(item, (tuple, list)) or len(item) != 2:
             return False
         key, value = item
@@ -108,7 +102,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             identity = self._md._identity(key)
         except TypeError:
             return False
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         for slot, idx, e in self._md._keys.iter_hash(hash_):
             if e.identity == identity and value == e.value:
                 return True
@@ -134,16 +128,14 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
-    def _parse_item(
-        self, arg: tuple[str, _V] | _T, *, _maxsize: int = MAXSIZE
-    ) -> tuple[int, str, str, _V] | None:
+    def _parse_item(self, arg: tuple[str, _V] | _T) -> tuple[int, str, str, _V] | None:
         if not isinstance(arg, tuple):
             return None
         if len(arg) != 2:
             return None
         try:
             identity = self._md._identity(arg[0])
-            return (hash(identity) & _maxsize, identity, arg[0], arg[1])
+            return (hash(identity) & MAXSIZE, identity, arg[0], arg[1])
         except TypeError:
             return None
 
@@ -157,9 +149,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 tmp.add((item[1], item[3]))
         return tmp
 
-    def __and__(
-        self, other: Iterable[Any], *, _hash_mask: int = HASH_MARK
-    ) -> set[tuple[str, _V]]:
+    def __and__(self, other: Iterable[Any]) -> set[tuple[str, _V]]:
         ret = set()
         try:
             it = iter(other)
@@ -171,7 +161,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 continue
             hash_, identity, key, value = item
             for slot, idx, e in self._md._keys.iter_hash(hash_):
-                e.hash |= _hash_mask
+                e.hash |= HASH_MARK
                 if e.identity == identity and e.value == value:
                     ret.add((e.key, e.value))
             self._md._keys.restore_hash(hash_)
@@ -312,11 +302,11 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
 
 
 class _KeysView(_ViewBase[_V], KeysView[str]):
-    def __contains__(self, key: object, *, _maxsize: int = MAXSIZE) -> bool:
+    def __contains__(self, key: object) -> bool:
         if not isinstance(key, str):
             return False
         identity = self._md._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         for slot, idx, e in self._md._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 return True
@@ -341,7 +331,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
-    def __and__(self, other: Iterable[object], *, _maxsize: int = MAXSIZE) -> set[str]:
+    def __and__(self, other: Iterable[object]) -> set[str]:
         ret = set()
         try:
             it = iter(other)
@@ -351,7 +341,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 continue
             identity = self._md._identity(key)
-            hash_ = hash(identity) & _maxsize
+            hash_ = hash(identity) & MAXSIZE
             for slot, idx, e in self._md._keys.iter_hash(hash_):
                 if e.identity == identity:  # pragma: no branch
                     ret.add(e.key)
@@ -403,7 +393,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(e.key)
         return ret
 
-    def __sub__(self, other: Iterable[object], *, _maxsize: int = MAXSIZE) -> set[str]:
+    def __sub__(self, other: Iterable[object]) -> set[str]:
         ret = set(self)
         try:
             it = iter(other)
@@ -413,7 +403,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             if not isinstance(key, str):
                 continue
             identity = self._md._identity(key)
-            hash_ = hash(identity) & _maxsize
+            hash_ = hash(identity) & MAXSIZE
             for slot, idx, e in self._md._keys.iter_hash(hash_):
                 if e.identity == identity:  # pragma: no branch
                     ret.discard(e.key)
@@ -567,35 +557,29 @@ class _HtKeys(Generic[_V]):
             entries=entries,
         )
 
-    def build_indices(
-        self,
-        update: bool,
-        *,
-        _hash_mask: int = HASH_MARK,
-        _maxsize: int = MAXSIZE,
-    ) -> None:
+    def build_indices(self, update: bool) -> None:
         mask = self.mask
         indices = self.indices
         for idx, e in enumerate(self.entries):
             assert e is not None
             hash_ = e.hash
             if update:
-                if hash_ & _hash_mask:
-                    hash_ &= _maxsize
+                if hash_ & HASH_MARK:
+                    hash_ &= MAXSIZE
             else:
-                assert not (hash_ & _hash_mask)
+                assert not (hash_ & HASH_MARK)
             i = hash_ & mask
-            perturb = hash_ & _maxsize
+            perturb = hash_ & MAXSIZE
             while indices[i] != -1:
                 perturb >>= 5
                 i = mask & (i * 5 + perturb + 1)
             indices[i] = idx
 
-    def find_empty_slot(self, hash_: int, *, _maxsize: int = MAXSIZE) -> int:
+    def find_empty_slot(self, hash_: int) -> int:
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & _maxsize
+        perturb = hash_ & MAXSIZE
         ix = indices[i]
         while ix != -1:
             perturb >>= 5
@@ -603,14 +587,12 @@ class _HtKeys(Generic[_V]):
             ix = indices[i]
         return i
 
-    def iter_hash(
-        self, hash_: int, *, _maxsize: int = MAXSIZE
-    ) -> Iterator[tuple[int, int, _Entry[_V]]]:
+    def iter_hash(self, hash_: int) -> Iterator[tuple[int, int, _Entry[_V]]]:
         mask = self.mask
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & _maxsize
+        perturb = hash_ & MAXSIZE
         ix = indices[i]
         while ix != -1:
             if ix != -2:
@@ -621,11 +603,11 @@ class _HtKeys(Generic[_V]):
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
 
-    def del_idx(self, hash_: int, idx: int, *, _maxsize: int = MAXSIZE) -> None:
+    def del_idx(self, hash_: int, idx: int) -> None:
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_ & _maxsize
+        perturb = hash_ & MAXSIZE
         ix = indices[i]
         while ix != idx:
             perturb >>= 5
@@ -637,24 +619,18 @@ class _HtKeys(Generic[_V]):
         entries = reversed(self.entries) if reverse else self.entries
         return filter(None, entries)
 
-    def restore_hash(
-        self,
-        hash_: int,
-        *,
-        _hash_mask: int = HASH_MARK,
-        _maxsize: int = MAXSIZE,
-    ) -> None:
+    def restore_hash(self, hash_: int) -> None:
         mask = self.mask
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_ & _maxsize
+        perturb = hash_ & MAXSIZE
         ix = indices[i]
         while ix != -1:
             if ix != -2:
                 entry = entries[ix]
-                if entry.hash & _hash_mask:
-                    entry.hash &= _maxsize
+                if entry.hash & HASH_MARK:
+                    entry.hash &= MAXSIZE
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
@@ -698,29 +674,22 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def getall(self, key: str) -> list[_V]: ...
     @overload
     def getall(self, key: str, default: _T) -> list[_V] | _T: ...
-    def getall(
-        self,
-        key: str,
-        default: _T | _SENTINEL = sentinel,
-        *,
-        _hash_mask: int = HASH_MARK,
-        _maxsize: int = MAXSIZE,
-    ) -> list[_V] | _T:
+    def getall(self, key: str, default: _T | _SENTINEL = sentinel) -> list[_V] | _T:
         """Return a list of all values matching the key."""
         identity = self._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         res = []
         restore = []
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 res.append(e.value)
-                e.hash |= _hash_mask
+                e.hash |= HASH_MARK
                 restore.append(idx)
 
         if res:
             entries = self._keys.entries
             for idx in restore:
-                entries[idx].hash &= _maxsize  # type: ignore[union-attr]
+                entries[idx].hash &= MAXSIZE  # type: ignore[union-attr]
             return res
         if not res and default is not sentinel:
             return default
@@ -730,19 +699,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def getone(self, key: str) -> _V: ...
     @overload
     def getone(self, key: str, default: _T) -> _V | _T: ...
-    def getone(
-        self,
-        key: str,
-        default: _T | _SENTINEL = sentinel,
-        *,
-        _maxsize: int = MAXSIZE,
-    ) -> _V | _T:
+    def getone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
         """Get first value matching the key.
 
         Raises KeyError if the key is not found and no default is provided.
         """
         identity = self._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 return e.value
@@ -806,11 +769,11 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 return False
         return True
 
-    def __contains__(self, key: object, *, _maxsize: int = MAXSIZE) -> bool:
+    def __contains__(self, key: object) -> bool:
         if not isinstance(key, str):
             return False
         identity = self._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 return True
@@ -829,9 +792,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def __reduce__(self) -> tuple[type[Self], tuple[list[tuple[str, _V]]]]:
         return (self.__class__, (list(self.items()),))
 
-    def add(self, key: str, value: _V, *, _maxsize: int = MAXSIZE) -> None:
+    def add(self, key: str, value: _V) -> None:
         identity = self._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         self._add_with_hash(_Entry(hash_, identity, key, value))
         self._incr_version()
 
@@ -856,8 +819,6 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self,
         arg: MDArg[_V],
         kwargs: Mapping[str, _V],
-        *,
-        _maxsize: int = MAXSIZE,
     ) -> Iterator[int | _Entry[_V]]:
         identity_func = self._identity
         if isinstance(arg, MultiDictProxy):
@@ -873,16 +834,14 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 if self._ci is not arg._ci:
                     for e in arg._keys.iter_entries():
                         identity = identity_func(e.key)
-                        yield _Entry(
-                            hash(identity) & _maxsize, identity, e.key, e.value
-                        )
+                        yield _Entry(hash(identity) & MAXSIZE, identity, e.key, e.value)
                 else:
                     for e in arg._keys.iter_entries():
                         yield _Entry(e.hash, e.identity, e.key, e.value)
                 if kwargs:
                     for key, value in kwargs.items():
                         identity = identity_func(key)
-                        yield _Entry(hash(identity) & _maxsize, identity, key, value)
+                        yield _Entry(hash(identity) & MAXSIZE, identity, key, value)
             else:
                 if hasattr(arg, "keys"):
                     arg = cast(SupportsKeys[_V], arg)
@@ -915,12 +874,12 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                             f"value could not be fetched"
                         ) from exc
                     identity = identity_func(key)
-                    yield _Entry(hash(identity) & _maxsize, identity, key, value)
+                    yield _Entry(hash(identity) & MAXSIZE, identity, key, value)
         else:
             yield len(kwargs)
             for key, value in kwargs.items():
                 identity = identity_func(key)
-                yield _Entry(hash(identity) & _maxsize, identity, key, value)
+                yield _Entry(hash(identity) & MAXSIZE, identity, key, value)
 
     def _extend_items(self, items: Iterable[_Entry[_V]]) -> None:
         for e in items:
@@ -935,16 +894,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     # Mapping interface #
 
-    def __setitem__(
-        self,
-        key: str,
-        value: _V,
-        *,
-        _hash_mask: int = HASH_MARK,
-        _maxsize: int = MAXSIZE,
-    ) -> None:
+    def __setitem__(self, key: str, value: _V) -> None:
         identity = self._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         found = False
 
         for slot, idx, e in self._keys.iter_hash(hash_):
@@ -952,10 +904,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 if not found:
                     e.key = key
                     e.value = value
-                    e.hash |= _hash_mask
+                    e.hash |= HASH_MARK
                     found = True
                     self._incr_version()
-                elif not (e.hash & _hash_mask):  # pragma: no branch
+                elif not (e.hash & HASH_MARK):  # pragma: no branch
                     self._del_at(slot, idx)
 
         if not found:
@@ -963,10 +915,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         else:
             self._keys.restore_hash(hash_)
 
-    def __delitem__(self, key: str, *, _maxsize: int = MAXSIZE) -> None:
+    def __delitem__(self, key: str) -> None:
         found = False
         identity = self._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 self._del_at(slot, idx)
@@ -982,12 +934,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     ) -> _T | None: ...
     @overload
     def setdefault(self, key: str, default: _V) -> _V: ...
-    def setdefault(  # type: ignore[misc]
-        self, key: str, default: _V | None = None, *, _maxsize: int = MAXSIZE
-    ) -> _V | None:
+    def setdefault(self, key: str, default: _V | None = None) -> _V | None:  # type: ignore[misc]
         """Return value for key, set value to default if key is not present."""
         identity = self._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 return e.value
@@ -998,13 +948,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def popone(self, key: str) -> _V: ...
     @overload
     def popone(self, key: str, default: _T) -> _V | _T: ...
-    def popone(
-        self,
-        key: str,
-        default: _T | _SENTINEL = sentinel,
-        *,
-        _maxsize: int = MAXSIZE,
-    ) -> _V | _T:
+    def popone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
         """Remove specified key and return the corresponding value.
 
         If key is not found, d is returned if given, otherwise
@@ -1012,7 +956,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
         """
         identity = self._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 value = e.value
@@ -1032,13 +976,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def popall(self, key: str) -> list[_V]: ...
     @overload
     def popall(self, key: str, default: _T) -> list[_V] | _T: ...
-    def popall(
-        self,
-        key: str,
-        default: _T | _SENTINEL = sentinel,
-        *,
-        _maxsize: int = MAXSIZE,
-    ) -> list[_V] | _T:
+    def popall(self, key: str, default: _T | _SENTINEL = sentinel) -> list[_V] | _T:
         """Remove all occurrences of key and return the list of corresponding
         values.
 
@@ -1048,7 +986,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """
         found = False
         identity = self._identity(key)
-        hash_ = hash(identity) & _maxsize
+        hash_ = hash(identity) & MAXSIZE
         ret = []
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
@@ -1099,9 +1037,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         finally:
             self._post_update()
 
-    def _update_items(
-        self, items: Iterator[_Entry[_V]], *, _hash_mask: int = HASH_MARK
-    ) -> None:
+    def _update_items(self, items: Iterator[_Entry[_V]]) -> None:
         for entry in items:
             found = False
             hash_ = entry.hash
@@ -1112,15 +1048,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                         found = True
                         e.key = entry.key
                         e.value = entry.value
-                        e.hash |= _hash_mask
+                        e.hash |= HASH_MARK
                     else:
                         self._del_at_for_upd(e)
             if not found:
                 self._add_with_hash_for_upd(entry)
 
-    def _post_update(
-        self, *, _hash_mask: int = HASH_MARK, _maxsize: int = MAXSIZE
-    ) -> None:
+    def _post_update(self) -> None:
         keys = self._keys
         indices = keys.indices
         entries = keys.entries
@@ -1133,8 +1067,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     entries[idx] = None
                     indices[slot] = -2
                     self._used -= 1
-                if e2.hash & _hash_mask:
-                    e2.hash &= _maxsize
+                if e2.hash & HASH_MARK:
+                    e2.hash &= MAXSIZE
 
         self._incr_version()
 
@@ -1193,15 +1127,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self._used += 1
         keys.usable -= 1
 
-    def _add_with_hash_for_upd(
-        self, entry: _Entry[_V], *, _hash_mask: int = HASH_MARK
-    ) -> None:
+    def _add_with_hash_for_upd(self, entry: _Entry[_V]) -> None:
         if self._keys.usable <= 0:
             self._resize((self._used * 3 | _HtKeys.MINSIZE - 1).bit_length(), True)
         keys = self._keys
         slot = keys.find_empty_slot(entry.hash)
         keys.indices[slot] = len(keys.entries)
-        entry.hash |= _hash_mask
+        entry.hash |= HASH_MARK
         keys.entries.append(entry)
         self._incr_version()
         self._used += 1
