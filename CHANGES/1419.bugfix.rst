@@ -1,2 +1,0 @@
-Fixed a reference leak from repeated ``__init__`` calls on
-``MultiDictProxy`` and ``CIMultiDictProxy`` instances -- by :user:`asvetlov`.
