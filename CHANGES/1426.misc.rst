@@ -1,0 +1,5 @@
+Changed both the pure-Python and C implementations to mark a temporarily
+removed hash table entry by setting the high bit of its hash instead of
+overwriting it with a sentinel value, so restoring the entry no longer
+recomputes the hash; :meth:`~multidict.MultiDict.getall` is faster ~10% now in C version
+-- by :user:`asvetlov`

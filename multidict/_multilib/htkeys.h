@@ -313,15 +313,24 @@ htkeys_free(htkeys_t* dk)
     PyMem_Free(dk);
 }
 
+/* Returns the identity's hash folded into its non-negative half (see the
+   MD_HASH_MARK comment in hashtable.h), or -1 if hashing raised. Only the
+   value returned to the caller is folded; the unicode object's own cached
+   hash slot is left untouched, since it is shared with the rest of the
+   process. */
 static inline Py_hash_t
 _unicode_hash(PyObject* o)
 {
     assert(PyUnicode_CheckExact(o));
     PyASCIIObject* ascii = (PyASCIIObject*)o;
-    if (ascii->hash != -1) {
-        return ascii->hash;
+    Py_hash_t hash = ascii->hash;
+    if (hash == -1) {
+        hash = PyUnicode_Type.tp_hash(o);
+        if (hash == -1) {
+            return -1;
+        }
     }
-    return PyUnicode_Type.tp_hash(o);
+    return hash & PY_SSIZE_T_MAX;
 }
 
 /*
@@ -333,15 +342,8 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
     size_t mask = htkeys_mask(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
-        if (update) {
-            if (hash == -1) {
-                hash = _unicode_hash(ep->identity);
-                if (hash == -1) {
-                    return -1;
-                }
-            }
-        } else {
-            assert(hash != -1);
+        if (update && hash < 0) {
+            hash &= PY_SSIZE_T_MAX;
         }
         size_t i = hash & mask;
         for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {

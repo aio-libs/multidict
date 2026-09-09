@@ -36,6 +36,8 @@ typedef enum _UpdateOp {
     Merge,
 } UpdateOp;
 
+#define MD_HASH_MARK PY_SSIZE_T_MIN
+
 /*
 The multidict's implementation is close to Python's dict except for multiple
 keys.
@@ -57,10 +59,13 @@ amount.
 
 The iteration for operations like getall() is a little tricky. The next index
 calculation could return the already visited index before reaching the end. To
-eliminate duplicates, the code marks already visited entries by entry->hash =
--1. -1 hash is an invalid hash value that could be used as a marker. After the
-iteration finishes, all marked entries are restored.  Double iteration over the
-indices still has O(1) amortized time, it is ok.
+eliminate duplicates, the code marks already visited entries. Entry hashes are
+folded non-negative (_unicode_hash() masks with PY_SSIZE_T_MAX), so
+MD_HASH_MARK, the hash range's high bit, can mark a hash as temporarily
+invalid: OR it in, AND it out with PY_SSIZE_T_MAX to restore. A real folded
+hash never has that bit set, so a marked entry is simply one whose hash is
+negative. After the iteration finishes, all marked entries are restored. Double
+iteration over the indices still has O(1) amortized time, it is ok.
 
 `.add()`, `val = md[key]`, `md[key] = val`, `md.setdefault()` all have O(1).
 `.getall()` / `.popall()` have O(N) where N is the amount of returned items.
@@ -484,7 +489,7 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     entry->identity = identity;
     entry->key = key;
     entry->value = value;
-    entry->hash = -1;
+    entry->hash = hash | MD_HASH_MARK;
 
     md->version = NEXT_VERSION(md->state);
     md->used += 1;
@@ -807,7 +812,7 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
         }
 
         /* found, mark the entry as visited */
-        entry->hash = -1;
+        entry->hash = finder->hash | MD_HASH_MARK;
 
         if (pkey) {
             *pkey = _md_ensure_key(finder->md, entry);
@@ -846,7 +851,7 @@ md_finder_cleanup(md_finder_t* finder)
             continue;
         }
         entry_t* entry = entries + finder->iter.index;
-        if (entry->hash == -1) {
+        if (entry->hash < 0) {
             entry->hash = finder->hash;
         }
     }
@@ -1215,7 +1220,7 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
             found = 1;
             Py_SETREF(entry->key, Py_NewRef(key));
             Py_SETREF(entry->value, Py_NewRef(value));
-            entry->hash = -1;
+            entry->hash = finder.hash | MD_HASH_MARK;
         } else {
             _md_del_at(md, md_finder_slot(&finder), entry);
         }
@@ -1292,7 +1297,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     Py_SETREF(entry->key, Py_NewRef(key));
                     Py_SETREF(entry->value, Py_NewRef(value));
                 }
-                entry->hash = -1;
+                entry->hash = hash | MD_HASH_MARK;
             } else {
                 _md_del_at_for_upd(md, iter.slot, entry);
             }
@@ -1355,10 +1360,9 @@ md_post_update(MultiDictObject* md)
                 htkeys_set_index(keys, slot, DKIX_DUMMY);
                 md->used -= 1;
             }
-            if (entry->hash == -1) {
-                entry->hash = _unicode_hash(entry->identity);
+            if (entry->hash < 0) {
+                entry->hash &= PY_SSIZE_T_MAX;
             }
-            assert(entry->hash != -1);
         }
     }
     ASSERT_CONSISTENT(md, false);
@@ -2054,7 +2058,7 @@ _md_check_consistency(MultiDictObject* md, bool update)
 
         if (identity != NULL) {
             if (!update) {
-                CHECK(entry->hash != -1);
+                CHECK(entry->hash >= 0);
                 CHECK(entry->key != NULL);
                 CHECK(entry->value != NULL);
             } else {
@@ -2066,7 +2070,7 @@ _md_check_consistency(MultiDictObject* md, bool update)
             }
 
             CHECK(PyUnicode_CheckExact(identity));
-            if (entry->hash != -1) {
+            if (entry->hash >= 0) {
                 Py_hash_t hash = _unicode_hash(identity);
                 CHECK(entry->hash == hash);
             }
