@@ -79,18 +79,6 @@ _multidict_resolve_other(mod_state* state, PyObject* arg)
     return NULL;
 }
 
-/* Mutates `self` for extend()/update()/merge() and the constructors. Must
- * be called with `self` (and `other`, when not NULL and not `self`)
- * already locked via Py_BEGIN_CRITICAL_SECTION[2], covering md_reserve()
- * too when the caller does one -- the whole operation, including the
- * soft-delete cleanup in md_post_update(), has to be atomic from the
- * point of view of other threads, or they could observe `self` with
- * soft-deleted (identity set, key/value NULL) entries not cleaned up
- * yet. This is why the locking lives in the caller: unlike md_repr(),
- * this function's own control flow is goto-heavy, and jumping out of
- * a critical section without ending it first is undefined behaviour.
- * `other` is `_multidict_resolve_other(self->state, arg)`, precomputed
- * by the caller since it decides which critical section macro to use. */
 static inline int
 _multidict_extend(MultiDictObject* self, PyObject* arg, MultiDictObject* other,
                   PyObject* kwds, UpdateOp op)
