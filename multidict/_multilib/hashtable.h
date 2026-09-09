@@ -36,7 +36,6 @@ typedef enum _UpdateOp {
     Merge,
 } UpdateOp;
 
-/* The hash range's high bit; see the marking scheme described below. */
 #define MD_HASH_MARK PY_SSIZE_T_MIN
 
 /*
