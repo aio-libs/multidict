@@ -4,6 +4,7 @@ import gc
 import operator
 import platform
 import sys
+import threading
 import weakref
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator, KeysView, Mapping
@@ -1516,6 +1517,47 @@ def test_repr_raises_when_mutated_during_iteration() -> None:
     md.add("k2", Evil())
     with pytest.raises(RuntimeError, match="changed during iteration"):
         repr(md)
+
+
+@pytest.mark.c_extension
+def test_update_extend_merge_thread_safety() -> None:
+    """Concurrent update()/extend()/merge() must not crash or corrupt state.
+
+    Regression test for a segfault on the free-threaded build: the C
+    extension used to release self's lock between processing the
+    positional argument and running the soft-delete cleanup in
+    update()/merge(), so a concurrent reader of the same multidict (used
+    as the argument to another thread's extend()/update()/merge() call)
+    could observe entries mid-cleanup (identity set, key/value NULL).
+    This is a C-extension-only concern: the pure-Python implementation has
+    no locking of its own to regress."""
+    d1 = MultiDict((str(i), i) for i in range(100))
+    d2 = MultiDict((str(i), i) for i in range(100, 200))
+    errors: list[BaseException] = []
+
+    def worker(n: int) -> None:
+        try:
+            for _ in range(200):
+                if n % 3 == 0:
+                    d1.update(d2)
+                elif n % 3 == 1:
+                    d2.merge(d1)
+                else:
+                    tmp: MultiDict[int] = MultiDict()
+                    tmp.extend(d1)
+                    tmp.extend(d2)
+        except BaseException as exc:  # pragma: no cover
+            errors.append(exc)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors
+    assert len(d1) == 200
+    assert len(d2) == 200
 
 
 def test_subclassed_multidict(
