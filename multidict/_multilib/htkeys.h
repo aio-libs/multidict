@@ -342,7 +342,7 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
     size_t mask = htkeys_mask(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
-        if (update) {
+        if (update && hash < 0) {
             hash &= PY_SSIZE_T_MAX;
         }
         size_t i = hash & mask;

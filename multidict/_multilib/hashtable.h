@@ -1361,7 +1361,9 @@ md_post_update(MultiDictObject* md)
                 htkeys_set_index(keys, slot, DKIX_DUMMY);
                 md->used -= 1;
             }
-            entry->hash &= PY_SSIZE_T_MAX;
+            if (entry->hash < 0) {
+                entry->hash &= PY_SSIZE_T_MAX;
+            }
         }
     }
     ASSERT_CONSISTENT(md, false);
