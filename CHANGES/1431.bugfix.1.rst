@@ -1,0 +1,5 @@
+Guarded ``repr()`` of ``MultiDictProxy`` in the C extension and of
+``KeysView`` in both the C extension and the pure-Python
+implementation against infinite recursion on self-referential
+containers, matching the existing guard on ``MultiDict``,
+``ItemsView``, and ``ValuesView`` -- by :user:`asvetlov`.

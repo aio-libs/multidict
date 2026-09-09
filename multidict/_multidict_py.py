@@ -319,6 +319,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 raise RuntimeError("Dictionary changed during iteration")
             yield self._md._key(e.key)
 
+    @reprlib.recursive_repr()
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
