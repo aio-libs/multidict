@@ -1,0 +1,4 @@
+Guarded ``repr()`` of ``MultiDictProxy`` and ``KeysView`` in the C
+extension against infinite recursion on self-referential containers,
+matching the existing guard on ``MultiDict``, ``ItemsView``, and
+``ValuesView`` -- by :user:`asvetlov`.

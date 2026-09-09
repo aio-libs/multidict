@@ -1125,15 +1125,24 @@ multidict_keysview_iter(_Multidict_ViewObject* self)
 static inline PyObject*
 multidict_keysview_repr(_Multidict_ViewObject* self)
 {
+    int tmp = Py_ReprEnter((PyObject*)self);
+    if (tmp < 0) {
+        return NULL;
+    }
+    if (tmp > 0) {
+        return PyUnicode_FromString("...");
+    }
     PyObject* name =
         PyObject_GetAttrString((PyObject*)Py_TYPE(self), "__name__");
     if (name == NULL) {
+        Py_ReprLeave((PyObject*)self);
         return NULL;
     }
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
     ret = md_repr(self->md, name, true, false);
     Py_END_CRITICAL_SECTION();
+    Py_ReprLeave((PyObject*)self);
     Py_CLEAR(name);
     return ret;
 }

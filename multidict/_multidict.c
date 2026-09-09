@@ -1264,13 +1264,24 @@ multidict_proxy_tp_clear(MultiDictProxyObject* self)
 static PyObject*
 multidict_proxy_repr(MultiDictProxyObject* self)
 {
+    int tmp = Py_ReprEnter((PyObject*)self);
+    if (tmp < 0) {
+        return NULL;
+    }
+    if (tmp > 0) {
+        return PyUnicode_FromString("...");
+    }
     PyObject* name =
         PyObject_GetAttr((PyObject*)Py_TYPE(self), self->md->state->str_name);
-    if (name == NULL) return NULL;
+    if (name == NULL) {
+        Py_ReprLeave((PyObject*)self);
+        return NULL;
+    }
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
     ret = md_repr(self->md, name, true, true);
     Py_END_CRITICAL_SECTION();
+    Py_ReprLeave((PyObject*)self);
     Py_CLEAR(name);
     return ret;
 }
