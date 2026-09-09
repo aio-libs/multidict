@@ -14,8 +14,8 @@ Changelog
 
 .. towncrier release notes start
 
-6.7.2.dev0
-==========
+6.8.0
+=====
 
 *(2026-09-09)*
 
