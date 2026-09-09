@@ -1560,6 +1560,37 @@ def test_update_extend_merge_thread_safety() -> None:
     assert len(d2) == 200
 
 
+@pytest.mark.c_extension
+def test_clear_thread_safety() -> None:
+    """Concurrent clear() alongside extend() must not crash or corrupt state.
+
+    Regression test for the same class of free-threaded-build segfault as
+    test_update_extend_merge_thread_safety(): clear() used to walk and free
+    self's entries without holding self's lock, so a concurrent extend() on
+    the same multidict could run in the middle of the walk. This is a
+    C-extension-only concern: the pure-Python implementation has no locking
+    of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    errors: list[BaseException] = []
+
+    def clearer() -> None:
+        try:
+            for _ in range(200):
+                d.clear()
+                d.extend((str(i), i) for i in range(200))
+        except BaseException as exc:  # pragma: no cover
+            errors.append(exc)
+
+    threads = [threading.Thread(target=clearer) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors
+    assert len(d) == 200
+
+
 def test_subclassed_multidict(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
