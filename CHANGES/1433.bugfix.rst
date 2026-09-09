@@ -1,0 +1,6 @@
+Fixed a race in the pure-Python :class:`~multidict.MultiDict` implementation
+where a concurrent thread could observe :py:meth:`~multidict.MultiDict.update`,
+:py:meth:`~multidict.MultiDict.extend`, or :py:meth:`~multidict.MultiDict.merge`
+mid-operation and crash with ``AttributeError: 'NoneType' object has no
+attribute 'hash'`` on the free-threaded build
+-- by :user:`asvetlov`.

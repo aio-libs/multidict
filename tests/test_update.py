@@ -1,3 +1,4 @@
+import threading
 from collections import deque
 
 from multidict import CIMultiDict, MultiDict
@@ -194,3 +195,45 @@ def test_pure_python_parse_args_size_hint_with_md_and_kwargs() -> None:
     entries = list(it)
 
     assert size_hint == len(entries) == len(arg) + len(kwargs)
+
+
+def test_pure_python_update_extend_merge_thread_safety() -> None:
+    """Concurrent update()/extend()/merge() must not crash or corrupt state.
+
+    Regression test for the pure-Python backend: update()/merge() mark an
+    entry's replaced duplicates by nulling out their key/value and only
+    clean them out of the hash table afterwards in _post_update(). Without
+    a lock covering the whole operation, a concurrent reader of the same
+    multidict (used as the argument to another thread's own
+    extend()/update()/merge() call, or updated by two threads at once)
+    could observe a table slot whose index still points at an
+    already-nulled-out entry, raising ``AttributeError`` when the entry's
+    ``.hash`` is read.
+    """
+    d1: PyMultiDict[int] = PyMultiDict((str(i), i) for i in range(100))
+    d2: PyMultiDict[int] = PyMultiDict((str(i), i) for i in range(100, 200))
+    errors: list[BaseException] = []
+
+    def worker(n: int) -> None:
+        try:
+            for _ in range(30):
+                if n % 3 == 0:
+                    d1.update(d2)
+                elif n % 3 == 1:
+                    d2.merge(d1)
+                else:
+                    tmp: PyMultiDict[int] = PyMultiDict()
+                    tmp.extend(d1)
+                    tmp.extend(d2)
+        except BaseException as exc:  # pragma: no cover
+            errors.append(exc)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors
+    assert len(d1) == 200
+    assert len(d2) == 200

@@ -2,6 +2,7 @@ import enum
 import functools
 import reprlib
 import sys
+import threading
 from array import array
 from collections.abc import (
     ItemsView,
@@ -11,6 +12,7 @@ from collections.abc import (
     Mapping,
     ValuesView,
 )
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
@@ -631,10 +633,11 @@ class _HtKeys(Generic[_V]):
 class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     """Dictionary with the support for duplicate keys."""
 
-    __slots__ = ("_keys", "_used", "_version")
+    __slots__ = ("_keys", "_used", "_version", "_lock")
 
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
         self._used = 0
+        self._lock = threading.Lock()
         v = _version
         v[0] += 1
         self._version = v[0]
@@ -798,15 +801,36 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     __copy__ = copy
 
+    @contextmanager
+    def _locked_for(self, arg: object) -> Iterator[None]:
+        # update()/extend()/merge() read `arg`'s hash table directly (via
+        # _parse_args()) while mutating self's own table across several
+        # separate steps. Locking self alone isn't enough: a concurrent
+        # update()/extend()/merge() on `arg` (as someone else's target)
+        # could be observed mid-operation, with soft-deleted entries not
+        # cleaned up yet. Lock both instances, ordered by id() so that two
+        # threads updating each other from one another never deadlock.
+        other = arg._md if isinstance(arg, MultiDictProxy) else arg
+        if isinstance(other, MultiDict) and other is not self:
+            first, second = self._lock, other._lock
+            if id(second) < id(first):
+                first, second = second, first
+            with first, second:
+                yield
+        else:
+            with self._lock:
+                yield
+
     def extend(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Extend current MultiDict with more values.
 
         This method must be used instead of update.
         """
-        it = self._parse_args(arg, kwargs)
-        newsize = self._used + cast(int, next(it))
-        self._resize(estimate_log2_keysize(newsize), False)
-        self._extend_items(cast(Iterator[_Entry[_V]], it))
+        with self._locked_for(arg):
+            it = self._parse_args(arg, kwargs)
+            newsize = self._used + cast(int, next(it))
+            self._resize(estimate_log2_keysize(newsize), False)
+            self._extend_items(cast(Iterator[_Entry[_V]], it))
 
     def _parse_args(
         self,
@@ -1016,19 +1040,20 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Update the dictionary, overwriting existing keys."""
-        it = self._parse_args(arg, kwargs)
-        newsize = self._used + cast(int, next(it))
-        log2_size = estimate_log2_keysize(newsize)
-        if log2_size > 17:  # pragma: no cover
-            # Don't overallocate really huge keys space in update,
-            # duplicate keys could reduce the resulting amount of entries
-            log2_size = 17
-        if log2_size > self._keys.log2_size:
-            self._resize(log2_size, False)
-        try:
-            self._update_items(cast(Iterator[_Entry[_V]], it))
-        finally:
-            self._post_update()
+        with self._locked_for(arg):
+            it = self._parse_args(arg, kwargs)
+            newsize = self._used + cast(int, next(it))
+            log2_size = estimate_log2_keysize(newsize)
+            if log2_size > 17:  # pragma: no cover
+                # Don't overallocate really huge keys space in update,
+                # duplicate keys could reduce the resulting amount of entries
+                log2_size = 17
+            if log2_size > self._keys.log2_size:
+                self._resize(log2_size, False)
+            try:
+                self._update_items(cast(Iterator[_Entry[_V]], it))
+            finally:
+                self._post_update()
 
     def _update_items(self, items: Iterator[_Entry[_V]]) -> None:
         for entry in items:
@@ -1068,19 +1093,20 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     def merge(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Merge into the dictionary, adding non-existing keys."""
-        it = self._parse_args(arg, kwargs)
-        newsize = self._used + cast(int, next(it))
-        log2_size = estimate_log2_keysize(newsize)
-        if log2_size > 17:  # pragma: no cover
-            # Don't overallocate really huge keys space in update,
-            # duplicate keys could reduce the resulting amount of entries
-            log2_size = 17
-        if log2_size > self._keys.log2_size:
-            self._resize(log2_size, False)
-        try:
-            self._merge_items(cast(Iterator[_Entry[_V]], it))
-        finally:
-            self._post_update()
+        with self._locked_for(arg):
+            it = self._parse_args(arg, kwargs)
+            newsize = self._used + cast(int, next(it))
+            log2_size = estimate_log2_keysize(newsize)
+            if log2_size > 17:  # pragma: no cover
+                # Don't overallocate really huge keys space in update,
+                # duplicate keys could reduce the resulting amount of entries
+                log2_size = 17
+            if log2_size > self._keys.log2_size:
+                self._resize(log2_size, False)
+            try:
+                self._merge_items(cast(Iterator[_Entry[_V]], it))
+            finally:
+                self._post_update()
 
     def _merge_items(self, items: Iterator[_Entry[_V]]) -> None:
         for entry in items:
