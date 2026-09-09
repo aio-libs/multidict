@@ -1861,8 +1861,20 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
 }
 
 static inline PyObject*
-md_repr(MultiDictObject* md, PyObject* name, bool show_keys, bool show_values)
+md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
 {
+    int reprenter = Py_ReprEnter(obj);
+    if (reprenter != 0) {
+        return reprenter > 0 ? PyUnicode_FromString("...") : NULL;
+    }
+
+    PyObject* name =
+        PyObject_GetAttr((PyObject*)Py_TYPE(obj), md->state->str_name);
+    if (name == NULL) {
+        Py_ReprLeave(obj);
+        return NULL;
+    }
+
     PyObject* key = NULL;
     PyObject* value = NULL;
 
@@ -1870,7 +1882,11 @@ md_repr(MultiDictObject* md, PyObject* name, bool show_keys, bool show_values)
     uint64_t version = md->version;
 
     PyUnicodeWriter* writer = PyUnicodeWriter_Create(1024);
-    if (writer == NULL) return NULL;
+    if (writer == NULL) {
+        Py_CLEAR(name);
+        Py_ReprLeave(obj);
+        return NULL;
+    }
 
     if (PyUnicodeWriter_WriteChar(writer, '<') < 0) {
         goto fail;
@@ -1966,11 +1982,15 @@ md_repr(MultiDictObject* md, PyObject* name, bool show_keys, bool show_values)
     if (PyUnicodeWriter_WriteChar(writer, '>') < 0) {
         goto fail;
     }
+    Py_CLEAR(name);
+    Py_ReprLeave(obj);
     return PyUnicodeWriter_Finish(writer);
 fail:
     Py_CLEAR(key);
     Py_CLEAR(value);
+    Py_CLEAR(name);
     PyUnicodeWriter_Discard(writer);
+    Py_ReprLeave(obj);
     return NULL;
 }
 
