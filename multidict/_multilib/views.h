@@ -191,7 +191,10 @@ multidict_itemsview_repr(_Multidict_ViewObject* self)
         Py_ReprLeave((PyObject*)self);
         return NULL;
     }
-    PyObject* ret = md_repr(self->md, name, true, true);
+    PyObject* ret;
+    Py_BEGIN_CRITICAL_SECTION(self->md);
+    ret = md_repr(self->md, name, true, true);
+    Py_END_CRITICAL_SECTION();
     Py_ReprLeave((PyObject*)self);
     Py_CLEAR(name);
     return ret;
@@ -1127,7 +1130,10 @@ multidict_keysview_repr(_Multidict_ViewObject* self)
     if (name == NULL) {
         return NULL;
     }
-    PyObject* ret = md_repr(self->md, name, true, false);
+    PyObject* ret;
+    Py_BEGIN_CRITICAL_SECTION(self->md);
+    ret = md_repr(self->md, name, true, false);
+    Py_END_CRITICAL_SECTION();
     Py_CLEAR(name);
     return ret;
 }
@@ -1702,7 +1708,10 @@ multidict_valuesview_repr(_Multidict_ViewObject* self)
         Py_ReprLeave((PyObject*)self);
         return NULL;
     }
-    PyObject* ret = md_repr(self->md, name, false, true);
+    PyObject* ret;
+    Py_BEGIN_CRITICAL_SECTION(self->md);
+    ret = md_repr(self->md, name, false, true);
+    Py_END_CRITICAL_SECTION();
     Py_ReprLeave((PyObject*)self);
     Py_CLEAR(name);
     return ret;

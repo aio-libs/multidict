@@ -1,0 +1,3 @@
+Protected ``repr()`` of ``MultiDict``, ``MultiDictProxy``, and their views
+in the C extension with a critical section, avoiding data races on the
+free-threaded build of CPython -- by :user:`asvetlov`.
