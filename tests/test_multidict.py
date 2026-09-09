@@ -1569,7 +1569,13 @@ def test_clear_thread_safety() -> None:
     self's entries without holding self's lock, so a concurrent extend() on
     the same multidict could run in the middle of the walk. This is a
     C-extension-only concern: the pure-Python implementation has no locking
-    of its own to regress."""
+    of its own to regress.
+
+    The exact final size isn't asserted: clear() and extend() from
+    different threads interleave with no ordering guarantee between them,
+    so how many (possibly duplicate) entries are left behind depends on
+    scheduling, not just on correctness. What must hold regardless of
+    scheduling is that the multidict stays internally consistent."""
     d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
     errors: list[BaseException] = []
 
@@ -1588,7 +1594,7 @@ def test_clear_thread_safety() -> None:
         t.join()
 
     assert not errors
-    assert len(d) == 200
+    assert len(d) == len(list(d.items()))
 
 
 def test_subclassed_multidict(
