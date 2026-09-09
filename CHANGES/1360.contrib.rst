@@ -1,2 +1,0 @@
-Documented design principles for pure-Python :class:`~multidict.istr` implementation
--- by :user:`asvetlov`

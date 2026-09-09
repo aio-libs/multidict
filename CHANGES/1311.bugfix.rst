@@ -1,2 +1,0 @@
-Fixed reference leak in iterators, views and ``istr``
--- by :user:`Vizonex`.

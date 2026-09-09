@@ -14,6 +14,437 @@ Changelog
 
 .. towncrier release notes start
 
+6.8.0
+=====
+
+*(2026-09-09)*
+
+
+Bug fixes
+---------
+
+- A segmentation fault that could be triggered when getting an item is now fixed
+  -- by :user:`Vizonex`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1310`.
+
+- Fixed reference leak in iterators, views and ``istr``
+  -- by :user:`Vizonex`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1311`.
+
+- Fixed the pure-Python :class:`~multidict.MultiDict` constructor and
+  :py:meth:`~multidict.MultiDict.extend`,
+  :py:meth:`~multidict.MultiDict.update`, and
+  :py:meth:`~multidict.MultiDict.merge` methods over-allocating their
+  internal hash table when called with both a positional argument and
+  keyword arguments, because keyword arguments were counted twice in the
+  size estimate -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1338`.
+
+- Fixed ``__repr__`` of :class:`~multidict.MultiDict`,
+  :class:`~multidict.CIMultiDict`, their proxies, and the keys/items views
+  producing invalid output when keys contained quote characters --
+  keys are now formatted with :func:`repr` so the result is a valid Python
+  string literal -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1342`.
+
+- Fixed a segfault when calling :py:meth:`~multidict.MultiDict.add` with only one of its two required arguments supplied by keyword, e.g. ``d.add(key="k")``. Extra keyword arguments passed to the lookup and removal methods are also now rejected with :exc:`TypeError` instead of being silently ignored.
+
+  -- by :user:`devdanzin`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1376`.
+
+- Fixed a segfault when constructing a multidict iterator type directly, e.g. ``type(iter(md.keys())).__new__(...)``. Such an iterator had a NULL internal pointer that ``next()`` dereferenced. The iterator types now forbid direct instantiation, the same way the view types were fixed in :issue:`1163`.
+
+  -- by :user:`devdanzin`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1377`.
+
+- Fixed a segfault when using a :py:class:`~multidict.MultiDict` or :py:class:`~multidict.CIMultiDict` created via ``__new__`` without calling ``__init__`` (for example a subclass that does not call ``super().__init__()``). The internal state was left as NULL pointers that the first method call dereferenced. ``tp_new`` now initializes the object to a valid empty mapping.
+
+  -- by :user:`devdanzin`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1378`.
+
+- Fixed two crashes in the C extension caused by holding a raw pointer into a hash table across an operation that could reshape it. Updating a multidict from itself (e.g. ``d.extend(d)``) freed the very table being iterated -- a use-after-free; ``extend(self)`` now doubles the contents and ``update(self)``/``merge(self)`` are no-ops. Building a multidict from a list of pairs whose case-insensitive key ``.lower()`` shrinks that list read past the end of the list; the length is now re-checked on every iteration.
+
+  -- by :user:`devdanzin`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1379`.
+
+- Fixed three reference/resource leaks on error paths in the C extension: the items-view ``__contains__`` leaked the first element of a candidate pair when reading the second one raised; ``__repr__`` leaked its ``PyUnicodeWriter`` when the multidict was mutated during iteration; and the internal iteration helper leaked the identity reference when key materialization failed under low memory.
+
+  -- by :user:`devdanzin`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1381`.
+
+- Stopped several feature-detection fallbacks in the C extension from swallowing every exception. When probing an argument (``arg.items()``/``arg.keys()``) or measuring it (``len(other)``) fails, the code now clears only the expected :exc:`TypeError`/:exc:`AttributeError` and lets everything else -- notably :exc:`MemoryError` and :exc:`KeyboardInterrupt` -- propagate, matching the already-correct sites elsewhere in the module.
+
+  -- by :user:`devdanzin`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1382`.
+
+- Fixed a segmentation fault when extending a multidict with itself
+  -- by :user:`cananoo` and :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1398`.
+
+- Fixed a memory leak when ``MultiDict`` and ``CIMultiDict`` instances are
+  initialized more than once -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1412`.
+
+- Fixed a reference leak in items-view set operations
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1413`.
+
+- Fixed a memory leak when destroying C-extension multidict instances
+  and proxies -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1415`.
+
+- Fixed a reference leak from repeated ``__init__`` calls on
+  ``MultiDictProxy`` and ``CIMultiDictProxy`` instances -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1419`.
+
+- Fixed missing decref for :data:`None` on error in :meth:`~multidict.MultiDict.setdefault`
+  -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1421`.
+
+
+Features
+--------
+
+- Added :py:func:`reversed` support to the keys, values, and items views of
+  :class:`~multidict.MultiDict`, :class:`~multidict.CIMultiDict`, and their
+  proxies in both the C-extension and pure-Python implementations
+  -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`448`.
+
+- Optimized key identity comparison for C Extension.
+
+  Now it uses fast path that is equal to :c:func:`PyUnicode_Equal` from
+  Python 3.14+ but without redundant type checks. It gives ~15% speed-up on benchmarks with many key comparisons.
+
+  -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1406`.
+
+- Changed both the pure-Python and C implementations to mark a temporarily
+  removed hash table entry by setting the high bit of its hash instead of
+  overwriting it with a sentinel value, so restoring the entry no longer
+  recomputes the hash; :meth:`~multidict.MultiDict.getall` is faster ~10% now in C version
+  -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1426`.
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Dropped support for Python 3.9 as it has reached end of life.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1316`.
+
+- Dropped support for free-threaded Python 3.13 -- by :user:`ngoldbaum`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1326`.
+
+
+Improved documentation
+----------------------
+
+- Fixed ``CIMultiDictProxy`` documentation to state it inherits from
+  ``MultiDictProxy`` (not ``MultiDict``), and fixed missing word in
+  ``istr`` section -- by :user:`veeceey`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1298`.
+
+- Clarified that ``istr`` preserves the original casing and
+  compares as a regular ``str``; case-insensitive matching is
+  handled by ``CIMultiDict`` -- by :user:`gyanu2507`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1397`.
+
+- Fixed broken RST markup in ``items()`` docstrings
+  -- by :user:`veeceey`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1299`.
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Dropped support for free-threaded Python 3.13 -- by :user:`ngoldbaum`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1326`.
+
+- Wheels for iOS and Android (CPython 3.13+) are now published on
+  release-tag builds, so downstreams on those platforms no longer need a
+  local compiler to install ``multidict``; these wheels are build-verified
+  only, since running the test suite on mobile needs a simulator or an
+  emulator -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1337`.
+
+- Added support for building and shipping riscv64 wheels
+  -- by :user:`justeph`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1293`.
+
+- The ``setuptools`` build dependency lower bound has been restored to be
+  ``>= 47`` after an incorrect automated increase in :pr:`1315`
+  -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1400`.
+
+
+Contributor-facing changes
+--------------------------
+
+- Added support for collecting code coverage of isolated multidict tests
+  -- by :user:`Vizonex`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1314`.
+
+- Switched to ``mirrors-clang-format`` and enabled clang-format in ``pre-commit.ci``
+  -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1318`.
+
+- Added a release-tag-gated CI job that cross-compiles the C extension
+  for iOS and Android through ``cibuildwheel`` -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1337`.
+
+- Added an ``AGENTS.md`` orientation file at the repository root, covering the
+  pull request template, the ``CHANGES/`` news fragment conventions, the
+  draft-PR / human-review workflow, and the dual pure-Python and C-extension
+  parity rule, so LLM contributors land changes that match project style
+  -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1339`.
+
+- Added ``init``, ``installable``, ``instantiation``, ``parametrization``,
+  ``parametrized``, ``postfix``, and ``unparseable`` to the docs spelling list
+  so news fragments and docs can use these words without failing the spell
+  check build -- by :user:`pctablet505`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1343`.
+
+- Documented three common agent failure modes in
+  :file:`AGENTS.md`: the docs spell check
+  (``make doc-spelling``) catches unknown words in news fragments
+  before CI does; coverage runs over the test tree too, so
+  unreachable defensive ``raise`` guards and one-sided cleanup
+  branches in tests will surface as uncovered on the codecov
+  patch report; and branch creation is restricted on
+  ``aio-libs/multidict``, so PRs must be pushed from a fork
+  -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1343`, :issue:`1345`.
+
+- Trimmed the CI test matrix to drop redundant ``Py_DEBUG`` jobs on
+  macOS and Windows and to gate the ``windows-11-arm`` wheel build to
+  release-time only, cutting CI wall-clock by roughly a third without
+  reducing code coverage -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1346`.
+
+- Added a ``CLAUDE.md`` at the repository root that imports
+  :file:`AGENTS.md` via Claude Code's ``@``-syntax, so the
+  project's LLM contributor rules load automatically when
+  working in Claude Code
+  -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1347`.
+
+- Enabled the ``I`` (import sorting) rule in
+  ``[tool.ruff.lint]`` so ``ruff check`` covers import order on top
+  of the existing ``UP`` (pyupgrade) group, and updated the
+  ``ruff-check`` pre-commit hook to run with
+  ``--fix --exit-non-zero-on-fix --show-fixes`` so import-order
+  fixes apply on commit. Sorted imports in four ``tests/`` files
+  to match the new rule -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1348`.
+
+- Enabled the ``PLC0415`` (import-outside-top-level) rule in
+  ``[tool.ruff.lint]``. Function-scoped imports must now opt in
+  with ``# noqa: PLC0415`` plus a comment explaining the reason
+  (typically avoiding a heavy optional dependency at import time).
+  This catches a pattern that LLM contributors frequently introduce.
+  There are currently no opt-outs in the tree, so the rule is
+  enforced everywhere ``ruff check`` runs
+  -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1349`.
+
+- Switched the ``cibuildwheel`` build frontend to ``build[uv]`` so
+  that ``uv`` provisions every build and test virtual environment
+  in the wheel matrix. Test-dependency installation in particular
+  drops from a multi-second ``pip install`` per ABI to a roughly
+  sub-second ``uv`` resolve
+  -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1350`.
+
+- Overrode ``CIBW_BUILD_FRONTEND=build`` for the odd-arch wheel
+  matrix; the upstream ``manylinux``/``musllinux`` images for
+  those arches do not ship ``uv``
+  -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1352`.
+
+- Allowed re-running the deploy job after a partial release failure: the
+  ``Make Release`` step now skips when the GitHub Release already exists,
+  and the PyPI publish step uses ``skip-existing`` so dists that were
+  already uploaded on a prior attempt do not break the retry
+  -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1353`.
+
+- Switched the aarch64 and armv7l wheel builds to GitHub's native ARM
+  runners. The aarch64 wheels now build without QEMU emulation, and
+  armv7l runs on aarch64 hosts so its 32-bit ARM execution is far
+  cheaper than the previous aarch64-on-x86_64 path
+  -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1354`.
+
+- Documented design principles for pure-Python :class:`~multidict.istr` implementation
+  -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1360`.
+
+- Pinned ``coverage`` to the ``ctrace`` measurement core so the test suite runs
+  on Python 3.14. Coverage picks ``sysmon`` there, which cannot record the
+  dynamic contexts ``pytest-cov`` switches at runtime, and the resulting warning
+  became an error under the suite's ``filterwarnings`` setting
+  -- by :user:`rodrigobnogueira`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1393`.
+
+- Dependabot has been restricted to the ``requirements`` subdirectory to
+  avoid unintended updates outside dependency requirement files
+  -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1400`.
+
+- Enabled automatic upgrades from ruff after each python version that is dropped
+  -- by :user:`Vizonex`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1325`.
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Explicitly marked ``empty_htkeys`` as ``const``.
+
+  Moved the structure to ``.rodata`` linker section.
+
+  Unexpected modification of the structure will lead to segfault instead
+  of corrupting the data and fail fast.
+
+  ``.rodata`` is mount as read-only-mapped, it is shared well across
+  multiple threads without cache misses.
+
+  The change is pretty trivial, it is made for the sake of correctness,
+  not for speedup.
+
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1405`.
+
+- Slightly reorganized multidict creating process.
+
+  1. Removed unnecessary calculations when ``md_init()`` creates an empty multidict.
+  2. Now ``tp_alloc`` slot is used in object cloning instead of bare :c:func:`PyType_GenericNew` call.
+
+  -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1420`.
+
+- Dropped dead code, ``_md_del_at()`` and ``_md_del_at_for_upd()`` never fails
+  -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1423`.
+
+- Fixed a missing space in the :exc:`ValueError` message
+  raised when constructing a multidict from a sequence
+  -- by :user:`veeceey`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1295`.
+
+- Renamed the benchmark script from ``benchmarks/becnhmark.py`` to
+  ``benchmarks/benchmark.py`` so it matches the invocation documented in
+  :doc:`benchmark` -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1335`.
+
+
+----
+
+
 6.7.1
 =====
 

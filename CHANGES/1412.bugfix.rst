@@ -1,2 +1,0 @@
-Fixed a memory leak when ``MultiDict`` and ``CIMultiDict`` instances are
-initialized more than once -- by :user:`asvetlov`.
