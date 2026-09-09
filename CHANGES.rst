@@ -23,19 +23,6 @@ Changelog
 Bug fixes
 ---------
 
-- Fixed a missing space in the :exc:`ValueError` message
-  raised when constructing a multidict from a sequence
-  -- by :user:`veeceey`.
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`1295`.
-
-- Fixed broken RST markup in ``items()`` docstrings
-  -- by :user:`veeceey`.
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`1299`.
-
 - A segmentation fault that could be triggered when getting an item is now fixed
   -- by :user:`Vizonex`.
 
@@ -47,13 +34,6 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`1311`.
-
-- Renamed the benchmark script from ``benchmarks/becnhmark.py`` to
-  ``benchmarks/benchmark.py`` so it matches the invocation documented in
-  :doc:`benchmark` -- by :user:`aiolibsbot`.
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`1335`.
 
 - Fixed the pure-Python :class:`~multidict.MultiDict` constructor and
   :py:meth:`~multidict.MultiDict.extend`,
@@ -165,17 +145,14 @@ Features
   *Related issues and pull requests on GitHub:*
   :issue:`448`.
 
-- Added support for building and shipping riscv64 wheels
-  -- by :user:`justeph`.
+- Changed both the pure-Python and C implementations to mark a temporarily
+  removed hash table entry by setting the high bit of its hash instead of
+  overwriting it with a sentinel value, so restoring the entry no longer
+  recomputes the hash; :meth:`~multidict.MultiDict.getall` is faster ~10% now in C version
+  -- by :user:`asvetlov`
 
   *Related issues and pull requests on GitHub:*
-  :issue:`1293`.
-
-- Enabled automatic upgrades from ruff after each python version that is dropped
-  -- by :user:`Vizonex`.
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`1325`.
+  :issue:`1426`.
 
 
 Removals and backward incompatible breaking changes
@@ -209,6 +186,12 @@ Improved documentation
   *Related issues and pull requests on GitHub:*
   :issue:`1397`.
 
+- Fixed broken RST markup in ``items()`` docstrings
+  -- by :user:`veeceey`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1299`.
+
 
 Packaging updates and notes for downstreams
 -------------------------------------------
@@ -226,6 +209,12 @@ Packaging updates and notes for downstreams
 
   *Related issues and pull requests on GitHub:*
   :issue:`1337`.
+
+- Added support for building and shipping riscv64 wheels
+  -- by :user:`justeph`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1293`.
 
 - The ``setuptools`` build dependency lower bound has been restored to be
   ``>= 47`` after an incorrect automated increase in :pr:`1315`
@@ -384,6 +373,12 @@ Contributor-facing changes
   *Related issues and pull requests on GitHub:*
   :issue:`1400`.
 
+- Enabled automatic upgrades from ruff after each python version that is dropped
+  -- by :user:`Vizonex`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1325`.
+
 
 Miscellaneous internal changes
 ------------------------------
@@ -432,14 +427,19 @@ Miscellaneous internal changes
   *Related issues and pull requests on GitHub:*
   :issue:`1423`.
 
-- Changed both the pure-Python and C implementations to mark a temporarily
-  removed hash table entry by setting the high bit of its hash instead of
-  overwriting it with a sentinel value, so restoring the entry no longer
-  recomputes the hash; :meth:`~multidict.MultiDict.getall` is faster ~10% now in C version
-  -- by :user:`asvetlov`
+- Fixed a missing space in the :exc:`ValueError` message
+  raised when constructing a multidict from a sequence
+  -- by :user:`veeceey`.
 
   *Related issues and pull requests on GitHub:*
-  :issue:`1426`.
+  :issue:`1295`.
+
+- Renamed the benchmark script from ``benchmarks/becnhmark.py`` to
+  ``benchmarks/benchmark.py`` so it matches the invocation documented in
+  :doc:`benchmark` -- by :user:`aiolibsbot`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1335`.
 
 
 ----
