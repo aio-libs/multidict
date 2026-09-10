@@ -175,6 +175,282 @@ done:
     return ret;
 }
 
+/* ---- tp_vectorcall-based fast construction ----
+
+   Unlike multidict_tp_init()/cimultidict_tp_init(), the object under
+   construction here (``self``) has just been allocated and has not been
+   returned to Python yet, so it cannot be observed by any other thread.
+   There is therefore no need for a critical section on ``self``, only on
+   ``other`` (an existing multidict/proxy argument) or on a plain dict
+   argument, same as the read side of the classic constructors. */
+
+static inline Py_ssize_t
+_multidict_ctor_size_hint(mod_state* state, PyObject* arg, PyObject* kwds)
+{
+    Py_ssize_t size = 0;
+    if (arg != NULL) {
+        if (PyTuple_CheckExact(arg)) {
+            size += PyTuple_GET_SIZE(arg);
+        } else if (PyList_CheckExact(arg)) {
+            size += PyList_GET_SIZE(arg);
+        } else if (PyDict_CheckExact(arg)) {
+            size += PyDict_GET_SIZE(arg);
+        } else if (MultiDict_CheckExact(state, arg) ||
+                   CIMultiDict_CheckExact(state, arg)) {
+            size += md_len((MultiDictObject*)arg);
+        } else if (MultiDictProxy_CheckExact(state, arg) ||
+                   CIMultiDictProxy_CheckExact(state, arg)) {
+            size += md_len(((MultiDictProxyObject*)arg)->md);
+        } else {
+            Py_ssize_t s = PyObject_LengthHint(arg, 0);
+            if (s < 0) {
+                // e.g. cannot calc size of generator object
+                PyErr_Clear();
+            } else {
+                size += s;
+            }
+        }
+    }
+    if (kwds != NULL) {
+        size += PyDict_GET_SIZE(kwds);
+    }
+    return size;
+}
+
+static inline PyObject*
+_multidict_kwnames_as_dict(PyObject* const* args, Py_ssize_t nargs,
+                           PyObject* kwnames)
+{
+    Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
+    PyObject* kwds = PyDict_New();
+    if (kwds == NULL) {
+        return NULL;
+    }
+    for (Py_ssize_t i = 0; i < nkwargs; i++) {
+        PyObject* key = PyTuple_GET_ITEM(kwnames, i);
+        if (PyDict_SetItem(kwds, key, args[nargs + i]) < 0) {
+            Py_DECREF(kwds);
+            return NULL;
+        }
+    }
+    if (!PyArg_ValidateKeywordArguments(kwds)) {
+        Py_DECREF(kwds);
+        return NULL;
+    }
+    return kwds;
+}
+
+static inline int
+_multidict_ctor_do_init(mod_state* state, MultiDictObject* self, bool is_ci,
+                        PyObject* arg, PyObject* kwds)
+{
+    Py_ssize_t size = _multidict_ctor_size_hint(state, arg, kwds);
+
+    if (arg != NULL && kwds == NULL) {
+        MultiDictObject* clone_other = NULL;
+        if (AnyMultiDict_Check(state, arg)) {
+            clone_other = (MultiDictObject*)arg;
+        } else if (AnyMultiDictProxy_Check(state, arg)) {
+            clone_other = ((MultiDictProxyObject*)arg)->md;
+        }
+        if (clone_other != NULL && clone_other->is_ci == is_ci) {
+            int ret;
+            Py_BEGIN_CRITICAL_SECTION(clone_other);
+            ret = md_clone_from_ht(self, clone_other);
+            Py_END_CRITICAL_SECTION();
+            return ret;
+        }
+    }
+
+    MultiDictObject* other = _multidict_resolve_other(state, arg);
+    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
+    int ret;
+    if (other != NULL) {
+        Py_BEGIN_CRITICAL_SECTION(other);
+        ret = md_init(self, state, is_ci, size);
+        if (ret == 0) {
+            ret = md_update_from_ht(self, other, Extend);
+            if (ret == 0 && kwds != NULL) {
+                ret = md_update_from_dict(self, kwds, Extend);
+            }
+            ASSERT_CONSISTENT(self, false);
+        }
+        Py_END_CRITICAL_SECTION();
+    } else if (arg_is_dict) {
+        Py_BEGIN_CRITICAL_SECTION(arg);
+        ret = md_init(self, state, is_ci, size);
+        if (ret == 0) {
+            ret = md_update_from_dict(self, arg, Extend);
+            if (ret == 0 && kwds != NULL) {
+                ret = md_update_from_dict(self, kwds, Extend);
+            }
+            ASSERT_CONSISTENT(self, false);
+        }
+        Py_END_CRITICAL_SECTION();
+    } else {
+        ret = md_init(self, state, is_ci, size);
+        if (ret == 0) {
+            if (arg != NULL) {
+                ret = md_update_from_seq(self, arg, Extend);
+            }
+            if (ret == 0 && kwds != NULL) {
+                ret = md_update_from_dict(self, kwds, Extend);
+            }
+            ASSERT_CONSISTENT(self, false);
+        }
+    }
+    return ret;
+}
+
+static PyObject*
+_multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
+                           size_t nargsf, PyObject* kwnames, bool is_ci)
+{
+    PyTypeObject* tp = (PyTypeObject*)type;
+    Py_ssize_t nargs = PyVectorcall_NARGS(nargsf);
+    const char* name = is_ci ? "CIMultiDict" : "MultiDict";
+
+    if (nargs > 1) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "%s takes from 1 to 2 positional arguments but %zd were given",
+            name,
+            nargs + 1);
+        return NULL;
+    }
+
+    PyObject* mod = PyType_GetModuleByDef(tp, &multidict_module);
+    if (mod == NULL) {
+        return NULL;
+    }
+    mod_state* state = get_mod_state(mod);
+
+    PyObject* kwds = NULL;
+    if (kwnames != NULL && PyTuple_GET_SIZE(kwnames) > 0) {
+        kwds = _multidict_kwnames_as_dict(args, nargs, kwnames);
+        if (kwds == NULL) {
+            return NULL;
+        }
+    }
+    PyObject* arg = nargs == 1 ? Py_NewRef(args[0]) : NULL;
+
+    MultiDictObject* self = (MultiDictObject*)tp->tp_alloc(tp, 0);
+    if (self == NULL) {
+        Py_XDECREF(arg);
+        Py_XDECREF(kwds);
+        return NULL;
+    }
+
+    int ret = _multidict_ctor_do_init(state, self, is_ci, arg, kwds);
+    Py_XDECREF(arg);
+    Py_XDECREF(kwds);
+    if (ret < 0) {
+        Py_DECREF(self);
+        return NULL;
+    }
+    return (PyObject*)self;
+}
+
+static PyObject*
+multidict_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
+                     PyObject* kwnames)
+{
+    return _multidict_ctor_vectorcall(type, args, nargsf, kwnames, false);
+}
+
+static PyObject*
+cimultidict_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
+                       PyObject* kwnames)
+{
+    return _multidict_ctor_vectorcall(type, args, nargsf, kwnames, true);
+}
+
+/* ---- MultiDictProxy/CIMultiDictProxy tp_vectorcall ---- */
+
+static inline int
+_multidict_proxy_ctor_do_init(mod_state* state, MultiDictProxyObject* self,
+                              bool is_ci, PyObject* arg)
+{
+    bool ok = is_ci ? (CIMultiDictProxy_Check(state, arg) ||
+                       CIMultiDict_Check(state, arg))
+                    : (AnyMultiDictProxy_Check(state, arg) ||
+                       AnyMultiDict_Check(state, arg));
+    if (!ok) {
+        PyErr_Format(PyExc_TypeError,
+                     "ctor requires %s or %s instance, not <class '%s'>",
+                     is_ci ? "CIMultiDict" : "MultiDict",
+                     is_ci ? "CIMultiDictProxy" : "MultiDictProxy",
+                     Py_TYPE(arg)->tp_name);
+        return -1;
+    }
+    bool arg_is_proxy = is_ci ? CIMultiDictProxy_Check(state, arg)
+                              : AnyMultiDictProxy_Check(state, arg);
+    MultiDictObject* md = arg_is_proxy ? ((MultiDictProxyObject*)arg)->md
+                                       : (MultiDictObject*)arg;
+    self->md = (MultiDictObject*)Py_NewRef(md);
+    return 0;
+}
+
+static PyObject*
+_multidict_proxy_ctor_vectorcall(PyObject* type, PyObject* const* args,
+                                 size_t nargsf, PyObject* kwnames, bool is_ci)
+{
+    PyTypeObject* tp = (PyTypeObject*)type;
+    Py_ssize_t nargs = PyVectorcall_NARGS(nargsf);
+    const char* clsname = is_ci ? "multidict._multidict.CIMultiDictProxy"
+                                : "multidict._multidict.MultiDictProxy";
+
+    if (kwnames != NULL && PyTuple_GET_SIZE(kwnames) > 0) {
+        PyErr_Format(
+            PyExc_TypeError, "%s() doesn't accept keyword arguments", clsname);
+        return NULL;
+    }
+    if (nargs == 0) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s() missing 1 required positional argument: 'arg'",
+                     clsname);
+        return NULL;
+    }
+    if (nargs > 1) {
+        PyErr_Format(PyExc_TypeError,
+                     "%s() takes 1 positional argument but %zd were given",
+                     clsname,
+                     nargs);
+        return NULL;
+    }
+
+    PyObject* mod = PyType_GetModuleByDef(tp, &multidict_module);
+    if (mod == NULL) {
+        return NULL;
+    }
+    mod_state* state = get_mod_state(mod);
+
+    MultiDictProxyObject* self = (MultiDictProxyObject*)tp->tp_alloc(tp, 0);
+    if (self == NULL) {
+        return NULL;
+    }
+    if (_multidict_proxy_ctor_do_init(state, self, is_ci, args[0]) < 0) {
+        Py_DECREF(self);
+        return NULL;
+    }
+    return (PyObject*)self;
+}
+
+static PyObject*
+multidict_proxy_vectorcall(PyObject* type, PyObject* const* args,
+                           size_t nargsf, PyObject* kwnames)
+{
+    return _multidict_proxy_ctor_vectorcall(
+        type, args, nargsf, kwnames, false);
+}
+
+static PyObject*
+cimultidict_proxy_vectorcall(PyObject* type, PyObject* const* args,
+                             size_t nargsf, PyObject* kwnames)
+{
+    return _multidict_proxy_ctor_vectorcall(type, args, nargsf, kwnames, true);
+}
+
 static inline PyObject*
 multidict_copy(MultiDictObject* self)
 {
@@ -1701,6 +1977,11 @@ module_exec(PyObject* mod)
         goto fail;
     }
     state->MultiDictType = (PyTypeObject*)tmp;
+    /* MultiDict(...) construction: behaves like tp_new + tp_init, but
+       reads its arguments directly off the vectorcall stack instead of
+       requiring type_call() to first pack them into an args tuple and a
+       kwargs dict. */
+    state->MultiDictType->tp_vectorcall = multidict_vectorcall;
 
     tpl = PyTuple_Pack(1, (PyObject*)state->MultiDictType);
     if (tpl == NULL) {
@@ -1711,6 +1992,7 @@ module_exec(PyObject* mod)
         goto fail;
     }
     state->CIMultiDictType = (PyTypeObject*)tmp;
+    state->CIMultiDictType->tp_vectorcall = cimultidict_vectorcall;
     Py_CLEAR(tpl);
 
     tmp = PyType_FromModuleAndSpec(mod, &multidict_proxy_spec, NULL);
@@ -1718,6 +2000,7 @@ module_exec(PyObject* mod)
         goto fail;
     }
     state->MultiDictProxyType = (PyTypeObject*)tmp;
+    state->MultiDictProxyType->tp_vectorcall = multidict_proxy_vectorcall;
 
     tpl = PyTuple_Pack(1, (PyObject*)state->MultiDictProxyType);
     if (tpl == NULL) {
@@ -1728,6 +2011,7 @@ module_exec(PyObject* mod)
         goto fail;
     }
     state->CIMultiDictProxyType = (PyTypeObject*)tmp;
+    state->CIMultiDictProxyType->tp_vectorcall = cimultidict_proxy_vectorcall;
     Py_CLEAR(tpl);
 
     if (PyModule_AddType(mod, state->IStrType) < 0) {

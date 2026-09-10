@@ -117,6 +117,46 @@ def test_multidict_proxy_subclassing(
         pass
 
 
+def test_multidict_subclass_new_and_init_are_called(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    calls = []
+
+    class DummyMultidict(any_multidict_class):  # type: ignore[valid-type,misc]
+        def __new__(cls, *args: object, **kwargs: object) -> DummyMultidict:
+            calls.append("new")
+            return cast(DummyMultidict, super().__new__(cls))
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            calls.append("init")
+            super().__init__(*args, **kwargs)
+
+    d = DummyMultidict([("key", "value")], extra="1")
+
+    assert calls == ["new", "init"]
+    assert d == {"key": "value", "extra": "1"}
+
+
+def test_multidict_proxy_subclass_init_is_called(
+    any_multidict_class: type[MultiDict[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+) -> None:
+    calls = []
+
+    class DummyMultidictProxy(
+        any_multidict_proxy_class,  # type: ignore[valid-type,misc]
+    ):
+        def __init__(self, arg: object) -> None:
+            calls.append("init")
+            super().__init__(arg)
+
+    md = any_multidict_class(key="value")
+    p = DummyMultidictProxy(md)
+
+    assert calls == ["init"]
+    assert p == md
+
+
 class BaseMultiDictTest:
     def test_instantiate__empty(self, cls: type[MutableMultiMapping[str]]) -> None:
         d = cls()
