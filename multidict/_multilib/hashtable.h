@@ -204,55 +204,72 @@ _ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
 static inline int
 _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
 {
-    htkeys_t *oldkeys, *newkeys;
+    for (;;) {
+        if (log2_newsize >= SIZEOF_SIZE_T * 8) {
+            PyErr_NoMemory();
+            return -1;
+        }
+        assert(log2_newsize >= HT_LOG_MINSIZE);
 
-    if (log2_newsize >= SIZEOF_SIZE_T * 8) {
-        PyErr_NoMemory();
-        return -1;
-    }
-    assert(log2_newsize >= HT_LOG_MINSIZE);
+        /* Allocating the new table can transiently suspend our critical
+           section on md: PyMem_Malloc() may block acquiring an internal
+           allocator lock, and CPython suspends critical sections around
+           blocking lock acquisitions on the free-threaded build (see
+           Include/cpython/critical_section.h). While suspended, another
+           thread that also locks md can run an entire update()/extend()/
+           merge() to completion, mutating or replacing md->keys.
+           Therefore nothing read from md before this call may be trusted
+           afterward: oldkeys and numentries are (re-)read only below, once
+           the critical section is guaranteed to be held again. */
+        htkeys_t* newkeys = htkeys_new(log2_newsize);
+        assert(newkeys);
+        if (newkeys == NULL) {
+            return -1;
+        }
 
-    oldkeys = md->keys;
+        htkeys_t* oldkeys = md->keys;
+        Py_ssize_t numentries = md->used;
+        if (newkeys->usable < numentries) {
+            /* A concurrent operation grew md while our critical section
+               was suspended during the allocation above, so the table we
+               just built is already too small. Discard it and retry with
+               a fresh estimate based on the current size. */
+            htkeys_free(newkeys);
+            log2_newsize = estimate_log2_keysize(numentries);
+            continue;
+        }
 
-    /* Allocate a new table. */
-    newkeys = htkeys_new(log2_newsize);
-    assert(newkeys);
-    if (newkeys == NULL) {
-        return -1;
-    }
-    // New table must be large enough.
-    assert(newkeys->usable >= md->used);
-
-    Py_ssize_t numentries = md->used;
-    entry_t* oldentries = htkeys_entries(oldkeys);
-    entry_t* newentries = htkeys_entries(newkeys);
-    if (oldkeys->nentries == numentries) {
-        memcpy(newentries, oldentries, numentries * sizeof(entry_t));
-    } else {
-        entry_t* new_ep = newentries;
-        entry_t* old_ep = oldentries;
-        Py_ssize_t oldnumentries = oldkeys->nentries;
-        for (Py_ssize_t i = 0; i < oldnumentries; ++i, ++old_ep) {
-            if (old_ep->identity != NULL) {
-                *new_ep++ = *old_ep;
+        entry_t* oldentries = htkeys_entries(oldkeys);
+        entry_t* newentries = htkeys_entries(newkeys);
+        if (oldkeys->nentries == numentries) {
+            memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+        } else {
+            entry_t* new_ep = newentries;
+            entry_t* old_ep = oldentries;
+            Py_ssize_t oldnumentries = oldkeys->nentries;
+            for (Py_ssize_t i = 0; i < oldnumentries; ++i, ++old_ep) {
+                if (old_ep->identity != NULL) {
+                    *new_ep++ = *old_ep;
+                }
             }
         }
+
+        if (htkeys_build_indices(newkeys, newentries, numentries, update) <
+            0) {
+            return -1;
+        }
+
+        md->keys = newkeys;
+
+        if (oldkeys != &empty_htkeys) {
+            htkeys_free(oldkeys);
+        }
+
+        md->keys->usable = md->keys->usable - numentries;
+        md->keys->nentries = numentries;
+        ASSERT_CONSISTENT(md, update);
+        return 0;
     }
-
-    if (htkeys_build_indices(newkeys, newentries, numentries, update) < 0) {
-        return -1;
-    }
-
-    md->keys = newkeys;
-
-    if (oldkeys != &empty_htkeys) {
-        htkeys_free(oldkeys);
-    }
-
-    md->keys->usable = md->keys->usable - numentries;
-    md->keys->nentries = numentries;
-    ASSERT_CONSISTENT(md, update);
-    return 0;
 }
 
 static inline int
@@ -361,26 +378,54 @@ static inline int
 md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 {
     ASSERT_CONSISTENT(other, false);
-    mod_state* state = other->state;
-    Py_ssize_t used = other->used;
-    uint64_t version = other->version;
-    bool is_ci = other->is_ci;
+
     htkeys_t* keys = (htkeys_t*)&empty_htkeys;
-    if (other->keys != &empty_htkeys) {
-        size_t size = htkeys_sizeof(other->keys);
+    htkeys_t* src = other->keys;
+    while (src != &empty_htkeys) {
+        size_t size = htkeys_sizeof(src);
+
+        /* Allocating can transiently suspend our critical section on
+           `other`, for the same reason explained in _md_resize(): a
+           blocking PyMem_Malloc() may release the lock, letting another
+           thread that also locks `other` run to completion (e.g. resizing
+           other->keys and freeing this exact buffer) before we resume.
+           `size` and `src` were computed before the call and cannot be
+           trusted afterward, so re-read other->keys and retry if it no
+           longer matches what we sized the allocation for, instead of
+           copying `size` bytes from a possibly different (or freed)
+           buffer. */
         keys = PyMem_Malloc(size);
         if (keys == NULL) {
             PyErr_NoMemory();
             return -1;
         }
-        memcpy(keys, other->keys, size);
+
+        htkeys_t* fresh_src = other->keys;
+        if (fresh_src != src) {
+            PyMem_Free(keys);
+            keys = (htkeys_t*)&empty_htkeys;
+            src = fresh_src;
+            continue;
+        }
+
+        memcpy(keys, fresh_src, size);
         entry_t* entry = htkeys_entries(keys);
         for (Py_ssize_t idx = 0; idx < keys->nentries; idx++, entry++) {
             Py_XINCREF(entry->identity);
             Py_XINCREF(entry->key);
             Py_XINCREF(entry->value);
         }
+        break;
     }
+
+    /* No allocation happens between here and the writes to md below, so
+       this snapshot of other's remaining fields is consistent with the
+       keys buffer just copied above. */
+    mod_state* state = other->state;
+    Py_ssize_t used = other->used;
+    uint64_t version = other->version;
+    bool is_ci = other->is_ci;
+
     md_clear(md);
     md->state = state;
     md->used = used;

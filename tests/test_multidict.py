@@ -1642,6 +1642,46 @@ def test_reinit_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+@pytest.mark.c_extension
+def test_resize_and_clone_thread_safety() -> None:
+    """Concurrent update() and copy()/constructor-clone must not corrupt
+    state, even though each call is individually protected by a critical
+    section.
+
+    Regression test for a free-threaded-build crash: growing a multidict's
+    hash table (_md_resize(), used by update()/extend()/merge()) and
+    cloning one (md_clone_from_ht(), used by copy() and the constructor's
+    fast-clone path) both read a keys-table pointer or its size, call
+    PyMem_Malloc() for a new table, and then use the pointer or size again
+    afterward. A blocking PyMem_Malloc() call can transiently release the
+    critical section (CPython suspends critical sections around blocking
+    lock acquisitions on the free-threaded build), letting a concurrent
+    locked call on the same multidict run to completion and free or
+    replace the very table the first call was about to read from or copy
+    -- a use-after-free. copy() calls PyMem_Malloc() on every invocation,
+    which made it easy to hit."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(50))
+
+    def updater(n: int) -> None:
+        pairs = [(f"k{n}-{i}", i) for i in range(20)]
+        for _ in range(200):
+            d.update(pairs)
+
+    def cloner(_n: int) -> None:
+        for _ in range(200):
+            d.copy()
+            MultiDict(d)
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [
+            executor.submit(updater if n % 2 == 0 else cloner, n) for n in range(8)
+        ]
+        for future in futures:
+            future.result()
+
+    assert len(d) == len(list(d.items()))
+
+
 def test_subclassed_multidict(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
