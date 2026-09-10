@@ -1,0 +1,7 @@
+Fixed a use-after-free that could crash the free-threaded build when
+``update()``/``extend()``/``merge()`` grew a ``MultiDict``'s hash table, or
+``.copy()``/the constructor fast-clone path cloned one, concurrently with
+another locked operation on the same instance. Allocating the new table
+could transiently suspend the calling thread's critical section, letting
+the concurrent operation free or replace the table a cached pointer or
+size still referred to -- by :user:`asvetlov`.
