@@ -2041,8 +2041,20 @@ md_clear(MultiDictObject* md)
     }
     md->version = NEXT_VERSION(md->state);
 
-    entry_t* entries = htkeys_entries(md->keys);
-    for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
+    // Publish the empty table before releasing any entry's reference: a
+    // decref below may run arbitrary Python code (a __del__), which can
+    // suspend this critical section. If md->keys still pointed at the old
+    // table while that happens, a concurrent, correctly-locked reader
+    // could observe entries mid-clear (identity already NULL, key/value
+    // not yet). Swapping first means a suspended thread only ever sees
+    // either the fully-populated old table or the fully-empty one.
+    htkeys_t* old_keys = md->keys;
+    entry_t* entries = htkeys_entries(old_keys);
+    Py_ssize_t nentries = old_keys->nentries;
+    md->used = 0;
+    md->keys = (htkeys_t*)&empty_htkeys;
+
+    for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         entry_t* entry = entries + pos;
         if (entry->identity != NULL) {
             Py_CLEAR(entry->identity);
@@ -2051,11 +2063,7 @@ md_clear(MultiDictObject* md)
         }
     }
 
-    md->used = 0;
-    if (md->keys != &empty_htkeys) {
-        htkeys_free(md->keys);
-        md->keys = (htkeys_t*)&empty_htkeys;
-    }
+    htkeys_free(old_keys);
     ASSERT_CONSISTENT(md, false);
     return 0;
 }

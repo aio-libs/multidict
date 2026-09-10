@@ -4,6 +4,7 @@ import gc
 import operator
 import platform
 import sys
+import time
 import weakref
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator, KeysView, Mapping
@@ -1609,6 +1610,50 @@ def test_clear_thread_safety() -> None:
         list(executor.map(clearer, range(8)))
 
     assert len(d) == len(list(d.items()))
+
+
+@pytest.mark.c_extension
+def test_clear_finalizer_thread_safety() -> None:
+    """Concurrent clear() alongside update() must not crash or corrupt state.
+
+    Regression test for a free-threaded-build finding flagged in review:
+    clear() used to release each entry's key/value/identity references
+    while the old, partially-cleared hash table was still published.
+    Releasing a value can run arbitrary Python code (a __del__), which
+    can suspend the held critical section; a concurrent, properly-locked
+    caller could then observe the multidict mid-clear (some entries
+    already released, others not), a state nothing else in the codebase
+    expects. clear() now swaps in the empty table before releasing any
+    entry's references, so a suspended thread only ever exposes the
+    fully populated table or the fully empty one. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+
+    class Evil:
+        def __del__(self) -> None:
+            time.sleep(0)
+
+    def trial(_n: int) -> None:
+        d: MultiDict[Evil] = MultiDict()
+        for i in range(50):
+            d.add(str(i), Evil())
+
+        def clearer() -> None:
+            d.clear()
+
+        def updater() -> None:
+            d.update({})
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            f1 = executor.submit(clearer)
+            f2 = executor.submit(updater)
+            f1.result()
+            f2.result()
+
+        assert len(d) == 0
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        list(executor.map(trial, range(500)))
 
 
 @pytest.mark.c_extension

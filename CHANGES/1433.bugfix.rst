@@ -3,4 +3,8 @@ Protected ``MultiDict.update()``, ``.extend()``, ``.merge()``, ``.clear()``,
 extension with a critical section, using the two-object form when a
 second multidict, multidict proxy, or plain ``dict`` instance is
 involved, avoiding data races and a segmentation fault on the
-free-threaded build of CPython -- by :user:`asvetlov`.
+free-threaded build of CPython. ``.clear()`` now also publishes the
+empty table before releasing any entry's references, so a concurrent
+caller can never observe a partially-cleared multidict even if releasing
+a value runs arbitrary Python code that suspends the held critical
+section -- by :user:`asvetlov`.
