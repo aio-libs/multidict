@@ -1576,9 +1576,7 @@ def test_update_extend_merge_thread_safety() -> None:
                 tmp.extend(d2)
 
     with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = [executor.submit(worker, i) for i in range(8)]
-        for future in futures:
-            future.result()
+        list(executor.map(worker, range(8)))
 
     assert len(d1) == 200
     assert len(d2) == 200
@@ -1602,15 +1600,13 @@ def test_clear_thread_safety() -> None:
     scheduling is that the multidict stays internally consistent."""
     d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
 
-    def clearer() -> None:
+    def clearer(_n: int) -> None:
         for _ in range(200):
             d.clear()
             d.extend((str(i), i) for i in range(200))
 
     with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = [executor.submit(clearer) for _ in range(8)]
-        for future in futures:
-            future.result()
+        list(executor.map(clearer, range(8)))
 
     assert len(d) == len(list(d.items()))
 
