@@ -94,11 +94,8 @@ _multidict_extend_from_arg(MultiDictObject* self, PyObject* arg,
 {
     PyObject* seq = NULL;
 
-    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
-        goto fail;
-    }
-
     if (arg != NULL) {
+        assert(_multidict_resolve_other(self->state, arg) == NULL);
         if (PyDict_CheckExact(arg)) {
             if (md_update_from_dict(self, arg, op) < 0) {
                 goto fail;
@@ -160,10 +157,6 @@ fail:
 static inline int
 _multidict_extend_self(MultiDictObject* self, PyObject* kwds, UpdateOp op)
 {
-    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
-        goto fail;
-    }
-
     if (op == Extend && md_extend_self(self) < 0) {
         goto fail;
     }
@@ -199,10 +192,6 @@ _multidict_extend_from_other(MultiDictObject* self, MultiDictObject* other,
                              PyObject* kwds, UpdateOp op)
 {
     assert(other != self);
-
-    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
-        goto fail;
-    }
 
     if (md_update_from_ht(self, other, op) < 0) {
         goto fail;
@@ -303,7 +292,17 @@ _multidict_clone_fast(mod_state* state, MultiDictObject* self, bool is_ci,
             other = ((MultiDictProxyObject*)arg)->md;
         }
         if (other != NULL && other->is_ci == is_ci) {
-            if (md_clone_from_ht(self, other) < 0) {
+            int clone_ret;
+            if (other != self) {
+                Py_BEGIN_CRITICAL_SECTION2(self, other);
+                clone_ret = md_clone_from_ht(self, other);
+                Py_END_CRITICAL_SECTION2();
+            } else {
+                Py_BEGIN_CRITICAL_SECTION(self);
+                clone_ret = md_clone_from_ht(self, other);
+                Py_END_CRITICAL_SECTION();
+            }
+            if (clone_ret < 0) {
                 ret = -1;
                 goto done;
             }
@@ -327,10 +326,13 @@ multidict_copy(MultiDictObject* self)
     }
 
     MultiDictObject* new_md = (MultiDictObject*)ret;
-    if (md_clone_from_ht(new_md, self) < 0) {
+    int clone_ret;
+    Py_BEGIN_CRITICAL_SECTION2(new_md, self);
+    clone_ret = md_clone_from_ht(new_md, self);
+    Py_END_CRITICAL_SECTION2();
+    if (clone_ret < 0) {
         goto fail;
     }
-    ASSERT_CONSISTENT(new_md, false);
     return ret;
 fail:
     Py_XDECREF(ret);
@@ -636,6 +638,9 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (size < 0) {
         goto fail;
     }
+    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
+        goto fail;
+    }
     int tmp = _multidict_clone_fast(state, self, false, arg, kwds);
     if (tmp < 0) {
         goto fail;
@@ -720,6 +725,9 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
     Py_ssize_t size =
         _multidict_extend_parse_args(self->state, args, kwds, "extend", &arg);
     if (size < 0) {
+        goto fail;
+    }
+    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
     }
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
@@ -924,6 +932,9 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (size < 0) {
         goto fail;
     }
+    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
+        goto fail;
+    }
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
     int ret;
     if (other != NULL && other != self) {
@@ -962,6 +973,9 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     Py_ssize_t size =
         _multidict_extend_parse_args(self->state, args, kwds, "merge", &arg);
     if (size < 0) {
+        goto fail;
+    }
+    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
     }
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
@@ -1197,6 +1211,9 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     Py_ssize_t size =
         _multidict_extend_parse_args(state, args, kwds, "CIMultiDict", &arg);
     if (size < 0) {
+        goto fail;
+    }
+    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
     }
     int tmp = _multidict_clone_fast(state, self, true, arg, kwds);
