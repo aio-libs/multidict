@@ -747,7 +747,6 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
         goto fail;
     }
     Py_CLEAR(arg);
-    ASSERT_CONSISTENT(self, false);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);
@@ -765,7 +764,6 @@ multidict_clear(MultiDictObject* self)
         return NULL;
     }
 
-    ASSERT_CONSISTENT(self, false);
     Py_RETURN_NONE;
 }
 
@@ -951,7 +949,6 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
         goto fail;
     }
     Py_CLEAR(arg);
-    ASSERT_CONSISTENT(self, false);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);
@@ -992,7 +989,6 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
         goto fail;
     }
     Py_CLEAR(arg);
-    ASSERT_CONSISTENT(self, false);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);
