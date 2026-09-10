@@ -95,18 +95,10 @@ _multidict_extend_from_dict_locked(MultiDictObject* self, PyObject* arg,
         }
     }
 
-    if (op != Extend) {  // Update or Merge
-        md_post_update(self);
-    }
-
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(self, op != Extend);
     return 0;
 fail:
-    if (op != Extend) {  // Update or Merge
-        // Cleanup soft-deleted items
-        md_post_update(self);
-    }
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(self, op != Extend);
     return -1;
 }
 
@@ -152,19 +144,11 @@ _multidict_extend_from_seq_locked(MultiDictObject* self, PyObject* arg,
         }
     }
 
-    if (op != Extend) {  // Update or Merge
-        md_post_update(self);
-    }
-
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(self, op != Extend);
     Py_CLEAR(seq);
     return 0;
 fail:
-    if (op != Extend) {  // Update or Merge
-        // Cleanup soft-deleted items
-        md_post_update(self);
-    }
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(self, op != Extend);
     Py_CLEAR(seq);
     return -1;
 }
@@ -183,18 +167,10 @@ _multidict_extend_self_locked(MultiDictObject* self, PyObject* kwds,
         }
     }
 
-    if (op != Extend) {  // Update or Merge
-        md_post_update(self);
-    }
-
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(self, op != Extend);
     return 0;
 fail:
-    if (op != Extend) {  // Update or Merge
-        // Cleanup soft-deleted items
-        md_post_update(self);
-    }
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(self, op != Extend);
     return -1;
 }
 
@@ -215,18 +191,10 @@ _multidict_extend_from_other_locked(MultiDictObject* self,
         }
     }
 
-    if (op != Extend) {  // Update or Merge
-        md_post_update(self);
-    }
-
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(self, op != Extend);
     return 0;
 fail:
-    if (op != Extend) {  // Update or Merge
-        // Cleanup soft-deleted items
-        md_post_update(self);
-    }
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(self, op != Extend);
     return -1;
 }
 
@@ -979,6 +947,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
             ret =
                 _multidict_extend_from_other_locked(self, other, kwds, Update);
         }
+        md_post_update(self);
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
@@ -986,6 +955,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
         if (ret == 0) {
             ret = _multidict_extend_from_dict_locked(self, arg, kwds, Update);
         }
+        md_post_update(self);
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
@@ -998,6 +968,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
                     _multidict_extend_from_seq_locked(self, arg, kwds, Update);
             }
         }
+        md_post_update(self);
         Py_END_CRITICAL_SECTION();
     }
     if (ret < 0) {
@@ -1032,6 +1003,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
             ret =
                 _multidict_extend_from_other_locked(self, other, kwds, Merge);
         }
+        md_post_update(self);
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
@@ -1039,6 +1011,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
         if (ret == 0) {
             ret = _multidict_extend_from_dict_locked(self, arg, kwds, Merge);
         }
+        md_post_update(self);
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
@@ -1051,6 +1024,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
                     _multidict_extend_from_seq_locked(self, arg, kwds, Merge);
             }
         }
+        md_post_update(self);
         Py_END_CRITICAL_SECTION();
     }
     if (ret < 0) {
