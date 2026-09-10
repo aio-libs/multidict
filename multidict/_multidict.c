@@ -647,21 +647,24 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else if (tmp == 1) {
         goto done;
     }
-    if (md_init(self, state, false, size) < 0) {
-        goto fail;
-    }
     MultiDictObject* other = _multidict_resolve_other(state, arg);
     int ret;
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
-        ret = _multidict_extend_from_other(self, other, kwds, Extend);
+        ret = md_init(self, state, false, size);
+        if (ret == 0) {
+            ret = _multidict_extend_from_other(self, other, kwds, Extend);
+        }
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
-        if (other != NULL) {
-            ret = _multidict_extend_self(self, kwds, Extend);
-        } else {
-            ret = _multidict_extend_from_arg(self, arg, kwds, Extend);
+        ret = md_init(self, state, false, size);
+        if (ret == 0) {
+            if (other != NULL) {
+                ret = _multidict_extend_self(self, kwds, Extend);
+            } else {
+                ret = _multidict_extend_from_arg(self, arg, kwds, Extend);
+            }
         }
         Py_END_CRITICAL_SECTION();
     }
@@ -670,7 +673,6 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     }
 done:
     Py_CLEAR(arg);
-    ASSERT_CONSISTENT(self, false);
     return 0;
 fail:
     Py_CLEAR(arg);
@@ -1222,21 +1224,24 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else if (tmp == 1) {
         goto done;
     }
-    if (md_init(self, state, true, size) < 0) {
-        goto fail;
-    }
     MultiDictObject* other = _multidict_resolve_other(state, arg);
     int ret;
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
-        ret = _multidict_extend_from_other(self, other, kwds, Extend);
+        ret = md_init(self, state, true, size);
+        if (ret == 0) {
+            ret = _multidict_extend_from_other(self, other, kwds, Extend);
+        }
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
-        if (other != NULL) {
-            ret = _multidict_extend_self(self, kwds, Extend);
-        } else {
-            ret = _multidict_extend_from_arg(self, arg, kwds, Extend);
+        ret = md_init(self, state, true, size);
+        if (ret == 0) {
+            if (other != NULL) {
+                ret = _multidict_extend_self(self, kwds, Extend);
+            } else {
+                ret = _multidict_extend_from_arg(self, arg, kwds, Extend);
+            }
         }
         Py_END_CRITICAL_SECTION();
     }
@@ -1245,7 +1250,6 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     }
 done:
     Py_CLEAR(arg);
-    ASSERT_CONSISTENT(self, false);
     return 0;
 fail:
     Py_CLEAR(arg);

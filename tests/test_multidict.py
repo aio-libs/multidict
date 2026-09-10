@@ -1611,6 +1611,37 @@ def test_clear_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+@pytest.mark.c_extension
+def test_reinit_thread_safety() -> None:
+    """Concurrent __init__() alongside other methods must not crash.
+
+    Regression test for a free-threaded-build crash flagged in review:
+    __init__() used to reset self's storage (md_init(), which frees the
+    old hash table and replaces it) before acquiring self's lock. That's
+    harmless for the usual case where self is still private to the
+    constructor call, but __init__() can also be invoked explicitly on
+    an already-published, potentially shared multidict
+    (``d.__init__(other)``), at which point a concurrent caller of
+    another locked method could observe self mid-reset. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    other: MultiDict[int] = MultiDict((f"o{i}", i) for i in range(200))
+
+    def worker(n: int) -> None:
+        for _ in range(200):
+            if n % 2 == 0:
+                d.__init__(other)  # type: ignore[misc]
+            else:
+                len(d)
+                d.update({"extra": 1})
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d) == len(list(d.items()))
+
+
 def test_subclassed_multidict(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
