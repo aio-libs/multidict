@@ -1629,23 +1629,39 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op)
     PyObject* key = NULL;
     PyObject* value = NULL;
     PyObject* identity = NULL;
+    PyObject* items = NULL;
 
     Py_ssize_t i;
     Py_ssize_t size = -1;
 
     enum { LIST, TUPLE, ITER } kind;
 
+    if (!PyList_CheckExact(seq) && !PyTuple_CheckExact(seq)) {
+        items = PyMapping_Items(seq);
+        if (items != NULL) {
+            seq = items;
+        } else {
+            if (!PyErr_ExceptionMatches(PyExc_AttributeError) &&
+                !PyErr_ExceptionMatches(PyExc_TypeError)) {
+                // propagate MemoryError / KeyboardInterrupt / etc.
+                goto fail;
+            }
+            // seq is not a mapping; fall back to treating it as a sequence
+            PyErr_Clear();
+        }
+    }
+
     if (PyList_CheckExact(seq)) {
         kind = LIST;
         size = PyList_GET_SIZE(seq);
         if (size == 0) {
-            return 0;
+            goto exit;
         }
     } else if (PyTuple_CheckExact(seq)) {
         kind = TUPLE;
         size = PyTuple_GET_SIZE(seq);
         if (size == 0) {
-            return 0;
+            goto exit;
         }
     } else {
         kind = ITER;
@@ -1737,6 +1753,7 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op)
 
 exit:
     Py_CLEAR(it);
+    Py_CLEAR(items);
     return 0;
 
 fail:
@@ -1745,6 +1762,7 @@ fail:
     Py_CLEAR(item);
     Py_CLEAR(key);
     Py_CLEAR(value);
+    Py_CLEAR(items);
     return -1;
 }
 
@@ -2023,8 +2041,20 @@ md_clear(MultiDictObject* md)
     }
     md->version = NEXT_VERSION(md->state);
 
-    entry_t* entries = htkeys_entries(md->keys);
-    for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
+    // Publish the empty table before releasing any entry's reference: a
+    // decref below may run arbitrary Python code (a __del__), which can
+    // suspend this critical section. If md->keys still pointed at the old
+    // table while that happens, a concurrent, correctly-locked reader
+    // could observe entries mid-clear (identity already NULL, key/value
+    // not yet). Swapping first means a suspended thread only ever sees
+    // either the fully-populated old table or the fully-empty one.
+    htkeys_t* old_keys = md->keys;
+    entry_t* entries = htkeys_entries(old_keys);
+    Py_ssize_t nentries = old_keys->nentries;
+    md->used = 0;
+    md->keys = (htkeys_t*)&empty_htkeys;
+
+    for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         entry_t* entry = entries + pos;
         if (entry->identity != NULL) {
             Py_CLEAR(entry->identity);
@@ -2033,11 +2063,7 @@ md_clear(MultiDictObject* md)
         }
     }
 
-    md->used = 0;
-    if (md->keys != &empty_htkeys) {
-        htkeys_free(md->keys);
-        md->keys = (htkeys_t*)&empty_htkeys;
-    }
+    htkeys_free(old_keys);
     ASSERT_CONSISTENT(md, false);
     return 0;
 }

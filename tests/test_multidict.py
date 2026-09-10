@@ -4,9 +4,11 @@ import gc
 import operator
 import platform
 import sys
+import time
 import weakref
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator, KeysView, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
 from typing import TypeVar, cast
 
@@ -1546,6 +1548,177 @@ def test_repr_raises_when_mutated_during_iteration() -> None:
     md.add("k2", Evil())
     with pytest.raises(RuntimeError, match="changed during iteration"):
         repr(md)
+
+
+@pytest.mark.c_extension
+def test_update_extend_merge_thread_safety() -> None:
+    """Concurrent update()/extend()/merge() must not crash or corrupt state.
+
+    Regression test for a segfault on the free-threaded build: the C
+    extension used to release self's lock between processing the
+    positional argument and running the soft-delete cleanup in
+    update()/merge(), so a concurrent reader of the same multidict (used
+    as the argument to another thread's extend()/update()/merge() call)
+    could observe entries mid-cleanup (identity set, key/value NULL).
+    This is a C-extension-only concern: the pure-Python implementation has
+    no locking of its own to regress."""
+    d1 = MultiDict((str(i), i) for i in range(100))
+    d2 = MultiDict((str(i), i) for i in range(100, 200))
+
+    def worker(n: int) -> None:
+        for _ in range(200):
+            if n % 3 == 0:
+                d1.update(d2)
+            elif n % 3 == 1:
+                d2.merge(d1)
+            else:
+                tmp: MultiDict[int] = MultiDict()
+                tmp.extend(d1)
+                tmp.extend(d2)
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d1) == 200
+    assert len(d2) == 200
+
+
+@pytest.mark.c_extension
+def test_clear_thread_safety() -> None:
+    """Concurrent clear() alongside extend() must not crash or corrupt state.
+
+    Regression test for the same class of free-threaded-build segfault as
+    test_update_extend_merge_thread_safety(): clear() used to walk and free
+    self's entries without holding self's lock, so a concurrent extend() on
+    the same multidict could run in the middle of the walk. This is a
+    C-extension-only concern: the pure-Python implementation has no locking
+    of its own to regress.
+
+    The exact final size isn't asserted: clear() and extend() from
+    different threads interleave with no ordering guarantee between them,
+    so how many (possibly duplicate) entries are left behind depends on
+    scheduling, not just on correctness. What must hold regardless of
+    scheduling is that the multidict stays internally consistent."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+
+    def clearer(_n: int) -> None:
+        for _ in range(200):
+            d.clear()
+            d.extend((str(i), i) for i in range(200))
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(clearer, range(8)))
+
+    assert len(d) == len(list(d.items()))
+
+
+@pytest.mark.c_extension
+def test_clear_finalizer_thread_safety() -> None:
+    """Concurrent clear() alongside update() must not crash or corrupt state.
+
+    Regression test for a free-threaded-build finding flagged in review:
+    clear() used to release each entry's key/value/identity references
+    while the old, partially-cleared hash table was still published.
+    Releasing a value can run arbitrary Python code (a __del__), which
+    can suspend the held critical section; a concurrent, properly-locked
+    caller could then observe the multidict mid-clear (some entries
+    already released, others not), a state nothing else in the codebase
+    expects. clear() now swaps in the empty table before releasing any
+    entry's references, so a suspended thread only ever exposes the
+    fully populated table or the fully empty one. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+
+    class Evil:
+        def __del__(self) -> None:
+            time.sleep(0)
+
+    def trial(_n: int) -> None:
+        d: MultiDict[Evil] = MultiDict()
+        for i in range(50):
+            d.add(str(i), Evil())
+
+        def clearer() -> None:
+            d.clear()
+
+        def updater() -> None:
+            d.update({})
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            f1 = executor.submit(clearer)
+            f2 = executor.submit(updater)
+            f1.result()
+            f2.result()
+
+        assert len(d) == 0
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        list(executor.map(trial, range(500)))
+
+
+@pytest.mark.c_extension
+def test_reinit_thread_safety() -> None:
+    """Concurrent __init__() alongside other methods must not crash.
+
+    Regression test for a free-threaded-build crash flagged in review:
+    __init__() used to reset self's storage (md_init(), which frees the
+    old hash table and replaces it) before acquiring self's lock. That's
+    harmless for the usual case where self is still private to the
+    constructor call, but __init__() can also be invoked explicitly on
+    an already-published, potentially shared multidict
+    (``d.__init__(other)``), at which point a concurrent caller of
+    another locked method could observe self mid-reset. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    other: MultiDict[int] = MultiDict((f"o{i}", i) for i in range(200))
+
+    def worker(n: int) -> None:
+        for _ in range(200):
+            if n % 2 == 0:
+                d.__init__(other)  # type: ignore[misc]
+            else:
+                len(d)
+                d.update({"extra": 1})
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d) == len(list(d.items()))
+
+
+@pytest.mark.c_extension
+def test_update_from_dict_arg_thread_safety() -> None:
+    """Concurrent update() from a plain dict alongside mutation of that
+    same dict must not crash.
+
+    Regression test for a free-threaded-build crash flagged in review:
+    the dict-argument path used to iterate a plain dict `arg` with
+    PyDict_Next() while holding only self's lock, not arg's. PyDict_Next()
+    is not thread-safe against concurrent mutation of the dict it is
+    iterating, so a shared dict being read by update()/extend()/merge()
+    on one thread while another thread mutates it (even through dict's
+    own, individually-locked methods) was unsafe. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    shared = {str(i): i for i in range(300)}
+
+    def mutator(n: int) -> None:
+        for _ in range(200):
+            shared[f"x{n}"] = n
+            shared.pop(f"x{n}", None)
+
+    def updater(_n: int) -> None:
+        for _ in range(200):
+            d: MultiDict[int] = MultiDict()
+            d.update(shared)
+            len(d)
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(mutator, i) for i in range(8)]
+        futures += [executor.submit(updater, i) for i in range(8)]
+        for f in futures:
+            f.result()
 
 
 def test_subclassed_multidict(
