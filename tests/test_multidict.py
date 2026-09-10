@@ -835,6 +835,19 @@ class TestMultiDict(BaseMultiDictTest):
 
         assert str(d) == f"<{_cls.__name__}('key': ...)>"
 
+    def test_proxy__repr___recursive(
+        self,
+        any_multidict_class: type[MultiDict[object]],
+        any_multidict_proxy_class: type[MultiDictProxy[object]],
+    ) -> None:
+        d = any_multidict_class()
+        d["key"] = any_multidict_proxy_class(d)
+        proxy = any_multidict_proxy_class(d)
+        _cls = type(proxy)
+
+        expected = f"<{_cls.__name__}('key': <{_cls.__name__}('key': ...)>)>"
+        assert str(proxy) == expected
+
     def test_getall(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
 
@@ -878,6 +891,23 @@ class TestMultiDict(BaseMultiDictTest):
     def test_keys__repr__(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
         assert repr(d.keys()) == "<_KeysView('key', 'key')>"
+
+    def test_keys__repr__recursive(
+        self, case_sensitive_multidict_class: type[MultiDict[object]]
+    ) -> None:
+        d = case_sensitive_multidict_class()
+        kv = d.keys()
+
+        class Key(str):
+            def __repr__(self) -> str:
+                return repr(kv)
+
+        # a quote forces md_repr() to call repr() on the key instead of
+        # writing its characters directly, so the custom __repr__() above
+        # is exercised and can recurse back into the keys view.
+        d[Key("a'b")] = "value"
+
+        assert repr(kv) == "<_KeysView(...)>"
 
     def test_values__repr__(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
