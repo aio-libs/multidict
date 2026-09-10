@@ -4,10 +4,10 @@ import gc
 import operator
 import platform
 import sys
-import threading
 import weakref
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator, KeysView, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
 from typing import TypeVar, cast
 
@@ -1563,29 +1563,23 @@ def test_update_extend_merge_thread_safety() -> None:
     no locking of its own to regress."""
     d1 = MultiDict((str(i), i) for i in range(100))
     d2 = MultiDict((str(i), i) for i in range(100, 200))
-    errors: list[BaseException] = []
 
     def worker(n: int) -> None:
-        try:
-            for _ in range(200):
-                if n % 3 == 0:
-                    d1.update(d2)
-                elif n % 3 == 1:
-                    d2.merge(d1)
-                else:
-                    tmp: MultiDict[int] = MultiDict()
-                    tmp.extend(d1)
-                    tmp.extend(d2)
-        except BaseException as exc:  # pragma: no cover
-            errors.append(exc)
+        for _ in range(200):
+            if n % 3 == 0:
+                d1.update(d2)
+            elif n % 3 == 1:
+                d2.merge(d1)
+            else:
+                tmp: MultiDict[int] = MultiDict()
+                tmp.extend(d1)
+                tmp.extend(d2)
 
-    threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(worker, i) for i in range(8)]
+        for future in futures:
+            future.result()
 
-    assert not errors
     assert len(d1) == 200
     assert len(d2) == 200
 
@@ -1607,23 +1601,17 @@ def test_clear_thread_safety() -> None:
     scheduling, not just on correctness. What must hold regardless of
     scheduling is that the multidict stays internally consistent."""
     d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
-    errors: list[BaseException] = []
 
     def clearer() -> None:
-        try:
-            for _ in range(200):
-                d.clear()
-                d.extend((str(i), i) for i in range(200))
-        except BaseException as exc:  # pragma: no cover
-            errors.append(exc)
+        for _ in range(200):
+            d.clear()
+            d.extend((str(i), i) for i in range(200))
 
-    threads = [threading.Thread(target=clearer) for _ in range(8)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(clearer) for _ in range(8)]
+        for future in futures:
+            future.result()
 
-    assert not errors
     assert len(d) == len(list(d.items()))
 
 
