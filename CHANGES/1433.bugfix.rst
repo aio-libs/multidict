@@ -1,6 +1,6 @@
-Protected ``MultiDict.update()``, ``.extend()``, ``.merge()``, and
-``.clear()`` in the C extension with a critical section, using the
-two-object form for ``update()``/``extend()``/``merge()`` when the
-argument is a multidict or multidict proxy instance, avoiding data races
-and a segmentation fault on the free-threaded build of CPython
--- by :user:`asvetlov`.
+Protected ``MultiDict.update()``, ``.extend()``, ``.merge()``, ``.clear()``,
+``.copy()``, and the ``MultiDict``/``CIMultiDict`` constructor fast-clone
+path in the C extension with a critical section, using the two-object
+form when a second multidict or multidict proxy instance is involved,
+avoiding data races and a segmentation fault on the free-threaded build
+of CPython -- by :user:`asvetlov`.
