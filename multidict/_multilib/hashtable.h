@@ -1629,23 +1629,39 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op)
     PyObject* key = NULL;
     PyObject* value = NULL;
     PyObject* identity = NULL;
+    PyObject* items = NULL;
 
     Py_ssize_t i;
     Py_ssize_t size = -1;
 
     enum { LIST, TUPLE, ITER } kind;
 
+    if (!PyList_CheckExact(seq) && !PyTuple_CheckExact(seq)) {
+        items = PyMapping_Items(seq);
+        if (items != NULL) {
+            seq = items;
+        } else {
+            if (!PyErr_ExceptionMatches(PyExc_AttributeError) &&
+                !PyErr_ExceptionMatches(PyExc_TypeError)) {
+                // propagate MemoryError / KeyboardInterrupt / etc.
+                goto fail;
+            }
+            // seq is not a mapping; fall back to treating it as a sequence
+            PyErr_Clear();
+        }
+    }
+
     if (PyList_CheckExact(seq)) {
         kind = LIST;
         size = PyList_GET_SIZE(seq);
         if (size == 0) {
-            return 0;
+            goto exit;
         }
     } else if (PyTuple_CheckExact(seq)) {
         kind = TUPLE;
         size = PyTuple_GET_SIZE(seq);
         if (size == 0) {
-            return 0;
+            goto exit;
         }
     } else {
         kind = ITER;
@@ -1737,6 +1753,7 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op)
 
 exit:
     Py_CLEAR(it);
+    Py_CLEAR(items);
     return 0;
 
 fail:
@@ -1745,6 +1762,7 @@ fail:
     Py_CLEAR(item);
     Py_CLEAR(key);
     Py_CLEAR(value);
+    Py_CLEAR(items);
     return -1;
 }
 
