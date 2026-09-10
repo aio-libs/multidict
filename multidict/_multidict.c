@@ -79,15 +79,6 @@ _multidict_resolve_other(mod_state* state, PyObject* arg)
     return NULL;
 }
 
-/* Mutates `self` from a non-multidict `arg` (a dict, list, tuple, mapping,
- * or arbitrary sequence of pairs) and `kwds`. Must be called with `self`
- * already locked via Py_BEGIN_CRITICAL_SECTION -- the whole operation,
- * including the soft-delete cleanup in md_post_update(), has to be atomic
- * from the point of view of other threads, or they could observe `self`
- * with soft-deleted (identity set, key/value NULL) entries not cleaned up
- * yet. This is why the locking lives in the caller: this function's own
- * control flow is goto-heavy, and jumping out of a critical section
- * without ending it first is undefined behaviour. */
 static inline int
 _multidict_extend_from_arg_locked(MultiDictObject* self, PyObject* arg,
                                   PyObject* kwds, UpdateOp op)
@@ -150,10 +141,6 @@ fail:
     return -1;
 }
 
-/* Mutates `self` from itself (extend()/update()/merge() called with self
- * as the argument) and `kwds`. Must be called with `self` already locked
- * via Py_BEGIN_CRITICAL_SECTION -- see the note on
- * _multidict_extend_from_arg_locked() above for why. */
 static inline int
 _multidict_extend_self_locked(MultiDictObject* self, PyObject* kwds,
                               UpdateOp op)
@@ -183,11 +170,6 @@ fail:
     return -1;
 }
 
-/* Mutates `self` from a distinct multidict or multidict proxy `other`
- * (never `self`; see _multidict_extend_self_locked() for that case) and
- * `kwds`. Must be called with `self` and `other` already locked via
- * Py_BEGIN_CRITICAL_SECTION2 -- see the note on
- * _multidict_extend_from_arg_locked() above for why. */
 static inline int
 _multidict_extend_from_other_locked(MultiDictObject* self,
                                     MultiDictObject* other, PyObject* kwds,
