@@ -1642,6 +1642,40 @@ def test_reinit_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+@pytest.mark.c_extension
+def test_update_from_dict_arg_thread_safety() -> None:
+    """Concurrent update() from a plain dict alongside mutation of that
+    same dict must not crash.
+
+    Regression test for a free-threaded-build crash flagged in review:
+    the dict-argument path used to iterate a plain dict `arg` with
+    PyDict_Next() while holding only self's lock, not arg's. PyDict_Next()
+    is not thread-safe against concurrent mutation of the dict it is
+    iterating, so a shared dict being read by update()/extend()/merge()
+    on one thread while another thread mutates it (even through dict's
+    own, individually-locked methods) was unsafe. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    shared = {str(i): i for i in range(300)}
+
+    def mutator(n: int) -> None:
+        for _ in range(200):
+            shared[f"x{n}"] = n
+            shared.pop(f"x{n}", None)
+
+    def updater(_n: int) -> None:
+        for _ in range(200):
+            d: MultiDict[int] = MultiDict()
+            d.update(shared)
+            len(d)
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(mutator, i) for i in range(8)]
+        futures += [executor.submit(updater, i) for i in range(8)]
+        for f in futures:
+            f.result()
+
+
 def test_subclassed_multidict(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:

@@ -80,18 +80,46 @@ _multidict_resolve_other(mod_state* state, PyObject* arg)
 }
 
 static inline int
-_multidict_extend_from_arg_locked(MultiDictObject* self, PyObject* arg,
+_multidict_extend_from_dict_locked(MultiDictObject* self, PyObject* arg,
+                                   PyObject* kwds, UpdateOp op)
+{
+    assert(PyDict_CheckExact(arg));
+
+    if (md_update_from_dict(self, arg, op) < 0) {
+        goto fail;
+    }
+
+    if (kwds != NULL) {
+        if (md_update_from_dict(self, kwds, op) < 0) {
+            goto fail;
+        }
+    }
+
+    if (op != Extend) {  // Update or Merge
+        md_post_update(self);
+    }
+
+    ASSERT_CONSISTENT(self, false);
+    return 0;
+fail:
+    if (op != Extend) {  // Update or Merge
+        // Cleanup soft-deleted items
+        md_post_update(self);
+    }
+    ASSERT_CONSISTENT(self, false);
+    return -1;
+}
+
+static inline int
+_multidict_extend_from_seq_locked(MultiDictObject* self, PyObject* arg,
                                   PyObject* kwds, UpdateOp op)
 {
     PyObject* seq = NULL;
 
     if (arg != NULL) {
         assert(_multidict_resolve_other(self->state, arg) == NULL);
-        if (PyDict_CheckExact(arg)) {
-            if (md_update_from_dict(self, arg, op) < 0) {
-                goto fail;
-            }
-        } else if (PyList_CheckExact(arg)) {
+        assert(!PyDict_CheckExact(arg));
+        if (PyList_CheckExact(arg)) {
             if (md_update_from_seq(self, arg, op) < 0) {
                 goto fail;
             }
@@ -311,9 +339,9 @@ multidict_copy(MultiDictObject* self)
 
     MultiDictObject* new_md = (MultiDictObject*)ret;
     int clone_ret;
-    Py_BEGIN_CRITICAL_SECTION2(new_md, self);
+    Py_BEGIN_CRITICAL_SECTION(self);
     clone_ret = md_clone_from_ht(new_md, self);
-    Py_END_CRITICAL_SECTION2();
+    Py_END_CRITICAL_SECTION();
     if (clone_ret < 0) {
         goto fail;
     }
@@ -632,6 +660,7 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         goto done;
     }
     MultiDictObject* other = _multidict_resolve_other(state, arg);
+    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
@@ -639,6 +668,13 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         if (ret == 0) {
             ret =
                 _multidict_extend_from_other_locked(self, other, kwds, Extend);
+        }
+        Py_END_CRITICAL_SECTION2();
+    } else if (arg_is_dict) {
+        Py_BEGIN_CRITICAL_SECTION2(self, arg);
+        ret = md_init(self, state, false, size);
+        if (ret == 0) {
+            ret = _multidict_extend_from_dict_locked(self, arg, kwds, Extend);
         }
         Py_END_CRITICAL_SECTION2();
     } else {
@@ -649,7 +685,7 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
                 ret = _multidict_extend_self_locked(self, kwds, Extend);
             } else {
                 ret =
-                    _multidict_extend_from_arg_locked(self, arg, kwds, Extend);
+                    _multidict_extend_from_seq_locked(self, arg, kwds, Extend);
             }
         }
         Py_END_CRITICAL_SECTION();
@@ -719,6 +755,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
         goto fail;
     }
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
+    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
@@ -726,6 +763,13 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
         if (ret == 0) {
             ret =
                 _multidict_extend_from_other_locked(self, other, kwds, Extend);
+        }
+        Py_END_CRITICAL_SECTION2();
+    } else if (arg_is_dict) {
+        Py_BEGIN_CRITICAL_SECTION2(self, arg);
+        ret = md_reserve(self, size);
+        if (ret == 0) {
+            ret = _multidict_extend_from_dict_locked(self, arg, kwds, Extend);
         }
         Py_END_CRITICAL_SECTION2();
     } else {
@@ -736,7 +780,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
                 ret = _multidict_extend_self_locked(self, kwds, Extend);
             } else {
                 ret =
-                    _multidict_extend_from_arg_locked(self, arg, kwds, Extend);
+                    _multidict_extend_from_seq_locked(self, arg, kwds, Extend);
             }
         }
         Py_END_CRITICAL_SECTION();
@@ -926,6 +970,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
         goto fail;
     }
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
+    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
@@ -933,6 +978,13 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
         if (ret == 0) {
             ret =
                 _multidict_extend_from_other_locked(self, other, kwds, Update);
+        }
+        Py_END_CRITICAL_SECTION2();
+    } else if (arg_is_dict) {
+        Py_BEGIN_CRITICAL_SECTION2(self, arg);
+        ret = md_reserve(self, size);
+        if (ret == 0) {
+            ret = _multidict_extend_from_dict_locked(self, arg, kwds, Update);
         }
         Py_END_CRITICAL_SECTION2();
     } else {
@@ -943,7 +995,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
                 ret = _multidict_extend_self_locked(self, kwds, Update);
             } else {
                 ret =
-                    _multidict_extend_from_arg_locked(self, arg, kwds, Update);
+                    _multidict_extend_from_seq_locked(self, arg, kwds, Update);
             }
         }
         Py_END_CRITICAL_SECTION();
@@ -971,6 +1023,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
         goto fail;
     }
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
+    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
@@ -978,6 +1031,13 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
         if (ret == 0) {
             ret =
                 _multidict_extend_from_other_locked(self, other, kwds, Merge);
+        }
+        Py_END_CRITICAL_SECTION2();
+    } else if (arg_is_dict) {
+        Py_BEGIN_CRITICAL_SECTION2(self, arg);
+        ret = md_reserve(self, size);
+        if (ret == 0) {
+            ret = _multidict_extend_from_dict_locked(self, arg, kwds, Merge);
         }
         Py_END_CRITICAL_SECTION2();
     } else {
@@ -988,7 +1048,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
                 ret = _multidict_extend_self_locked(self, kwds, Merge);
             } else {
                 ret =
-                    _multidict_extend_from_arg_locked(self, arg, kwds, Merge);
+                    _multidict_extend_from_seq_locked(self, arg, kwds, Merge);
             }
         }
         Py_END_CRITICAL_SECTION();
@@ -1217,6 +1277,7 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         goto done;
     }
     MultiDictObject* other = _multidict_resolve_other(state, arg);
+    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
@@ -1224,6 +1285,13 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         if (ret == 0) {
             ret =
                 _multidict_extend_from_other_locked(self, other, kwds, Extend);
+        }
+        Py_END_CRITICAL_SECTION2();
+    } else if (arg_is_dict) {
+        Py_BEGIN_CRITICAL_SECTION2(self, arg);
+        ret = md_init(self, state, true, size);
+        if (ret == 0) {
+            ret = _multidict_extend_from_dict_locked(self, arg, kwds, Extend);
         }
         Py_END_CRITICAL_SECTION2();
     } else {
@@ -1234,7 +1302,7 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
                 ret = _multidict_extend_self_locked(self, kwds, Extend);
             } else {
                 ret =
-                    _multidict_extend_from_arg_locked(self, arg, kwds, Extend);
+                    _multidict_extend_from_seq_locked(self, arg, kwds, Extend);
             }
         }
         Py_END_CRITICAL_SECTION();
