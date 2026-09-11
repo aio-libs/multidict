@@ -39,6 +39,12 @@ atomic_load_ssize(const Py_ssize_t* obj)
     return __atomic_load_n(obj, __ATOMIC_SEQ_CST);
 }
 
+static inline void
+atomic_store_ssize_relaxed(Py_ssize_t* obj, Py_ssize_t value)
+{
+    __atomic_store_n(obj, value, __ATOMIC_RELAXED);
+}
+
 static inline Py_ssize_t
 atomic_fetch_add_ssize_relaxed(Py_ssize_t* obj, Py_ssize_t value)
 {
@@ -80,6 +86,13 @@ atomic_load_ssize(const Py_ssize_t* obj)
 {
     return atomic_load_explicit((const _Atomic(Py_ssize_t)*)obj,
                                 memory_order_seq_cst);
+}
+
+static inline void
+atomic_store_ssize_relaxed(Py_ssize_t* obj, Py_ssize_t value)
+{
+    atomic_store_explicit(
+        (_Atomic(Py_ssize_t)*)obj, value, memory_order_relaxed);
 }
 
 static inline Py_ssize_t
@@ -142,6 +155,12 @@ static inline Py_ssize_t
 atomic_load_ssize(const Py_ssize_t* obj)
 {
     return *(volatile const Py_ssize_t*)obj;
+}
+
+static inline void
+atomic_store_ssize_relaxed(Py_ssize_t* obj, Py_ssize_t value)
+{
+    *(volatile Py_ssize_t*)obj = value;
 }
 
 static inline Py_ssize_t

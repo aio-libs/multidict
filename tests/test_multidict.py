@@ -1891,7 +1891,7 @@ def test_contains_lock_free_thread_safety() -> None:
     md_contains() with pret == NULL) is now genuinely lock-free -- it
     does not take self's critical section at all, unlike every other
     single-item operation, which still does. Its safety instead comes
-    from md_reader_enter()/md_reader_exit() (a coarse active_readers
+    from _md_reader_enter()/_md_reader_exit() (a coarse active_readers
     gate) plus per-table retirement: a resize/shrink/clear no longer
     frees the old hash table immediately, only once no lock-free reader
     could still be walking it. This drives many resizes concurrently
@@ -1911,6 +1911,55 @@ def test_contains_lock_free_thread_safety() -> None:
     def reader(_n: int) -> None:
         for i in range(3000):
             str(i % 500) in d
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(mutator, i) for i in range(8)]
+        futures += [executor.submit(reader, i) for i in range(8)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == 500
+
+
+@pytest.mark.c_extension
+def test_get_lock_free_thread_safety() -> None:
+    """Concurrent get()/getone()/__getitem__ alongside heavy add()/pop()
+    churn must not crash.
+
+    Regression test for the free-threaded build: on CPython 3.14+,
+    get()/getone()/__getitem__ (md_get_one() with pret == NULL) are now
+    genuinely lock-free, falling back to a critical section only when a
+    candidate entry's identity or value can't be safely referenced
+    (PyUnstable_TryIncRef() fails, or the field changed mid-read). On
+    3.13 -- which has no public API for a third-party extension to
+    safely try-incref an object that might concurrently be reaching
+    refcount zero (PyUnstable_TryIncRef()/PyUnstable_EnableTryIncRef()
+    were only added in 3.14) -- it always takes the critical section,
+    same as before this file added any lock-free reading of entry
+    contents. Either way this must not crash: it drives many entry
+    inserts/deletes concurrently with many get() calls to exercise
+    both the lock-free fast path (3.14+) and the locked fallback
+    (3.13, or a 3.14+ TryIncRef failure). Deliberately uses only
+    add()/pop() on the mutating side, not __setitem__: __setitem__'s
+    replace path has a separate, pre-existing, unrelated race that
+    this test is not about and should not trip. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(500))
+
+    def mutator(n: int) -> None:
+        for i in range(3000):
+            key = f"m{n}-{i}"
+            d.add(key, i)
+            d.pop(key, None)
+
+    def reader(_n: int) -> None:
+        for i in range(3000):
+            key = str(i % 500)
+            d.get(key)
+            d.getone(key, None)
+            with contextlib.suppress(KeyError):
+                d[key]
 
     with ThreadPoolExecutor(max_workers=16) as executor:
         futures = [executor.submit(mutator, i) for i in range(8)]
