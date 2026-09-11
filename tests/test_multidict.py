@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import gc
 import operator
 import platform
@@ -1759,6 +1760,126 @@ def test_update_from_dict_arg_thread_safety() -> None:
         futures += [executor.submit(updater, i) for i in range(8)]
         for f in futures:
             f.result()
+
+
+@pytest.mark.c_extension
+def test_single_item_ops_thread_safety() -> None:
+    """Concurrent add()/__setitem__/__delitem__/pop()/popitem()/setdefault()
+    alongside __getitem__/__contains__/len()/iteration must not crash.
+
+    Regression test for the free-threaded build: unlike update()/extend()/
+    merge()/clear()/repr() (protected earlier), the single-item operations
+    -- add(), __setitem__/__delitem__, get()/getone()/__getitem__,
+    __contains__, setdefault(), pop()/popone()/popall()/popitem(), and
+    iteration -- used to run without holding self's lock at all. A resize
+    triggered by one thread's mutation could free the hash table a
+    concurrent reader on another thread was still walking (a
+    use-after-free), or a concurrent mutator could observe/interleave with
+    a half-applied insert or deletion. This is a C-extension-only concern:
+    the pure-Python implementation has no locking of its own to regress.
+    __eq__ is exercised against both another MultiDict (the two-object
+    CRITICAL_SECTION2 path) and a plain dict (the single-object,
+    generic-mapping path)."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    d2: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    other_mapping = {str(i): i for i in range(200)}
+
+    def worker(n: int) -> None:
+        for i in range(300):
+            key = str(i % 200)
+            if n % 2 == 0:
+                target = d if n % 4 == 0 else d2
+                op = i % 9
+                if op == 0:
+                    target.add(key, i)
+                elif op == 1:
+                    target[key] = i
+                elif op == 2:
+                    target.setdefault(f"sd{n}-{i}", i)
+                elif op == 3:
+                    with contextlib.suppress(KeyError):
+                        del target[key]
+                elif op == 4:
+                    target.pop(key, None)
+                elif op == 5:
+                    target.getall(key, [])
+                elif op == 6:
+                    target.popone(key, None)
+                elif op == 7:
+                    target.popall(key, None)
+                else:
+                    with contextlib.suppress(KeyError):
+                        target.popitem()
+            else:
+                key in d
+                d.get(key)
+                d.getone(key, None)
+                with contextlib.suppress(KeyError):
+                    d[key]
+                len(d)
+                d == d2
+                d == other_mapping
+                # A concurrent mutation from another worker can legitimately
+                # be detected mid-iteration (same as dict's own "changed
+                # size during iteration" check); that is not a bug here.
+                with contextlib.suppress(RuntimeError):
+                    list(d.items())
+                    list(d.keys())
+                    list(d.values())
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d) == len(list(d.items()))
+    assert len(d2) == len(list(d2.items()))
+
+
+@pytest.mark.c_extension
+def test_view_set_ops_thread_safety() -> None:
+    """Concurrent items()/keys() set-algebra (&, |, -, ^, in, isdisjoint())
+    alongside mutation must not crash.
+
+    Regression test for the free-threaded build: itemsview's and keysview's
+    &/|/-/^/in/isdisjoint() implementations used to walk self's hash table
+    directly (md_calc_identity()/md_init_finder()/md_contains()/md_next())
+    without holding self's lock, so a concurrent resize triggered by
+    mutation on another thread could free the table mid-walk. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    other = {str(i): i for i in range(100, 300)}
+
+    def worker(n: int) -> None:
+        for i in range(150):
+            if n % 2 == 0:
+                key = str(i % 200)
+                if i % 2 == 0:
+                    d.add(key, i)
+                else:
+                    d.pop(key, None)
+            else:
+                # A concurrent mutation from another worker can
+                # legitimately be detected mid-walk (same as dict's own
+                # "changed size during iteration" check); that is not a
+                # bug here.
+                with contextlib.suppress(RuntimeError):
+                    d.items() & other.items()
+                    d.items() | other.items()
+                    d.items() - other.items()
+                    d.items() ^ other.items()
+                    d.items().isdisjoint(other.items())
+                    d.keys() & other.keys()
+                    d.keys() | other.keys()
+                    d.keys() - other.keys()
+                    d.keys() ^ other.keys()
+                    d.keys().isdisjoint(other.keys())
+                    "100" in d.keys()
+                    ("100", 100) in d.items()
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d) == len(list(d.items()))
 
 
 def test_subclassed_multidict(

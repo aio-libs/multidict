@@ -10,6 +10,8 @@ extern "C" {
 #include <Python.h>
 #include <stdbool.h>
 
+#include "atomic_helpers.h"
+
 /* Implementation note.
 identity always has exact PyUnicode_Type type, not a subclass.
 It guarantees that identity hashing and comparison never calls
@@ -323,7 +325,7 @@ _unicode_hash(PyObject* o)
 {
     assert(PyUnicode_CheckExact(o));
     PyASCIIObject* ascii = (PyASCIIObject*)o;
-    Py_hash_t hash = ascii->hash;
+    Py_hash_t hash = atomic_load_ssize_relaxed(&ascii->hash);
     if (hash == -1) {
         hash = PyUnicode_Type.tp_hash(o);
         if (hash == -1) {
