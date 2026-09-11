@@ -1,5 +1,5 @@
 ``MultiDict``, ``CIMultiDict``, ``MultiDictProxy`` and ``CIMultiDictProxy`` in the
-C extension now implement the vectorcall calling convention for construction,
-speeding up ``MultiDict(...)``-style calls by avoiding an intermediate
+C extension implemented the vectorcall calling convention for construction.
+This sped up ``MultiDict(...)``-style calls by avoiding an intermediate
 positional-arguments tuple and keyword-arguments dictionary in the common case
 -- by :user:`asvetlov`.
