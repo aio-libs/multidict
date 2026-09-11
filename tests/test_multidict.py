@@ -1882,6 +1882,45 @@ def test_view_set_ops_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+@pytest.mark.c_extension
+def test_contains_lock_free_thread_safety() -> None:
+    """Concurrent __contains__ alongside heavy add()/pop() churn must not
+    crash.
+
+    Regression test for the free-threaded build: __contains__ (via
+    md_contains() with pret == NULL) is now genuinely lock-free -- it
+    does not take self's critical section at all, unlike every other
+    single-item operation, which still does. Its safety instead comes
+    from md_reader_enter()/md_reader_exit() (a coarse active_readers
+    gate) plus per-table retirement: a resize/shrink/clear no longer
+    frees the old hash table immediately, only once no lock-free reader
+    could still be walking it. This drives many resizes concurrently
+    with many __contains__ calls specifically to exercise that
+    retire/drain path, not just the (always safe) case where
+    active_readers happens to be 0 at retirement time. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(500))
+
+    def mutator(n: int) -> None:
+        for i in range(3000):
+            key = f"m{n}-{i}"
+            d.add(key, i)
+            d.pop(key, None)
+
+    def reader(_n: int) -> None:
+        for i in range(3000):
+            str(i % 500) in d
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(mutator, i) for i in range(8)]
+        futures += [executor.submit(reader, i) for i in range(8)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == 500
+
+
 def test_subclassed_multidict(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:

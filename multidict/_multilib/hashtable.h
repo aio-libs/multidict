@@ -202,6 +202,138 @@ _ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
     return NULL;
 }
 
+#ifdef Py_GIL_DISABLED
+
+/*
+Lock-free read support.
+
+md->active_readers is a coarse "some lock-free reader is in flight on
+this object" gate: incremented before a reader ever dereferences a
+keys table, decremented once it's done. A table is only ever freed
+once this reads 0 at a point synchronized (seq_cst on both sides, see
+atomic_helpers.h) with the swap that retired it. That ordering is the
+safety argument in full:
+
+  reader:  active_readers += 1        (A, seq_cst)
+           keys = load(md->keys)      (B, seq_cst)
+           keys->readers += 1         (C, relaxed; skipped for
+                                        &empty_htkeys, which is never
+                                        retired or freed)
+           ... walk keys ...
+           keys->readers -= 1         (D, relaxed)
+           active_readers -= 1        (E, seq_cst)
+
+  writer:  store(md->keys, new)       (seq_cst)
+           if load(active_readers) == 0 (seq_cst): free old immediately
+           else: move old onto md->retired, freed by a later drain
+
+A is always sequenced-before B on the reader's own thread, so if the
+writer's check observes active_readers == 0, no reader can be between
+A and E for *any* table -- in particular none can be between B and C
+for the table being freed. Anything weaker than seq_cst here (plain
+acquire/release, or relaxed) is not enough: the writer's store to
+md->keys and its read of active_readers, versus the reader's write to
+active_readers and its read of md->keys, is a criss-cross on two
+independent atomics (the same shape as Dekker's algorithm), and only a
+single global seq_cst order over all four operations closes it -- see
+the design discussion that produced this file for the specific
+interleaving that a weaker order permits.
+
+keys->readers (C/D) does not participate in that ordering and stays
+relaxed: it is only ever inspected in md_drain_retired(), which never
+runs except at a point already known -- via the active_readers check
+above -- to have no reader anywhere near it. It exists purely as a
+cheap defensive assertion that the coarse gate actually worked, not as
+an independent freeing trigger; freeing a specific retired table ahead
+of the whole object's active_readers reaching 0 would reintroduce the
+same bootstrap race the coarse gate exists to close (see the design
+discussion; true per-table precision under sustained concurrent read
+load needs epoch tagging, which this does not attempt).
+*/
+
+static inline htkeys_t*
+md_reader_enter(MultiDictObject* md)
+{
+    atomic_fetch_add_ssize(&md->active_readers, 1);
+    htkeys_t* keys = (htkeys_t*)atomic_load_ptr((void* const*)&md->keys);
+    if (keys != &empty_htkeys) {
+        atomic_fetch_add_ssize_relaxed(&keys->readers, 1);
+    }
+    return keys;
+}
+
+static inline void
+md_reader_exit(MultiDictObject* md, htkeys_t* keys)
+{
+    if (keys != &empty_htkeys) {
+        atomic_fetch_add_ssize_relaxed(&keys->readers, -1);
+    }
+    atomic_fetch_add_ssize(&md->active_readers, -1);
+}
+
+/* Releases any entries a retired table still owns, then frees it.
+   Only md_clear()'s retired tables have live entries to release here:
+   _md_resize()'s old table has its ownership already transferred to
+   the new table via memcpy (see _md_retire_resized()), so its
+   nentries is reset to 0 before retirement, making this loop a
+   no-op for that case. */
+static inline void
+_md_free_retired(htkeys_t* keys)
+{
+    entry_t* entries = htkeys_entries(keys);
+    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
+        Py_CLEAR(entries[i].identity);
+        Py_CLEAR(entries[i].key);
+        Py_CLEAR(entries[i].value);
+    }
+    htkeys_free(keys);
+}
+
+/* Frees whatever is currently on md->retired, if active_readers reads
+   0 at this (seq_cst) checkpoint. Called at the start of every
+   resize-triggering operation (shrink, resize, reserve, clear), so a
+   table that couldn't be freed immediately at retirement time gets
+   another chance each time the object is next mutated. */
+static inline void
+md_drain_retired(MultiDictObject* md)
+{
+    if (md->retired == NULL) {
+        return;
+    }
+    if (atomic_load_ssize(&md->active_readers) != 0) {
+        return;
+    }
+    htkeys_t* t = md->retired;
+    md->retired = NULL;
+    while (t != NULL) {
+        htkeys_t* next = t->retired_next;
+        assert(atomic_load_ssize_relaxed(&t->readers) == 0);
+        _md_free_retired(t);
+        t = next;
+    }
+}
+
+/* Replaces md_clear()'s and _md_resize()'s direct htkeys_free(): frees
+   `keys` immediately if provably unreferenced by any in-flight
+   lock-free reader, otherwise defers it to md->retired for a later
+   md_drain_retired() to pick up. */
+static inline void
+md_retire(MultiDictObject* md, htkeys_t* keys)
+{
+    if (keys == &empty_htkeys) {
+        return;
+    }
+    md_drain_retired(md);
+    if (atomic_load_ssize(&md->active_readers) == 0) {
+        _md_free_retired(keys);
+    } else {
+        keys->retired_next = md->retired;
+        md->retired = keys;
+    }
+}
+
+#endif /* Py_GIL_DISABLED */
+
 static inline int
 _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
 {
@@ -246,9 +378,19 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
 
     md->keys = newkeys;
 
+#ifdef Py_GIL_DISABLED
+    /* Ownership of oldkeys's entries has already moved to newkeys via
+       the memcpy/copy loop above; zeroing nentries tells md_retire()'s
+       cleanup there is nothing left to decref, only memory to free. */
+    if (oldkeys != &empty_htkeys) {
+        oldkeys->nentries = 0;
+    }
+    md_retire(md, oldkeys);
+#else
     if (oldkeys != &empty_htkeys) {
         htkeys_free(oldkeys);
     }
+#endif
 
     md->keys->usable = md->keys->usable - numentries;
     md->keys->nentries = numentries;
@@ -259,6 +401,19 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
 static inline int
 _md_shrink(MultiDictObject* md, bool update)
 {
+#ifdef Py_GIL_DISABLED
+    /* The in-place compaction below rewrites the currently-published
+       table's entries and indices while md->keys keeps pointing at it
+       the whole time -- safe when every reader holds the critical
+       section (mutually exclusive with this function), not safe
+       against a lock-free reader concurrently walking the very memory
+       being rewritten. _md_resize() already has the build-a-new-table,
+       swap, retire-the-old-one shape lock-free reads need; reusing it
+       at the *current* size does exactly what shrinking means here
+       (drop the dummy-slot gaps) without a second, duplicate
+       implementation of that shape. */
+    return _md_resize(md, md->keys->log2_size, update);
+#else
     htkeys_t* keys = md->keys;
     Py_ssize_t nentries = keys->nentries;
     entry_t* entries = htkeys_entries(keys);
@@ -284,6 +439,7 @@ _md_shrink(MultiDictObject* md, bool update)
     }
     ASSERT_CONSISTENT(md, update);
     return 0;
+#endif
 }
 
 static inline int
@@ -375,6 +531,15 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
             return -1;
         }
         memcpy(keys, other->keys, size);
+#ifdef Py_GIL_DISABLED
+        /* keys is a brand-new, independent allocation: the memcpy just
+           copied other->keys's live reader count and retirement link
+           along with everything else, neither of which describes this
+           new blob's own (so-far nonexistent) readers or retirement
+           state. */
+        keys->readers = 0;
+        keys->retired_next = NULL;
+#endif
         entry_t* entry = htkeys_entries(keys);
         for (Py_ssize_t idx = 0; idx < keys->nentries; idx++, entry++) {
             Py_XINCREF(entry->identity);
@@ -877,10 +1042,33 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
         goto fail;
     }
 
-    htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
-    entry_t* entries = htkeys_entries(md->keys);
+    /* entry->identity and entry->hash are write-once-at-insertion and
+       never mutated again (aside from getall()'s temporary MD_HASH_MARK
+       toggling, still critical-section-only -- a concurrent contains()
+       can transiently race that into a false negative, which is a
+       logical staleness in the same family as the version-check
+       RuntimeError elsewhere, not a memory-safety concern). That means
+       this walk needs no per-entry synchronization beyond the table's
+       own lifetime, which md_reader_enter()/md_reader_exit() provide:
+       no atomic entry-field stores or TryIncRef dance needed here,
+       unlike md_get_one()'s value read. When pret != NULL every caller
+       already holds md's critical section (the pret == NULL path is
+       __contains__'s hot path and the only lock-free one; pret != NULL
+       is only reached from the still-locked view set-algebra helpers),
+       so _md_ensure_key()'s entry->key mutation below remains exactly
+       as safe as it always was; the reader bookkeeping is just
+       harmless extra accounting in that case. */
+#ifdef Py_GIL_DISABLED
+    htkeys_t* keys = md_reader_enter(md);
+#else
+    htkeys_t* keys = md->keys;
+#endif
 
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, keys, hash);
+    entry_t* entries = htkeys_entries(keys);
+
+    int found = 0;
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
             continue;
@@ -890,22 +1078,26 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
             continue;
         }
         if (_str_cmp(identity, entry->identity)) {
-            Py_DECREF(identity);
+            found = 1;
             if (pret != NULL) {
                 *pret = _md_ensure_key(md, entry);
                 if (*pret == NULL) {
-                    goto fail;
+                    found = -1;
                 }
             }
-            return 1;
+            break;
         }
     }
 
+#ifdef Py_GIL_DISABLED
+    md_reader_exit(md, keys);
+#endif
+
     Py_DECREF(identity);
-    if (pret != NULL) {
+    if (found <= 0 && pret != NULL) {
         *pret = NULL;
     }
-    return 0;
+    return found;
 fail:
     Py_XDECREF(identity);
     if (pret != NULL) {
@@ -2087,11 +2279,24 @@ md_clear(MultiDictObject* md)
     // not yet). Swapping first means a suspended thread only ever sees
     // either the fully-populated old table or the fully-empty one.
     htkeys_t* old_keys = md->keys;
-    entry_t* entries = htkeys_entries(old_keys);
-    Py_ssize_t nentries = old_keys->nentries;
     md->used = 0;
     md->keys = (htkeys_t*)&empty_htkeys;
 
+#ifdef Py_GIL_DISABLED
+    /* Unlike the critical-section-only world PR #1433 was written for,
+       a lock-free reader can now be genuinely concurrent with this
+       function, not just suspended by an arbitrary-code callback: it
+       does not take md's critical section at all. Releasing entries'
+       references here, immediately, would race such a reader's own
+       (unsynchronized) reads of those same identity/key/value fields.
+       So the entire cleanup -- decref loop included, not just the
+       final free -- is deferred to md_retire()'s drain, which only
+       ever runs at a point already proven to have no reader near this
+       table. */
+    md_retire(md, old_keys);
+#else
+    entry_t* entries = htkeys_entries(old_keys);
+    Py_ssize_t nentries = old_keys->nentries;
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         entry_t* entry = entries + pos;
         if (entry->identity != NULL) {
@@ -2100,8 +2305,8 @@ md_clear(MultiDictObject* md)
             Py_CLEAR(entry->value);
         }
     }
-
     htkeys_free(old_keys);
+#endif
     ASSERT_CONSISTENT(md, false);
     return 0;
 }

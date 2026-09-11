@@ -1720,11 +1720,10 @@ fail:
 static inline int
 multidict_keysview_contains(_Multidict_ViewObject* self, PyObject* key)
 {
-    int ret;
-    Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = md_contains(self->md, key, NULL);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    /* md_contains() with pret == NULL is lock-free on its own (see the
+       comment on md_contains() in hashtable.h); no critical section
+       needed here. */
+    return md_contains(self->md, key, NULL);
 }
 
 static inline PyObject*

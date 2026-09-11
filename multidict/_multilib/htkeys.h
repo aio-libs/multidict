@@ -51,6 +51,25 @@ typedef struct _htkeys {
     /* Number of used entries in dk_entries. */
     Py_ssize_t nentries;
 
+#ifdef Py_GIL_DISABLED
+    /* Number of lock-free readers currently walking this specific table.
+       Advisory only: freeing is gated by MultiDictObject.active_readers
+       (see md_reader_enter()/md_reader_exit()/md_retire() in
+       hashtable.h), this field is a defensive assertion that the gate
+       actually worked, not itself load-bearing for safety. Relaxed
+       ordering is enough because it is only ever inspected after that
+       gate has already been observed closed. */
+    Py_ssize_t readers;
+
+    /* Intrusive link for MultiDictObject.retired: a table moves here
+       instead of being freed immediately if active_readers was nonzero
+       at retirement time, and is only actually freed once a later
+       resize observes the gate closed. Writer-only (always touched
+       under the owning MultiDict's critical section), so it is a plain
+       (non-atomic) field. */
+    struct _htkeys* retired_next;
+#endif
+
     /* Actual hash table of dk_size entries. It holds indices in dk_entries,
        or DKIX_EMPTY(-1) or DKIX_DUMMY(-2).
 
@@ -243,18 +262,24 @@ estimate_log2_keysize(Py_ssize_t n)
  * for the rationale of using log2_index_bytes=3 instead of 0.
  */
 static const htkeys_t empty_htkeys = {
-    0, /* log2_size */
-    3, /* log2_index_bytes */
-    0, /* usable (immutable) */
-    0, /* nentries */
-    {DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY}, /* indices */
+    .log2_size = 0,
+    .log2_index_bytes = 3,
+    .usable = 0, /* immutable */
+    .nentries = 0,
+#ifdef Py_GIL_DISABLED
+    /* Never retired or freed (every resize path special-cases
+       `keys != &empty_htkeys`), so these are never touched. */
+    .readers = 0,
+    .retired_next = NULL,
+#endif
+    .indices = {DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY},
 };
 
 static inline Py_ssize_t
@@ -301,6 +326,10 @@ htkeys_new(uint8_t log2_size)
     keys->log2_index_bytes = log2_bytes;
     keys->nentries = 0;
     keys->usable = usable;
+#ifdef Py_GIL_DISABLED
+    keys->readers = 0;
+    keys->retired_next = NULL;
+#endif
     memset(&keys->indices[0], 0xff, ((size_t)1 << log2_bytes));
     memset(
         &keys->indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
