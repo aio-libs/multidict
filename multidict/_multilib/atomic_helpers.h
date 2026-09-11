@@ -19,7 +19,7 @@ extern "C" {
    counters (htkeys_t.readers), and seq_cst load/store/fetch-add for
    the md->keys <-> active_readers pair, where anything weaker than a
    full fence leaves a real (if narrow, architecture-dependent) race --
-   see the reasoning in md_reader_enter()/md_reader_exit()/md_retire()
+   see the reasoning in _md_reader_enter()/_md_reader_exit()/_md_retire()
    in hashtable.h. */
 
 #ifndef _MULTIDICT_USE_GCC_BUILTIN_ATOMICS

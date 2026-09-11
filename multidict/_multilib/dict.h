@@ -31,8 +31,8 @@ typedef struct {
        iteration): incremented before a reader ever dereferences
        `keys`, decremented once it's done. A retired table is only
        ever freed once this reads 0 at a point synchronized (seq_cst)
-       with the swap that retired it -- see md_reader_enter()/
-       md_reader_exit()/md_retire() in hashtable.h for the full
+       with the swap that retired it -- see _md_reader_enter()/
+       _md_reader_exit()/_md_retire() in hashtable.h for the full
        reasoning. Writers never touch this field themselves. */
     Py_ssize_t active_readers;
 

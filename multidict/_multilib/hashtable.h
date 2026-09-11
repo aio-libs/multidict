@@ -240,7 +240,7 @@ the design discussion that produced this file for the specific
 interleaving that a weaker order permits.
 
 keys->readers (C/D) does not participate in that ordering and stays
-relaxed: it is only ever inspected in md_drain_retired(), which never
+relaxed: it is only ever inspected in _md_drain_retired(), which never
 runs except at a point already known -- via the active_readers check
 above -- to have no reader anywhere near it. It exists purely as a
 cheap defensive assertion that the coarse gate actually worked, not as
@@ -252,7 +252,7 @@ load needs epoch tagging, which this does not attempt).
 */
 
 static inline htkeys_t*
-md_reader_enter(MultiDictObject* md)
+_md_reader_enter(MultiDictObject* md)
 {
     atomic_fetch_add_ssize(&md->active_readers, 1);
     htkeys_t* keys = (htkeys_t*)atomic_load_ptr((void* const*)&md->keys);
@@ -263,7 +263,7 @@ md_reader_enter(MultiDictObject* md)
 }
 
 static inline void
-md_reader_exit(MultiDictObject* md, htkeys_t* keys)
+_md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys != &empty_htkeys) {
         atomic_fetch_add_ssize_relaxed(&keys->readers, -1);
@@ -295,7 +295,7 @@ _md_free_retired(htkeys_t* keys)
    table that couldn't be freed immediately at retirement time gets
    another chance each time the object is next mutated. */
 static inline void
-md_drain_retired(MultiDictObject* md)
+_md_drain_retired(MultiDictObject* md)
 {
     if (md->retired == NULL) {
         return;
@@ -316,14 +316,14 @@ md_drain_retired(MultiDictObject* md)
 /* Replaces md_clear()'s and _md_resize()'s direct htkeys_free(): frees
    `keys` immediately if provably unreferenced by any in-flight
    lock-free reader, otherwise defers it to md->retired for a later
-   md_drain_retired() to pick up. */
+   _md_drain_retired() to pick up. */
 static inline void
-md_retire(MultiDictObject* md, htkeys_t* keys)
+_md_retire(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys == &empty_htkeys) {
         return;
     }
-    md_drain_retired(md);
+    _md_drain_retired(md);
     if (atomic_load_ssize(&md->active_readers) == 0) {
         _md_free_retired(keys);
     } else {
@@ -380,12 +380,12 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
 
 #ifdef Py_GIL_DISABLED
     /* Ownership of oldkeys's entries has already moved to newkeys via
-       the memcpy/copy loop above; zeroing nentries tells md_retire()'s
+       the memcpy/copy loop above; zeroing nentries tells _md_retire()'s
        cleanup there is nothing left to decref, only memory to free. */
     if (oldkeys != &empty_htkeys) {
         oldkeys->nentries = 0;
     }
-    md_retire(md, oldkeys);
+    _md_retire(md, oldkeys);
 #else
     if (oldkeys != &empty_htkeys) {
         htkeys_free(oldkeys);
@@ -565,7 +565,7 @@ md_calc_identity(MultiDictObject* md, PyObject* key)
 }
 
 static inline PyObject*
-md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
+_md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
 {
     if (md->is_ci) return _ci_arg_to_key(md->state, key, identity);
     return _arg_to_key(md->state, key, identity);
@@ -582,7 +582,7 @@ _md_ensure_key(MultiDictObject* md, entry_t* entry)
 {
     assert(entry >= htkeys_entries(md->keys));
     assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
-    PyObject* key = md_calc_key(md, entry->key, entry->identity);
+    PyObject* key = _md_calc_key(md, entry->key, entry->identity);
     if (key == NULL) {
         return NULL;
     }
@@ -936,14 +936,14 @@ md_init_finder(MultiDictObject* md, PyObject* identity, md_finder_t* finder)
 }
 
 static inline Py_ssize_t
-md_finder_slot(md_finder_t* finder)
+_md_finder_slot(md_finder_t* finder)
 {
     assert(finder->md != NULL);
     return finder->iter.slot;
 }
 
 static inline Py_ssize_t
-md_finder_index(md_finder_t* finder)
+_md_finder_index(md_finder_t* finder)
 {
     assert(finder->md != NULL);
     assert(finder->iter.index >= 0);
@@ -1049,7 +1049,7 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
        logical staleness in the same family as the version-check
        RuntimeError elsewhere, not a memory-safety concern). That means
        this walk needs no per-entry synchronization beyond the table's
-       own lifetime, which md_reader_enter()/md_reader_exit() provide:
+       own lifetime, which _md_reader_enter()/_md_reader_exit() provide:
        no atomic entry-field stores or TryIncRef dance needed here,
        unlike md_get_one()'s value read. When pret != NULL every caller
        already holds md's critical section (the pret == NULL path is
@@ -1059,7 +1059,7 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
        as safe as it always was; the reader bookkeeping is just
        harmless extra accounting in that case. */
 #ifdef Py_GIL_DISABLED
-    htkeys_t* keys = md_reader_enter(md);
+    htkeys_t* keys = _md_reader_enter(md);
 #else
     htkeys_t* keys = md->keys;
 #endif
@@ -1090,7 +1090,7 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
     }
 
 #ifdef Py_GIL_DISABLED
-    md_reader_exit(md, keys);
+    _md_reader_exit(md, keys);
 #endif
 
     Py_DECREF(identity);
@@ -1371,7 +1371,7 @@ md_pop_item(MultiDictObject* md)
     }
     assert(pos >= 0);
 
-    PyObject* key = md_calc_key(md, entry->key, entry->identity);
+    PyObject* key = _md_calc_key(md, entry->key, entry->identity);
     if (key == NULL) {
         return NULL;
     }
@@ -1408,14 +1408,14 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
 
     // don't grab neither key nor value but use the calculated index
     while ((tmp = md_find_next(&finder, NULL, NULL)) > 0) {
-        entry_t* entry = entries + md_finder_index(&finder);
+        entry_t* entry = entries + _md_finder_index(&finder);
         if (!found) {
             found = 1;
             Py_SETREF(entry->key, Py_NewRef(key));
             Py_SETREF(entry->value, Py_NewRef(value));
             entry->hash = finder.hash | MD_HASH_MARK;
         } else {
-            _md_del_at(md, md_finder_slot(&finder), entry);
+            _md_del_at(md, _md_finder_slot(&finder), entry);
         }
     }
     if (tmp < 0) {
@@ -1609,7 +1609,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op)
                 goto fail;
             }
             /* materialize key */
-            key = md_calc_key(other, entry->key, identity);
+            key = _md_calc_key(other, entry->key, identity);
             if (key == NULL) {
                 goto fail;
             }
@@ -2290,10 +2290,10 @@ md_clear(MultiDictObject* md)
        references here, immediately, would race such a reader's own
        (unsynchronized) reads of those same identity/key/value fields.
        So the entire cleanup -- decref loop included, not just the
-       final free -- is deferred to md_retire()'s drain, which only
+       final free -- is deferred to _md_retire()'s drain, which only
        ever runs at a point already proven to have no reader near this
        table. */
-    md_retire(md, old_keys);
+    _md_retire(md, old_keys);
 #else
     entry_t* entries = htkeys_entries(old_keys);
     Py_ssize_t nentries = old_keys->nentries;

@@ -54,7 +54,7 @@ typedef struct _htkeys {
 #ifdef Py_GIL_DISABLED
     /* Number of lock-free readers currently walking this specific table.
        Advisory only: freeing is gated by MultiDictObject.active_readers
-       (see md_reader_enter()/md_reader_exit()/md_retire() in
+       (see _md_reader_enter()/_md_reader_exit()/_md_retire() in
        hashtable.h), this field is a defensive assertion that the gate
        actually worked, not itself load-bearing for safety. Relaxed
        ordering is enough because it is only ever inspected after that
