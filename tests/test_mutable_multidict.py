@@ -323,6 +323,23 @@ class TestMutableMultiDict:
 
         assert expected == list(d.items())
 
+    def test_replacement_many_duplicates(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[str]],
+    ) -> None:
+        # Same as test_replacement_order() but with enough duplicate keys to
+        # overflow the C extension's fixed-size embedded buffer for
+        # already-found entries and fall back to a heap-allocated one.
+        n = 20
+        d = case_sensitive_multidict_class()
+        for i in range(n):
+            d.add("key1", f"val{i}")
+        d.add("key2", "other")
+
+        d["key1"] = "val"
+
+        assert list(d.items()) == [("key1", "val"), ("key2", "other")]
+
     def test_nonstr_key(
         self,
         case_sensitive_multidict_class: type[MultiDict[str]],

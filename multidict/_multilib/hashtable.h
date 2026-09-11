@@ -23,12 +23,22 @@ typedef struct _md_pos {
     uint64_t version;
 } md_pos_t;
 
+/* Number of already-found entry indices md_finder_t can track without
+   falling back to a heap allocation; see the comment above md_finder_t
+   for why the tracking is needed at all. */
+#define MD_FINDER_EMBEDDED_VISITED 8
+
 typedef struct _md_finder {
     MultiDictObject* md;
     htkeysiter_t iter;
     uint64_t version;
     Py_hash_t hash;
-    PyObject* identity;  // borrowed ref
+    PyObject* identity;  // owned ref
+    Py_ssize_t visited_embedded[MD_FINDER_EMBEDDED_VISITED];
+    Py_ssize_t* visited;       // == visited_embedded until it overflows
+    Py_ssize_t visited_count;  // number of valid entries in `visited`
+    Py_ssize_t
+        visited_capacity;  // capacity of the storage `visited` points to
 } md_finder_t;
 
 typedef enum _UpdateOp {
@@ -59,14 +69,24 @@ changeing and if the number of DKIX_DUMMY slots grows to 1/4 of the total
 amount.
 
 The iteration for operations like getall() is a little tricky. The next index
-calculation could return the already visited index before reaching the end. To
-eliminate duplicates, the code marks already visited entries. Entry hashes are
-folded non-negative (_unicode_hash() masks with PY_SSIZE_T_MAX), so
-MD_HASH_MARK, the hash range's high bit, can mark a hash as temporarily
-invalid: OR it in, AND it out with PY_SSIZE_T_MAX to restore. A real folded
-hash never has that bit set, so a marked entry is simply one whose hash is
-negative. After the iteration finishes, all marked entries are restored. Double
-iteration over the indices still has O(1) amortized time, it is ok.
+calculation could return the already visited index before reaching the end
+(htkeysiter_next() is explicit that it might, see its docstring). To
+eliminate duplicates, md_finder_t records the entry index of every match it
+has already returned and skips it if the probe sequence loops back to it. The
+common case (few or no duplicate keys) fits in the embedded
+MD_FINDER_EMBEDDED_VISITED-element array inline in md_finder_t, with no
+allocation; a key with more matches than that switches to a heap-allocated,
+growable array for the rest of that lookup. This tracking is per md_finder_t
+instance, not a mutation of the entry itself, so a single lookup's bookkeeping
+cannot be observed by anything looking at the entry through another path.
+
+`.update()` / `.extend()` / `.merge()` solve a related but different problem
+(recognizing, across a whole pass over another mapping's entries, an entry
+already touched earlier in the *same* call) with a separate mechanism: they
+still mark the entry's hash in place with MD_HASH_MARK (the hash range's high
+bit; entry hashes are folded non-negative by _unicode_hash(), so a real
+folded hash never has that bit set) and unmark every entry in one pass at the
+end via md_post_update(). That scheme is unrelated to md_finder_t.
 
 `.add()`, `val = md[key]`, `md[key] = val`, `md.setdefault()` all have O(1).
 `.getall()` / `.popall()` have O(N) where N is the amount of returned items.
@@ -756,17 +776,73 @@ cleanup:
     return ret;
 }
 
+/* Returns true if `index` is already among the entries this finder has
+   returned. Membership is checked with a linear scan: the embedded/overflow
+   array is not sorted, and for the expected case of very few duplicate
+   keys a scan of at most a handful of Py_ssize_t is cheaper than keeping
+   it sorted or hashed. */
+static inline bool
+_md_finder_is_visited(md_finder_t* finder, Py_ssize_t index)
+{
+    for (Py_ssize_t i = 0; i < finder->visited_count; i++) {
+        if (finder->visited[i] == index) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Records `index` as visited, growing from the embedded array to a
+   heap-allocated one (and doubling that one) as needed. */
+static inline int
+_md_finder_mark_visited(md_finder_t* finder, Py_ssize_t index)
+{
+    if (finder->visited_count == finder->visited_capacity) {
+        Py_ssize_t new_capacity = finder->visited_capacity * 2;
+        Py_ssize_t* new_visited;
+        if (finder->visited == finder->visited_embedded) {
+            new_visited =
+                PyMem_Malloc((size_t)new_capacity * sizeof(Py_ssize_t));
+            if (new_visited == NULL) {
+                PyErr_NoMemory();
+                return -1;
+            }
+            memcpy(new_visited,
+                   finder->visited_embedded,
+                   sizeof(finder->visited_embedded));
+        } else {
+            new_visited = PyMem_Realloc(
+                finder->visited, (size_t)new_capacity * sizeof(Py_ssize_t));
+            if (new_visited == NULL) {
+                PyErr_NoMemory();
+                return -1;
+            }
+        }
+        finder->visited = new_visited;
+        finder->visited_capacity = new_capacity;
+    }
+    finder->visited[finder->visited_count++] = index;
+    return 0;
+}
+
 static inline int
 md_init_finder(MultiDictObject* md, PyObject* identity, md_finder_t* finder)
 {
-    finder->version = md->version;
-    finder->md = md;
-    finder->identity = identity;
-    finder->hash = _unicode_hash(identity);
-    if (finder->hash == -1) {
+    Py_hash_t hash = _unicode_hash(identity);
+    if (hash == -1) {
         return -1;
     }
-    htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
+    finder->version = md->version;
+    finder->hash = hash;
+    finder->identity = Py_NewRef(identity);
+    finder->visited = finder->visited_embedded;
+    finder->visited_count = 0;
+    finder->visited_capacity = MD_FINDER_EMBEDDED_VISITED;
+    htkeysiter_init(&finder->iter, md->keys, hash);
+    /* Set last: md_finder_cleanup() uses finder->md != NULL to tell whether
+       there is anything to release, so it must stay NULL until every other
+       field above is actually initialized. */
+    finder->md = md;
     return 0;
 }
 
@@ -804,7 +880,19 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
         if (finder->iter.index < 0) {
             continue;
         }
-        entry_t* entry = entries + finder->iter.index;
+        Py_ssize_t index = finder->iter.index;
+        /* Checked before touching the entry at all: md_find_next() returns
+           with finder->iter still parked on the slot it just returned
+           (unadvanced), so the next call re-examines that exact slot
+           before htkeysiter_next() ever moves past it. If the caller
+           deleted that entry in between (the getall()/replace() duplicate
+           case), entry->identity is now NULL; the visited check below
+           has to be what skips it, since checking anything else about the
+           entry first would dereference a wiped-out identity. */
+        if (_md_finder_is_visited(finder, index)) {
+            continue;
+        }
+        entry_t* entry = entries + index;
         if (entry->hash != finder->hash) {
             continue;
         }
@@ -812,8 +900,10 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
             continue;
         }
 
-        /* found, mark the entry as visited */
-        entry->hash = finder->hash | MD_HASH_MARK;
+        if (_md_finder_mark_visited(finder, index) < 0) {
+            ret = -1;
+            goto cleanup;
+        }
 
         if (pkey) {
             *pkey = _md_ensure_key(finder->md, entry);
@@ -845,17 +935,10 @@ md_finder_cleanup(md_finder_t* finder)
         return;
     }
 
-    htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
-    entry_t* entries = htkeys_entries(finder->md->keys);
-    for (; finder->iter.index != DKIX_EMPTY; htkeysiter_next(&finder->iter)) {
-        if (finder->iter.index < 0) {
-            continue;
-        }
-        entry_t* entry = entries + finder->iter.index;
-        if (entry->hash < 0) {
-            entry->hash = finder->hash;
-        }
+    if (finder->visited != finder->visited_embedded) {
+        PyMem_Free(finder->visited);
     }
+    Py_CLEAR(finder->identity);
     ASSERT_CONSISTENT(finder->md, false);
     finder->md = NULL;
 }
@@ -1221,7 +1304,6 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
             found = 1;
             Py_SETREF(entry->key, Py_NewRef(key));
             Py_SETREF(entry->value, Py_NewRef(value));
-            entry->hash = finder.hash | MD_HASH_MARK;
         } else {
             _md_del_at(md, md_finder_slot(&finder), entry);
         }

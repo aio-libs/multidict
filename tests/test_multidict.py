@@ -904,6 +904,17 @@ class TestMultiDict(BaseMultiDictTest):
         default = object()
         assert d.getall("some_key", default) is default
 
+    def test_getall_many_duplicates(self, cls: type[MultiDict[str]]) -> None:
+        # The C extension keeps track of which entries getall() already
+        # returned in a small fixed-size buffer that overflows to a
+        # heap-allocated one past a handful of duplicates; exercise both.
+        n = 20
+        pairs = [("key", f"value{i}") for i in range(n)]
+        d = cls([*pairs, ("other", "value")])
+
+        assert d.getall("key") == [f"value{i}" for i in range(n)]
+        assert d.getall("other") == ["value"]
+
     def test_preserve_stable_ordering(
         self,
         cls: type[MultiDict[str | int]],

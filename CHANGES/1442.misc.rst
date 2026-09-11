@@ -1,0 +1,5 @@
+Reworked ``md_finder_t`` (the C extension's helper for ``getall()``/``popall()``/
+key-replacement lookups with duplicate keys) to track already-returned entries
+in its own small buffer instead of temporarily mutating the entry's hash in
+place, and to hold its own reference to the key identity instead of borrowing
+one -- by :user:`asvetlov`.
