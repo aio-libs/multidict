@@ -1572,8 +1572,9 @@ _err_cannot_fetch(Py_ssize_t i, const char* name)
 
 /* list[i] as a new reference. On a free-threaded build another thread can
    drop the item between a borrow and its incref, or shrink the list after
-   its length was checked, so the reference is taken under the list's lock
-   and _list_item_gone() reports an item that is no longer there. GIL builds
+   its length was checked, so PyList_GetItemRef takes the reference
+   atomically (locking the list only if its lock-free attempt fails) and
+   _list_item_gone() reports an item that is no longer there. GIL builds
    keep the macro and compile the check away. */
 #ifdef Py_GIL_DISABLED
 static inline PyObject*
