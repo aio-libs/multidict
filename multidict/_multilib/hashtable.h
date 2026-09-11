@@ -1433,14 +1433,6 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
    below. Distinct from 1 (found) / 0 (not found) / -1 (error). */
 #define _MD_NEED_LOCK 2
 
-/* Lock-free fast path. entry->identity is checked (and, via
-   PyUnstable_TryIncRef(), safely referenced) before entry->hash or
-   entry->value is ever touched -- see the comment on
-   _md_entry_load_identity() in the Py_GIL_DISABLED block above for
-   why that order, and why TryIncRef is required at all rather than a
-   raw dereference, for *every* candidate this walk examines, not just
-   an eventual match: _str_cmp() needs to safely read the candidate's
-   contents to know whether it even matches. */
 static inline int
 _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                      PyObject** ret)
