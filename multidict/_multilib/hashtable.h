@@ -289,11 +289,6 @@ _md_free_retired(htkeys_t* keys)
     htkeys_free(keys);
 }
 
-/* Frees whatever is currently on md->retired, if active_readers reads
-   0 at this (seq_cst) checkpoint. Called at the start of every
-   resize-triggering operation (shrink, resize, reserve, clear), so a
-   table that couldn't be freed immediately at retirement time gets
-   another chance each time the object is next mutated. */
 static inline void
 _md_drain_retired(MultiDictObject* md)
 {
@@ -313,10 +308,6 @@ _md_drain_retired(MultiDictObject* md)
     }
 }
 
-/* Replaces md_clear()'s and _md_resize()'s direct htkeys_free(): frees
-   `keys` immediately if provably unreferenced by any in-flight
-   lock-free reader, otherwise defers it to md->retired for a later
-   _md_drain_retired() to pick up. */
 static inline void
 _md_retire(MultiDictObject* md, htkeys_t* keys)
 {

@@ -12,15 +12,7 @@ extern "C" {
 /* Atomic backend selection, mirroring CPython's own
    Include/cpython/pyatomic.h: prefer GCC/Clang builtins, fall back to
    C11 stdatomic.h, and use MSVC intrinsics only when neither is
-   available (plain cl.exe, which supports neither).
-
-   Only the operations the lock-free read path actually needs are
-   provided: relaxed load/fetch-add for advisory, non-load-bearing
-   counters (htkeys_t.readers), and seq_cst load/store/fetch-add for
-   the md->keys <-> active_readers pair, where anything weaker than a
-   full fence leaves a real (if narrow, architecture-dependent) race --
-   see the reasoning in _md_reader_enter()/_md_reader_exit()/_md_retire()
-   in hashtable.h. */
+   available (plain cl.exe, which supports neither). */
 
 #ifndef _MULTIDICT_USE_GCC_BUILTIN_ATOMICS
 #if defined(__GNUC__) && \

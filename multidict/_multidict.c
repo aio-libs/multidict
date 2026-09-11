@@ -598,9 +598,6 @@ multidict_mp_as_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
 static int
 multidict_sq_contains(MultiDictObject* self, PyObject* key)
 {
-    /* md_contains() with pret == NULL is lock-free on its own (see the
-       comment on md_contains() in hashtable.h); no critical section
-       needed here. */
     return md_contains(self, key, NULL);
 }
 
