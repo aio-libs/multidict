@@ -1550,6 +1550,9 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
 {
     Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
+    if (md_reserve(md, nkwargs) < 0) {
+        return -1;
+    }
     for (Py_ssize_t i = 0; i < nkwargs; i++) {
         PyObject* key = PyTuple_GET_ITEM(kwnames, i);  // borrowed
         assert(PyUnicode_Check(key));
