@@ -1732,14 +1732,16 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op)
                 }
                 Py_INCREF(item);
                 break;
-            case ITER:
-                item = PyIter_Next(it);
-                if (item == NULL) {
-                    if (PyErr_Occurred()) {
-                        goto fail;
-                    }
+            case ITER: {
+                int res = PyIter_NextItem(it, &item);
+                if (res < 0) {
+                    goto fail;
+                }
+                if (res == 0) {
                     goto exit;
                 }
+                break;
+            }
         }
 
         if (_md_parse_item(i, item, &key, &value) < 0) {
