@@ -221,6 +221,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
 {
     // the self is allocated and NULL-ed
     int ret;
+    Py_ssize_t nkwargs = kwnames == NULL ? 0 : PyTuple_GET_SIZE(kwnames);
 
     if (arg != NULL) {
         MultiDictObject* other = NULL;
@@ -237,7 +238,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 Py_END_CRITICAL_SECTION();
             } else {
                 Py_BEGIN_CRITICAL_SECTION(other);
-                ret = md_init(self, state, is_ci, md_len(other));
+                ret = md_init(self, state, is_ci, md_len(other) + nkwargs);
                 if (ret == 0) {
                     ret = md_update_from_ht(self, other, Extend);
                     ASSERT_CONSISTENT(self, false);
@@ -253,7 +254,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             }
             Py_END_CRITICAL_SECTION();
         } else {
-            ret = md_init(self, state, is_ci, 0);
+            ret = md_init(self, state, is_ci, nkwargs);
             if (ret == 0) {
                 if (arg != NULL) {
                     ret = md_update_from_seq(self, arg, Extend);
@@ -262,11 +263,10 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             }
         }
     } else {
-        ret = md_init(self, state, is_ci, 0);
+        ret = md_init(self, state, is_ci, nkwargs);
     }
 
     if (ret == 0) {
-        Py_ssize_t nkwargs = kwnames == NULL ? 0 : PyTuple_GET_SIZE(kwnames);
         if (nkwargs > 0) {
             ret = md_update_from_kwnames(self, args, nargs, kwnames);
         }
