@@ -180,7 +180,6 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                            PyObject* arg, PyObject* const* args,
                            Py_ssize_t nargs, PyObject* kwnames)
 {
-    // the self is allocated and NULL-ed
     int ret;
     Py_ssize_t nkwargs = kwnames == NULL ? 0 : PyTuple_GET_SIZE(kwnames);
 
@@ -267,8 +266,6 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
     }
     mod_state* state = get_mod_state(mod);
 
-    // Borrowed: the vectorcall args array is kept alive by the caller for
-    // the duration of this call, same as any other borrowed argument.
     PyObject* arg = nargs == 1 ? args[0] : NULL;
 
     MultiDictObject* self = (MultiDictObject*)tp->tp_alloc(tp, 0);
