@@ -1541,6 +1541,41 @@ fail:
     return -1;
 }
 
+static inline int
+md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
+                       Py_ssize_t nargs, PyObject* kwnames)
+{
+    Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
+    if (md_reserve(md, nkwargs) < 0) {
+        return -1;
+    }
+    for (Py_ssize_t i = 0; i < nkwargs; i++) {
+        PyObject* key = PyTuple_GET_ITEM(kwnames, i);  // borrowed
+        assert(PyUnicode_Check(key));
+        Py_INCREF(key);
+        PyObject* identity = md_calc_identity(md, key);
+        if (identity == NULL) {
+            Py_DECREF(key);
+            return -1;
+        }
+        Py_hash_t hash = _unicode_hash(identity);
+        if (hash == -1) {
+            Py_DECREF(identity);
+            Py_DECREF(key);
+            return -1;
+        }
+        PyObject* value = args[nargs + i];  // borrowed
+        if (_md_add_with_hash_steal_refs(
+                md, hash, identity, key, Py_NewRef(value)) < 0) {
+            Py_DECREF(value);
+            Py_DECREF(identity);
+            Py_DECREF(key);
+            return -1;
+        }
+    }
+    return 0;
+}
+
 static inline void
 _err_not_sequence(Py_ssize_t i)
 {

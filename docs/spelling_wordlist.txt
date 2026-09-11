@@ -125,6 +125,7 @@ url
 urlencoded
 urls
 utf
+vectorcall
 websocket
 websockets
 Websockets
