@@ -1720,9 +1720,6 @@ fail:
 static inline int
 multidict_keysview_contains(_Multidict_ViewObject* self, PyObject* key)
 {
-    /* md_contains() with pret == NULL is lock-free on its own (see the
-       comment on md_contains() in hashtable.h); no critical section
-       needed here. */
     return md_contains(self->md, key, NULL);
 }
 
