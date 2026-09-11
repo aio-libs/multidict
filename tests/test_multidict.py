@@ -1776,32 +1776,49 @@ def test_single_item_ops_thread_safety() -> None:
     concurrent reader on another thread was still walking (a
     use-after-free), or a concurrent mutator could observe/interleave with
     a half-applied insert or deletion. This is a C-extension-only concern:
-    the pure-Python implementation has no locking of its own to regress."""
+    the pure-Python implementation has no locking of its own to regress.
+    __eq__ is exercised against both another MultiDict (the two-object
+    CRITICAL_SECTION2 path) and a plain dict (the single-object,
+    generic-mapping path)."""
     d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    d2: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    other_mapping = {str(i): i for i in range(200)}
 
     def worker(n: int) -> None:
         for i in range(300):
             key = str(i % 200)
             if n % 2 == 0:
-                op = i % 6
+                target = d if n % 4 == 0 else d2
+                op = i % 9
                 if op == 0:
-                    d.add(key, i)
+                    target.add(key, i)
                 elif op == 1:
-                    d[key] = i
+                    target[key] = i
                 elif op == 2:
-                    d.setdefault(f"sd{n}-{i}", i)
+                    target.setdefault(f"sd{n}-{i}", i)
                 elif op == 3:
                     with contextlib.suppress(KeyError):
-                        del d[key]
+                        del target[key]
                 elif op == 4:
-                    d.pop(key, None)
+                    target.pop(key, None)
+                elif op == 5:
+                    target.getall(key, [])
+                elif op == 6:
+                    target.popone(key, None)
+                elif op == 7:
+                    target.popall(key, None)
                 else:
                     with contextlib.suppress(KeyError):
-                        d.popitem()
+                        target.popitem()
             else:
                 key in d
                 d.get(key)
+                d.getone(key, None)
+                with contextlib.suppress(KeyError):
+                    d[key]
                 len(d)
+                d == d2
+                d == other_mapping
                 # A concurrent mutation from another worker can legitimately
                 # be detected mid-iteration (same as dict's own "changed
                 # size during iteration" check); that is not a bug here.
@@ -1814,6 +1831,7 @@ def test_single_item_ops_thread_safety() -> None:
         list(executor.map(worker, range(8)))
 
     assert len(d) == len(list(d.items()))
+    assert len(d2) == len(list(d2.items()))
 
 
 @pytest.mark.c_extension
