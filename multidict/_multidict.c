@@ -175,45 +175,6 @@ done:
     return ret;
 }
 
-/* ---- tp_vectorcall-based fast construction ----
-
-   Unlike multidict_tp_init()/cimultidict_tp_init(), the object under
-   construction here (``self``) has just been allocated and has not been
-   returned to Python yet, so it cannot be observed by any other thread.
-   There is therefore no need for a critical section on ``self``, only on
-   ``other`` (an existing multidict/proxy argument) or on a plain dict
-   argument, same as the read side of the classic constructors. */
-
-static inline Py_ssize_t
-_multidict_ctor_size_hint(mod_state* state, PyObject* arg, Py_ssize_t nkwargs)
-{
-    Py_ssize_t size = nkwargs;
-    if (arg != NULL) {
-        if (PyTuple_CheckExact(arg)) {
-            size += PyTuple_GET_SIZE(arg);
-        } else if (PyList_CheckExact(arg)) {
-            size += PyList_GET_SIZE(arg);
-        } else if (PyDict_CheckExact(arg)) {
-            size += PyDict_GET_SIZE(arg);
-        } else if (MultiDict_CheckExact(state, arg) ||
-                   CIMultiDict_CheckExact(state, arg)) {
-            size += md_len((MultiDictObject*)arg);
-        } else if (MultiDictProxy_CheckExact(state, arg) ||
-                   CIMultiDictProxy_CheckExact(state, arg)) {
-            size += md_len(((MultiDictProxyObject*)arg)->md);
-        } else {
-            Py_ssize_t s = PyObject_LengthHint(arg, 0);
-            if (s < 0) {
-                // e.g. cannot calc size of generator object
-                PyErr_Clear();
-            } else {
-                size += s;
-            }
-        }
-    }
-    return size;
-}
-
 static inline int
 _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                            PyObject* arg, PyObject* const* args,
