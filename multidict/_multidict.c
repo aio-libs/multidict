@@ -1359,6 +1359,9 @@ static PyType_Slot multidict_slots[] = {
     {Py_tp_new, multidict_tp_new},
     {Py_tp_free, PyObject_GC_Del},
 
+#if PY_VERSION_HEX >= 0x030e00f0
+    {Py_tp_vectorcall, multidict_vectorcall},
+#endif
 #ifndef MANAGED_WEAKREFS
     {Py_tp_members, multidict_members},
 #endif
@@ -1472,6 +1475,9 @@ static PyType_Slot cimultidict_slots[] = {
     {Py_tp_doc, (void*)CIMultDict_doc},
     {Py_tp_init, cimultidict_tp_init},
     {Py_tp_new, cimultidict_tp_new},
+#if PY_VERSION_HEX >= 0x030e00f0
+    {Py_tp_vectorcall, cimultidict_vectorcall},
+#endif
     {0, NULL},
 };
 
@@ -1721,6 +1727,9 @@ static PyType_Slot multidict_proxy_slots[] = {
     {Py_tp_new, PyType_GenericNew},
     {Py_tp_free, PyObject_GC_Del},
 
+#if PY_VERSION_HEX >= 0x030e00f0
+    {Py_tp_vectorcall, multidict_proxy_vectorcall},
+#endif
 #ifndef MANAGED_WEAKREFS
     {Py_tp_members, multidict_proxy_members},
 #endif
@@ -1808,6 +1817,9 @@ static PyType_Slot cimultidict_proxy_slots[] = {
     {Py_tp_doc, (void*)CIMultDictProxy_doc},
     {Py_tp_methods, cimultidict_proxy_methods},
     {Py_tp_init, cimultidict_proxy_tp_init},
+#if PY_VERSION_HEX >= 0x030e00f0
+    {Py_tp_vectorcall, cimultidict_proxy_vectorcall},
+#endif
     {0, NULL},
 };
 
@@ -1944,11 +1956,13 @@ module_exec(PyObject* mod)
         goto fail;
     }
     state->MultiDictType = (PyTypeObject*)tmp;
-    /* MultiDict(...) construction: behaves like tp_new + tp_init, but
-       reads its arguments directly off the vectorcall stack instead of
-       requiring type_call() to first pack them into an args tuple and a
-       kwargs dict. */
+#if PY_VERSION_HEX < 0x030e00f0
+    /* 3.14+ sets this via the Py_tp_vectorcall slot instead: MultiDict(...)
+       construction behaves like tp_new + tp_init, but reads its arguments
+       directly off the vectorcall stack instead of requiring type_call()
+       to first pack them into an args tuple and a kwargs dict. */
     state->MultiDictType->tp_vectorcall = multidict_vectorcall;
+#endif
 
     tpl = PyTuple_Pack(1, (PyObject*)state->MultiDictType);
     if (tpl == NULL) {
@@ -1959,7 +1973,9 @@ module_exec(PyObject* mod)
         goto fail;
     }
     state->CIMultiDictType = (PyTypeObject*)tmp;
+#if PY_VERSION_HEX < 0x030e00f0
     state->CIMultiDictType->tp_vectorcall = cimultidict_vectorcall;
+#endif
     Py_CLEAR(tpl);
 
     tmp = PyType_FromModuleAndSpec(mod, &multidict_proxy_spec, NULL);
@@ -1967,7 +1983,9 @@ module_exec(PyObject* mod)
         goto fail;
     }
     state->MultiDictProxyType = (PyTypeObject*)tmp;
+#if PY_VERSION_HEX < 0x030e00f0
     state->MultiDictProxyType->tp_vectorcall = multidict_proxy_vectorcall;
+#endif
 
     tpl = PyTuple_Pack(1, (PyObject*)state->MultiDictProxyType);
     if (tpl == NULL) {
@@ -1978,7 +1996,9 @@ module_exec(PyObject* mod)
         goto fail;
     }
     state->CIMultiDictProxyType = (PyTypeObject*)tmp;
+#if PY_VERSION_HEX < 0x030e00f0
     state->CIMultiDictProxyType->tp_vectorcall = cimultidict_proxy_vectorcall;
+#endif
     Py_CLEAR(tpl);
 
     if (PyModule_AddType(mod, state->IStrType) < 0) {
