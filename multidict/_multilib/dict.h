@@ -29,11 +29,6 @@ typedef struct {
 #ifdef Py_GIL_DISABLED
     Py_ssize_t active_readers;
 
-    /* Singly-linked list (via htkeys_t.retired_next) of tables retired
-       by a resize/shrink/clear while active_readers was nonzero.
-       Writer-only (always under this object's critical section), so a
-       plain pointer, not atomic. Drained opportunistically at the
-       start of the next resize/shrink/reserve/clear. */
     htkeys_t* retired;
 #endif
 } MultiDictObject;
