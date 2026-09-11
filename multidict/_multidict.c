@@ -215,22 +215,6 @@ _multidict_ctor_size_hint(mod_state* state, PyObject* arg, Py_ssize_t nkwargs)
 }
 
 static inline int
-_multidict_validate_kwnames(PyObject* kwnames)
-{
-    if (kwnames == NULL) {
-        return 0;
-    }
-    Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
-    for (Py_ssize_t i = 0; i < nkwargs; i++) {
-        if (!PyUnicode_Check(PyTuple_GET_ITEM(kwnames, i))) {
-            PyErr_SetString(PyExc_TypeError, "keywords must be strings");
-            return -1;
-        }
-    }
-    return 0;
-}
-
-static inline int
 _multidict_ctor_do_init(mod_state* state, MultiDictObject* self, bool is_ci,
                         PyObject* arg, PyObject* const* args, Py_ssize_t nargs,
                         PyObject* kwnames)
@@ -308,9 +292,6 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
             "%s takes from 1 to 2 positional arguments but %zd were given",
             name,
             nargs + 1);
-        return NULL;
-    }
-    if (_multidict_validate_kwnames(kwnames) < 0) {
         return NULL;
     }
 
