@@ -52,13 +52,6 @@ typedef struct _htkeys {
     Py_ssize_t nentries;
 
 #ifdef Py_GIL_DISABLED
-    /* Number of lock-free readers currently walking this specific table.
-       Advisory only: freeing is gated by MultiDictObject.active_readers
-       (see _md_reader_enter()/_md_reader_exit()/_md_retire() in
-       hashtable.h), this field is a defensive assertion that the gate
-       actually worked, not itself load-bearing for safety. Relaxed
-       ordering is enough because it is only ever inspected after that
-       gate has already been observed closed. */
     Py_ssize_t readers;
 
     /* Intrusive link for MultiDictObject.retired: a table moves here
