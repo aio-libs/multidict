@@ -185,9 +185,9 @@ done:
    argument, same as the read side of the classic constructors. */
 
 static inline Py_ssize_t
-_multidict_ctor_size_hint(mod_state* state, PyObject* arg, PyObject* kwds)
+_multidict_ctor_size_hint(mod_state* state, PyObject* arg, Py_ssize_t nkwargs)
 {
-    Py_ssize_t size = 0;
+    Py_ssize_t size = nkwargs;
     if (arg != NULL) {
         if (PyTuple_CheckExact(arg)) {
             size += PyTuple_GET_SIZE(arg);
@@ -211,42 +211,34 @@ _multidict_ctor_size_hint(mod_state* state, PyObject* arg, PyObject* kwds)
             }
         }
     }
-    if (kwds != NULL) {
-        size += PyDict_GET_SIZE(kwds);
-    }
     return size;
 }
 
-static inline PyObject*
-_multidict_kwnames_as_dict(PyObject* const* args, Py_ssize_t nargs,
-                           PyObject* kwnames)
+static inline int
+_multidict_validate_kwnames(PyObject* kwnames)
 {
-    Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
-    PyObject* kwds = PyDict_New();
-    if (kwds == NULL) {
-        return NULL;
+    if (kwnames == NULL) {
+        return 0;
     }
+    Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
     for (Py_ssize_t i = 0; i < nkwargs; i++) {
-        PyObject* key = PyTuple_GET_ITEM(kwnames, i);
-        if (PyDict_SetItem(kwds, key, args[nargs + i]) < 0) {
-            Py_DECREF(kwds);
-            return NULL;
+        if (!PyUnicode_Check(PyTuple_GET_ITEM(kwnames, i))) {
+            PyErr_SetString(PyExc_TypeError, "keywords must be strings");
+            return -1;
         }
     }
-    if (!PyArg_ValidateKeywordArguments(kwds)) {
-        Py_DECREF(kwds);
-        return NULL;
-    }
-    return kwds;
+    return 0;
 }
 
 static inline int
 _multidict_ctor_do_init(mod_state* state, MultiDictObject* self, bool is_ci,
-                        PyObject* arg, PyObject* kwds)
+                        PyObject* arg, PyObject* const* args, Py_ssize_t nargs,
+                        PyObject* kwnames)
 {
-    Py_ssize_t size = _multidict_ctor_size_hint(state, arg, kwds);
+    Py_ssize_t nkwargs = kwnames == NULL ? 0 : PyTuple_GET_SIZE(kwnames);
+    Py_ssize_t size = _multidict_ctor_size_hint(state, arg, nkwargs);
 
-    if (arg != NULL && kwds == NULL) {
+    if (arg != NULL && nkwargs == 0) {
         MultiDictObject* clone_other = NULL;
         if (AnyMultiDict_Check(state, arg)) {
             clone_other = (MultiDictObject*)arg;
@@ -270,8 +262,8 @@ _multidict_ctor_do_init(mod_state* state, MultiDictObject* self, bool is_ci,
         ret = md_init(self, state, is_ci, size);
         if (ret == 0) {
             ret = md_update_from_ht(self, other, Extend);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend);
+            if (ret == 0 && nkwargs > 0) {
+                ret = md_update_from_kwnames(self, args, nargs, kwnames);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -281,8 +273,8 @@ _multidict_ctor_do_init(mod_state* state, MultiDictObject* self, bool is_ci,
         ret = md_init(self, state, is_ci, size);
         if (ret == 0) {
             ret = md_update_from_dict(self, arg, Extend);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend);
+            if (ret == 0 && nkwargs > 0) {
+                ret = md_update_from_kwnames(self, args, nargs, kwnames);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -293,8 +285,8 @@ _multidict_ctor_do_init(mod_state* state, MultiDictObject* self, bool is_ci,
             if (arg != NULL) {
                 ret = md_update_from_seq(self, arg, Extend);
             }
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend);
+            if (ret == 0 && nkwargs > 0) {
+                ret = md_update_from_kwnames(self, args, nargs, kwnames);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -318,6 +310,9 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
             nargs + 1);
         return NULL;
     }
+    if (_multidict_validate_kwnames(kwnames) < 0) {
+        return NULL;
+    }
 
     PyObject* mod = PyType_GetModuleByDef(tp, &multidict_module);
     if (mod == NULL) {
@@ -325,25 +320,17 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
     }
     mod_state* state = get_mod_state(mod);
 
-    PyObject* kwds = NULL;
-    if (kwnames != NULL && PyTuple_GET_SIZE(kwnames) > 0) {
-        kwds = _multidict_kwnames_as_dict(args, nargs, kwnames);
-        if (kwds == NULL) {
-            return NULL;
-        }
-    }
     PyObject* arg = nargs == 1 ? Py_NewRef(args[0]) : NULL;
 
     MultiDictObject* self = (MultiDictObject*)tp->tp_alloc(tp, 0);
     if (self == NULL) {
         Py_XDECREF(arg);
-        Py_XDECREF(kwds);
         return NULL;
     }
 
-    int ret = _multidict_ctor_do_init(state, self, is_ci, arg, kwds);
+    int ret =
+        _multidict_ctor_do_init(state, self, is_ci, arg, args, nargs, kwnames);
     Py_XDECREF(arg);
-    Py_XDECREF(kwds);
     if (ret < 0) {
         Py_DECREF(self);
         return NULL;
