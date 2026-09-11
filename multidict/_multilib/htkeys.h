@@ -260,8 +260,6 @@ static const htkeys_t empty_htkeys = {
     .usable = 0, /* immutable */
     .nentries = 0,
 #ifdef Py_GIL_DISABLED
-    /* Never retired or freed (every resize path special-cases
-       `keys != &empty_htkeys`), so these are never touched. */
     .readers = 0,
     .retired_next = NULL,
 #endif
