@@ -193,7 +193,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
         }
         if (other != NULL) {
             if (other->is_ci == is_ci) {
-                Py_BEGIN_CRITICAL_SECTION(clone_other);
+                Py_BEGIN_CRITICAL_SECTION(other);
                 ret = md_clone_from_ht(self, other);
                 ASSERT_CONSISTENT(self, false);
                 Py_END_CRITICAL_SECTION();
