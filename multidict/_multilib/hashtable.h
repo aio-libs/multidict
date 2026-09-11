@@ -1570,23 +1570,26 @@ _err_cannot_fetch(Py_ssize_t i, const char* name)
                  name);
 }
 
-/* seq[i] as a new reference, or NULL with IndexError set past the end.
-   A free-threaded build takes it under the list's lock, since another
-   thread can drop the item between a borrow and its incref; GIL builds
-   keep the macro. */
+/* list[i] as a new reference. On a free-threaded build another thread can
+   drop the item between a borrow and its incref, or shrink the list after
+   its length was checked, so the reference is taken under the list's lock
+   and _list_item_gone() reports an item that is no longer there. GIL builds
+   keep the macro and compile the check away. */
+#ifdef Py_GIL_DISABLED
 static inline PyObject*
 _list_getitem_ref(PyObject* list, Py_ssize_t i)
 {
-#ifdef Py_GIL_DISABLED
-    return PyList_GetItemRef(list, i);
-#else
-    if (i >= PyList_GET_SIZE(list)) {
-        PyErr_SetString(PyExc_IndexError, "list index out of range");
-        return NULL;
+    PyObject* item = PyList_GetItemRef(list, i);
+    if (item == NULL) {
+        PyErr_Clear();
     }
-    return Py_NewRef(PyList_GET_ITEM(list, i));
-#endif
+    return item;
 }
+#define _list_item_gone(item) ((item) == NULL)
+#else
+#define _list_getitem_ref(list, i) Py_NewRef(PyList_GET_ITEM((list), (i)))
+#define _list_item_gone(item) (0)
+#endif
 
 static int
 _md_parse_item(Py_ssize_t i, PyObject* item, PyObject** pkey,
@@ -1609,11 +1612,13 @@ _md_parse_item(Py_ssize_t i, PyObject* item, PyObject** pkey,
             goto fail;
         }
         *pkey = _list_getitem_ref(item, 0);
-        if (*pkey == NULL) {
+        if (_list_item_gone(*pkey)) {
+            _err_bad_length(i, PyList_GET_SIZE(item));
             goto fail;
         }
         *pvalue = _list_getitem_ref(item, 1);
-        if (*pvalue == NULL) {
+        if (_list_item_gone(*pvalue)) {
+            _err_bad_length(i, PyList_GET_SIZE(item));
             goto fail;
         }
     } else {
@@ -1698,16 +1703,16 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op)
     for (i = 0;; ++i) {  // i - index into seq of current element
         switch (kind) {
             case LIST:
+                /* Re-read the length every iteration.  Building the identity
+                   below can run arbitrary Python (a str-subclass key's
+                   .lower(), an __eq__), which may shrink seq; a stale cached
+                   size would let PyList_GET_ITEM read past the end. */
+                if (i >= PyList_GET_SIZE(seq)) {
+                    goto exit;
+                }
                 item = _list_getitem_ref(seq, i);
-                if (item == NULL) {
-                    /* Past the end, possibly because building an identity
-                       below ran Python (a str-subclass key's .lower(), an
-                       __eq__) that shrank seq. */
-                    if (PyErr_ExceptionMatches(PyExc_IndexError)) {
-                        PyErr_Clear();
-                        goto exit;
-                    }
-                    goto fail;
+                if (_list_item_gone(item)) {
+                    goto exit;
                 }
                 break;
             case TUPLE:

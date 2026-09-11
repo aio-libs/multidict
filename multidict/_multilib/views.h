@@ -880,22 +880,16 @@ multidict_itemsview_contains(_Multidict_ViewObject* self, PyObject* obj)
         key = Py_NewRef(PyTuple_GET_ITEM(obj, 0));
         value = Py_NewRef(PyTuple_GET_ITEM(obj, 1));
     } else if (PyList_CheckExact(obj)) {
-        /* Fetch before checking the length: obj belongs to the caller and
-           can change under us on a free-threaded build. */
+        if (PyList_GET_SIZE(obj) != 2) {
+            return 0;
+        }
         key = _list_getitem_ref(obj, 0);
-        if (key == NULL) {
-            PyErr_Clear();
+        if (_list_item_gone(key)) {
             return 0;
         }
         value = _list_getitem_ref(obj, 1);
-        if (value == NULL) {
+        if (_list_item_gone(value)) {
             Py_DECREF(key);
-            PyErr_Clear();
-            return 0;
-        }
-        if (PyList_GET_SIZE(obj) != 2) {
-            Py_DECREF(key);
-            Py_DECREF(value);
             return 0;
         }
     } else {
