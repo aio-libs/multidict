@@ -4,6 +4,7 @@ import gc
 import operator
 import platform
 import sys
+import threading
 import time
 import weakref
 from collections import deque
@@ -1894,3 +1895,75 @@ def test_non_typeerror_exceptions_are_not_swallowed() -> None:
 
     # __eq__ against a non-mapping still works (AttributeError is cleared)
     assert md != [("a", "1")]
+
+
+@pytest.mark.parametrize(
+    "probe",
+    [[], ["key"], ["key", "one", "extra"], ["nope", "one"], ["key", "nope"]],
+    ids=["empty", "one-item", "three-items", "wrong-key", "wrong-value"],
+)
+def test_items_contains_list_that_is_not_a_present_pair(
+    any_multidict_class: type[MultiDict[str]], probe: list[str]
+) -> None:
+    d = any_multidict_class([("key", "one")])
+    assert probe not in d.items()  # type: ignore[operator]
+    assert ["key", "one"] in d.items()  # type: ignore[operator]
+
+
+@pytest.mark.c_extension
+def test_update_from_list_replaced_by_another_thread() -> None:
+    """Items swapped out of the source list while it is consumed must not be
+    read after they are freed."""
+    shared = [(f"k{i}", object()) for i in range(32)]
+    stop = threading.Event()
+
+    def build() -> None:
+        for _ in range(1500):
+            multidict.MultiDict(shared)
+
+    def replace() -> None:
+        i = 0
+        while not stop.is_set():
+            shared[i % 32] = (f"k{i % 32}", object())
+            i += 1
+
+    builders = [threading.Thread(target=build) for _ in range(4)]
+    mutators = [threading.Thread(target=replace) for _ in range(2)]
+    for t in builders + mutators:
+        t.start()
+    for t in builders:
+        t.join()
+    stop.set()
+    for t in mutators:
+        t.join()
+
+
+@pytest.mark.c_extension
+def test_items_contains_list_shrunk_by_another_thread() -> None:
+    """A probe list that shrinks between the length check and the reads must
+    not be indexed past its end."""
+    d = multidict.MultiDict([(f"k{i}", i) for i in range(8)])
+    probe: list[object] = ["k1", 1]
+    stop = threading.Event()
+
+    def check() -> None:
+        items = d.items()
+        for _ in range(30000):
+            probe in items  # type: ignore[operator]
+
+    def shrink() -> None:
+        i = 0
+        while not stop.is_set():
+            del probe[1:]
+            probe.append(i)
+            i += 1
+
+    checkers = [threading.Thread(target=check) for _ in range(8)]
+    mutators = [threading.Thread(target=shrink) for _ in range(4)]
+    for t in checkers + mutators:
+        t.start()
+    for t in checkers:
+        t.join()
+    stop.set()
+    for t in mutators:
+        t.join()
