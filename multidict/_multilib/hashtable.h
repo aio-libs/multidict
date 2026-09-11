@@ -927,14 +927,14 @@ md_init_finder(MultiDictObject* md, PyObject* identity, md_finder_t* finder)
 }
 
 static inline Py_ssize_t
-_md_finder_slot(md_finder_t* finder)
+md_finder_slot(md_finder_t* finder)
 {
     assert(finder->md != NULL);
     return finder->iter.slot;
 }
 
 static inline Py_ssize_t
-_md_finder_index(md_finder_t* finder)
+md_finder_index(md_finder_t* finder)
 {
     assert(finder->md != NULL);
     assert(finder->iter.index >= 0);
@@ -1399,14 +1399,14 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
 
     // don't grab neither key nor value but use the calculated index
     while ((tmp = md_find_next(&finder, NULL, NULL)) > 0) {
-        entry_t* entry = entries + _md_finder_index(&finder);
+        entry_t* entry = entries + md_finder_index(&finder);
         if (!found) {
             found = 1;
             Py_SETREF(entry->key, Py_NewRef(key));
             Py_SETREF(entry->value, Py_NewRef(value));
             entry->hash = finder.hash | MD_HASH_MARK;
         } else {
-            _md_del_at(md, _md_finder_slot(&finder), entry);
+            _md_del_at(md, md_finder_slot(&finder), entry);
         }
     }
     if (tmp < 0) {
