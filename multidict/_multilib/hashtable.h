@@ -13,6 +13,7 @@ extern "C" {
 #include <string.h>
 
 #include "dict.h"
+#include "helpers.h"
 #include "htkeys.h"
 #include "istr.h"
 #include "state.h"
@@ -408,7 +409,7 @@ md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
 static inline Py_ssize_t
 md_len(MultiDictObject* md)
 {
-    return md->used;
+    return atomic_load_ssize_relaxed(&md->used);
 }
 
 static inline PyObject*

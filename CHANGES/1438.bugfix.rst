@@ -1,0 +1,8 @@
+Protected ``MultiDict.add()``, ``__setitem__``/``__delitem__``,
+``get()``/``getone()``/``__getitem__``, ``__contains__``, ``getall()``,
+``setdefault()``, ``pop()``/``popone()``/``popall()``/``popitem()``,
+``__eq__``, iteration, and the ``&``/``|``/``-``/``^``/``in``/
+``isdisjoint()`` operations on ``.keys()`` and ``.items()`` views in the
+C extension with a critical section, avoiding data races and
+use-after-free crashes on the free-threaded build of CPython
+-- by :user:`asvetlov`.
