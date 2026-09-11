@@ -300,17 +300,17 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
     }
     mod_state* state = get_mod_state(mod);
 
-    PyObject* arg = nargs == 1 ? Py_NewRef(args[0]) : NULL;
+    // Borrowed: the vectorcall args array is kept alive by the caller for
+    // the duration of this call, same as any other borrowed argument.
+    PyObject* arg = nargs == 1 ? args[0] : NULL;
 
     MultiDictObject* self = (MultiDictObject*)tp->tp_alloc(tp, 0);
     if (self == NULL) {
-        Py_XDECREF(arg);
         return NULL;
     }
 
     int ret =
         _multidict_ctor_do_init(state, self, is_ci, arg, args, nargs, kwnames);
-    Py_XDECREF(arg);
     if (ret < 0) {
         Py_DECREF(self);
         return NULL;
