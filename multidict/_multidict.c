@@ -657,7 +657,7 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
         } else {
             cmp = 0;  // e.g., multidict is not equal to a list
         }
-    done:
+    done:;
         Py_END_CRITICAL_SECTION();
     }
     if (cmp < 0) {
