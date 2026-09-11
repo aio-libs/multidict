@@ -218,13 +218,12 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             Py_ssize_t extra;
             if (PyTuple_CheckExact(arg)) {
                 extra = PyTuple_GET_SIZE(arg);
-            } else if (PyList_CheckExact(arg) {
+            } else if (PyList_CheckExact(arg)) {
                 extra = PyList_GET_SIZE(arg);
-            }
-            else {
+            } else {
                 extra = 0;
-	    }
-       
+            }
+
             ret = md_init(self, state, is_ci, nkwargs + extra);
             if (ret == 0) {
                 if (arg != NULL) {
