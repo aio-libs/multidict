@@ -54,12 +54,6 @@ typedef struct _htkeys {
 #ifdef Py_GIL_DISABLED
     Py_ssize_t readers;
 
-    /* Intrusive link for MultiDictObject.retired: a table moves here
-       instead of being freed immediately if active_readers was nonzero
-       at retirement time, and is only actually freed once a later
-       resize observes the gate closed. Writer-only (always touched
-       under the owning MultiDict's critical section), so it is a plain
-       (non-atomic) field. */
     struct _htkeys* retired_next;
 #endif
 
