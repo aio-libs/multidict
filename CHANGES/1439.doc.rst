@@ -1,0 +1,2 @@
+Added the plural form "fallbacks" to the docs spell checker's allowed
+word list so :file:`CHANGES.rst` builds cleanly -- by :user:`asvetlov`.

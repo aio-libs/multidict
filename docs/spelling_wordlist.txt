@@ -41,6 +41,7 @@ docstrings
 downstreams
 eof
 fallback
+fallbacks
 fastpath
 filename
 formatters
