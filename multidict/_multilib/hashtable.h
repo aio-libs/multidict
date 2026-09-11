@@ -80,7 +80,6 @@ growable array for the rest of that lookup. This tracking is per md_finder_t
 instance, not a mutation of the entry itself, so a single lookup's bookkeeping
 cannot be observed by anything looking at the entry through another path.
 
-
 `.add()`, `val = md[key]`, `md[key] = val`, `md.setdefault()` all have O(1).
 `.getall()` / `.popall()` have O(N) where N is the amount of returned items.
 `.update()` / `extend()` have O(N+M) where N and M are amount of items
@@ -867,14 +866,15 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
             continue;
         }
         Py_ssize_t index = finder->iter.index;
-        /* Checked before touching the entry at all: md_find_next() returns
-           with finder->iter still parked on the slot it just returned
-           (unadvanced), so the next call re-examines that exact slot
-           before htkeysiter_next() ever moves past it. If the caller
+        /* Checked before touching the entry at all: htkeysiter_next()'s own
+           docstring says the probe sequence can return the same slot again,
+           consecutively or not (the very next call is just the common
+           case, since md_find_next() returns with finder->iter still
+           parked, unadvanced, on the slot it just returned). If the caller
            deleted that entry in between (the getall()/replace() duplicate
-           case), entry->identity is now NULL; the visited check below
-           has to be what skips it, since checking anything else about the
-           entry first would dereference a wiped-out identity. */
+           case), entry->identity is now NULL; the visited check has to be
+           what catches any of these revisits, since checking anything else
+           about the entry first would dereference a wiped-out identity. */
         if (_md_finder_is_visited(finder, index)) {
             continue;
         }
