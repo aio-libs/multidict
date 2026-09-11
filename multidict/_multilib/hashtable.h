@@ -80,13 +80,6 @@ growable array for the rest of that lookup. This tracking is per md_finder_t
 instance, not a mutation of the entry itself, so a single lookup's bookkeeping
 cannot be observed by anything looking at the entry through another path.
 
-`.update()` / `.extend()` / `.merge()` solve a related but different problem
-(recognizing, across a whole pass over another mapping's entries, an entry
-already touched earlier in the *same* call) with a separate mechanism: they
-still mark the entry's hash in place with MD_HASH_MARK (the hash range's high
-bit; entry hashes are folded non-negative by _unicode_hash(), so a real
-folded hash never has that bit set) and unmark every entry in one pass at the
-end via md_post_update(). That scheme is unrelated to md_finder_t.
 
 `.add()`, `val = md[key]`, `md[key] = val`, `md.setdefault()` all have O(1).
 `.getall()` / `.popall()` have O(N) where N is the amount of returned items.
@@ -776,11 +769,6 @@ cleanup:
     return ret;
 }
 
-/* Returns true if `index` is already among the entries this finder has
-   returned. Membership is checked with a linear scan: the embedded/overflow
-   array is not sorted, and for the expected case of very few duplicate
-   keys a scan of at most a handful of Py_ssize_t is cheaper than keeping
-   it sorted or hashed. */
 static inline bool
 _md_finder_is_visited(md_finder_t* finder, Py_ssize_t index)
 {
@@ -792,8 +780,6 @@ _md_finder_is_visited(md_finder_t* finder, Py_ssize_t index)
     return false;
 }
 
-/* Records `index` as visited, growing from the embedded array to a
-   heap-allocated one (and doubling that one) as needed. */
 static inline int
 _md_finder_mark_visited(md_finder_t* finder, Py_ssize_t index)
 {
