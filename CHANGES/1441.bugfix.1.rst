@@ -1,5 +1,4 @@
-Fixed several pre-existing use-after-free races on the free-threaded build,
-uncovered while stress-testing the lock-free reads above: ``_md_resize()``
+Fixed several pre-existing use-after-free races on the free-threaded build: ``_md_resize()``
 and ``md_clone_from_ht()`` could allocate a new hash table, have their
 critical section transiently suspended during that allocation, and then use
 a keys-table pointer or size a concurrent operation had already invalidated;

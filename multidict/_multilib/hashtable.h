@@ -271,16 +271,15 @@ _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
     atomic_fetch_add_ssize(&md->active_readers, -1);
 }
 
-/* Releases any entries a retired table still owns, then frees it.
-   Only md_clear()'s retired tables have live entries to release here:
-   _md_resize()'s old table has its ownership already transferred to
-   the new table via memcpy (see _md_retire_resized()), so its
-   nentries is reset to 0 before retirement, making this loop a
-   no-op for that case. */
 static inline void
 _md_free_retired(htkeys_t* keys)
 {
     entry_t* entries = htkeys_entries(keys);
+    /* Only md_clear()'s retired tables have live entries to release here:
+   _md_resize()'s old table has its ownership already transferred to
+   the new table via memcpy (see _md_retire_resized()), so its
+   nentries is reset to 0 before retirement, making this loop a
+   no-op for that case. */
     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
         Py_CLEAR(entries[i].identity);
         Py_CLEAR(entries[i].key);
@@ -728,11 +727,6 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 
         memcpy(keys, fresh_src, size);
 #ifdef Py_GIL_DISABLED
-        /* keys is a brand-new, independent allocation: the memcpy just
-           copied other->keys's live reader count and retirement link
-           along with everything else, neither of which describes this
-           new blob's own (so-far nonexistent) readers or retirement
-           state. */
         keys->readers = 0;
         keys->retired_next = NULL;
 #endif
@@ -1284,13 +1278,6 @@ md_finder_cleanup(md_finder_t* finder)
     finder->md = NULL;
 }
 
-/* Used for pret != NULL (every caller already holds md's critical
-   section -- the view set-algebra helpers, not a hot path) and as the
-   whole implementation / lock-free fallback for pret == NULL
-   (__contains__'s actual hot path). _md_ensure_key()'s entry->key
-   mutation is safe here exactly as it always was: this function is
-   only ever invoked either already under the critical section, or by
-   md_contains() itself while holding it. */
 static inline int
 _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                     PyObject** pret)
@@ -1325,15 +1312,6 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
 #if defined(Py_GIL_DISABLED) && _MD_HAVE_TRYINCREF
 
-/* Lock-free fast path for __contains__ (pret == NULL only: pret !=
-   NULL needs _md_ensure_key()'s entry->key mutation, which stays
-   critical-section-only). Same shape as _md_get_one_lockfree(): check
-   identity (safely referenced via _md_entry_try_get_ref()) before
-   ever touching hash, for every candidate the walk examines, not just
-   an eventual match -- _str_cmp() needs to safely read the
-   candidate's contents to know whether it even matches. Returns
-   _MD_NEED_LOCK (shared with _md_get_one_lockfree's sentinel value)
-   when it can't complete safely. */
 static inline int
 _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
 {
@@ -1414,10 +1392,6 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
     result = _md_contains_locked(md, identity, hash, pret);
     Py_END_CRITICAL_SECTION();
 #elif defined(Py_GIL_DISABLED)
-    /* No PyUnstable_TryIncRef() available (pre-3.14, see the
-       _MD_HAVE_TRYINCREF comment above): always take the critical
-       section, exactly as before this file added any lock-free
-       reading. */
     Py_BEGIN_CRITICAL_SECTION(md);
     result = _md_contains_locked(md, identity, hash, pret);
     Py_END_CRITICAL_SECTION();
@@ -1428,11 +1402,6 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
     return result;
 }
 
-/* Definitive, always-correct implementation: used as the entire
-   md_get_one() on the GIL build, and as the Py_GIL_DISABLED fallback
-   once a lock-free attempt below reports it cannot proceed safely.
-   Callers already hold md's critical section on Py_GIL_DISABLED (the
-   GIL build needs none). */
 static inline int
 _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                    PyObject** ret)
@@ -1552,11 +1521,6 @@ md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 
 #elif defined(Py_GIL_DISABLED)
 
-/* No PyUnstable_TryIncRef() available (pre-3.14, see the
-   _MD_HAVE_TRYINCREF comment above): entry contents cannot be
-   dereferenced safely without md's critical section at all, so fall
-   back to always taking it, exactly as before this file added any
-   lock-free reading. */
 static inline int
 md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
@@ -2753,16 +2717,6 @@ md_clear(MultiDictObject* md)
     md->keys = (htkeys_t*)&empty_htkeys;
 
 #ifdef Py_GIL_DISABLED
-    /* Unlike the critical-section-only world PR #1433 was written for,
-       a lock-free reader can now be genuinely concurrent with this
-       function, not just suspended by an arbitrary-code callback: it
-       does not take md's critical section at all. Releasing entries'
-       references here, immediately, would race such a reader's own
-       (unsynchronized) reads of those same identity/key/value fields.
-       So the entire cleanup -- decref loop included, not just the
-       final free -- is deferred to _md_retire()'s drain, which only
-       ever runs at a point already proven to have no reader near this
-       table. */
     _md_retire(md, old_keys);
 #else
     entry_t* entries = htkeys_entries(old_keys);

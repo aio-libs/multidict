@@ -43,12 +43,6 @@
 static inline PyObject*
 _multidict_getone(MultiDictObject* self, PyObject* key, PyObject* _default)
 {
-    /* md_get_one() is lock-free on its own (falling back to a critical
-       section internally when it can't proceed safely); no critical
-       section needed here. ASSERT_CONSISTENT() is deliberately not
-       called: it walks the whole table and is only safe to run while
-       holding the critical section, which the lock-free fast path
-       does not. */
     PyObject* val = NULL;
     int tmp = md_get_one(self, key, &val);
 
@@ -505,11 +499,6 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
         }
         decref_default = true;
     }
-    /* No ASSERT_CONSISTENT() here: _multidict_getone() below is
-       lock-free on its own fast path (see its comment), so nothing
-       above this point holds a critical section, and walking the
-       whole table without one is unsafe -- same reasoning as
-       _multidict_getone() itself. */
     PyObject* ret = _multidict_getone(self, key, _default);
     if (decref_default) {
         Py_CLEAR(_default);
