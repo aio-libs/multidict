@@ -239,7 +239,6 @@ _multidict_ctor_do_init(mod_state* state, MultiDictObject* self, bool is_ci,
     }
 
     MultiDictObject* other = _multidict_resolve_other(state, arg);
-    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     if (other != NULL) {
         Py_BEGIN_CRITICAL_SECTION(other);
@@ -252,7 +251,7 @@ _multidict_ctor_do_init(mod_state* state, MultiDictObject* self, bool is_ci,
             ASSERT_CONSISTENT(self, false);
         }
         Py_END_CRITICAL_SECTION();
-    } else if (arg_is_dict) {
+    } else if (arg != NULL && PyDict_CheckExact(arg)) {
         Py_BEGIN_CRITICAL_SECTION(arg);
         ret = md_init(self, state, is_ci, size);
         if (ret == 0) {
