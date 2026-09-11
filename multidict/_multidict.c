@@ -215,63 +215,60 @@ _multidict_ctor_size_hint(mod_state* state, PyObject* arg, Py_ssize_t nkwargs)
 }
 
 static inline int
-_multidict_ctor_do_init(mod_state* state, MultiDictObject* self, bool is_ci,
-                        PyObject* arg, PyObject* const* args, Py_ssize_t nargs,
-                        PyObject* kwnames)
+_multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
+                           PyObject* arg, PyObject* const* args,
+                           Py_ssize_t nargs, PyObject* kwnames)
 {
-    Py_ssize_t nkwargs = kwnames == NULL ? 0 : PyTuple_GET_SIZE(kwnames);
-    Py_ssize_t size = _multidict_ctor_size_hint(state, arg, nkwargs);
+    // the self is allocated and NULL-ed
+    int ret;
 
-    if (arg != NULL && nkwargs == 0) {
-        MultiDictObject* clone_other = NULL;
+    if (arg != NULL) {
+        MultiDictObject* other = NULL;
         if (AnyMultiDict_Check(state, arg)) {
-            clone_other = (MultiDictObject*)arg;
+            other = (MultiDictObject*)arg;
         } else if (AnyMultiDictProxy_Check(state, arg)) {
-            clone_other = ((MultiDictProxyObject*)arg)->md;
+            other = ((MultiDictProxyObject*)arg)->md;
         }
-        if (clone_other != NULL && clone_other->is_ci == is_ci) {
-            int ret;
-            Py_BEGIN_CRITICAL_SECTION(clone_other);
-            ret = md_clone_from_ht(self, clone_other);
+        if (other != NULL) {
+            if (other->is_ci == is_ci) {
+                Py_BEGIN_CRITICAL_SECTION(clone_other);
+                ret = md_clone_from_ht(self, other);
+                ASSERT_CONSISTENT(self, false);
+                Py_END_CRITICAL_SECTION();
+            } else {
+                Py_BEGIN_CRITICAL_SECTION(other);
+                ret = md_init(self, state, is_ci, md_len(other));
+                if (ret == 0) {
+                    ret = md_update_from_ht(self, other, Extend);
+                    ASSERT_CONSISTENT(self, false);
+                }
+                Py_END_CRITICAL_SECTION();
+            }
+        } else if (PyDict_CheckExact(arg)) {
+            Py_BEGIN_CRITICAL_SECTION(arg);
+            ret = md_init(self, state, is_ci, PyDict_GET_SIZE(arg));
+            if (ret == 0) {
+                ret = md_update_from_dict(self, arg, Extend);
+                ASSERT_CONSISTENT(self, false);
+            }
             Py_END_CRITICAL_SECTION();
-            return ret;
+        } else {
+            ret = md_init(self, state, is_ci, 0);
+            if (ret == 0) {
+                if (arg != NULL) {
+                    ret = md_update_from_seq(self, arg, Extend);
+                }
+                ASSERT_CONSISTENT(self, false);
+            }
         }
+    } else {
+        ret = md_init(self, state, is_ci, 0);
     }
 
-    MultiDictObject* other = _multidict_resolve_other(state, arg);
-    int ret;
-    if (other != NULL) {
-        Py_BEGIN_CRITICAL_SECTION(other);
-        ret = md_init(self, state, is_ci, size);
-        if (ret == 0) {
-            ret = md_update_from_ht(self, other, Extend);
-            if (ret == 0 && nkwargs > 0) {
-                ret = md_update_from_kwnames(self, args, nargs, kwnames);
-            }
-            ASSERT_CONSISTENT(self, false);
-        }
-        Py_END_CRITICAL_SECTION();
-    } else if (arg != NULL && PyDict_CheckExact(arg)) {
-        Py_BEGIN_CRITICAL_SECTION(arg);
-        ret = md_init(self, state, is_ci, size);
-        if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Extend);
-            if (ret == 0 && nkwargs > 0) {
-                ret = md_update_from_kwnames(self, args, nargs, kwnames);
-            }
-            ASSERT_CONSISTENT(self, false);
-        }
-        Py_END_CRITICAL_SECTION();
-    } else {
-        ret = md_init(self, state, is_ci, size);
-        if (ret == 0) {
-            if (arg != NULL) {
-                ret = md_update_from_seq(self, arg, Extend);
-            }
-            if (ret == 0 && nkwargs > 0) {
-                ret = md_update_from_kwnames(self, args, nargs, kwnames);
-            }
-            ASSERT_CONSISTENT(self, false);
+    if (ret == 0) {
+        Py_ssize_t nkwargs = kwnames == NULL ? 0 : PyTuple_GET_SIZE(kwnames);
+        if (nkwargs > 0) {
+            ret = md_update_from_kwnames(self, args, nargs, kwnames);
         }
     }
     return ret;
@@ -309,8 +306,8 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
         return NULL;
     }
 
-    int ret =
-        _multidict_ctor_do_init(state, self, is_ci, arg, args, nargs, kwnames);
+    int ret = _multidict_vectorcall_impl(
+        state, self, is_ci, arg, args, nargs, kwnames);
     if (ret < 0) {
         Py_DECREF(self);
         return NULL;
