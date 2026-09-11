@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import gc
 import operator
 import platform
@@ -1790,17 +1791,13 @@ def test_single_item_ops_thread_safety() -> None:
                 elif op == 2:
                     d.setdefault(f"sd{n}-{i}", i)
                 elif op == 3:
-                    try:
+                    with contextlib.suppress(KeyError):
                         del d[key]
-                    except KeyError:
-                        pass
                 elif op == 4:
                     d.pop(key, None)
                 elif len(d):
-                    try:
+                    with contextlib.suppress(KeyError):
                         d.popitem()
-                    except KeyError:
-                        pass
             else:
                 key in d
                 d.get(key)
@@ -1808,12 +1805,10 @@ def test_single_item_ops_thread_safety() -> None:
                 # A concurrent mutation from another worker can legitimately
                 # be detected mid-iteration (same as dict's own "changed
                 # size during iteration" check); that is not a bug here.
-                try:
+                with contextlib.suppress(RuntimeError):
                     list(d.items())
                     list(d.keys())
                     list(d.values())
-                except RuntimeError:
-                    pass
 
     with ThreadPoolExecutor(max_workers=8) as executor:
         list(executor.map(worker, range(8)))
@@ -1849,7 +1844,7 @@ def test_view_set_ops_thread_safety() -> None:
                 # legitimately be detected mid-walk (same as dict's own
                 # "changed size during iteration" check); that is not a
                 # bug here.
-                try:
+                with contextlib.suppress(RuntimeError):
                     d.items() & other.items()
                     d.items() | other.items()
                     d.items() - other.items()
@@ -1862,8 +1857,6 @@ def test_view_set_ops_thread_safety() -> None:
                     d.keys().isdisjoint(other.keys())
                     "100" in d.keys()
                     ("100", 100) in d.items()
-                except RuntimeError:
-                    pass
 
     with ThreadPoolExecutor(max_workers=8) as executor:
         list(executor.map(worker, range(8)))

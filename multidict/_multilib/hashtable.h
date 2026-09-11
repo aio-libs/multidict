@@ -12,8 +12,8 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
+#include "atomic_helpers.h"
 #include "dict.h"
-#include "helpers.h"
 #include "htkeys.h"
 #include "istr.h"
 #include "state.h"
