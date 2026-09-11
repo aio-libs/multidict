@@ -1942,12 +1942,12 @@ def test_update_from_list_replaced_by_another_thread() -> None:
 def test_items_contains_list_shrunk_by_another_thread() -> None:
     """A probe list that shrinks between the length check and the reads must
     not be indexed past its end."""
-    d = multidict.MultiDict([(f"k{i}", i) for i in range(8)])
     probe: list[object] = ["k1", 1]
     stop = threading.Event()
 
     def check() -> None:
-        items = d.items()
+        # One multidict per thread: the shared object under test is the list.
+        items = multidict.MultiDict([(f"k{i}", i) for i in range(8)]).items()
         for _ in range(30000):
             probe in items  # type: ignore[operator]
 
