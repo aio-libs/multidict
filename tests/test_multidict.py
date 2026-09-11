@@ -1795,7 +1795,7 @@ def test_single_item_ops_thread_safety() -> None:
                         del d[key]
                 elif op == 4:
                     d.pop(key, None)
-                elif len(d):
+                else:
                     with contextlib.suppress(KeyError):
                         d.popitem()
             else:
