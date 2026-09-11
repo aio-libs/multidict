@@ -1541,10 +1541,6 @@ fail:
     return -1;
 }
 
-/* Extend `md` with the keyword arguments of a vectorcall, i.e. the
- * `nkwargs` trailing entries of `args` named by `kwnames`, without
- * materializing an intermediate dict.  Every name in `kwnames` must
- * already be known to be a `str` (checked once by the caller). */
 static inline int
 md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
