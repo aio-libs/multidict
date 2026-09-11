@@ -208,14 +208,24 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             }
         } else if (PyDict_CheckExact(arg)) {
             Py_BEGIN_CRITICAL_SECTION(arg);
-            ret = md_init(self, state, is_ci, PyDict_GET_SIZE(arg));
+            ret = md_init(self, state, is_ci, PyDict_GET_SIZE(arg) + nkwargs);
             if (ret == 0) {
                 ret = md_update_from_dict(self, arg, Extend);
                 ASSERT_CONSISTENT(self, false);
             }
             Py_END_CRITICAL_SECTION();
         } else {
-            ret = md_init(self, state, is_ci, nkwargs);
+            Py_ssize_t extra;
+            if (PyTuple_CheckExact(arg)) {
+                extra = PyTuple_GET_SIZE(arg);
+            } else if (PyList_CheckExact(arg) {
+                extra = PyList_GET_SIZE(arg);
+            }
+            else {
+                extra = 0;
+	    }
+       
+            ret = md_init(self, state, is_ci, nkwargs + extra);
             if (ret == 0) {
                 if (arg != NULL) {
                     ret = md_update_from_seq(self, arg, Extend);
