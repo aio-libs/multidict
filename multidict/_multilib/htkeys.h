@@ -358,9 +358,24 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
     size_t mask = htkeys_mask(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
+#ifdef Py_GIL_DISABLED
+        /* Unconditionally, not just when update: under free threading
+           a marked entry copied in here can belong to an entirely
+           different, concurrently-suspended _md_replace()/_md_update()
+           call (on some other key) that this resize's own update flag
+           knows nothing about -- see the comment in
+           _md_check_consistency(). Indexing it by its temporary marked
+           hash would place it somewhere its real hash's probe sequence
+           never looks, making it permanently unfindable once the
+           owning call unmarks it back. */
+        if (hash < 0) {
+            hash &= PY_SSIZE_T_MAX;
+        }
+#else
         if (update && hash < 0) {
             hash &= PY_SSIZE_T_MAX;
         }
+#endif
         size_t i = hash & mask;
         for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
             perturb >>= HT_PERTURB_SHIFT;

@@ -408,17 +408,30 @@ _md_entry_load_value(entry_t* entry)
 }
 
 /* Publishes a new value, enabling PyUnstable_TryIncRef() for lock-free
-   readers, and decrefs whatever was there before only after the new
-   value is already visible, so a concurrent reader can never observe
-   entry->value mid-transition. */
+   readers. Does not touch whatever reference was there before: callers
+   that replace an already-populated entry (as opposed to filling a
+   fresh one) must drop that reference themselves, and are free to do
+   so after other suspension-risky work -- see _md_replace()/
+   _md_update() for why deferring it can matter. */
 static inline void
-_md_entry_store_value(entry_t* entry, PyObject* value)
+_md_entry_publish_value(entry_t* entry, PyObject* value)
 {
 #if _MD_HAVE_TRYINCREF
     PyUnstable_EnableTryIncRef(value);
 #endif
-    PyObject* old = _md_entry_load_value(entry);
     atomic_store_ptr((void**)&entry->value, value);
+}
+
+/* Publishes a new value and decrefs whatever was there before only
+   after the new value is already visible, so a concurrent reader can
+   never observe entry->value mid-transition. Only safe when nothing
+   else needs to happen between the two -- see _md_entry_publish_value()
+   above when the caller must defer the decref. */
+static inline void
+_md_entry_store_value(entry_t* entry, PyObject* value)
+{
+    PyObject* old = _md_entry_load_value(entry);
+    _md_entry_publish_value(entry, value);
     Py_XDECREF(old);
 }
 
@@ -556,6 +569,16 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
         md->keys = newkeys;
 
 #ifdef Py_GIL_DISABLED
+        /* Bump the version on every resize, not just when a caller's
+           own insert/delete/replace would bump it anyway: a freed
+           htkeys_t can get reallocated at the very same address by a
+           later resize (same size class, common in practice), so code
+           elsewhere that detects "did md->keys change under me" by
+           comparing the raw pointer alone (see _md_replace()'s and
+           _md_update()'s comments) needs a companion signal that can't
+           coincidentally repeat. */
+        md->version = NEXT_VERSION(md->state);
+
         /* Ownership of oldkeys's entries has already moved to newkeys via
            the memcpy/copy loop above; zeroing nentries tells
            _md_retire()'s cleanup there is nothing left to decref, only
@@ -965,10 +988,22 @@ _md_del_at_for_upd(MultiDictObject* md, size_t slot, entry_t* entry)
        in md_post_update()
     */
     assert(md->keys != &empty_htkeys);
-    Py_CLEAR(entry->key);
 #ifdef Py_GIL_DISABLED
-    _md_entry_clear_value(entry);
+    /* Null out both fields before dropping either reference: a decref
+       between the two can transiently suspend the critical section
+       (same allocator-lock mechanism as _md_resize()'s PyMem_Malloc(),
+       see its comment) and let a concurrent resize free the table
+       `entry` lives in, in which case the *second* field access below
+       would be a use-after-free rather than just an inconsistency a
+       caller could later detect. */
+    PyObject* old_key = entry->key;
+    PyObject* old_value = _md_entry_load_value(entry);
+    entry->key = NULL;
+    atomic_store_ptr((void**)&entry->value, NULL);
+    Py_XDECREF(old_key);
+    Py_XDECREF(old_value);
 #else
+    Py_CLEAR(entry->key);
     Py_CLEAR(entry->value);
 #endif
 }
@@ -1270,7 +1305,19 @@ md_finder_cleanup(md_finder_t* finder)
             continue;
         }
         entry_t* entry = entries + finder->iter.index;
-        if (entry->hash < 0) {
+        /* Restore only entries this exact finder marked, not any
+           marked entry the probe chain happens to pass through: under
+           free threading, that chain can also hold an entry a
+           different, concurrently-suspended finder (scanning some
+           other key whose hash shares this bucket -- easy with a
+           small table) marked with *its own* hash. Blindly restoring
+           by matching only the sign bit would overwrite that entry's
+           real hash with this finder's, corrupting it. A mark this
+           finder made is always exactly finder->hash | MD_HASH_MARK;
+           nothing else can coincidentally equal that unless the two
+           keys' hashes were equal to begin with, in which case
+           restoring to finder->hash is correct anyway. */
+        if (entry->hash == (finder->hash | MD_HASH_MARK)) {
             entry->hash = finder->hash;
         }
     }
@@ -1806,49 +1853,100 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
             PyObject* identity, Py_hash_t hash)
 {
     int found = 0;
-    md_finder_t finder = {0};
-    if (md_init_finder(md, identity, &finder) < 0) {
-        assert(PyErr_Occurred());
-        goto fail;
-    }
-    entry_t* entries = htkeys_entries(md->keys);
 
-    int tmp;
+    /* Loops at most once per concurrent resize this scan actually
+       collides with (see the Py_GIL_DISABLED branch below); a fresh
+       finder each pass means a retry costs nothing beyond redoing the
+       scan. */
+    for (;;) {
+        md_finder_t finder = {0};
+        if (md_init_finder(md, identity, &finder) < 0) {
+            assert(PyErr_Occurred());
+            return -1;
+        }
 
-    // don't grab neither key nor value but use the calculated index
-    while ((tmp = md_find_next(&finder, NULL, NULL)) > 0) {
-        entry_t* entry = entries + md_finder_index(&finder);
-        if (!found) {
-            found = 1;
-            Py_SETREF(entry->key, Py_NewRef(key));
+        int tmp;
+        bool stale = false;
+
+        // don't grab neither key nor value but use the calculated index
+        while ((tmp = md_find_next(&finder, NULL, NULL)) > 0) {
 #ifdef Py_GIL_DISABLED
-            _md_entry_store_value(entry, Py_NewRef(value));
-            _md_entry_store_hash(entry, finder.hash | MD_HASH_MARK);
-#else
-            Py_SETREF(entry->value, Py_NewRef(value));
-            entry->hash = finder.hash | MD_HASH_MARK;
+            htkeys_t* keys_before = md->keys;
+            uint64_t version_before = md->version;
 #endif
-        } else {
-            _md_del_at(md, md_finder_slot(&finder), entry);
+            entry_t* entries = htkeys_entries(md->keys);
+            entry_t* entry = entries + md_finder_index(&finder);
+            if (!found) {
+                found = 1;
+#ifdef Py_GIL_DISABLED
+                /* Finish every store to this slot before dropping the
+                   old key/value: a decref can transiently suspend the
+                   critical section (same allocator-lock mechanism as
+                   _md_resize()'s PyMem_Malloc(), see its comment),
+                   letting a concurrent resize free the table `entry`
+                   lives in. Deferring the decref to locally-saved
+                   pointers, once entry is already in its final form,
+                   means a concurrent resize's copy always sees this
+                   slot correctly replaced, whether or not it caught us
+                   mid-decref. If it did, this finder's iterator is now
+                   walking a table md->keys has moved past -- restart
+                   the scan below with a fresh one. The rescan finds
+                   this very entry again (still marked, from the store
+                   below) and correctly treats it as invisible rather
+                   than a second occurrence to replace. */
+                PyObject* old_key = entry->key;
+                PyObject* old_value = _md_entry_load_value(entry);
+                entry->key = Py_NewRef(key);
+                _md_entry_publish_value(entry, Py_NewRef(value));
+                _md_entry_store_hash(entry, finder.hash | MD_HASH_MARK);
+                Py_DECREF(old_key);
+                Py_DECREF(old_value);
+#else
+                Py_SETREF(entry->key, Py_NewRef(key));
+                Py_SETREF(entry->value, Py_NewRef(value));
+                entry->hash = finder.hash | MD_HASH_MARK;
+#endif
+            } else {
+                _md_del_at(md, md_finder_slot(&finder), entry);
+            }
+#ifdef Py_GIL_DISABLED
+            /* Checking the pointer alone isn't enough: a freed table
+               can get reallocated at the very same address by a later
+               resize (same size class, common in practice), which
+               would make a pointer-only check miss the change. Every
+               mutation bumps md->version, including ones that don't
+               otherwise touch md->keys, so compare both. */
+            if (md->keys != keys_before || md->version != version_before) {
+                stale = true;
+                break;
+            }
+#endif
         }
-    }
-    if (tmp < 0) {
-        goto fail;
-    }
+        if (stale) {
+            /* Deliberately not calling md_finder_cleanup() here: it
+               would unmark the entry the block above just replaced,
+               making the rescan below treat it as a second occurrence
+               instead of skipping it. The eventual, non-stale finder's
+               own cleanup unmarks everything this hash's chain still
+               has marked, from every attempt, not just its own. */
+            continue;
+        }
+        if (tmp < 0) {
+            md_finder_cleanup(&finder);
+            return -1;
+        }
 
-    md_finder_cleanup(&finder);
-    if (!found) {
-        if (_md_add_with_hash(md, hash, identity, key, value) < 0) {
-            goto fail;
+        md_finder_cleanup(&finder);
+        if (!found) {
+            if (_md_add_with_hash(md, hash, identity, key, value) < 0) {
+                return -1;
+            }
+            return 0;
+        } else {
+            md->version = NEXT_VERSION(md->state);
+            return 0;
         }
-        return 0;
-    } else {
-        md->version = NEXT_VERSION(md->state);
-        return 0;
     }
-fail:
-    md_finder_cleanup(&finder);
-    return -1;
 }
 
 static inline int
@@ -1877,50 +1975,86 @@ static inline int
 _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
            PyObject* key, PyObject* value)
 {
-    htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
-    entry_t* entries = htkeys_entries(md->keys);
     bool found = false;
 
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
-            continue;
-        }
-        entry_t* entry = entries + iter.index;
-        if (hash != entry->hash) {
-            continue;
-        }
-        if (_str_cmp(identity, entry->identity)) {
-            if (!found) {
-                found = true;
-                if (entry->key == NULL) {
-                    /* entry->key could be NULL if it was deleted
-                       by the previous _md_update call during the iteration
-                       in md_update_from* functions. */
-                    assert(entry->value == NULL);
-                    entry->key = Py_NewRef(key);
-#ifdef Py_GIL_DISABLED
-                    _md_entry_store_value(entry, Py_NewRef(value));
-#else
-                    entry->value = Py_NewRef(value);
-#endif
-                } else {
-                    Py_SETREF(entry->key, Py_NewRef(key));
-#ifdef Py_GIL_DISABLED
-                    _md_entry_store_value(entry, Py_NewRef(value));
-#else
-                    Py_SETREF(entry->value, Py_NewRef(value));
-#endif
-                }
-#ifdef Py_GIL_DISABLED
-                _md_entry_store_hash(entry, hash | MD_HASH_MARK);
-#else
-                entry->hash = hash | MD_HASH_MARK;
-#endif
-            } else {
-                _md_del_at_for_upd(md, iter.slot, entry);
+    /* See _md_replace()'s comment for why this can loop: a decref
+       below can transiently suspend the critical section and let a
+       concurrent resize replace md->keys out from under this scan. */
+    for (;;) {
+        htkeysiter_t iter;
+        htkeysiter_init(&iter, md->keys, hash);
+        bool stale = false;
+
+        for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+            if (iter.index < 0) {
+                continue;
             }
+#ifdef Py_GIL_DISABLED
+            htkeys_t* keys_before = md->keys;
+            uint64_t version_before = md->version;
+#endif
+            entry_t* entries = htkeys_entries(md->keys);
+            entry_t* entry = entries + iter.index;
+            if (hash != entry->hash) {
+                continue;
+            }
+            if (_str_cmp(identity, entry->identity)) {
+                if (!found) {
+                    found = true;
+                    if (entry->key == NULL) {
+                        /* entry->key could be NULL if it was deleted
+                           by the previous _md_update call during the iteration
+                           in md_update_from* functions. */
+                        assert(entry->value == NULL);
+                        entry->key = Py_NewRef(key);
+#ifdef Py_GIL_DISABLED
+                        _md_entry_publish_value(entry, Py_NewRef(value));
+                        _md_entry_store_hash(entry, hash | MD_HASH_MARK);
+#else
+                        entry->value = Py_NewRef(value);
+                        entry->hash = hash | MD_HASH_MARK;
+#endif
+                    } else {
+#ifdef Py_GIL_DISABLED
+                        /* Defer the old key/value's decref until entry
+                           is already in its final form -- see
+                           _md_replace()'s comment on the identical
+                           pattern above. */
+                        PyObject* old_key = entry->key;
+                        PyObject* old_value = _md_entry_load_value(entry);
+                        entry->key = Py_NewRef(key);
+                        _md_entry_publish_value(entry, Py_NewRef(value));
+                        _md_entry_store_hash(entry, hash | MD_HASH_MARK);
+                        Py_DECREF(old_key);
+                        Py_DECREF(old_value);
+#else
+                        Py_SETREF(entry->key, Py_NewRef(key));
+                        Py_SETREF(entry->value, Py_NewRef(value));
+                        entry->hash = hash | MD_HASH_MARK;
+#endif
+                    }
+                } else {
+                    _md_del_at_for_upd(md, iter.slot, entry);
+                }
+            }
+#ifdef Py_GIL_DISABLED
+            /* See _md_replace()'s comment on why both the pointer and
+               the version are checked. */
+            if (md->keys != keys_before || md->version != version_before) {
+                stale = true;
+                break;
+            }
+#endif
         }
+        if (stale) {
+            /* No cleanup to skip here (unlike _md_replace()'s finder):
+               md_post_update() unmarks everything once, for the whole
+               batch, at the very end -- so the marks this attempt
+               already made simply need to survive into the rescan,
+               which they do since nothing above touches them. */
+            continue;
+        }
+        break;
     }
 
     if (!found) {
@@ -1965,23 +2099,54 @@ fail:
 static inline void
 md_post_update(MultiDictObject* md)
 {
-    htkeys_t* keys = md->keys;
-    size_t num_slots = htkeys_nslots(keys);
-    entry_t* entries = htkeys_entries(keys);
-    for (size_t slot = 0; slot < num_slots; slot++) {
-        Py_ssize_t index = htkeys_get_index(keys, slot);
-        if (index >= 0) {
-            entry_t* entry = entries + index;
-            if (entry->key == NULL) {
-                /* the entry is marked for deletion during .update() call
-                   and not replaced with a new value */
-                Py_CLEAR(entry->identity);
-                htkeys_set_index(keys, slot, DKIX_DUMMY);
-                md->used -= 1;
+    /* See _md_replace()'s comment for why this can loop: a decref
+       below can transiently suspend the critical section and let a
+       concurrent resize replace md->keys mid-sweep. Restarting from
+       slot 0 against the current table is safe either way: an entry
+       this function already finished (identity cleared) is exactly
+       the kind _md_resize()'s copy already drops, so it simply isn't
+       there to revisit; anything not yet finished still has its
+       original identity and is copied over unchanged. */
+    for (;;) {
+        htkeys_t* keys = md->keys;
+#ifdef Py_GIL_DISABLED
+        uint64_t version_before = md->version;
+#endif
+        size_t num_slots = htkeys_nslots(keys);
+        entry_t* entries = htkeys_entries(keys);
+        bool stale = false;
+        for (size_t slot = 0; slot < num_slots; slot++) {
+            Py_ssize_t index = htkeys_get_index(keys, slot);
+            if (index >= 0) {
+                entry_t* entry = entries + index;
+                if (entry->key == NULL) {
+                    /* the entry is marked for deletion during .update() call
+                       and not replaced with a new value */
+#ifdef Py_GIL_DISABLED
+                    PyObject* old_identity = _md_entry_load_identity(entry);
+                    atomic_store_ptr((void**)&entry->identity, NULL);
+                    htkeys_set_index(keys, slot, DKIX_DUMMY);
+                    md->used -= 1;
+                    Py_XDECREF(old_identity);
+                    /* See _md_replace()'s comment on why both the
+                       pointer and the version are checked. */
+                    if (md->keys != keys || md->version != version_before) {
+                        stale = true;
+                        break;
+                    }
+#else
+                    Py_CLEAR(entry->identity);
+                    htkeys_set_index(keys, slot, DKIX_DUMMY);
+                    md->used -= 1;
+#endif
+                }
+                if (entry->hash < 0) {
+                    entry->hash &= PY_SSIZE_T_MAX;
+                }
             }
-            if (entry->hash < 0) {
-                entry->hash &= PY_SSIZE_T_MAX;
-            }
+        }
+        if (!stale) {
+            break;
         }
     }
     ASSERT_CONSISTENT(md, false);
@@ -2762,6 +2927,24 @@ _md_check_consistency(MultiDictObject* md, bool update)
         PyObject* identity = entry->identity;
 
         if (identity != NULL) {
+#ifdef Py_GIL_DISABLED
+            /* `update` describes only this call's own operation, not
+               whether some entirely different, concurrently-suspended
+               thread's _md_replace()/_md_update() (on some other key)
+               currently has an entry of its own marked (hash < 0) or
+               half-deleted (key == NULL, identity kept) pending that
+               thread's own cleanup -- critical section suspension
+               means that can be true regardless of what this call's
+               update flag says. So always use the tolerant checks
+               here; the strict !update ones remain meaningful only
+               where nothing else can be concurrently mid-operation,
+               i.e. the GIL build below. */
+            if (entry->key == NULL) {
+                CHECK(entry->value == NULL);
+            } else {
+                CHECK(entry->value != NULL);
+            }
+#else
             if (!update) {
                 CHECK(entry->hash >= 0);
                 CHECK(entry->key != NULL);
@@ -2773,6 +2956,7 @@ _md_check_consistency(MultiDictObject* md, bool update)
                     CHECK(entry->value != NULL);
                 }
             }
+#endif
 
             CHECK(PyUnicode_CheckExact(identity));
             if (entry->hash >= 0) {

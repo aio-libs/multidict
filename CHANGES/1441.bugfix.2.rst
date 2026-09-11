@@ -1,0 +1,7 @@
+Fixed several more pre-existing use-after-free and data-corruption races on
+the free-threaded build, this time in the ``__setitem__()``/``update()``/
+``extend()``/``merge()`` replace path: a decref suspending the critical
+section mid-replace could leave a stale table pointer in use, misplace a
+temporarily-marked entry during a concurrent resize, or let one thread's
+duplicate-tracking mark get overwritten by an unrelated key's entry sharing
+the same hash bucket -- by :user:`asvetlov`.

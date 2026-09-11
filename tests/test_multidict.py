@@ -1970,6 +1970,73 @@ def test_get_lock_free_thread_safety() -> None:
     assert len(d) == 500
 
 
+@pytest.mark.c_extension
+def test_setitem_update_thread_safety() -> None:
+    """Concurrent __setitem__()/update() on colliding keys, alongside
+    concurrent add()/pop() churn that drives frequent resizes, must not
+    corrupt state or crash.
+
+    Regression test for several related, pre-existing free-threaded-build
+    races in the replace path (__setitem__()/update()/extend()/merge()),
+    found while stress-testing with an artificially widened suspension
+    window (see the PR description for how). The replace path finds a
+    key's entry, temporarily marks its hash (the sign bit) to track
+    progress across a scan that can span more than one match, mutates the
+    entry, then restores the mark once done -- and every step of that can
+    transiently suspend the critical section, exactly like the read-path
+    and _md_resize() races fixed earlier. A concurrent resize triggered by
+    an entirely different thread's add()/pop() could then observe or
+    mishandle that temporarily-marked state, corrupting the table (wrong
+    bucket placement, a different key's mark overwritten, a stale
+    entries-array pointer used after the table it pointed into was freed).
+    This is a C-extension-only concern: the pure-Python implementation has
+    no locking of its own to regress."""
+    nkeys = 30
+    d: MultiDict[object] = MultiDict((str(i), i) for i in range(nkeys))
+
+    def setitem_worker(n: int) -> None:
+        for i in range(1500):
+            d[str(i % nkeys)] = (n, i)
+
+    def dup_worker(n: int) -> None:
+        # Exercises the duplicate-collapsing path in __setitem__: add a
+        # genuine duplicate, then replace it, which must delete the dup.
+        for i in range(800):
+            key = str(i % nkeys)
+            d.add(key, ("dup", n, i))
+            d[key] = ("collapsed", n, i)
+
+    def update_worker(n: int) -> None:
+        for i in range(800):
+            d.update({str(i % nkeys): (n, i), str((i + 1) % nkeys): (n, i)})
+
+    def churn_worker(n: int) -> None:
+        for i in range(1200):
+            key = f"churn-{n}-{i}"
+            d.add(key, i)
+            d.pop(key, None)
+
+    def reader_worker(_n: int) -> None:
+        for i in range(1200):
+            key = str(i % nkeys)
+            d.get(key)
+            with contextlib.suppress(KeyError):
+                d[key]
+            key in d
+
+    with ThreadPoolExecutor(max_workers=28) as executor:
+        futures = [executor.submit(setitem_worker, i) for i in range(6)]
+        futures += [executor.submit(dup_worker, i) for i in range(4)]
+        futures += [executor.submit(update_worker, i) for i in range(4)]
+        futures += [executor.submit(churn_worker, i) for i in range(8)]
+        futures += [executor.submit(reader_worker, i) for i in range(6)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == nkeys
+    assert len(d) == len(list(d.items()))
+
+
 def test_subclassed_multidict(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
