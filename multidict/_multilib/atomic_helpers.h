@@ -138,7 +138,7 @@ atomic_store_ptr(void** obj, void* value)
    is NOT just a volatile write, though: TSO explicitly allows a store
    to be reordered after a later, independent load (StoreLoad
    reordering) -- exactly the reordering this module's Dekker-style
-   md->keys / active_readers pair depends on being absent. CPython's
+   md->keys / num_active_readers pair depends on being absent. CPython's
    own _Py_atomic_store_ptr() avoids this the same way: route the
    store through _InterlockedExchange*, which carries a full fence on
    every architecture MSVC targets. */

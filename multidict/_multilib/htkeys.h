@@ -52,7 +52,7 @@ typedef struct _htkeys {
     Py_ssize_t nentries;
 
 #ifdef Py_GIL_DISABLED
-    Py_ssize_t readers;
+    Py_ssize_t num_readers;
 
     struct _htkeys* retired_next;
 #endif
@@ -254,7 +254,7 @@ static const htkeys_t empty_htkeys = {
     .usable = 0, /* immutable */
     .nentries = 0,
 #ifdef Py_GIL_DISABLED
-    .readers = 0,
+    .num_readers = 0,
     .retired_next = NULL,
 #endif
     .indices = {DKIX_EMPTY,
@@ -312,7 +312,7 @@ htkeys_new(uint8_t log2_size)
     keys->nentries = 0;
     keys->usable = usable;
 #ifdef Py_GIL_DISABLED
-    keys->readers = 0;
+    keys->num_readers = 0;
     keys->retired_next = NULL;
 #endif
     memset(&keys->indices[0], 0xff, ((size_t)1 << log2_bytes));

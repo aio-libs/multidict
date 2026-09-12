@@ -27,7 +27,7 @@ typedef struct {
     htkeys_t* keys;
 
 #ifdef Py_GIL_DISABLED
-    Py_ssize_t active_readers;
+    Py_ssize_t num_active_readers;
 
     htkeys_t* retired;
 #endif

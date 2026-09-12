@@ -207,57 +207,70 @@ _ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
 /*
 Lock-free read support.
 
-md->active_readers is a coarse "some lock-free reader is in flight on
+md->num_active_readers is a coarse "some lock-free reader is in flight on
 this object" gate: incremented before a reader ever dereferences a
 keys table, decremented once it's done. A table is only ever freed
 once this reads 0 at a point synchronized (seq_cst on both sides, see
 atomic_helpers.h) with the swap that retired it. That ordering is the
 safety argument in full:
 
-  reader:  active_readers += 1        (A, seq_cst)
+  reader:  num_active_readers += 1        (A, seq_cst)
            keys = load(md->keys)      (B, seq_cst)
-           keys->readers += 1         (C, relaxed; skipped for
+           keys->num_readers += 1         (C, relaxed; skipped for
                                         &empty_htkeys, which is never
                                         retired or freed)
            ... walk keys ...
-           keys->readers -= 1         (D, relaxed)
-           active_readers -= 1        (E, seq_cst)
+           keys->num_readers -= 1         (D, relaxed)
+           num_active_readers -= 1        (E, seq_cst)
 
   writer:  store(md->keys, new)       (seq_cst)
-           if load(active_readers) == 0 (seq_cst): free old immediately
+           if load(num_active_readers) == 0 (seq_cst): free old immediately
            else: move old onto md->retired, freed by a later drain
 
 A is always sequenced-before B on the reader's own thread, so if the
-writer's check observes active_readers == 0, no reader can be between
+writer's check observes num_active_readers == 0, no reader can be between
 A and E for *any* table -- in particular none can be between B and C
 for the table being freed. Anything weaker than seq_cst here (plain
 acquire/release, or relaxed) is not enough: the writer's store to
-md->keys and its read of active_readers, versus the reader's write to
-active_readers and its read of md->keys, is a criss-cross on two
+md->keys and its read of num_active_readers, versus the reader's write to
+num_active_readers and its read of md->keys, is a criss-cross on two
 independent atomics (the same shape as Dekker's algorithm), and only a
 single global seq_cst order over all four operations closes it -- see
 the design discussion that produced this file for the specific
 interleaving that a weaker order permits.
 
-keys->readers (C/D) does not participate in that ordering and stays
+keys->num_readers (C/D) does not participate in that ordering and stays
 relaxed: it is only ever inspected in _md_drain_retired(), which never
-runs except at a point already known -- via the active_readers check
+runs except at a point already known -- via the num_active_readers check
 above -- to have no reader anywhere near it. It exists purely as a
 cheap defensive assertion that the coarse gate actually worked, not as
 an independent freeing trigger; freeing a specific retired table ahead
-of the whole object's active_readers reaching 0 would reintroduce the
+of the whole object's num_active_readers reaching 0 would reintroduce the
 same bootstrap race the coarse gate exists to close (see the design
 discussion; true per-table precision under sustained concurrent read
 load needs epoch tagging, which this does not attempt).
 */
 
+/* Every write to md->keys that a lock-free reader could observe must
+   use this, matching _md_reader_enter()'s atomic_load_ptr(): mixing a
+   plain store here with an atomic load there is a data race regardless
+   of what the surrounding critical section or num_active_readers protocol
+   otherwise guarantees, and on architectures weaker than x86 a plain
+   store carries no ordering guarantee at all relative to the
+   num_active_readers check the retiring code depends on. */
+static inline void
+_md_store_keys(MultiDictObject* md, htkeys_t* keys)
+{
+    atomic_store_ptr((void**)&md->keys, keys);
+}
+
 static inline htkeys_t*
 _md_reader_enter(MultiDictObject* md)
 {
-    atomic_fetch_add_ssize(&md->active_readers, 1);
+    atomic_fetch_add_ssize(&md->num_active_readers, 1);
     htkeys_t* keys = (htkeys_t*)atomic_load_ptr((void* const*)&md->keys);
     if (keys != &empty_htkeys) {
-        atomic_fetch_add_ssize_relaxed(&keys->readers, 1);
+        atomic_fetch_add_ssize_relaxed(&keys->num_readers, 1);
     }
     return keys;
 }
@@ -266,9 +279,9 @@ static inline void
 _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys != &empty_htkeys) {
-        atomic_fetch_add_ssize_relaxed(&keys->readers, -1);
+        atomic_fetch_add_ssize_relaxed(&keys->num_readers, -1);
     }
-    atomic_fetch_add_ssize(&md->active_readers, -1);
+    atomic_fetch_add_ssize(&md->num_active_readers, -1);
 }
 
 static inline void
@@ -294,14 +307,14 @@ _md_drain_retired(MultiDictObject* md)
     if (md->retired == NULL) {
         return;
     }
-    if (atomic_load_ssize(&md->active_readers) != 0) {
+    if (atomic_load_ssize(&md->num_active_readers) != 0) {
         return;
     }
     htkeys_t* t = md->retired;
     md->retired = NULL;
     while (t != NULL) {
         htkeys_t* next = t->retired_next;
-        assert(atomic_load_ssize_relaxed(&t->readers) == 0);
+        assert(atomic_load_ssize_relaxed(&t->num_readers) == 0);
         _md_free_retired(t);
         t = next;
     }
@@ -314,7 +327,7 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
         return;
     }
     _md_drain_retired(md);
-    if (atomic_load_ssize(&md->active_readers) == 0) {
+    if (atomic_load_ssize(&md->num_active_readers) == 0) {
         _md_free_retired(keys);
     } else {
         keys->retired_next = md->retired;
@@ -322,23 +335,6 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
     }
 }
 
-/* PyUnstable_TryIncRef()/PyUnstable_EnableTryIncRef() -- the only
-   public API letting a third-party extension safely try to incref an
-   object that might concurrently be reaching refcount zero on another
-   thread -- were added in CPython 3.14 (gh-128844) and do not exist
-   on 3.13, the free-threaded build's first (and, as of this writing,
-   most widely deployed) release: checked directly against the CPython
-   3.13 branch's Include/cpython/object.h, which has no equivalent.
-   CPython's own dict has had this capability since 3.13
-   (_Py_TryIncrefCompare, Include/internal/pycore_object.h), but that's
-   an internal, non-exported symbol -- the same situation as
-   _PyMem_FreeDelayed elsewhere in this file, not something a
-   separately-built, separately-linked extension can call. Below 3.14,
-   dereferencing an entry's identity/value contents without holding
-   md's critical section is not safe by any means available here, so
-   md_get_one() and the pret == NULL path of md_contains() fall back
-   to always taking the critical section there, exactly as they were
-   before this file added any lock-free reading at all. */
 #if PY_VERSION_HEX >= 0x030e0000
 #define _MD_HAVE_TRYINCREF 1
 #else
@@ -407,12 +403,6 @@ _md_entry_load_value(entry_t* entry)
     return (PyObject*)atomic_load_ptr((void* const*)&entry->value);
 }
 
-/* Publishes a new value, enabling PyUnstable_TryIncRef() for lock-free
-   readers. Does not touch whatever reference was there before: callers
-   that replace an already-populated entry (as opposed to filling a
-   fresh one) must drop that reference themselves, and are free to do
-   so after other suspension-risky work -- see _md_replace()/
-   _md_update() for why deferring it can matter. */
 static inline void
 _md_entry_publish_value(entry_t* entry, PyObject* value)
 {
@@ -422,11 +412,6 @@ _md_entry_publish_value(entry_t* entry, PyObject* value)
     atomic_store_ptr((void**)&entry->value, value);
 }
 
-/* Publishes a new value and decrefs whatever was there before only
-   after the new value is already visible, so a concurrent reader can
-   never observe entry->value mid-transition. Only safe when nothing
-   else needs to happen between the two -- see _md_entry_publish_value()
-   above when the caller must defer the decref. */
 static inline void
 _md_entry_store_value(entry_t* entry, PyObject* value)
 {
@@ -566,7 +551,11 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
         newkeys->usable = newkeys->usable - numentries;
         newkeys->nentries = numentries;
 
+#ifdef Py_GIL_DISABLED
+        _md_store_keys(md, newkeys);
+#else
         md->keys = newkeys;
+#endif
 
 #ifdef Py_GIL_DISABLED
         /* Bump the version on every resize, not just when a caller's
@@ -709,7 +698,11 @@ md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
     md->is_ci = is_ci;
     md->used = 0;
     md->version = NEXT_VERSION(md->state);
+#ifdef Py_GIL_DISABLED
+    _md_store_keys(md, new_keys);
+#else
     md->keys = new_keys;
+#endif
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
@@ -750,7 +743,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 
         memcpy(keys, fresh_src, size);
 #ifdef Py_GIL_DISABLED
-        keys->readers = 0;
+        keys->num_readers = 0;
         keys->retired_next = NULL;
 #endif
         entry_t* entry = htkeys_entries(keys);
@@ -775,7 +768,11 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     md->used = used;
     md->version = version;
     md->is_ci = is_ci;
+#ifdef Py_GIL_DISABLED
+    _md_store_keys(md, keys);
+#else
     md->keys = keys;
+#endif
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
@@ -1305,18 +1302,6 @@ md_finder_cleanup(md_finder_t* finder)
             continue;
         }
         entry_t* entry = entries + finder->iter.index;
-        /* Restore only entries this exact finder marked, not any
-           marked entry the probe chain happens to pass through: under
-           free threading, that chain can also hold an entry a
-           different, concurrently-suspended finder (scanning some
-           other key whose hash shares this bucket -- easy with a
-           small table) marked with *its own* hash. Blindly restoring
-           by matching only the sign bit would overwrite that entry's
-           real hash with this finder's, corrupting it. A mark this
-           finder made is always exactly finder->hash | MD_HASH_MARK;
-           nothing else can coincidentally equal that unless the two
-           keys' hashes were equal to begin with, in which case
-           restoring to finder->hash is correct anyway. */
         if (entry->hash == (finder->hash | MD_HASH_MARK)) {
             entry->hash = finder->hash;
         }
@@ -1383,7 +1368,14 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
             break;
         }
 
-        if (_md_entry_load_hash(entry) != hash) {
+        /* Masked, not a raw comparison: entry->hash can legitimately
+           carry MD_HASH_MARK right now if a different, concurrently-
+           suspended _md_replace()/_md_update() call has this exact
+           entry marked (see the comment above MD_HASH_MARK). A raw
+           comparison would treat that as "wrong hash, not a match" and
+           skip a key that is genuinely present both before and after
+           that operation -- a false miss, not just a stale read. */
+        if ((_md_entry_load_hash(entry) & PY_SSIZE_T_MAX) != hash) {
             Py_DECREF(entry_identity);
             continue;
         }
@@ -1505,7 +1497,12 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             break;
         }
 
-        if (_md_entry_load_hash(entry) != hash) {
+        /* Masked, not a raw comparison -- see the identical comment in
+           _md_contains_lockfree(): entry->hash can be legitimately
+           MD_HASH_MARK-ed by a different, concurrently-suspended
+           _md_replace()/_md_update() call right now, and a raw
+           comparison would wrongly treat a present key as absent. */
+        if ((_md_entry_load_hash(entry) & PY_SSIZE_T_MAX) != hash) {
             Py_DECREF(entry_identity);
             continue;
         }
@@ -2871,7 +2868,11 @@ md_clear(MultiDictObject* md)
     // either the fully-populated old table or the fully-empty one.
     htkeys_t* old_keys = md->keys;
     md->used = 0;
+#ifdef Py_GIL_DISABLED
+    _md_store_keys(md, (htkeys_t*)&empty_htkeys);
+#else
     md->keys = (htkeys_t*)&empty_htkeys;
+#endif
 
 #ifdef Py_GIL_DISABLED
     _md_retire(md, old_keys);
