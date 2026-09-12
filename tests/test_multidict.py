@@ -5,6 +5,7 @@ import gc
 import operator
 import platform
 import sys
+import threading
 import time
 import weakref
 from collections import deque
@@ -1989,8 +1990,14 @@ def test_reader_exit_drains_retired_thread_safety() -> None:
     then relies solely on later reader exits, with no further mutation,
     to reclaim it. Before the fix this leaves the weakrefs alive forever;
     after it, some reader's own exit drains the table once the gate
-    happens to fall to 0. This is a C-extension-only concern: the
-    pure-Python implementation has no retirement scheme to regress."""
+    happens to fall to 0. Each reader signals readiness only after a
+    warm-up batch of reads, then keeps going straight into its main
+    loop with no further blocking; clear() waits for every signal
+    before running, so it cannot land before a reader has actually
+    started (a plain submit() only queues the call, it says nothing
+    about whether the thread has run yet). This is a C-extension-only
+    concern: the pure-Python implementation has no retirement scheme to
+    regress."""
 
     class Marker:
         pass
@@ -2005,12 +2012,19 @@ def test_reader_exit_drains_retired_thread_safety() -> None:
     # `assert` below regardless of what multidict does.
     del markers, i, m
 
-    def reader(_n: int) -> None:
-        for i in range(50_000):
+    ready_events = [threading.Event() for _ in range(16)]
+
+    def reader(_n: int, ready: threading.Event) -> None:
+        for i in range(200):
+            str(i % 200) in d
+        ready.set()
+        for i in range(20_000):
             str(i % 200) in d
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = [executor.submit(reader, i) for i in range(8)]
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(reader, i, ready_events[i]) for i in range(16)]
+        for ready in ready_events:
+            ready.wait()
         d.clear()
         for f in futures:
             f.result()
