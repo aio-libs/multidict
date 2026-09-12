@@ -249,6 +249,41 @@ of the whole object's num_active_readers reaching 0 would reintroduce the
 same bootstrap race the coarse gate exists to close (see the design
 discussion; true per-table precision under sustained concurrent read
 load needs epoch tagging, which this does not attempt).
+
+_md_reader_exit()'s own num_active_readers decrement (E above) is a
+seq_cst atomic_fetch_add_ssize(), which hands back the pre-decrement
+count for free. When that count was 1, this reader's decrement is the
+one that brings the global gate to 0, at the exact same linearization
+point a writer's atomic_load_ssize(&md->num_active_readers) == 0 check
+would observe. The safety argument above never distinguished who
+performs that check; it only depends on num_active_readers reaching 0
+under seq_cst. So the reader may drain md->retired right there instead
+of leaving every table on it stranded until some future writer happens
+to retire another one and observe the same zero (see md->retired below
+for why a concurrent drain from this path is safe against a writer
+retiring into the same list at the same time).
+
+md->retired is a lock-free stack (Treiber-style), not a plain
+writer-owned list: with readers now able to drain it too, pushes
+(_md_retire()) and pop-alls (_md_drain_retired()) can run concurrently
+with each other, on different threads, with no lock in common. A
+pop-all is a single atomic_exchange_ptr() that swaps the whole chain
+out for NULL and hands the caller sole ownership of whatever it
+returns; any push racing that exchange either lands before it (and
+gets swept up in the same pop) or after it (and starts a fresh chain
+from NULL), never in between, because there is no "in between" for a
+single atomic RMW. A push cannot use that same trick: it has to link
+the new node's ->retired_next to the current head before publishing
+the node, and if it read that head with a plain load, a pop-all could
+slip in after the load and free the very chain the push is about to
+link to, publishing a node whose ->retired_next dangles. The
+atomic_compare_exchange_ptr() loop in _md_retire() closes that window
+instead of merely narrowing it: the head is only published once the
+CAS confirms nothing changed it since the read that fed
+->retired_next, and if something did (a pop-all ran, or another
+push), the loop rereads the new head and relinks before retrying, so
+->retired_next is never stale at the moment the node actually becomes
+visible.
 */
 
 /* Every write to md->keys that a lock-free reader could observe must
@@ -291,12 +326,19 @@ _md_reader_enter(MultiDictObject* md)
 }
 
 static inline void
+_md_drain_retired(MultiDictObject* md);
+
+static inline void
 _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys != &empty_htkeys) {
         atomic_fetch_add_ssize_relaxed(&keys->num_readers, -1);
     }
-    atomic_fetch_add_ssize(&md->num_active_readers, -1);
+    Py_ssize_t prev_active_readers =
+        atomic_fetch_add_ssize(&md->num_active_readers, -1);
+    if (prev_active_readers == 1) {
+        _md_drain_retired(md);
+    }
 }
 
 static inline void
@@ -318,14 +360,10 @@ _md_free_retired(htkeys_t* keys)
 static inline void
 _md_drain_retired(MultiDictObject* md)
 {
-    if (md->retired == NULL) {
-        return;
-    }
     if (atomic_load_ssize(&md->num_active_readers) != 0) {
         return;
     }
-    htkeys_t* t = md->retired;
-    md->retired = NULL;
+    htkeys_t* t = (htkeys_t*)atomic_exchange_ptr((void**)&md->retired, NULL);
     while (t != NULL) {
         htkeys_t* next = t->retired_next;
         assert(atomic_load_ssize_relaxed(&t->num_readers) == 0);
@@ -341,12 +379,17 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
         return;
     }
     _md_drain_retired(md);
-    if (atomic_load_ssize(&md->num_active_readers) == 0) {
-        _md_free_retired(keys);
-    } else {
-        keys->retired_next = md->retired;
-        md->retired = keys;
+
+    htkeys_t* old_head =
+        (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
+    for (;;) {
+        keys->retired_next = old_head;
+        if (atomic_compare_exchange_ptr(
+                (void**)&md->retired, (void**)&old_head, keys)) {
+            break;
+        }
     }
+    _md_drain_retired(md);
 }
 
 #if PY_VERSION_HEX >= 0x030e0000
