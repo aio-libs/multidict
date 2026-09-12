@@ -1,0 +1,5 @@
+Fixed a data race on the free-threaded build where ``md->keys`` was
+published with a plain store while lock-free readers loaded it
+atomically, and a false-negative race in ``get()``/``__contains__``
+where a hash temporarily marked by a concurrent replace could make a
+present key look absent -- by :user:`asvetlov`.
