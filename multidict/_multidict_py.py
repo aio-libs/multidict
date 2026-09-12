@@ -1,9 +1,7 @@
-import contextlib
 import enum
 import functools
 import reprlib
 import sys
-import threading
 from array import array
 from collections.abc import (
     ItemsView,
@@ -59,25 +57,6 @@ _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
 
 _version = array("Q", [0])
-
-# _version is shared by every MultiDict/CIMultiDict instance, so under a
-# free-threaded build a plain increment can race across instances mutated
-# concurrently on different threads and lose updates; a lock serializes it
-# the way the C extension does with an atomic op. The GIL already
-# serializes the increment on a regular build, so the lock would be pure
-# overhead there -- skip it whenever the GIL is enabled (the only state
-# older, GIL-only builds have).
-if not getattr(sys, "_is_gil_enabled", lambda: True)():
-    _version_lock: contextlib.AbstractContextManager[object] = threading.Lock()
-else:
-    _version_lock = contextlib.nullcontext()
-
-
-def _next_version() -> int:
-    """Return a fresh, process-wide unique version number."""
-    with _version_lock:
-        _version[0] += 1
-        return _version[0]
 
 
 class _Iter(Generic[_T]):
@@ -657,7 +636,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
         self._used = 0
-        self._version = _next_version()
+        v = _version
+        v[0] += 1
+        self._version = v[0]
         if not kwargs:
             md = None
             if isinstance(arg, MultiDictProxy):
@@ -1113,7 +1094,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 self._add_with_hash_for_upd(entry)
 
     def _incr_version(self) -> None:
-        self._version = _next_version()
+        v = _version
+        v[0] += 1
+        self._version = v[0]
 
     def _resize(self, log2_newsize: int, update: bool) -> None:
         oldkeys = self._keys

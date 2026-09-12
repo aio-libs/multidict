@@ -1972,6 +1972,46 @@ def test_get_lock_free_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+def test_version_thread_safety() -> None:
+    """Concurrently mutating independent multidicts must never hand out
+    the same version number twice.
+
+    Regression test for a version-counter race: every mutation derives
+    its instance's version from ``state->global_version``, a counter
+    shared by every ``MultiDict``/``CIMultiDict`` instance in the process
+    (it lives on the module state, not the object), so unrelated
+    multidicts can be compared and always disagree. Bumping that shared
+    counter used to be a plain ``++`` with no synchronization of its own,
+    relying entirely on each instance's own critical section; under a
+    free-threaded build, two threads mutating two *different* instances
+    could bump it at the same time and step on each other's update,
+    handing out one version number to two objects, or a smaller one to a
+    later mutation than an earlier one already got. This is a
+    C-extension-only concern: the pure-Python implementation has the
+    same shared-counter shape but no locking of its own to regress.
+    """
+    n_threads = 16
+    n_iters = 3000
+    all_versions: list[list[int]] = []
+    lock = threading.Lock()
+
+    def worker(_n: int) -> None:
+        m: MultiDict[object] = MultiDict()
+        versions = []
+        for i in range(n_iters):
+            m["key"] = i
+            versions.append(multidict.getversion(m))
+        with lock:
+            all_versions.append(versions)
+
+    with ThreadPoolExecutor(max_workers=n_threads) as executor:
+        list(executor.map(worker, range(n_threads)))
+
+    flat_versions = [v for versions in all_versions for v in versions]
+    assert len(set(flat_versions)) == len(flat_versions)
+
+
+@pytest.mark.c_extension
 def test_reader_exit_drains_retired_thread_safety() -> None:
     """A retired hash table must eventually be freed by reader traffic
     alone, with no further mutation. Regression test for
