@@ -230,13 +230,18 @@ atomic_fetch_add_ssize(Py_ssize_t* obj, Py_ssize_t value)
     return atomic_fetch_add_ssize_relaxed(obj, value);
 }
 
-/* _InterlockedExchangeAdd64 is only available on x64/ARM64; a
-   compare-exchange retry loop over _InterlockedCompareExchange64, which
-   MSVC supports on x86 too (via cmpxchg8b), keeps this portable to
-   32-bit Windows without an arch-specific branch. */
 static inline uint64_t
 atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
 {
+#if SIZEOF_VOID_P == 8
+    /* x64/ARM64: a single native op, same as atomic_fetch_add_ssize_relaxed
+       above. */
+    return (uint64_t)_InterlockedExchangeAdd64((volatile __int64*)obj,
+                                               (__int64)value);
+#else
+    /* 32-bit x86 has no _InterlockedExchangeAdd64; fall back to a
+       compare-exchange retry loop over _InterlockedCompareExchange64,
+       which MSVC supports there too (via cmpxchg8b). */
     __int64 initial;
     __int64 desired;
     do {
@@ -245,6 +250,7 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     } while (_InterlockedCompareExchange64(
                  (volatile __int64*)obj, desired, initial) != initial);
     return (uint64_t)initial;
+#endif
 }
 
 static inline void*
