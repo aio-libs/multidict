@@ -264,6 +264,21 @@ _md_store_keys(MultiDictObject* md, htkeys_t* keys)
     atomic_store_ptr((void**)&md->keys, keys);
 }
 
+/* md_len() reads md->used lock-free via atomic_load_ssize_relaxed(); every
+   write to it needs the matching relaxed atomic op for the same reason
+   _md_store_keys() exists above. */
+static inline void
+_md_store_used(MultiDictObject* md, Py_ssize_t used)
+{
+    atomic_store_ssize_relaxed(&md->used, used);
+}
+
+static inline void
+_md_add_used(MultiDictObject* md, Py_ssize_t delta)
+{
+    atomic_fetch_add_ssize_relaxed(&md->used, delta);
+}
+
 static inline htkeys_t*
 _md_reader_enter(MultiDictObject* md)
 {
@@ -290,9 +305,8 @@ _md_free_retired(htkeys_t* keys)
     entry_t* entries = htkeys_entries(keys);
     /* Only md_clear()'s retired tables have live entries to release here:
    _md_resize()'s old table has its ownership already transferred to
-   the new table via memcpy (see _md_retire_resized()), so its
-   nentries is reset to 0 before retirement, making this loop a
-   no-op for that case. */
+   the new table via memcpy, so its nentries is reset to 0 before
+   retirement, making this loop a no-op for that case. */
     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
         Py_CLEAR(entries[i].identity);
         Py_CLEAR(entries[i].key);
@@ -696,7 +710,11 @@ md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
     md_clear(md);
     md->state = state;
     md->is_ci = is_ci;
+#ifdef Py_GIL_DISABLED
+    _md_store_used(md, 0);
+#else
     md->used = 0;
+#endif
     md->version = NEXT_VERSION(md->state);
 #ifdef Py_GIL_DISABLED
     _md_store_keys(md, new_keys);
@@ -765,7 +783,11 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 
     md_clear(md);
     md->state = state;
+#ifdef Py_GIL_DISABLED
+    _md_store_used(md, used);
+#else
     md->used = used;
+#endif
     md->version = version;
     md->is_ci = is_ci;
 #ifdef Py_GIL_DISABLED
@@ -850,7 +872,11 @@ _md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
 #endif
 
     md->version = NEXT_VERSION(md->state);
+#ifdef Py_GIL_DISABLED
+    _md_add_used(md, 1);
+#else
     md->used += 1;
+#endif
     keys->usable -= 1;
     keys->nentries += 1;
     return 0;
@@ -896,7 +922,11 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
 #endif
 
     md->version = NEXT_VERSION(md->state);
+#ifdef Py_GIL_DISABLED
+    _md_add_used(md, 1);
+#else
     md->used += 1;
+#endif
     keys->usable -= 1;
     keys->nentries += 1;
     return 0;
@@ -961,7 +991,7 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
     entry->key = NULL;
     atomic_store_ptr((void**)&entry->value, NULL);
     htkeys_set_index(keys, slot, DKIX_DUMMY);
-    md->used -= 1;
+    _md_add_used(md, -1);
 
     Py_XDECREF(identity);
     Py_XDECREF(key);
@@ -2123,7 +2153,7 @@ md_post_update(MultiDictObject* md)
                     PyObject* old_identity = _md_entry_load_identity(entry);
                     atomic_store_ptr((void**)&entry->identity, NULL);
                     htkeys_set_index(keys, slot, DKIX_DUMMY);
-                    md->used -= 1;
+                    _md_add_used(md, -1);
                     Py_XDECREF(old_identity);
                     /* See _md_replace()'s comment on why both the
                        pointer and the version are checked. */
@@ -2867,10 +2897,11 @@ md_clear(MultiDictObject* md)
     // not yet). Swapping first means a suspended thread only ever sees
     // either the fully-populated old table or the fully-empty one.
     htkeys_t* old_keys = md->keys;
-    md->used = 0;
 #ifdef Py_GIL_DISABLED
+    _md_store_used(md, 0);
     _md_store_keys(md, (htkeys_t*)&empty_htkeys);
 #else
+    md->used = 0;
     md->keys = (htkeys_t*)&empty_htkeys;
 #endif
 
@@ -2907,8 +2938,6 @@ _md_check_consistency(MultiDictObject* md, bool update)
     CHECK(keys != NULL);
     Py_ssize_t calc_usable = USABLE_FRACTION(htkeys_nslots(keys));
 
-    // In the free-threaded build, shared keys may be concurrently modified,
-    // so use atomic loads.
     Py_ssize_t usable = keys->usable;
     Py_ssize_t nentries = keys->nentries;
 
