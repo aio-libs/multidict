@@ -1,0 +1,7 @@
+Fixed a data race on the free-threaded build of the C extension where
+``state->global_version``, the version counter shared by every
+multidict instance and used to derive ``getversion()``, was bumped with
+a plain increment instead of an atomic op. Two threads mutating
+different instances at the same time could step on each other's update
+and hand out a duplicate (or non-monotonic) version number
+-- by :user:`asvetlov`.

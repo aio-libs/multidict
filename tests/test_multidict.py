@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import gc
 import operator
 import platform
@@ -116,6 +117,46 @@ def test_multidict_proxy_subclassing(
         any_multidict_proxy_class,  # type: ignore[valid-type,misc]
     ):
         pass
+
+
+def test_multidict_subclass_new_and_init_are_called(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    calls = []
+
+    class DummyMultidict(any_multidict_class):  # type: ignore[valid-type,misc]
+        def __new__(cls, *args: object, **kwargs: object) -> DummyMultidict:
+            calls.append("new")
+            return cast(DummyMultidict, super().__new__(cls))
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            calls.append("init")
+            super().__init__(*args, **kwargs)
+
+    d = DummyMultidict([("key", "value")], extra="1")
+
+    assert calls == ["new", "init"]
+    assert d == {"key": "value", "extra": "1"}
+
+
+def test_multidict_proxy_subclass_init_is_called(
+    any_multidict_class: type[MultiDict[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+) -> None:
+    calls = []
+
+    class DummyMultidictProxy(
+        any_multidict_proxy_class,  # type: ignore[valid-type,misc]
+    ):
+        def __init__(self, arg: object) -> None:
+            calls.append("init")
+            super().__init__(arg)
+
+    md = any_multidict_class(key="value")
+    p = DummyMultidictProxy(md)
+
+    assert calls == ["init"]
+    assert p == md
 
 
 class BaseMultiDictTest:
@@ -1720,6 +1761,383 @@ def test_update_from_dict_arg_thread_safety() -> None:
         futures += [executor.submit(updater, i) for i in range(8)]
         for f in futures:
             f.result()
+
+
+@pytest.mark.c_extension
+def test_single_item_ops_thread_safety() -> None:
+    """Concurrent add()/__setitem__/__delitem__/pop()/popitem()/setdefault()
+    alongside __getitem__/__contains__/len()/iteration must not crash.
+
+    Regression test for the free-threaded build: unlike update()/extend()/
+    merge()/clear()/repr() (protected earlier), the single-item operations
+    -- add(), __setitem__/__delitem__, get()/getone()/__getitem__,
+    __contains__, setdefault(), pop()/popone()/popall()/popitem(), and
+    iteration -- used to run without holding self's lock at all. A resize
+    triggered by one thread's mutation could free the hash table a
+    concurrent reader on another thread was still walking (a
+    use-after-free), or a concurrent mutator could observe/interleave with
+    a half-applied insert or deletion. This is a C-extension-only concern:
+    the pure-Python implementation has no locking of its own to regress.
+    __eq__ is exercised against both another MultiDict (the two-object
+    CRITICAL_SECTION2 path) and a plain dict (the single-object,
+    generic-mapping path)."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    d2: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    other_mapping = {str(i): i for i in range(200)}
+
+    def worker(n: int) -> None:
+        for i in range(300):
+            key = str(i % 200)
+            if n % 2 == 0:
+                target = d if n % 4 == 0 else d2
+                op = i % 9
+                if op == 0:
+                    target.add(key, i)
+                elif op == 1:
+                    target[key] = i
+                elif op == 2:
+                    target.setdefault(f"sd{n}-{i}", i)
+                elif op == 3:
+                    with contextlib.suppress(KeyError):
+                        del target[key]
+                elif op == 4:
+                    target.pop(key, None)
+                elif op == 5:
+                    target.getall(key, [])
+                elif op == 6:
+                    target.popone(key, None)
+                elif op == 7:
+                    target.popall(key, None)
+                else:
+                    with contextlib.suppress(KeyError):
+                        target.popitem()
+            else:
+                key in d
+                d.get(key)
+                d.getone(key, None)
+                with contextlib.suppress(KeyError):
+                    d[key]
+                len(d)
+                d == d2
+                d == other_mapping
+                # A concurrent mutation from another worker can legitimately
+                # be detected mid-iteration (same as dict's own "changed
+                # size during iteration" check); that is not a bug here.
+                with contextlib.suppress(RuntimeError):
+                    list(d.items())
+                    list(d.keys())
+                    list(d.values())
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d) == len(list(d.items()))
+    assert len(d2) == len(list(d2.items()))
+
+
+@pytest.mark.c_extension
+def test_view_set_ops_thread_safety() -> None:
+    """Concurrent items()/keys() set-algebra (&, |, -, ^, in, isdisjoint())
+    alongside mutation must not crash.
+
+    Regression test for the free-threaded build: itemsview's and keysview's
+    &/|/-/^/in/isdisjoint() implementations used to walk self's hash table
+    directly (md_calc_identity()/md_init_finder()/md_contains()/md_next())
+    without holding self's lock, so a concurrent resize triggered by
+    mutation on another thread could free the table mid-walk. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+    other = {str(i): i for i in range(100, 300)}
+
+    def worker(n: int) -> None:
+        for i in range(150):
+            if n % 2 == 0:
+                key = str(i % 200)
+                if i % 2 == 0:
+                    d.add(key, i)
+                else:
+                    d.pop(key, None)
+            else:
+                # A concurrent mutation from another worker can
+                # legitimately be detected mid-walk (same as dict's own
+                # "changed size during iteration" check); that is not a
+                # bug here.
+                with contextlib.suppress(RuntimeError):
+                    d.items() & other.items()
+                    d.items() | other.items()
+                    d.items() - other.items()
+                    d.items() ^ other.items()
+                    d.items().isdisjoint(other.items())
+                    d.keys() & other.keys()
+                    d.keys() | other.keys()
+                    d.keys() - other.keys()
+                    d.keys() ^ other.keys()
+                    d.keys().isdisjoint(other.keys())
+                    "100" in d.keys()
+                    ("100", 100) in d.items()
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d) == len(list(d.items()))
+
+
+@pytest.mark.c_extension
+def test_contains_lock_free_thread_safety() -> None:
+    """Concurrent __contains__ alongside heavy add()/pop() churn must not
+    crash.
+
+    Regression test for the free-threaded build: __contains__ (via
+    md_contains() with pret == NULL) is now genuinely lock-free -- it
+    does not take self's critical section at all, unlike every other
+    single-item operation, which still does. Its safety instead comes
+    from _md_reader_enter()/_md_reader_exit() (a coarse active_readers
+    gate) plus per-table retirement: a resize/shrink/clear no longer
+    frees the old hash table immediately, only once no lock-free reader
+    could still be walking it. This drives many resizes concurrently
+    with many __contains__ calls specifically to exercise that
+    retire/drain path, not just the (always safe) case where
+    active_readers happens to be 0 at retirement time. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(500))
+
+    def mutator(n: int) -> None:
+        for i in range(3000):
+            key = f"m{n}-{i}"
+            d.add(key, i)
+            d.pop(key, None)
+
+    def reader(_n: int) -> None:
+        for i in range(3000):
+            str(i % 500) in d
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(mutator, i) for i in range(8)]
+        futures += [executor.submit(reader, i) for i in range(8)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == 500
+
+
+@pytest.mark.c_extension
+def test_get_lock_free_thread_safety() -> None:
+    """Concurrent get()/getone()/__getitem__ alongside heavy add()/pop()
+    churn must not crash.
+
+    Regression test for the free-threaded build: on CPython 3.14+,
+    get()/getone()/__getitem__ (md_get_one() with pret == NULL) are now
+    genuinely lock-free, falling back to a critical section only when a
+    candidate entry's identity or value can't be safely referenced
+    (PyUnstable_TryIncRef() fails, or the field changed mid-read). On
+    3.13 -- which has no public API for a third-party extension to
+    safely try-incref an object that might concurrently be reaching
+    refcount zero (PyUnstable_TryIncRef()/PyUnstable_EnableTryIncRef()
+    were only added in 3.14) -- it always takes the critical section,
+    same as before this file added any lock-free reading of entry
+    contents. Either way this must not crash: it drives many entry
+    inserts/deletes concurrently with many get() calls to exercise
+    both the lock-free fast path (3.14+) and the locked fallback
+    (3.13, or a 3.14+ TryIncRef failure). Deliberately uses only
+    add()/pop() on the mutating side, not __setitem__: __setitem__'s
+    replace path has a separate, pre-existing, unrelated race that
+    this test is not about and should not trip. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(500))
+
+    def mutator(n: int) -> None:
+        for i in range(3000):
+            key = f"m{n}-{i}"
+            d.add(key, i)
+            d.pop(key, None)
+
+    def reader(_n: int) -> None:
+        for i in range(3000):
+            key = str(i % 500)
+            d.get(key)
+            d.getone(key, None)
+            with contextlib.suppress(KeyError):
+                d[key]
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(mutator, i) for i in range(8)]
+        futures += [executor.submit(reader, i) for i in range(8)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == 500
+
+
+@pytest.mark.c_extension
+def test_version_thread_safety() -> None:
+    """Concurrently mutating independent multidicts must never hand out
+    the same version number twice.
+
+    Regression test for a version-counter race: every mutation derives
+    its instance's version from ``state->global_version``, a counter
+    shared by every ``MultiDict``/``CIMultiDict`` instance in the process
+    (it lives on the module state, not the object), so unrelated
+    multidicts can be compared and always disagree. Bumping that shared
+    counter used to be a plain ``++`` with no synchronization of its own,
+    relying entirely on each instance's own critical section; under a
+    free-threaded build, two threads mutating two *different* instances
+    could bump it at the same time and step on each other's update,
+    handing out one version number to two objects, or a smaller one to a
+    later mutation than an earlier one already got. This is a
+    C-extension-only concern: the pure-Python implementation has the
+    same shared-counter shape but no locking of its own to regress.
+    """
+    n_threads = 16
+    n_iters = 3000
+    all_versions: list[list[int]] = []
+    lock = threading.Lock()
+
+    def worker(_n: int) -> None:
+        m: MultiDict[object] = MultiDict()
+        versions = []
+        for i in range(n_iters):
+            m["key"] = i
+            versions.append(multidict.getversion(m))
+        with lock:
+            all_versions.append(versions)
+
+    with ThreadPoolExecutor(max_workers=n_threads) as executor:
+        list(executor.map(worker, range(n_threads)))
+
+    flat_versions = [v for versions in all_versions for v in versions]
+    assert len(set(flat_versions)) == len(flat_versions)
+
+
+@pytest.mark.c_extension
+def test_reader_exit_drains_retired_thread_safety() -> None:
+    """A retired hash table must eventually be freed by reader traffic
+    alone, with no further mutation. Regression test for
+    aio-libs/multidict#1443.
+
+    md->retired only used to be drained inside _md_retire(), i.e. as a
+    side effect of some *later* resize/clear checking whether the
+    active-readers gate had reached 0. _md_reader_exit() never triggered
+    a drain itself, so under read traffic frequent enough that the gate
+    rarely lands on exactly 0 at the moment some other resize/clear
+    happens to check it, a table already on md->retired could sit there
+    for the rest of the object's life. This drives many reader threads
+    continuously across a single clear() (so the active-readers gate is
+    essentially always nonzero at the instant clear() checks it, forcing
+    the table onto md->retired instead of freeing it immediately) and
+    then relies solely on later reader exits, with no further mutation,
+    to reclaim it. Before the fix this leaves the weakrefs alive forever;
+    after it, some reader's own exit drains the table once the gate
+    happens to fall to 0. Each reader signals readiness only after a
+    warm-up batch of reads, then keeps going straight into its main
+    loop with no further blocking; clear() waits for every signal
+    before running, so it cannot land before a reader has actually
+    started (a plain submit() only queues the call, it says nothing
+    about whether the thread has run yet). This is a C-extension-only
+    concern: the pure-Python implementation has no retirement scheme to
+    regress."""
+
+    class Marker:
+        pass
+
+    d: MultiDict[Marker] = MultiDict()
+    markers = [Marker() for _ in range(200)]
+    refs = [weakref.ref(m) for m in markers]
+    for i, m in enumerate(markers):
+        d.add(str(i), m)
+    # A for loop's variables outlive the loop in their enclosing scope, so
+    # `i`/`m` would otherwise keep the last marker alive right through the
+    # `assert` below regardless of what multidict does.
+    del markers, i, m
+
+    ready_events = [threading.Event() for _ in range(16)]
+
+    def reader(_n: int, ready: threading.Event) -> None:
+        for i in range(200):
+            str(i % 200) in d
+        ready.set()
+        for i in range(20_000):
+            str(i % 200) in d
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(reader, i, ready_events[i]) for i in range(16)]
+        for ready in ready_events:
+            ready.wait()
+        d.clear()
+        for f in futures:
+            f.result()
+
+    gc.collect()
+    assert all(r() is None for r in refs)
+
+
+@pytest.mark.c_extension
+def test_setitem_update_thread_safety() -> None:
+    """Concurrent __setitem__()/update() on colliding keys, alongside
+    concurrent add()/pop() churn that drives frequent resizes, must not
+    corrupt state or crash.
+
+    Regression test for several related, pre-existing free-threaded-build
+    races in the replace path (__setitem__()/update()/extend()/merge()),
+    found while stress-testing with an artificially widened suspension
+    window (see the PR description for how). The replace path finds a
+    key's entry, temporarily marks its hash (the sign bit) to track
+    progress across a scan that can span more than one match, mutates the
+    entry, then restores the mark once done -- and every step of that can
+    transiently suspend the critical section, exactly like the read-path
+    and _md_resize() races fixed earlier. A concurrent resize triggered by
+    an entirely different thread's add()/pop() could then observe or
+    mishandle that temporarily-marked state, corrupting the table (wrong
+    bucket placement, a different key's mark overwritten, a stale
+    entries-array pointer used after the table it pointed into was freed).
+    This is a C-extension-only concern: the pure-Python implementation has
+    no locking of its own to regress."""
+    nkeys = 30
+    d: MultiDict[object] = MultiDict((str(i), i) for i in range(nkeys))
+
+    def setitem_worker(n: int) -> None:
+        for i in range(1500):
+            d[str(i % nkeys)] = (n, i)
+
+    def dup_worker(n: int) -> None:
+        # Exercises the duplicate-collapsing path in __setitem__: add a
+        # genuine duplicate, then replace it, which must delete the dup.
+        for i in range(800):
+            key = str(i % nkeys)
+            d.add(key, ("dup", n, i))
+            d[key] = ("collapsed", n, i)
+
+    def update_worker(n: int) -> None:
+        for i in range(800):
+            d.update({str(i % nkeys): (n, i), str((i + 1) % nkeys): (n, i)})
+
+    def churn_worker(n: int) -> None:
+        for i in range(1200):
+            key = f"churn-{n}-{i}"
+            d.add(key, i)
+            d.pop(key, None)
+
+    def reader_worker(_n: int) -> None:
+        for i in range(1200):
+            key = str(i % nkeys)
+            d.get(key)
+            with contextlib.suppress(KeyError):
+                d[key]
+            key in d
+
+    with ThreadPoolExecutor(max_workers=28) as executor:
+        futures = [executor.submit(setitem_worker, i) for i in range(6)]
+        futures += [executor.submit(dup_worker, i) for i in range(4)]
+        futures += [executor.submit(update_worker, i) for i in range(4)]
+        futures += [executor.submit(churn_worker, i) for i in range(8)]
+        futures += [executor.submit(reader_worker, i) for i in range(6)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == nkeys
+    assert len(d) == len(list(d.items()))
 
 
 def test_subclassed_multidict(

@@ -1,0 +1,8 @@
+Made ``MultiDict.__contains__()``, ``.get()``, ``.getone()`` and
+``__getitem__()`` lock-free on CPython 3.14+'s free-threaded build, instead
+of taking a critical section like the rest of the C extension's API (on
+3.13, which lacks the public API these need to safely read an entry
+concurrently, they still take the critical section, exactly as before). A
+resize/shrink/clear no longer frees the outgoing hash table immediately; it
+is deferred until no lock-free reader could still be walking it -- by
+:user:`asvetlov`.

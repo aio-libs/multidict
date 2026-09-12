@@ -1,0 +1,3 @@
+Replaced ``PyIter_Next()`` calls with the newer ``PyIter_NextItem()`` API in
+the C extension, so the iterator-exhausted and error cases are told apart by
+the return code instead of an ambiguous ``NULL`` result -- by :user:`asvetlov`.

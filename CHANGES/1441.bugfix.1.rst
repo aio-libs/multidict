@@ -1,0 +1,6 @@
+Fixed several pre-existing use-after-free races on the free-threaded build: ``_md_resize()``
+and ``md_clone_from_ht()`` could allocate a new hash table, have their
+critical section transiently suspended during that allocation, and then use
+a keys-table pointer or size a concurrent operation had already invalidated;
+``_md_del_at()`` (plain ``del``/``pop()``) could likewise leave ``self`` in
+an inconsistent state across a suspending decref -- by :user:`asvetlov`.
