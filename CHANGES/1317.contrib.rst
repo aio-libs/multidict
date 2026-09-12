@@ -1,0 +1,4 @@
+Added race tests that iterate and extend a :class:`~multidict.MultiDict`
+from several threads on a free-threaded build, so a regression in the C
+extension's locking fails a free-threaded CI leg instead of going unnoticed
+-- by :user:`rodrigobnogueira`.
