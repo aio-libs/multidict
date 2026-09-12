@@ -2,6 +2,7 @@
 #define _MULTIDICT_ATOMIC_HELPERS_H
 
 #include <Python.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +58,12 @@ atomic_fetch_add_ssize(Py_ssize_t* obj, Py_ssize_t value)
     return __atomic_fetch_add(obj, value, __ATOMIC_SEQ_CST);
 }
 
+static inline uint64_t
+atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
+{
+    return __atomic_fetch_add(obj, value, __ATOMIC_RELAXED);
+}
+
 static inline void*
 atomic_load_ptr(void* const* obj)
 {
@@ -107,6 +114,13 @@ atomic_fetch_add_ssize(Py_ssize_t* obj, Py_ssize_t value)
 {
     return atomic_fetch_add_explicit(
         (_Atomic(Py_ssize_t)*)obj, value, memory_order_seq_cst);
+}
+
+static inline uint64_t
+atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
+{
+    return atomic_fetch_add_explicit(
+        (_Atomic(uint64_t)*)obj, value, memory_order_relaxed);
 }
 
 static inline void*
@@ -180,6 +194,23 @@ atomic_fetch_add_ssize(Py_ssize_t* obj, Py_ssize_t value)
 {
     /* _InterlockedExchangeAdd* already carries a full fence. */
     return atomic_fetch_add_ssize_relaxed(obj, value);
+}
+
+/* _InterlockedExchangeAdd64 is only available on x64/ARM64; a
+   compare-exchange retry loop over _InterlockedCompareExchange64, which
+   MSVC supports on x86 too (via cmpxchg8b), keeps this portable to
+   32-bit Windows without an arch-specific branch. */
+static inline uint64_t
+atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
+{
+    __int64 initial;
+    __int64 desired;
+    do {
+        initial = *(volatile __int64*)obj;
+        desired = initial + (__int64)value;
+    } while (_InterlockedCompareExchange64(
+                 (volatile __int64*)obj, desired, initial) != initial);
+    return (uint64_t)initial;
 }
 
 static inline void*

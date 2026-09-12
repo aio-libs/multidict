@@ -2,6 +2,7 @@ import enum
 import functools
 import reprlib
 import sys
+import threading
 from array import array
 from collections.abc import (
     ItemsView,
@@ -57,6 +58,20 @@ _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
 
 _version = array("Q", [0])
+_version_lock = threading.Lock()
+
+
+def _next_version() -> int:
+    """Return a fresh, process-wide unique version number.
+
+    _version is shared by every MultiDict/CIMultiDict instance, so under
+    a free-threaded build a plain increment can race across instances
+    mutated concurrently on different threads and lose updates; the lock
+    serializes it the way the C extension does with an atomic op.
+    """
+    with _version_lock:
+        _version[0] += 1
+        return _version[0]
 
 
 class _Iter(Generic[_T]):
@@ -636,9 +651,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
         self._used = 0
-        v = _version
-        v[0] += 1
-        self._version = v[0]
+        self._version = _next_version()
         if not kwargs:
             md = None
             if isinstance(arg, MultiDictProxy):
@@ -1094,9 +1107,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 self._add_with_hash_for_upd(entry)
 
     def _incr_version(self) -> None:
-        v = _version
-        v[0] += 1
-        self._version = v[0]
+        self._version = _next_version()
 
     def _resize(self, log2_newsize: int, update: bool) -> None:
         oldkeys = self._keys

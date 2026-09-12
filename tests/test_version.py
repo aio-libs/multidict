@@ -1,4 +1,6 @@
+import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from typing import TypeVar
 
 import pytest
@@ -314,3 +316,43 @@ def test_popitem_key_error(
     v2 = multidict_getversion_callable(m)
     assert v2 == v
     assert v2 == multidict_getversion_callable(p)
+
+
+def test_version_thread_safety(
+    any_multidict_class: type[MultiDict[int]],
+    multidict_getversion_callable: GetVersion[int],
+) -> None:
+    """Concurrently mutating independent multidicts must never hand out
+    the same version number twice.
+
+    Regression test for a version-counter race: every mutation derives
+    its instance's version from one counter shared by all instances of
+    the implementation (module state in the C extension, a module-level
+    array in pure Python), so that unrelated multidicts can be compared
+    and always disagree. Bumping that shared counter used to be a plain
+    increment with no synchronization of its own, relying entirely on
+    each instance's own lock; under a free-threaded build, two threads
+    mutating two *different* instances could bump it at the same time and
+    step on each other's update, handing out one version number to two
+    objects, or a smaller one to a later mutation than an earlier one
+    already got.
+    """
+    n_threads = 16
+    n_iters = 3000
+    all_versions: list[list[int]] = []
+    lock = threading.Lock()
+
+    def worker(_n: int) -> None:
+        m = any_multidict_class()
+        versions = []
+        for i in range(n_iters):
+            m["key"] = i
+            versions.append(multidict_getversion_callable(m))
+        with lock:
+            all_versions.append(versions)
+
+    with ThreadPoolExecutor(max_workers=n_threads) as executor:
+        list(executor.map(worker, range(n_threads)))
+
+    flat_versions = [v for versions in all_versions for v in versions]
+    assert len(set(flat_versions)) == len(flat_versions)

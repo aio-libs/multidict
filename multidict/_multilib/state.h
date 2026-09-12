@@ -1,6 +1,8 @@
 #ifndef _MULTIDICT_STATE_H
 #define _MULTIDICT_STATE_H
 
+#include "atomic_helpers.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -128,7 +130,17 @@ get_mod_state_by_def(PyObject* self)
 static inline uint64_t
 NEXT_VERSION(mod_state* state)
 {
+    /* state->global_version is shared by every MultiDict/CIMultiDict
+       instance in the process (it lives on the module state, not the
+       object), while each object's critical section only serializes
+       access to that one object. Under Py_GIL_DISABLED, two threads
+       mutating two different multidict instances can bump this counter
+       at the same time, so a plain increment can lose an update. */
+#ifdef Py_GIL_DISABLED
+    return atomic_fetch_add_uint64_relaxed(&state->global_version, 1) + 1;
+#else
     return ++state->global_version;
+#endif
 }
 
 #ifdef __cplusplus
