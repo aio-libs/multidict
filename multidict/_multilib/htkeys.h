@@ -51,6 +51,12 @@ typedef struct _htkeys {
     /* Number of used entries in dk_entries. */
     Py_ssize_t nentries;
 
+#ifdef Py_GIL_DISABLED
+    Py_ssize_t num_readers;
+
+    struct _htkeys* retired_next;
+#endif
+
     /* Actual hash table of dk_size entries. It holds indices in dk_entries,
        or DKIX_EMPTY(-1) or DKIX_DUMMY(-2).
 
@@ -243,18 +249,22 @@ estimate_log2_keysize(Py_ssize_t n)
  * for the rationale of using log2_index_bytes=3 instead of 0.
  */
 static const htkeys_t empty_htkeys = {
-    0, /* log2_size */
-    3, /* log2_index_bytes */
-    0, /* usable (immutable) */
-    0, /* nentries */
-    {DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY,
-     DKIX_EMPTY}, /* indices */
+    .log2_size = 0,
+    .log2_index_bytes = 3,
+    .usable = 0, /* immutable */
+    .nentries = 0,
+#ifdef Py_GIL_DISABLED
+    .num_readers = 0,
+    .retired_next = NULL,
+#endif
+    .indices = {DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY,
+                DKIX_EMPTY},
 };
 
 static inline Py_ssize_t
@@ -301,6 +311,10 @@ htkeys_new(uint8_t log2_size)
     keys->log2_index_bytes = log2_bytes;
     keys->nentries = 0;
     keys->usable = usable;
+#ifdef Py_GIL_DISABLED
+    keys->num_readers = 0;
+    keys->retired_next = NULL;
+#endif
     memset(&keys->indices[0], 0xff, ((size_t)1 << log2_bytes));
     memset(
         &keys->indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
@@ -344,9 +358,24 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
     size_t mask = htkeys_mask(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
+#ifdef Py_GIL_DISABLED
+        /* Unconditionally, not just when update: under free threading
+           a marked entry copied in here can belong to an entirely
+           different, concurrently-suspended _md_replace()/_md_update()
+           call (on some other key) that this resize's own update flag
+           knows nothing about -- see the comment in
+           _md_check_consistency(). Indexing it by its temporary marked
+           hash would place it somewhere its real hash's probe sequence
+           never looks, making it permanently unfindable once the
+           owning call unmarks it back. */
+        if (hash < 0) {
+            hash &= PY_SSIZE_T_MAX;
+        }
+#else
         if (update && hash < 0) {
             hash &= PY_SSIZE_T_MAX;
         }
+#endif
         size_t i = hash & mask;
         for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
             perturb >>= HT_PERTURB_SHIFT;

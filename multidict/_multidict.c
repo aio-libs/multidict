@@ -44,12 +44,7 @@ static inline PyObject*
 _multidict_getone(MultiDictObject* self, PyObject* key, PyObject* _default)
 {
     PyObject* val = NULL;
-    int tmp;
-
-    Py_BEGIN_CRITICAL_SECTION(self);
-    tmp = md_get_one(self, key, &val);
-    ASSERT_CONSISTENT(self, false);
-    Py_END_CRITICAL_SECTION();
+    int tmp = md_get_one(self, key, &val);
 
     if (tmp < 0) {
         return NULL;
@@ -504,7 +499,6 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
         }
         decref_default = true;
     }
-    ASSERT_CONSISTENT(self, false);
     PyObject* ret = _multidict_getone(self, key, _default);
     if (decref_default) {
         Py_CLEAR(_default);
@@ -598,11 +592,7 @@ multidict_mp_as_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
 static int
 multidict_sq_contains(MultiDictObject* self, PyObject* key)
 {
-    int ret;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    ret = md_contains(self, key, NULL);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_contains(self, key, NULL);
 }
 
 static PyObject*
