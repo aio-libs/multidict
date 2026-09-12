@@ -418,73 +418,16 @@ PyDoc_STRVAR(multidict_to_dict_doc,
 static PyObject*
 multidict_to_dict(MultiDictObject* self)
 {
-    PyObject* result = PyDict_New();
-    if (result == NULL) {
-        return NULL;
-    }
-
-    PyObject* seen = PyDict_New();
-    if (seen == NULL) {
-        Py_DECREF(result);
-        return NULL;
-    }
-
-    md_pos_t pos;
-    md_init_pos(self, &pos);
-    PyObject* identity = NULL;
-    PyObject* key = NULL;
-    PyObject* value = NULL;
-
+    PyObject* result = NULL;
     int tmp;
-    while ((tmp = md_next(self, &pos, &identity, &key, &value)) > 0) {
-        /* `seen` maps identity to the very list held in `result`, not to the
-           first key.  Looking the list up again in `result` would have to
-           hash a key that may be a str subclass with a user-defined
-           __hash__, and PyDict_GetItem() swallows the exception from that,
-           so a miss would return NULL with nothing set. */
-        PyObject* lst = PyDict_GetItem(seen, identity);
-        if (lst == NULL) {
-            lst = PyList_New(1);
-            if (lst == NULL) {
-                goto fail;
-            }
-            PyList_SET_ITEM(lst, 0, value);
-            value = NULL;
-            if (PyDict_SetItem(seen, identity, lst) < 0) {
-                Py_DECREF(lst);
-                goto fail;
-            }
-            if (PyDict_SetItem(result, key, lst) < 0) {
-                Py_DECREF(lst);
-                goto fail;
-            }
-            Py_DECREF(lst);
-        } else {
-            if (PyList_Append(lst, value) < 0) {
-                goto fail;
-            }
-            Py_DECREF(value);
-            value = NULL;
-        }
-        Py_DECREF(identity);
-        Py_DECREF(key);
-        identity = NULL;
-        key = NULL;
-    }
+    Py_BEGIN_CRITICAL_SECTION(self);
+    tmp = md_to_dict(self, &result);
+    ASSERT_CONSISTENT(self, false);
+    Py_END_CRITICAL_SECTION();
     if (tmp < 0) {
-        goto fail;
+        return NULL;
     }
-
-    Py_DECREF(seen);
     return result;
-
-fail:
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_DECREF(seen);
-    Py_DECREF(result);
-    return NULL;
 }
 
 /******************** Base Methods ********************/
