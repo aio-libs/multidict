@@ -1,3 +1,4 @@
+import contextlib
 import enum
 import functools
 import reprlib
@@ -58,17 +59,22 @@ _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
 
 _version = array("Q", [0])
-_version_lock = threading.Lock()
+
+# _version is shared by every MultiDict/CIMultiDict instance, so under a
+# free-threaded build a plain increment can race across instances mutated
+# concurrently on different threads and lose updates; a lock serializes it
+# the way the C extension does with an atomic op. The GIL already
+# serializes the increment on a regular build, so the lock would be pure
+# overhead there -- skip it whenever the GIL is enabled (the only state
+# older, GIL-only builds have).
+if not getattr(sys, "_is_gil_enabled", lambda: True)():
+    _version_lock: contextlib.AbstractContextManager[object] = threading.Lock()
+else:
+    _version_lock = contextlib.nullcontext()
 
 
 def _next_version() -> int:
-    """Return a fresh, process-wide unique version number.
-
-    _version is shared by every MultiDict/CIMultiDict instance, so under
-    a free-threaded build a plain increment can race across instances
-    mutated concurrently on different threads and lose updates; the lock
-    serializes it the way the C extension does with an atomic op.
-    """
+    """Return a fresh, process-wide unique version number."""
     with _version_lock:
         _version[0] += 1
         return _version[0]
