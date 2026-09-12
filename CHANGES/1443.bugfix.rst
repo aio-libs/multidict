@@ -1,0 +1,4 @@
+Fixed an unbounded memory leak on the free-threaded build where a retired
+hash table could sit on ``md->retired`` for the rest of the object's
+lifetime under sustained concurrent read traffic instead of being freed
+-- by :user:`asvetlov`.

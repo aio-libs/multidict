@@ -63,6 +63,23 @@ atomic_load_ptr(void* const* obj)
     return __atomic_load_n(obj, __ATOMIC_SEQ_CST);
 }
 
+static inline void*
+atomic_exchange_ptr(void** obj, void* value)
+{
+    return __atomic_exchange_n(obj, value, __ATOMIC_SEQ_CST);
+}
+
+static inline int
+atomic_compare_exchange_ptr(void** obj, void** expected, void* desired)
+{
+    return __atomic_compare_exchange_n(obj,
+                                       expected,
+                                       desired,
+                                       1 /* weak */,
+                                       __ATOMIC_SEQ_CST,
+                                       __ATOMIC_SEQ_CST);
+}
+
 static inline void
 atomic_store_ptr(void** obj, void* value)
 {
@@ -120,6 +137,23 @@ static inline void
 atomic_store_ptr(void** obj, void* value)
 {
     atomic_store_explicit((void* _Atomic*)obj, value, memory_order_seq_cst);
+}
+
+static inline void*
+atomic_exchange_ptr(void** obj, void* value)
+{
+    return atomic_exchange_explicit(
+        (void* _Atomic*)obj, value, memory_order_seq_cst);
+}
+
+static inline int
+atomic_compare_exchange_ptr(void** obj, void** expected, void* desired)
+{
+    return atomic_compare_exchange_weak_explicit((void* _Atomic*)obj,
+                                                 expected,
+                                                 desired,
+                                                 memory_order_seq_cst,
+                                                 memory_order_seq_cst);
 }
 
 #elif defined(_MSC_VER)
@@ -192,6 +226,25 @@ static inline void
 atomic_store_ptr(void** obj, void* value)
 {
     (void)_InterlockedExchangePointer((void* volatile*)obj, value);
+}
+
+static inline void*
+atomic_exchange_ptr(void** obj, void* value)
+{
+    return _InterlockedExchangePointer((void* volatile*)obj, value);
+}
+
+static inline int
+atomic_compare_exchange_ptr(void** obj, void** expected, void* desired)
+{
+    void* initial = *expected;
+    void* prev = _InterlockedCompareExchangePointer(
+        (void* volatile*)obj, desired, initial);
+    if (prev == initial) {
+        return 1;
+    }
+    *expected = prev;
+    return 0;
 }
 
 #else
