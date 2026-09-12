@@ -1723,6 +1723,146 @@ fail:
     return -1;
 }
 
+/* Restore every entry hash md_to_dict()'s walk left marked.
+
+   md_finder_cleanup() restores one hash chain, which is what a single
+   getall() needs. md_to_dict() instead keeps the marks of every key it has
+   collected, so that a later duplicate of the same key tests as collected
+   and is skipped, and clears the whole table once at the end. */
+static inline void
+_md_restore_all_hashes(MultiDictObject* md)
+{
+    entry_t* entries = htkeys_entries(md->keys);
+    Py_ssize_t nentries = md->keys->nentries;
+    for (Py_ssize_t pos = 0; pos < nentries; pos++) {
+        entry_t* entry = entries + pos;
+        if (entry->hash < 0) {
+            entry->hash &= PY_SSIZE_T_MAX;
+        }
+    }
+}
+
+static inline int
+md_to_dict(MultiDictObject* md, PyObject** ret)
+{
+    PyObject* key = NULL;
+    PyObject* value = NULL;
+    PyObject* lst = NULL;
+    PyObject* pos_obj = NULL;
+    md_finder_t finder = {0};
+    uint64_t version = md->version;
+    int tmp;
+
+    *ret = NULL;
+
+    /* Collected as [position, values, position, values, ...], in the order
+       the keys are first seen; the walk below cannot build the keys yet,
+       see the second loop for why. */
+    PyObject* pending = PyList_New(0);
+    if (pending == NULL) {
+        return -1;
+    }
+
+    /* Walk the entries in insertion order, so every key is collected at its
+       first spelling; md_find_next() walks a hash chain, which is not
+       insertion-ordered. Nothing in this loop runs Python, which is what
+       makes it safe to leave the marks set until the walk is over. */
+    for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
+        entry_t* entry = htkeys_entries(md->keys) + pos;
+        if (entry->identity == NULL) {
+            continue;  // deleted
+        }
+        if (entry->hash < 0) {
+            continue;  // marked, so collected already under its first key
+        }
+
+        if (md_init_finder(md, entry->identity, &finder) < 0) {
+            goto fail;
+        }
+        /* Collects this key's values in insertion order, marking every entry
+           it visits. The marks stay: they are what makes the duplicates of
+           this key, later in the walk, test as collected. */
+        while ((tmp = md_find_next(&finder, NULL, &value)) > 0) {
+            if (lst == NULL) {
+                lst = PyList_New(1);
+                if (lst == NULL) {
+                    goto fail;
+                }
+                PyList_SET_ITEM(lst, 0, value);
+                value = NULL;  // stolen by PyList_SET_ITEM
+            } else {
+                if (PyList_Append(lst, value) < 0) {
+                    goto fail;
+                }
+                Py_CLEAR(value);
+            }
+        }
+        if (tmp < 0) {
+            goto fail;
+        }
+        if (lst == NULL) {
+            continue;  // not reachable from its own hash chain
+        }
+
+        pos_obj = PyLong_FromSsize_t(pos);
+        if (pos_obj == NULL) {
+            goto fail;
+        }
+        if (PyList_Append(pending, pos_obj) < 0) {
+            goto fail;
+        }
+        if (PyList_Append(pending, lst) < 0) {
+            goto fail;
+        }
+        Py_CLEAR(pos_obj);
+        Py_CLEAR(lst);
+    }
+
+    _md_restore_all_hashes(md);
+
+    /* Only now, with nothing left marked, may the keys be built and hashed.
+       Both calls below can run a str subclass's own __hash__, __eq__ or
+       __del__, and code that re-enters this multidict from there must not
+       meet a table in which the collected keys read as absent. A mutation
+       from there is refused the way md_next() refuses one. */
+    *ret = PyDict_New();
+    if (*ret == NULL) {
+        goto fail_restored;
+    }
+    Py_ssize_t npending = PyList_GET_SIZE(pending);
+    for (Py_ssize_t i = 0; i < npending; i += 2) {
+        Py_ssize_t pos = PyLong_AsSsize_t(PyList_GET_ITEM(pending, i));
+        key = _md_ensure_key(md, htkeys_entries(md->keys) + pos);
+        if (key == NULL) {
+            goto fail_restored;
+        }
+        if (PyDict_SetItem(*ret, key, PyList_GET_ITEM(pending, i + 1)) < 0) {
+            goto fail_restored;
+        }
+        Py_CLEAR(key);
+        /* Checked after each step, so a mutation is caught before the next
+           one reads an entry the table may since have moved. */
+        if (md->version != version) {
+            PyErr_SetString(PyExc_RuntimeError,
+                            "MultiDict is changed during iteration");
+            goto fail_restored;
+        }
+    }
+
+    Py_DECREF(pending);
+    return 0;
+fail:
+    _md_restore_all_hashes(md);
+fail_restored:
+    Py_XDECREF(pos_obj);
+    Py_XDECREF(key);
+    Py_XDECREF(value);
+    Py_XDECREF(lst);
+    Py_DECREF(pending);
+    Py_CLEAR(*ret);
+    return -1;
+}
+
 static inline int
 md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
                PyObject** result)
