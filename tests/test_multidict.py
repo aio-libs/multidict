@@ -2313,3 +2313,109 @@ def test_non_typeerror_exceptions_are_not_swallowed() -> None:
 
     # __eq__ against a non-mapping still works (AttributeError is cleared)
     assert md != [("a", "1")]
+
+
+@pytest.mark.parametrize(
+    "probe",
+    ([], ["key"], ["key", "one", "extra"], ["nope", "one"], ["key", "nope"]),
+    ids=("empty", "one-item", "three-items", "wrong-key", "wrong-value"),
+)
+def test_items_contains_list_that_is_not_a_present_pair(
+    any_multidict_class: type[MultiDict[str]], probe: list[str]
+) -> None:
+    d = any_multidict_class([("key", "one")])
+    assert probe not in d.items()  # type: ignore[operator]
+    assert ["key", "one"] in d.items()  # type: ignore[operator]
+
+
+@pytest.mark.c_extension
+def test_update_from_list_shrunk_by_another_thread() -> None:
+    """A source list that shrinks while it is consumed must not be read past
+    its end; the constructor sees some prefix of the pairs."""
+    shared = [(f"k{i}", i) for i in range(32)]
+    stop = threading.Event()
+
+    def build() -> None:
+        for _ in range(3000):
+            multidict.MultiDict(shared)
+
+    def shrink() -> None:
+        i = 0
+        while not stop.is_set():
+            del shared[1:]
+            shared.extend((f"k{j}", i + j) for j in range(1, 32))
+            i += 1
+
+    builders = [threading.Thread(target=build) for _ in range(8)]
+    mutators = [threading.Thread(target=shrink) for _ in range(4)]
+    for t in builders + mutators:
+        t.start()
+    for t in builders:
+        t.join()
+    stop.set()
+    for t in mutators:
+        t.join()
+
+
+@pytest.mark.c_extension
+def test_update_from_pair_list_shrunk_by_another_thread() -> None:
+    """A ``[key, value]`` item that shrinks between its length check and the
+    reads must not be indexed past its end; the update either succeeds or
+    reports the bad length."""
+    probe: list[object] = ["k1", 1]
+    stop = threading.Event()
+
+    def build() -> None:
+        for _ in range(30000):
+            try:
+                multidict.MultiDict([probe])  # type: ignore[arg-type]
+            except ValueError:
+                pass  # seen mid-mutation with the wrong length
+
+    def shrink() -> None:
+        i = 0
+        while not stop.is_set():
+            del probe[1:]
+            probe.append(i)
+            i += 1
+
+    builders = [threading.Thread(target=build) for _ in range(8)]
+    mutators = [threading.Thread(target=shrink) for _ in range(4)]
+    for t in builders + mutators:
+        t.start()
+    for t in builders:
+        t.join()
+    stop.set()
+    for t in mutators:
+        t.join()
+
+
+@pytest.mark.c_extension
+def test_items_contains_list_shrunk_by_another_thread() -> None:
+    """A probe list that shrinks between the length check and the reads must
+    not be indexed past its end."""
+    probe: list[object] = ["k1", 1]
+    stop = threading.Event()
+
+    def check() -> None:
+        # One multidict per thread: the shared object under test is the list.
+        items = multidict.MultiDict([(f"k{i}", i) for i in range(8)]).items()
+        for _ in range(30000):
+            items.__contains__(probe)  # type: ignore[operator]
+
+    def shrink() -> None:
+        i = 0
+        while not stop.is_set():
+            del probe[1:]
+            probe.append(i)
+            i += 1
+
+    checkers = [threading.Thread(target=check) for _ in range(8)]
+    mutators = [threading.Thread(target=shrink) for _ in range(4)]
+    for t in checkers + mutators:
+        t.start()
+    for t in checkers:
+        t.join()
+    stop.set()
+    for t in mutators:
+        t.join()

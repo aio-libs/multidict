@@ -950,8 +950,15 @@ multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
         if (PyList_GET_SIZE(obj) != 2) {
             return 0;
         }
-        key = Py_NewRef(PyList_GET_ITEM(obj, 0));
-        value = Py_NewRef(PyList_GET_ITEM(obj, 1));
+        key = _list_getitem_ref(obj, 0);
+        if (_list_item_gone(key)) {
+            return 0;
+        }
+        value = _list_getitem_ref(obj, 1);
+        if (_list_item_gone(value)) {
+            Py_DECREF(key);
+            return 0;
+        }
     } else {
         tmp = PyObject_Length(obj);
         if (tmp < 0) {

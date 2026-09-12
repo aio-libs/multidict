@@ -1,0 +1,7 @@
+Fixed the C extension reading freed memory on free-threaded builds when a
+list handed to :py:meth:`~multidict.MultiDict.update`,
+:py:meth:`~multidict.MultiDict.extend`, :py:meth:`~multidict.MultiDict.merge`
+or the :py:class:`~multidict.MultiDict` and :py:class:`~multidict.CIMultiDict`
+constructors, a ``[key, value]`` item inside any iterable handed to them, or a
+list tested with ``in`` against :py:meth:`~multidict.MultiDict.items`, is
+changed by another thread -- by :user:`rodrigobnogueira`.
