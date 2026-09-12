@@ -793,6 +793,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # spelling of a key together, and holding the list itself rather than
         # the first key so the value append needs no second lookup.
         seen: dict[str, list[_V]] = {}
+        version = self._version
         for e in self._keys.iter_entries():
             values = seen.get(e.identity)
             if values is None:
@@ -800,6 +801,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 result[self._key(e.key)] = values
             else:
                 values.append(e.value)
+            if self._version != version:
+                # Building and hashing a key both run a str subclass's own
+                # code, which must not mutate what is being converted.
+                raise RuntimeError("Dictionary changed during iteration")
         return result
 
     def add(self, key: str, value: _V) -> None:

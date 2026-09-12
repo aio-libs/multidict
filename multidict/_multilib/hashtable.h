@@ -1831,11 +1831,6 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
     }
     Py_ssize_t npending = PyList_GET_SIZE(pending);
     for (Py_ssize_t i = 0; i < npending; i += 2) {
-        if (md->version != version) {
-            PyErr_SetString(PyExc_RuntimeError,
-                            "MultiDict is changed during iteration");
-            goto fail_restored;
-        }
         Py_ssize_t pos = PyLong_AsSsize_t(PyList_GET_ITEM(pending, i));
         key = _md_ensure_key(md, htkeys_entries(md->keys) + pos);
         if (key == NULL) {
@@ -1845,11 +1840,13 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
             goto fail_restored;
         }
         Py_CLEAR(key);
-    }
-    if (md->version != version) {
-        PyErr_SetString(PyExc_RuntimeError,
-                        "MultiDict is changed during iteration");
-        goto fail_restored;
+        /* Checked after each step, so a mutation is caught before the next
+           one reads an entry the table may since have moved. */
+        if (md->version != version) {
+            PyErr_SetString(PyExc_RuntimeError,
+                            "MultiDict is changed during iteration");
+            goto fail_restored;
+        }
     }
 
     Py_DECREF(pending);
