@@ -69,11 +69,6 @@ atomic_exchange_ptr(void** obj, void* value)
     return __atomic_exchange_n(obj, value, __ATOMIC_SEQ_CST);
 }
 
-/* Weak CAS: may fail spuriously even when *obj == *expected, so callers
-   must retry in a loop (the standard pattern; see its stdatomic.h and
-   MSVC siblings below for the same contract). On failure, *expected is
-   updated to the observed current value, so a retry loop can reuse it
-   without an extra load. */
 static inline int
 atomic_compare_exchange_ptr(void** obj, void** expected, void* desired)
 {
@@ -151,10 +146,6 @@ atomic_exchange_ptr(void** obj, void* value)
         (void* _Atomic*)obj, value, memory_order_seq_cst);
 }
 
-/* Weak CAS: may fail spuriously even when *obj == *expected, so callers
-   must retry in a loop. On failure, *expected is updated to the
-   observed current value, so a retry loop can reuse it without an
-   extra load. */
 static inline int
 atomic_compare_exchange_ptr(void** obj, void** expected, void* desired)
 {
@@ -243,12 +234,6 @@ atomic_exchange_ptr(void** obj, void* value)
     return _InterlockedExchangePointer((void* volatile*)obj, value);
 }
 
-/* Weak-CAS contract for parity with the GCC/C11 backends above (see
-   their comments): on failure *expected is updated to the value
-   observed at the exchange point, so a caller's retry loop can reuse
-   it without an extra load. MSVC's intrinsic is already a strong CAS;
-   exposing it as "weak" costs nothing since a spurious-failure retry
-   loop handles a strong CAS's success/failure outcomes too. */
 static inline int
 atomic_compare_exchange_ptr(void** obj, void** expected, void* desired)
 {
