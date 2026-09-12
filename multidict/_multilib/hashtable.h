@@ -357,15 +357,6 @@ _md_free_retired(htkeys_t* keys)
     htkeys_free(keys);
 }
 
-/* Pop the entire md->retired chain in one atomic RMW, so a concurrent
-   push (see _md_retire()'s CAS loop) can never observe a torn or
-   partially-drained list: it either lands before this exchange (and
-   gets swept into the chain returned here) or after it (and starts a
-   fresh chain from the NULL this exchange just installed). Callers
-   must already have established atomic_load_ssize(&md->num_active_readers)
-   == 0 at a seq_cst point of their own (see the reader- and
-   writer-side call sites), which is what makes it safe to actually
-   free what this pops, not just to pop it. */
 static inline void
 _md_drain_retired(MultiDictObject* md)
 {
@@ -389,37 +380,6 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
     }
     _md_drain_retired(md);
 
-    /* Push before checking whether the gate is already at 0, never
-       after: a "check gate, then either free now or push" order (what
-       this used to do) leaves a window between that check and the push
-       during which a concurrent reader's own zero-check (see
-       _md_reader_exit()) can run, see nothing on md->retired yet, and
-       walk away -- with active_readers back at 0 and no other
-       resize/clear coming, nothing will ever call _md_drain_retired()
-       on this object again, so a table pushed into that window is
-       stranded for the object's remaining lifetime, exactly the
-       unbounded growth in aio-libs/multidict#1443.
-
-       Pushing first closes it: keys is linked into md->retired (a seq_cst
-       CAS, so a happens-before edge to any load that observes it)
-       before this thread's own drain call below ever reads
-       num_active_readers. Whichever zero-check turns out to be the
-       last one to run after that push -- this one, or the check inside
-       some reader's own _md_drain_retired() call after a later
-       zero-decrement -- is guaranteed to see keys already linked in:
-       a push that already happened cannot be observed as "not yet
-       pushed" by a check that runs after it, and _md_drain_retired()
-       only ever pops the chain when its own check reads 0, never
-       leaving a live table behind unpopped once some check does see 0.
-
-       Link-then-CAS, not link-then-store: a reader's
-       _md_drain_retired() can pop the whole chain (via
-       atomic_exchange_ptr) concurrently with this push. A plain store
-       here could publish keys with ->retired_next pointing at a chain
-       a concurrent pop-all just freed. The CAS only succeeds when
-       old_head is still the current head at the moment keys is
-       published; on failure it retries with the head a concurrent
-       pop-all or push actually left behind. */
     htkeys_t* old_head =
         (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
     for (;;) {
