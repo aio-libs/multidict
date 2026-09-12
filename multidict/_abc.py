@@ -57,7 +57,8 @@ class MultiMapping(Mapping[str, _V_co]):
             # Iteration yields a duplicated key once per occurrence, so the
             # membership test is what keeps getall() from being applied twice.
             if key not in result:
-                result[key] = list(self.getall(key))
+                # getall() already returns a fresh list.
+                result[key] = self.getall(key)
         return result
 
 
