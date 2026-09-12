@@ -5,6 +5,7 @@ import gc
 import operator
 import platform
 import sys
+import threading
 import time
 import weakref
 from collections import deque
@@ -1968,6 +1969,68 @@ def test_get_lock_free_thread_safety() -> None:
             f.result()
 
     assert len(d) == 500
+
+
+@pytest.mark.c_extension
+def test_reader_exit_drains_retired_thread_safety() -> None:
+    """A retired hash table must eventually be freed by reader traffic
+    alone, with no further mutation. Regression test for
+    aio-libs/multidict#1443.
+
+    md->retired only used to be drained inside _md_retire(), i.e. as a
+    side effect of some *later* resize/clear checking whether the
+    active-readers gate had reached 0. _md_reader_exit() never triggered
+    a drain itself, so under read traffic frequent enough that the gate
+    rarely lands on exactly 0 at the moment some other resize/clear
+    happens to check it, a table already on md->retired could sit there
+    for the rest of the object's life. This drives many reader threads
+    continuously across a single clear() (so the active-readers gate is
+    essentially always nonzero at the instant clear() checks it, forcing
+    the table onto md->retired instead of freeing it immediately) and
+    then relies solely on later reader exits, with no further mutation,
+    to reclaim it. Before the fix this leaves the weakrefs alive forever;
+    after it, some reader's own exit drains the table once the gate
+    happens to fall to 0. Each reader signals readiness only after a
+    warm-up batch of reads, then keeps going straight into its main
+    loop with no further blocking; clear() waits for every signal
+    before running, so it cannot land before a reader has actually
+    started (a plain submit() only queues the call, it says nothing
+    about whether the thread has run yet). This is a C-extension-only
+    concern: the pure-Python implementation has no retirement scheme to
+    regress."""
+
+    class Marker:
+        pass
+
+    d: MultiDict[Marker] = MultiDict()
+    markers = [Marker() for _ in range(200)]
+    refs = [weakref.ref(m) for m in markers]
+    for i, m in enumerate(markers):
+        d.add(str(i), m)
+    # A for loop's variables outlive the loop in their enclosing scope, so
+    # `i`/`m` would otherwise keep the last marker alive right through the
+    # `assert` below regardless of what multidict does.
+    del markers, i, m
+
+    ready_events = [threading.Event() for _ in range(16)]
+
+    def reader(_n: int, ready: threading.Event) -> None:
+        for i in range(200):
+            str(i % 200) in d
+        ready.set()
+        for i in range(20_000):
+            str(i % 200) in d
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(reader, i, ready_events[i]) for i in range(16)]
+        for ready in ready_events:
+            ready.wait()
+        d.clear()
+        for f in futures:
+            f.result()
+
+    gc.collect()
+    assert all(r() is None for r in refs)
 
 
 @pytest.mark.c_extension
