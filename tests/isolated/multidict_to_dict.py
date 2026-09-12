@@ -29,8 +29,7 @@ if __name__ == "__main__":
     gc.collect()
     baselines = [sys.getrefcount(v) for v in (value_1, value_2, value_3)]
     for _ in range(1000):
-        _d = md.to_dict()
-        del _d
+        md.to_dict()
     gc.collect()
     after = [sys.getrefcount(v) for v in (value_1, value_2, value_3)]
     assert after == baselines, (
@@ -41,8 +40,7 @@ if __name__ == "__main__":
     gc.collect()
     key_baselines = [sys.getrefcount(k) for k in (key_a, key_b)]
     for _ in range(1000):
-        _d = md.to_dict()
-        del _d
+        md.to_dict()
     gc.collect()
     key_after = [sys.getrefcount(k) for k in (key_a, key_b)]
     assert key_after == key_baselines, (
@@ -55,8 +53,7 @@ if __name__ == "__main__":
     gc.collect()
     ci_baselines = [sys.getrefcount(v) for v in (value_1, value_2)]
     for _ in range(1000):
-        _d = ci.to_dict()
-        del _d
+        ci.to_dict()
     gc.collect()
     ci_after = [sys.getrefcount(v) for v in (value_1, value_2)]
     assert ci_after == ci_baselines, (
