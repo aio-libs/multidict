@@ -1,0 +1,10 @@
+Fixed an unbounded memory leak on the free-threaded build where a retired
+hash table could sit on ``md->retired`` for the rest of the object's
+lifetime under sustained concurrent read traffic: only a later
+resize/``clear()`` ever drained it, and if the active-readers gate never
+happened to land on exactly 0 at the moment one of those ran, nothing
+else would ever free it. Reader exit now opportunistically drains
+``md->retired`` itself, and retiring a table pushes it onto that list
+before checking whether it can be freed immediately, closing a window
+where a concurrent reader's own check could otherwise run between the
+two and observe nothing to reclaim -- by :user:`asvetlov`.

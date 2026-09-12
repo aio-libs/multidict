@@ -1971,6 +1971,55 @@ def test_get_lock_free_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+def test_reader_exit_drains_retired_thread_safety() -> None:
+    """A retired hash table must eventually be freed by reader traffic
+    alone, with no further mutation. Regression test for
+    aio-libs/multidict#1443.
+
+    md->retired only used to be drained inside _md_retire(), i.e. as a
+    side effect of some *later* resize/clear checking whether the
+    active-readers gate had reached 0. _md_reader_exit() never triggered
+    a drain itself, so under read traffic frequent enough that the gate
+    rarely lands on exactly 0 at the moment some other resize/clear
+    happens to check it, a table already on md->retired could sit there
+    for the rest of the object's life. This drives many reader threads
+    continuously across a single clear() (so the active-readers gate is
+    essentially always nonzero at the instant clear() checks it, forcing
+    the table onto md->retired instead of freeing it immediately) and
+    then relies solely on later reader exits, with no further mutation,
+    to reclaim it. Before the fix this leaves the weakrefs alive forever;
+    after it, some reader's own exit drains the table once the gate
+    happens to fall to 0. This is a C-extension-only concern: the
+    pure-Python implementation has no retirement scheme to regress."""
+
+    class Marker:
+        pass
+
+    d: MultiDict[Marker] = MultiDict()
+    markers = [Marker() for _ in range(200)]
+    refs = [weakref.ref(m) for m in markers]
+    for i, m in enumerate(markers):
+        d.add(str(i), m)
+    # A for loop's variables outlive the loop in their enclosing scope, so
+    # `i`/`m` would otherwise keep the last marker alive right through the
+    # `assert` below regardless of what multidict does.
+    del markers, i, m
+
+    def reader(_n: int) -> None:
+        for i in range(50_000):
+            str(i % 200) in d
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(reader, i) for i in range(8)]
+        d.clear()
+        for f in futures:
+            f.result()
+
+    gc.collect()
+    assert all(r() is None for r in refs)
+
+
+@pytest.mark.c_extension
 def test_setitem_update_thread_safety() -> None:
     """Concurrent __setitem__()/update() on colliding keys, alongside
     concurrent add()/pop() churn that drives frequent resizes, must not
