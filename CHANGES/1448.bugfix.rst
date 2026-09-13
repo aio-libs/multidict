@@ -1,0 +1,6 @@
+Fixed a data race on the free-threaded build of the C extension where
+``getall()``/``popall()`` and ``update()``/``extend()``/``merge()``
+temporarily marked and unmarked a matching entry's hash with a plain,
+non-atomic store, while a lock-free ``__contains__``/``get()`` on another
+thread could load that same field with an atomic operation and no lock at
+all -- by :user:`asvetlov`.
