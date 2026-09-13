@@ -66,11 +66,14 @@ _VERSION_LOCK = threading.Lock()
 
 
 def _other_lock(arg: object) -> "threading.RLock | None":
-    """Return the RLock backing `arg`, if it is a multidict we don't own."""
+    """Return the RLock backing `arg`, if it's a multidict or one of our
+    own views over one, that we don't already own."""
     if isinstance(arg, MultiDictProxy):
         return arg._md._lock
     if isinstance(arg, MultiDict):
         return arg._lock
+    if isinstance(arg, (_ItemsView, _KeysView, _ValuesView)):
+        return arg._md._lock
     return None
 
 
@@ -144,6 +147,19 @@ def _locked_pair(fn: _F) -> _F:
     def wrapper(self: Any, arg: Any = None, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
         with _PairLock(self._lock, _other_lock(arg)):
             return fn(self, arg, *args, **kwargs)
+
+    return cast(_F, wrapper)
+
+
+def _locked_md_pair(fn: _F) -> _F:
+    """Like `_locked_md`, but also pairs in its first argument's lock."""
+    if not _FREE_THREADED:
+        return fn
+
+    @functools.wraps(fn)
+    def wrapper(self: Any, other: Any = None, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+        with _PairLock(self._md._lock, _other_lock(other)):
+            return fn(self, other, *args, **kwargs)
 
     return cast(_F, wrapper)
 
@@ -245,7 +261,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 tmp.add((item[1], item[3]))
         return tmp
 
-    @_locked_md
+    @_locked_md_pair
     def __and__(self, other: Iterable[Any]) -> set[tuple[str, _V]]:  # type: ignore[misc]
         ret = set()
         try:
@@ -265,7 +281,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             self._md._keys.restore_hash(hash_)
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __rand__(self, other: Iterable[_T]) -> set[_T]:
         ret = set()
         try:
@@ -283,7 +299,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                     break
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __or__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         ret: set[tuple[str, _V] | _T] = set(self)
         try:
@@ -303,7 +319,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add(arg)
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __ror__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         try:
             ret: set[tuple[str, _V] | _T] = set(other)
@@ -316,7 +332,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add((e.key, e.value))
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __sub__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         ret: set[tuple[str, _V] | _T] = set()
         try:
@@ -331,7 +347,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
 
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __rsub__(self, other: Iterable[_T]) -> set[_T]:
         ret: set[_T] = set()
         try:
@@ -352,7 +368,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add(arg)
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __xor__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         try:
             rgt = set(other)
@@ -364,7 +380,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
 
     __rxor__ = __xor__
 
-    @_locked_md
+    @_locked_md_pair
     def isdisjoint(self, other: Iterable[tuple[str, _V]]) -> bool:
         for arg in other:
             item = self._parse_item(arg)
@@ -449,7 +465,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
-    @_locked_md
+    @_locked_md_pair
     def __and__(self, other: Iterable[object]) -> set[str]:
         ret = set()
         try:
@@ -467,7 +483,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                     break
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __rand__(self, other: Iterable[_T]) -> set[_T]:
         ret = set()
         try:
@@ -481,7 +497,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(key)
         return cast(set[_T], ret)
 
-    @_locked_md
+    @_locked_md_pair
     def __or__(self, other: Iterable[_T]) -> set[str | _T]:
         ret: set[str | _T] = set(self)
         try:
@@ -496,7 +512,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(key)
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __ror__(self, other: Iterable[_T]) -> set[str | _T]:
         try:
             ret: set[str | _T] = set(other)
@@ -515,7 +531,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(e.key)
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __sub__(self, other: Iterable[object]) -> set[str]:
         ret = set(self)
         try:
@@ -533,7 +549,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                     break
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __rsub__(self, other: Iterable[_T]) -> set[_T]:
         try:
             ret: set[_T] = set(other)
@@ -546,7 +562,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.discard(key)
         return ret
 
-    @_locked_md
+    @_locked_md_pair
     def __xor__(self, other: Iterable[_T]) -> set[str | _T]:
         try:
             rgt = set(other)
@@ -558,7 +574,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 
     __rxor__ = __xor__
 
-    @_locked_md
+    @_locked_md_pair
     def isdisjoint(self, other: Iterable[object]) -> bool:
         for key in other:
             if not isinstance(key, str):

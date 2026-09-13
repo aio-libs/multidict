@@ -2322,6 +2322,50 @@ def test_pure_python_view_set_ops_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+def test_pure_python_reciprocal_view_ops_no_deadlock() -> None:
+    """`a.items() & b.items()` racing `b.items() & a.items()` (and the
+    same for the other set-algebra ops) must not deadlock.
+
+    Regression test: a view's set-algebra methods used to hold only
+    their own multidict's lock while iterating an `other` argument that
+    can itself be a view over a *different* multidict -- each step of
+    that iteration takes the other multidict's own lock too (see
+    `_Iter.__next__`). Two threads doing the reciprocal operation could
+    each hold one lock while blocked waiting for the other: a classic
+    AB-BA deadlock. Fixed by pairing both locks up front, in a fixed
+    order (`_locked_md_pair`), the same way cross-multidict operations
+    like `update()` already do.
+    """
+    if not _pure._FREE_THREADED:
+        pytest.skip("the two-lock pairing this test exercises is a no-op without it")
+
+    a: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50))
+    b: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50, 100))
+
+    def worker1() -> None:
+        for _ in range(500):
+            a.items() & b.items()
+            a.keys() | b.keys()
+            a.keys() - b.items()
+            a.keys().isdisjoint(b.keys())
+
+    def worker2() -> None:
+        for _ in range(500):
+            b.items() & a.items()
+            b.keys() | a.keys()
+            b.keys() - a.items()
+            b.keys().isdisjoint(a.keys())
+
+    t1 = threading.Thread(target=worker1, daemon=True)
+    t2 = threading.Thread(target=worker2, daemon=True)
+    t1.start()
+    t2.start()
+    t1.join(timeout=20)
+    t2.join(timeout=20)
+    assert not t1.is_alive(), "worker1 still running: deadlock"
+    assert not t2.is_alive(), "worker2 still running: deadlock"
+
+
 @_gil_build_race_skip
 def test_pure_python_version_thread_safety() -> None:
     """Concurrently mutating independent multidicts must never hand out the
