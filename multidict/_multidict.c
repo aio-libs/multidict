@@ -636,7 +636,7 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
         return PyBool_FromLong(cmp);
     }
 
-    mod_state* state = self->state;
+    mod_state* state = get_mod_state_by_def((PyObject*)self);
     MultiDictObject* other_md = _multidict_resolve_other(state, other);
     if (other_md != NULL) {
         Py_BEGIN_CRITICAL_SECTION2(self, other_md);
@@ -843,16 +843,17 @@ multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
 static PyObject*
 multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
+    mod_state* state = get_mod_state_by_def((PyObject*)self);
     PyObject* arg = NULL;
     Py_ssize_t size =
-        _multidict_extend_parse_args(self->state, args, kwds, "extend", &arg);
+        _multidict_extend_parse_args(state, args, kwds, "extend", &arg);
     if (size < 0) {
         goto fail;
     }
     if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
     }
-    MultiDictObject* other = _multidict_resolve_other(self->state, arg);
+    MultiDictObject* other = _multidict_resolve_other(state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     if (other != NULL && other != self) {
@@ -1086,16 +1087,17 @@ multidict_popitem(MultiDictObject* self)
 static PyObject*
 multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
+    mod_state* state = get_mod_state_by_def((PyObject*)self);
     PyObject* arg = NULL;
     Py_ssize_t size =
-        _multidict_extend_parse_args(self->state, args, kwds, "update", &arg);
+        _multidict_extend_parse_args(state, args, kwds, "update", &arg);
     if (size < 0) {
         goto fail;
     }
     if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
     }
-    MultiDictObject* other = _multidict_resolve_other(self->state, arg);
+    MultiDictObject* other = _multidict_resolve_other(state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     if (other != NULL && other != self) {
@@ -1151,16 +1153,17 @@ fail:
 static PyObject*
 multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
+    mod_state* state = get_mod_state_by_def((PyObject*)self);
     PyObject* arg = NULL;
     Py_ssize_t size =
-        _multidict_extend_parse_args(self->state, args, kwds, "merge", &arg);
+        _multidict_extend_parse_args(state, args, kwds, "merge", &arg);
     if (size < 0) {
         goto fail;
     }
     if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
     }
-    MultiDictObject* other = _multidict_resolve_other(self->state, arg);
+    MultiDictObject* other = _multidict_resolve_other(state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     if (other != NULL && other != self) {

@@ -1,0 +1,5 @@
+Fixed a data race on the free-threaded build of the C extension where
+``update()``/``extend()``/``merge()`` read ``self``'s module state to parse
+their arguments before acquiring ``self``'s lock, while a concurrent
+``__init__()`` on the same, already-published multidict could replace that
+same field under lock -- by :user:`asvetlov`.
