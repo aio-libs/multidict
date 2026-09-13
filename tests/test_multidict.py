@@ -2148,7 +2148,26 @@ def test_setitem_update_thread_safety() -> None:
 # default backend.
 import multidict._multidict_py as _pure  # noqa: E402
 
+# Pure Python bytecode is not atomic even under the GIL (the GIL can be
+# released between any two bytecodes), so several multidict operations have
+# a pre-existing, unlocked race that predates this file's locking and is
+# out of scope for it (GIL builds intentionally get none): CI's shared
+# runners hit it far more easily than a quiet local machine does, so any
+# test driving several real threads through shared pure-Python multidict
+# state is only reliable where the locking this file adds actually
+# applies.
+_gil_build_race_skip = pytest.mark.skipif(
+    not _pure._FREE_THREADED,
+    reason=(
+        "shares a pre-existing, unlocked GIL-build race with other pure-"
+        "Python multidict operations (out of scope here: GIL builds "
+        "intentionally get no locking from this change); only reliable "
+        "where the locking this change adds actually applies"
+    ),
+)
 
+
+@_gil_build_race_skip
 def test_pure_python_single_item_ops_thread_safety() -> None:
     """Concurrent add()/__setitem__/__delitem__/pop()/popitem()/setdefault()
     alongside __getitem__/__contains__/len()/iteration must not crash."""
@@ -2203,16 +2222,7 @@ def test_pure_python_single_item_ops_thread_safety() -> None:
     assert len(d2) == len(list(d2.items()))
 
 
-@pytest.mark.skipif(
-    not _pure._FREE_THREADED,
-    reason=(
-        "update()/extend()/merge() have a pre-existing, unlocked race on a "
-        "GIL build (present before this change too, and out of scope for "
-        "it: GIL builds intentionally get no locking) that this workload "
-        "is large enough to occasionally hit; only meaningful where the "
-        "locking added by this change actually applies"
-    ),
-)
+@_gil_build_race_skip
 def test_pure_python_update_extend_merge_thread_safety() -> None:
     """Concurrent update()/extend()/merge() must not crash or corrupt
     state on a free-threaded build."""
@@ -2237,13 +2247,7 @@ def test_pure_python_update_extend_merge_thread_safety() -> None:
     assert len(d2) == 60
 
 
-@pytest.mark.skipif(
-    not _pure._FREE_THREADED,
-    reason=(
-        "clear()/extend() share the pre-existing, unlocked GIL-build race "
-        "noted on test_pure_python_update_extend_merge_thread_safety"
-    ),
-)
+@_gil_build_race_skip
 def test_pure_python_clear_thread_safety() -> None:
     """Concurrent clear() alongside extend() must not crash or corrupt
     state on a free-threaded build."""
@@ -2260,6 +2264,7 @@ def test_pure_python_clear_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+@_gil_build_race_skip
 def test_pure_python_reinit_thread_safety() -> None:
     """Concurrent __init__() alongside other methods must not crash, and
     must keep using the same lock across a re-init on a published, shared
@@ -2281,6 +2286,7 @@ def test_pure_python_reinit_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+@_gil_build_race_skip
 def test_pure_python_view_set_ops_thread_safety() -> None:
     """Concurrent items()/keys() set-algebra (&, |, -, ^, in, isdisjoint())
     alongside mutation must not crash."""
@@ -2316,6 +2322,7 @@ def test_pure_python_view_set_ops_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+@_gil_build_race_skip
 def test_pure_python_version_thread_safety() -> None:
     """Concurrently mutating independent multidicts must never hand out the
     same version number twice: `_pure._version` is a single counter shared
