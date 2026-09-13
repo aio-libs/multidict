@@ -2184,6 +2184,326 @@ def test_setitem_update_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+# Pure-Python thread-safety tests. Import the pure-Python implementation
+# directly (`multidict._multidict_py` is always importable, regardless of
+# whether the C extension is built), rather than going through `multidict`'s
+# own backend selection, so these run against pure Python on every leg of
+# the test matrix, including one where the C extension is the active
+# default backend.
+import multidict._multidict_py as _pure  # noqa: E402
+
+# Pure Python bytecode is not atomic even under the GIL (the GIL can be
+# released between any two bytecodes), so several multidict operations have
+# a pre-existing, unlocked race that predates this file's locking and is
+# out of scope for it (GIL builds intentionally get none): CI's shared
+# runners hit it far more easily than a quiet local machine does, so any
+# test driving several real threads through shared pure-Python multidict
+# state is only reliable where the locking this file adds actually
+# applies.
+_gil_build_race_skip = pytest.mark.skipif(
+    not _pure._FREE_THREADED,
+    reason=(
+        "shares a pre-existing, unlocked GIL-build race with other pure-"
+        "Python multidict operations (out of scope here: GIL builds "
+        "intentionally get no locking from this change); only reliable "
+        "where the locking this change adds actually applies"
+    ),
+)
+
+
+@_gil_build_race_skip
+def test_pure_python_single_item_ops_thread_safety() -> None:
+    """Concurrent add()/__setitem__/__delitem__/pop()/popitem()/setdefault()
+    alongside __getitem__/__contains__/len()/iteration must not crash."""
+    d: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(200))
+    d2: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(200))
+    other_mapping = {str(i): i for i in range(200)}
+
+    def worker(n: int) -> None:
+        for i in range(300):
+            key = str(i % 200)
+            if n % 2 == 0:
+                target = d if n % 4 == 0 else d2
+                op = i % 9
+                if op == 0:
+                    target.add(key, i)
+                elif op == 1:
+                    target[key] = i
+                elif op == 2:
+                    target.setdefault(f"sd{n}-{i}", i)
+                elif op == 3:
+                    with contextlib.suppress(KeyError):
+                        del target[key]
+                elif op == 4:
+                    target.pop(key, None)
+                elif op == 5:
+                    target.getall(key, [])
+                elif op == 6:
+                    target.popone(key, None)
+                elif op == 7:
+                    target.popall(key, None)
+                else:
+                    with contextlib.suppress(KeyError):
+                        target.popitem()
+            else:
+                key in d
+                d.get(key)
+                d.getone(key, None)
+                with contextlib.suppress(KeyError):
+                    d[key]
+                len(d)
+                d == d2
+                d == other_mapping
+                with contextlib.suppress(RuntimeError):
+                    list(d.items())
+                    list(d.keys())
+                    list(d.values())
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d) == len(list(d.items()))
+    assert len(d2) == len(list(d2.items()))
+
+
+@_gil_build_race_skip
+def test_pure_python_update_extend_merge_thread_safety() -> None:
+    """Concurrent update()/extend()/merge() must not crash or corrupt
+    state on a free-threaded build."""
+    d1: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(30))
+    d2: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(30, 60))
+
+    def worker(n: int) -> None:
+        for _ in range(20):
+            if n % 3 == 0:
+                d1.update(d2)
+            elif n % 3 == 1:
+                d2.merge(d1)
+            else:
+                tmp: _pure.MultiDict[int] = _pure.MultiDict()
+                tmp.extend(d1)
+                tmp.extend(d2)
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d1) == 60
+    assert len(d2) == 60
+
+
+@_gil_build_race_skip
+def test_pure_python_clear_thread_safety() -> None:
+    """Concurrent clear() alongside extend() must not crash or corrupt
+    state on a free-threaded build."""
+    d: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50))
+
+    def clearer(_n: int) -> None:
+        for _ in range(30):
+            d.clear()
+            d.extend((str(i), i) for i in range(50))
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(clearer, range(8)))
+
+    assert len(d) == len(list(d.items()))
+
+
+@_gil_build_race_skip
+def test_pure_python_reinit_thread_safety() -> None:
+    """Concurrent __init__() alongside other methods must not crash, and
+    must keep using the same lock across a re-init on a published, shared
+    instance (see `_pure.MultiDict.__new__`)."""
+    d: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(200))
+    other: _pure.MultiDict[int] = _pure.MultiDict((f"o{i}", i) for i in range(200))
+
+    def worker(n: int) -> None:
+        for _ in range(200):
+            if n % 2 == 0:
+                d.__init__(other)  # type: ignore[misc]
+            else:
+                len(d)
+                d.update({"extra": 1})
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d) == len(list(d.items()))
+
+
+@_gil_build_race_skip
+def test_pure_python_view_set_ops_thread_safety() -> None:
+    """Concurrent items()/keys() set-algebra (&, |, -, ^, in, isdisjoint())
+    alongside mutation must not crash."""
+    d: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(200))
+    other = {str(i): i for i in range(100, 300)}
+
+    def worker(n: int) -> None:
+        for i in range(150):
+            if n % 2 == 0:
+                key = str(i % 200)
+                if i % 2 == 0:
+                    d.add(key, i)
+                else:
+                    d.pop(key, None)
+            else:
+                with contextlib.suppress(RuntimeError):
+                    d.items() & other.items()
+                    d.items() | other.items()
+                    d.items() - other.items()
+                    d.items() ^ other.items()
+                    d.items().isdisjoint(other.items())
+                    d.keys() & other.keys()
+                    d.keys() | other.keys()
+                    d.keys() - other.keys()
+                    d.keys() ^ other.keys()
+                    d.keys().isdisjoint(other.keys())
+                    "100" in d.keys()
+                    ("100", 100) in d.items()
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
+
+    assert len(d) == len(list(d.items()))
+
+
+def test_pure_python_reciprocal_view_ops_no_deadlock() -> None:
+    """`a.items() & b.items()` racing `b.items() & a.items()` (and the
+    same for the other set-algebra ops) must not deadlock.
+
+    Regression test: a view's set-algebra methods used to hold only
+    their own multidict's lock while iterating an `other` argument that
+    can itself be a view over a *different* multidict -- each step of
+    that iteration takes the other multidict's own lock too (see
+    `_Iter.__next__`). Two threads doing the reciprocal operation could
+    each hold one lock while blocked waiting for the other: a classic
+    AB-BA deadlock. Fixed by pairing both locks up front, in a fixed
+    order (`_locked_md_pair`), the same way cross-multidict operations
+    like `update()` already do.
+    """
+    if not _pure._FREE_THREADED:
+        pytest.skip("the two-lock pairing this test exercises is a no-op without it")
+
+    a: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50))
+    b: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50, 100))
+
+    def worker1() -> None:
+        for _ in range(500):
+            a.items() & b.items()
+            a.keys() | b.keys()
+            a.keys() - b.items()
+            a.keys().isdisjoint(b.keys())
+
+    def worker2() -> None:
+        for _ in range(500):
+            b.items() & a.items()
+            b.keys() | a.keys()
+            b.keys() - a.items()
+            b.keys().isdisjoint(a.keys())
+
+    t1 = threading.Thread(target=worker1, daemon=True)
+    t2 = threading.Thread(target=worker2, daemon=True)
+    t1.start()
+    t2.start()
+    t1.join(timeout=20)
+    t2.join(timeout=20)
+    assert not t1.is_alive(), "worker1 still running: deadlock"
+    assert not t2.is_alive(), "worker2 still running: deadlock"
+
+
+def test_pure_python_reciprocal_raw_iterator_ops_no_deadlock() -> None:
+    """Same as `test_pure_python_reciprocal_view_ops_no_deadlock`, but with
+    the `other` argument passed as a bare `iter(view)` rather than the view
+    itself.
+
+    Regression test: `_other_lock()` recognized `_ItemsView`/`_KeysView`/
+    `_ValuesView` but not the `_Iter` `iter()` returns, so `a.items() &
+    iter(b.items())` racing `b.items() & iter(a.items())` could still
+    deadlock the same way. Also covers `update()`/`extend()`/`merge()`
+    called with a bare iterator over another multidict's view.
+    """
+    if not _pure._FREE_THREADED:
+        pytest.skip("the two-lock pairing this test exercises is a no-op without it")
+
+    a: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50))
+    b: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50, 100))
+
+    def worker1() -> None:
+        for _ in range(500):
+            a.items() & iter(b.items())
+            _pure.MultiDict[int]().update(iter(b.items()))
+
+    def worker2() -> None:
+        for _ in range(500):
+            b.items() & iter(a.items())
+            _pure.MultiDict[int]().update(iter(a.items()))
+
+    t1 = threading.Thread(target=worker1, daemon=True)
+    t2 = threading.Thread(target=worker2, daemon=True)
+    t1.start()
+    t2.start()
+    t1.join(timeout=20)
+    t2.join(timeout=20)
+    assert not t1.is_alive(), "worker1 still running: deadlock"
+    assert not t2.is_alive(), "worker2 still running: deadlock"
+
+
+@_gil_build_race_skip
+def test_pure_python_version_thread_safety() -> None:
+    """Concurrently mutating independent multidicts must never hand out the
+    same version number twice: `_pure._version` is a single counter shared
+    by every instance in the process (see `_pure.MultiDict._incr_version`)."""
+    n_threads = 16
+    n_iters = 2000
+    all_versions: list[list[int]] = []
+    lock = threading.Lock()
+
+    def worker(_n: int) -> None:
+        mm: _pure.MultiDict[object] = _pure.MultiDict()
+        versions = []
+        for i in range(n_iters):
+            mm["key"] = i
+            versions.append(_pure.getversion(mm))
+        with lock:
+            all_versions.append(versions)
+
+    with ThreadPoolExecutor(max_workers=n_threads) as executor:
+        list(executor.map(worker, range(n_threads)))
+
+    flat_versions = [v for versions in all_versions for v in versions]
+    assert len(set(flat_versions)) == len(flat_versions)
+
+
+def test_pure_python_repr_reentrant_thread_safety() -> None:
+    """`repr()` calling back into the same, already-locked multidict must
+    not deadlock: the per-instance lock is an RLock precisely so a
+    callback like this (a value's own `__repr__` mutating the multidict
+    it's part of) can still acquire it from the same thread."""
+    md: _pure.MultiDict[object] = _pure.MultiDict()
+
+    class Evil:
+        def __repr__(self) -> str:
+            md.add("x", 1)
+            return "e"
+
+    md.add("k", Evil())
+    md.add("k2", Evil())
+    assert isinstance(repr(md), str)
+
+
+def test_pure_python_locking_is_free_threaded_only() -> None:
+    """On a GIL-enabled interpreter, the locked methods must be the exact
+    same function objects as their unlocked implementations -- no wrapper,
+    no lock, no overhead beyond what the module had before it gained any
+    locking. On a free-threaded interpreter, they must be wrapped (the
+    lock actually applies)."""
+    if _pure._FREE_THREADED:
+        assert hasattr(_pure.MultiDict.add, "__wrapped__")
+        assert hasattr(_pure.MultiDict.__setitem__, "__wrapped__")
+    else:
+        assert not hasattr(_pure.MultiDict.add, "__wrapped__")
+        assert not hasattr(_pure.MultiDict.__setitem__, "__wrapped__")
+
+
 def test_subclassed_multidict(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:

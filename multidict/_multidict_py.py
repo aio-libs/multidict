@@ -2,8 +2,10 @@ import enum
 import functools
 import reprlib
 import sys
+import threading
 from array import array
 from collections.abc import (
+    Callable,
     ItemsView,
     Iterable,
     Iterator,
@@ -58,17 +60,130 @@ sentinel = _SENTINEL.sentinel
 
 _version = array("Q", [0])
 
+_FREE_THREADED = hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled()
+
+_VERSION_LOCK = threading.Lock()
+
+
+def _other_lock(arg: object) -> "threading.RLock | None":
+    """Return the RLock backing `arg`, if it's a multidict, one of our
+    own views over one, or an iterator over one, that we don't already
+    own."""
+    if isinstance(arg, MultiDictProxy):
+        return arg._md._lock
+    if isinstance(arg, MultiDict):
+        return arg._lock
+    if isinstance(arg, (_ItemsView, _KeysView, _ValuesView)):
+        return arg._md._lock
+    if isinstance(arg, _Iter):
+        return arg._lock
+    return None
+
+
+def _iter_lock(md: "MultiDict[Any]") -> "threading.RLock | None":
+    """Return the lock a view iterator over `md` should take per step."""
+    return md._lock if _FREE_THREADED else None
+
+
+class _PairLock:
+    """Acquire one or two RLocks in a fixed, deadlock-safe order."""
+
+    __slots__ = ("_a", "_b")
+
+    def __init__(self, a: "threading.RLock", b: "threading.RLock | None") -> None:
+        if b is None or b is a:
+            self._a: threading.RLock | None = a
+            self._b: threading.RLock | None = None
+        elif id(a) < id(b):
+            self._a, self._b = a, b
+        else:
+            self._a, self._b = b, a
+
+    def __enter__(self) -> None:
+        assert self._a is not None
+        self._a.acquire()
+        if self._b is not None:
+            self._b.acquire()
+
+    def __exit__(self, *exc: object) -> None:
+        assert self._a is not None
+        if self._b is not None:
+            self._b.release()
+        self._a.release()
+
+
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+
+def _locked(fn: _F) -> _F:
+    """Wrap `fn` to hold `self._lock` for the call."""
+    if not _FREE_THREADED:
+        return fn
+
+    @functools.wraps(fn)
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+        with self._lock:
+            return fn(self, *args, **kwargs)
+
+    return cast(_F, wrapper)
+
+
+def _locked_md(fn: _F) -> _F:
+    """Like `_locked`, but for view objects: holds `self._md._lock`."""
+    if not _FREE_THREADED:
+        return fn
+
+    @functools.wraps(fn)
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+        with self._md._lock:
+            return fn(self, *args, **kwargs)
+
+    return cast(_F, wrapper)
+
+
+def _locked_pair(fn: _F) -> _F:
+    """Wrap `fn` to hold `self._lock` and its first argument's lock."""
+    if not _FREE_THREADED:
+        return fn
+
+    @functools.wraps(fn)
+    def wrapper(self: Any, arg: Any = None, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+        with _PairLock(self._lock, _other_lock(arg)):
+            return fn(self, arg, *args, **kwargs)
+
+    return cast(_F, wrapper)
+
+
+def _locked_md_pair(fn: _F) -> _F:
+    """Like `_locked_md`, but also pairs in its first argument's lock."""
+    if not _FREE_THREADED:
+        return fn
+
+    @functools.wraps(fn)
+    def wrapper(self: Any, other: Any = None, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+        with _PairLock(self._md._lock, _other_lock(other)):
+            return fn(self, other, *args, **kwargs)
+
+    return cast(_F, wrapper)
+
 
 class _Iter(Generic[_T]):
-    __slots__ = ("_size", "_iter")
+    __slots__ = ("_size", "_iter", "_lock")
 
-    def __init__(self, size: int, iterator: Iterator[_T]):
+    def __init__(
+        self,
+        size: int,
+        iterator: Iterator[_T],
+        lock: "threading.RLock | None" = None,
+    ):
         self._size = size
         self._iter = iterator
+        self._lock = lock
 
     def __iter__(self) -> Self:
         return self
 
+    @_locked
     def __next__(self) -> _T:
         return next(self._iter)
 
@@ -88,6 +203,7 @@ class _ViewBase(Generic[_V]):
 
 
 class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
+    @_locked_md
     def __contains__(self, item: object) -> bool:
         if not isinstance(item, (tuple, list)) or len(item) != 2:
             return False
@@ -103,10 +219,14 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         return False
 
     def __iter__(self) -> _Iter[tuple[str, _V]]:
-        return _Iter(len(self), self._iter(self._md._version))
+        return _Iter(len(self), self._iter(self._md._version), _iter_lock(self._md))
 
     def __reversed__(self) -> _Iter[tuple[str, _V]]:
-        return _Iter(len(self), self._iter(self._md._version, reverse=True))
+        return _Iter(
+            len(self),
+            self._iter(self._md._version, reverse=True),
+            _iter_lock(self._md),
+        )
 
     def _iter(self, version: int, reverse: bool = False) -> Iterator[tuple[str, _V]]:
         for e in self._md._keys.iter_entries(reverse):
@@ -115,6 +235,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             yield self._md._key(e.key), e.value
 
     @reprlib.recursive_repr()
+    @_locked_md
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
@@ -143,7 +264,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 tmp.add((item[1], item[3]))
         return tmp
 
-    def __and__(self, other: Iterable[Any]) -> set[tuple[str, _V]]:
+    @_locked_md_pair
+    def __and__(self, other: Iterable[Any]) -> set[tuple[str, _V]]:  # type: ignore[misc]
         ret = set()
         try:
             it = iter(other)
@@ -162,6 +284,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             self._md._keys.restore_hash(hash_)
         return ret
 
+    @_locked_md_pair
     def __rand__(self, other: Iterable[_T]) -> set[_T]:
         ret = set()
         try:
@@ -179,6 +302,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                     break
         return ret
 
+    @_locked_md_pair
     def __or__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         ret: set[tuple[str, _V] | _T] = set(self)
         try:
@@ -198,6 +322,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add(arg)
         return ret
 
+    @_locked_md_pair
     def __ror__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         try:
             ret: set[tuple[str, _V] | _T] = set(other)
@@ -210,6 +335,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add((e.key, e.value))
         return ret
 
+    @_locked_md_pair
     def __sub__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         ret: set[tuple[str, _V] | _T] = set()
         try:
@@ -224,6 +350,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
 
         return ret
 
+    @_locked_md_pair
     def __rsub__(self, other: Iterable[_T]) -> set[_T]:
         ret: set[_T] = set()
         try:
@@ -244,6 +371,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add(arg)
         return ret
 
+    @_locked_md_pair
     def __xor__(self, other: Iterable[_T]) -> set[tuple[str, _V] | _T]:
         try:
             rgt = set(other)
@@ -255,6 +383,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
 
     __rxor__ = __xor__
 
+    @_locked_md_pair
     def isdisjoint(self, other: Iterable[tuple[str, _V]]) -> bool:
         for arg in other:
             item = self._parse_item(arg)
@@ -269,6 +398,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
 
 
 class _ValuesView(_ViewBase[_V], ValuesView[_V]):
+    @_locked_md
     def __contains__(self, value: object) -> bool:
         for e in self._md._keys.iter_entries():
             if e.value == value:
@@ -276,10 +406,14 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
         return False
 
     def __iter__(self) -> _Iter[_V]:
-        return _Iter(len(self), self._iter(self._md._version))
+        return _Iter(len(self), self._iter(self._md._version), _iter_lock(self._md))
 
     def __reversed__(self) -> _Iter[_V]:
-        return _Iter(len(self), self._iter(self._md._version, reverse=True))
+        return _Iter(
+            len(self),
+            self._iter(self._md._version, reverse=True),
+            _iter_lock(self._md),
+        )
 
     def _iter(self, version: int, reverse: bool = False) -> Iterator[_V]:
         for e in self._md._keys.iter_entries(reverse):
@@ -288,6 +422,7 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
             yield e.value
 
     @reprlib.recursive_repr()
+    @_locked_md
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
@@ -297,6 +432,7 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
 
 
 class _KeysView(_ViewBase[_V], KeysView[str]):
+    @_locked_md
     def __contains__(self, key: object) -> bool:
         if not isinstance(key, str):
             return False
@@ -308,10 +444,14 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         return False
 
     def __iter__(self) -> _Iter[str]:
-        return _Iter(len(self), self._iter(self._md._version))
+        return _Iter(len(self), self._iter(self._md._version), _iter_lock(self._md))
 
     def __reversed__(self) -> _Iter[str]:
-        return _Iter(len(self), self._iter(self._md._version, reverse=True))
+        return _Iter(
+            len(self),
+            self._iter(self._md._version, reverse=True),
+            _iter_lock(self._md),
+        )
 
     def _iter(self, version: int, reverse: bool = False) -> Iterator[str]:
         for e in self._md._keys.iter_entries(reverse):
@@ -320,6 +460,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
             yield self._md._key(e.key)
 
     @reprlib.recursive_repr()
+    @_locked_md
     def __repr__(self) -> str:
         lst = []
         for e in self._md._keys.iter_entries():
@@ -327,6 +468,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         body = ", ".join(lst)
         return f"<{self.__class__.__name__}({body})>"
 
+    @_locked_md_pair
     def __and__(self, other: Iterable[object]) -> set[str]:
         ret = set()
         try:
@@ -344,6 +486,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                     break
         return ret
 
+    @_locked_md_pair
     def __rand__(self, other: Iterable[_T]) -> set[_T]:
         ret = set()
         try:
@@ -357,6 +500,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(key)
         return cast(set[_T], ret)
 
+    @_locked_md_pair
     def __or__(self, other: Iterable[_T]) -> set[str | _T]:
         ret: set[str | _T] = set(self)
         try:
@@ -371,6 +515,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(key)
         return ret
 
+    @_locked_md_pair
     def __ror__(self, other: Iterable[_T]) -> set[str | _T]:
         try:
             ret: set[str | _T] = set(other)
@@ -389,6 +534,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.add(e.key)
         return ret
 
+    @_locked_md_pair
     def __sub__(self, other: Iterable[object]) -> set[str]:
         ret = set(self)
         try:
@@ -406,6 +552,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                     break
         return ret
 
+    @_locked_md_pair
     def __rsub__(self, other: Iterable[_T]) -> set[_T]:
         try:
             ret: set[_T] = set(other)
@@ -418,6 +565,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 ret.discard(key)
         return ret
 
+    @_locked_md_pair
     def __xor__(self, other: Iterable[_T]) -> set[str | _T]:
         try:
             rgt = set(other)
@@ -429,6 +577,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 
     __rxor__ = __xor__
 
+    @_locked_md_pair
     def isdisjoint(self, other: Iterable[object]) -> bool:
         for key in other:
             if not isinstance(key, str):
@@ -632,13 +781,21 @@ class _HtKeys(Generic[_V]):
 class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     """Dictionary with the support for duplicate keys."""
 
-    __slots__ = ("_keys", "_used", "_version")
+    __slots__ = ("_keys", "_used", "_version", "_lock")
 
+    _lock: threading.RLock
+
+    if _FREE_THREADED:
+        # __new__ runs once per object, never on a later re-init.
+        def __new__(cls, *args: object, **kwargs: object) -> Self:
+            self = super().__new__(cls)
+            self._lock = threading.RLock()
+            return self
+
+    @_locked_pair
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
         self._used = 0
-        v = _version
-        v[0] += 1
-        self._version = v[0]
+        self._incr_version()
         if not kwargs:
             md = None
             if isinstance(arg, MultiDictProxy):
@@ -667,6 +824,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def getall(self, key: str) -> list[_V]: ...
     @overload
     def getall(self, key: str, default: _T) -> list[_V] | _T: ...
+    @_locked
     def getall(self, key: str, default: _T | _SENTINEL = sentinel) -> list[_V] | _T:
         """Return a list of all values matching the key."""
         identity = self._identity(key)
@@ -693,6 +851,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def getone(self, key: str) -> _V: ...
     @overload
     def getone(self, key: str, default: _T) -> _V | _T: ...
+    @_locked
     def getone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
         """Get first value matching the key.
 
@@ -741,6 +900,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """Return a new view of the dictionary's values."""
         return _ValuesView(self)
 
+    @_locked_pair
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Mapping):
             return NotImplemented
@@ -763,6 +923,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 return False
         return True
 
+    @_locked
     def __contains__(self, key: object) -> bool:
         if not isinstance(key, str):
             return False
@@ -774,6 +935,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         return False
 
     @reprlib.recursive_repr()
+    @_locked
     def __repr__(self) -> str:
         body = ", ".join(f"{e.key!r}: {e.value!r}" for e in self._keys.iter_entries())
         return f"<{self.__class__.__name__}({body})>"
@@ -786,6 +948,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def __reduce__(self) -> tuple[type[Self], tuple[list[tuple[str, _V]]]]:
         return (self.__class__, (list(self.items()),))
 
+    @_locked
     def to_dict(self) -> dict[str, list[_V]]:
         """Return a dict with lists of all values for each key."""
         result: dict[str, list[_V]] = {}
@@ -807,6 +970,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 raise RuntimeError("Dictionary changed during iteration")
         return result
 
+    @_locked
     def add(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
@@ -820,6 +984,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     __copy__ = copy
 
+    @_locked_pair
     def extend(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Extend current MultiDict with more values.
 
@@ -901,6 +1066,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             self._add_with_hash(e)
         self._incr_version()
 
+    @_locked
     def clear(self) -> None:
         """Remove all items from MultiDict."""
         self._used = 0
@@ -909,6 +1075,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     # Mapping interface #
 
+    @_locked
     def __setitem__(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
@@ -930,6 +1097,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         else:
             self._keys.restore_hash(hash_)
 
+    @_locked
     def __delitem__(self, key: str) -> None:
         found = False
         identity = self._identity(key)
@@ -949,7 +1117,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     ) -> _T | None: ...
     @overload
     def setdefault(self, key: str, default: _V) -> _V: ...
-    def setdefault(self, key: str, default: _V | None = None) -> _V | None:  # type: ignore[misc]
+    @_locked  # type: ignore[misc]
+    def setdefault(self, key: str, default: _V | None = None) -> _V | None:
         """Return value for key, set value to default if key is not present."""
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
@@ -963,6 +1132,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def popone(self, key: str) -> _V: ...
     @overload
     def popone(self, key: str, default: _T) -> _V | _T: ...
+    @_locked
     def popone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
         """Remove specified key and return the corresponding value.
 
@@ -991,6 +1161,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def popall(self, key: str) -> list[_V]: ...
     @overload
     def popall(self, key: str, default: _T) -> list[_V] | _T: ...
+    @_locked
     def popall(self, key: str, default: _T | _SENTINEL = sentinel) -> list[_V] | _T:
         """Remove all occurrences of key and return the list of corresponding
         values.
@@ -1018,6 +1189,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         else:
             return ret
 
+    @_locked
     def popitem(self) -> tuple[str, _V]:
         """Remove and return an arbitrary (key, value) pair."""
         if self._used <= 0:
@@ -1036,6 +1208,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self._incr_version()
         return ret
 
+    @_locked_pair
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Update the dictionary, overwriting existing keys."""
         it = self._parse_args(arg, kwargs)
@@ -1088,6 +1261,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
         self._incr_version()
 
+    @_locked_pair
     def merge(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Merge into the dictionary, adding non-existing keys."""
         it = self._parse_args(arg, kwargs)
@@ -1114,10 +1288,20 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             else:
                 self._add_with_hash_for_upd(entry)
 
-    def _incr_version(self) -> None:
-        v = _version
-        v[0] += 1
-        self._version = v[0]
+    if _FREE_THREADED:
+        # `_version` is shared by every instance, so it needs its own lock.
+        def _incr_version(self) -> None:
+            with _VERSION_LOCK:
+                v = _version[0] + 1
+                _version[0] = v
+            self._version = v
+
+    else:
+
+        def _incr_version(self) -> None:
+            v = _version
+            v[0] += 1
+            self._version = v[0]
 
     def _resize(self, log2_newsize: int, update: bool) -> None:
         oldkeys = self._keys
