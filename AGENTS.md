@@ -362,6 +362,54 @@ The C extension is compiled with `-Werror -Wsign-compare -Wconversion
 -std=c11` (see [setup.py](setup.py)). Casts must be explicit;
 signed/unsigned comparisons will fail the build, not just warn.
 
+### Sanitizer builds
+
+`MULTIDICT_DEBUG_BUILD=1` also compiles and links the C extension
+with AddressSanitizer and UndefinedBehaviorSanitizer (skipped on
+Windows, where these flags aren't supported by MSVC). Because the
+extension is loaded into a normal CPython that wasn't itself built
+with ASan, the runtime has to be preloaded ahead of everything else:
+
+```bash
+ASAN_SO=$(cc -print-file-name=libasan.so)
+MULTIDICT_DEBUG_BUILD=1 pip install -e . --force-reinstall --no-deps
+LD_PRELOAD="$ASAN_SO" ASAN_OPTIONS=detect_leaks=0 PYTHONMALLOC=malloc \
+    python -Im pytest tests -q -k "not test_leak"
+```
+
+`detect_leaks=0` and excluding `test_leaks.py` are required: CPython
+itself retains allocations at shutdown (interned strings, caches)
+that LeakSanitizer reports as leaks, and `test_leaks.py` asserts on
+process RSS growth, which ASan's redzones/quarantine inflate well
+past the test's threshold regardless of any real multidict
+behaviour. Neither is a multidict bug; both are just sanitizer
+overhead interacting with checks that assume an uninstrumented
+process.
+
+ThreadSanitizer can't be linked into the same binary as ASan/UBSan,
+and running it against a normal CPython produces false positives
+from the interpreter's own internals (its locks aren't all built
+from primitives TSan recognizes unless the interpreter itself is
+TSan-instrumented). Use `MULTIDICT_TSAN_BUILD=1` instead of the
+default sanitizer set, together with a free-threaded CPython built
+with `--with-thread-sanitizer` (a normal `--disable-gil` build is
+not enough):
+
+```bash
+CC=clang CXX=clang++ PYTHON_CONFIGURE_OPTS="--with-thread-sanitizer" \
+    PYTHON_BUILD_FREE_THREADING=1 \
+    python-build 3.14.7t ~/.pyenv/versions/3.14.7t-tsan   # one-time, slow
+
+TSAN_PY=~/.pyenv/versions/3.14.7t-tsan/bin/python3.14t
+CC=clang CXX=clang++ MULTIDICT_DEBUG_BUILD=1 MULTIDICT_TSAN_BUILD=1 \
+    $TSAN_PY -m pip install -e . --force-reinstall --no-deps
+TSAN_OPTIONS="halt_on_error=0" $TSAN_PY -m pytest tests -q -k "not test_leak"
+```
+
+A TSan run is much slower than normal (single stress tests can take
+30-50s instead of well under a second); don't be surprised if it
+takes minutes to get through the suite.
+
 CI runs across the supported CPython versions plus a wheel build for
 manylinux, musllinux, macOS, Windows, iOS, and Android, plus a
 pure-Python leg under `MULTIDICT_NO_EXTENSIONS=1`. Do not regress
