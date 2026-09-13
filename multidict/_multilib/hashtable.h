@@ -1744,9 +1744,16 @@ _md_restore_all_hashes(MultiDictObject* md)
     Py_ssize_t nentries = md->keys->nentries;
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         entry_t* entry = entries + pos;
+#ifdef Py_GIL_DISABLED
+        Py_hash_t hash = _md_entry_load_hash(entry);
+        if (hash < 0) {
+            _md_entry_store_hash(entry, hash & PY_SSIZE_T_MAX);
+        }
+#else
         if (entry->hash < 0) {
             entry->hash &= PY_SSIZE_T_MAX;
         }
+#endif
     }
 }
 

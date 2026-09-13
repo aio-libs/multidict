@@ -2016,6 +2016,46 @@ def test_getall_update_vs_lock_free_reads_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+def test_to_dict_vs_lock_free_reads_thread_safety() -> None:
+    """Concurrent to_dict() alongside lock-free contains()/get() on the
+    same, never-deleted keys must not crash and must never observe a
+    present key as absent.
+
+    Regression test for the free-threaded build: to_dict() (via
+    md_to_dict()) marks every entry's hash while it walks the table, then
+    clears every mark in one pass via _md_restore_all_hashes(), all while
+    holding self's critical section. That critical section excludes other
+    mutators but not a lock-free reader: __contains__ and
+    get()/getone()/__getitem__ (with no default requested) load the same
+    field via an atomic op with no lock at all. Before the fix,
+    _md_restore_all_hashes() unmarked entries with a plain, non-atomic
+    store racing that atomic load; this drives to_dict() against
+    contains()/get() on keys that are never removed, so a lock-free reader
+    observing one of them as missing would be a real regression, not a
+    benign race."""
+    keys = [str(i) for i in range(500)]
+    d: MultiDict[int] = MultiDict((key, i) for i, key in enumerate(keys))
+
+    def to_dict_worker(_n: int) -> None:
+        for _ in range(1000):
+            assert len(d.to_dict()) == 500
+
+    def reader_worker(_n: int) -> None:
+        for i in range(3000):
+            key = keys[i % 500]
+            assert key in d
+            assert d.get(key) is not None
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = [executor.submit(to_dict_worker, i) for i in range(4)]
+        futures += [executor.submit(reader_worker, i) for i in range(8)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == 500
+
+
+@pytest.mark.c_extension
 def test_version_thread_safety() -> None:
     """Concurrently mutating independent multidicts must never hand out
     the same version number twice.
