@@ -293,12 +293,13 @@ def test_multidict_getall_str_hit(
         (f"key{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
     )
 
-    key = "key5"
+    keys = [f"key{j}" for j in range(10)]
 
     @benchmark
     def _run() -> None:
-        for i in range(1000):
-            md.getall(key)
+        for i in range(100):
+            for key in keys:
+                md.getall(key)
 
 
 def test_multidict_getall_str_hit_nonascii(
@@ -308,12 +309,13 @@ def test_multidict_getall_str_hit_nonascii(
         (f"ключ{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
     )
 
-    key = "ключ5"
+    keys = [f"ключ{j}" for j in range(10)]
 
     @benchmark
     def _run() -> None:
-        for i in range(1000):
-            md.getall(key)
+        for i in range(100):
+            for key in keys:
+                md.getall(key)
 
 
 def test_multidict_getall_str_miss(
@@ -342,12 +344,13 @@ def test_cimultidict_getall_istr_hit(
         for j in range(10)
     )
 
-    key = case_insensitive_str_class("key5")
+    keys = [case_insensitive_str_class(f"key{j}") for j in range(10)]
 
     @benchmark
     def _run() -> None:
-        for i in range(1000):
-            md.getall(key)
+        for i in range(100):
+            for key in keys:
+                md.getall(key)
 
 
 def test_cimultidict_getall_istr_hit_nonascii(
@@ -361,12 +364,13 @@ def test_cimultidict_getall_istr_hit_nonascii(
         for j in range(10)
     )
 
-    key = case_insensitive_str_class("ключ5")
+    keys = [case_insensitive_str_class(f"ключ{j}") for j in range(10)]
 
     @benchmark
     def _run() -> None:
-        for i in range(1000):
-            md.getall(key)
+        for i in range(100):
+            for key in keys:
+                md.getall(key)
 
 
 def test_cimultidict_getall_istr_miss(
