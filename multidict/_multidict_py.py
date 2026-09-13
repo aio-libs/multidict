@@ -66,14 +66,17 @@ _VERSION_LOCK = threading.Lock()
 
 
 def _other_lock(arg: object) -> "threading.RLock | None":
-    """Return the RLock backing `arg`, if it's a multidict or one of our
-    own views over one, that we don't already own."""
+    """Return the RLock backing `arg`, if it's a multidict, one of our
+    own views over one, or an iterator over one, that we don't already
+    own."""
     if isinstance(arg, MultiDictProxy):
         return arg._md._lock
     if isinstance(arg, MultiDict):
         return arg._lock
     if isinstance(arg, (_ItemsView, _KeysView, _ValuesView)):
         return arg._md._lock
+    if isinstance(arg, _Iter):
+        return arg._lock
     return None
 
 

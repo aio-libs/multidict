@@ -2410,6 +2410,43 @@ def test_pure_python_reciprocal_view_ops_no_deadlock() -> None:
     assert not t2.is_alive(), "worker2 still running: deadlock"
 
 
+def test_pure_python_reciprocal_raw_iterator_ops_no_deadlock() -> None:
+    """Same as `test_pure_python_reciprocal_view_ops_no_deadlock`, but with
+    the `other` argument passed as a bare `iter(view)` rather than the view
+    itself.
+
+    Regression test: `_other_lock()` recognized `_ItemsView`/`_KeysView`/
+    `_ValuesView` but not the `_Iter` `iter()` returns, so `a.items() &
+    iter(b.items())` racing `b.items() & iter(a.items())` could still
+    deadlock the same way. Also covers `update()`/`extend()`/`merge()`
+    called with a bare iterator over another multidict's view.
+    """
+    if not _pure._FREE_THREADED:
+        pytest.skip("the two-lock pairing this test exercises is a no-op without it")
+
+    a: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50))
+    b: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50, 100))
+
+    def worker1() -> None:
+        for _ in range(500):
+            a.items() & iter(b.items())
+            _pure.MultiDict[int]().update(iter(b.items()))
+
+    def worker2() -> None:
+        for _ in range(500):
+            b.items() & iter(a.items())
+            _pure.MultiDict[int]().update(iter(a.items()))
+
+    t1 = threading.Thread(target=worker1, daemon=True)
+    t2 = threading.Thread(target=worker2, daemon=True)
+    t1.start()
+    t2.start()
+    t1.join(timeout=20)
+    t2.join(timeout=20)
+    assert not t1.is_alive(), "worker1 still running: deadlock"
+    assert not t2.is_alive(), "worker2 still running: deadlock"
+
+
 @_gil_build_race_skip
 def test_pure_python_version_thread_safety() -> None:
     """Concurrently mutating independent multidicts must never hand out the
