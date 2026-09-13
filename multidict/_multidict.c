@@ -412,6 +412,24 @@ _multidict_proxy_copy(MultiDictProxyObject* self, PyTypeObject* type)
     return multidict_copy(self->md);
 }
 
+PyDoc_STRVAR(multidict_to_dict_doc,
+             "Return a dict with lists of all values for each key.");
+
+static PyObject*
+multidict_to_dict(MultiDictObject* self)
+{
+    PyObject* result = NULL;
+    int tmp;
+    Py_BEGIN_CRITICAL_SECTION(self);
+    tmp = md_to_dict(self, &result);
+    ASSERT_CONSISTENT(self, false);
+    Py_END_CRITICAL_SECTION();
+    if (tmp < 0) {
+        return NULL;
+    }
+    return result;
+}
+
 /******************** Base Methods ********************/
 
 static inline PyObject*
@@ -1271,6 +1289,10 @@ static PyMethodDef multidict_methods[] = {
      METH_FASTCALL | METH_KEYWORDS,
      multidict_add_doc},
     {"copy", (PyCFunction)multidict_copy, METH_NOARGS, multidict_copy_doc},
+    {"to_dict",
+     (PyCFunction)multidict_to_dict,
+     METH_NOARGS,
+     multidict_to_dict_doc},
     {"extend",
      (PyCFunction)multidict_extend,
      METH_VARARGS | METH_KEYWORDS,
@@ -1587,6 +1609,12 @@ multidict_proxy_reduce(MultiDictProxyObject* self)
     return NULL;
 }
 
+static PyObject*
+multidict_proxy_to_dict(MultiDictProxyObject* self)
+{
+    return multidict_to_dict(self->md);
+}
+
 static Py_ssize_t
 multidict_proxy_mp_len(MultiDictProxyObject* self)
 {
@@ -1689,6 +1717,10 @@ static PyMethodDef multidict_proxy_methods[] = {
      (PyCFunction)Py_GenericAlias,
      METH_O | METH_CLASS,
      NULL},
+    {"to_dict",
+     (PyCFunction)multidict_proxy_to_dict,
+     METH_NOARGS,
+     multidict_to_dict_doc},
     {NULL, NULL} /* sentinel */
 };
 

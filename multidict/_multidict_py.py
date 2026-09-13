@@ -786,6 +786,27 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def __reduce__(self) -> tuple[type[Self], tuple[list[tuple[str, _V]]]]:
         return (self.__class__, (list(self.items()),))
 
+    def to_dict(self) -> dict[str, list[_V]]:
+        """Return a dict with lists of all values for each key."""
+        result: dict[str, list[_V]] = {}
+        # Keyed by identity so a case-insensitive multidict groups every
+        # spelling of a key together, and holding the list itself rather than
+        # the first key so the value append needs no second lookup.
+        seen: dict[str, list[_V]] = {}
+        version = self._version
+        for e in self._keys.iter_entries():
+            values = seen.get(e.identity)
+            if values is None:
+                values = seen[e.identity] = [e.value]
+                result[self._key(e.key)] = values
+            else:
+                values.append(e.value)
+            if self._version != version:
+                # Building and hashing a key both run a str subclass's own
+                # code, which must not mutate what is being converted.
+                raise RuntimeError("Dictionary changed during iteration")
+        return result
+
     def add(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
@@ -1238,6 +1259,10 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
     def __repr__(self) -> str:
         body = ", ".join(f"{k!r}: {v!r}" for k, v in self.items())
         return f"<{self.__class__.__name__}({body})>"
+
+    def to_dict(self) -> dict[str, list[_V]]:
+        """Return a dict with lists of all values for each key."""
+        return self._md.to_dict()
 
     def copy(self) -> MultiDict[_V]:
         """Return a copy of itself."""
