@@ -1972,6 +1972,50 @@ def test_get_lock_free_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+def test_getall_update_vs_lock_free_reads_thread_safety() -> None:
+    """Concurrent getall()/update() alongside lock-free contains()/get()
+    on the same, never-deleted keys must not crash and must never observe
+    a present key as absent.
+
+    Regression test for the free-threaded build: getall() and popall()
+    (via md_find_next()/md_finder_cleanup()) and update()/extend()/merge()
+    (via md_post_update()) temporarily mark/unmark the matching entry's
+    hash while holding self's critical section. That critical section
+    excludes other mutators but not a lock-free reader: __contains__ and
+    get()/getone()/__getitem__ (with no default requested) load the same
+    field via an atomic op with no lock at all. Before the fix, the
+    mark/unmark writes were plain, non-atomic stores racing that atomic
+    load; this drives getall() and update() against contains()/get() on
+    keys that are never removed, so a lock-free reader observing one of
+    them as missing would be a real regression, not a benign race."""
+    keys = [str(i) for i in range(500)]
+    d: MultiDict[int] = MultiDict((key, i) for i, key in enumerate(keys))
+
+    def getall_worker(_n: int) -> None:
+        for i in range(3000):
+            assert d.getall(keys[i % 500]) != []
+
+    def update_worker(n: int) -> None:
+        for i in range(3000):
+            d.update({keys[i % 500]: n * 10000 + i})
+
+    def reader_worker(_n: int) -> None:
+        for i in range(3000):
+            key = keys[i % 500]
+            assert key in d
+            assert d.get(key) is not None
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = [executor.submit(getall_worker, i) for i in range(4)]
+        futures += [executor.submit(update_worker, i) for i in range(4)]
+        futures += [executor.submit(reader_worker, i) for i in range(4)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == 500
+
+
+@pytest.mark.c_extension
 def test_version_thread_safety() -> None:
     """Concurrently mutating independent multidicts must never hand out
     the same version number twice.
