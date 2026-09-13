@@ -104,7 +104,7 @@ MultiDict
          >>> {k: ci.getall(k) for k in ci}
          {'A': ['1', '2'], 'a': ['1', '2']}
 
-      .. versionadded:: 6.8
+      .. versionadded:: 6.9
 
    .. method:: getone(key[, default])
 
@@ -341,7 +341,7 @@ MultiDictProxy
       Return a :class:`dict` mapping each key to a list of all its
       values, preserving insertion order.
 
-      .. versionadded:: 6.8
+      .. versionadded:: 6.9
 
    .. method:: getone(key[, default])
 
