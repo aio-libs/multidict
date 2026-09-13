@@ -1336,7 +1336,11 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
         }
 
         /* found, mark the entry as visited */
+#ifdef Py_GIL_DISABLED
+        _md_entry_store_hash(entry, finder->hash | MD_HASH_MARK);
+#else
         entry->hash = finder->hash | MD_HASH_MARK;
+#endif
 
         if (pkey) {
             *pkey = _md_ensure_key(finder->md, entry);
@@ -1376,7 +1380,11 @@ md_finder_cleanup(md_finder_t* finder)
         }
         entry_t* entry = entries + finder->iter.index;
         if (entry->hash == (finder->hash | MD_HASH_MARK)) {
+#ifdef Py_GIL_DISABLED
+            _md_entry_store_hash(entry, finder->hash);
+#else
             entry->hash = finder->hash;
+#endif
         }
     }
     ASSERT_CONSISTENT(finder->md, false);
@@ -2351,7 +2359,11 @@ md_post_update(MultiDictObject* md)
 #endif
                 }
                 if (entry->hash < 0) {
+#ifdef Py_GIL_DISABLED
+                    _md_entry_store_hash(entry, entry->hash & PY_SSIZE_T_MAX);
+#else
                     entry->hash &= PY_SSIZE_T_MAX;
+#endif
                 }
             }
         }
