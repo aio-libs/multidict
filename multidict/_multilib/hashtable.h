@@ -1335,8 +1335,18 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
             continue;
         }
 
-        /* found, mark the entry as visited */
+        /* found, mark the entry as visited. This runs under md's critical
+           section, which excludes other mutators but not a lock-free
+           reader (_md_contains_lockfree()/_md_get_one_lockfree()), which
+           loads this same field via _md_entry_load_hash() with no lock at
+           all -- so the write needs the matching atomic store, exactly
+           like _md_replace()/_md_update() already do for the identical
+           mark bit. */
+#ifdef Py_GIL_DISABLED
+        _md_entry_store_hash(entry, finder->hash | MD_HASH_MARK);
+#else
         entry->hash = finder->hash | MD_HASH_MARK;
+#endif
 
         if (pkey) {
             *pkey = _md_ensure_key(finder->md, entry);
@@ -1376,7 +1386,14 @@ md_finder_cleanup(md_finder_t* finder)
         }
         entry_t* entry = entries + finder->iter.index;
         if (entry->hash == (finder->hash | MD_HASH_MARK)) {
+            /* See the identical comment in md_find_next(): this write
+               needs to match the atomic load a lock-free reader may be
+               doing on this field right now, with no lock in common. */
+#ifdef Py_GIL_DISABLED
+            _md_entry_store_hash(entry, finder->hash);
+#else
             entry->hash = finder->hash;
+#endif
         }
     }
     ASSERT_CONSISTENT(finder->md, false);
@@ -2211,7 +2228,17 @@ md_post_update(MultiDictObject* md)
 #endif
                 }
                 if (entry->hash < 0) {
+                    /* Unmarks the entry _md_update() marked above (or a
+                       stale iteration of this same loop marked). Needs
+                       the atomic store for the same reason md_find_next()
+                       and md_finder_cleanup() do: a lock-free reader can
+                       be loading this field concurrently with no lock in
+                       common. */
+#ifdef Py_GIL_DISABLED
+                    _md_entry_store_hash(entry, entry->hash & PY_SSIZE_T_MAX);
+#else
                     entry->hash &= PY_SSIZE_T_MAX;
+#endif
                 }
             }
         }
