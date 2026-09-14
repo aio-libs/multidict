@@ -18,6 +18,8 @@ from hypothesis_helpers import pairs_lists
 
 from multidict import CIMultiDict, MultiDict, MutableMultiMapping
 
+pytestmark = pytest.mark.hypothesis
+
 _MD_Classes = type[MultiDict[object]] | type[CIMultiDict[object]]
 _Pairs = list[tuple[str, object]]
 _IterFactory = Callable[[MutableMultiMapping[object]], Iterator[object]]

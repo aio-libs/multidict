@@ -36,7 +36,7 @@ select = [
 # cell.
 build-frontend = "build[uv]"
 test-requires = "-r requirements/pytest.txt"
-test-command = 'pytest -m "not leaks" --no-cov {project}/tests'
+test-command = 'pytest -m "not leaks and not hypothesis" --no-cov {project}/tests'
 
 [tool.cibuildwheel.ios]
 # uv does not support building for iOS; fall back to the plain `build`

@@ -438,6 +438,35 @@ jobs:
         run: python -m pytest --no-cov -vvvvv --codspeed
         mode: instrumentation
 
+  hypothesis:
+    name: Hypothesis
+    needs:
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v7
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v7
+      with:
+        python-version: 3.13
+        cache: pip
+        cache-dependency-path: requirements/*.txt
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4
+      with:
+        path: requirements/pytest.txt
+    - name: Self-install
+      run: python -m pip install -e .
+    - name: Run the Hypothesis test suite
+      # `-m hypothesis` overrides pytest.ini's default `-m "not hypothesis"`:
+      # these tests are excluded from the regular `test` job (and from
+      # asan/tsan/wheel-testing) and only run here. A single run already
+      # covers both the C-extension and pure-Python backends, since the
+      # `any_multidict_class`-style fixtures import both directly.
+      run: python -Im pytest tests -q --no-cov -m hypothesis
+
   asan:
     name: AddressSanitizer
     needs:
@@ -573,6 +602,7 @@ jobs:
     - pre-setup  # transitive, for accessing settings
     - test
     - benchmark
+    - hypothesis
     - asan
     - tsan
     steps:

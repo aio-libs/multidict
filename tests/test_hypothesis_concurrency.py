@@ -26,6 +26,8 @@ from hypothesis import strategies as st
 import multidict._multidict_py as _pure
 from multidict import CIMultiDict, MultiDict, MutableMultiMapping
 
+pytestmark = pytest.mark.hypothesis
+
 _MD_Classes = type[MultiDict[object]] | type[CIMultiDict[object]]
 
 
