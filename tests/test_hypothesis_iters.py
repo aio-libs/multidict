@@ -106,31 +106,33 @@ _MUTATION_MARKER_KEY = "__iters_mutation_marker_key__"
 
 
 def _apply_mutation(md: MutableMultiMapping[object], mutation: str) -> None:
-    if mutation == "add":
-        md.add(_MUTATION_MARKER_KEY, "mutated")
-    elif mutation == "setitem":
-        md[_MUTATION_MARKER_KEY] = "mutated"
-    elif mutation == "delitem":
-        del md[_MUTATION_MARKER_KEY]
-    elif mutation == "clear":
-        md.clear()
-    elif mutation == "popone":
-        md.popone(_MUTATION_MARKER_KEY, None)
-    elif mutation == "popall":
-        md.popall(_MUTATION_MARKER_KEY, None)
-    elif mutation == "update":
-        # A fresh key, not the marker: update() overwriting an *existing*
-        # entry's value in place is a separate, narrower case this file
-        # doesn't assert about (see the module docstring note below).
-        md.update([("__iters_mutation_new_key__", "mutated")])
-    elif mutation == "extend":
-        md.extend([("__iters_mutation_new_key__", "mutated")])
-    elif mutation == "merge":
-        # Also a fresh key: merge() on an already-present key is a documented
-        # no-op, so it wouldn't change anything for the guard to catch.
-        md.merge([("__iters_mutation_new_key__", "mutated")])
-    elif mutation == "setdefault_new_key":
-        md.setdefault("__another_marker_key__", "mutated")
+    match mutation:
+        case "add":
+            md.add(_MUTATION_MARKER_KEY, "mutated")
+        case "setitem":
+            md[_MUTATION_MARKER_KEY] = "mutated"
+        case "delitem":
+            del md[_MUTATION_MARKER_KEY]
+        case "clear":
+            md.clear()
+        case "popone":
+            md.popone(_MUTATION_MARKER_KEY, None)
+        case "popall":
+            md.popall(_MUTATION_MARKER_KEY, None)
+        case "update":
+            # A fresh key, not the marker: update() overwriting an *existing*
+            # entry's value in place is a separate, narrower case this file
+            # doesn't assert about (see the module docstring note below).
+            md.update([("__iters_mutation_new_key__", "mutated")])
+        case "extend":
+            md.extend([("__iters_mutation_new_key__", "mutated")])
+        case "merge":
+            # Also a fresh key: merge() on an already-present key is a
+            # documented no-op, so it wouldn't change anything for the
+            # guard to catch.
+            md.merge([("__iters_mutation_new_key__", "mutated")])
+        case "setdefault_new_key":
+            md.setdefault("__another_marker_key__", "mutated")
 
 
 def test_apply_mutation_covers_every_mutation() -> None:

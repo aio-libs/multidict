@@ -62,27 +62,28 @@ _OPS = (
 
 
 def _run_op(md: MutableMultiMapping[object], op: str, key: str) -> None:
-    if op == "add":
-        md.add(key, 1)
-    elif op == "setitem":
-        md[key] = 1
-    elif op == "delitem":
-        with contextlib.suppress(KeyError):
-            del md[key]
-    elif op == "popone":
-        md.popone(key, None)
-    elif op == "popall":
-        md.popall(key, None)
-    elif op == "setdefault":
-        md.setdefault(key, 1)
-    elif op == "get":
-        md.get(key)
-    elif op == "items":
-        list(md.items())
-    elif op == "keys":
-        list(md.keys())
-    elif op == "values":
-        list(md.values())
+    match op:
+        case "add":
+            md.add(key, 1)
+        case "setitem":
+            md[key] = 1
+        case "delitem":
+            with contextlib.suppress(KeyError):
+                del md[key]
+        case "popone":
+            md.popone(key, None)
+        case "popall":
+            md.popall(key, None)
+        case "setdefault":
+            md.setdefault(key, 1)
+        case "get":
+            md.get(key)
+        case "items":
+            list(md.items())
+        case "keys":
+            list(md.keys())
+        case "values":
+            list(md.values())
 
 
 def test_run_op_covers_every_op() -> None:
@@ -136,14 +137,15 @@ _READ_OPS = ("extend", "update", "merge", "copy")
 
 def _read_second(cls: _MD_Classes, source: MutableMultiMapping[object], op: str) -> int:
     dst: MutableMultiMapping[object] = cls()
-    if op == "extend":
-        dst.extend(source)
-    elif op == "update":
-        dst.update(source)
-    elif op == "merge":
-        dst.merge(source)
-    elif op == "copy":
-        dst = cls(source)
+    match op:
+        case "extend":
+            dst.extend(source)
+        case "update":
+            dst.update(source)
+        case "merge":
+            dst.merge(source)
+        case "copy":
+            dst = cls(source)
     return len(dst)
 
 
@@ -217,14 +219,15 @@ _RECIPROCAL_OPS = ("and_items", "or_keys", "sub_keys_items", "isdisjoint_keys")
 def _reciprocal(
     a: MutableMultiMapping[object], b: MutableMultiMapping[object], op: str
 ) -> None:
-    if op == "and_items":
-        a.items() & b.items()
-    elif op == "or_keys":
-        a.keys() | b.keys()
-    elif op == "sub_keys_items":
-        a.keys() - b.items()
-    elif op == "isdisjoint_keys":
-        a.keys().isdisjoint(b.keys())
+    match op:
+        case "and_items":
+            a.items() & b.items()
+        case "or_keys":
+            a.keys() | b.keys()
+        case "sub_keys_items":
+            a.keys() - b.items()
+        case "isdisjoint_keys":
+            a.keys().isdisjoint(b.keys())
 
 
 def test_reciprocal_covers_every_op() -> None:

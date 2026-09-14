@@ -132,16 +132,17 @@ _MUTATION_MARKER_KEY = "__iteration_mutation_marker_key__"
 
 
 def _apply_mutation(md: MutableMultiMapping[object], mutation: str) -> None:
-    if mutation == "add":
-        md.add(_MUTATION_MARKER_KEY, "mutated")
-    elif mutation == "setitem":
-        md[_MUTATION_MARKER_KEY] = "mutated"
-    elif mutation == "delitem":
-        del md[_MUTATION_MARKER_KEY]
-    elif mutation == "clear":
-        md.clear()
-    elif mutation == "popone":
-        md.popone(_MUTATION_MARKER_KEY, None)
+    match mutation:
+        case "add":
+            md.add(_MUTATION_MARKER_KEY, "mutated")
+        case "setitem":
+            md[_MUTATION_MARKER_KEY] = "mutated"
+        case "delitem":
+            del md[_MUTATION_MARKER_KEY]
+        case "clear":
+            md.clear()
+        case "popone":
+            md.popone(_MUTATION_MARKER_KEY, None)
 
 
 def test_apply_mutation_covers_every_mutation(
