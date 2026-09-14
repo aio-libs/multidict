@@ -728,8 +728,9 @@ static inline int
 md_clear(MultiDictObject* md);
 
 static inline int
-md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
+md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
 {
+    assert(md->state != NULL);
     htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
 
     if (minused > USABLE_FRACTION(HT_MINSIZE)) {
@@ -751,7 +752,6 @@ md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
     }
 
     md_clear(md);
-    md->state = state;
     md->is_ci = is_ci;
 #ifdef Py_GIL_DISABLED
     _md_store_used(md, 0);
@@ -819,13 +819,11 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     /* No allocation happens between here and the writes to md below, so
        this snapshot of other's remaining fields is consistent with the
        keys buffer just copied above. */
-    mod_state* state = other->state;
     Py_ssize_t used = other->used;
     uint64_t version = other->version;
     bool is_ci = other->is_ci;
 
     md_clear(md);
-    md->state = state;
 #ifdef Py_GIL_DISABLED
     _md_store_used(md, used);
 #else
@@ -1744,9 +1742,16 @@ _md_restore_all_hashes(MultiDictObject* md)
     Py_ssize_t nentries = md->keys->nentries;
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         entry_t* entry = entries + pos;
+#ifdef Py_GIL_DISABLED
+        Py_hash_t hash = _md_entry_load_hash(entry);
+        if (hash < 0) {
+            _md_entry_store_hash(entry, hash & PY_SSIZE_T_MAX);
+        }
+#else
         if (entry->hash < 0) {
             entry->hash &= PY_SSIZE_T_MAX;
         }
+#endif
     }
 }
 
