@@ -254,9 +254,14 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         )
 
     def _iter(self, version: int, reverse: bool = False) -> Iterator[tuple[str, _V]]:
-        for e in self._md._keys.iter_entries(reverse):
+        entries = self._md._keys.iter_entries(reverse)
+        while True:
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
+            try:
+                e = next(entries)
+            except StopIteration:
+                return
             yield self._md._key(e.key), e.value
 
     @reprlib.recursive_repr()
@@ -448,9 +453,14 @@ class _ValuesView(_ViewBase[_V], ValuesView[_V]):
         )
 
     def _iter(self, version: int, reverse: bool = False) -> Iterator[_V]:
-        for e in self._md._keys.iter_entries(reverse):
+        entries = self._md._keys.iter_entries(reverse)
+        while True:
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
+            try:
+                e = next(entries)
+            except StopIteration:
+                return
             yield e.value
 
     @reprlib.recursive_repr()
@@ -486,9 +496,14 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         )
 
     def _iter(self, version: int, reverse: bool = False) -> Iterator[str]:
-        for e in self._md._keys.iter_entries(reverse):
+        entries = self._md._keys.iter_entries(reverse)
+        while True:
             if version != self._md._version:
                 raise RuntimeError("Dictionary changed during iteration")
+            try:
+                e = next(entries)
+            except StopIteration:
+                return
             yield self._md._key(e.key)
 
     @reprlib.recursive_repr()
