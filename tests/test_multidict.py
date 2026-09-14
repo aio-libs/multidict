@@ -1972,6 +1972,47 @@ def test_get_lock_free_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+def test_popall_lock_free_get_thread_safety() -> None:
+    """Concurrent popall() alongside lock-free get() must not crash.
+
+    Regression test for the free-threaded build: popall() (like
+    popone()/__delitem__) rewrites the removed entry's hash table index
+    slot to DKIX_DUMMY via htkeys_set_index(), while a lock-free
+    get()/getone()/__getitem__ walks that same index array via
+    htkeysiter_next()/htkeys_get_index() and holds no lock at all.
+    ThreadSanitizer flagged a genuine data race here between
+    multidict_popall() and multidict_get(): both htkeys_get_index() and
+    htkeys_set_index() used to be plain, non-atomic array accesses; they
+    now go through relaxed atomics under Py_GIL_DISABLED. Deliberately
+    uses popall() rather than pop()/popone() to target that call site
+    specifically. This is a C-extension-only concern: the pure-Python
+    implementation has no locking of its own to regress."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(500))
+
+    def mutator(n: int) -> None:
+        for i in range(3000):
+            key = f"m{n}-{i}"
+            d.add(key, i)
+            d.popall(key, None)
+
+    def reader(_n: int) -> None:
+        for i in range(3000):
+            key = str(i % 500)
+            d.get(key)
+            d.getone(key, None)
+            with contextlib.suppress(KeyError):
+                d[key]
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        futures = [executor.submit(mutator, i) for i in range(8)]
+        futures += [executor.submit(reader, i) for i in range(8)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == 500
+
+
+@pytest.mark.c_extension
 def test_getall_update_vs_lock_free_reads_thread_safety() -> None:
     """Concurrent getall()/update() alongside lock-free contains()/get()
     on the same, never-deleted keys must not crash and must never observe
