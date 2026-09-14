@@ -820,7 +820,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self._lock = threading.RLock()
         return self
 
-    @_locked_pair
+    @_locked_pair_always
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
         self._used = 0
         self._incr_version()
@@ -998,7 +998,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 raise RuntimeError("Dictionary changed during iteration")
         return result
 
-    @_locked
+    @_locked_always
     def add(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
@@ -1103,7 +1103,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     # Mapping interface #
 
-    @_locked
+    @_locked_always
     def __setitem__(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
@@ -1125,7 +1125,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         else:
             self._keys.restore_hash(hash_)
 
-    @_locked
+    @_locked_always
     def __delitem__(self, key: str) -> None:
         found = False
         identity = self._identity(key)
@@ -1145,7 +1145,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     ) -> _T | None: ...
     @overload
     def setdefault(self, key: str, default: _V) -> _V: ...
-    @_locked  # type: ignore[misc]
+    @_locked_always  # type: ignore[misc]
     def setdefault(self, key: str, default: _V | None = None) -> _V | None:
         """Return value for key, set value to default if key is not present."""
         identity = self._identity(key)
@@ -1160,7 +1160,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def popone(self, key: str) -> _V: ...
     @overload
     def popone(self, key: str, default: _T) -> _V | _T: ...
-    @_locked
+    @_locked_always
     def popone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
         """Remove specified key and return the corresponding value.
 
@@ -1189,7 +1189,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def popall(self, key: str) -> list[_V]: ...
     @overload
     def popall(self, key: str, default: _T) -> list[_V] | _T: ...
-    @_locked
+    @_locked_always
     def popall(self, key: str, default: _T | _SENTINEL = sentinel) -> list[_V] | _T:
         """Remove all occurrences of key and return the list of corresponding
         values.

@@ -12,7 +12,7 @@ from collections import deque
 from collections.abc import Callable, Iterable, Iterator, KeysView, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
-from typing import TypeVar, cast
+from typing import Any, TypeVar, cast
 
 import pytest
 
@@ -2595,18 +2595,50 @@ def test_pure_python_repr_reentrant_thread_safety() -> None:
     assert isinstance(repr(md), str)
 
 
+def test_pure_python_extend_reentrant_no_deadlock() -> None:
+    """extend()/update()/merge() reading an argument that calls back into
+    the same, already-locked multidict must not deadlock.
+
+    A `SupportsKeys` argument's `keys()` (or a plain sequence's iteration)
+    runs arbitrary Python code while `_locked_pair_always` already holds
+    `self._lock`; since that lock is an RLock, the same thread can still
+    acquire it again from such a callback, on every build."""
+    d: _pure.MultiDict[int] = _pure.MultiDict({"a": 1})
+
+    class ReentrantMapping(dict[str, int]):
+        def keys(self) -> Any:
+            d.add("reentrant", 1)
+            return super().keys()
+
+    d.extend(ReentrantMapping(b=2))
+    assert d["a"] == 1
+    assert d["b"] == 2
+    assert d["reentrant"] == 1
+
+
 def test_pure_python_locking_is_free_threaded_only() -> None:
-    """On a GIL-enabled interpreter, the locked methods must be the exact
-    same function objects as their unlocked implementations -- no wrapper,
-    no lock, no overhead beyond what the module had before it gained any
-    locking. On a free-threaded interpreter, they must be wrapped (the
-    lock actually applies)."""
+    """Methods whose only race is free-threading-specific must be the
+    exact same function objects as their unlocked implementations on a
+    GIL-enabled interpreter -- no wrapper, no lock, no overhead beyond
+    what the module had before it gained any locking. On a free-threaded
+    interpreter, they must be wrapped (the lock actually applies).
+
+    getall()/getone()/__contains__() are read-only and still fall in this
+    category. add()/__setitem__() are not: they share the GIL-reachable
+    race update()/extend()/merge()/clear()/popitem() have (see
+    `_locked_always`), so they're wrapped on every build."""
     if _pure._FREE_THREADED:
-        assert hasattr(_pure.MultiDict.add, "__wrapped__")
-        assert hasattr(_pure.MultiDict.__setitem__, "__wrapped__")
+        assert hasattr(_pure.MultiDict.getall, "__wrapped__")
+        assert hasattr(_pure.MultiDict.getone, "__wrapped__")
+        assert hasattr(_pure.MultiDict.__contains__, "__wrapped__")
     else:
-        assert not hasattr(_pure.MultiDict.add, "__wrapped__")
-        assert not hasattr(_pure.MultiDict.__setitem__, "__wrapped__")
+        assert not hasattr(_pure.MultiDict.getall, "__wrapped__")
+        assert not hasattr(_pure.MultiDict.getone, "__wrapped__")
+        assert not hasattr(_pure.MultiDict.__contains__, "__wrapped__")
+
+    assert hasattr(_pure.MultiDict.add, "__wrapped__")
+    assert hasattr(_pure.MultiDict.__setitem__, "__wrapped__")
+    assert hasattr(_pure.MultiDict.update, "__wrapped__")
 
 
 def test_subclassed_multidict(
