@@ -1,3 +1,6 @@
-Added a ``ThreadSanitizer`` CI job that builds a free-threaded CPython
-instrumented with ``--with-thread-sanitizer`` and runs the test suite
-against it via ``MULTIDICT_TSAN_BUILD=1`` -- by :user:`asvetlov`.
+Added ``AddressSanitizer``/``UndefinedBehaviorSanitizer`` and
+``ThreadSanitizer`` CI jobs. The former runs the suite under a
+regular CPython with ``MULTIDICT_ASAN_BUILD=1``; the latter builds a
+free-threaded CPython instrumented with ``--with-thread-sanitizer``
+and runs the suite against it via ``MULTIDICT_TSAN_BUILD=1`` -- by
+:user:`asvetlov`.

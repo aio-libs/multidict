@@ -438,6 +438,43 @@ jobs:
         run: python -m pytest --no-cov -vvvvv --codspeed
         mode: instrumentation
 
+  asan:
+    name: AddressSanitizer
+    needs:
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v7
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v7
+      with:
+        python-version: 3.13
+        cache: pip
+        cache-dependency-path: requirements/*.txt
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4
+      with:
+        path: requirements/pytest.txt
+    - name: Self-install with AddressSanitizer and UndefinedBehaviorSanitizer
+      env:
+        MULTIDICT_DEBUG_BUILD: 1
+        MULTIDICT_ASAN_BUILD: 1
+      run: python -m pip install -e .
+    - name: Run the test suite under AddressSanitizer
+      env:
+        # detect_leaks=0: CPython itself retains allocations at
+        # shutdown (interned strings, caches) that LeakSanitizer
+        # would otherwise report as leaks unrelated to multidict.
+        ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+        PYTHONMALLOC: malloc
+      run: |
+        ASAN_SO="$(cc -print-file-name=libasan.so)"
+        LD_PRELOAD="${ASAN_SO}" python -Im pytest tests -q --no-cov \
+          -k "not test_leak"
+      shell: bash
+
   tsan:
     name: ThreadSanitizer
     needs:
@@ -529,6 +566,7 @@ jobs:
     - pre-setup  # transitive, for accessing settings
     - test
     - benchmark
+    - asan
     - tsan
     steps:
     - name: Decide whether the needed jobs succeeded or failed
