@@ -64,6 +64,31 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     return __atomic_fetch_add(obj, value, __ATOMIC_RELAXED);
 }
 
+/* Relaxed load/store for the hash table's variable-width index slots
+   (htkeys_get_index()/htkeys_set_index() in htkeys.h): relaxed is
+   enough since every value ever stored there is already a legitimate
+   index/DKIX_EMPTY/DKIX_DUMMY, so an atomic (non-tearing) relaxed load
+   can only ever observe one of those, never a torn mix; the only thing
+   this needs to rule out is the undefined behaviour of a plain load
+   racing a plain store. */
+#define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
+    static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return __atomic_load_n(obj, __ATOMIC_RELAXED);                       \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        __atomic_store_n(obj, value, __ATOMIC_RELAXED);                      \
+    }
+
+_MULTIDICT_DEFINE_INDEX_ATOMICS(8)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(16)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(32)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(64)
+#undef _MULTIDICT_DEFINE_INDEX_ATOMICS
+
 static inline void*
 atomic_load_ptr(void* const* obj)
 {
@@ -139,6 +164,28 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     return atomic_fetch_add_explicit(
         (_Atomic(uint64_t)*)obj, value, memory_order_relaxed);
 }
+
+/* See the identical comment above the GCC/clang builtin definition of
+   this macro for why relaxed ordering is sufficient here. */
+#define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
+    static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return atomic_load_explicit((const _Atomic(int##bits##_t)*)obj,      \
+                                    memory_order_relaxed);                   \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        atomic_store_explicit(                                               \
+            (_Atomic(int##bits##_t)*)obj, value, memory_order_relaxed);      \
+    }
+
+_MULTIDICT_DEFINE_INDEX_ATOMICS(8)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(16)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(32)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(64)
+#undef _MULTIDICT_DEFINE_INDEX_ATOMICS
 
 static inline void*
 atomic_load_ptr(void* const* obj)
@@ -252,6 +299,30 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     return (uint64_t)initial;
 #endif
 }
+
+/* Relaxed load/store for the hash table's variable-width index slots;
+   see the identical comment above the GCC/clang builtin definition of
+   this macro for why relaxed ordering is sufficient. A plain volatile
+   access is enough for relaxed semantics at any integer width, same
+   reasoning as atomic_load_ssize_relaxed()/atomic_store_ssize_relaxed()
+   above. */
+#define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
+    static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return *(volatile const int##bits##_t*)obj;                          \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        *(volatile int##bits##_t*)obj = value;                               \
+    }
+
+_MULTIDICT_DEFINE_INDEX_ATOMICS(8)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(16)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(32)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(64)
+#undef _MULTIDICT_DEFINE_INDEX_ATOMICS
 
 static inline void*
 atomic_load_ptr(void* const* obj)
