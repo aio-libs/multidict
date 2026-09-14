@@ -2434,6 +2434,7 @@ md_post_update(MultiDictObject* md)
             break;
         }
     }
+    md->version = NEXT_VERSION(md->state);
     ASSERT_CONSISTENT(md, false);
 }
 
