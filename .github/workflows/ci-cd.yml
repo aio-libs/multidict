@@ -496,7 +496,7 @@ jobs:
       uses: actions/checkout@v7
     - name: Cache the TSan-instrumented free-threaded CPython build
       id: tsan-cpython-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ env.TSAN_CPYTHON_PREFIX }}
         # NOTE: There's no other way to invalidate this cache, so bump
