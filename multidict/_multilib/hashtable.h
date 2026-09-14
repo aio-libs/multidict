@@ -225,27 +225,36 @@ safety argument in full:
            else: move old onto md->retired, freed by a later drain
 
 A is always sequenced-before B on the reader's own thread, so if the
-writer's check observes num_active_readers == 0, no reader can be between
-A and E for *any* table -- in particular none can be between B and C
-for the table being freed. Anything weaker than seq_cst here (plain
-acquire/release, or relaxed) is not enough: the writer's store to
-md->keys and its read of num_active_readers, versus the reader's write to
-num_active_readers and its read of md->keys, is a criss-cross on two
-independent atomics (the same shape as Dekker's algorithm), and only a
-single global seq_cst order over all four operations closes it -- see
-the design discussion that produced this file for the specific
-interleaving that a weaker order permits.
+writer's check observes num_active_readers == 0, no reader can be
+*starting* a walk of any table that was retired before that check --
+none can be caught between A and B for the table being freed. Anything
+weaker than seq_cst here (plain acquire/release, or relaxed) is not
+enough: the writer's store to md->keys and its read of num_active_readers,
+versus the reader's write to num_active_readers and its read of
+md->keys, is a criss-cross on two independent atomics (the same shape
+as Dekker's algorithm), and only a single global seq_cst order over all
+four operations closes it -- see the design discussion that produced
+this file for the specific interleaving that a weaker order permits.
 
-keys->num_readers (C/D) does not participate in that ordering and stays
-relaxed: it is only ever inspected in _md_drain_retired(), which never
-runs except at a point already known -- via the num_active_readers check
-above -- to have no reader anywhere near it. It exists purely as a
-cheap defensive assertion that the coarse gate actually worked, not as
-an independent freeing trigger; freeing a specific retired table ahead
-of the whole object's num_active_readers reaching 0 would reintroduce the
-same bootstrap race the coarse gate exists to close (see the design
-discussion; true per-table precision under sustained concurrent read
-load needs epoch tagging, which this does not attempt).
+That is weaker than it may look, though: num_active_readers reaching
+zero does *not* reliably mean every reader that incremented it has also
+finished walking its table and reached its own D/E. A reader can be
+preempted for an arbitrary stretch between C and D -- including right
+after C, having barely started its walk -- and nothing about the coarse
+gate bounds how long that stretch lasts before this specific thread's
+drain runs. In practice a table's own num_readers has been observed
+transiently nonzero right after the coarse gate read zero, resolving
+within milliseconds once the stalled reader is scheduled again (see the
+regression test and PR discussion for how this was found and
+reproduced). So keys->num_readers (C/D, relaxed -- it never needed to
+participate in the seq_cst ordering above, only to be checked once the
+coarse gate suggests it is safe to look) is not a redundant, cheap
+assertion of something the coarse gate already guarantees: it is the
+actual authority on whether a specific table is safe to free.
+_md_drain_retired() treats it that way, deferring (pushing back onto
+md->retired for a later attempt) any table whose own num_readers is
+still nonzero instead of freeing it -- true per-table precision without
+that check would need epoch tagging, which this does not attempt.
 
 _md_reader_exit()'s own num_active_readers decrement (E above) is a
 seq_cst atomic_fetch_add_ssize(), which hands back the pre-decrement
@@ -361,11 +370,51 @@ _md_drain_retired(MultiDictObject* md)
         return;
     }
     htkeys_t* t = (htkeys_t*)atomic_exchange_ptr((void**)&md->retired, NULL);
+
+    /* Despite the coarse num_active_readers gate above having just read
+       zero, a specific table's own num_readers can transiently still be
+       nonzero here: a reader that already incremented it (as part of
+       _md_reader_enter()) can be preempted for an arbitrary stretch
+       before it reaches the matching decrement in _md_reader_exit(), and
+       nothing stops this thread's drain from running to completion in
+       that window. This has been observed in practice (a reader still
+       finishing its scan after this exact check saw zero), and it always
+       resolves within milliseconds once that reader gets scheduled again
+       -- but relying on the coarse gate alone and freeing regardless, the
+       way this function used to, is a genuine use-after-free race in a
+       release build (where the assert that used to guard this is
+       compiled out) and not merely a debug-only assertion mismatch.
+       Table-precise safety, not the coarse gate, is what actually decides
+       whether freeing here is safe: any table whose own num_readers is
+       still nonzero is pushed back onto md->retired instead of freed, to
+       be retried the next time some reader's exit or writer's retire
+       calls this function. */
+    htkeys_t* pending_head = NULL;
+    htkeys_t* pending_tail = NULL;
     while (t != NULL) {
         htkeys_t* next = t->retired_next;
-        assert(atomic_load_ssize_relaxed(&t->num_readers) == 0);
-        _md_free_retired(t);
+        if (atomic_load_ssize_relaxed(&t->num_readers) == 0) {
+            _md_free_retired(t);
+        } else {
+            t->retired_next = pending_head;
+            pending_head = t;
+            if (pending_tail == NULL) {
+                pending_tail = t;
+            }
+        }
         t = next;
+    }
+
+    if (pending_head != NULL) {
+        htkeys_t* old_head =
+            (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
+        for (;;) {
+            pending_tail->retired_next = old_head;
+            if (atomic_compare_exchange_ptr(
+                    (void**)&md->retired, (void**)&old_head, pending_head)) {
+                break;
+            }
+        }
     }
 }
 

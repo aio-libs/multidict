@@ -2365,7 +2365,17 @@ def test_setitem_update_thread_safety() -> None:
     bucket placement, a different key's mark overwritten, a stale
     entries-array pointer used after the table it pointed into was freed).
     This is a C-extension-only concern: the pure-Python implementation has
-    no locking of its own to regress."""
+    no locking of its own to regress.
+
+    Also the regression test (via reader_worker()'s get()/__getitem__()/
+    __contains__() calls, all lock-free reads) for a used-after-free in
+    _md_drain_retired(): its coarse "no reader in flight" gate reading
+    zero did not reliably mean every such reader had also finished
+    walking its own table, so a table whose own reader count was still
+    nonzero could be freed while a lock-free reader on another thread was
+    still walking it. Only reproduces intermittently and needs heavy
+    thread oversubscription (a handful of CPUs, far more threads); it is
+    what the ThreadSanitizer CI job caught."""
     nkeys = 30
     d: MultiDict[object] = MultiDict((str(i), i) for i in range(nkeys))
 
