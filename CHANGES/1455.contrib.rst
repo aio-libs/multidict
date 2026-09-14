@@ -1,0 +1,3 @@
+Added a ``ThreadSanitizer`` CI job that builds a free-threaded CPython
+instrumented with ``--with-thread-sanitizer`` and runs the test suite
+against it via ``MULTIDICT_TSAN_BUILD=1`` -- by :user:`asvetlov`.
