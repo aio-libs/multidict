@@ -462,6 +462,14 @@ jobs:
         MULTIDICT_DEBUG_BUILD: 1
         MULTIDICT_ASAN_BUILD: 1
       run: python -m pip install -e .
+    - name: Enable core dumps
+      run: |
+        sudo mkdir -p /tmp/cores
+        sudo chmod 1777 /tmp/cores
+        # A plain path (not a "|pipe" one) bypasses apport, which
+        # otherwise intercepts the core before we can collect it.
+        echo '/tmp/cores/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
+      shell: bash
     - name: Run the test suite under AddressSanitizer
       env:
         # detect_leaks=0: CPython itself retains allocations at
@@ -470,10 +478,26 @@ jobs:
         ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
         PYTHONMALLOC: malloc
       run: |
+        ulimit -c unlimited
         ASAN_SO="$(cc -print-file-name=libasan.so)"
         LD_PRELOAD="${ASAN_SO}" python -Im pytest tests -q --no-cov \
           -k "not test_leak"
       shell: bash
+    - name: Copy the interpreter binary for postmortem debugging
+      if: failure()
+      run: cp "$(command -v python)" /tmp/cores/python-asan
+      shell: bash
+    - name: Upload core dump on crash
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: asan-coredump
+        path: |
+          /tmp/cores/core.*
+          /tmp/cores/python-asan
+          multidict/*.so
+        if-no-files-found: ignore
+        retention-days: 7
 
   tsan:
     name: ThreadSanitizer
@@ -548,19 +572,39 @@ jobs:
         "${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t"
         -m pip install -r requirements/pytest.txt
       shell: bash
+    - name: Enable core dumps
+      run: |
+        sudo mkdir -p /tmp/cores
+        sudo chmod 1777 /tmp/cores
+        # A plain path (not a "|pipe" one) bypasses apport, which
+        # otherwise intercepts the core before we can collect it.
+        echo '/tmp/cores/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
+      shell: bash
     - name: Run the test suite under ThreadSanitizer
       env:
         # Fail the job as soon as a race is detected instead of only
         # logging it: an undetected race would otherwise still show
         # up as "tests passed".
         TSAN_OPTIONS: halt_on_error=1
-      run: >-
-        "${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t"
-        -m pytest tests -q --no-cov
-        -k "not test_leak"
-        --ignore=tests/test_multidict_benchmarks.py
-        --ignore=tests/test_views_benchmarks.py
+      run: |
+        ulimit -c unlimited
+        "${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t" \
+          -m pytest tests -q --no-cov \
+          -k "not test_leak" \
+          --ignore=tests/test_multidict_benchmarks.py \
+          --ignore=tests/test_views_benchmarks.py
       shell: bash
+    - name: Upload core dump on crash
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: tsan-coredump
+        path: |
+          /tmp/cores/core.*
+          ${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t
+          multidict/*.so
+        if-no-files-found: ignore
+        retention-days: 7
 
   test-summary:
     name: Tests status
