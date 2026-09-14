@@ -1391,6 +1391,90 @@ class TestCIMultiDict(BaseMultiDictTest):
         assert d.items().isdisjoint(arg) == expected
 
 
+class _ReentrantEq:
+    """A value whose __eq__() calls back into `md` mid-comparison.
+
+    items() set algebra walks the hash chain for a key while comparing
+    stored values against a caller-supplied one; if that comparison can
+    run arbitrary code (a custom __eq__) before the walk finishes, the
+    reentrant call must still see a fully consistent multidict, not
+    entries the in-progress walk has temporarily hidden.
+    """
+
+    def __init__(self, md: MultiDict[str], key: str, matches: str) -> None:
+        self.md = md
+        self.key = key
+        self.matches = matches
+        self.observed: list[str] | None = None
+
+    def __eq__(self, other: object) -> bool:
+        self.observed = self.md.getall(self.key)
+        return other == self.matches
+
+    def __hash__(self) -> int:
+        return hash(self.matches)
+
+
+def test_items_and_reentrant_equality(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    md = any_multidict_class([("key", "first"), ("key", "second")])
+    needle = _ReentrantEq(md, "key", "second")
+
+    assert md.items() & {("key", needle)} == {("key", "second")}
+    assert needle.observed == ["first", "second"]
+
+
+def test_items_rand_reentrant_equality(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    md = any_multidict_class([("key", "first"), ("key", "second")])
+    needle = _ReentrantEq(md, "key", "second")
+    other: list[tuple[str, object]] = [("key", needle)]
+
+    assert other & md.items() == {("key", "second")}
+    assert needle.observed == ["first", "second"]
+
+
+def test_items_or_reentrant_equality(any_multidict_class: type[MultiDict[str]]) -> None:
+    md = any_multidict_class([("key", "first"), ("key", "second")])
+    needle = _ReentrantEq(md, "key", "second")
+
+    assert md.items() | {("key", needle)} == {("key", "first"), ("key", "second")}
+    assert needle.observed == ["first", "second"]
+
+
+def test_items_rsub_reentrant_equality(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    md = any_multidict_class([("key", "first"), ("key", "second")])
+    needle = _ReentrantEq(md, "key", "second")
+
+    assert [("key", needle)] - md.items() == set()
+    assert needle.observed == ["first", "second"]
+
+
+def test_items_contains_reentrant_equality(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    md = any_multidict_class([("key", "first"), ("key", "second")])
+    needle = _ReentrantEq(md, "key", "second")
+    pair: tuple[str, object] = ("key", needle)
+
+    assert pair in md.items()
+    assert needle.observed == ["first", "second"]
+
+
+def test_items_isdisjoint_reentrant_equality(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    md = any_multidict_class([("key", "first"), ("key", "second")])
+    needle = _ReentrantEq(md, "key", "second")
+
+    assert md.items().isdisjoint([("key", needle)]) is False
+    assert needle.observed == ["first", "second"]
+
+
 def test_create_multidict_from_existing_multidict_new_pairs() -> None:
     """Test creating a MultiDict from an existing one does not mutate the original."""
     original = MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])

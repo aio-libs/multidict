@@ -1,0 +1,6 @@
+``items()`` set algebra (``&``, ``|``, ``-``, ``in``, ``isdisjoint()``) no
+longer corrupts or hangs when a compared value's ``__eq__()`` re-enters the
+same :class:`~multidict.MultiDict`, for example by calling ``getall()`` on
+it. The comparison now runs only after the internal hash-chain walk has
+been fully materialized and restored, so the callback can no longer
+observe entries the walk still has marked -- by :user:`asvetlov`.

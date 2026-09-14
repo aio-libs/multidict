@@ -1731,6 +1731,67 @@ fail:
     return -1;
 }
 
+/* Collect every (key, value) pair matching `identity` into a fresh list,
+   fully marking and restoring the finder chain before returning. Run any
+   user code (a value comparison that may call a custom __eq__) against
+   the result only after this returns, never mid-walk: entries stay
+   marked until md_finder_cleanup(), and reentering the same MultiDict
+   (e.g. via getall()) while marked would hide some matching entries.
+
+   `with_keys` selects values (false) or (key, value) tuples (true). */
+static inline PyObject*
+md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
+{
+    md_finder_t finder = {0};
+    PyObject* key = NULL;
+    PyObject* value = NULL;
+    PyObject* item;
+    int tmp;
+
+    PyObject* ret = PyList_New(0);
+    if (ret == NULL) {
+        return NULL;
+    }
+
+    if (md_init_finder(md, identity, &finder) < 0) {
+        assert(PyErr_Occurred());
+        Py_DECREF(ret);
+        return NULL;
+    }
+
+    while ((tmp = md_find_next(&finder, with_keys ? &key : NULL, &value)) >
+           0) {
+        if (with_keys) {
+            item = PyTuple_Pack(2, key, value);
+            Py_CLEAR(key);
+            Py_CLEAR(value);
+            if (item == NULL) {
+                goto fail;
+            }
+        } else {
+            item = value;
+            value = NULL;
+        }
+        tmp = PyList_Append(ret, item);
+        Py_DECREF(item);
+        if (tmp < 0) {
+            goto fail;
+        }
+    }
+    md_finder_cleanup(&finder);
+    if (tmp < 0) {
+        goto fail_no_cleanup;
+    }
+    return ret;
+fail:
+    md_finder_cleanup(&finder);
+fail_no_cleanup:
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_DECREF(ret);
+    return NULL;
+}
+
 /* Restore every entry hash md_to_dict()'s walk left marked.
 
    md_finder_cleanup() restores one hash chain, which is what a single
