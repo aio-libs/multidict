@@ -66,3 +66,34 @@ def test_guard_values_update_existing_key(any_multidict_class: _MD_Classes) -> N
     md.update({"a": "c"})
     with pytest.raises(RuntimeError):
         next(it)
+
+
+@pytest.mark.parametrize(
+    "get_iterator",
+    (
+        iter,
+        lambda md: iter(md.keys()),
+        lambda md: iter(md.items()),
+        lambda md: iter(md.values()),
+    ),
+    ids=("iter", "keys", "items", "values"),
+)
+@pytest.mark.parametrize(
+    "mutate",
+    (
+        lambda md: md.clear(),
+        lambda md: md.__delitem__("a"),
+        lambda md: md.popone("a"),
+    ),
+    ids=("clear", "delitem", "popone"),
+)
+def test_guard_mutate_before_first_next(
+    any_multidict_class: _MD_Classes,
+    get_iterator: object,
+    mutate: object,
+) -> None:
+    md = any_multidict_class({"a": "b"})
+    it = get_iterator(md)  # type: ignore[operator]
+    mutate(md)  # type: ignore[operator]
+    with pytest.raises(RuntimeError):
+        next(it)
