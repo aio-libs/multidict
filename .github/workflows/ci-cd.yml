@@ -465,7 +465,26 @@ jobs:
       # asan/tsan/wheel-testing) and only run here. A single run already
       # covers both the C-extension and pure-Python backends, since the
       # `any_multidict_class`-style fixtures import both directly.
-      run: python -Im pytest tests -q --no-cov -m hypothesis
+      run: >-
+        python -Im pytest tests -v
+        --cov-report xml
+        --junitxml=.test-results/pytest/test.xml
+        -m hypothesis
+    - name: Produce markdown test summary from JUnit
+      if: >-
+        !cancelled()
+      uses: test-summary/action@v2.6
+      with:
+        paths: .test-results/pytest/test.xml
+    - name: Append coverage results to Job Summary
+      if: >-
+        !cancelled()
+      run: >-
+        python -Im coverage report --format=markdown
+        >> "${GITHUB_STEP_SUMMARY}"
+      shell: bash
+    - name: Prepare coverage artifact
+      uses: aio-libs/prepare-coverage@v24.9.2
 
   asan:
     name: AddressSanitizer
