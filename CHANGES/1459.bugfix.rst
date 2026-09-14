@@ -1,0 +1,7 @@
+Fixed the pure-Python ``MultiDict``/``CIMultiDict`` iterator guard so that
+mutating the mapping before the first ``next()`` call on an ``items()``,
+``keys()``, or ``values()`` iterator (or on ``iter(md)``) now reliably raises
+``RuntimeError``, matching the C extension. Previously a mutation that
+happened before the iterator was ever advanced, such as ``clear()`` or a
+``del``/``popone()`` that removed the only remaining entry, could make the
+iterator silently raise ``StopIteration`` instead -- by :user:`asvetlov`.

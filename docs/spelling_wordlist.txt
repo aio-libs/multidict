@@ -16,6 +16,7 @@ backend
 backends
 basename
 bugfixes
+bytecode
 cchardet
 cChardet
 changelog
