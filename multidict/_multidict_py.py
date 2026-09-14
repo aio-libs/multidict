@@ -302,11 +302,18 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 continue
             hash_, identity, key, value = item
             marked = hash_ | HASH_MARK
+            matches = []
             for slot, idx, e in self._md._keys.iter_hash(hash_):
                 e.hash = marked
-                if e.identity == identity and e.value == value:
-                    ret.add((e.key, e.value))
+                if e.identity == identity:  # pragma: no branch
+                    matches.append((e.key, e.value))
             self._md._keys.restore_hash(hash_)
+            # Compare values only after restore_hash(): a custom __eq__
+            # here could reenter this MultiDict via getall() and must not
+            # see entries this walk still has marked.
+            for e_key, e_value in matches:
+                if e_value == value:
+                    ret.add((e_key, e_value))
         return ret
 
     @_locked_md_pair
