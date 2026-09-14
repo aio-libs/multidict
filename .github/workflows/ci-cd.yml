@@ -502,7 +502,7 @@ jobs:
     - name: Install test dependencies
       run: >-
         "${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t"
-        -m pip install pytest psutil objgraph
+        -m pip install -r requirements/pytest.txt
       shell: bash
     - name: Run the test suite under ThreadSanitizer
       env:

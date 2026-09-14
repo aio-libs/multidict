@@ -364,15 +364,20 @@ signed/unsigned comparisons will fail the build, not just warn.
 
 ### Sanitizer builds
 
-`MULTIDICT_DEBUG_BUILD=1` also compiles and links the C extension
-with AddressSanitizer and UndefinedBehaviorSanitizer (skipped on
-Windows, where these flags aren't supported by MSVC). Because the
-extension is loaded into a normal CPython that wasn't itself built
-with ASan, the runtime has to be preloaded ahead of everything else:
+Sanitizers are opt-in on top of `MULTIDICT_DEBUG_BUILD=1`, not implied
+by it: plain `MULTIDICT_DEBUG_BUILD=1` is relied on across CI (and by
+contributors) to just build with `-O0`/`-UNDEBUG` and run normally,
+with no sanitizer runtime preloaded. Add `MULTIDICT_ASAN_BUILD=1` to
+also compile and link the C extension with AddressSanitizer and
+UndefinedBehaviorSanitizer (skipped on Windows, where these flags
+aren't supported by MSVC). Because the extension is then loaded into
+a normal CPython that wasn't itself built with ASan, the runtime has
+to be preloaded ahead of everything else:
 
 ```bash
 ASAN_SO=$(cc -print-file-name=libasan.so)
-MULTIDICT_DEBUG_BUILD=1 pip install -e . --force-reinstall --no-deps
+MULTIDICT_DEBUG_BUILD=1 MULTIDICT_ASAN_BUILD=1 \
+    pip install -e . --force-reinstall --no-deps
 LD_PRELOAD="$ASAN_SO" ASAN_OPTIONS=detect_leaks=0 PYTHONMALLOC=malloc \
     python -Im pytest tests -q -k "not test_leak"
 ```
