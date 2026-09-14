@@ -9,7 +9,9 @@ fuzzing far more mutation-kind/timing combinations than the fixed cases in
 ``tests/test_guard.py``.
 """
 
+import sys
 from collections.abc import Callable, Iterator
+from typing import Literal
 
 import pytest
 
@@ -20,6 +22,14 @@ from hypothesis import strategies as st  # noqa: E402
 from hypothesis_helpers import pairs_lists  # noqa: E402
 
 from multidict import CIMultiDict, MultiDict, MutableMultiMapping  # noqa: E402
+
+if sys.version_info >= (3, 11):
+    from typing import assert_never
+else:  # pragma: no cover
+    # This file only ever runs under >=3.11 (the hypothesis-gil/
+    # hypothesis-freethreading CI jobs pin 3.13/3.14t), unlike the
+    # multidict package itself, which is tested down to 3.10.
+    from typing_extensions import assert_never
 
 pytestmark = pytest.mark.hypothesis
 
@@ -85,7 +95,19 @@ def test_reversed_iterator_matches_reversed_list(
     assert list(reversed(md.values())) == list(reversed(list(md.values())))
 
 
-_MUTATIONS = (
+_Mutation = Literal[
+    "add",
+    "setitem",
+    "delitem",
+    "clear",
+    "popone",
+    "popall",
+    "update",
+    "extend",
+    "merge",
+    "setdefault_new_key",
+]
+_MUTATIONS: tuple[_Mutation, ...] = (
     "add",
     "setitem",
     "delitem",
@@ -105,7 +127,7 @@ _MUTATIONS = (
 _MUTATION_MARKER_KEY = "__iters_mutation_marker_key__"
 
 
-def _apply_mutation(md: MutableMultiMapping[object], mutation: str) -> None:
+def _apply_mutation(md: MutableMultiMapping[object], mutation: _Mutation) -> None:
     match mutation:
         case "add":
             md.add(_MUTATION_MARKER_KEY, "mutated")
@@ -133,6 +155,8 @@ def _apply_mutation(md: MutableMultiMapping[object], mutation: str) -> None:
             md.merge([("__iters_mutation_new_key__", "mutated")])
         case "setdefault_new_key":
             md.setdefault("__another_marker_key__", "mutated")
+        case _:  # pragma: no cover
+            assert_never(mutation)
 
 
 def test_apply_mutation_covers_every_mutation() -> None:
@@ -156,7 +180,7 @@ def test_iterator_raises_on_mutation(
     any_multidict_class: _MD_Classes,
     pairs: _Pairs,
     kind: str,
-    mutation: str,
+    mutation: _Mutation,
     data: st.DataObject,
 ) -> None:
     md = any_multidict_class(pairs)

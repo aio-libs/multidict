@@ -17,7 +17,9 @@ which CPython itself guarantees is deadlock-free).
 """
 
 import contextlib
+import sys
 import threading
+from typing import Literal
 
 import pytest
 
@@ -28,6 +30,14 @@ from hypothesis import strategies as st  # noqa: E402
 
 import multidict._multidict_py as _pure  # noqa: E402
 from multidict import CIMultiDict, MultiDict, MutableMultiMapping  # noqa: E402
+
+if sys.version_info >= (3, 11):
+    from typing import assert_never
+else:  # pragma: no cover
+    # This file only ever runs under >=3.11 (the hypothesis-gil/
+    # hypothesis-freethreading CI jobs pin 3.13/3.14t), unlike the
+    # multidict package itself, which is tested down to 3.10.
+    from typing_extensions import assert_never
 
 pytestmark = pytest.mark.hypothesis
 
@@ -47,7 +57,19 @@ _gil_build_race_skip = pytest.mark.skipif(
 
 # -- General op-sequence race fuzz -----------------------------------------
 
-_OPS = (
+_Op = Literal[
+    "add",
+    "setitem",
+    "delitem",
+    "popone",
+    "popall",
+    "setdefault",
+    "get",
+    "items",
+    "keys",
+    "values",
+]
+_OPS: tuple[_Op, ...] = (
     "add",
     "setitem",
     "delitem",
@@ -61,7 +83,7 @@ _OPS = (
 )
 
 
-def _run_op(md: MutableMultiMapping[object], op: str, key: str) -> None:
+def _run_op(md: MutableMultiMapping[object], op: _Op, key: str) -> None:
     match op:
         case "add":
             md.add(key, 1)
@@ -84,6 +106,8 @@ def _run_op(md: MutableMultiMapping[object], op: str, key: str) -> None:
             list(md.keys())
         case "values":
             list(md.values())
+        case _:  # pragma: no cover
+            assert_never(op)
 
 
 def test_run_op_covers_every_op() -> None:
@@ -99,7 +123,7 @@ def test_run_op_covers_every_op() -> None:
 @given(op_sequence=st.lists(st.sampled_from(_OPS), min_size=5, max_size=30))
 @settings(max_examples=15, deadline=None)
 def test_concurrent_op_sequence_fuzz(
-    any_multidict_class: _MD_Classes, op_sequence: list[str]
+    any_multidict_class: _MD_Classes, op_sequence: list[_Op]
 ) -> None:
     _skip_unless_c_extension(any_multidict_class)
     md: MutableMultiMapping[object] = any_multidict_class(
@@ -131,10 +155,13 @@ def test_concurrent_op_sequence_fuzz(
 
 # -- Cross-object race fuzz -------------------------------------------------
 
-_READ_OPS = ("extend", "update", "merge", "copy")
+_ReadOp = Literal["extend", "update", "merge", "copy"]
+_READ_OPS: tuple[_ReadOp, ...] = ("extend", "update", "merge", "copy")
 
 
-def _read_second(cls: _MD_Classes, source: MutableMultiMapping[object], op: str) -> int:
+def _read_second(
+    cls: _MD_Classes, source: MutableMultiMapping[object], op: _ReadOp
+) -> int:
     dst: MutableMultiMapping[object] = cls()
     match op:
         case "extend":
@@ -145,6 +172,8 @@ def _read_second(cls: _MD_Classes, source: MutableMultiMapping[object], op: str)
             dst.merge(source)
         case "copy":
             dst = cls(source)
+        case _:  # pragma: no cover
+            assert_never(op)
     return len(dst)
 
 
@@ -165,7 +194,7 @@ def test_read_second_covers_every_op() -> None:
 @settings(max_examples=10, deadline=None)
 def test_cross_object_race_fuzz(
     any_multidict_class: _MD_Classes,
-    read_ops: list[str],
+    read_ops: list[_ReadOp],
     seed_count: int,
 ) -> None:
     _skip_unless_c_extension(any_multidict_class)
@@ -212,11 +241,17 @@ def test_cross_object_race_fuzz(
 
 # -- Deadlock fuzz (pure-Python free-threaded only) -------------------------
 
-_RECIPROCAL_OPS = ("and_items", "or_keys", "sub_keys_items", "isdisjoint_keys")
+_ReciprocalOp = Literal["and_items", "or_keys", "sub_keys_items", "isdisjoint_keys"]
+_RECIPROCAL_OPS: tuple[_ReciprocalOp, ...] = (
+    "and_items",
+    "or_keys",
+    "sub_keys_items",
+    "isdisjoint_keys",
+)
 
 
 def _reciprocal(
-    a: MutableMultiMapping[object], b: MutableMultiMapping[object], op: str
+    a: MutableMultiMapping[object], b: MutableMultiMapping[object], op: _ReciprocalOp
 ) -> None:
     match op:
         case "and_items":
@@ -227,6 +262,8 @@ def _reciprocal(
             a.keys() - b.items()
         case "isdisjoint_keys":
             a.keys().isdisjoint(b.keys())
+        case _:  # pragma: no cover
+            assert_never(op)
 
 
 def test_reciprocal_covers_every_op() -> None:
@@ -242,7 +279,7 @@ def test_reciprocal_covers_every_op() -> None:
 @_gil_build_race_skip
 @given(ops=st.lists(st.sampled_from(_RECIPROCAL_OPS), min_size=1, max_size=4))
 @settings(max_examples=10, deadline=None)
-def test_reciprocal_ops_no_deadlock(ops: list[str]) -> None:
+def test_reciprocal_ops_no_deadlock(ops: list[_ReciprocalOp]) -> None:
     a: _pure.MultiDict[object] = _pure.MultiDict((str(i), i) for i in range(50))
     b: _pure.MultiDict[object] = _pure.MultiDict((str(i), i) for i in range(50, 100))
 

@@ -6,7 +6,9 @@ via the existing fixtures in ``tests/conftest.py``. See
 ``tests/test_hypothesis_iters.py`` for the iterator objects themselves.
 """
 
+import sys
 from collections.abc import Callable
+from typing import Literal
 
 import pytest
 
@@ -17,6 +19,14 @@ from hypothesis import strategies as st  # noqa: E402
 from hypothesis_helpers import pairs_lists, simple_values, text_keys  # noqa: E402
 
 from multidict import CIMultiDict, MultiDict, MutableMultiMapping  # noqa: E402
+
+if sys.version_info >= (3, 11):
+    from typing import assert_never
+else:  # pragma: no cover
+    # This file only ever runs under >=3.11 (the hypothesis-gil/
+    # hypothesis-freethreading CI jobs pin 3.13/3.14t), unlike the
+    # multidict package itself, which is tested down to 3.10.
+    from typing_extensions import assert_never
 
 pytestmark = pytest.mark.hypothesis
 
@@ -120,7 +130,8 @@ def test_items_view_set_algebra_matches_folded_sets(
     assert md.items().isdisjoint(other) == md_folded.isdisjoint(other_folded)
 
 
-_MUTATIONS = ("add", "setitem", "delitem", "clear", "popone")
+_Mutation = Literal["add", "setitem", "delitem", "clear", "popone"]
+_MUTATIONS: tuple[_Mutation, ...] = ("add", "setitem", "delitem", "clear", "popone")
 
 # Deliberately never one of `pairs`'s own keys: mutating an unrelated marker
 # key (rather than a key already in `pairs`) means the still-unconsumed
@@ -131,7 +142,7 @@ _MUTATIONS = ("add", "setitem", "delitem", "clear", "popone")
 _MUTATION_MARKER_KEY = "__iteration_mutation_marker_key__"
 
 
-def _apply_mutation(md: MutableMultiMapping[object], mutation: str) -> None:
+def _apply_mutation(md: MutableMultiMapping[object], mutation: _Mutation) -> None:
     match mutation:
         case "add":
             md.add(_MUTATION_MARKER_KEY, "mutated")
@@ -143,6 +154,8 @@ def _apply_mutation(md: MutableMultiMapping[object], mutation: str) -> None:
             md.clear()
         case "popone":
             md.popone(_MUTATION_MARKER_KEY, None)
+        case _:  # pragma: no cover
+            assert_never(mutation)
 
 
 def test_apply_mutation_covers_every_mutation(
@@ -164,7 +177,7 @@ def test_apply_mutation_covers_every_mutation(
 def test_view_mutation_during_iteration_raises(
     any_multidict_class: _MD_Classes,
     pairs: _Pairs,
-    mutation: str,
+    mutation: _Mutation,
     data: st.DataObject,
 ) -> None:
     md = any_multidict_class(pairs)
