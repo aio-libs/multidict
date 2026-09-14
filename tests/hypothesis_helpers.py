@@ -100,12 +100,6 @@ class MultiDictModel:
     def __len__(self) -> int:
         return len(self.entries)
 
-    def __contains__(self, key: str) -> bool:
-        return bool(self._indices(key))
-
-    def getall(self, key: str) -> list[object]:
-        return [self.entries[i][1] for i in self._indices(key)]
-
     def add(self, key: str, value: object) -> None:
         self.entries.append((key, value))
 

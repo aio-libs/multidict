@@ -439,18 +439,29 @@ jobs:
         mode: instrumentation
 
   hypothesis:
-    name: Hypothesis
+    name: Hypothesis ${{ matrix.pyver }}
     needs:
     - pre-setup  # transitive, for accessing settings
+    strategy:
+      fail-fast: false
+      matrix:
+        pyver:
+        - "3.13"
+        # Free-threaded: the only build test_reciprocal_ops_no_deadlock's
+        # body actually runs under (it's a no-op elsewhere), and real
+        # thread parallelism makes the C-extension race fuzzing more
+        # likely to exercise the "changed during iteration" path too.
+        - "3.14t"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
     - name: Checkout project
       uses: actions/checkout@v7
-    - name: Setup Python 3.13
+    - name: Setup Python ${{ matrix.pyver }}
       uses: actions/setup-python@v7
       with:
-        python-version: 3.13
+        python-version: ${{ matrix.pyver }}
+        allow-prereleases: true
         cache: pip
         cache-dependency-path: requirements/*.txt
     - name: Install dependencies

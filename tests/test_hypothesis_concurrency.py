@@ -113,8 +113,9 @@ def test_concurrent_op_sequence_fuzz(
             key = f"k-{i % 8}"
             try:
                 _run_op(md, op, key)
-            except RuntimeError:
-                # "changed during iteration" is expected under contention.
+            except RuntimeError:  # pragma: no cover
+                # "changed during iteration" is expected under contention,
+                # but real thread scheduling doesn't guarantee hitting it.
                 pass
             except Exception as e:  # pragma: no cover
                 errors.append((worker_id, op, type(e).__name__, str(e)))
