@@ -64,6 +64,24 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     return __atomic_fetch_add(obj, value, __ATOMIC_RELAXED);
 }
 
+#define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
+    static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return __atomic_load_n(obj, __ATOMIC_RELAXED);                       \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        __atomic_store_n(obj, value, __ATOMIC_RELAXED);                      \
+    }
+
+_MULTIDICT_DEFINE_INDEX_ATOMICS(8)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(16)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(32)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(64)
+#undef _MULTIDICT_DEFINE_INDEX_ATOMICS
+
 static inline void*
 atomic_load_ptr(void* const* obj)
 {
@@ -139,6 +157,26 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     return atomic_fetch_add_explicit(
         (_Atomic(uint64_t)*)obj, value, memory_order_relaxed);
 }
+
+#define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
+    static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return atomic_load_explicit((const _Atomic(int##bits##_t)*)obj,      \
+                                    memory_order_relaxed);                   \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        atomic_store_explicit(                                               \
+            (_Atomic(int##bits##_t)*)obj, value, memory_order_relaxed);      \
+    }
+
+_MULTIDICT_DEFINE_INDEX_ATOMICS(8)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(16)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(32)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(64)
+#undef _MULTIDICT_DEFINE_INDEX_ATOMICS
 
 static inline void*
 atomic_load_ptr(void* const* obj)
@@ -252,6 +290,24 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     return (uint64_t)initial;
 #endif
 }
+
+#define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
+    static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return *(volatile const int##bits##_t*)obj;                          \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        *(volatile int##bits##_t*)obj = value;                               \
+    }
+
+_MULTIDICT_DEFINE_INDEX_ATOMICS(8)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(16)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(32)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(64)
+#undef _MULTIDICT_DEFINE_INDEX_ATOMICS
 
 static inline void*
 atomic_load_ptr(void* const* obj)

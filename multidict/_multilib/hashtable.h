@@ -132,9 +132,6 @@ _str_cmp(PyObject* s1, PyObject* s2)
 static inline PyObject*
 _key_to_identity(mod_state* state, PyObject* key)
 {
-    if (IStr_Check(state, key)) {
-        return Py_NewRef(((istrobject*)key)->canonical);
-    }
     if (PyUnicode_CheckExact(key)) {
         return Py_NewRef(key);
     }
@@ -728,8 +725,9 @@ static inline int
 md_clear(MultiDictObject* md);
 
 static inline int
-md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
+md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
 {
+    assert(md->state != NULL);
     htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
 
     if (minused > USABLE_FRACTION(HT_MINSIZE)) {
@@ -751,7 +749,6 @@ md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
     }
 
     md_clear(md);
-    md->state = state;
     md->is_ci = is_ci;
 #ifdef Py_GIL_DISABLED
     _md_store_used(md, 0);
@@ -819,13 +816,11 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     /* No allocation happens between here and the writes to md below, so
        this snapshot of other's remaining fields is consistent with the
        keys buffer just copied above. */
-    mod_state* state = other->state;
     Py_ssize_t used = other->used;
     uint64_t version = other->version;
     bool is_ci = other->is_ci;
 
     md_clear(md);
-    md->state = state;
 #ifdef Py_GIL_DISABLED
     _md_store_used(md, used);
 #else

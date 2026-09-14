@@ -1,0 +1,6 @@
+Fixed a data race on the free-threaded build of the C extension where
+``popall()``/``popone()``/``__delitem__``/``add()`` rewrote a hash table
+index slot with a plain, non-atomic store, while a lock-free
+``get()``/``getone()``/``__getitem__``/``__contains__`` on another thread
+walked that same index array with a plain, non-atomic load and no lock at
+all -- by :user:`asvetlov`.
