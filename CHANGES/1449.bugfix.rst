@@ -1,0 +1,13 @@
+Fixed a data race in the pure-Python ``MultiDict``/``CIMultiDict``
+fallback where concurrent ``update()``, ``extend()``, ``merge()``,
+``clear()``, and ``popitem()`` calls could corrupt the shared hash
+table on a regular, GIL-enabled interpreter. Pure-Python bytecode is
+not atomic under the GIL, so two threads could interleave mid
+hash-table insert or deletion, leaving the index table pointing at
+stale or out-of-range entries and causing an infinite probe loop or an
+``AttributeError``. Each ``MultiDict``/``CIMultiDict`` instance now
+holds its own lock for the duration of these operations, with
+two-object operations locking both instances in a fixed order to avoid
+deadlock. The C extension already serializes these operations with a
+critical section and was not affected
+-- by :user:`asvetlov`.

@@ -15,6 +15,7 @@ autogeneration
 backend
 basename
 bugfixes
+bytecode
 cchardet
 cChardet
 changelog

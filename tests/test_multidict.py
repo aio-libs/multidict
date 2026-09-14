@@ -1592,7 +1592,6 @@ def test_repr_raises_when_mutated_during_iteration() -> None:
         repr(md)
 
 
-@pytest.mark.c_extension
 def test_update_extend_merge_thread_safety() -> None:
     """Concurrent update()/extend()/merge() must not crash or corrupt state.
 
@@ -1602,8 +1601,17 @@ def test_update_extend_merge_thread_safety() -> None:
     update()/merge(), so a concurrent reader of the same multidict (used
     as the argument to another thread's extend()/update()/merge() call)
     could observe entries mid-cleanup (identity set, key/value NULL).
-    This is a C-extension-only concern: the pure-Python implementation has
-    no locking of its own to regress."""
+
+    The pure-Python implementation has its own, unrelated version of this
+    race: plain Python bytecode is not atomic even under the GIL, so two
+    threads calling update()/extend()/merge() on the same multidict (or
+    reading one as the argument to another thread's call) can interleave
+    mid hash-table insert and corrupt the shared index/entries arrays,
+    hanging in an infinite probe loop or raising AttributeError. This is
+    reproducible on a normal, GIL-enabled interpreter given enough
+    contention (the coverage tracing this suite runs under is enough to
+    widen the window reliably), no free-threaded build required. Both
+    implementations now hold a lock for the duration of the read-and-write."""
     d1 = MultiDict((str(i), i) for i in range(100))
     d2 = MultiDict((str(i), i) for i in range(100, 200))
 
@@ -1625,16 +1633,19 @@ def test_update_extend_merge_thread_safety() -> None:
     assert len(d2) == 200
 
 
-@pytest.mark.c_extension
 def test_clear_thread_safety() -> None:
     """Concurrent clear() alongside extend() must not crash or corrupt state.
 
     Regression test for the same class of free-threaded-build segfault as
     test_update_extend_merge_thread_safety(): clear() used to walk and free
     self's entries without holding self's lock, so a concurrent extend() on
-    the same multidict could run in the middle of the walk. This is a
-    C-extension-only concern: the pure-Python implementation has no locking
-    of its own to regress.
+    the same multidict could run in the middle of the walk.
+
+    The pure-Python implementation shares the same exposure for the same
+    reason given there: its bytecode isn't atomic under the GIL either, so
+    an unlocked clear() interleaved with an unlocked extend() could observe
+    or leave a half-built hash table. Both implementations now hold a lock
+    around clear() and extend().
 
     The exact final size isn't asserted: clear() and extend() from
     different threads interleave with no ordering guarantee between them,
@@ -1650,6 +1661,34 @@ def test_clear_thread_safety() -> None:
 
     with ThreadPoolExecutor(max_workers=8) as executor:
         list(executor.map(clearer, range(8)))
+
+    assert len(d) == len(list(d.items()))
+
+
+def test_popitem_thread_safety() -> None:
+    """Concurrent popitem() alongside update() must not crash or corrupt
+    state.
+
+    The pure-Python implementation used to pop an entry off the end of
+    the entries list before clearing the matching indices slot, leaving a
+    window where an unlocked reader could see an indices slot pointing
+    past the end of the (now shorter) entries list. Combined with the
+    same lack of locking as update()/extend()/merge()/clear(), running
+    popitem() concurrently with update() on the same multidict (drained
+    faster than it refills) could corrupt the hash table. Both
+    implementations now hold a lock around popitem()."""
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
+
+    def worker(n: int) -> None:
+        for i in range(200):
+            if n % 2 == 0:
+                with contextlib.suppress(KeyError):
+                    d.popitem()
+            else:
+                d.update({f"u{n}-{i}": i})
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
 
     assert len(d) == len(list(d.items()))
 
@@ -2234,12 +2273,18 @@ import multidict._multidict_py as _pure  # noqa: E402
 
 # Pure Python bytecode is not atomic even under the GIL (the GIL can be
 # released between any two bytecodes), so several multidict operations have
-# a pre-existing, unlocked race that predates this file's locking and is
-# out of scope for it (GIL builds intentionally get none): CI's shared
-# runners hit it far more easily than a quiet local machine does, so any
-# test driving several real threads through shared pure-Python multidict
-# state is only reliable where the locking this file adds actually
-# applies.
+# a pre-existing, unlocked race that predates this file's free-threading
+# locking: add(), __setitem__()/__delitem__(), setdefault(),
+# popone()/popall(), __init__() re-init, and the items()/keys() set-algebra
+# operations are still unlocked on a GIL-enabled build (out of scope here),
+# so a test driving several real threads through shared pure-Python
+# multidict state via those operations is only reliable where the
+# free-threading locking this file added actually applies.
+# update()/extend()/merge()/clear()/popitem() no longer need this skip:
+# their instance of the same race is reachable on a plain GIL build too
+# (CI's shared runners' coverage tracing widens the window enough to hit
+# it reliably), so they're now locked unconditionally -- see
+# `_pure._locked_always`/`_pure._locked_pair_always`.
 _gil_build_race_skip = pytest.mark.skipif(
     not _pure._FREE_THREADED,
     reason=(
@@ -2306,10 +2351,10 @@ def test_pure_python_single_item_ops_thread_safety() -> None:
     assert len(d2) == len(list(d2.items()))
 
 
-@_gil_build_race_skip
 def test_pure_python_update_extend_merge_thread_safety() -> None:
     """Concurrent update()/extend()/merge() must not crash or corrupt
-    state on a free-threaded build."""
+    state, on a free-threaded build and on a plain GIL-enabled one alike:
+    see `_pure._locked_pair_always`."""
     d1: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(30))
     d2: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(30, 60))
 
@@ -2331,10 +2376,10 @@ def test_pure_python_update_extend_merge_thread_safety() -> None:
     assert len(d2) == 60
 
 
-@_gil_build_race_skip
 def test_pure_python_clear_thread_safety() -> None:
     """Concurrent clear() alongside extend() must not crash or corrupt
-    state on a free-threaded build."""
+    state, on a free-threaded build and on a plain GIL-enabled one alike:
+    see `_pure._locked_always`."""
     d: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50))
 
     def clearer(_n: int) -> None:
@@ -2344,6 +2389,26 @@ def test_pure_python_clear_thread_safety() -> None:
 
     with ThreadPoolExecutor(max_workers=8) as executor:
         list(executor.map(clearer, range(8)))
+
+    assert len(d) == len(list(d.items()))
+
+
+def test_pure_python_popitem_thread_safety() -> None:
+    """Concurrent popitem() alongside update() must not crash or corrupt
+    state, on a free-threaded build and on a plain GIL-enabled one alike:
+    see `_pure._locked_always`."""
+    d: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(100))
+
+    def worker(n: int) -> None:
+        for i in range(60):
+            if n % 2 == 0:
+                with contextlib.suppress(KeyError):
+                    d.popitem()
+            else:
+                d.update({f"u{n}-{i}": i})
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(worker, range(8)))
 
     assert len(d) == len(list(d.items()))
 
