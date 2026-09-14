@@ -64,13 +64,6 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     return __atomic_fetch_add(obj, value, __ATOMIC_RELAXED);
 }
 
-/* Relaxed load/store for the hash table's variable-width index slots
-   (htkeys_get_index()/htkeys_set_index() in htkeys.h): relaxed is
-   enough since every value ever stored there is already a legitimate
-   index/DKIX_EMPTY/DKIX_DUMMY, so an atomic (non-tearing) relaxed load
-   can only ever observe one of those, never a torn mix; the only thing
-   this needs to rule out is the undefined behaviour of a plain load
-   racing a plain store. */
 #define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
     static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
         const int##bits##_t* obj)                                            \
@@ -165,8 +158,6 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
         (_Atomic(uint64_t)*)obj, value, memory_order_relaxed);
 }
 
-/* See the identical comment above the GCC/clang builtin definition of
-   this macro for why relaxed ordering is sufficient here. */
 #define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
     static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
         const int##bits##_t* obj)                                            \
@@ -300,12 +291,6 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
 #endif
 }
 
-/* Relaxed load/store for the hash table's variable-width index slots;
-   see the identical comment above the GCC/clang builtin definition of
-   this macro for why relaxed ordering is sufficient. A plain volatile
-   access is enough for relaxed semantics at any integer width, same
-   reasoning as atomic_load_ssize_relaxed()/atomic_store_ssize_relaxed()
-   above. */
 #define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
     static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
         const int##bits##_t* obj)                                            \

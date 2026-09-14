@@ -103,15 +103,6 @@ htkeys_entries(const htkeys_t* dk)
 }
 
 #ifdef Py_GIL_DISABLED
-/* keys->indices can be the very table a lock-free reader
-   (_md_get_one_lockfree(), _md_contains_lockfree()) is concurrently
-   walking via htkeysiter while a mutator holding md's critical
-   section rewrites a slot in place (insertion, deletion, or
-   md_post_update()'s mark/unmark sweep) -- none of those exclude a
-   lock-free reader. Relaxed atomics make that a defined, non-tearing
-   access instead of a data race; see the comment above
-   _MULTIDICT_DEFINE_INDEX_ATOMICS in atomic_helpers.h for why relaxed
-   is enough. */
 #define LOAD_INDEX(keys, size, idx)  \
     atomic_load_int##size##_relaxed( \
         &((const int##size##_t*)(keys->indices))[idx])
