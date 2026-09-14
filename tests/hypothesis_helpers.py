@@ -7,7 +7,11 @@ Not a test module itself (no ``test_`` prefix), same convention as
 from collections import deque
 from collections.abc import Callable, Iterable
 
-from hypothesis import strategies as st
+import pytest
+
+pytest.importorskip("hypothesis")
+
+from hypothesis import strategies as st  # noqa: E402
 
 # Kept small: every property test here runs across (at least) the four
 # c/py x case-sensitive/case-insensitive fixture combinations, so per-example

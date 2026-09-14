@@ -8,15 +8,18 @@ case-sensitive and case-insensitive classes, via the existing
 import pickle
 
 import pytest
-from hypothesis import assume, given, settings
-from hypothesis import strategies as st
-from hypothesis.stateful import (
+
+pytest.importorskip("hypothesis")
+
+from hypothesis import assume, given, settings  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
+from hypothesis.stateful import (  # noqa: E402
     RuleBasedStateMachine,
     invariant,
     rule,
     run_state_machine_as_test,
 )
-from hypothesis_helpers import (
+from hypothesis_helpers import (  # noqa: E402
     MultiDictModel,
     case_variant,
     pairs_lists,
@@ -24,7 +27,12 @@ from hypothesis_helpers import (
     text_keys,
 )
 
-from multidict import CIMultiDict, MultiDict, MultiDictProxy, MutableMultiMapping
+from multidict import (  # noqa: E402
+    CIMultiDict,
+    MultiDict,
+    MultiDictProxy,
+    MutableMultiMapping,
+)
 
 pytestmark = pytest.mark.hypothesis
 

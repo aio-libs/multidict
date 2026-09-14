@@ -12,11 +12,14 @@ fuzzing far more mutation-kind/timing combinations than the fixed cases in
 from collections.abc import Callable, Iterator
 
 import pytest
-from hypothesis import given, settings
-from hypothesis import strategies as st
-from hypothesis_helpers import pairs_lists
 
-from multidict import CIMultiDict, MultiDict, MutableMultiMapping
+pytest.importorskip("hypothesis")
+
+from hypothesis import given, settings  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
+from hypothesis_helpers import pairs_lists  # noqa: E402
+
+from multidict import CIMultiDict, MultiDict, MutableMultiMapping  # noqa: E402
 
 pytestmark = pytest.mark.hypothesis
 

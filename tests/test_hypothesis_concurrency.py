@@ -20,11 +20,14 @@ import contextlib
 import threading
 
 import pytest
-from hypothesis import given, settings
-from hypothesis import strategies as st
 
-import multidict._multidict_py as _pure
-from multidict import CIMultiDict, MultiDict, MutableMultiMapping
+pytest.importorskip("hypothesis")
+
+from hypothesis import given, settings  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
+
+import multidict._multidict_py as _pure  # noqa: E402
+from multidict import CIMultiDict, MultiDict, MutableMultiMapping  # noqa: E402
 
 pytestmark = pytest.mark.hypothesis
 
