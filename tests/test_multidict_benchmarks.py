@@ -290,14 +290,14 @@ def test_multidict_getall_str_hit(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class(
-        (f"key{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
+        (f"key{j}", str(f"{i}-{j}")) for i in range(8) for j in range(128)
     )
 
-    keys = [f"key{j}" for j in range(10)]
+    keys = [f"key{j}" for j in range(128)]
 
     @benchmark
     def _run() -> None:
-        for i in range(100):
+        for i in range(8):
             for key in keys:
                 md.getall(key)
 
@@ -306,14 +306,14 @@ def test_multidict_getall_str_hit_nonascii(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class(
-        (f"ключ{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
+        (f"ключ{j}", str(f"{i}-{j}")) for i in range(8) for j in range(128)
     )
 
-    keys = [f"ключ{j}" for j in range(10)]
+    keys = [f"ключ{j}" for j in range(128)]
 
     @benchmark
     def _run() -> None:
-        for i in range(100):
+        for i in range(8):
             for key in keys:
                 md.getall(key)
 
@@ -322,14 +322,14 @@ def test_multidict_getall_str_miss(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     md = any_multidict_class(
-        (f"key{j}", str(f"{i}-{j}")) for i in range(100) for j in range(10)
+        (f"key{j}", str(f"{i}-{j}")) for i in range(8) for j in range(128)
     )
 
     key = "key-miss"
 
     @benchmark
     def _run() -> None:
-        for i in range(1000):
+        for i in range(1024):
             md.getall(key, ())
 
 
@@ -340,15 +340,15 @@ def test_cimultidict_getall_istr_hit(
 ) -> None:
     md = case_insensitive_multidict_class(
         (f"key{j}", case_insensitive_str_class(f"{i}-{j}"))
-        for i in range(100)
-        for j in range(10)
+        for i in range(8)
+        for j in range(128)
     )
 
-    keys = [case_insensitive_str_class(f"key{j}") for j in range(10)]
+    keys = [case_insensitive_str_class(f"key{j}") for j in range(128)]
 
     @benchmark
     def _run() -> None:
-        for i in range(100):
+        for i in range(8):
             for key in keys:
                 md.getall(key)
 
@@ -360,15 +360,15 @@ def test_cimultidict_getall_istr_hit_nonascii(
 ) -> None:
     md = case_insensitive_multidict_class(
         (f"ключ{j}", case_insensitive_str_class(f"{i}-{j}"))
-        for i in range(100)
-        for j in range(10)
+        for i in range(8)
+        for j in range(128)
     )
 
-    keys = [case_insensitive_str_class(f"ключ{j}") for j in range(10)]
+    keys = [case_insensitive_str_class(f"ключ{j}") for j in range(128)]
 
     @benchmark
     def _run() -> None:
-        for i in range(100):
+        for i in range(8):
             for key in keys:
                 md.getall(key)
 
@@ -380,15 +380,15 @@ def test_cimultidict_getall_istr_miss(
 ) -> None:
     md = case_insensitive_multidict_class(
         (case_insensitive_str_class(f"key{j}"), case_insensitive_str_class(f"{i}-{j}"))
-        for i in range(100)
-        for j in range(10)
+        for i in range(8)
+        for j in range(128)
     )
 
     key = case_insensitive_str_class("key-miss")
 
     @benchmark
     def _run() -> None:
-        for i in range(1000):
+        for i in range(1024):
             md.getall(key, ())
 
 
