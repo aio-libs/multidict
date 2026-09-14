@@ -1,0 +1,16 @@
+Fixed a data race in the pure-Python ``MultiDict``/``CIMultiDict``
+fallback where concurrent mutating calls (``add()``, ``__setitem__``,
+``__delitem__``, ``setdefault()``, ``pop()``/``popone()``,
+``popall()``, ``popitem()``, ``update()``, ``extend()``, ``merge()``,
+``clear()``, and re-``__init__``) could corrupt the shared hash table,
+or silently drop a concurrent write, on a regular, GIL-enabled
+interpreter. Pure-Python bytecode is not atomic under the GIL, so two
+threads could interleave mid hash-table insert or deletion, leaving
+the index table pointing at stale or out-of-range entries and causing
+an infinite probe loop, an ``AttributeError``, or a lost mutation.
+Each ``MultiDict``/``CIMultiDict`` instance now holds its own lock for
+the duration of these operations, with two-object operations locking
+both instances in a fixed order to avoid deadlock. The C extension
+already serializes these operations with a critical section and was
+not affected
+-- by :user:`asvetlov`.

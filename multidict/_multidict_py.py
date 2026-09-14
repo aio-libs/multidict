@@ -115,10 +115,18 @@ class _PairLock:
 _F = TypeVar("_F", bound=Callable[..., Any])
 
 
-def _locked(fn: _F) -> _F:
-    """Wrap `fn` to hold `self._lock` for the call."""
-    if not _FREE_THREADED:
-        return fn
+def _locked_always(fn: _F) -> _F:
+    """Wrap `fn` to hold `self._lock` for the call, on every build.
+
+    update()/extend()/merge()/clear()/popitem() have their own race that,
+    unlike the rest of this module's locking, is not specific to
+    free-threading: pure-Python bytecode is not atomic even under the GIL
+    (the GIL can be released between any two bytecodes), so enough
+    concurrent contention lets two calls interleave mid hash-table insert
+    or deletion and corrupt the shared index table. `_locked`/`_locked_pair`
+    skip locking on a GIL-enabled build because the race they guard against
+    is free-threading-only; this variant cannot.
+    """
 
     @functools.wraps(fn)
     def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
@@ -126,6 +134,27 @@ def _locked(fn: _F) -> _F:
             return fn(self, *args, **kwargs)
 
     return cast(_F, wrapper)
+
+
+def _locked_pair_always(fn: _F) -> _F:
+    """Like `_locked_always`, but also pairs in the first argument's lock,
+    for the same reason `_locked_pair` does."""
+
+    @functools.wraps(fn)
+    def wrapper(self: Any, arg: Any = None, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+        with _PairLock(self._lock, _other_lock(arg)):
+            return fn(self, arg, *args, **kwargs)
+
+    return cast(_F, wrapper)
+
+
+def _locked(fn: _F) -> _F:
+    """Wrap `fn` to hold `self._lock` for the call, but only when it
+    guards against a free-threading-only race; see `_locked_always` for
+    the unconditional version a few methods need."""
+    if not _FREE_THREADED:
+        return fn
+    return _locked_always(fn)
 
 
 def _locked_md(fn: _F) -> _F:
@@ -142,16 +171,12 @@ def _locked_md(fn: _F) -> _F:
 
 
 def _locked_pair(fn: _F) -> _F:
-    """Wrap `fn` to hold `self._lock` and its first argument's lock."""
+    """Wrap `fn` to hold `self._lock` and its first argument's lock, but
+    only when it guards against a free-threading-only race; see
+    `_locked_pair_always`."""
     if not _FREE_THREADED:
         return fn
-
-    @functools.wraps(fn)
-    def wrapper(self: Any, arg: Any = None, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
-        with _PairLock(self._lock, _other_lock(arg)):
-            return fn(self, arg, *args, **kwargs)
-
-    return cast(_F, wrapper)
+    return _locked_pair_always(fn)
 
 
 def _locked_md_pair(fn: _F) -> _F:
@@ -792,14 +817,17 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     _lock: threading.RLock
 
-    if _FREE_THREADED:
-        # __new__ runs once per object, never on a later re-init.
-        def __new__(cls, *args: object, **kwargs: object) -> Self:
-            self = super().__new__(cls)
-            self._lock = threading.RLock()
-            return self
+    # __new__ runs once per object, never on a later re-init, so the lock
+    # identity is stable even across `d.__init__(other)`. The lock itself
+    # is always created (not just under free-threading): update()/
+    # extend()/merge()/clear()/popitem() need it on every build, since
+    # their race isn't free-threading-specific -- see `_locked_always`.
+    def __new__(cls, *args: object, **kwargs: object) -> Self:
+        self = super().__new__(cls)
+        self._lock = threading.RLock()
+        return self
 
-    @_locked_pair
+    @_locked_pair_always
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
         self._used = 0
         self._incr_version()
@@ -977,7 +1005,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 raise RuntimeError("Dictionary changed during iteration")
         return result
 
-    @_locked
+    @_locked_always
     def add(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
@@ -991,7 +1019,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     __copy__ = copy
 
-    @_locked_pair
+    @_locked_pair_always
     def extend(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Extend current MultiDict with more values.
 
@@ -1073,7 +1101,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             self._add_with_hash(e)
         self._incr_version()
 
-    @_locked
+    @_locked_always
     def clear(self) -> None:
         """Remove all items from MultiDict."""
         self._used = 0
@@ -1082,7 +1110,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     # Mapping interface #
 
-    @_locked
+    @_locked_always
     def __setitem__(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
@@ -1104,7 +1132,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         else:
             self._keys.restore_hash(hash_)
 
-    @_locked
+    @_locked_always
     def __delitem__(self, key: str) -> None:
         found = False
         identity = self._identity(key)
@@ -1124,7 +1152,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     ) -> _T | None: ...
     @overload
     def setdefault(self, key: str, default: _V) -> _V: ...
-    @_locked  # type: ignore[misc]
+    @_locked_always  # type: ignore[misc]
     def setdefault(self, key: str, default: _V | None = None) -> _V | None:
         """Return value for key, set value to default if key is not present."""
         identity = self._identity(key)
@@ -1139,7 +1167,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def popone(self, key: str) -> _V: ...
     @overload
     def popone(self, key: str, default: _T) -> _V | _T: ...
-    @_locked
+    @_locked_always
     def popone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
         """Remove specified key and return the corresponding value.
 
@@ -1168,7 +1196,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def popall(self, key: str) -> list[_V]: ...
     @overload
     def popall(self, key: str, default: _T) -> list[_V] | _T: ...
-    @_locked
+    @_locked_always
     def popall(self, key: str, default: _T | _SENTINEL = sentinel) -> list[_V] | _T:
         """Remove all occurrences of key and return the list of corresponding
         values.
@@ -1196,26 +1224,31 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         else:
             return ret
 
-    @_locked
+    @_locked_always
     def popitem(self) -> tuple[str, _V]:
         """Remove and return an arbitrary (key, value) pair."""
         if self._used <= 0:
             raise KeyError("empty multidict")
 
-        pos = len(self._keys.entries) - 1
-        entry = self._keys.entries.pop()
-
+        entries = self._keys.entries
+        pos = len(entries) - 1
+        entry = entries[pos]
         while entry is None:
             pos -= 1
-            entry = self._keys.entries.pop()
+            entry = entries[pos]
+
+        # Clear the indices slot before truncating entries, so a
+        # concurrent unlocked read never sees an index pointing past
+        # the end of the (now shorter) entries list.
+        self._keys.del_idx(entry.hash, pos)
+        del entries[pos:]
 
         ret = self._key(entry.key), entry.value
-        self._keys.del_idx(entry.hash, pos)
         self._used -= 1
         self._incr_version()
         return ret
 
-    @_locked_pair
+    @_locked_pair_always
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Update the dictionary, overwriting existing keys."""
         it = self._parse_args(arg, kwargs)
@@ -1268,7 +1301,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
         self._incr_version()
 
-    @_locked_pair
+    @_locked_pair_always
     def merge(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Merge into the dictionary, adding non-existing keys."""
         it = self._parse_args(arg, kwargs)
@@ -1328,8 +1361,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             self._resize((self._used * 3 | _HtKeys.MINSIZE - 1).bit_length(), False)
         keys = self._keys
         slot = keys.find_empty_slot(entry.hash)
-        keys.indices[slot] = len(keys.entries)
         keys.entries.append(entry)
+        keys.indices[slot] = len(keys.entries) - 1
         self._incr_version()
         self._used += 1
         keys.usable -= 1
@@ -1340,9 +1373,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         keys = self._keys
         hash_ = entry.hash
         slot = keys.find_empty_slot(hash_)
-        keys.indices[slot] = len(keys.entries)
         entry.hash = hash_ | HASH_MARK
         keys.entries.append(entry)
+        keys.indices[slot] = len(keys.entries) - 1
         self._incr_version()
         self._used += 1
         keys.usable -= 1
