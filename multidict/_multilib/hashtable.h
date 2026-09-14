@@ -132,9 +132,6 @@ _str_cmp(PyObject* s1, PyObject* s2)
 static inline PyObject*
 _key_to_identity(mod_state* state, PyObject* key)
 {
-    if (IStr_Check(state, key)) {
-        return Py_NewRef(((istrobject*)key)->canonical);
-    }
     if (PyUnicode_CheckExact(key)) {
         return Py_NewRef(key);
     }

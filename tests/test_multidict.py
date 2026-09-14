@@ -963,6 +963,30 @@ class TestMultiDict(BaseMultiDictTest):
         d["key"] = d.values()
         assert repr(d.values()) == "<_ValuesView(<_ValuesView(...)>)>"
 
+    def test_istr_key_is_not_case_folded(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[str]],
+        case_insensitive_str_class: type[istr],
+    ) -> None:
+        key = case_insensitive_str_class("Key")
+        d = case_sensitive_multidict_class([(key, "value")])
+
+        assert "Key" in d
+        assert d["Key"] == "value"
+        assert "key" not in d
+        assert d.getall("key", None) is None
+
+    def test_istr_lookup_is_not_case_folded(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[str]],
+        case_insensitive_str_class: type[istr],
+    ) -> None:
+        d = case_sensitive_multidict_class([("key", "value")])
+
+        assert case_insensitive_str_class("Key") not in d
+        assert d.get(case_insensitive_str_class("Key")) is None
+        assert case_insensitive_str_class("key") in d
+
 
 class TestCIMultiDict(BaseMultiDictTest):
     @pytest.fixture(
