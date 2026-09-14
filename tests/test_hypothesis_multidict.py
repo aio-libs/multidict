@@ -5,8 +5,6 @@ case-sensitive and case-insensitive classes, via the existing
 ``any_multidict_class``-style fixtures in ``tests/conftest.py``.
 """
 
-from __future__ import annotations
-
 import pickle
 
 import pytest
@@ -219,7 +217,6 @@ def test_merge_fills_only_missing_keys(
 @given(pairs=pairs_lists())
 @settings(max_examples=50)
 def test_popone_vs_popall(any_multidict_class: _MD_Classes, pairs: _Pairs) -> None:
-    md = any_multidict_class(pairs)
     keys = {k for k, _ in pairs}
     for key in keys:
         expected = any_multidict_class(pairs).getall(key)

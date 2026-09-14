@@ -6,8 +6,6 @@ via the existing fixtures in ``tests/conftest.py``. See
 ``tests/test_hypothesis_iters.py`` for the iterator objects themselves.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 
 import pytest
@@ -15,7 +13,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis_helpers import pairs_lists, simple_values, text_keys
 
-from multidict import CIMultiDict, MultiDict
+from multidict import CIMultiDict, MultiDict, MutableMultiMapping
 
 _MD_Classes = type[MultiDict[object]] | type[CIMultiDict[object]]
 _Pairs = list[tuple[str, object]]
@@ -128,6 +126,31 @@ _MUTATIONS = ("add", "setitem", "delitem", "clear", "popone")
 _MUTATION_MARKER_KEY = "__iteration_mutation_marker_key__"
 
 
+def _apply_mutation(md: MutableMultiMapping[object], mutation: str) -> None:
+    if mutation == "add":
+        md.add(_MUTATION_MARKER_KEY, "mutated")
+    elif mutation == "setitem":
+        md[_MUTATION_MARKER_KEY] = "mutated"
+    elif mutation == "delitem":
+        del md[_MUTATION_MARKER_KEY]
+    elif mutation == "clear":
+        md.clear()
+    elif mutation == "popone":
+        md.popone(_MUTATION_MARKER_KEY, None)
+
+
+def test_apply_mutation_covers_every_mutation(
+    any_multidict_class: _MD_Classes,
+) -> None:
+    """Deterministic coverage for every `_apply_mutation` branch: which one
+    `test_view_mutation_during_iteration_raises` below exercises on a given
+    run depends on Hypothesis's draws, not on a fixed, always-covered set."""
+    for mutation in _MUTATIONS:
+        md = any_multidict_class([("a", 1)])
+        md.add(_MUTATION_MARKER_KEY, "initial")
+        _apply_mutation(md, mutation)
+
+
 @given(
     pairs=pairs_lists(min_size=2), mutation=st.sampled_from(_MUTATIONS), data=st.data()
 )
@@ -150,16 +173,7 @@ def test_view_mutation_during_iteration_raises(
     for _ in range(n):
         next(it)
 
-    if mutation == "add":
-        md.add(_MUTATION_MARKER_KEY, "mutated")
-    elif mutation == "setitem":
-        md[_MUTATION_MARKER_KEY] = "mutated"
-    elif mutation == "delitem":
-        del md[_MUTATION_MARKER_KEY]
-    elif mutation == "clear":
-        md.clear()
-    elif mutation == "popone":
-        md.popone(_MUTATION_MARKER_KEY, None)
+    _apply_mutation(md, mutation)
 
     with pytest.raises(RuntimeError):
         while True:

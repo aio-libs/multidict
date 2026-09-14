@@ -16,8 +16,6 @@ hand-rolled ``_PairLock`` (the C extension uses ``Py_BEGIN_CRITICAL_SECTION2``,
 which CPython itself guarantees is deadlock-free).
 """
 
-from __future__ import annotations
-
 import contextlib
 import threading
 
@@ -82,6 +80,15 @@ def _run_op(md: MutableMultiMapping[object], op: str, key: str) -> None:
         list(md.values())
 
 
+def test_run_op_covers_every_op() -> None:
+    """Deterministic coverage for every `_run_op` branch: which one
+    `test_concurrent_op_sequence_fuzz` below exercises on a given run
+    depends on Hypothesis's draws, not on a fixed, always-covered set."""
+    md: MutableMultiMapping[object] = MultiDict((f"k-{i}", i) for i in range(8))
+    for op in _OPS:
+        _run_op(md, op, "k-0")
+
+
 @pytest.mark.c_extension
 @given(op_sequence=st.lists(st.sampled_from(_OPS), min_size=5, max_size=30))
 @settings(max_examples=15, deadline=None)
@@ -132,6 +139,15 @@ def _read_second(cls: _MD_Classes, source: MutableMultiMapping[object], op: str)
     elif op == "copy":
         dst = cls(source)
     return len(dst)
+
+
+def test_read_second_covers_every_op() -> None:
+    """Deterministic coverage for every `_read_second` branch; see
+    `test_run_op_covers_every_op` above for why this can't rely on
+    `test_cross_object_race_fuzz`'s own Hypothesis draws."""
+    source: MutableMultiMapping[object] = MultiDict([("a", 1)])
+    for op in _READ_OPS:
+        assert _read_second(MultiDict, source, op) == 1
 
 
 @pytest.mark.c_extension
@@ -203,6 +219,16 @@ def _reciprocal(
         a.keys() - b.items()
     elif op == "isdisjoint_keys":
         a.keys().isdisjoint(b.keys())
+
+
+def test_reciprocal_covers_every_op() -> None:
+    """Deterministic coverage for every `_reciprocal` branch: unlike
+    `test_reciprocal_ops_no_deadlock` below, this always runs, since that
+    test itself is skipped outright on a non-free-threaded build."""
+    a: _pure.MultiDict[object] = _pure.MultiDict([("a", 1)])
+    b: _pure.MultiDict[object] = _pure.MultiDict([("b", 2)])
+    for op in _RECIPROCAL_OPS:
+        _reciprocal(a, b, op)
 
 
 @_gil_build_race_skip

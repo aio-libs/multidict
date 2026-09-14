@@ -4,8 +4,6 @@ Not a test module itself (no ``test_`` prefix), same convention as
 ``tests/gen_pickles.py``.
 """
 
-from __future__ import annotations
-
 from collections import deque
 from collections.abc import Callable, Iterable
 
@@ -48,12 +46,14 @@ def case_variant(draw: st.DrawFn, key: str) -> str:
     character's case independently randomized."""
     chars = []
     for ch in key:
-        # Skip characters whose case change isn't a 1:1 substitution (e.g.
-        # "ss".upper() == "SS"): flipping those would change the string's
-        # length instead of just its case.
-        flippable = ch.isalpha() and len(ch.upper()) == len(ch.lower()) == 1
-        if flippable and draw(st.booleans()):
-            ch = ch.upper() if ch == ch.lower() else ch.lower()
+        candidate = ch.upper() if ch == ch.lower() else ch.lower()
+        # Only accept a flip that preserves this character's `str.lower()`
+        # identity: e.g. "ss".upper() == "SS" changes length instead of just
+        # case, and Greek final sigma "ς".upper() == "Σ", whose own
+        # `.lower()` is "σ" (plain sigma), not "ς" -- accepting either would
+        # make the variant no longer case-fold to the same value as `key`.
+        if candidate.lower() == ch.lower() and draw(st.booleans()):
+            ch = candidate
         chars.append(ch)
     return "".join(chars)
 

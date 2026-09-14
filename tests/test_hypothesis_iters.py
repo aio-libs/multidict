@@ -9,8 +9,6 @@ fuzzing far more mutation-kind/timing combinations than the fixed cases in
 ``tests/test_guard.py``.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable, Iterator
 
 import pytest
@@ -25,7 +23,7 @@ _Pairs = list[tuple[str, object]]
 _IterFactory = Callable[[MutableMultiMapping[object]], Iterator[object]]
 
 _ITER_FACTORIES: dict[str, _IterFactory] = {
-    "raw": lambda md: iter(md),
+    "raw": iter,
     "keys": lambda md: iter(md.keys()),
     "items": lambda md: iter(md.items()),
     "values": lambda md: iter(md.values()),
@@ -128,6 +126,16 @@ def _apply_mutation(md: MutableMultiMapping[object], mutation: str) -> None:
         md.merge([("__iters_mutation_new_key__", "mutated")])
     elif mutation == "setdefault_new_key":
         md.setdefault("__another_marker_key__", "mutated")
+
+
+def test_apply_mutation_covers_every_mutation() -> None:
+    """Deterministic coverage for every `_apply_mutation` branch: which one
+    `test_iterator_raises_on_mutation` below exercises on a given run
+    depends on Hypothesis's draws, not on a fixed, always-covered set."""
+    for mutation in _MUTATIONS:
+        md: MutableMultiMapping[object] = MultiDict([("a", 1)])
+        md.add(_MUTATION_MARKER_KEY, "initial")
+        _apply_mutation(md, mutation)
 
 
 @given(
