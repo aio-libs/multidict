@@ -1,0 +1,166 @@
+"""Hypothesis property/fuzz tests for MultiDict/CIMultiDict views:
+``.items()``, ``.keys()``, ``.values()``.
+
+Runs against both backends and both case-sensitive/case-insensitive classes
+via the existing fixtures in ``tests/conftest.py``. See
+``tests/test_hypothesis_iters.py`` for the iterator objects themselves.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+
+import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
+from hypothesis_helpers import pairs_lists, simple_values, text_keys
+
+from multidict import CIMultiDict, MultiDict
+
+_MD_Classes = type[MultiDict[object]] | type[CIMultiDict[object]]
+_Pairs = list[tuple[str, object]]
+
+
+def _fold_for(any_multidict_class_name: str) -> Callable[[str], str]:
+    return str.lower if any_multidict_class_name == "CIMultiDict" else (lambda s: s)
+
+
+@given(pairs=pairs_lists())
+def test_view_len_is_live(any_multidict_class: _MD_Classes, pairs: _Pairs) -> None:
+    md = any_multidict_class(pairs)
+    items_view = md.items()
+    keys_view = md.keys()
+    values_view = md.values()
+
+    md.add("__len_marker__", 1)
+
+    assert len(items_view) == len(md)
+    assert len(keys_view) == len(md)
+    assert len(values_view) == len(md)
+
+
+@given(pairs=pairs_lists())
+def test_forward_iteration_matches_insertion_order(
+    any_multidict_class: _MD_Classes, pairs: _Pairs
+) -> None:
+    md = any_multidict_class(pairs)
+    assert [(str(k), v) for k, v in md.items()] == pairs
+    assert [str(k) for k in md.keys()] == [str(k) for k, _v in pairs]
+    assert list(md.values()) == [v for _k, v in pairs]
+
+
+@given(pairs=pairs_lists())
+def test_reversed_matches_reversed_list(
+    any_multidict_class: _MD_Classes, pairs: _Pairs
+) -> None:
+    md = any_multidict_class(pairs)
+    assert list(reversed(md.items())) == list(  # type: ignore[call-overload]
+        reversed(list(md.items()))
+    )
+    assert list(reversed(md.keys())) == list(  # type: ignore[call-overload]
+        reversed(list(md.keys()))
+    )
+    assert list(reversed(md.values())) == list(reversed(list(md.values())))
+
+
+@given(pairs=pairs_lists())
+def test_items_contains_matches_getall(
+    any_multidict_class: _MD_Classes, pairs: _Pairs
+) -> None:
+    md = any_multidict_class(pairs)
+    for k, v in pairs:
+        assert (k, v) in md.items()
+    for k, v in pairs:
+        assert v in md.getall(k, [])
+
+
+@given(pairs=pairs_lists(), other=st.lists(text_keys(), max_size=15))
+@settings(max_examples=50)
+def test_keys_view_set_algebra_matches_folded_sets(
+    any_multidict_class: _MD_Classes,
+    any_multidict_class_name: str,
+    pairs: _Pairs,
+    other: list[str],
+) -> None:
+    fold = _fold_for(any_multidict_class_name)
+    md = any_multidict_class(pairs)
+    md_folded = {fold(k) for k in md.keys()}
+    other_folded = {fold(k) for k in other}
+
+    assert {fold(k) for k in (md.keys() & other)} == md_folded & other_folded
+    assert {fold(k) for k in (md.keys() | other)} == md_folded | other_folded
+    assert {fold(k) for k in (md.keys() - other)} == md_folded - other_folded
+    assert {fold(k) for k in (md.keys() ^ other)} == md_folded ^ other_folded
+    assert md.keys().isdisjoint(other) == md_folded.isdisjoint(other_folded)
+
+
+@given(
+    pairs=pairs_lists(),
+    other=st.lists(st.tuples(text_keys(), simple_values()), max_size=15),
+)
+@settings(max_examples=50)
+def test_items_view_set_algebra_matches_folded_sets(
+    any_multidict_class: _MD_Classes,
+    any_multidict_class_name: str,
+    pairs: _Pairs,
+    other: list[tuple[str, object]],
+) -> None:
+    fold = _fold_for(any_multidict_class_name)
+    md = any_multidict_class(pairs)
+    md_folded = {(fold(k), v) for k, v in md.items()}
+    other_folded = {(fold(k), v) for k, v in other}
+
+    assert {(fold(k), v) for k, v in (md.items() & other)} == md_folded & other_folded
+    assert {(fold(k), v) for k, v in (md.items() | other)} == md_folded | other_folded
+    assert {(fold(k), v) for k, v in (md.items() - other)} == md_folded - other_folded
+    assert {(fold(k), v) for k, v in (md.items() ^ other)} == md_folded ^ other_folded
+    assert md.items().isdisjoint(other) == md_folded.isdisjoint(other_folded)
+
+
+_MUTATIONS = ("add", "setitem", "delitem", "clear", "popone")
+
+# Deliberately never one of `pairs`'s own keys: mutating an unrelated marker
+# key (rather than a key already in `pairs`) means the still-unconsumed
+# `pairs` entries the iterator hasn't reached yet are never themselves
+# touched, so the guard always has a genuine live entry left to check
+# against. Longer than `text_keys()`'s max_size so it can never collide with
+# a generated key.
+_MUTATION_MARKER_KEY = "__iteration_mutation_marker_key__"
+
+
+@given(
+    pairs=pairs_lists(min_size=2), mutation=st.sampled_from(_MUTATIONS), data=st.data()
+)
+@settings(max_examples=50)
+def test_view_mutation_during_iteration_raises(
+    any_multidict_class: _MD_Classes,
+    pairs: _Pairs,
+    mutation: str,
+    data: st.DataObject,
+) -> None:
+    md = any_multidict_class(pairs)
+    md.add(_MUTATION_MARKER_KEY, "initial")
+    it = iter(md.items())
+    # `n` must be >=1 so the iterator has already pulled its first element
+    # (and so pinned itself to the pre-mutation entries) before the mutation
+    # happens, and must leave at least one `pairs` entry unconsumed (`pairs`
+    # itself is never touched, only the marker) so the guard always has a
+    # genuine, untouched entry left to check afterwards.
+    n = data.draw(st.integers(min_value=1, max_value=len(pairs) - 1))
+    for _ in range(n):
+        next(it)
+
+    if mutation == "add":
+        md.add(_MUTATION_MARKER_KEY, "mutated")
+    elif mutation == "setitem":
+        md[_MUTATION_MARKER_KEY] = "mutated"
+    elif mutation == "delitem":
+        del md[_MUTATION_MARKER_KEY]
+    elif mutation == "clear":
+        md.clear()
+    elif mutation == "popone":
+        md.popone(_MUTATION_MARKER_KEY, None)
+
+    with pytest.raises(RuntimeError):
+        while True:
+            next(it)

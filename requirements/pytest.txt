@@ -1,4 +1,5 @@
 cffi<2.0.0;python_version<"3.14"
+hypothesis==6.168.0
 objgraph==3.6.2
 pytest==9.1.1
 pytest-codspeed==5.0.3

@@ -1,0 +1,4 @@
+Added Hypothesis-based property and stateful fuzz tests covering
+:class:`~multidict.MultiDict`/:class:`~multidict.CIMultiDict` semantics,
+views, iterators, and threaded stress scenarios, run against both the
+C-extension and pure-Python backends -- by :user:`asvetlov`.

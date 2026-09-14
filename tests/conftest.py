@@ -9,6 +9,7 @@ from importlib import import_module
 from types import ModuleType
 
 import pytest
+from hypothesis import HealthCheck, settings
 
 from multidict import (
     CIMultiDict,
@@ -19,6 +20,16 @@ from multidict import (
 )
 
 C_EXT_MARK = pytest.mark.c_extension
+
+# The C-extension and pure-Python legs run the same properties at very
+# different speeds, and the threaded fuzz tests spawn real OS threads, so a
+# fixed per-example deadline is more likely to flake than to catch anything.
+settings.register_profile(
+    "multidict",
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+settings.load_profile("multidict")
 
 
 @dataclass(frozen=True)
