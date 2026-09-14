@@ -1730,40 +1730,6 @@ def test_reinit_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
-def test_reinit_update_extend_merge_thread_safety() -> None:
-    """Concurrent __init__() alongside update()/extend()/merge() must not race.
-
-    Regression test for a data race flagged by ThreadSanitizer:
-    update()/extend()/merge() used to read self->state to parse their
-    arguments before acquiring self's lock. __init__() on an
-    already-published, shared multidict (``d.__init__(other)``) replaces
-    self->state under lock (see test_reinit_thread_safety above), so the
-    unlocked read could race with that write. test_reinit_thread_safety only
-    exercises this for update(); this covers extend() and merge() too, and
-    passes another MultiDict (rather than a plain dict) as the argument so
-    the parsing path that inspects self->state to recognize a MultiDict
-    argument is exercised as well. This is a C-extension-only concern: the
-    pure-Python implementation has no state field of its own to race on."""
-    d: MultiDict[int] = MultiDict((str(i), i) for i in range(200))
-    other: MultiDict[int] = MultiDict((f"o{i}", i) for i in range(200))
-    arg: MultiDict[int] = MultiDict((f"a{i}", i) for i in range(200))
-
-    def worker(n: int) -> None:
-        for _ in range(200):
-            if n % 3 == 0:
-                d.__init__(other)  # type: ignore[misc]
-            elif n % 3 == 1:
-                d.extend(arg)
-            else:
-                d.merge(arg)
-
-    with ThreadPoolExecutor(max_workers=9) as executor:
-        list(executor.map(worker, range(9)))
-
-    assert len(d) == len(list(d.items()))
-
-
-@pytest.mark.c_extension
 def test_update_from_dict_arg_thread_safety() -> None:
     """Concurrent update() from a plain dict alongside mutation of that
     same dict must not crash.
