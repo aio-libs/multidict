@@ -1,0 +1,8 @@
+Fixed a data race on the free-threaded build of the C extension where
+``update()``/``extend()``/``merge()`` read ``self``'s module state without
+holding ``self``'s lock, while a concurrent ``__init__()`` on the same,
+already-published multidict could rewrite that same field under lock.
+Rather than routing every read through a lock-free lookup, the field is
+now written only once, at object construction, and never touched again by
+``__init__()``, so it is safe to read unlocked anywhere -- by
+:user:`asvetlov`.

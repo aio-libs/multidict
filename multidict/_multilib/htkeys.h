@@ -102,10 +102,19 @@ htkeys_entries(const htkeys_t* dk)
     return (entry_t*)(&indices[index]);
 }
 
+#ifdef Py_GIL_DISABLED
+#define LOAD_INDEX(keys, size, idx)  \
+    atomic_load_int##size##_relaxed( \
+        &((const int##size##_t*)(keys->indices))[idx])
+#define STORE_INDEX(keys, size, idx, value)                                   \
+    atomic_store_int##size##_relaxed(&((int##size##_t*)(keys->indices))[idx], \
+                                     (int##size##_t)value)
+#else
 #define LOAD_INDEX(keys, size, idx) \
     ((const int##size##_t*)(keys->indices))[idx]
 #define STORE_INDEX(keys, size, idx, value) \
     ((int##size##_t*)(keys->indices))[idx] = (int##size##_t)value
+#endif
 
 /* lookup indices.  returns DKIX_EMPTY, DKIX_DUMMY, or ix >=0 */
 static inline Py_ssize_t
