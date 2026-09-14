@@ -2735,13 +2735,16 @@ def test_items_contains_list_that_is_not_a_present_pair(
 @pytest.mark.c_extension
 def test_update_from_list_shrunk_by_another_thread() -> None:
     """A source list that shrinks while it is consumed must not be read past
-    its end; the constructor sees some prefix of the pairs."""
+    its end; the constructor either completes or reports the change."""
     shared = [(f"k{i}", i) for i in range(32)]
     stop = threading.Event()
 
     def build() -> None:
         for _ in range(3000):
-            multidict.MultiDict(shared)
+            try:
+                multidict.MultiDict(shared)
+            except RuntimeError as exc:
+                assert str(exc) == "list changed size during iteration"
 
     def shrink() -> None:
         i = 0
@@ -2764,8 +2767,8 @@ def test_update_from_list_shrunk_by_another_thread() -> None:
 @pytest.mark.c_extension
 def test_update_from_pair_list_shrunk_by_another_thread() -> None:
     """A ``[key, value]`` item that shrinks between its length check and the
-    reads must not be indexed past its end; the update either succeeds or
-    reports the bad length."""
+    reads must not be indexed past its end; the update either succeeds,
+    reports the bad length, or reports the change."""
     probe: list[object] = ["k1", 1]
     stop = threading.Event()
 
@@ -2775,6 +2778,8 @@ def test_update_from_pair_list_shrunk_by_another_thread() -> None:
                 multidict.MultiDict([probe])  # type: ignore[arg-type]
             except ValueError:
                 pass  # seen mid-mutation with the wrong length
+            except RuntimeError as exc:
+                assert str(exc) == "list changed size during iteration"
 
     def shrink() -> None:
         i = 0
@@ -2797,7 +2802,8 @@ def test_update_from_pair_list_shrunk_by_another_thread() -> None:
 @pytest.mark.c_extension
 def test_items_contains_list_shrunk_by_another_thread() -> None:
     """A probe list that shrinks between the length check and the reads must
-    not be indexed past its end."""
+    not be indexed past its end; the check either answers or reports the
+    change."""
     probe: list[object] = ["k1", 1]
     stop = threading.Event()
 
@@ -2805,7 +2811,10 @@ def test_items_contains_list_shrunk_by_another_thread() -> None:
         # One multidict per thread: the shared object under test is the list.
         items = multidict.MultiDict([(f"k{i}", i) for i in range(8)]).items()
         for _ in range(30000):
-            items.__contains__(probe)  # type: ignore[operator]
+            try:
+                items.__contains__(probe)  # type: ignore[operator]
+            except RuntimeError as exc:
+                assert str(exc) == "list changed size during iteration"
 
     def shrink() -> None:
         i = 0

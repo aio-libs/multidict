@@ -2621,16 +2621,20 @@ _err_cannot_fetch(Py_ssize_t i, const char* name)
 /* list[i] as a new reference. On a free-threaded build another thread can
    drop the item between a borrow and its incref, or shrink the list after
    its length was checked, so PyList_GetItemRef takes the reference
-   atomically (locking the list only if its lock-free attempt fails) and
-   _list_item_gone() reports an item that is no longer there. GIL builds
-   keep the macro and compile the check away. */
+   atomically (locking the list only if its lock-free attempt fails). An
+   item that is gone by then means the list changed under the caller, and
+   is reported as a RuntimeError: the caller sees NULL with the error set.
+   GIL builds keep the macro and compile the check away: nothing can run
+   between the length check and the borrow. */
 #ifdef Py_GIL_DISABLED
 static inline PyObject*
 _list_getitem_ref(PyObject* list, Py_ssize_t i)
 {
     PyObject* item = PyList_GetItemRef(list, i);
-    if (item == NULL) {
+    if (item == NULL && PyErr_ExceptionMatches(PyExc_IndexError)) {
         PyErr_Clear();
+        PyErr_SetString(PyExc_RuntimeError,
+                        "list changed size during iteration");
     }
     return item;
 }
@@ -2662,12 +2666,10 @@ _md_parse_item(Py_ssize_t i, PyObject* item, PyObject** pkey,
         }
         *pkey = _list_getitem_ref(item, 0);
         if (_list_item_gone(*pkey)) {
-            _err_bad_length(i, PyList_GET_SIZE(item));
             goto fail;
         }
         *pvalue = _list_getitem_ref(item, 1);
         if (_list_item_gone(*pvalue)) {
-            _err_bad_length(i, PyList_GET_SIZE(item));
             goto fail;
         }
     } else {
@@ -2761,7 +2763,7 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op)
                 }
                 item = _list_getitem_ref(seq, i);
                 if (_list_item_gone(item)) {
-                    goto exit;
+                    goto fail;
                 }
                 break;
             case TUPLE:

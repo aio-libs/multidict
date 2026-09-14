@@ -952,12 +952,12 @@ multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
         }
         key = _list_getitem_ref(obj, 0);
         if (_list_item_gone(key)) {
-            return 0;
+            return -1;
         }
         value = _list_getitem_ref(obj, 1);
         if (_list_item_gone(value)) {
             Py_DECREF(key);
-            return 0;
+            return -1;
         }
     } else {
         tmp = PyObject_Length(obj);
