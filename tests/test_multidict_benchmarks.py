@@ -72,6 +72,19 @@ def test_cimultidict_add_istr(
                 md.add(i, i)
 
 
+def test_multidict_add_same_key(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    base_md = any_multidict_class()
+    values = [str(i) for i in range(1000)]
+
+    @benchmark
+    def _run() -> None:
+        md = base_md.copy()
+        for v in values:
+            md.add("key", v)
+
+
 def test_multidict_pop_str(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
@@ -548,6 +561,26 @@ def test_create_multidict_with_items(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     items = [(str(i), str(i)) for i in range(100)]
+
+    @benchmark
+    def _run() -> None:
+        any_multidict_class(items)
+
+
+def test_create_multidict_with_items_same_key(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    items = [("key", str(i)) for i in range(1000)]
+
+    @benchmark
+    def _run() -> None:
+        any_multidict_class(items)
+
+
+def test_create_multidict_with_many_items(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    items = [(str(i), str(i)) for i in range(5000)]
 
     @benchmark
     def _run() -> None:
