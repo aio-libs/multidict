@@ -2422,6 +2422,48 @@ def test_setitem_update_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+@pytest.mark.c_extension
+def test_drain_retired_defers_busy_table_thread_safety() -> None:
+    """Concurrent get()/__getitem__()/__contains__() against a table
+    resized on nearly every insert must not crash.
+
+    Regression test for the free-threaded build: _md_drain_retired()'s
+    coarse "no lock-free reader in flight" gate can read zero for the
+    whole object while one specific retired table's own reader count is
+    still nonzero (a reader caught between incrementing that count and
+    decrementing it, not between A and B where the coarse gate actually
+    protects). Isolates that scenario from test_setitem_update_thread_
+    safety() above: only churn (to force frequent resizes, hence frequent
+    retirements) and lock-free reads, at heavy thread oversubscription to
+    make a reader getting caught mid-walk likely. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    locking of its own to regress."""
+    nkeys = 30
+    d: MultiDict[int] = MultiDict((str(i), i) for i in range(nkeys))
+
+    def churn_worker(n: int) -> None:
+        for i in range(2000):
+            key = f"churn-{n}-{i}"
+            d.add(key, i)
+            d.pop(key, None)
+
+    def reader_worker(_n: int) -> None:
+        for i in range(2000):
+            key = str(i % nkeys)
+            d.get(key)
+            with contextlib.suppress(KeyError):
+                d[key]
+            key in d
+
+    with ThreadPoolExecutor(max_workers=28) as executor:
+        futures = [executor.submit(churn_worker, i) for i in range(14)]
+        futures += [executor.submit(reader_worker, i) for i in range(14)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == nkeys
+
+
 # Pure-Python thread-safety tests. Import the pure-Python implementation
 # directly (`multidict._multidict_py` is always importable, regardless of
 # whether the C extension is built), rather than going through `multidict`'s
