@@ -1,0 +1,2 @@
+Added benchmarks for adding many values for the same key and for
+creating a multidict with many items -- by :user:`bdraco`.
