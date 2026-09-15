@@ -827,6 +827,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
         }
 
         memcpy(keys, fresh_src, size);
+        keys->resume_slots = NULL;
 #ifdef Py_GIL_DISABLED
         keys->num_readers = 0;
         keys->retired_next = NULL;
