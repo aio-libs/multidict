@@ -225,27 +225,26 @@ safety argument in full:
            else: move old onto md->retired, freed by a later drain
 
 A is always sequenced-before B on the reader's own thread, so if the
-writer's check observes num_active_readers == 0, no reader can be between
-A and E for *any* table -- in particular none can be between B and C
-for the table being freed. Anything weaker than seq_cst here (plain
-acquire/release, or relaxed) is not enough: the writer's store to
-md->keys and its read of num_active_readers, versus the reader's write to
-num_active_readers and its read of md->keys, is a criss-cross on two
-independent atomics (the same shape as Dekker's algorithm), and only a
-single global seq_cst order over all four operations closes it -- see
-the design discussion that produced this file for the specific
-interleaving that a weaker order permits.
+writer's check observes num_active_readers == 0, no reader can be
+*starting* a walk of any table that was retired before that check --
+none can be caught between A and B for the table being freed. Anything
+weaker than seq_cst here (plain acquire/release, or relaxed) is not
+enough: the writer's store to md->keys and its read of num_active_readers,
+versus the reader's write to num_active_readers and its read of
+md->keys, is a criss-cross on two independent atomics (the same shape
+as Dekker's algorithm), and only a single global seq_cst order over all
+four operations closes it -- see the design discussion that produced
+this file for the specific interleaving that a weaker order permits.
 
-keys->num_readers (C/D) does not participate in that ordering and stays
-relaxed: it is only ever inspected in _md_drain_retired(), which never
-runs except at a point already known -- via the num_active_readers check
-above -- to have no reader anywhere near it. It exists purely as a
-cheap defensive assertion that the coarse gate actually worked, not as
-an independent freeing trigger; freeing a specific retired table ahead
-of the whole object's num_active_readers reaching 0 would reintroduce the
-same bootstrap race the coarse gate exists to close (see the design
-discussion; true per-table precision under sustained concurrent read
-load needs epoch tagging, which this does not attempt).
+That guarantee is coarser than it looks, though: num_active_readers
+reaching zero does not mean every reader that incremented it has also
+reached its own D/E -- a reader can be preempted between C and D for
+an arbitrary stretch. So keys->num_readers (C/D) is the actual
+per-table authority on whether a specific table is safe to free, not
+a redundant check of what the coarse gate already guarantees.
+_md_drain_retired() treats it that way: a table whose own num_readers
+is still nonzero is pushed back onto md->retired for a later attempt
+instead of freed.
 
 _md_reader_exit()'s own num_active_readers decrement (E above) is a
 seq_cst atomic_fetch_add_ssize(), which hands back the pre-decrement
@@ -361,11 +360,39 @@ _md_drain_retired(MultiDictObject* md)
         return;
     }
     htkeys_t* t = (htkeys_t*)atomic_exchange_ptr((void**)&md->retired, NULL);
+
+    /* The coarse gate above can read zero while a specific table's own
+       num_readers is still nonzero -- a reader can be preempted between
+       incrementing it and decrementing it. A table is only actually
+       safe to free once its own count is zero, so anything still
+       nonzero goes back onto md->retired for a later attempt instead of
+       being freed here. */
+    htkeys_t* pending_head = NULL;
+    htkeys_t* pending_tail = NULL;
     while (t != NULL) {
         htkeys_t* next = t->retired_next;
-        assert(atomic_load_ssize_relaxed(&t->num_readers) == 0);
-        _md_free_retired(t);
+        if (atomic_load_ssize_relaxed(&t->num_readers) == 0) {
+            _md_free_retired(t);
+        } else {
+            t->retired_next = pending_head;
+            pending_head = t;
+            if (pending_tail == NULL) {
+                pending_tail = t;
+            }
+        }
         t = next;
+    }
+
+    if (pending_head != NULL) {
+        htkeys_t* old_head =
+            (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
+        for (;;) {
+            pending_tail->retired_next = old_head;
+            if (atomic_compare_exchange_ptr(
+                    (void**)&md->retired, (void**)&old_head, pending_head)) {
+                break;
+            }
+        }
     }
 }
 

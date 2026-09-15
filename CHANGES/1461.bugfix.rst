@@ -1,0 +1,8 @@
+Fixed a use-after-free race on the free-threaded build of the C extension
+where a retired hash table could be freed while a lock-free
+``get()``/``getone()``/``__getitem__``/``__contains__`` reader on another
+thread was still walking it: the coarse "no reader in flight" gate
+reaching zero did not reliably mean every such reader had also reached
+its own per-table exit, so a table whose own reader count is still
+nonzero is now deferred for a later retry instead of freed
+-- by :user:`asvetlov`.
