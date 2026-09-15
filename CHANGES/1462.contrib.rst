@@ -1,0 +1,5 @@
+Added core dump collection to the AddressSanitizer and ThreadSanitizer
+CI jobs: a crash now uploads the core file alongside the crashing
+interpreter binary and the compiled extension as a downloadable
+artifact, for offline debugging with a matching symbol-carrying binary
+instead of raw hex offsets -- by :user:`asvetlov`.
