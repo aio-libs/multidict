@@ -13,6 +13,7 @@ autodetection
 autogenerates
 autogeneration
 backend
+backends
 basename
 bugfixes
 bytecode
@@ -108,6 +109,7 @@ riscv
 riscv64
 runtime
 runtimes
+stateful
 str
 subclassable
 subclassed
