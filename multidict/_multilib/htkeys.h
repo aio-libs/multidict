@@ -297,21 +297,25 @@ static const htkeys_t empty_htkeys = {
 /* tails[i] is 0 or 1 + the last slot used by a probe that reached slot i
    with perturb == 0. From there the probe sequence only depends on the
    slot and slots never become empty again, so probing can resume.
-   Tables of 2**32 slots or more have none, slot + 1 must fit. */
+   Stored like the indices, uint16_t below 2**16 slots and uint32_t below
+   2**32, slot + 1 must fit. */
 static inline size_t
 htkeys_tails_bytes(uint8_t log2_size)
 {
     if (log2_size < HT_LOG_TAILS_MINSIZE || log2_size >= 32) {
         return 0;
     }
+    if (log2_size < 16) {
+        return sizeof(uint16_t) << log2_size;
+    }
     return sizeof(uint32_t) << log2_size;
 }
 
-static inline uint32_t*
+static inline void*
 htkeys_tails(const htkeys_t* keys)
 {
-    return (uint32_t*)(htkeys_entries(keys) +
-                       USABLE_FRACTION(htkeys_nslots(keys)));
+    return (void*)(htkeys_entries(keys) +
+                   USABLE_FRACTION(htkeys_nslots(keys)));
 }
 
 static inline Py_ssize_t
@@ -407,23 +411,30 @@ _htkeys_find_empty_slot_tail(htkeys_t* keys, size_t i)
     const size_t mask = htkeys_mask(keys);
     const size_t start = i;
     const size_t tails_bytes = htkeys_tails_bytes(keys->log2_size);
-    uint32_t* tails = NULL;
+    const bool small = keys->log2_size < 16;
+    void* tails = NULL;
     if (tails_bytes != 0) {
         tails = htkeys_tails(keys);
         if (!keys->tails_ready) {
             memset(tails, 0, tails_bytes);
             keys->tails_ready = 1;
         }
-        if (tails[start] != 0) {
+        size_t tail =
+            small ? ((uint16_t*)tails)[start] : ((uint32_t*)tails)[start];
+        if (tail != 0) {
             /* the tail slot is used, start after it */
-            i = (((size_t)tails[start] - 1) * 5 + 1) & mask;
+            i = ((tail - 1) * 5 + 1) & mask;
         }
     }
     while (htkeys_get_index(keys, i) != DKIX_EMPTY) {
         i = (i * 5 + 1) & mask;
     }
     if (tails != NULL) {
-        tails[start] = (uint32_t)(i + 1);
+        if (small) {
+            ((uint16_t*)tails)[start] = (uint16_t)(i + 1);
+        } else {
+            ((uint32_t*)tails)[start] = (uint32_t)(i + 1);
+        }
     }
     return (Py_ssize_t)i;
 }

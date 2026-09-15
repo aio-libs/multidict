@@ -1032,3 +1032,11 @@ def test_add_many_duplicate_keys_after_delete(
 
     md.update([("a", str(-i)) for i in range(1300)])
     assert md.getall("a") == [str(-i) for i in range(1300)]
+
+
+def test_create_with_many_duplicate_keys(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    values = [str(i) for i in range(25000)]
+    md = any_multidict_class([("a", v) for v in values])
+    assert md.getall("a") == values
