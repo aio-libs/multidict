@@ -698,7 +698,7 @@ class _HtKeys(Generic[_V]):
 
     indices: array  # type: ignore[type-arg] # TODO(PY312): array[int]
     entries: list[_Entry[_V] | None]
-    # slot reached with perturb == 0 -> last slot used after it
+    # first slot probed with perturb == 0 -> last slot used after it
     tails: dict[int, int] = field(default_factory=dict)
 
     @functools.cached_property
@@ -764,10 +764,10 @@ class _HtKeys(Generic[_V]):
             perturb = hash_
             while indices[i] != -1:
                 perturb >>= 5
+                i = mask & (i * 5 + perturb + 1)
                 if not perturb:
                     i = self._find_empty_slot_tail(i)
                     break
-                i = mask & (i * 5 + perturb + 1)
             indices[i] = idx
 
     def find_empty_slot(self, hash_: int) -> int:
@@ -778,16 +778,18 @@ class _HtKeys(Generic[_V]):
         ix = indices[i]
         while ix != -1:
             perturb >>= 5
+            i = (i * 5 + perturb + 1) & mask
             if not perturb:
                 return self._find_empty_slot_tail(i)
-            i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
         return i
 
     def _find_empty_slot_tail(self, start: int) -> int:
         mask = self.mask
         indices = self.indices
-        i = self.tails.get(start, start)
+        tail = self.tails.get(start)
+        # the tail slot is used, start after it
+        i = start if tail is None else (tail * 5 + 1) & mask
         while indices[i] != -1:
             i = (i * 5 + 1) & mask
         self.tails[start] = i

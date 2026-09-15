@@ -483,6 +483,7 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
 
 /* Internal function to find slot for an item from its hash
    when it is known that the key is not present in the dict.
+   The caller must fill the returned slot, tails skip past it.
 
    Unswitched by index size by hand so the perturb check stays cheap.
  */
