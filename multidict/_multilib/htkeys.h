@@ -374,7 +374,7 @@ htkeys_free(htkeys_t* dk)
     /* TODO: CPython uses freelist of key objects with unicode type
        and log2_size == PyDict_LOG_MINSIZE */
     if (dk->resume_slots != NULL) {
-        PyMem_RawFree(dk->resume_slots);
+        PyMem_Free(dk->resume_slots);
     }
     PyMem_Free(dk);
 }
@@ -402,8 +402,7 @@ _unicode_hash(PyObject* o)
 /* Values for the same key share a probe sequence, so without resume slots the
    n-th one walks past the n - 1 before it. Called once perturb is 0 and
    slot i is next to probe. Resume slots are only allocated once a probe here
-   is long, so tables without long chains don't pay for them. The raw allocator
-   never suspends the critical section. */
+   is long, so tables without long chains don't pay for them. */
 HT_COLD static Py_ssize_t
 _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 {
@@ -429,7 +428,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
         if (steps < HT_RESUME_SLOTS_MIN_STEPS || nbytes == 0) {
             return (Py_ssize_t)i;
         }
-        resume_slots = keys->resume_slots = PyMem_RawCalloc(1, nbytes);
+        resume_slots = keys->resume_slots = PyMem_Calloc(1, nbytes);
         if (resume_slots == NULL) {
             return (Py_ssize_t)i;
         }
