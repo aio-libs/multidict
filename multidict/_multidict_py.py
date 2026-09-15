@@ -38,9 +38,9 @@ MAXSIZE = sys.maxsize
 # hash range's high bit, can mark a hash as temporarily invalid: OR it in,
 # AND it out with MAXSIZE. A real folded hash never has that bit set.
 HASH_MARK = MAXSIZE + 1
-# Same as HT_LOG_TAILS_MINSIZE and HT_TAILS_MIN_STEPS in htkeys.h
-_TAILS_LOG_MINSIZE = 10
-_TAILS_MIN_STEPS = 32
+# Same as HT_LOG_RESUME_SLOTS_MINSIZE and HT_RESUME_SLOTS_MIN_STEPS in htkeys.h
+_LOG_RESUME_SLOTS_MINSIZE = 10
+_RESUME_SLOTS_MIN_STEPS = 32
 
 
 class istr(str):
@@ -703,7 +703,7 @@ class _HtKeys(Generic[_V]):
     entries: list[_Entry[_V] | None]
     # first slot probed with perturb == 0 -> last slot used after it,
     # created on the first long probe
-    tails: dict[int, int] | None = None
+    resume_slots: dict[int, int] | None = None
 
     @functools.cached_property
     def nslots(self) -> int:
@@ -720,7 +720,7 @@ class _HtKeys(Generic[_V]):
                 object.__sizeof__(self)
                 + sys.getsizeof(self.indices)
                 + sys.getsizeof(self.entries)
-                + (0 if self.tails is None else sys.getsizeof(self.tails))
+                + (0 if self.resume_slots is None else sys.getsizeof(self.resume_slots))
             )
 
     @classmethod
@@ -770,7 +770,7 @@ class _HtKeys(Generic[_V]):
                 perturb >>= 5
                 i = mask & (i * 5 + perturb + 1)
                 if not perturb:
-                    i = self._find_empty_slot_tail(i)
+                    i = self._find_empty_slot_resume(i)
                     break
             indices[i] = idx
 
@@ -784,26 +784,29 @@ class _HtKeys(Generic[_V]):
             perturb >>= 5
             i = (i * 5 + perturb + 1) & mask
             if not perturb:
-                return self._find_empty_slot_tail(i)
+                return self._find_empty_slot_resume(i)
             ix = indices[i]
         return i
 
-    def _find_empty_slot_tail(self, start: int) -> int:
+    def _find_empty_slot_resume(self, start: int) -> int:
         mask = self.mask
         indices = self.indices
-        tails = self.tails
-        tail = None if tails is None else tails.get(start)
-        # the tail slot is used, start after it
-        i = start if tail is None else (tail * 5 + 1) & mask
+        resume_slots = self.resume_slots
+        resume = None if resume_slots is None else resume_slots.get(start)
+        # the resume slot is used, start after it
+        i = start if resume is None else (resume * 5 + 1) & mask
         steps = 0
         while indices[i] != -1:
             i = (i * 5 + 1) & mask
             steps += 1
-        if tails is None:
-            if steps < _TAILS_MIN_STEPS or self.log2_size < _TAILS_LOG_MINSIZE:
+        if resume_slots is None:
+            if (
+                steps < _RESUME_SLOTS_MIN_STEPS
+                or self.log2_size < _LOG_RESUME_SLOTS_MINSIZE
+            ):
                 return i
-            tails = self.tails = {}
-        tails[start] = i
+            resume_slots = self.resume_slots = {}
+        resume_slots[start] = i
         return i
 
     def iter_hash(self, hash_: int) -> Iterator[tuple[int, int, _Entry[_V]]]:

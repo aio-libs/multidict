@@ -38,9 +38,9 @@ typedef struct entry {
 #define HT_MINSIZE 8
 #define HT_PERTURB_SHIFT 5
 
-#define HT_LOG_TAILS_MINSIZE 10
-/* Probe steps after perturb is 0 before tails are allocated */
-#define HT_TAILS_MIN_STEPS 32
+#define HT_LOG_RESUME_SLOTS_MINSIZE 10
+/* Probe steps after perturb is 0 before resume slots are allocated */
+#define HT_RESUME_SLOTS_MIN_STEPS 32
 
 /* Py_NO_INLINE is 3.11+ */
 #if defined(__GNUC__) || defined(__clang__)
@@ -67,8 +67,8 @@ typedef struct _htkeys {
     /* Number of used entries in dk_entries. */
     Py_ssize_t nentries;
 
-    /* Allocated on the first long probe, see htkeys_tails_bytes(). */
-    void* tails;
+    /* Allocated on the first long probe, see htkeys_resume_slots_bytes(). */
+    void* resume_slots;
 
 #ifdef Py_GIL_DISABLED
     Py_ssize_t num_readers;
@@ -281,7 +281,7 @@ static const htkeys_t empty_htkeys = {
     .log2_index_bytes = 3,
     .usable = 0, /* immutable */
     .nentries = 0,
-    .tails = NULL,
+    .resume_slots = NULL,
 #ifdef Py_GIL_DISABLED
     .num_readers = 0,
     .retired_next = NULL,
@@ -296,15 +296,15 @@ static const htkeys_t empty_htkeys = {
                 DKIX_EMPTY},
 };
 
-/* tails[i] is 0 or 1 + the last slot used by a probe that reached slot i
-   with perturb == 0. From there the probe sequence only depends on the
-   slot and slots never become empty again, so probing can resume.
-   Stored like the indices, uint16_t below 2**16 slots and uint32_t below
-   2**32, slot + 1 must fit. */
+/* resume_slots[i] is 0 or 1 + the last slot used by a probe that reached slot
+   i with perturb == 0. From there the probe sequence only depends on the slot
+   and slots never become empty again, so probing can resume. Stored like the
+   indices, uint16_t below 2**16 slots and uint32_t below 2**32, slot + 1 must
+   fit. */
 static inline size_t
-htkeys_tails_bytes(uint8_t log2_size)
+htkeys_resume_slots_bytes(uint8_t log2_size)
 {
-    if (log2_size < HT_LOG_TAILS_MINSIZE || log2_size >= 32) {
+    if (log2_size < HT_LOG_RESUME_SLOTS_MINSIZE || log2_size >= 32) {
         return 0;
     }
     if (log2_size < 16) {
@@ -355,7 +355,7 @@ htkeys_new(uint8_t log2_size)
 
     keys->log2_size = log2_size;
     keys->log2_index_bytes = log2_bytes;
-    keys->tails = NULL;
+    keys->resume_slots = NULL;
     keys->nentries = 0;
     keys->usable = usable;
 #ifdef Py_GIL_DISABLED
@@ -373,8 +373,8 @@ htkeys_free(htkeys_t* dk)
 {
     /* TODO: CPython uses freelist of key objects with unicode type
        and log2_size == PyDict_LOG_MINSIZE */
-    if (dk->tails != NULL) {
-        PyMem_RawFree(dk->tails);
+    if (dk->resume_slots != NULL) {
+        PyMem_RawFree(dk->resume_slots);
     }
     PyMem_Free(dk);
 }
@@ -399,24 +399,24 @@ _unicode_hash(PyObject* o)
     return hash & PY_SSIZE_T_MAX;
 }
 
-/* Values for the same key share a probe sequence, so without tails the
+/* Values for the same key share a probe sequence, so without resume slots the
    n-th one walks past the n - 1 before it. Called once perturb is 0 and
-   slot i is next to probe. Tails are only allocated once a probe here is
-   long, so tables without long chains don't pay for them. The raw
-   allocator never suspends the critical section. */
+   slot i is next to probe. Resume slots are only allocated once a probe here
+   is long, so tables without long chains don't pay for them. The raw allocator
+   never suspends the critical section. */
 HT_COLD static Py_ssize_t
-_htkeys_find_empty_slot_tail(htkeys_t* keys, size_t i)
+_htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 {
     const size_t mask = htkeys_mask(keys);
     const size_t start = i;
     const bool small = keys->log2_size < 16;
-    void* tails = keys->tails;
-    if (tails != NULL) {
-        size_t tail =
-            small ? ((uint16_t*)tails)[start] : ((uint32_t*)tails)[start];
-        if (tail != 0) {
-            /* the tail slot is used, start after it */
-            i = ((tail - 1) * 5 + 1) & mask;
+    void* resume_slots = keys->resume_slots;
+    if (resume_slots != NULL) {
+        size_t resume = small ? ((uint16_t*)resume_slots)[start]
+                              : ((uint32_t*)resume_slots)[start];
+        if (resume != 0) {
+            /* the resume slot is used, start after it */
+            i = ((resume - 1) * 5 + 1) & mask;
         }
     }
     size_t steps = 0;
@@ -424,20 +424,20 @@ _htkeys_find_empty_slot_tail(htkeys_t* keys, size_t i)
         i = (i * 5 + 1) & mask;
         steps++;
     }
-    if (tails == NULL) {
-        size_t tails_bytes = htkeys_tails_bytes(keys->log2_size);
-        if (steps < HT_TAILS_MIN_STEPS || tails_bytes == 0) {
+    if (resume_slots == NULL) {
+        size_t nbytes = htkeys_resume_slots_bytes(keys->log2_size);
+        if (steps < HT_RESUME_SLOTS_MIN_STEPS || nbytes == 0) {
             return (Py_ssize_t)i;
         }
-        tails = keys->tails = PyMem_RawCalloc(1, tails_bytes);
-        if (tails == NULL) {
+        resume_slots = keys->resume_slots = PyMem_RawCalloc(1, nbytes);
+        if (resume_slots == NULL) {
             return (Py_ssize_t)i;
         }
     }
     if (small) {
-        ((uint16_t*)tails)[start] = (uint16_t)(i + 1);
+        ((uint16_t*)resume_slots)[start] = (uint16_t)(i + 1);
     } else {
-        ((uint32_t*)tails)[start] = (uint32_t)(i + 1);
+        ((uint32_t*)resume_slots)[start] = (uint32_t)(i + 1);
     }
     return (Py_ssize_t)i;
 }
@@ -449,8 +449,9 @@ static inline int
 htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
 {
     size_t mask = htkeys_mask(keys);
-    if (keys->tails != NULL) {
-        memset(keys->tails, 0, htkeys_tails_bytes(keys->log2_size));
+    if (keys->resume_slots != NULL) {
+        memset(
+            keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
     }
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
@@ -477,7 +478,7 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
             perturb >>= HT_PERTURB_SHIFT;
             i = mask & (i * 5 + perturb + 1);
             if (HT_UNLIKELY(perturb == 0)) {
-                i = (size_t)_htkeys_find_empty_slot_tail(keys, i);
+                i = (size_t)_htkeys_find_empty_slot_resume(keys, i);
                 break;
             }
         }
@@ -487,19 +488,19 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
 }
 
 /* Uses keys, mask, i and perturb from the caller and returns. */
-#define _HT_FIND_EMPTY_SLOT(size)                         \
-    while (LOAD_INDEX(keys, size, i) != DKIX_EMPTY) {     \
-        perturb >>= HT_PERTURB_SHIFT;                     \
-        i = (i * 5 + perturb + 1) & mask;                 \
-        if (HT_UNLIKELY(perturb == 0)) {                  \
-            return _htkeys_find_empty_slot_tail(keys, i); \
-        }                                                 \
-    }                                                     \
+#define _HT_FIND_EMPTY_SLOT(size)                           \
+    while (LOAD_INDEX(keys, size, i) != DKIX_EMPTY) {       \
+        perturb >>= HT_PERTURB_SHIFT;                       \
+        i = (i * 5 + perturb + 1) & mask;                   \
+        if (HT_UNLIKELY(perturb == 0)) {                    \
+            return _htkeys_find_empty_slot_resume(keys, i); \
+        }                                                   \
+    }                                                       \
     return (Py_ssize_t)i;
 
 /* Internal function to find slot for an item from its hash
    when it is known that the key is not present in the dict.
-   The caller must fill the returned slot, tails skip past it.
+   The caller must fill the returned slot, resume slots skip past it.
 
    Unswitched by index size by hand so the perturb check stays cheap.
  */

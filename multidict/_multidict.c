@@ -1268,8 +1268,8 @@ multidict_sizeof(MultiDictObject* self)
     htkeys_t* keys = self->keys;
     if (keys != &empty_htkeys) {
         size += htkeys_sizeof(keys);
-        if (keys->tails != NULL) {
-            size += (Py_ssize_t)htkeys_tails_bytes(keys->log2_size);
+        if (keys->resume_slots != NULL) {
+            size += (Py_ssize_t)htkeys_resume_slots_bytes(keys->log2_size);
         }
     }
     Py_END_CRITICAL_SECTION();
