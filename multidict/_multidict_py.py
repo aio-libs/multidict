@@ -13,7 +13,7 @@ from collections.abc import (
     Mapping,
     ValuesView,
 )
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -698,6 +698,8 @@ class _HtKeys(Generic[_V]):
 
     indices: array  # type: ignore[type-arg] # TODO(PY312): array[int]
     entries: list[_Entry[_V] | None]
+    # slot reached with perturb == 0 -> last slot used after it
+    tails: dict[int, int] = field(default_factory=dict)
 
     @functools.cached_property
     def nslots(self) -> int:
@@ -714,6 +716,7 @@ class _HtKeys(Generic[_V]):
                 object.__sizeof__(self)
                 + sys.getsizeof(self.indices)
                 + sys.getsizeof(self.entries)
+                + sys.getsizeof(self.tails)
             )
 
     @classmethod
@@ -761,6 +764,9 @@ class _HtKeys(Generic[_V]):
             perturb = hash_
             while indices[i] != -1:
                 perturb >>= 5
+                if not perturb:
+                    i = self._find_empty_slot_tail(i)
+                    break
                 i = mask & (i * 5 + perturb + 1)
             indices[i] = idx
 
@@ -772,8 +778,19 @@ class _HtKeys(Generic[_V]):
         ix = indices[i]
         while ix != -1:
             perturb >>= 5
+            if not perturb:
+                return self._find_empty_slot_tail(i)
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
+        return i
+
+    def _find_empty_slot_tail(self, start: int) -> int:
+        mask = self.mask
+        indices = self.indices
+        i = self.tails.get(start, start)
+        while indices[i] != -1:
+            i = (i * 5 + 1) & mask
+        self.tails[start] = i
         return i
 
     def iter_hash(self, hash_: int) -> Iterator[tuple[int, int, _Entry[_V]]]:

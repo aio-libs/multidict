@@ -997,3 +997,38 @@ def test_multidict_shrink_regression() -> None:
     # Verify new entries
     for i in range(50):
         assert md[f"new{i}"] == f"val{i}"
+
+
+def test_add_many_duplicate_keys(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    md = any_multidict_class()
+    expected = []
+    for i in range(1000):
+        for key in ("a", "b", f"k{i}"):
+            md.add(key, str(i))
+            expected.append((key, str(i)))
+
+    assert list(md.items()) == expected
+    assert md.getall("a") == [str(i) for i in range(1000)]
+    assert md["k999"] == "999"
+
+    copied = md.copy()
+    for i in range(1000, 1500):
+        copied.add("a", str(i))
+    assert copied.getall("a") == [str(i) for i in range(1500)]
+    assert md.getall("a") == [str(i) for i in range(1000)]
+
+
+def test_add_many_duplicate_keys_after_delete(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    md = any_multidict_class([("a", str(i)) for i in range(1000)])
+    for i in range(200):
+        assert md.popone("a") == str(i)
+    for i in range(1000, 1500):
+        md.add("a", str(i))
+    assert md.getall("a") == [str(i) for i in range(200, 1500)]
+
+    md.update([("a", str(-i)) for i in range(1300)])
+    assert md.getall("a") == [str(-i) for i in range(1300)]
