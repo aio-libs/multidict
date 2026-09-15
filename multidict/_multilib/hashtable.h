@@ -799,8 +799,8 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
             continue;
         }
 
-        memcpy(keys, fresh_src, size - htkeys_tails_bytes(src->log2_size));
-        keys->tails_ready = 0;
+        memcpy(keys, fresh_src, size);
+        keys->tails = NULL;
 #ifdef Py_GIL_DISABLED
         keys->num_readers = 0;
         keys->retired_next = NULL;

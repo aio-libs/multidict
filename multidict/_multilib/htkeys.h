@@ -39,6 +39,8 @@ typedef struct entry {
 #define HT_PERTURB_SHIFT 5
 
 #define HT_LOG_TAILS_MINSIZE 10
+/* Probe steps after perturb is 0 before tails are allocated */
+#define HT_TAILS_MIN_STEPS 32
 
 /* Py_NO_INLINE is 3.11+ */
 #if defined(__GNUC__) || defined(__clang__)
@@ -59,13 +61,14 @@ typedef struct _htkeys {
     /* Size of the hash table (indices) by bytes. */
     uint8_t log2_index_bytes;
 
-    uint8_t tails_ready;
-
     /* Number of usable entries in dk_entries. */
     Py_ssize_t usable;
 
     /* Number of used entries in dk_entries. */
     Py_ssize_t nentries;
+
+    /* Allocated on the first long probe, see htkeys_tails_bytes(). */
+    void* tails;
 
 #ifdef Py_GIL_DISABLED
     Py_ssize_t num_readers;
@@ -85,9 +88,7 @@ typedef struct _htkeys {
        - 4 bytes if htkeys_nslots() <= 0xffffffff (int32_t*)
        - 8 bytes otherwise (int64_t*)
 
-       Dynamically sized, SIZEOF_VOID_P is minimum.
-
-       Followed by the entries and, for large tables, the tails. */
+       Dynamically sized, SIZEOF_VOID_P is minimum. */
     char indices[]; /* char is required to avoid strict aliasing. */
 
 } htkeys_t;
@@ -280,6 +281,7 @@ static const htkeys_t empty_htkeys = {
     .log2_index_bytes = 3,
     .usable = 0, /* immutable */
     .nentries = 0,
+    .tails = NULL,
 #ifdef Py_GIL_DISABLED
     .num_readers = 0,
     .retired_next = NULL,
@@ -311,19 +313,12 @@ htkeys_tails_bytes(uint8_t log2_size)
     return sizeof(uint32_t) << log2_size;
 }
 
-static inline void*
-htkeys_tails(const htkeys_t* keys)
-{
-    return (void*)(htkeys_entries(keys) +
-                   USABLE_FRACTION(htkeys_nslots(keys)));
-}
-
 static inline Py_ssize_t
 htkeys_sizeof(htkeys_t* keys)
 {
     Py_ssize_t usable = USABLE_FRACTION((size_t)1 << keys->log2_size);
     return (sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
-            sizeof(entry_t) * usable + htkeys_tails_bytes(keys->log2_size));
+            sizeof(entry_t) * usable);
 }
 
 static inline htkeys_t*
@@ -351,9 +346,8 @@ htkeys_new(uint8_t log2_size)
     htkeys_t* keys = NULL;
     /* TODO: CPython uses freelist of key objects with unicode type
        and log2_size == PyDict_LOG_MINSIZE */
-    keys =
-        PyMem_Malloc(sizeof(htkeys_t) + ((size_t)1 << log2_bytes) +
-                     sizeof(entry_t) * usable + htkeys_tails_bytes(log2_size));
+    keys = PyMem_Malloc(sizeof(htkeys_t) + ((size_t)1 << log2_bytes) +
+                        sizeof(entry_t) * usable);
     if (keys == NULL) {
         PyErr_NoMemory();
         return NULL;
@@ -361,7 +355,7 @@ htkeys_new(uint8_t log2_size)
 
     keys->log2_size = log2_size;
     keys->log2_index_bytes = log2_bytes;
-    keys->tails_ready = 0;
+    keys->tails = NULL;
     keys->nentries = 0;
     keys->usable = usable;
 #ifdef Py_GIL_DISABLED
@@ -379,6 +373,9 @@ htkeys_free(htkeys_t* dk)
 {
     /* TODO: CPython uses freelist of key objects with unicode type
        and log2_size == PyDict_LOG_MINSIZE */
+    if (dk->tails != NULL) {
+        PyMem_RawFree(dk->tails);
+    }
     PyMem_Free(dk);
 }
 
@@ -404,21 +401,17 @@ _unicode_hash(PyObject* o)
 
 /* Values for the same key share a probe sequence, so without tails the
    n-th one walks past the n - 1 before it. Called once perturb is 0 and
-   slot i is next to probe. */
+   slot i is next to probe. Tails are only allocated once a probe here is
+   long, so tables without long chains don't pay for them. The raw
+   allocator never suspends the critical section. */
 HT_COLD static Py_ssize_t
 _htkeys_find_empty_slot_tail(htkeys_t* keys, size_t i)
 {
     const size_t mask = htkeys_mask(keys);
     const size_t start = i;
-    const size_t tails_bytes = htkeys_tails_bytes(keys->log2_size);
     const bool small = keys->log2_size < 16;
-    void* tails = NULL;
-    if (tails_bytes != 0) {
-        tails = htkeys_tails(keys);
-        if (!keys->tails_ready) {
-            memset(tails, 0, tails_bytes);
-            keys->tails_ready = 1;
-        }
+    void* tails = keys->tails;
+    if (tails != NULL) {
         size_t tail =
             small ? ((uint16_t*)tails)[start] : ((uint32_t*)tails)[start];
         if (tail != 0) {
@@ -426,15 +419,25 @@ _htkeys_find_empty_slot_tail(htkeys_t* keys, size_t i)
             i = ((tail - 1) * 5 + 1) & mask;
         }
     }
+    size_t steps = 0;
     while (htkeys_get_index(keys, i) != DKIX_EMPTY) {
         i = (i * 5 + 1) & mask;
+        steps++;
     }
-    if (tails != NULL) {
-        if (small) {
-            ((uint16_t*)tails)[start] = (uint16_t)(i + 1);
-        } else {
-            ((uint32_t*)tails)[start] = (uint32_t)(i + 1);
+    if (tails == NULL) {
+        size_t tails_bytes = htkeys_tails_bytes(keys->log2_size);
+        if (steps < HT_TAILS_MIN_STEPS || tails_bytes == 0) {
+            return (Py_ssize_t)i;
         }
+        tails = keys->tails = PyMem_RawCalloc(1, tails_bytes);
+        if (tails == NULL) {
+            return (Py_ssize_t)i;
+        }
+    }
+    if (small) {
+        ((uint16_t*)tails)[start] = (uint16_t)(i + 1);
+    } else {
+        ((uint32_t*)tails)[start] = (uint32_t)(i + 1);
     }
     return (Py_ssize_t)i;
 }
@@ -446,7 +449,9 @@ static inline int
 htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
 {
     size_t mask = htkeys_mask(keys);
-    keys->tails_ready = 0;
+    if (keys->tails != NULL) {
+        memset(keys->tails, 0, htkeys_tails_bytes(keys->log2_size));
+    }
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
 #ifdef Py_GIL_DISABLED
