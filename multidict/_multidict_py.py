@@ -13,7 +13,7 @@ from collections.abc import (
     Mapping,
     ValuesView,
 )
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -38,6 +38,9 @@ MAXSIZE = sys.maxsize
 # hash range's high bit, can mark a hash as temporarily invalid: OR it in,
 # AND it out with MAXSIZE. A real folded hash never has that bit set.
 HASH_MARK = MAXSIZE + 1
+# Same as HT_LOG_TAILS_MINSIZE and HT_TAILS_MIN_STEPS in htkeys.h
+_TAILS_LOG_MINSIZE = 10
+_TAILS_MIN_STEPS = 32
 
 
 class istr(str):
@@ -698,8 +701,9 @@ class _HtKeys(Generic[_V]):
 
     indices: array  # type: ignore[type-arg] # TODO(PY312): array[int]
     entries: list[_Entry[_V] | None]
-    # first slot probed with perturb == 0 -> last slot used after it
-    tails: dict[int, int] = field(default_factory=dict)
+    # first slot probed with perturb == 0 -> last slot used after it,
+    # created on the first long probe
+    tails: dict[int, int] | None = None
 
     @functools.cached_property
     def nslots(self) -> int:
@@ -716,7 +720,7 @@ class _HtKeys(Generic[_V]):
                 object.__sizeof__(self)
                 + sys.getsizeof(self.indices)
                 + sys.getsizeof(self.entries)
-                + sys.getsizeof(self.tails)
+                + (0 if self.tails is None else sys.getsizeof(self.tails))
             )
 
     @classmethod
@@ -787,12 +791,19 @@ class _HtKeys(Generic[_V]):
     def _find_empty_slot_tail(self, start: int) -> int:
         mask = self.mask
         indices = self.indices
-        tail = self.tails.get(start)
+        tails = self.tails
+        tail = None if tails is None else tails.get(start)
         # the tail slot is used, start after it
         i = start if tail is None else (tail * 5 + 1) & mask
+        steps = 0
         while indices[i] != -1:
             i = (i * 5 + 1) & mask
-        self.tails[start] = i
+            steps += 1
+        if tails is None:
+            if steps < _TAILS_MIN_STEPS or self.log2_size < _TAILS_LOG_MINSIZE:
+                return i
+            tails = self.tails = {}
+        tails[start] = i
         return i
 
     def iter_hash(self, hash_: int) -> Iterator[tuple[int, int, _Entry[_V]]]:
