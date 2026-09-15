@@ -236,25 +236,15 @@ as Dekker's algorithm), and only a single global seq_cst order over all
 four operations closes it -- see the design discussion that produced
 this file for the specific interleaving that a weaker order permits.
 
-That is weaker than it may look, though: num_active_readers reaching
-zero does *not* reliably mean every reader that incremented it has also
-finished walking its table and reached its own D/E. A reader can be
-preempted for an arbitrary stretch between C and D -- including right
-after C, having barely started its walk -- and nothing about the coarse
-gate bounds how long that stretch lasts before this specific thread's
-drain runs. In practice a table's own num_readers has been observed
-transiently nonzero right after the coarse gate read zero, resolving
-within milliseconds once the stalled reader is scheduled again (see the
-regression test and PR discussion for how this was found and
-reproduced). So keys->num_readers (C/D, relaxed -- it never needed to
-participate in the seq_cst ordering above, only to be checked once the
-coarse gate suggests it is safe to look) is not a redundant, cheap
-assertion of something the coarse gate already guarantees: it is the
-actual authority on whether a specific table is safe to free.
-_md_drain_retired() treats it that way, deferring (pushing back onto
-md->retired for a later attempt) any table whose own num_readers is
-still nonzero instead of freeing it -- true per-table precision without
-that check would need epoch tagging, which this does not attempt.
+That guarantee is coarser than it looks, though: num_active_readers
+reaching zero does not mean every reader that incremented it has also
+reached its own D/E -- a reader can be preempted between C and D for
+an arbitrary stretch. So keys->num_readers (C/D) is the actual
+per-table authority on whether a specific table is safe to free, not
+a redundant check of what the coarse gate already guarantees.
+_md_drain_retired() treats it that way: a table whose own num_readers
+is still nonzero is pushed back onto md->retired for a later attempt
+instead of freed.
 
 _md_reader_exit()'s own num_active_readers decrement (E above) is a
 seq_cst atomic_fetch_add_ssize(), which hands back the pre-decrement
@@ -371,24 +361,12 @@ _md_drain_retired(MultiDictObject* md)
     }
     htkeys_t* t = (htkeys_t*)atomic_exchange_ptr((void**)&md->retired, NULL);
 
-    /* Despite the coarse num_active_readers gate above having just read
-       zero, a specific table's own num_readers can transiently still be
-       nonzero here: a reader that already incremented it (as part of
-       _md_reader_enter()) can be preempted for an arbitrary stretch
-       before it reaches the matching decrement in _md_reader_exit(), and
-       nothing stops this thread's drain from running to completion in
-       that window. This has been observed in practice (a reader still
-       finishing its scan after this exact check saw zero), and it always
-       resolves within milliseconds once that reader gets scheduled again
-       -- but relying on the coarse gate alone and freeing regardless, the
-       way this function used to, is a genuine use-after-free race in a
-       release build (where the assert that used to guard this is
-       compiled out) and not merely a debug-only assertion mismatch.
-       Table-precise safety, not the coarse gate, is what actually decides
-       whether freeing here is safe: any table whose own num_readers is
-       still nonzero is pushed back onto md->retired instead of freed, to
-       be retried the next time some reader's exit or writer's retire
-       calls this function. */
+    /* The coarse gate above can read zero while a specific table's own
+       num_readers is still nonzero -- a reader can be preempted between
+       incrementing it and decrementing it. A table is only actually
+       safe to free once its own count is zero, so anything still
+       nonzero goes back onto md->retired for a later attempt instead of
+       being freed here. */
     htkeys_t* pending_head = NULL;
     htkeys_t* pending_tail = NULL;
     while (t != NULL) {
