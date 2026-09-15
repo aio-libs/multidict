@@ -1264,12 +1264,15 @@ static PyObject*
 multidict_sizeof(MultiDictObject* self)
 {
     Py_ssize_t size = sizeof(MultiDictObject);
-    if (self->keys != &empty_htkeys) {
-        size += htkeys_sizeof(self->keys);
-        if (self->keys->tails != NULL) {
-            size += (Py_ssize_t)htkeys_tails_bytes(self->keys->log2_size);
+    Py_BEGIN_CRITICAL_SECTION(self);
+    htkeys_t* keys = self->keys;
+    if (keys != &empty_htkeys) {
+        size += htkeys_sizeof(keys);
+        if (keys->tails != NULL) {
+            size += (Py_ssize_t)htkeys_tails_bytes(keys->log2_size);
         }
     }
+    Py_END_CRITICAL_SECTION();
     return PyLong_FromSsize_t(size);
 }
 
