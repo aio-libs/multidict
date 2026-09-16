@@ -1,0 +1,1 @@
+Add bencmarks for ``__setitem__`` -- by :user:`asvetlov`
