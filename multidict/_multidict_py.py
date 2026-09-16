@@ -758,21 +758,17 @@ class _HtKeys(Generic[_V]):
             if update:
                 hash_ &= MAXSIZE
             i = hash_ & mask
-            perturb = hash_
             while indices[i] != -1:
-                perturb >>= 5
-                i = mask & (i * 5 + perturb + 1)
+                i = (i + 1) & mask
             indices[i] = idx
 
     def find_empty_slot(self, hash_: int) -> int:
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_
         ix = indices[i]
         while ix != -1:
-            perturb >>= 5
-            i = (i * 5 + perturb + 1) & mask
+            i = (i + 1) & mask
             ix = indices[i]
         return i
 
@@ -781,26 +777,22 @@ class _HtKeys(Generic[_V]):
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_
         ix = indices[i]
         while ix != -1:
             if ix != -2:
                 e = entries[ix]
                 if e.hash == hash_:
                     yield i, ix, e
-            perturb >>= 5
-            i = (i * 5 + perturb + 1) & mask
+            i = (i + 1) & mask
             ix = indices[i]
 
     def del_idx(self, hash_: int, idx: int) -> None:
         mask = self.mask
         indices = self.indices
         i = hash_ & mask
-        perturb = hash_
         ix = indices[i]
         while ix != idx:
-            perturb >>= 5
-            i = (i * 5 + perturb + 1) & mask
+            i = (i + 1) & mask
             ix = indices[i]
         indices[i] = -2
 
@@ -813,15 +805,13 @@ class _HtKeys(Generic[_V]):
         indices = self.indices
         entries = self.entries
         i = hash_ & mask
-        perturb = hash_
         ix = indices[i]
         while ix != -1:
             if ix != -2:
                 entry = entries[ix]
                 if entry.hash & HASH_MARK:
                     entry.hash = hash_
-            perturb >>= 5
-            i = (i * 5 + perturb + 1) & mask
+            i = (i + 1) & mask
             ix = indices[i]
 
 
