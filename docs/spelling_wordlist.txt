@@ -1,6 +1,7 @@
 armv
 aarch
 aarch64
+abstractmethod
 i686
 ppc64le
 s390x
