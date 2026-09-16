@@ -428,7 +428,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
         if (steps < HT_RESUME_SLOTS_MIN_STEPS || nbytes == 0) {
             return (Py_ssize_t)i;
         }
-        resume_slots = keys->resume_slots = PyMem_Calloc(1, nbytes);
+        resume_slots = keys->resume_slots = PyMem_Malloc(nbytes);
         if (resume_slots == NULL) {
             return (Py_ssize_t)i;
         }
