@@ -596,13 +596,6 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
         return -1;
     }
 
-    /* Finalize newkeys's usable/nentries before publishing it to
-       md->keys and before _md_retire() below, which can also suspend
-       this thread's critical section (same mechanism as the alloc
-       above, this time around freeing oldkeys). Otherwise a
-       concurrent insert could observe newkeys published with its
-       stale, fresh-from-htkeys_new() values during that window and
-       corrupt already-copied entries. */
     newkeys->usable = newkeys->usable - numentries;
     newkeys->nentries = numentries;
 
