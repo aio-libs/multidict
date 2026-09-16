@@ -564,108 +564,74 @@ _md_entry_try_get_ref(PyObject** addr)
 static inline int
 _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
 {
-    for (;;) {
-        if (log2_newsize >= SIZEOF_SIZE_T * 8) {
-            PyErr_NoMemory();
-            return -1;
-        }
-        assert(log2_newsize >= HT_LOG_MINSIZE);
+    if (log2_newsize >= SIZEOF_SIZE_T * 8) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    assert(log2_newsize >= HT_LOG_MINSIZE);
 
-        /* Allocating the new table can transiently suspend our critical
-           section on md: PyMem_Malloc() may block acquiring an internal
-           allocator lock, and CPython suspends critical sections around
-           blocking lock acquisitions on the free-threaded build (see
-           Include/cpython/critical_section.h). While suspended, another
-           thread that also locks md can run an entire add()/pop()/
-           update()/extend()/merge() to completion, mutating or replacing
-           md->keys. Therefore nothing read from md before this call may
-           be trusted afterward: oldkeys and numentries are (re-)read only
-           below, once the critical section is guaranteed to be held
-           again. */
-        htkeys_t* newkeys = htkeys_new(log2_newsize);
-        assert(newkeys);
-        if (newkeys == NULL) {
-            return -1;
-        }
+    htkeys_t* newkeys = htkeys_new(log2_newsize);
+    if (newkeys == NULL) {
+        return -1;
+    }
 
-        htkeys_t* oldkeys = md->keys;
-        Py_ssize_t numentries = md->used;
-        if (newkeys->usable < numentries) {
-            /* A concurrent operation grew md while our critical section
-               was suspended during the allocation above, so the table we
-               just built is already too small. Discard it and retry with
-               a fresh estimate based on the current size. newkeys was
-               never published, so freeing it directly (not via
-               _md_retire()) is safe even under Py_GIL_DISABLED. */
-            htkeys_free(newkeys);
-            log2_newsize = estimate_log2_keysize(numentries);
-            continue;
-        }
-
-        entry_t* oldentries = htkeys_entries(oldkeys);
-        entry_t* newentries = htkeys_entries(newkeys);
-        if (oldkeys->nentries == numentries) {
-            memcpy(newentries, oldentries, numentries * sizeof(entry_t));
-        } else {
-            entry_t* new_ep = newentries;
-            entry_t* old_ep = oldentries;
-            Py_ssize_t oldnumentries = oldkeys->nentries;
-            for (Py_ssize_t i = 0; i < oldnumentries; ++i, ++old_ep) {
-                if (old_ep->identity != NULL) {
-                    *new_ep++ = *old_ep;
-                }
+    htkeys_t* oldkeys = md->keys;
+    Py_ssize_t numentries = md->used;
+    entry_t* oldentries = htkeys_entries(oldkeys);
+    entry_t* newentries = htkeys_entries(newkeys);
+    if (oldkeys->nentries == numentries) {
+        memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+    } else {
+        entry_t* new_ep = newentries;
+        entry_t* old_ep = oldentries;
+        Py_ssize_t oldnumentries = oldkeys->nentries;
+        for (Py_ssize_t i = 0; i < oldnumentries; ++i, ++old_ep) {
+            if (old_ep->identity != NULL) {
+                *new_ep++ = *old_ep;
             }
         }
-
-        if (htkeys_build_indices(newkeys, newentries, numentries, update) <
-            0) {
-            return -1;
-        }
-
-        /* Finalize newkeys's usable/nentries before publishing it to
-           md->keys and before _md_retire() below, which can also suspend
-           this thread's critical section (same mechanism as the alloc
-           above, this time around freeing oldkeys). Otherwise a
-           concurrent insert could observe newkeys published with its
-           stale, fresh-from-htkeys_new() values during that window and
-           corrupt already-copied entries. */
-        newkeys->usable = newkeys->usable - numentries;
-        newkeys->nentries = numentries;
-
-#ifdef Py_GIL_DISABLED
-        _md_store_keys(md, newkeys);
-#else
-        md->keys = newkeys;
-#endif
-
-#ifdef Py_GIL_DISABLED
-        /* Bump the version on every resize, not just when a caller's
-           own insert/delete/replace would bump it anyway: a freed
-           htkeys_t can get reallocated at the very same address by a
-           later resize (same size class, common in practice), so code
-           elsewhere that detects "did md->keys change under me" by
-           comparing the raw pointer alone (see _md_replace()'s and
-           _md_update()'s comments) needs a companion signal that can't
-           coincidentally repeat. */
-        md->version = NEXT_VERSION(md->state);
-
-        /* Ownership of oldkeys's entries has already moved to newkeys via
-           the memcpy/copy loop above; zeroing nentries tells
-           _md_retire()'s cleanup there is nothing left to decref, only
-           memory to free. */
-        if (oldkeys != &empty_htkeys) {
-            oldkeys->nentries = 0;
-        }
-        _md_retire(md, oldkeys);
-#else
-        if (oldkeys != &empty_htkeys) {
-            htkeys_free(oldkeys);
-        }
-#endif
-
-        ASSERT_CONSISTENT(md, update);
-        return 0;
     }
+
+    if (htkeys_build_indices(newkeys, newentries, numentries, update) < 0) {
+        return -1;
+    }
+
+    newkeys->usable = newkeys->usable - numentries;
+    newkeys->nentries = numentries;
+
+#ifdef Py_GIL_DISABLED
+    _md_store_keys(md, newkeys);
+#else
+    md->keys = newkeys;
+#endif
+
+#ifdef Py_GIL_DISABLED
+    /* Bump the version on every resize, not just when a caller's
+       own insert/delete/replace would bump it anyway: a freed
+       htkeys_t can get reallocated at the very same address by a
+       later resize (same size class, common in practice), so code
+       elsewhere that detects "did md->keys change under me" by
+       comparing the raw pointer alone (see _md_replace()'s and
+       _md_update()'s comments) needs a companion signal that can't
+       coincidentally repeat. */
+    md->version = NEXT_VERSION(md->state);
+
+    /* Ownership of oldkeys's entries has already moved to newkeys via
+       the memcpy/copy loop above; zeroing nentries tells
+       _md_retire()'s cleanup there is nothing left to decref, only
+       memory to free. */
+    if (oldkeys != &empty_htkeys) {
+        oldkeys->nentries = 0;
+    }
+    _md_retire(md, oldkeys);
+#else
+    if (oldkeys != &empty_htkeys) {
+        htkeys_free(oldkeys);
+    }
+#endif
+
+    ASSERT_CONSISTENT(md, update);
+    return 0;
 }
 
 static inline int

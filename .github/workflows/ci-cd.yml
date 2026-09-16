@@ -598,7 +598,7 @@ jobs:
       shell: bash
     - name: Upload core dump on crash
       if: failure() && steps.check-core.outputs.found == 'true'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: asan-coredump
         path: |
@@ -718,7 +718,7 @@ jobs:
       shell: bash
     - name: Upload core dump on crash
       if: failure() && steps.check-core.outputs.found == 'true'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: tsan-coredump
         path: |
