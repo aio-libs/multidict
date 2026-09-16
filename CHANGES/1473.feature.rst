@@ -1,0 +1,6 @@
+Switched the internal hash table probe sequence used by
+:class:`~multidict.MultiDict` and :class:`~multidict.CIMultiDict` from
+CPython dict's perturbation-based probing to linear probing after the
+initial slot, improving cache locality for collision chains, most
+notably when many values are added under the same key
+-- by :user:`asvetlov`.

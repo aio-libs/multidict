@@ -36,7 +36,6 @@ typedef struct entry {
 
 #define HT_LOG_MINSIZE 3
 #define HT_MINSIZE 8
-#define HT_PERTURB_SHIFT 5
 
 typedef struct _htkeys {
     /* Size of the hash table (indices). It must be a power of 2. */
@@ -386,9 +385,8 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
         }
 #endif
         size_t i = hash & mask;
-        for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
-            perturb >>= HT_PERTURB_SHIFT;
-            i = mask & (i * 5 + perturb + 1);
+        while (htkeys_get_index(keys, i) != DKIX_EMPTY) {
+            i = (i + 1) & mask;
         }
         htkeys_set_index(keys, i, ix);
     }
@@ -404,9 +402,8 @@ htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
     const size_t mask = htkeys_mask(keys);
     size_t i = hash & mask;
     Py_ssize_t ix = htkeys_get_index(keys, i);
-    for (size_t perturb = hash; ix >= 0 || ix == DKIX_DUMMY;) {
-        perturb >>= HT_PERTURB_SHIFT;
-        i = (i * 5 + perturb + 1) & mask;
+    while (ix >= 0 || ix == DKIX_DUMMY) {
+        i = (i + 1) & mask;
         ix = htkeys_get_index(keys, i);
     }
     return i;
@@ -427,7 +424,6 @@ typedef struct _htkeysiter {
     htkeys_t* keys;
     size_t mask;  // htkeys_mask(keys)
     size_t slot;  // masked hash, Py_hash_t h & mask;
-    size_t perturb;
     Py_ssize_t index;
 } htkeysiter_t;
 
@@ -436,7 +432,6 @@ htkeysiter_init(htkeysiter_t* iter, htkeys_t* keys, Py_hash_t hash)
 {
     iter->keys = keys;
     iter->mask = htkeys_mask(keys);
-    iter->perturb = (size_t)hash;
     iter->slot = hash & iter->mask;
     iter->index = htkeys_get_index(iter->keys, iter->slot);
 }
@@ -444,8 +439,7 @@ htkeysiter_init(htkeysiter_t* iter, htkeys_t* keys, Py_hash_t hash)
 static inline void
 htkeysiter_next(htkeysiter_t* iter)
 {
-    iter->perturb >>= HT_PERTURB_SHIFT;
-    iter->slot = (iter->slot * 5 + iter->perturb + 1) & iter->mask;
+    iter->slot = (iter->slot + 1) & iter->mask;
     iter->index = htkeys_get_index(iter->keys, iter->slot);
 }
 
