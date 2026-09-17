@@ -299,6 +299,40 @@ def test_cimultidict_delitem_istr(
             del md[i]
 
 
+def test_multidict_setitem_str(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    md_base = any_multidict_class((str(i), str(i)) for i in range(100))
+    items = [(str(i), str(i) + " new") for i in range(100)]
+
+    @benchmark
+    def _run() -> None:
+        md = md_base.copy()
+        for key, val in items:
+            md[key] = val
+
+
+def test_cimultidict_setitem_istr(
+    benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
+    case_insensitive_str_class: type[istr],
+) -> None:
+    md_base = case_insensitive_multidict_class(
+        (case_insensitive_str_class(i), case_insensitive_str_class(i))
+        for i in range(100)
+    )
+    items = [
+        (case_insensitive_str_class(i), case_insensitive_str_class(str(i) + " new"))
+        for i in range(100)
+    ]
+
+    @benchmark
+    def _run() -> None:
+        md = md_base.copy()
+        for key, val in items:
+            md[key] = val
+
+
 def test_multidict_getall_str_hit(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
