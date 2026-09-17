@@ -432,6 +432,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
         if (resume_slots == NULL) {
             return (Py_ssize_t)i;
         }
+        memset(resume_slots, 0, nbytes);
     }
     if (small) {
         ((uint16_t*)resume_slots)[start] = (uint16_t)(i + 1);
