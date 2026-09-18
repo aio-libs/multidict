@@ -14,6 +14,369 @@ Changelog
 
 .. towncrier release notes start
 
+6.8.1.dev0
+==========
+
+*(2026-09-18)*
+
+
+Bug fixes
+---------
+
+- Protected ``repr()`` of ``MultiDict``, ``MultiDictProxy``, and their views
+  in the C extension with a critical section, avoiding data races on the
+  free-threaded build of CPython -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1431`.
+
+- Guarded ``repr()`` of ``MultiDictProxy`` in the C extension and of
+  ``KeysView`` in both the C extension and the pure-Python
+  implementation against infinite recursion on self-referential
+  containers, matching the existing guard on ``MultiDict``,
+  ``ItemsView``, and ``ValuesView`` -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1431`.
+
+- Protected ``MultiDict.update()``, ``.extend()``, ``.merge()``, ``.clear()``,
+  ``.copy()``, and the ``MultiDict``/``CIMultiDict`` constructors in the C
+  extension with a critical section, using the two-object form when a
+  second multidict, multidict proxy, or plain ``dict`` instance is
+  involved, avoiding data races and a segmentation fault on the
+  free-threaded build of CPython. ``.clear()`` now also publishes the
+  empty table before releasing any entry's references, so a concurrent
+  caller can never observe a partially-cleared multidict even if releasing
+  a value runs arbitrary Python code that suspends the held critical
+  section -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1433`.
+
+- Protected ``MultiDict.add()``, ``__setitem__``/``__delitem__``,
+  ``get()``/``getone()``/``__getitem__``, ``__contains__``, ``getall()``,
+  ``setdefault()``, ``pop()``/``popone()``/``popall()``/``popitem()``,
+  ``__eq__``, iteration, and the ``&``/``|``/``-``/``^``/``in``/
+  ``isdisjoint()`` operations on ``.keys()`` and ``.items()`` views in the
+  C extension with a critical section, avoiding data races and
+  use-after-free crashes on the free-threaded build of CPython
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1438`.
+
+- Fixed a data race on the free-threaded build where ``MultiDictObject.used``
+  was written non-atomically while ``len()`` read it with a relaxed atomic
+  load -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1441`.
+
+- Fixed several pre-existing use-after-free races on the free-threaded build: ``_md_resize()``
+  and ``md_clone_from_ht()`` could allocate a new hash table, have their
+  critical section transiently suspended during that allocation, and then use
+  a keys-table pointer or size a concurrent operation had already invalidated;
+  ``_md_del_at()`` (plain ``del``/``pop()``) could likewise leave ``self`` in
+  an inconsistent state across a suspending decref -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1441`.
+
+- Fixed a data race on the free-threaded build where ``md->keys`` was
+  published with a plain store while lock-free readers loaded it
+  atomically, and a false-negative race in ``get()``/``__contains__``
+  where a hash temporarily marked by a concurrent replace could make a
+  present key look absent -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1441`.
+
+- Fixed several more pre-existing use-after-free and data-corruption races on
+  the free-threaded build, this time in the ``__setitem__()``/``update()``/
+  ``extend()``/``merge()`` replace path: a decref suspending the critical
+  section mid-replace could leave a stale table pointer in use, misplace a
+  temporarily-marked entry during a concurrent resize, or let one thread's
+  duplicate-tracking mark get overwritten by an unrelated key's entry sharing
+  the same hash bucket -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1441`.
+
+- Fixed an unbounded memory leak on the free-threaded build where a retired
+  hash table could sit on ``md->retired`` for the rest of the object's
+  lifetime under sustained concurrent read traffic instead of being freed
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1443`.
+
+- Fixed a data race on the free-threaded build of the C extension where
+  ``state->global_version``, the version counter shared by every
+  multidict instance and used to derive ``getversion()``, was bumped with
+  a plain increment instead of an atomic op. Two threads mutating
+  different instances at the same time could step on each other's update
+  and hand out a duplicate (or non-monotonic) version number
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1444`.
+
+- Fixed a data race on the free-threaded build of the C extension where
+  ``getall()``/``popall()`` and ``update()``/``extend()``/``merge()``
+  temporarily marked and unmarked a matching entry's hash with a plain,
+  non-atomic store, while a lock-free ``__contains__``/``get()`` on another
+  thread could load that same field with an atomic operation and no lock at
+  all -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1448`.
+
+- Fixed a data race in the pure-Python ``MultiDict``/``CIMultiDict``
+  fallback where concurrent mutating calls (``add()``, ``__setitem__``,
+  ``__delitem__``, ``setdefault()``, ``pop()``/``popone()``,
+  ``popall()``, ``popitem()``, ``update()``, ``extend()``, ``merge()``,
+  ``clear()``, and re-``__init__``) could corrupt the shared hash table,
+  or silently drop a concurrent write, on a regular, GIL-enabled
+  interpreter. Pure-Python bytecode is not atomic under the GIL, so two
+  threads could interleave mid hash-table insert or deletion, leaving
+  the index table pointing at stale or out-of-range entries and causing
+  an infinite probe loop, an ``AttributeError``, or a lost mutation.
+  Each ``MultiDict``/``CIMultiDict`` instance now holds its own lock for
+  the duration of these operations, with two-object operations locking
+  both instances in a fixed order to avoid deadlock. The C extension
+  already serializes these operations with a critical section and was
+  not affected
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1449`.
+
+- Fixed a data race on the free-threaded build of the C extension where
+  ``to_dict()`` cleared every entry's temporary "seen" mark with a plain,
+  non-atomic store, while a lock-free ``__contains__``/``get()`` on another
+  thread could load that same field with an atomic operation and no lock at
+  all -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1450`.
+
+- Fixed a data race on the free-threaded build of the C extension where
+  ``update()``/``extend()``/``merge()`` read ``self``'s module state without
+  holding ``self``'s lock, while a concurrent ``__init__()`` on the same,
+  already-published multidict could rewrite that same field under lock.
+  Rather than routing every read through a lock-free lookup, the field is
+  now written only once, at object construction, and never touched again by
+  ``__init__()``, so it is safe to read unlocked anywhere -- by
+  :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1452`.
+
+- Fixed ``items()`` set algebra (``&``, ``|``, ``-``, ``in``, ``isdisjoint()``) so it no
+  longer corrupts or hangs when a compared value's ``__eq__()`` re-enters the
+  same :class:`~multidict.MultiDict`, for example by calling ``getall()`` on
+  it. The comparison now runs only after the internal hash-chain walk has
+  been fully materialized and restored, so the callback can no longer
+  observe entries the walk still has marked -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1453`.
+
+- Fixed a data race on the free-threaded build of the C extension where
+  ``popall()``/``popone()``/``__delitem__``/``add()`` rewrote a hash table
+  index slot with a plain, non-atomic store, while a lock-free
+  ``get()``/``getone()``/``__getitem__``/``__contains__`` on another thread
+  walked that same index array with a plain, non-atomic load and no lock at
+  all -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1454`.
+
+- Stopped folding the case of :class:`~multidict.istr` keys in the
+  case-sensitive :class:`~multidict.MultiDict`, so both the C and the pure
+  Python implementations now keep such a key exactly as given
+  -- by :user:`youdie006`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1457`.
+
+- Fixed the C extension's ``update()`` (and ``merge()``, which shares the same
+  code path) silently failing to invalidate an in-progress ``keys()``/
+  ``items()``/``values()`` iterator when the call only overwrote an
+  already-present key's value in place. Adding a new key already invalidated
+  iterators correctly; only the in-place overwrite branch was missing the
+  version bump -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1458`.
+
+- Fixed the pure-Python ``MultiDict``/``CIMultiDict`` iterator guard so that
+  mutating the mapping before the first ``next()`` call on an ``items()``,
+  ``keys()``, or ``values()`` iterator (or on ``iter(md)``) now reliably raises
+  ``RuntimeError``, matching the C extension. Previously a mutation that
+  happened before the iterator was ever advanced, such as ``clear()`` or a
+  ``del``/``popone()`` that removed the only remaining entry, could make the
+  iterator silently raise ``StopIteration`` instead -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1459`.
+
+- Fixed a use-after-free race on the free-threaded build of the C extension
+  where a retired hash table could be freed while a lock-free
+  ``get()``/``getone()``/``__getitem__``/``__contains__`` reader on another
+  thread was still walking it: the coarse "no reader in flight" gate
+  reaching zero did not reliably mean every such reader had also reached
+  its own per-table exit, so a table whose own reader count is still
+  nonzero is now deferred for a later retry instead of freed
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1461`.
+
+
+Features
+--------
+
+- Added a :meth:`~multidict.MultiDict.to_dict` method returning a plain
+  :class:`dict` that maps every key to the list of all its values. Unlike
+  ``dict(md)``, which keeps only the first value per key, and unlike a
+  ``{k: md.getall(k) for k in md}`` comprehension, which emits one entry per
+  spelling of a case-insensitive key, it groups by key identity
+  -- by :user:`rodrigobnogueira`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`783`.
+
+- ``MultiDict``, ``CIMultiDict``, ``MultiDictProxy`` and ``CIMultiDictProxy`` in the
+  C extension implemented the vectorcall calling convention for construction.
+  This sped up ``MultiDict(...)``-style calls by avoiding an intermediate
+  positional-arguments tuple and keyword-arguments dictionary in the common case; the gained burst is ~10.
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1436`.
+
+- Made ``MultiDict.__contains__()``, ``.get()``, ``.getone()`` and
+  ``__getitem__()`` lock-free on CPython 3.14+'s free-threaded build, instead
+  of taking a critical section like the rest of the C extension's API (on
+  3.13, which lacks the public API these need to safely read an entry
+  concurrently, they still take the critical section, exactly as before). A
+  resize/shrink/clear no longer frees the outgoing hash table immediately; it
+  is deferred until no lock-free reader could still be walking it -- by
+  :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1441`.
+
+- Made the pure-Python ``MultiDict``/``CIMultiDict`` implementation safe to
+  use from multiple threads under a free-threaded (no-GIL) build. Every
+  method that touches an instance's hash table now takes that instance's own
+  lock, two-object operations (``update()``, ``extend()``, ``merge()``,
+  ``__eq__()``, copying) lock both objects in a fixed, deadlock-safe order,
+  and the version counter shared by every instance is guarded separately. On
+  a regular (GIL-enabled) interpreter this adds no overhead: the locked
+  methods are the exact same function objects as before -- by
+  :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1447`.
+
+- Sped up adding many values for the same key to a
+  :class:`~multidict.MultiDict` or :class:`~multidict.CIMultiDict`, each
+  added value no longer gets slower than the one before it
+  -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1466`.
+
+
+Improved documentation
+----------------------
+
+- Added the plural form "fallbacks" to the docs spell checker's allowed
+  word list so :file:`CHANGES.rst` builds cleanly -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1439`.
+
+
+Contributor-facing changes
+--------------------------
+
+- Added race tests that iterate and extend a :class:`~multidict.MultiDict`
+  from several threads on a free-threaded build, so a regression in the C
+  extension's locking fails a free-threaded CI leg instead of going unnoticed
+  -- by :user:`rodrigobnogueira`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1317`.
+
+- Added ``AddressSanitizer``/``UndefinedBehaviorSanitizer`` and
+  ``ThreadSanitizer`` CI jobs. The former runs the suite under a
+  regular CPython with ``MULTIDICT_ASAN_BUILD=1``; the latter builds a
+  free-threaded CPython instrumented with ``--with-thread-sanitizer``
+  and runs the suite against it via ``MULTIDICT_TSAN_BUILD=1`` -- by
+  :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1455`.
+
+- Added Hypothesis-based property and stateful fuzz tests covering
+  :class:`~multidict.MultiDict`/:class:`~multidict.CIMultiDict` semantics,
+  views, iterators, and threaded stress scenarios, run against both the
+  C-extension and pure-Python backends -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1460`.
+
+- Added core dump collection to the AddressSanitizer and ThreadSanitizer
+  CI jobs: a crash now uploads the core file alongside the crashing
+  interpreter binary and the compiled extension as a downloadable
+  artifact, for offline debugging with a matching symbol-carrying binary
+  instead of raw hex offsets -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1462`.
+
+- Added benchmarks for adding many values for the same key and for
+  creating a multidict with many items -- by :user:`bdraco`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1465`.
+
+- Skipped abstractmethods from coverage leaks report, they are empty placeholders that are never executed -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1470`.
+
+- Add benchmarks for ``__setitem__`` -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1471`.
+
+- The AddressSanitizer and ThreadSanitizer CI jobs were changed to run pytest
+  with ``--capture=no``. Previously a sanitizer abort could exit the process
+  before pytest flushed its per-test output buffer, silently dropping the
+  sanitizer report from the job log -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1472`.
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Replaced ``PyIter_Next()`` calls with the newer ``PyIter_NextItem()`` API in
+  the C extension, so the iterator-exhausted and error cases are told apart by
+  the return code instead of an ambiguous ``NULL`` result -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1440`.
+
+
+----
+
+
 6.8.0
 =====
 

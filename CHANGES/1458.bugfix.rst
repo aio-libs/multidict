@@ -1,6 +1,0 @@
-Fixed the C extension's ``update()`` (and ``merge()``, which shares the same
-code path) silently failing to invalidate an in-progress ``keys()``/
-``items()``/``values()`` iterator when the call only overwrote an
-already-present key's value in place. Adding a new key already invalidated
-iterators correctly; only the in-place overwrite branch was missing the
-version bump -- by :user:`asvetlov`.

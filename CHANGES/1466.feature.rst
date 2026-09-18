@@ -1,4 +1,0 @@
-Sped up adding many values for the same key to a
-:class:`~multidict.MultiDict` or :class:`~multidict.CIMultiDict`, each
-added value no longer gets slower than the one before it
--- by :user:`bdraco`.

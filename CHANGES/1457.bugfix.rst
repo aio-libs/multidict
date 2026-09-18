@@ -1,4 +1,0 @@
-Stopped folding the case of :class:`~multidict.istr` keys in the
-case-sensitive :class:`~multidict.MultiDict`, so both the C and the pure
-Python implementations now keep such a key exactly as given
--- by :user:`youdie006`.
