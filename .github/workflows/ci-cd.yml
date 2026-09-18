@@ -457,6 +457,13 @@ jobs:
       uses: py-actions/py-dependency-install@v4
       with:
         path: requirements/pytest.txt
+    - name: Install Hypothesis
+      # Kept out of requirements/pytest.txt: hypothesis now ships a Rust
+      # extension, and pulling it into jobs that never run `-m hypothesis`
+      # (wheel-testing in particular) forces a from-source build with
+      # maturin/rustup on platforms lacking a prebuilt wheel, e.g.
+      # musllinux i686.
+      run: python -m pip install -r requirements/pytest-hypothesis.txt
     - name: Self-install
       run: python -m pip install -e .
     - name: Run the Hypothesis test suite
@@ -506,6 +513,10 @@ jobs:
       uses: py-actions/py-dependency-install@v4
       with:
         path: requirements/pytest.txt
+    - name: Install Hypothesis
+      # See the same step in the `hypothesis-gil` job for why this is kept
+      # out of requirements/pytest.txt.
+      run: python -m pip install -r requirements/pytest-hypothesis.txt
     - name: Self-install
       run: python -m pip install -e .
     - name: Run the Hypothesis test suite
