@@ -1,5 +1,0 @@
-Fixed a data race on the free-threaded build of the C extension where
-``to_dict()`` cleared every entry's temporary "seen" mark with a plain,
-non-atomic store, while a lock-free ``__contains__``/``get()`` on another
-thread could load that same field with an atomic operation and no lock at
-all -- by :user:`asvetlov`.

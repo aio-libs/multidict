@@ -1,3 +1,0 @@
-Fixed a data race on the free-threaded build where ``MultiDictObject.used``
-was written non-atomically while ``len()`` read it with a relaxed atomic
-load -- by :user:`asvetlov`.

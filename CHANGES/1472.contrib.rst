@@ -1,4 +1,0 @@
-The AddressSanitizer and ThreadSanitizer CI jobs were changed to run pytest
-with ``--capture=no``. Previously a sanitizer abort could exit the process
-before pytest flushed its per-test output buffer, silently dropping the
-sanitizer report from the job log -- by :user:`asvetlov`.
