@@ -51,6 +51,9 @@ instance.
 
 The library has optional C Extensions for sake of speed.
 
+Other C extensions can build against multidict's own :ref:`C API
+<multidict-capi>` to create and manipulate multidicts directly.
+
 Library Installation
 --------------------
 
@@ -99,6 +102,7 @@ Contents
 .. toctree::
 
    multidict
+   capi
    benchmark
    changes
 

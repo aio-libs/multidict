@@ -6,6 +6,7 @@ multidict. It behaves mostly like a dict but it can have
 several values for the same key.
 """
 
+import os
 from typing import TYPE_CHECKING
 
 from ._abc import MultiMapping, MutableMultiMapping
@@ -18,6 +19,7 @@ __all__ = (
     "MultiDictProxy",
     "MultiMapping",
     "MutableMultiMapping",
+    "get_include",
     "getversion",
     "istr",
     "upstr",
@@ -58,3 +60,12 @@ else:
 
 
 upstr = istr
+
+
+def get_include() -> str:
+    """Return the directory containing multidict's C API headers.
+
+    Pass it as an ``-I`` include path when building a C extension
+    against ``multidict_capi.h``.
+    """
+    return os.path.dirname(os.path.abspath(__file__))

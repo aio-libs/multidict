@@ -116,6 +116,7 @@ stateful
 str
 subclassable
 subclassed
+subclasses
 subclassing
 subdirectory
 subprotocol

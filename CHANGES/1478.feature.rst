@@ -1,0 +1,9 @@
+Added a public C API capsule for third-party C extensions, covering type
+checks and constructors for ``MultiDict``, ``CIMultiDict``,
+``MultiDictProxy``, ``CIMultiDictProxy`` and ``istr``; ``getversion()``
+and ``len()`` for the first four; and ``add()``, ``clear()``,
+``setdefault()`` and single-item access (``in``, ``[]``, ``del``,
+``pop()``) for the mutable types. ``GetItem``, ``Pop`` and
+``SetDefault`` follow the ``PyDict_GetItemRef`` / ``PyDict_SetDefaultRef``
+design, reporting a missing key through the return code rather than an
+exception -- by :user:`asvetlov`.

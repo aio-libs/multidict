@@ -50,6 +50,13 @@ extensions = [
         extra_compile_args=CFLAGS,
         extra_link_args=LDFLAGS,
     ),
+    # Exercises the public C API capsule from tests; not for normal use.
+    Extension(
+        "multidict._testcapi",
+        ["multidict/_testcapi.c"],
+        extra_compile_args=CFLAGS,
+        extra_link_args=LDFLAGS,
+    ),
 ]
 
 

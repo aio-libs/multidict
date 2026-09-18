@@ -56,6 +56,11 @@ Useful entry points:
 | `multidict/_multilib/iter.h`          | views and iterators for the C impl                              |
 | `multidict/_multilib/parser.h`        | argument parsing for ``extend`` / ``update`` / constructors     |
 | `multidict/_multilib/pythoncapi_compat.h` | vendored upstream; do not edit                              |
+| `multidict/multidict_capi.h`          | public C API header; client-facing inline wrappers               |
+| `multidict/multidict_capi_struct.h`   | public C API; shared ``MultiDict_CAPI`` struct layout            |
+| `multidict/_multilib/capsule.h`       | public C API implementation, populates the capsule                |
+| `multidict/_testcapi.c`               | C-extension-only harness exercising the C API from tests          |
+| `docs/capi.rst`                       | public C API reference docs                                       |
 | `tests/`                              | pytest suite, parametrised across both backends                 |
 | `CHANGES/`                            | towncrier news fragments, one per PR                            |
 
@@ -333,6 +338,53 @@ other needs the same change:
 If you can only fix one backend in scope, file a follow-up issue
 and call it out in the PR body. Do not silently leave the
 implementations divergent.
+
+## Public C API
+
+`multidict` also exposes a small public C API for other C extensions
+to call directly, without going through the Python-level API. It is
+published as a capsule (`multidict._multidict.CAPI`) and reached
+through two installed headers:
+
+- `multidict/multidict_capi.h`: the header a client includes;
+  declares the inline wrapper functions (`MultiDict_New`,
+  `MultiDict_Add`, `MultiDict_Check`, ...).
+- `multidict/multidict_capi_struct.h`: declares the `MultiDict_CAPI`
+  struct layout itself. Included by both `multidict_capi.h` and by
+  `multidict`'s own implementation (`_multilib/capsule.h`); a client
+  never includes it directly.
+- `multidict/_multilib/capsule.h`: the implementation side --
+  populates the capsule's function table from `_multidict.c`'s
+  `module_exec`.
+- `multidict/_testcapi.c`: builds as `multidict._testcapi`, a
+  C-extension-only helper that exercises the capsule from
+  `tests/test_capi.py` (marked `capi`; skipped when the C extension
+  isn't built, and excluded from cibuildwheel's wheel-smoke-test run).
+- `multidict.get_include()` (in `multidict/__init__.py`): returns the
+  directory holding the two headers above, for a client's build to
+  pass as an `-I` include path -- the same role as `numpy.get_include()`.
+  It is plain Python and works the same on both backends; covered by
+  `tests/test_get_include.py`, not gated behind the `capi` marker.
+
+This is a C-extension-only feature: unlike the "Dual-backend
+discipline" above, there is no pure-Python equivalent to keep in
+sync, since capsules are a CPython C API concept. `pytest.importorskip`
+in `tests/test_capi.py` is how the test file gets out of the way on
+the pure-Python leg.
+
+The struct's layout only ever grows at the end, never removes or
+reorders a field, so that a client built against an older
+`multidict_capi_struct.h` keeps working against a newer `multidict`
+runtime. When you add a new entry point:
+
+- Add the function pointer to the end of the `MultiDict_CAPI` struct
+  in `multidict_capi_struct.h`.
+- Implement it in `_multilib/capsule.h` and wire it into
+  `new_capsule()`.
+- Add the inline client-side wrapper to `multidict_capi.h`.
+- Document it in `docs/capi.rst` (Sphinx C domain: `c:function`,
+  `c:type`), which is linked from `docs/index.rst`.
+- Cover it from `multidict/_testcapi.c` and `tests/test_capi.py`.
 
 ## Tests
 
