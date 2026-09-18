@@ -85,6 +85,7 @@ multidicts
 Multidicts
 multipart
 Multipart
+musllinux
 mypy
 Nikolay
 param
@@ -96,6 +97,7 @@ pickable
 pickleable
 postfix
 pre
+prebuilt
 proxied
 pyenv
 pyinstaller
