@@ -1,0 +1,2 @@
+Removed a redundant ``include`` and a duplicated ``exclude`` line from
+``MANIFEST.in``; sdist contents are unchanged -- by :user:`asvetlov`.
