@@ -1,6 +1,0 @@
-Moved the ``hypothesis`` pin out of ``requirements/pytest.txt`` into its own
-``requirements/pytest-hypothesis.txt``, installed only by the dedicated
-Hypothesis CI jobs. ``hypothesis`` now ships a Rust extension with no
-prebuilt wheel for some emulated architectures (e.g. musllinux i686),
-which broke wheel-testing jobs that never run the Hypothesis-marked tests
-in the first place -- by :user:`asvetlov`.

@@ -14,6 +14,7 @@ Changelog
 
 .. towncrier release notes start
 
+
 6.9.0
 ==========
 
@@ -362,6 +363,15 @@ Contributor-facing changes
   *Related issues and pull requests on GitHub:*
   :issue:`1472`.
 
+- Moved the ``hypothesis`` pin out of ``requirements/pytest.txt`` into its own
+  ``requirements/pytest-hypothesis.txt``, installed only by the dedicated
+  Hypothesis CI jobs. ``hypothesis`` now ships a Rust extension with no
+  prebuilt wheel for some emulated architectures (e.g. musllinux i686),
+  which broke wheel-testing jobs that never run the Hypothesis-marked tests
+  in the first place -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1475`.
 
 Miscellaneous internal changes
 ------------------------------
