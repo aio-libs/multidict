@@ -372,7 +372,6 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`1475`.
-	 
 
 Miscellaneous internal changes
 ------------------------------
