@@ -62,3 +62,27 @@ cdef extern from "multidict_capi.h":
     # iteration
     Py_ssize_t MultiDict_ForEach(MultiDict_CAPI *capi, object self, PyObject *key,
                                  MultiDict_ItemVisitor visitor, void *user_data) except -1
+
+
+# Passing a `capi` pointer to every single call above gets tedious fast.
+# `capi()` caches it lazily -- one MultiDict_GetCAPI() call per compiled
+# extension module that cimports it, not per call -- so callers can just
+# write e.g. `MultiDict_New(capi(), 2)`. This has to be a plain `cdef
+# extern` C function with its own `static` cache rather than a Cython-level
+# `cdef inline` function sharing a module-level `cdef` variable: this .pxd
+# has no compiled .pyx of its own (multidict/__init__.py is plain Python),
+# so there is no `multidict.__pyx_capi__` for Cython to link such a shared
+# variable against.
+cdef extern from *:
+    """
+    static inline MultiDict_CAPI *
+    __Pyx_multidict_capi(void)
+    {
+        static MultiDict_CAPI *cached = NULL;
+        if (cached == NULL) {
+            cached = MultiDict_GetCAPI();
+        }
+        return cached;
+    }
+    """
+    MultiDict_CAPI *capi "__Pyx_multidict_capi" () except NULL
