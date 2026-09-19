@@ -1,3 +1,4 @@
+from cpython.exc cimport PyErr_SetObject
 from cpython.object cimport PyObject
 from cpython.ref cimport Py_DECREF, PyTypeObject
 from libc.stdint cimport uint64_t
@@ -60,7 +61,7 @@ cdef extern from "multidict_capi.h":
     int MultiDict_SetItem(MultiDict_CAPI *capi, object self, object key, object value) except -1
 
     # iteration
-    Py_ssize_t _MultiDict_ForEach "MultiDict_ForEach" (MultiDict_CAPI *capi, object self, PyObject *key,
+    Py_ssize_t MultiDict_ForEach(MultiDict_CAPI *capi, object self, PyObject *key,
                                  MultiDict_ItemVisitor visitor, void *user_data) except -1
 
 
@@ -134,21 +135,55 @@ cdef inline object MultiDict_SetDefault(MultiDict_CAPI *capi, object self, objec
     return (bool(found), _steal(result))
 
 
-# The C API's MultiDict_ForEach takes `key` as a raw `PyObject *` where
-# NULL means "visit every item" -- there's no `object` value for that which
-# wouldn't also risk colliding with an actual `None` key (see
-# docs/cyapi.rst). These two specializations split the two cases into
-# their own signatures so ordinary callers never touch a raw pointer or a
-# NULL sentinel; _MultiDict_ForEach itself is not exposed under its plain
-# name here, since it is not meant to be called directly from Cython.
+# MultiDict_ForEach takes `key` as a raw `PyObject *` where NULL means
+# "visit every item" -- there's no `object` value for that which wouldn't
+# also risk colliding with an actual `None` key (see docs/cyapi.rst). It
+# stays exposed under its own name as the low-level entry point (matching
+# the C API exactly, for direct/advanced use); these two specializations
+# split its two cases into their own, raw-pointer-free signatures for
+# ordinary use instead.
 
 cdef inline Py_ssize_t MultiDict_ForEachAll(MultiDict_CAPI *capi, object self,
                                             MultiDict_ItemVisitor visitor,
                                             void *user_data) except -1:
-    return _MultiDict_ForEach(capi, self, NULL, visitor, user_data)
+    return MultiDict_ForEach(capi, self, NULL, visitor, user_data)
 
 
 cdef inline Py_ssize_t MultiDict_ForEachKey(MultiDict_CAPI *capi, object self, object key,
                                             MultiDict_ItemVisitor visitor,
                                             void *user_data) except -1:
-    return _MultiDict_ForEach(capi, self, <PyObject*>key, visitor, user_data)
+    return MultiDict_ForEach(capi, self, <PyObject*>key, visitor, user_data)
+
+
+# Convenience over ForEachAll/ForEachKey for callers who'd rather pass an
+# ordinary Python callable than write a raw-pointer MultiDict_ItemVisitor:
+# `callback` is (key, value) -> bool-ish, called once per visited item.
+# The trampoline can't just `raise` on a callback exception -- it's
+# assigned to a `noexcept` C function pointer, so Cython would treat that
+# as an unraisable exception here, print it, and clear it rather than
+# propagate it (same reasoning as the raw-visitor note in docs/cyapi.rst).
+# PyErr_SetObject is a raw C call, not a Cython `raise`: it reinstates the
+# caught exception as the current one without going through that
+# noexcept-triggered unraisable-and-clear handling, so the -1 this
+# function then returns has a real exception attached, which
+# MultiDict_ForEachAllPy/KeyPy's `except -1` propagates normally.
+
+cdef inline int _py_visitor_trampoline(void *user_data, PyObject *key, PyObject *value) noexcept:
+    cdef object callback = <object>user_data
+    cdef object keep_going
+    try:
+        keep_going = callback(<object>key, <object>value)
+    except BaseException as exc:
+        PyErr_SetObject(type(exc), exc)
+        return -1
+    return 1 if keep_going else 0
+
+
+cdef inline Py_ssize_t MultiDict_ForEachAllPy(MultiDict_CAPI *capi, object self,
+                                              object callback) except -1:
+    return MultiDict_ForEachAll(capi, self, _py_visitor_trampoline, <void*>callback)
+
+
+cdef inline Py_ssize_t MultiDict_ForEachKeyPy(MultiDict_CAPI *capi, object self, object key,
+                                              object callback) except -1:
+    return MultiDict_ForEachKey(capi, self, key, _py_visitor_trampoline, <void*>callback)

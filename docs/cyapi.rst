@@ -144,21 +144,43 @@ parameters interchangeable with one taking raw ``PyObject *`` parameters
 here, even though both compile, so a visitor must be declared with the
 same raw parameter types as the typedef itself.
 
+- ``MultiDict_ForEach(capi, self, key, visitor, user_data) except -1 -> Py_ssize_t``
+  -- the low-level entry point, declared here exactly like its C
+  counterpart: *key* is a raw ``PyObject *`` where a literal ``NULL``
+  means "visit every item" (which has no ``object`` equivalent that
+  would not also risk colliding with an actual ``None`` key). Pass
+  ``NULL`` directly, or ``<PyObject*>some_key`` for the keyed form.
 - ``MultiDict_ForEachAll(capi, self, visitor, user_data) except -1 -> Py_ssize_t``
-  -- visits every ``(key, value)`` pair of *self*.
+  -- ``MultiDict_ForEach`` with *key* fixed to ``NULL``: visits every
+  ``(key, value)`` pair of *self*, no raw pointer needed.
 - ``MultiDict_ForEachKey(capi, self, key, visitor, user_data) except -1 -> Py_ssize_t``
-  -- visits only the entries for *key*.
+  -- ``MultiDict_ForEach`` with *key* taken as a plain ``object``: visits
+  only the entries for *key*.
 
-These are the only two Cython entry points for iteration -- the C API's
-single :c:func:`MultiDict_ForEach`, whose raw ``PyObject *key`` uses a
-literal ``NULL`` to mean "visit every item" (which has no ``object``
-equivalent that would not also risk colliding with an actual ``None``
-key), is not exposed under its own name here; the two functions above
-split its two cases into their own signatures instead.
+All three take a raw-pointer ``visitor``/``user_data`` pair and return the
+number of items visited (``>= 0``) on success. Prefer ``ForEachAll``/
+``ForEachKey`` for ordinary use; drop to the raw ``MultiDict_ForEach``
+only when code needs to pick between the two cases dynamically, or wants
+to match the C API's signature exactly (for example when translating a
+C example from :ref:`multidict-capi` directly).
 
-Both return the number of items visited (``>= 0``) on success, and both
-execute under one internal lock; *visitor* must not call back into any
-method on *self* while running (see :c:func:`MultiDict_ForEach` for why).
+For callers who would rather pass an ordinary Python callable than write
+a raw-pointer visitor function, two more entry points wrap ``ForEachAll``/
+``ForEachKey`` with a small trampoline:
+
+- ``MultiDict_ForEachAllPy(capi, self, callback) except -1 -> Py_ssize_t``
+- ``MultiDict_ForEachKeyPy(capi, self, key, callback) except -1 -> Py_ssize_t``
+
+*callback* is an ordinary ``(key, value) -> bool``-ish callable -- any
+truthy/falsy return decides continue/stop, and a raised exception
+propagates out of ``ForEachAllPy``/``ForEachKeyPy`` as a genuine Python
+exception, no manual ``PyErr_SetString`` and ``return -1`` required. The
+trade-off is one Python call per visited item instead of a raw C
+callback; reach for the raw ``visitor`` forms above when that matters.
+
+All five execute under one internal lock; *visitor* (or *callback*) must
+not call back into any method on *self* while running (see
+:c:func:`MultiDict_ForEach` for why).
 
 Worked example
 ================

@@ -30,6 +30,8 @@ from multidict cimport (
     MultiDict_SetItem,
     MultiDict_ForEachAll,
     MultiDict_ForEachKey,
+    MultiDict_ForEachAllPy,
+    MultiDict_ForEachKeyPy,
 )
 
 cdef MultiDict_CAPI *_capi = MultiDict_GetCAPI()
@@ -157,3 +159,24 @@ cdef int _raising_visitor(void *user_data, PyObject *key, PyObject *value) noexc
 
 def md_foreach_raises(md):
     MultiDict_ForEachAll(_capi, md, _raising_visitor, NULL)
+
+
+def md_foreach_py(md, key, Py_ssize_t limit):
+    result = []
+
+    def callback(k, v):
+        result.append((k, v))
+        return limit < 0 or len(result) < limit
+
+    if key is None:
+        MultiDict_ForEachAllPy(_capi, md, callback)
+    else:
+        MultiDict_ForEachKeyPy(_capi, md, key, callback)
+    return result
+
+
+def md_foreach_py_raises(md):
+    def callback(k, v):
+        raise RuntimeError("boom from py callback")
+
+    MultiDict_ForEachAllPy(_capi, md, callback)

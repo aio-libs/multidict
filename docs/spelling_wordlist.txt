@@ -46,6 +46,7 @@ eof
 extern
 fallback
 fallbacks
+falsy
 fastpath
 filename
 formatters
@@ -127,6 +128,7 @@ subprotocols
 Svetlov
 toolbar
 toolset
+truthy
 tuples
 typedef
 un

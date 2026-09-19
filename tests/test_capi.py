@@ -418,6 +418,47 @@ def test_md_foreach_raises(api: object) -> None:
         api.md_foreach_raises(md)
 
 
+@pytest.mark.skipif(
+    _testcyapi is None,
+    reason="multidict._testcyapi not built (Cython not available at build time)",
+)
+def test_md_foreach_py_all() -> None:
+    assert _testcyapi is not None
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
+    assert _testcyapi.md_foreach_py(md, None, -1) == list(md.items())
+
+
+@pytest.mark.skipif(
+    _testcyapi is None,
+    reason="multidict._testcyapi not built (Cython not available at build time)",
+)
+def test_md_foreach_py_key() -> None:
+    assert _testcyapi is not None
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
+    assert _testcyapi.md_foreach_py(md, "a", -1) == [("a", "1"), ("a", "3")]
+
+
+@pytest.mark.skipif(
+    _testcyapi is None,
+    reason="multidict._testcyapi not built (Cython not available at build time)",
+)
+def test_md_foreach_py_early_stop() -> None:
+    assert _testcyapi is not None
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("c", "3")])
+    assert _testcyapi.md_foreach_py(md, None, 1) == [("a", "1")]
+
+
+@pytest.mark.skipif(
+    _testcyapi is None,
+    reason="multidict._testcyapi not built (Cython not available at build time)",
+)
+def test_md_foreach_py_raises() -> None:
+    assert _testcyapi is not None
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2")])
+    with pytest.raises(RuntimeError, match="boom from py callback"):
+        _testcyapi.md_foreach_py_raises(md)
+
+
 @pytest.mark.parametrize(
     "name, args",
     [
