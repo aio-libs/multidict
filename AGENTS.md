@@ -60,7 +60,10 @@ Useful entry points:
 | `multidict/multidict_capi_struct.h`   | public C API; shared ``MultiDict_CAPI`` struct layout            |
 | `multidict/_multilib/capsule.h`       | public C API implementation, populates the capsule                |
 | `multidict/_testcapi.c`               | C-extension-only harness exercising the C API from tests          |
+| `multidict/__init__.pxd`              | public C API for Cython, mirrors ``multidict_capi.h``             |
+| `multidict/_testcyapi.pyx`            | optional Cython harness mirroring ``_testcapi.c``                 |
 | `docs/capi.rst`                       | public C API reference docs                                       |
+| `docs/cyapi.rst`                      | public Cython API reference docs                                  |
 | `tests/`                              | pytest suite, parametrised across both backends                 |
 | `CHANGES/`                            | towncrier news fragments, one per PR                            |
 
@@ -360,6 +363,15 @@ through two installed headers:
   C-extension-only helper that exercises the capsule from
   `tests/test_capi.py` (marked `capi`; skipped when the C extension
   isn't built, and excluded from cibuildwheel's wheel-smoke-test run).
+- `multidict/__init__.pxd`: the Cython equivalent of
+  `multidict_capi.h` -- lets third-party Cython code `cimport multidict`
+  and call the same wrapper functions. Ships as `__init__.pxd`
+  specifically (not a sibling `multidict.pxd`), since that's the file
+  name Cython's own package-cimport resolution looks for, mirroring
+  Python's `__init__.py`.
+- `multidict/_testcyapi.pyx`: a Cython mirror of `_testcapi.c`,
+  function-for-function, exercising `__init__.pxd` from
+  `tests/test_capi.py` too (see below on why this is optional).
 - `multidict.get_include()` (in `multidict/__init__.py`): returns the
   directory holding the two headers above, for a client's build to
   pass as an `-I` include path -- the same role as `numpy.get_include()`.
@@ -372,6 +384,32 @@ sync, since capsules are a CPython C API concept. `pytest.importorskip`
 in `tests/test_capi.py` is how the test file gets out of the way on
 the pure-Python leg.
 
+`multidict` was originally implemented in Cython, and was deliberately
+migrated to pure C. `_testcyapi.pyx` does not reverse that: it exists
+solely to prove (and keep proving, via tests) that the capsule is usable
+from Cython, the same relationship any third-party Cython package has to
+`multidict`. Cython is **never** a real dependency of `multidict`:
+`pyproject.toml`'s `[build-system] requires` never lists it, so an
+ordinary install or a release wheel build (cibuildwheel always builds in
+an isolated environment) never sees Cython and `multidict._testcyapi` is
+silently skipped -- release wheels never contain it. To build it locally:
+
+```bash
+pip install -r requirements/cython.txt
+pip install -e . --no-build-isolation --force-reinstall --no-deps
+```
+
+(or `make install-dev-cython`). `--no-build-isolation` is required: an
+isolated build always gets a fresh environment containing only what
+`[build-system] requires` lists, so it would not see an ambiently
+installed Cython either. `tests/test_capi.py`'s `api` fixture
+parametrizes every test across `multidict._testcapi` and (when built)
+`multidict._testcyapi`; the Cython case shows as skipped, not missing,
+when it wasn't built. Set `MULTIDICT_TEST_REQUIRE_CYAPI=1` to turn that
+skip into a hard failure, for a CI job (like `test-cython-capi` in
+`ci-cd.yml`) that deliberately opted into the Cython build and needs to
+know if it silently produced no `_testcyapi`.
+
 The struct's layout only ever grows at the end, never removes or
 reorders a field, so that a client built against an older
 `multidict_capi_struct.h` keeps working against a newer `multidict`
@@ -382,9 +420,11 @@ runtime. When you add a new entry point:
 - Implement it in `_multilib/capsule.h` and wire it into
   `new_capsule()`.
 - Add the inline client-side wrapper to `multidict_capi.h`.
+- Add the matching declaration to `multidict/__init__.pxd`.
 - Document it in `docs/capi.rst` (Sphinx C domain: `c:function`,
   `c:type`), which is linked from `docs/index.rst`.
-- Cover it from `multidict/_testcapi.c` and `tests/test_capi.py`.
+- Cover it from both `multidict/_testcapi.c` and
+  `multidict/_testcyapi.pyx`, and from `tests/test_capi.py`.
 
 ## Tests
 

@@ -61,6 +61,29 @@ extensions = [
 
 
 if not NO_EXTENSIONS:
+    try:
+        from Cython.Build import cythonize
+    except ImportError:
+        cythonize = None
+
+    if cythonize is not None:
+        # Only built when Cython happens to be available at build time
+        # (deliberately, via `pip install Cython` + `--no-build-isolation`
+        # -- see AGENTS.md). Never a real dependency: absent from ordinary
+        # installs and from every release wheel, which build in isolation
+        # without it.
+        extensions += cythonize(
+            [
+                Extension(
+                    "multidict._testcyapi",
+                    ["multidict/_testcyapi.pyx"],
+                    extra_compile_args=CFLAGS,
+                    extra_link_args=LDFLAGS,
+                ),
+            ],
+            language_level=3,
+        )
+
     print("*********************")
     print("* Accelerated build *")
     print("*********************")

@@ -7,5 +7,7 @@ and ``len()`` for the first four; and ``add()``, ``clear()``,
 ``SetDefault`` follow the ``PyDict_GetItemRef`` / ``PyDict_SetDefaultRef``
 design, reporting a missing key through the return code rather than an
 exception. ``MultiDict_ForEach`` visits every item, or just the items for
-one key, through a callback, without allocating a list -- by
-:user:`asvetlov`.
+one key, through a callback, without allocating a list. The same capsule
+is also reachable from Cython via ``multidict/__init__.pxd``, letting
+third-party Cython code ``cimport multidict``; this is optional and never
+a dependency of ``multidict`` itself -- by :user:`asvetlov`.

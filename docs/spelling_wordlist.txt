@@ -43,6 +43,7 @@ dists
 docstrings
 downstreams
 eof
+extern
 fallback
 fallbacks
 fastpath
@@ -125,6 +126,7 @@ Svetlov
 toolbar
 toolset
 tuples
+typedef
 un
 uncompiled
 unparseable

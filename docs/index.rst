@@ -52,7 +52,8 @@ instance.
 The library has optional C Extensions for sake of speed.
 
 Other C extensions can build against multidict's own :ref:`C API
-<multidict-capi>` to create and manipulate multidicts directly.
+<multidict-capi>` to create and manipulate multidicts directly, or
+:ref:`from Cython <multidict-cyapi>`.
 
 Library Installation
 --------------------
@@ -103,6 +104,7 @@ Contents
 
    multidict
    capi
+   cyapi
    benchmark
    changes
 
