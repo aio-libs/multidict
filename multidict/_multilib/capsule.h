@@ -326,14 +326,19 @@ _md_foreach_all(MultiDictObject* md, MultiDict_ItemVisitor visitor,
     md_init_pos(md, &pos);
     while ((found = md_next(md, &pos, NULL, &k, &v)) > 0) {
         count++;
-        int cont = visitor(user_data, k, v);
+        int ret = visitor(user_data, k, v);
         Py_DECREF(k);
         Py_DECREF(v);
-        if (!cont) {
+        if (ret < 0) {
+            assert(PyErr_Occurred());
+            failed = true;
+            break;
+        }
+        if (ret == 0) {
             break;
         }
     }
-    if (found < 0 || PyErr_Occurred()) {
+    if (found < 0) {
         failed = true;
     }
     Py_END_CRITICAL_SECTION();
@@ -360,14 +365,19 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
         int found;
         while ((found = md_find_next(&finder, &k, &v)) > 0) {
             count++;
-            int cont = visitor(user_data, k, v);
+            int ret = visitor(user_data, k, v);
             Py_DECREF(k);
             Py_DECREF(v);
-            if (!cont) {
+            if (ret < 0) {
+                assert(PyErr_Occurred());
+                failed = true;
+                break;
+            }
+            if (ret == 0) {
                 break;
             }
         }
-        if (found < 0 || PyErr_Occurred()) {
+        if (found < 0) {
             failed = true;
         }
         md_finder_cleanup(&finder);

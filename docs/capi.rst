@@ -281,9 +281,9 @@ Iteration
 
    Callback type for :c:func:`MultiDict_ForEach`.
 
-   Return nonzero to keep the walk going, or ``0`` to stop early (not
-   an error by itself). To abort with an error instead, set a Python
-   exception and return ``0``.
+   Return a positive value to keep the walk going, ``0`` to stop early
+   (not an error by itself), or a negative value to abort with an
+   error -- a Python exception must already be set in that case.
 
 .. c:function:: Py_ssize_t MultiDict_ForEach(MultiDict_CAPI *capi, PyObject *self, PyObject *key, MultiDict_ItemVisitor visitor, void *user_data)
 

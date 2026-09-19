@@ -410,6 +410,12 @@ def test_md_foreach_key_early_stop(api: object) -> None:
     assert api.md_foreach(md, "a", 1) == [("a", "1")]
 
 
+def test_md_foreach_raises(api: object) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2")])
+    with pytest.raises(RuntimeError, match="boom from visitor"):
+        api.md_foreach_raises(md)
+
+
 @pytest.mark.parametrize(
     "name, args",
     [

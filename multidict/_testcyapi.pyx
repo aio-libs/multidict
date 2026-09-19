@@ -2,6 +2,7 @@
 # part of the public API and not meant to be imported or relied on outside
 # tests. Mirrors _testcapi.c function-for-function.
 
+from cpython.exc cimport PyErr_SetString
 from cpython.object cimport PyObject
 from cpython.ref cimport Py_DECREF
 
@@ -172,3 +173,16 @@ def md_foreach(md, key, Py_ssize_t limit):
     else:
         MultiDict_ForEachKey(_capi, md, key, _collect_pair, &ctx)
     return result
+
+
+cdef int _raising_visitor(void *user_data, PyObject *key, PyObject *value) noexcept:
+    # A noexcept callback can't just `raise`: Cython would treat that as an
+    # unraisable exception here and clear it instead of propagating it. Set
+    # the exception state directly and report the negative-return contract
+    # ourselves (see docs/cyapi.rst).
+    PyErr_SetString(RuntimeError, "boom from visitor")
+    return -1
+
+
+def md_foreach_raises(md):
+    MultiDict_ForEachAll(_capi, md, _raising_visitor, NULL)

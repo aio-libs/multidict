@@ -274,12 +274,12 @@ collect_pair(void* user_data, PyObject* key, PyObject* value)
     visit_ctx* ctx = (visit_ctx*)user_data;
     PyObject* pair = PyTuple_Pack(2, key, value);
     if (pair == NULL) {
-        return 0;
+        return -1;
     }
     int appended = PyList_Append(ctx->list, pair) == 0;
     Py_DECREF(pair);
     if (!appended) {
-        return 0;
+        return -1;
     }
     if (ctx->limit >= 0 && PyList_GET_SIZE(ctx->list) >= ctx->limit) {
         return 0;
@@ -312,6 +312,26 @@ md_foreach(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
         return NULL;
     }
     return ctx.list;
+}
+
+static int
+raising_visitor(void* user_data, PyObject* key, PyObject* value)
+{
+    (void)user_data;
+    (void)key;
+    (void)value;
+    PyErr_SetString(PyExc_RuntimeError, "boom from visitor");
+    return -1;
+}
+
+static PyObject*
+md_foreach_raises(PyObject* self, PyObject* arg)
+{
+    mod_state* state = get_mod_state(self);
+    if (MultiDict_ForEach(state->capi, arg, NULL, raising_visitor, NULL) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -374,6 +394,7 @@ static PyMethodDef module_methods[] = {
     {"md_setdefault", (PyCFunction)md_setdefault, METH_FASTCALL},
     {"md_setitem", (PyCFunction)md_setitem, METH_FASTCALL},
     {"md_foreach", (PyCFunction)md_foreach, METH_FASTCALL},
+    {"md_foreach_raises", (PyCFunction)md_foreach_raises, METH_O},
     {"check_api_version", (PyCFunction)check_api_version, METH_O},
     {NULL, NULL} /* sentinel */
 };
