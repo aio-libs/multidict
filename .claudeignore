@@ -7,6 +7,14 @@ __pycache__/
 *.so
 build/
 dist/
+# Cython-generated, unlike the hand-written multidict/*.c files
+multidict/_multidict.html
+multidict/_istr.html
+multidict/_testcyapi.html
+multidict/_testcyapi.c
+# Local dev virtualenvs (e.g. .venv-capi, .venv-purepy2 used for the
+# accelerated/pure-Python legs); large site-packages trees, not source
+.venv*/
 # Tool caches
 .mypy_cache/
 .pytest_cache/
