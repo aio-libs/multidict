@@ -6,7 +6,8 @@ from cpython.object cimport PyObject
 from cpython.ref cimport Py_DECREF
 
 from multidict cimport (
-    capi,
+    MultiDict_CAPI,
+    MultiDict_GetCAPI,
     IStr_GetType,
     IStr_FromUnicode,
     MultiDict_GetVersion,
@@ -30,6 +31,8 @@ from multidict cimport (
     MultiDict_ForEach,
 )
 
+cdef MultiDict_CAPI *_capi = MultiDict_GetCAPI()
+
 
 cdef inline object _steal(PyObject *ptr):
     # Adopts a NEW reference from a raw PyObject* into an ordinary,
@@ -43,55 +46,55 @@ cdef inline object _steal(PyObject *ptr):
 
 
 def istr_type():
-    return _steal(<PyObject*>IStr_GetType(capi()))
+    return _steal(<PyObject*>IStr_GetType(_capi))
 
 
 def istr_from_unicode(s):
-    return IStr_FromUnicode(capi(), s)
+    return IStr_FromUnicode(_capi, s)
 
 
 def md_getversion(md):
-    return MultiDict_GetVersion(capi(), md)
+    return MultiDict_GetVersion(_capi, md)
 
 
 def md_type():
-    return _steal(<PyObject*>MultiDict_GetType(capi()))
+    return _steal(<PyObject*>MultiDict_GetType(_capi))
 
 
 def cimd_type():
-    return _steal(<PyObject*>CIMultiDict_GetType(capi()))
+    return _steal(<PyObject*>CIMultiDict_GetType(_capi))
 
 
 def mdproxy_type():
-    return _steal(<PyObject*>MultiDictProxy_GetType(capi()))
+    return _steal(<PyObject*>MultiDictProxy_GetType(_capi))
 
 
 def cimdproxy_type():
-    return _steal(<PyObject*>CIMultiDictProxy_GetType(capi()))
+    return _steal(<PyObject*>CIMultiDictProxy_GetType(_capi))
 
 
 def md_new(Py_ssize_t prealloc_size):
-    return MultiDict_New(capi(), prealloc_size)
+    return MultiDict_New(_capi, prealloc_size)
 
 
 def cimd_new(Py_ssize_t prealloc_size):
-    return CIMultiDict_New(capi(), prealloc_size)
+    return CIMultiDict_New(_capi, prealloc_size)
 
 
 def mdproxy_new(arg):
-    return MultiDictProxy_New(capi(), arg)
+    return MultiDictProxy_New(_capi, arg)
 
 
 def cimdproxy_new(arg):
-    return CIMultiDictProxy_New(capi(), arg)
+    return CIMultiDictProxy_New(_capi, arg)
 
 
 def md_size(md):
-    return MultiDict_Size(capi(), md)
+    return MultiDict_Size(_capi, md)
 
 
 def md_contains(md, key):
-    return bool(MultiDict_Contains(capi(), md, key))
+    return bool(MultiDict_Contains(_capi, md, key))
 
 
 # Both elements of the returned tuple mirror PyDict_GetItemRef /
@@ -108,36 +111,36 @@ cdef _handle_result(int found, PyObject *result):
 
 def md_getitem(md, key):
     cdef PyObject *result = NULL
-    cdef int found = MultiDict_GetItem(capi(), md, key, &result)
+    cdef int found = MultiDict_GetItem(_capi, md, key, &result)
     return _handle_result(found, result)
 
 
 def md_add(md, key, value):
-    MultiDict_Add(capi(), md, key, value)
+    MultiDict_Add(_capi, md, key, value)
 
 
 def md_clear(md):
-    MultiDict_Clear(capi(), md)
+    MultiDict_Clear(_capi, md)
 
 
 def md_delitem(md, key):
-    MultiDict_DelItem(capi(), md, key)
+    MultiDict_DelItem(_capi, md, key)
 
 
 def md_pop(md, key):
     cdef PyObject *result = NULL
-    cdef int found = MultiDict_Pop(capi(), md, key, &result)
+    cdef int found = MultiDict_Pop(_capi, md, key, &result)
     return _handle_result(found, result)
 
 
 def md_setdefault(md, key, default):
     cdef PyObject *result = NULL
-    cdef int found = MultiDict_SetDefault(capi(), md, key, default, &result)
+    cdef int found = MultiDict_SetDefault(_capi, md, key, default, &result)
     return _handle_result(found, result)
 
 
 def md_setitem(md, key, value):
-    MultiDict_SetItem(capi(), md, key, value)
+    MultiDict_SetItem(_capi, md, key, value)
 
 
 ctypedef struct _ForeachCtx:
@@ -166,5 +169,5 @@ def md_foreach(md, key, Py_ssize_t limit):
     cdef PyObject *key_ptr = NULL
     if key is not None:
         key_ptr = <PyObject*>key
-    MultiDict_ForEach(capi(), md, key_ptr, _collect_pair, &ctx)
+    MultiDict_ForEach(_capi, md, key_ptr, _collect_pair, &ctx)
     return result
