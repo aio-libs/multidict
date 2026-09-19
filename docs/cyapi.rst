@@ -114,9 +114,16 @@ Item access
 - ``MultiDict_SetItem(capi, self, key, value) except -1 -> int`` --
   ``self[key] = value``.
 
-All but ``MultiDict_Size`` accept a :class:`~multidict.MultiDict` or
-:class:`~multidict.CIMultiDict` instance for *self* -- there is no separate
-``CIMultiDict_Add``, ``CIMultiDict_Contains`` and so on.
+``MultiDict_Size``, ``MultiDict_Contains`` and ``MultiDict_GetItem``
+accept a :class:`~multidict.MultiDict`, :class:`~multidict.CIMultiDict`,
+:class:`~multidict.MultiDictProxy` or :class:`~multidict.CIMultiDictProxy`
+instance for *self*. The rest mutate *self* and so only accept a
+:class:`~multidict.MultiDict` or :class:`~multidict.CIMultiDict` instance
+-- a proxy exposes no mutating methods at the Python level either, so
+there is nothing to mutate through one. None of these have a separate
+``CIMultiDict_Add``, ``CIMultiDict_Contains`` and so on:
+:class:`~multidict.CIMultiDict` is accepted as a
+:class:`~multidict.MultiDict` subclass.
 
 Iteration
 =========

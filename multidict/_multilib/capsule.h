@@ -18,6 +18,24 @@ extern "C" {
         return ON_FAIL;                                              \
     }
 
+// Read-only entry points accept a MultiDict, CIMultiDict, MultiDictProxy or
+// CIMultiDictProxy alike, unlike __MULTIDICT_VALIDATION_CHECK above (used by
+// the mutators, which reject proxies since there is nothing to mutate
+// through a read-only view).
+#define __MULTIDICT_RESOLVE_ANY(SELF, STATE, MD, ON_FAIL)                  \
+    if (AnyMultiDict_Check(((mod_state*)STATE), (SELF))) {                 \
+        (MD) = (MultiDictObject*)(SELF);                                   \
+    } else if (AnyMultiDictProxy_Check(((mod_state*)STATE), (SELF))) {     \
+        (MD) = ((MultiDictProxyObject*)(SELF))->md;                        \
+    } else {                                                               \
+        PyErr_Format(PyExc_TypeError,                                      \
+                     #SELF                                                 \
+                     " should be a MultiDict, CIMultiDict, "               \
+                     "MultiDictProxy or CIMultiDictProxy instance not %s", \
+                     Py_TYPE(SELF)->tp_name);                              \
+        return ON_FAIL;                                                    \
+    }
+
 /* ================= istr ================= */
 
 static PyTypeObject*
@@ -55,19 +73,8 @@ IStr_FromUnicode(void* state_, PyObject* str)
 static uint64_t
 MultiDict_GetVersion(void* state_, PyObject* self)
 {
-    mod_state* state = (mod_state*)state_;
     MultiDictObject* md;
-    if (AnyMultiDict_Check(state, self)) {
-        md = (MultiDictObject*)self;
-    } else if (AnyMultiDictProxy_Check(state, self)) {
-        md = ((MultiDictProxyObject*)self)->md;
-    } else {
-        PyErr_Format(PyExc_TypeError,
-                     "self should be a MultiDict, CIMultiDict, "
-                     "MultiDictProxy or CIMultiDictProxy instance not %s",
-                     Py_TYPE(self)->tp_name);
-        return 0;
-    }
+    __MULTIDICT_RESOLVE_ANY(self, state_, md, 0);
     return md_version(md);
 }
 
@@ -192,27 +199,17 @@ CIMultiDictProxy_New(void* state_, PyObject* arg)
 static Py_ssize_t
 MultiDict_Size(void* state_, PyObject* self)
 {
-    mod_state* state = (mod_state*)state_;
     MultiDictObject* md;
-    if (AnyMultiDict_Check(state, self)) {
-        md = (MultiDictObject*)self;
-    } else if (AnyMultiDictProxy_Check(state, self)) {
-        md = ((MultiDictProxyObject*)self)->md;
-    } else {
-        PyErr_Format(PyExc_TypeError,
-                     "self should be a MultiDict, CIMultiDict, "
-                     "MultiDictProxy or CIMultiDictProxy instance not %s",
-                     Py_TYPE(self)->tp_name);
-        return -1;
-    }
+    __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
     return md_len(md);
 }
 
 static int
 MultiDict_Contains(void* state_, PyObject* self, PyObject* key)
 {
-    __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    return md_contains((MultiDictObject*)self, key, NULL);
+    MultiDictObject* md;
+    __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
+    return md_contains(md, key, NULL);
 }
 
 static int
@@ -220,15 +217,18 @@ MultiDict_GetItem(void* state_, PyObject* self, PyObject* key,
                   PyObject** result)
 {
     *result = NULL;
-    __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    return md_get_one((MultiDictObject*)self, key, result);
+    MultiDictObject* md;
+    __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
+    return md_get_one(md, key, result);
 }
 
 /* ================= Setters ================= */
 
 // `MultiDict_Check` also accepts `CIMultiDict` (it is a subclass), so all six
 // of these work against either type -- there is no separate CIMultiDict_Add,
-// CIMultiDict_Clear, and so on.
+// CIMultiDict_Clear, and so on. Unlike the getters above, none of these
+// accept a MultiDictProxy/CIMultiDictProxy: proxies expose no mutating
+// methods at the Python level either, so there is nothing to mutate through.
 
 static int
 MultiDict_Add(void* state_, PyObject* self, PyObject* key, PyObject* value)
@@ -392,19 +392,8 @@ static Py_ssize_t
 MultiDict_ForEach(void* state_, PyObject* self, PyObject* key,
                   MultiDict_ItemVisitor visitor, void* user_data)
 {
-    mod_state* state = (mod_state*)state_;
     MultiDictObject* md;
-    if (AnyMultiDict_Check(state, self)) {
-        md = (MultiDictObject*)self;
-    } else if (AnyMultiDictProxy_Check(state, self)) {
-        md = ((MultiDictProxyObject*)self)->md;
-    } else {
-        PyErr_Format(PyExc_TypeError,
-                     "self should be a MultiDict, CIMultiDict, "
-                     "MultiDictProxy or CIMultiDictProxy instance not %s",
-                     Py_TYPE(self)->tp_name);
-        return -1;
-    }
+    __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
     if (key == NULL) {
         return _md_foreach_all(md, visitor, user_data);
     }

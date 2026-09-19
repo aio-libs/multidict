@@ -212,6 +212,19 @@ def test_md_contains_cimultidict(api: object) -> None:
     assert api.md_contains(md, "key") is True
 
 
+def test_md_contains_proxy(api: object) -> None:
+    md: MultiDictStr = multidict.MultiDict(key="value")
+    proxy = multidict.MultiDictProxy(md)
+    assert api.md_contains(proxy, "key") is True
+    assert api.md_contains(proxy, "missing") is False
+
+
+def test_md_contains_ciproxy(api: object) -> None:
+    md: CIMultiDictStr = multidict.CIMultiDict(KEY="value")
+    proxy = multidict.CIMultiDictProxy(md)
+    assert api.md_contains(proxy, "key") is True
+
+
 def test_md_getitem_multidict(api: object) -> None:
     md: MultiDictStr = multidict.MultiDict([("key", "value1"), ("key", "value2")])
     assert api.md_getitem(md, "key") == (True, "value1")
@@ -220,6 +233,18 @@ def test_md_getitem_multidict(api: object) -> None:
 def test_md_getitem_cimultidict(api: object) -> None:
     md: CIMultiDictStr = multidict.CIMultiDict(KEY="value")
     assert api.md_getitem(md, "key") == (True, "value")
+
+
+def test_md_getitem_proxy(api: object) -> None:
+    md: MultiDictStr = multidict.MultiDict([("key", "value1"), ("key", "value2")])
+    proxy = multidict.MultiDictProxy(md)
+    assert api.md_getitem(proxy, "key") == (True, "value1")
+
+
+def test_md_getitem_ciproxy(api: object) -> None:
+    md: CIMultiDictStr = multidict.CIMultiDict(KEY="value")
+    proxy = multidict.CIMultiDictProxy(md)
+    assert api.md_getitem(proxy, "key") == (True, "value")
 
 
 def test_md_getitem_missing(api: object) -> None:
@@ -464,8 +489,6 @@ def test_md_foreach_py_raises() -> None:
     [
         ("md_add", ("key", "value")),
         ("md_clear", ()),
-        ("md_contains", ("key",)),
-        ("md_getitem", ("key",)),
         ("md_setitem", ("key", "value")),
         ("md_delitem", ("key",)),
         ("md_pop", ("key",)),
@@ -474,8 +497,6 @@ def test_md_foreach_py_raises() -> None:
     ids=[
         "add",
         "clear",
-        "contains",
-        "getitem",
         "setitem",
         "delitem",
         "pop",
@@ -490,12 +511,46 @@ def test_md_wrong_type(api: object, name: str, args: tuple[object, ...]) -> None
 @pytest.mark.parametrize(
     "name, args",
     [
+        ("md_add", ("key", "value")),
+        ("md_clear", ()),
+        ("md_setitem", ("key", "value")),
+        ("md_delitem", ("key",)),
+        ("md_pop", ("key",)),
+        ("md_setdefault", ("key", "default")),
+    ],
+    ids=[
+        "add",
+        "clear",
+        "setitem",
+        "delitem",
+        "pop",
+        "setdefault",
+    ],
+)
+def test_md_mutator_rejects_proxy(
+    api: object, name: str, args: tuple[object, ...]
+) -> None:
+    # Proxies expose no mutating methods at the Python level either, so
+    # there is nothing to mutate through -- unlike the readers, which
+    # accept a MultiDict, CIMultiDict, MultiDictProxy or CIMultiDictProxy
+    # alike (see test_any_multidict_wrong_type below).
+    md: MultiDictStr = multidict.MultiDict()
+    proxy = multidict.MultiDictProxy(md)
+    with pytest.raises(TypeError, match="should be a MultiDict instance"):
+        getattr(api, name)(proxy, *args)
+
+
+@pytest.mark.parametrize(
+    "name, args",
+    [
         ("md_getversion", ()),
         ("md_size", ()),
+        ("md_contains", ("key",)),
+        ("md_getitem", ("key",)),
         ("md_foreach", (None, -1)),
         ("md_foreach", ("key", -1)),
     ],
-    ids=["getversion", "size", "foreach_all", "foreach_key"],
+    ids=["getversion", "size", "contains", "getitem", "foreach_all", "foreach_key"],
 )
 def test_any_multidict_wrong_type(
     api: object, name: str, args: tuple[object, ...]

@@ -204,7 +204,9 @@ Item access
 
    Return ``1`` if *key* is in *self*, ``0`` if not, or ``-1`` with an
    exception set on failure (including when *self* is not a
-   :class:`~multidict.MultiDict` instance). Equivalent to
+   :class:`~multidict.MultiDict`, :class:`~multidict.CIMultiDict`,
+   :class:`~multidict.MultiDictProxy` or
+   :class:`~multidict.CIMultiDictProxy` instance). Equivalent to
    ``key in self``.
 
 .. c:function:: int MultiDict_GetItem(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject **result)
@@ -215,7 +217,9 @@ Item access
    ``NULL`` if *key* is absent, *without* setting an exception; or
    return ``-1`` and set ``*result`` to ``NULL`` with an exception set
    on failure (including when *self* is not a
-   :class:`~multidict.MultiDict` instance). Unlike ``self[key]``,
+   :class:`~multidict.MultiDict`, :class:`~multidict.CIMultiDict`,
+   :class:`~multidict.MultiDictProxy` or
+   :class:`~multidict.CIMultiDictProxy` instance). Unlike ``self[key]``,
    a missing key is not by itself an error here.
 
 .. c:function:: int MultiDict_Add(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject *value)
@@ -270,9 +274,17 @@ Item access
    with an exception set on failure (including when *self* is not a
    :class:`~multidict.MultiDict` instance).
 
-All but :c:func:`MultiDict_Size` accept a :class:`~multidict.MultiDict`
-or :class:`~multidict.CIMultiDict` instance for *self* -- there is no
-separate ``CIMultiDict_Contains``, ``CIMultiDict_Add`` and so on.
+:c:func:`MultiDict_Size`, :c:func:`MultiDict_Contains` and
+:c:func:`MultiDict_GetItem` accept a :class:`~multidict.MultiDict`,
+:class:`~multidict.CIMultiDict`, :class:`~multidict.MultiDictProxy` or
+:class:`~multidict.CIMultiDictProxy` instance for *self*. The remaining
+functions on this page mutate *self* and so only accept a
+:class:`~multidict.MultiDict` or :class:`~multidict.CIMultiDict`
+instance -- a proxy exposes no mutating methods at the Python level
+either, so there is nothing to mutate through one. None of these have a
+separate ``CIMultiDict_Contains``, ``CIMultiDict_Add`` and so on:
+:class:`~multidict.CIMultiDict` is accepted as a
+:class:`~multidict.MultiDict` subclass.
 
 Iteration
 =========
