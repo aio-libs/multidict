@@ -62,3 +62,21 @@ cdef extern from "multidict_capi.h":
     # iteration
     Py_ssize_t MultiDict_ForEach(MultiDict_CAPI *capi, object self, PyObject *key,
                                  MultiDict_ItemVisitor visitor, void *user_data) except -1
+
+
+# MultiDict_ForEach's `key` is a raw `PyObject *` where NULL means "visit
+# every item" -- there's no `object` value for that which wouldn't also
+# risk colliding with an actual `None` key (see docs/cyapi.rst). These two
+# specializations split the two cases into their own signatures so ordinary
+# callers never touch a raw pointer or a NULL sentinel.
+
+cdef inline Py_ssize_t MultiDict_ForEachAll(MultiDict_CAPI *capi, object self,
+                                            MultiDict_ItemVisitor visitor,
+                                            void *user_data) except -1:
+    return MultiDict_ForEach(capi, self, NULL, visitor, user_data)
+
+
+cdef inline Py_ssize_t MultiDict_ForEachKey(MultiDict_CAPI *capi, object self, object key,
+                                            MultiDict_ItemVisitor visitor,
+                                            void *user_data) except -1:
+    return MultiDict_ForEach(capi, self, <PyObject*>key, visitor, user_data)

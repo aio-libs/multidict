@@ -16,10 +16,6 @@ except ImportError:
     _testcyapi = None
 
 if _testcyapi is None and os.environ.get("MULTIDICT_TEST_REQUIRE_CYAPI"):
-    # Set by CI jobs that deliberately opt into the Cython build (see
-    # AGENTS.md's "Public C API" section): a missing multidict._testcyapi
-    # there means the opt-in build itself is broken, not that Cython is
-    # merely unavailable, so fail loudly instead of quietly skipping.
     raise RuntimeError(
         "multidict._testcyapi did not import, but MULTIDICT_TEST_REQUIRE_CYAPI "
         "is set: the Cython opt-in build was expected to succeed"

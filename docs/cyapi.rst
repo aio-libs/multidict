@@ -38,7 +38,11 @@ reference. A few Cython-specific notes:
   ``PyObject *``, not ``object``: the C contract uses a literal ``NULL`` to
   mean "visit every item", which has no `object` equivalent that would not
   also risk colliding with an actual ``None`` key. Pass ``NULL`` directly,
-  or ``<PyObject*>some_key`` for the keyed form.
+  or ``<PyObject*>some_key`` for the keyed form. ``MultiDict_ForEachAll(capi,
+  self, visitor, user_data)`` and ``MultiDict_ForEachKey(capi, self, key,
+  visitor, user_data)`` are two Cython-only convenience wrappers around it
+  that split the two cases into their own signatures, so ordinary callers
+  never need a raw pointer or a ``NULL`` sentinel.
 - A ``MultiDict_ItemVisitor`` passed to ``MultiDict_ForEach`` must be
   declared with the same raw ``PyObject *key, PyObject *value`` parameters
   as the typedef itself (not ``object``) -- Cython does not consider a

@@ -28,7 +28,8 @@ from multidict cimport (
     MultiDict_Pop,
     MultiDict_SetDefault,
     MultiDict_SetItem,
-    MultiDict_ForEach,
+    MultiDict_ForEachAll,
+    MultiDict_ForEachKey,
 )
 
 cdef MultiDict_CAPI *_capi = MultiDict_GetCAPI()
@@ -166,8 +167,8 @@ def md_foreach(md, key, Py_ssize_t limit):
     cdef _ForeachCtx ctx
     ctx.list = <PyObject*>result
     ctx.limit = limit
-    cdef PyObject *key_ptr = NULL
-    if key is not None:
-        key_ptr = <PyObject*>key
-    MultiDict_ForEach(_capi, md, key_ptr, _collect_pair, &ctx)
+    if key is None:
+        MultiDict_ForEachAll(_capi, md, _collect_pair, &ctx)
+    else:
+        MultiDict_ForEachKey(_capi, md, key, _collect_pair, &ctx)
     return result

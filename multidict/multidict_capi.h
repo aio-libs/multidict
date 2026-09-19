@@ -7,9 +7,6 @@ extern "C" {
 
 #include "multidict_capi_struct.h"
 
-/* Internal helper for MultiDict_GetCAPI(), factored out so it can be
-   exercised against a deliberately-corrupted copy of the struct from
-   tests; not part of the public contract. */
 static inline int
 _MultiDict_CheckAPIVersion(MultiDict_CAPI* capi)
 {
