@@ -9,6 +9,7 @@ x86_64
 aiohttp
 args
 async
+atomics
 autocalculated
 autodetection
 autogenerates

@@ -217,7 +217,7 @@ safety argument in full:
                                         &empty_htkeys, which is never
                                         retired or freed)
            ... walk keys ...
-           keys->num_readers -= 1         (D, relaxed)
+           keys->num_readers -= 1         (D, release)
            num_active_readers -= 1        (E, seq_cst)
 
   writer:  store(md->keys, new)       (seq_cst)
@@ -245,6 +245,27 @@ a redundant check of what the coarse gate already guarantees.
 _md_drain_retired() treats it that way: a table whose own num_readers
 is still nonzero is pushed back onto md->retired for a later attempt
 instead of freed.
+
+Unlike A/B/E above, C/D is not a criss-cross between two independent
+atomics -- it is a one-directional handoff: a reader finishes reading
+this specific table's fields, then signals "done" via D; the drainer
+reads that signal and, once it sees zero, may free the table. That is
+the textbook release/acquire pattern, not Dekker's algorithm, and
+release/acquire is sufficient (seq_cst is not required): D is a
+release atomic_fetch_add_ssize_release(), so every ordinary read the
+reader performed while walking keys (in _md_get_one_lockfree() and
+friends) is ordered-before D becomes visible to another thread. The
+drain's own check, atomic_load_ssize_acquire(&t->num_readers) == 0 in
+_md_drain_retired(), pairs with that release: observing the
+post-decrement value there means the drainer also observes everything
+the departing reader read before D, so freeing the table (via
+htkeys_free(), reached through _md_free_retired()) cannot race the
+reader's now-finished walk. C itself (the increment in
+_md_reader_enter()) stays a plain relaxed
+atomic_fetch_add_ssize_relaxed(): no other thread's correctness
+depends on observing the increment's ordering relative to any other
+memory location -- only the decrement side of the handoff needs to
+publish anything.
 
 _md_reader_exit()'s own num_active_readers decrement (E above) is a
 seq_cst atomic_fetch_add_ssize(), which hands back the pre-decrement
@@ -328,7 +349,7 @@ static inline void
 _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys != &empty_htkeys) {
-        atomic_fetch_add_ssize_relaxed(&keys->num_readers, -1);
+        atomic_fetch_add_ssize_release(&keys->num_readers, -1);
     }
     Py_ssize_t prev_active_readers =
         atomic_fetch_add_ssize(&md->num_active_readers, -1);
@@ -371,7 +392,7 @@ _md_drain_retired(MultiDictObject* md)
     htkeys_t* pending_tail = NULL;
     while (t != NULL) {
         htkeys_t* next = t->retired_next;
-        if (atomic_load_ssize_relaxed(&t->num_readers) == 0) {
+        if (atomic_load_ssize_acquire(&t->num_readers) == 0) {
             _md_free_retired(t);
         } else {
             t->retired_next = pending_head;
