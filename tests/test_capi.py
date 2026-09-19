@@ -15,7 +15,9 @@ try:
 except ImportError:
     _testcyapi = None
 
-if _testcyapi is None and os.environ.get("MULTIDICT_TEST_REQUIRE_CYAPI"):
+if _testcyapi is None and os.environ.get(
+    "MULTIDICT_TEST_REQUIRE_CYAPI"
+):  # pragma: no cover
     raise RuntimeError(
         "multidict._testcyapi did not import, but MULTIDICT_TEST_REQUIRE_CYAPI "
         "is set: the Cython opt-in build was expected to succeed"
