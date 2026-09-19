@@ -314,6 +314,24 @@ md_foreach(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
     return ctx.list;
 }
 
+static PyObject*
+check_api_version(PyObject* self, PyObject* arg)
+{
+    long fake_version = PyLong_AsLong(arg);
+    if (fake_version == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    mod_state* state = get_mod_state(self);
+    /* A stack copy so corrupting api_version can't affect the real,
+       shared capsule used by every other test. */
+    MultiDict_CAPI fake_capi = *state->capi;
+    fake_capi.api_version = (int)fake_version;
+    if (_MultiDict_CheckAPIVersion(&fake_capi) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 /* module slots */
 
 static int
@@ -356,6 +374,7 @@ static PyMethodDef module_methods[] = {
     {"md_setdefault", (PyCFunction)md_setdefault, METH_FASTCALL},
     {"md_setitem", (PyCFunction)md_setitem, METH_FASTCALL},
     {"md_foreach", (PyCFunction)md_foreach, METH_FASTCALL},
+    {"check_api_version", (PyCFunction)check_api_version, METH_O},
     {NULL, NULL} /* sentinel */
 };
 

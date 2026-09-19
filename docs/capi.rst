@@ -40,7 +40,9 @@ Importing the capsule
 
    Import the capsule and return a pointer to it, or ``NULL`` with an
    exception set on failure (for example if ``multidict._multidict``
-   could not be imported).
+   could not be imported, or if the installed ``multidict`` provides
+   an older, incompatible capsule version than this header requires --
+   raised as :exc:`RuntimeError`).
 
    This wraps `PyCapsule_Import()
    <https://docs.python.org/3/c-api/capsule.html#c.PyCapsule_Import>`_,
@@ -77,7 +79,12 @@ Importing the capsule
    ever grows at the end -- a client compiled against an older
    ``multidict`` library version keeps working against a newer
    ``multidict`` runtime, since it only reads the fields it knows
-   about.
+   about. The reverse direction (a client built against a newer
+   header than the installed ``multidict`` provides) is guarded by a
+   version number stored in the capsule itself: :c:func:`MultiDict_GetCAPI`
+   checks it against ``MultiDict_CAPI_VERSION``, the version this header
+   was shipped with, and fails instead of reading past the end of an
+   older, smaller struct.
 
 istr
 ====

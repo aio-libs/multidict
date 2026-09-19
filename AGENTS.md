@@ -413,10 +413,17 @@ know if it silently produced no `_testcyapi`.
 The struct's layout only ever grows at the end, never removes or
 reorders a field, so that a client built against an older
 `multidict_capi_struct.h` keeps working against a newer `multidict`
-runtime. When you add a new entry point:
+runtime. The struct's first field, `api_version`, guards the other
+direction: `MultiDict_GetCAPI()` (in `multidict_capi.h`) refuses with
+a `RuntimeError` and returns `NULL` if the running `multidict`'s
+`api_version` is older than `MultiDict_CAPI_VERSION`, the version the
+including header was shipped with -- otherwise a client built against
+a newer header could read a function pointer past the end of an
+older, smaller allocated struct. When you add a new entry point:
 
 - Add the function pointer to the end of the `MultiDict_CAPI` struct
-  in `multidict_capi_struct.h`.
+  in `multidict_capi_struct.h`, and bump `MultiDict_CAPI_VERSION`
+  right above it.
 - Implement it in `_multilib/capsule.h` and wire it into
   `new_capsule()`.
 - Add the inline client-side wrapper to `multidict_capi.h`.

@@ -426,6 +426,7 @@ new_capsule(mod_state* state)
         PyErr_NoMemory();
         return NULL;
     }
+    capi->api_version = MultiDict_CAPI_VERSION;
     capi->state = state;
 
     capi->IStr_GetType = IStr_GetType;

@@ -12,10 +12,19 @@ extern "C" {
 #define MultiDict_CAPI_NAME "CAPI"
 #define MultiDict_CAPSULE_NAME MultiDict_MODULE_NAME "." MultiDict_CAPI_NAME
 
+/* Bump whenever a field is appended to MultiDict_CAPI below. Existing
+   fields never move or change meaning, so a client built against an
+   older version of this header keeps working against a newer
+   multidict runtime; MultiDict_GetCAPI() uses this to refuse the
+   other direction (an older runtime that predates a field the client
+   was built to expect). */
+#define MultiDict_CAPI_VERSION 1
+
 typedef int (*MultiDict_ItemVisitor)(void* user_data, PyObject* key,
                                      PyObject* value);
 
 typedef struct {
+    int api_version;
     void* state;
 
     PyTypeObject* (*IStr_GetType)(void* state);

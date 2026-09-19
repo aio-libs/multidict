@@ -7,10 +7,37 @@ extern "C" {
 
 #include "multidict_capi_struct.h"
 
+/* Internal helper for MultiDict_GetCAPI(), factored out so it can be
+   exercised against a deliberately-corrupted copy of the struct from
+   tests; not part of the public contract. */
+static inline int
+_MultiDict_CheckAPIVersion(MultiDict_CAPI* capi)
+{
+    if (capi->api_version < MultiDict_CAPI_VERSION) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "multidict C API version mismatch: this code was built "
+                     "against multidict_capi.h version %d, but the "
+                     "installed multidict only provides version %d; "
+                     "upgrade multidict",
+                     MultiDict_CAPI_VERSION,
+                     capi->api_version);
+        return -1;
+    }
+    return 0;
+}
+
 static inline MultiDict_CAPI*
 MultiDict_GetCAPI(void)
 {
-    return (MultiDict_CAPI*)PyCapsule_Import(MultiDict_CAPSULE_NAME, 0);
+    MultiDict_CAPI* capi =
+        (MultiDict_CAPI*)PyCapsule_Import(MultiDict_CAPSULE_NAME, 0);
+    if (capi == NULL) {
+        return NULL;
+    }
+    if (_MultiDict_CheckAPIVersion(capi) < 0) {
+        return NULL;
+    }
+    return capi;
 }
 
 static inline PyTypeObject*
