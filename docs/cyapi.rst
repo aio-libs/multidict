@@ -9,8 +9,8 @@ Cython API
 Third-party Cython code can reach the same :ref:`C API capsule
 <multidict-capi>` directly, without going through ``multidict_capi.h``'s
 inline wrappers by hand: ``multidict`` ships ``multidict/__init__.pxd``,
-declaring the capsule struct and every wrapper function from
-``multidict_capi.h`` for ``cimport``.
+declaring the capsule struct and a Cython wrapper for every function from
+``multidict_capi.h``, for ``cimport``.
 
 .. code-block:: cython
 
@@ -24,38 +24,155 @@ declaring the capsule struct and every wrapper function from
        MultiDict_Add(capi, md, key2, value2)
        return md
 
-Every function documented in :ref:`multidict-capi` is declared here under
-the same name, with the same semantics; that page stays the authoritative
-reference. A few Cython-specific notes:
+Every function below has the same name and the same failure semantics
+(exceptions raised, sentinel return values) as its C counterpart on the
+:ref:`multidict-capi` page, which stays the authoritative reference for
+those details; only the Cython signature and a couple of Cython-specific
+wrapper behaviors are called out here.
 
-- Functions returning a type object (``MultiDict_GetType`` and friends) are
-  declared as returning ``PyTypeObject *``, matching their real C
-  signature, not ``object`` -- Cython does not let an ``object``-returning
-  extern declaration have a return type more specific than plain
-  ``PyObject *``. Wrap the result in ``<object>`` (and account for the new
-  reference it carries) to get a usable Python object back.
-- ``MultiDict_ForEach``'s ``key`` parameter is declared as a raw
-  ``PyObject *``, not ``object``: the C contract uses a literal ``NULL`` to
-  mean "visit every item", which has no `object` equivalent that would not
-  also risk colliding with an actual ``None`` key. Pass ``NULL`` directly,
-  or ``<PyObject*>some_key`` for the keyed form. ``MultiDict_ForEachAll(capi,
-  self, visitor, user_data)`` and ``MultiDict_ForEachKey(capi, self, key,
-  visitor, user_data)`` are two Cython-only convenience wrappers around it
-  that split the two cases into their own signatures, so ordinary callers
-  never need a raw pointer or a ``NULL`` sentinel.
-- A ``MultiDict_ItemVisitor`` passed to ``MultiDict_ForEach`` must be
-  declared with the same raw ``PyObject *key, PyObject *value`` parameters
-  as the typedef itself (not ``object``) -- Cython does not consider a
-  function taking ``object`` parameters interchangeable with one taking raw
-  ``PyObject *`` parameters for this purpose, even though both compile.
+Getting the capsule
+=====================
+
+``MultiDict_CAPI`` is an opaque, incomplete ``ctypedef struct`` -- Cython
+code never accesses its fields, only passes the pointer through.
+
+``MultiDict_GetCAPI() except NULL`` imports the capsule and returns a
+pointer to it, raising :exc:`RuntimeError` (via the ``except NULL`` clause)
+on failure -- including a version mismatch against an older ``multidict``
+runtime. Call it once (typically at module import time) and keep the
+returned pointer around for every other call.
+
+istr
+====
+
+- ``IStr_GetType(capi)`` -- returns the :class:`~multidict.istr` type, as
+  a plain ``object``.
+- ``IStr_CheckExact(capi, op) -> bint`` and ``IStr_Check(capi, op) -> bint``
+  -- type checks, mirroring :c:func:`IStr_CheckExact` / :c:func:`IStr_Check`.
+- ``IStr_FromUnicode(capi, s) -> object`` -- builds an
+  :class:`~multidict.istr` from a :class:`str`.
+
+Version counter
+================
+
+- ``MultiDict_GetVersion(capi, self) except? 0 -> uint64_t`` -- *self*'s
+  version counter, equivalent to :func:`multidict.getversion`.
+
+Type objects and type checks
+==============================
+
+``MultiDict_GetType``, ``CIMultiDict_GetType``, ``MultiDictProxy_GetType``
+and ``CIMultiDictProxy_GetType`` each take just *capi* and return the
+corresponding type as a plain ``object`` -- for example
+``MultiDict_GetType(capi)``.
+
+The C API returns these as ``PyTypeObject *`` (matching the real C
+signature: an ``object``-returning extern declaration has to actually
+return a ``PyObject *`` at the C level, and ``multidict_capi.h`` genuinely
+declares these as ``PyTypeObject *``). The ``.pxd`` wraps each one,
+adopting the new reference for you, so callers here get a ready-to-use
+``object`` back with no cast and no manual ``Py_DECREF``.
+
+``MultiDict_Check``, ``CIMultiDict_Check``, ``MultiDictProxy_Check`` and
+``CIMultiDictProxy_Check`` each take ``(capi, op) -> bint`` and return
+whether *op* is an instance of the corresponding type or a subclass.
+``MultiDict_CheckExact``, ``CIMultiDict_CheckExact``,
+``MultiDictProxy_CheckExact`` and ``CIMultiDictProxy_CheckExact`` are the
+exact-type-only equivalents.
+
+Constructors
+============
+
+- ``MultiDict_New(capi, prealloc_size) -> object`` and
+  ``CIMultiDict_New(capi, prealloc_size) -> object`` -- a new, empty
+  :class:`~multidict.MultiDict` or :class:`~multidict.CIMultiDict`.
+- ``MultiDictProxy_New(capi, arg) -> object`` and
+  ``CIMultiDictProxy_New(capi, arg) -> object`` -- a new proxy wrapping
+  *arg*.
+
+Item access
+===========
+
+- ``MultiDict_Size(capi, self) except -1 -> Py_ssize_t`` -- ``len(self)``.
+- ``MultiDict_Contains(capi, self, key) except -1 -> int`` -- ``key in self``.
+- ``MultiDict_GetItem(capi, self, key) -> object`` -- looks up the first
+  value for *key*, returning ``(found, value)``: ``(True, value)`` if
+  present, ``(False, None)`` if absent. Never raises for a missing key;
+  see :c:func:`MultiDict_GetItem` for the underlying ``0``/``1``/``-1`` C
+  contract this wraps.
+- ``MultiDict_Add(capi, self, key, value) except -1 -> int`` --
+  :meth:`~multidict.MultiDict.add`.
+- ``MultiDict_Clear(capi, self) except -1 -> int`` --
+  :meth:`~multidict.MultiDict.clear`.
+- ``MultiDict_DelItem(capi, self, key) except -1 -> int`` -- ``del self[key]``.
+- ``MultiDict_Pop(capi, self, key) -> object`` -- ``self.pop(key)`` with no
+  default, same ``(found, value)`` return shape as ``MultiDict_GetItem``.
+- ``MultiDict_SetDefault(capi, self, key, default_value) -> object`` --
+  ``self.setdefault(key, default_value)`` (*default_value* required);
+  returns ``(True, existing_value)`` if *key* was already present, or
+  ``(False, default_value)`` if it was just inserted.
+- ``MultiDict_SetItem(capi, self, key, value) except -1 -> int`` --
+  ``self[key] = value``.
+
+All but ``MultiDict_Size`` accept a :class:`~multidict.MultiDict` or
+:class:`~multidict.CIMultiDict` instance for *self* -- there is no separate
+``CIMultiDict_Add``, ``CIMultiDict_Contains`` and so on.
+
+Iteration
+=========
+
+``MultiDict_ItemVisitor`` is the callback type for the ``ForEach``
+functions below:
+
+.. code-block:: cython
+
+   ctypedef int (*MultiDict_ItemVisitor)(void *user_data, PyObject *key,
+                                         PyObject *value) noexcept
+
+Return a positive value from it to keep the walk going, ``0`` to stop early
+(not an error by itself), or a negative value to abort with an error -- a
+Python exception must already be set in that case. The typedef is
+``noexcept``, so a visitor that wants to raise can't just ``raise``: Cython
+would treat that as an unraisable exception in a ``noexcept`` function,
+print it, and clear it rather than propagate it. Call ``PyErr_SetString``
+(or ``PyErr_Format``/``PyErr_SetObject``, from ``cpython.exc``) directly to
+set the exception state, then ``return -1`` yourself.
+
+A visitor's ``key``/``value`` parameters are raw ``PyObject *``, not
+``object``: Cython does not consider a function taking ``object``
+parameters interchangeable with one taking raw ``PyObject *`` parameters
+here, even though both compile, so a visitor must be declared with the
+same raw parameter types as the typedef itself.
+
+- ``MultiDict_ForEachAll(capi, self, visitor, user_data) except -1 -> Py_ssize_t``
+  -- visits every ``(key, value)`` pair of *self*.
+- ``MultiDict_ForEachKey(capi, self, key, visitor, user_data) except -1 -> Py_ssize_t``
+  -- visits only the entries for *key*.
+
+These are the only two Cython entry points for iteration -- the C API's
+single :c:func:`MultiDict_ForEach`, whose raw ``PyObject *key`` uses a
+literal ``NULL`` to mean "visit every item" (which has no ``object``
+equivalent that would not also risk colliding with an actual ``None``
+key), is not exposed under its own name here; the two functions above
+split its two cases into their own signatures instead.
+
+Both return the number of items visited (``>= 0``) on success, and both
+execute under one internal lock; *visitor* must not call back into any
+method on *self* while running (see :c:func:`MultiDict_ForEach` for why).
+
+Worked example
+================
 
 ``multidict/_testcyapi.pyx`` in the ``multidict`` source tree is a complete
 worked example: it mirrors the C test helper (``multidict/_testcapi.c``)
 function-for-function purely to exercise this ``.pxd`` from the test suite,
-and demonstrates the reference-counting patterns above, including safely
-adopting a new reference out of a ``PyObject **result`` out-parameter
-(``MultiDict_GetItem``, ``MultiDict_Pop``, ``MultiDict_SetDefault``).
+and demonstrates the visitor patterns above (``_collect_pair``,
+``_raising_visitor``) end to end.
 
 Building it is optional and never required to install or build
-``multidict`` itself: see ``AGENTS.md``'s "Public C API" section in the
-source repository for how to opt in locally.
+``multidict`` itself -- Cython is never a real build dependency, and an
+ordinary install or wheel build never sees it. To build it locally
+anyway, install Cython before installing ``multidict`` in editable mode::
+
+   pip install -r requirements/cython.txt
+   pip install -e . --no-build-isolation --force-reinstall --no-deps
