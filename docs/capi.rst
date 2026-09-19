@@ -210,10 +210,8 @@ Item access
 .. c:function:: int MultiDict_GetItem(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject **result)
 
    Look up the *first* value for *key* in *self*, equivalent to
-   ``self[key]``. Follows the `PyDict_GetItemRef
-   <https://docs.python.org/3/c-api/dict.html#c.PyDict_GetItemRef>`_
-   design: return ``1`` and set ``*result`` to a new reference to the
-   value if *key* is present; return ``0`` and set ``*result`` to
+   ``self[key]``. Return ``1`` and set ``*result`` to a new reference to
+   the value if *key* is present; return ``0`` and set ``*result`` to
    ``NULL`` if *key* is absent, *without* setting an exception; or
    return ``-1`` and set ``*result`` to ``NULL`` with an exception set
    on failure (including when *self* is not a
@@ -223,14 +221,14 @@ Item access
 .. c:function:: int MultiDict_Add(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject *value)
 
    Append the ``(key, value)`` pair to *self*, equivalent to
-   :meth:`MultiDict.add() <multidict.MultiDict.add>`. Return ``0`` on
+   :meth:`~multidict.MultiDict.add`. Return ``0`` on
    success, ``-1`` with an exception set on failure (including when
    *self* is not a :class:`~multidict.MultiDict` instance).
 
 .. c:function:: int MultiDict_Clear(MultiDict_CAPI *capi, PyObject *self)
 
    Remove all items from *self*, equivalent to
-   :meth:`MultiDict.clear() <multidict.MultiDict.clear>`. Return ``0``
+   :meth:`~multidict.MultiDict.clear`. Return ``0``
    on success, ``-1`` with an exception set on failure (including when
    *self* is not a :class:`~multidict.MultiDict` instance).
 
@@ -245,8 +243,7 @@ Item access
 .. c:function:: int MultiDict_Pop(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject **result)
 
    Remove *key* from *self*, equivalent to ``self.pop(key)`` with no
-   default. Same ``PyDict_GetItemRef`` design as
-   :c:func:`MultiDict_GetItem`: return ``1`` and set ``*result`` to a
+   default. Return ``1`` and set ``*result`` to a
    new reference to the removed *first* value if *key* was present;
    return ``0`` and set ``*result`` to ``NULL`` if *key* was absent,
    without setting an exception; or return ``-1`` and set ``*result``
@@ -257,9 +254,7 @@ Item access
 
    Equivalent to ``self.setdefault(key, default_value)``, except
    *default_value* is required here (the Python method defaults it to
-   ``None``). Follows the `PyDict_SetDefaultRef
-   <https://docs.python.org/3/c-api/dict.html#c.PyDict_SetDefaultRef>`_
-   design: if *key* is already in *self*, set ``*result`` to a new
+   ``None``). If *key* is already in *self*, set ``*result`` to a new
    reference to its *first* value and return ``1``, without touching
    *self*. Otherwise set ``self[key] = default_value``, set
    ``*result`` to a new reference to *default_value*, and return
