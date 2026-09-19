@@ -12,6 +12,8 @@ create and manipulate :class:`~multidict.MultiDict`,
 :class:`~multidict.CIMultiDictProxy` and :class:`~multidict.istr`
 instances directly, without going through the Python-level API.
 
+.. versionadded:: 7.0
+
 The API is published as a `capsule
 <https://docs.python.org/3/c-api/capsule.html>`_ named
 ``multidict._multidict.CAPI``. A client only ever includes
@@ -32,6 +34,8 @@ path. :func:`multidict.get_include` returns that directory:
 
    Return the directory containing ``multidict_capi.h``, to pass as
    an ``-I`` include path when building a C extension against it.
+
+   .. versionadded:: 7.0
 
 Importing the capsule
 ======================

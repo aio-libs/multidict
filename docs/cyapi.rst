@@ -12,6 +12,8 @@ inline wrappers by hand: ``multidict`` ships ``multidict/__init__.pxd``,
 declaring the capsule struct and a Cython wrapper for every function from
 ``multidict_capi.h``, for ``cimport``.
 
+.. versionadded:: 7.0
+
 .. code-block:: cython
 
    from multidict cimport MultiDict_CAPI, MultiDict_GetCAPI, MultiDict_New, MultiDict_Add
