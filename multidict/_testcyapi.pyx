@@ -28,10 +28,9 @@ from multidict cimport (
     MultiDict_Pop,
     MultiDict_SetDefault,
     MultiDict_SetItem,
+    MultiDict_ForEach,
     MultiDict_ForEachAll,
     MultiDict_ForEachKey,
-    MultiDict_ForEachAllPy,
-    MultiDict_ForEachKeyPy,
 )
 
 cdef MultiDict_CAPI *_capi = MultiDict_GetCAPI()
@@ -141,10 +140,10 @@ def md_foreach(md, key, Py_ssize_t limit):
     cdef _ForeachCtx ctx
     ctx.list = <PyObject*>result
     ctx.limit = limit
-    if key is None:
-        MultiDict_ForEachAll(_capi, md, _collect_pair, &ctx)
-    else:
-        MultiDict_ForEachKey(_capi, md, key, _collect_pair, &ctx)
+    cdef PyObject *key_ptr = NULL
+    if key is not None:
+        key_ptr = <PyObject*>key
+    MultiDict_ForEach(_capi, md, key_ptr, _collect_pair, &ctx)
     return result
 
 
@@ -158,7 +157,7 @@ cdef int _raising_visitor(void *user_data, PyObject *key, PyObject *value) noexc
 
 
 def md_foreach_raises(md):
-    MultiDict_ForEachAll(_capi, md, _raising_visitor, NULL)
+    MultiDict_ForEach(_capi, md, NULL, _raising_visitor, NULL)
 
 
 def md_foreach_py(md, key, Py_ssize_t limit):
@@ -169,9 +168,9 @@ def md_foreach_py(md, key, Py_ssize_t limit):
         return limit < 0 or len(result) < limit
 
     if key is None:
-        MultiDict_ForEachAllPy(_capi, md, callback)
+        MultiDict_ForEachAll(_capi, md, callback)
     else:
-        MultiDict_ForEachKeyPy(_capi, md, key, callback)
+        MultiDict_ForEachKey(_capi, md, key, callback)
     return result
 
 
@@ -179,4 +178,4 @@ def md_foreach_py_raises(md):
     def callback(k, v):
         raise RuntimeError("boom from py callback")
 
-    MultiDict_ForEachAllPy(_capi, md, callback)
+    MultiDict_ForEachAll(_capi, md, callback)
