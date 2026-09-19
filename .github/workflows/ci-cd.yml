@@ -406,6 +406,55 @@ jobs:
       uses: aio-libs/prepare-coverage@v24.9.2
 
 
+  test-cython-capi:
+    name: Test the optional Cython C API binding
+    needs:
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v7
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.13"
+        cache: pip
+        cache-dependency-path: requirements/*.txt
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4
+      with:
+        path: requirements/pytest.txt
+    - name: Install Cython
+      # Never a real dependency of multidict itself (kept out of
+      # `pyproject.toml`'s `[build-system] requires`, so ordinary installs
+      # and every release wheel build never see it); this job is the one
+      # place that deliberately opts in, to prove multidict._testcyapi
+      # still builds and the capsule stays usable from Cython.
+      run: python -m pip install -r requirements/cython.txt
+    - name: Self-install with Cython available
+      # An isolated build would only ever see `[build-system] requires`,
+      # never this job's own ambient Cython -- `--no-build-isolation` is
+      # what lets `setup.py` notice it and build multidict._testcyapi too.
+      run: python -m pip install -e . --no-build-isolation
+    - name: Confirm multidict._testcyapi actually built
+      run: python -c "import multidict._testcyapi"
+    - name: Run the C API capsule tests
+      env:
+        MULTIDICT_TEST_REQUIRE_CYAPI: 1
+      run: >-
+        python -Im pytest tests/test_capi.py tests/test_get_include.py
+        -v --cov-report xml
+    - name: Append coverage results to Job Summary
+      if: '!cancelled()'
+      run: >-
+        python -Im coverage report --format=markdown
+        >> "${GITHUB_STEP_SUMMARY}"
+      shell: bash
+    - name: Prepare coverage artifact
+      uses: aio-libs/prepare-coverage@v24.9.2
+
+
   benchmark:
     name: Benchmark
     needs:
@@ -761,6 +810,7 @@ jobs:
     - lint
     - pre-setup  # transitive, for accessing settings
     - test
+    - test-cython-capi
     - benchmark
     - hypothesis-gil
     - hypothesis-freethreading

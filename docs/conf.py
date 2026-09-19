@@ -367,7 +367,11 @@ texinfo_documents = [
 
 # -- Strictness options --------------------------------------------------
 nitpicky = True
-nitpick_ignore: list[str] = []
+nitpick_ignore: list[tuple[str, str]] = [
+    # `uint64_t` isn't a fundamental type Sphinx's C domain knows about,
+    # and multidict doesn't declare it itself -- it comes from <stdint.h>.
+    ("c:identifier", "uint64_t"),
+]
 
 # -- Options for towncrier_draft extension -----------------------------------
 

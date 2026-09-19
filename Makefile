@@ -48,6 +48,15 @@ install:
 
 install-dev: .develop
 
+# Opt-in: builds multidict._testcyapi too, exercising the public C API
+# capsule from Cython. Not part of the default dev setup -- Cython is never
+# a dependency of multidict itself, only used here on request. Requires
+# --no-build-isolation so setup.py sees this Cython install instead of an
+# isolated build env that doesn't have it.
+install-dev-cython: install-dev
+	pip install -r requirements/cython.txt
+	pip install -e . --no-build-isolation --force-reinstall --no-deps
+
 
 clean:
 	rm -rf `find . -name __pycache__`

@@ -43,8 +43,10 @@ dists
 docstrings
 downstreams
 eof
+extern
 fallback
 fallbacks
+falsy
 fastpath
 filename
 formatters
@@ -57,6 +59,7 @@ github
 google
 gunicorn
 Gunicorn
+increfs
 Indices
 init
 inplace
@@ -117,6 +120,7 @@ stateful
 str
 subclassable
 subclassed
+subclasses
 subclassing
 subdirectory
 subprotocol
@@ -124,10 +128,13 @@ subprotocols
 Svetlov
 toolbar
 toolset
+truthy
 tuples
+typedef
 un
 uncompiled
 unparseable
+unraisable
 upstr
 url
 urlencoded
