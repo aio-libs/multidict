@@ -1,1 +1,0 @@
-Added ``.claudeignore`` file -- by :user:`asvetlov`

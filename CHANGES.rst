@@ -14,6 +14,42 @@ Changelog
 
 .. towncrier release notes start
 
+6.9.1
+==========
+
+*(2026-09-19)*
+
+
+Bug fixes
+---------
+
+- Fixed a data race on the free-threaded build where a retired hash table's
+  reader count used relaxed atomics, letting a lock-free ``get()``/``getone()``/
+  ``__getitem__()`` read race a concurrent free of that table. The reader-exit
+  decrement and the drain's free check now use release/acquire ordering
+  instead -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1481`.
+
+
+Contributor-facing changes
+--------------------------
+
+- Removed a redundant ``include`` and a duplicated ``exclude`` line from
+  ``MANIFEST.in``; sdist contents are unchanged -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1478`.
+
+- Added ``.claudeignore`` file -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1479`.
+
+
+----
+
 
 6.9.0
 ==========
