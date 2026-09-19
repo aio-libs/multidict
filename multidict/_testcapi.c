@@ -23,7 +23,7 @@ static PyObject*
 istr_type(PyObject* self, PyObject* unused)
 {
     mod_state* state = get_mod_state(self);
-    return Py_NewRef(IStr_GetType(state->capi));
+    return (PyObject*)IStr_GetType(state->capi);
 }
 
 static PyObject*
@@ -48,28 +48,28 @@ static PyObject*
 md_type(PyObject* self, PyObject* unused)
 {
     mod_state* state = get_mod_state(self);
-    return Py_NewRef(MultiDict_GetType(state->capi));
+    return (PyObject*)MultiDict_GetType(state->capi);
 }
 
 static PyObject*
 cimd_type(PyObject* self, PyObject* unused)
 {
     mod_state* state = get_mod_state(self);
-    return Py_NewRef(CIMultiDict_GetType(state->capi));
+    return (PyObject*)CIMultiDict_GetType(state->capi);
 }
 
 static PyObject*
 mdproxy_type(PyObject* self, PyObject* unused)
 {
     mod_state* state = get_mod_state(self);
-    return Py_NewRef(MultiDictProxy_GetType(state->capi));
+    return (PyObject*)MultiDictProxy_GetType(state->capi);
 }
 
 static PyObject*
 cimdproxy_type(PyObject* self, PyObject* unused)
 {
     mod_state* state = get_mod_state(self);
-    return Py_NewRef(CIMultiDictProxy_GetType(state->capi));
+    return (PyObject*)CIMultiDictProxy_GetType(state->capi);
 }
 
 static PyObject*

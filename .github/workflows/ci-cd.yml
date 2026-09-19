@@ -444,7 +444,15 @@ jobs:
         MULTIDICT_TEST_REQUIRE_CYAPI: 1
       run: >-
         python -Im pytest tests/test_capi.py tests/test_get_include.py
-        -v --no-cov
+        -v --cov-report xml
+    - name: Append coverage results to Job Summary
+      if: '!cancelled()'
+      run: >-
+        python -Im coverage report --format=markdown
+        >> "${GITHUB_STEP_SUMMARY}"
+      shell: bash
+    - name: Prepare coverage artifact
+      uses: aio-libs/prepare-coverage@v24.9.2
 
 
   benchmark:
@@ -637,9 +645,17 @@ jobs:
         # abort calls _exit() before pytest gets to flush it, silently
         # dropping the report. Uncaptured output goes straight to the
         # job log instead.
-        LD_PRELOAD="${ASAN_SO}" python -Im pytest tests -q --no-cov \
+        LD_PRELOAD="${ASAN_SO}" python -Im pytest tests -q --cov-report xml \
           --capture=no -k "not test_leak"
       shell: bash
+    - name: Append coverage results to Job Summary
+      if: '!cancelled()'
+      run: >-
+        python -Im coverage report --format=markdown
+        >> "${GITHUB_STEP_SUMMARY}"
+      shell: bash
+    - name: Prepare coverage artifact
+      uses: aio-libs/prepare-coverage@v24.9.2
     - name: Check for a core dump
       id: check-core
       if: failure()
@@ -764,12 +780,27 @@ jobs:
         # abort calls _exit() before pytest gets to flush it, silently
         # dropping the report. Uncaptured output goes straight to the
         # job log instead.
+        # -W ignore::coverage.exceptions.CoverageWarning: this custom,
+        # from-source, free-threaded build is exotic enough that
+        # coverage's C tracer can fail to import against it; pytest.ini's
+        # filterwarnings=error would otherwise turn that warning into a
+        # hard failure instead of the harmless pure-Python-tracer
+        # fallback it actually is.
         "${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t" \
-          -m pytest tests -q --no-cov --capture=no \
+          -m pytest tests -q --cov-report xml --capture=no \
+          -W ignore::coverage.exceptions.CoverageWarning \
           -k "not test_leak" \
           --ignore=tests/test_multidict_benchmarks.py \
           --ignore=tests/test_views_benchmarks.py
       shell: bash
+    - name: Append coverage results to Job Summary
+      if: '!cancelled()'
+      run: >-
+        "${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t" -Im coverage report
+        --format=markdown >> "${GITHUB_STEP_SUMMARY}"
+      shell: bash
+    - name: Prepare coverage artifact
+      uses: aio-libs/prepare-coverage@v24.9.2
     - name: Check for a core dump
       id: check-core
       if: failure()

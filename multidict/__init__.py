@@ -6,7 +6,7 @@ multidict. It behaves mostly like a dict but it can have
 several values for the same key.
 """
 
-import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ._abc import MultiMapping, MutableMultiMapping
@@ -68,4 +68,4 @@ def get_include() -> str:
     Pass it as an ``-I`` include path when building a C extension
     against ``multidict_capi.h``.
     """
-    return os.path.dirname(os.path.abspath(__file__))
+    return str(Path(__file__).absolute().parent)

@@ -1,5 +1,6 @@
 import importlib
 import os
+import sys
 import types
 
 import pytest
@@ -60,7 +61,12 @@ def api(request: pytest.FixtureRequest) -> object:
     ids=["multidict", "cimultidict", "multidict_proxy", "cimultidict_proxy"],
 )
 def test_get_type(api: object, name: str, cls: object) -> None:
-    assert getattr(api, name)() is cls
+    getter = getattr(api, name)
+    assert getter() is cls
+    before = sys.getrefcount(cls)
+    for _ in range(2000):
+        getter()
+    assert sys.getrefcount(cls) == before
 
 
 def test_md_new(api: object) -> None:
@@ -301,7 +307,12 @@ def test_md_setdefault_cimultidict(api: object) -> None:
 
 
 def test_istr_type(api: object) -> None:
-    assert api.istr_type() is multidict.istr
+    istr_cls = multidict.istr
+    assert api.istr_type() is istr_cls
+    before = sys.getrefcount(istr_cls)
+    for _ in range(2000):
+        api.istr_type()
+    assert sys.getrefcount(istr_cls) == before
 
 
 def test_istr_from_unicode(api: object) -> None:

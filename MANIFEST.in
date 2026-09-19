@@ -13,6 +13,11 @@ graft tests
 global-exclude *.pyc
 include multidict/*.c
 exclude multidict/_multidict.html
+# Cython-generated when the optional _testcyapi build is opted into
+# locally (see AGENTS.md); never meant to ship, unlike the hand-written
+# multidict/*.c files matched by `include multidict/*.c` above.
+exclude multidict/_testcyapi.c
+exclude multidict/_testcyapi.html
 exclude multidict/*.so
 exclude multidict/*.pyd
 exclude multidict/*.pyd
