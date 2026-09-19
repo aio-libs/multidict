@@ -189,22 +189,6 @@ CIMultiDictProxy_New(void* state_, PyObject* arg)
 
 /* ================= Getters ================= */
 
-static int
-MultiDict_Contains(void* state_, PyObject* self, PyObject* key)
-{
-    __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    return md_contains((MultiDictObject*)self, key, NULL);
-}
-
-static int
-MultiDict_GetItem(void* state_, PyObject* self, PyObject* key,
-                  PyObject** result)
-{
-    *result = NULL;
-    __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    return md_get_one((MultiDictObject*)self, key, result);
-}
-
 static Py_ssize_t
 MultiDict_Size(void* state_, PyObject* self)
 {
@@ -222,6 +206,22 @@ MultiDict_Size(void* state_, PyObject* self)
         return -1;
     }
     return md_len(md);
+}
+
+static int
+MultiDict_Contains(void* state_, PyObject* self, PyObject* key)
+{
+    __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
+    return md_contains((MultiDictObject*)self, key, NULL);
+}
+
+static int
+MultiDict_GetItem(void* state_, PyObject* self, PyObject* key,
+                  PyObject** result)
+{
+    *result = NULL;
+    __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
+    return md_get_one((MultiDictObject*)self, key, result);
 }
 
 /* ================= Setters ================= */
@@ -301,6 +301,106 @@ MultiDict_SetItem(void* state_, PyObject* self, PyObject* key, PyObject* value)
     return ret;
 }
 
+/* ================= Iteration ================= */
+
+// `visitor` receives borrowed references: md_next/md_find_next hand back new
+// references for `k`/`v`, held here for the duration of the visitor call and
+// released right after, so the value cannot be freed out from under the
+// visitor even under Py_GIL_DISABLED -- the critical section held for the
+// whole walk also blocks any other thread from mutating `md` in the
+// meantime. `visitor` must not call back into any method on the multidict
+// being walked: for the keyed walk that would reenter it while entries are
+// still marked (see md_finder_cleanup's contract) and could hide matches.
+
+static Py_ssize_t
+_md_foreach_all(MultiDictObject* md, MultiDict_ItemVisitor visitor,
+                void* user_data)
+{
+    md_pos_t pos;
+    PyObject* k;
+    PyObject* v;
+    int found;
+    Py_ssize_t count = 0;
+    bool failed = false;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    md_init_pos(md, &pos);
+    while ((found = md_next(md, &pos, NULL, &k, &v)) > 0) {
+        count++;
+        int cont = visitor(user_data, k, v);
+        Py_DECREF(k);
+        Py_DECREF(v);
+        if (!cont) {
+            break;
+        }
+    }
+    if (found < 0 || PyErr_Occurred()) {
+        failed = true;
+    }
+    Py_END_CRITICAL_SECTION();
+    return failed ? -1 : count;
+}
+
+static Py_ssize_t
+_md_foreach_key(MultiDictObject* md, PyObject* key,
+                MultiDict_ItemVisitor visitor, void* user_data)
+{
+    PyObject* identity = md_calc_identity(md, key);
+    if (identity == NULL) {
+        return -1;
+    }
+    Py_ssize_t count = 0;
+    bool failed = false;
+    md_finder_t finder = {0};
+    Py_BEGIN_CRITICAL_SECTION(md);
+    if (md_init_finder(md, identity, &finder) < 0) {
+        failed = true;
+    } else {
+        PyObject* k;
+        PyObject* v;
+        int found;
+        while ((found = md_find_next(&finder, &k, &v)) > 0) {
+            count++;
+            int cont = visitor(user_data, k, v);
+            Py_DECREF(k);
+            Py_DECREF(v);
+            if (!cont) {
+                break;
+            }
+        }
+        if (found < 0 || PyErr_Occurred()) {
+            failed = true;
+        }
+        md_finder_cleanup(&finder);
+        ASSERT_CONSISTENT(md, false);
+    }
+    Py_END_CRITICAL_SECTION();
+    Py_DECREF(identity);
+    return failed ? -1 : count;
+}
+
+static Py_ssize_t
+MultiDict_ForEach(void* state_, PyObject* self, PyObject* key,
+                  MultiDict_ItemVisitor visitor, void* user_data)
+{
+    mod_state* state = (mod_state*)state_;
+    MultiDictObject* md;
+    if (AnyMultiDict_Check(state, self)) {
+        md = (MultiDictObject*)self;
+    } else if (AnyMultiDictProxy_Check(state, self)) {
+        md = ((MultiDictProxyObject*)self)->md;
+    } else {
+        PyErr_Format(PyExc_TypeError,
+                     "self should be a MultiDict, CIMultiDict, "
+                     "MultiDictProxy or CIMultiDictProxy instance not %s",
+                     Py_TYPE(self)->tp_name);
+        return -1;
+    }
+    if (key == NULL) {
+        return _md_foreach_all(md, visitor, user_data);
+    }
+    return _md_foreach_key(md, key, visitor, user_data);
+}
+
 /* =================== Capsule ==================== */
 
 static void
@@ -343,9 +443,9 @@ new_capsule(mod_state* state)
     capi->MultiDictProxy_New = MultiDictProxy_New;
     capi->CIMultiDictProxy_New = CIMultiDictProxy_New;
 
+    capi->MultiDict_Size = MultiDict_Size;
     capi->MultiDict_Contains = MultiDict_Contains;
     capi->MultiDict_GetItem = MultiDict_GetItem;
-    capi->MultiDict_Size = MultiDict_Size;
 
     capi->MultiDict_Add = MultiDict_Add;
     capi->MultiDict_Clear = MultiDict_Clear;
@@ -353,6 +453,8 @@ new_capsule(mod_state* state)
     capi->MultiDict_Pop = MultiDict_Pop;
     capi->MultiDict_SetDefault = MultiDict_SetDefault;
     capi->MultiDict_SetItem = MultiDict_SetItem;
+
+    capi->MultiDict_ForEach = MultiDict_ForEach;
 
     PyObject* ret =
         PyCapsule_New(capi, MultiDict_CAPSULE_NAME, capsule_destructor);

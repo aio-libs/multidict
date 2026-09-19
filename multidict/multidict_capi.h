@@ -169,6 +169,12 @@ CIMultiDictProxy_New(MultiDict_CAPI* capi, PyObject* arg)
     return capi->CIMultiDictProxy_New(capi->state, arg);
 }
 
+static inline Py_ssize_t
+MultiDict_Size(MultiDict_CAPI* capi, PyObject* self)
+{
+    return capi->MultiDict_Size(capi->state, self);
+}
+
 static inline int
 MultiDict_Contains(MultiDict_CAPI* capi, PyObject* self, PyObject* key)
 {
@@ -180,12 +186,6 @@ MultiDict_GetItem(MultiDict_CAPI* capi, PyObject* self, PyObject* key,
                   PyObject** result)
 {
     return capi->MultiDict_GetItem(capi->state, self, key, result);
-}
-
-static inline Py_ssize_t
-MultiDict_Size(MultiDict_CAPI* capi, PyObject* self)
-{
-    return capi->MultiDict_Size(capi->state, self);
 }
 
 static inline int
@@ -227,6 +227,13 @@ MultiDict_SetItem(MultiDict_CAPI* capi, PyObject* self, PyObject* key,
                   PyObject* value)
 {
     return capi->MultiDict_SetItem(capi->state, self, key, value);
+}
+
+static inline Py_ssize_t
+MultiDict_ForEach(MultiDict_CAPI* capi, PyObject* self, PyObject* key,
+                  MultiDict_ItemVisitor visitor, void* user_data)
+{
+    return capi->MultiDict_ForEach(capi->state, self, key, visitor, user_data);
 }
 
 #ifdef __cplusplus

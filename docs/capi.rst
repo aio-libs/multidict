@@ -184,6 +184,15 @@ Constructors
 Item access
 ===========
 
+.. c:function:: Py_ssize_t MultiDict_Size(MultiDict_CAPI *capi, PyObject *self)
+
+   Return the number of items in *self*, equivalent to ``len(self)``.
+
+   *self* may be a :class:`~multidict.MultiDict`,
+   :class:`~multidict.CIMultiDict`, :class:`~multidict.MultiDictProxy`
+   or :class:`~multidict.CIMultiDictProxy` instance; anything else
+   raises :exc:`TypeError` and returns ``-1``.
+
 .. c:function:: int MultiDict_Contains(MultiDict_CAPI *capi, PyObject *self, PyObject *key)
 
    Return ``1`` if *key* is in *self*, ``0`` if not, or ``-1`` with an
@@ -203,15 +212,6 @@ Item access
    on failure (including when *self* is not a
    :class:`~multidict.MultiDict` instance). Unlike ``self[key]``,
    a missing key is not by itself an error here.
-
-.. c:function:: Py_ssize_t MultiDict_Size(MultiDict_CAPI *capi, PyObject *self)
-
-   Return the number of items in *self*, equivalent to ``len(self)``.
-
-   *self* may be a :class:`~multidict.MultiDict`,
-   :class:`~multidict.CIMultiDict`, :class:`~multidict.MultiDictProxy`
-   or :class:`~multidict.CIMultiDictProxy` instance; anything else
-   raises :exc:`TypeError` and returns ``-1``.
 
 .. c:function:: int MultiDict_Add(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject *value)
 
@@ -272,6 +272,40 @@ All but :c:func:`MultiDict_Size` accept a :class:`~multidict.MultiDict`
 or :class:`~multidict.CIMultiDict` instance for *self* -- there is no
 separate ``CIMultiDict_Contains``, ``CIMultiDict_Add`` and so on.
 
+Iteration
+=========
+
+.. c:type:: int (*MultiDict_ItemVisitor)(void *user_data, PyObject *key, PyObject *value)
+
+   Callback type for :c:func:`MultiDict_ForEach`.
+
+   Return nonzero to keep the walk going, or ``0`` to stop early (not
+   an error by itself). To abort with an error instead, set a Python
+   exception and return ``0``.
+
+.. c:function:: Py_ssize_t MultiDict_ForEach(MultiDict_CAPI *capi, PyObject *self, PyObject *key, MultiDict_ItemVisitor visitor, void *user_data)
+
+   Visit items of *self* without building a list. If *key* is
+   ``NULL``, call *visitor* once for every ``(key, value)`` pair of
+   *self*, in the same order :meth:`~multidict.MultiDict.items` would.
+   If *key* is not ``NULL``, call *visitor* only for the entries whose
+   key equals *key* -- the same values
+   :meth:`~multidict.MultiDict.getall` would return, paired with *key*
+   for a uniform callback signature; a missing key visits nothing, it
+   is not an error.
+
+   Return the number of items visited (``>= 0``) on success, or ``-1``
+   with an exception set on failure (including when *self* is not a
+   :class:`~multidict.MultiDict`, :class:`~multidict.CIMultiDict`,
+   :class:`~multidict.MultiDictProxy` or
+   :class:`~multidict.CIMultiDictProxy` instance).
+
+   *visitor* must not call back into any method on *self* while
+   running. The whole walk executes under one internal lock, and for
+   the keyed form specifically, reentering *self* would observe
+   entries that are temporarily marked while matching duplicate keys
+   are being located, which could hide some of them.
+
 Example
 =======
 
@@ -303,4 +337,33 @@ Example
            return NULL;
        }
        return md;
+   }
+
+   static int
+   print_pair(void *user_data, PyObject *key, PyObject *value)
+   {
+       PyObject_Print(key, stdout, 0);
+       printf(": ");
+       PyObject_Print(value, stdout, 0);
+       printf("\n");
+       return 1;  /* keep going */
+   }
+
+   static int
+   print_all(my_mod_state *state, PyObject *md)
+   {
+       /* Visit every item, without building a list. */
+       return MultiDict_ForEach(state->capi, md, NULL, print_pair, NULL) < 0
+                  ? -1
+                  : 0;
+   }
+
+   static int
+   print_values_for(my_mod_state *state, PyObject *md, PyObject *key)
+   {
+       /* Visit only the entries for `key`, equivalent to getall(key)
+          but without allocating a list. */
+       return MultiDict_ForEach(state->capi, md, key, print_pair, NULL) < 0
+                  ? -1
+                  : 0;
    }

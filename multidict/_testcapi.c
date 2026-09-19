@@ -109,6 +109,17 @@ cimdproxy_new(PyObject* self, PyObject* arg)
 }
 
 static PyObject*
+md_size(PyObject* self, PyObject* arg)
+{
+    mod_state* state = get_mod_state(self);
+    Py_ssize_t size = MultiDict_Size(state->capi, arg);
+    if (size < 0) {
+        return NULL;
+    }
+    return PyLong_FromSsize_t(size);
+}
+
+static PyObject*
 md_contains(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
 {
     if (nargs != 2) {
@@ -159,17 +170,6 @@ md_getitem(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
         return NULL;
     }
     return handle_result(ret, result);
-}
-
-static PyObject*
-md_size(PyObject* self, PyObject* arg)
-{
-    mod_state* state = get_mod_state(self);
-    Py_ssize_t size = MultiDict_Size(state->capi, arg);
-    if (size < 0) {
-        return NULL;
-    }
-    return PyLong_FromSsize_t(size);
 }
 
 static PyObject*
@@ -263,6 +263,57 @@ md_setitem(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
     Py_RETURN_NONE;
 }
 
+typedef struct {
+    PyObject* list;
+    Py_ssize_t limit;  // < 0 means no limit
+} visit_ctx;
+
+static int
+collect_pair(void* user_data, PyObject* key, PyObject* value)
+{
+    visit_ctx* ctx = (visit_ctx*)user_data;
+    PyObject* pair = PyTuple_Pack(2, key, value);
+    if (pair == NULL) {
+        return 0;
+    }
+    int appended = PyList_Append(ctx->list, pair) == 0;
+    Py_DECREF(pair);
+    if (!appended) {
+        return 0;
+    }
+    if (ctx->limit >= 0 && PyList_GET_SIZE(ctx->list) >= ctx->limit) {
+        return 0;
+    }
+    return 1;
+}
+
+static PyObject*
+md_foreach(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
+{
+    if (nargs != 3) {
+        PyErr_SetString(PyExc_TypeError,
+                        "md_foreach should be called with md, key and limit");
+        return NULL;
+    }
+    mod_state* state = get_mod_state(self);
+    PyObject* key = args[1] == Py_None ? NULL : args[1];
+    Py_ssize_t limit = PyLong_AsSsize_t(args[2]);
+    if (limit == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    visit_ctx ctx = {PyList_New(0), limit};
+    if (ctx.list == NULL) {
+        return NULL;
+    }
+    Py_ssize_t count =
+        MultiDict_ForEach(state->capi, args[0], key, collect_pair, &ctx);
+    if (count < 0) {
+        Py_DECREF(ctx.list);
+        return NULL;
+    }
+    return ctx.list;
+}
+
 /* module slots */
 
 static int
@@ -295,15 +346,16 @@ static PyMethodDef module_methods[] = {
     {"cimd_new", (PyCFunction)cimd_new, METH_O},
     {"mdproxy_new", (PyCFunction)mdproxy_new, METH_O},
     {"cimdproxy_new", (PyCFunction)cimdproxy_new, METH_O},
+    {"md_size", (PyCFunction)md_size, METH_O},
     {"md_contains", (PyCFunction)md_contains, METH_FASTCALL},
     {"md_getitem", (PyCFunction)md_getitem, METH_FASTCALL},
-    {"md_size", (PyCFunction)md_size, METH_O},
     {"md_add", (PyCFunction)md_add, METH_FASTCALL},
     {"md_clear", (PyCFunction)md_clear, METH_O},
     {"md_delitem", (PyCFunction)md_delitem, METH_FASTCALL},
     {"md_pop", (PyCFunction)md_pop, METH_FASTCALL},
     {"md_setdefault", (PyCFunction)md_setdefault, METH_FASTCALL},
     {"md_setitem", (PyCFunction)md_setitem, METH_FASTCALL},
+    {"md_foreach", (PyCFunction)md_foreach, METH_FASTCALL},
     {NULL, NULL} /* sentinel */
 };
 

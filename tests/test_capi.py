@@ -10,8 +10,18 @@ MultiDictStr = multidict.MultiDict[str]
 CIMultiDictStr = multidict.CIMultiDict[str]
 
 
-def test_md_type() -> None:
-    assert _testcapi.md_type() is multidict.MultiDict
+@pytest.mark.parametrize(
+    "func, cls",
+    [
+        (_testcapi.md_type, multidict.MultiDict),
+        (_testcapi.cimd_type, multidict.CIMultiDict),
+        (_testcapi.mdproxy_type, multidict.MultiDictProxy),
+        (_testcapi.cimdproxy_type, multidict.CIMultiDictProxy),
+    ],
+    ids=["multidict", "cimultidict", "multidict_proxy", "cimultidict_proxy"],
+)
+def test_get_type(func: object, cls: object) -> None:
+    assert func() is cls  # type: ignore[operator]
 
 
 def test_md_new() -> None:
@@ -19,10 +29,6 @@ def test_md_new() -> None:
     assert isinstance(md, multidict.MultiDict)
     assert not isinstance(md, multidict.CIMultiDict)
     assert len(md) == 0
-
-
-def test_cimd_type() -> None:
-    assert _testcapi.cimd_type() is multidict.CIMultiDict
 
 
 def test_cimd_new() -> None:
@@ -47,31 +53,15 @@ def test_md_add_cimultidict() -> None:
     assert md["key"] == "value"
 
 
-def test_md_add_wrong_type() -> None:
-    with pytest.raises(TypeError, match="should be a MultiDict instance"):
-        _testcapi.md_add({}, "key", "value")
-
-
-def test_md_clear_multidict() -> None:
-    md: MultiDictStr = multidict.MultiDict(key="value")
+@pytest.mark.parametrize(
+    "md",
+    [multidict.MultiDict(key="value"), multidict.CIMultiDict(key="value")],
+    ids=["multidict", "cimultidict"],
+)
+def test_md_clear(md: object) -> None:
+    # MultiDict_Clear also works against a CIMultiDict, same as MultiDict_Add.
     _testcapi.md_clear(md)
-    assert len(md) == 0
-
-
-def test_md_clear_cimultidict() -> None:
-    # Same as above: MultiDict_Clear also works against a CIMultiDict.
-    md: CIMultiDictStr = multidict.CIMultiDict(key="value")
-    _testcapi.md_clear(md)
-    assert len(md) == 0
-
-
-def test_md_clear_wrong_type() -> None:
-    with pytest.raises(TypeError, match="should be a MultiDict instance"):
-        _testcapi.md_clear({})
-
-
-def test_mdproxy_type() -> None:
-    assert _testcapi.mdproxy_type() is multidict.MultiDictProxy
+    assert len(md) == 0  # type: ignore[arg-type]
 
 
 def test_mdproxy_new_from_multidict() -> None:
@@ -105,10 +95,6 @@ def test_mdproxy_new_wrong_type() -> None:
         TypeError, match="requires a MultiDict or MultiDictProxy instance"
     ):
         _testcapi.mdproxy_new({})
-
-
-def test_cimdproxy_type() -> None:
-    assert _testcapi.cimdproxy_type() is multidict.CIMultiDictProxy
 
 
 def test_cimdproxy_new_from_cimultidict() -> None:
@@ -172,15 +158,6 @@ def test_md_getversion_ciproxy() -> None:
     assert _testcapi.md_getversion(proxy) == _testcapi.md_getversion(md)
 
 
-def test_md_getversion_wrong_type() -> None:
-    with pytest.raises(
-        TypeError,
-        match="should be a MultiDict, CIMultiDict, MultiDictProxy or "
-        "CIMultiDictProxy instance",
-    ):
-        _testcapi.md_getversion({})
-
-
 def test_md_contains_multidict() -> None:
     md: MultiDictStr = multidict.MultiDict(key="value")
     assert _testcapi.md_contains(md, "key") is True
@@ -190,11 +167,6 @@ def test_md_contains_multidict() -> None:
 def test_md_contains_cimultidict() -> None:
     md: CIMultiDictStr = multidict.CIMultiDict(KEY="value")
     assert _testcapi.md_contains(md, "key") is True
-
-
-def test_md_contains_wrong_type() -> None:
-    with pytest.raises(TypeError, match="should be a MultiDict instance"):
-        _testcapi.md_contains({}, "key")
 
 
 def test_md_getitem_multidict() -> None:
@@ -212,11 +184,6 @@ def test_md_getitem_missing() -> None:
     # code rather than raising KeyError -- the PyDict_GetItemRef design.
     md: MultiDictStr = multidict.MultiDict()
     assert _testcapi.md_getitem(md, "missing") == (False, None)
-
-
-def test_md_getitem_wrong_type() -> None:
-    with pytest.raises(TypeError, match="should be a MultiDict instance"):
-        _testcapi.md_getitem({}, "key")
 
 
 def test_md_setitem_multidict_replaces_all() -> None:
@@ -237,11 +204,6 @@ def test_md_setitem_cimultidict() -> None:
     assert md["key"] == "value"
 
 
-def test_md_setitem_wrong_type() -> None:
-    with pytest.raises(TypeError, match="should be a MultiDict instance"):
-        _testcapi.md_setitem({}, "key", "value")
-
-
 def test_md_delitem_multidict_removes_all() -> None:
     md: MultiDictStr = multidict.MultiDict([("key", "value1"), ("key", "value2")])
     _testcapi.md_delitem(md, "key")
@@ -258,11 +220,6 @@ def test_md_delitem_missing() -> None:
     md: MultiDictStr = multidict.MultiDict()
     with pytest.raises(KeyError, match="missing"):
         _testcapi.md_delitem(md, "missing")
-
-
-def test_md_delitem_wrong_type() -> None:
-    with pytest.raises(TypeError, match="should be a MultiDict instance"):
-        _testcapi.md_delitem({}, "key")
 
 
 def test_md_pop_multidict() -> None:
@@ -284,11 +241,6 @@ def test_md_pop_missing() -> None:
     assert _testcapi.md_pop(md, "missing") == (False, None)
 
 
-def test_md_pop_wrong_type() -> None:
-    with pytest.raises(TypeError, match="should be a MultiDict instance"):
-        _testcapi.md_pop({}, "key")
-
-
 def test_md_setdefault_adds_missing() -> None:
     # PyDict_SetDefaultRef design: the bool reports whether the key was
     # already present (it was not, so `default` got inserted).
@@ -307,11 +259,6 @@ def test_md_setdefault_cimultidict() -> None:
     md: CIMultiDictStr = multidict.CIMultiDict()
     assert _testcapi.md_setdefault(md, "KEY", "v1") == (False, "v1")
     assert _testcapi.md_setdefault(md, "key", "v2") == (True, "v1")
-
-
-def test_md_setdefault_wrong_type() -> None:
-    with pytest.raises(TypeError, match="should be a MultiDict instance"):
-        _testcapi.md_setdefault({}, "key", "default")
 
 
 def test_istr_type() -> None:
@@ -337,22 +284,22 @@ def test_istr_from_unicode_wrong_type() -> None:
         _testcapi.istr_from_unicode(123)
 
 
-def test_md_size_multidict() -> None:
-    md: MultiDictStr = multidict.MultiDict([("key", "value1"), ("key", "value2")])
-    assert _testcapi.md_size(md) == len(md) == 2
+@pytest.mark.parametrize(
+    "md, expected",
+    [
+        (multidict.MultiDict([("key", "value1"), ("key", "value2")]), 2),
+        (multidict.MultiDict(), 0),
+        (multidict.CIMultiDict(KEY="value"), 1),
+        (multidict.MultiDictProxy(multidict.MultiDict(key="value")), 1),
+        (multidict.CIMultiDictProxy(multidict.CIMultiDict(key="value")), 1),
+    ],
+    ids=["multidict", "empty", "cimultidict", "proxy", "ciproxy"],
+)
+def test_md_size(md: object, expected: int) -> None:
+    assert _testcapi.md_size(md) == expected
 
 
-def test_md_size_empty() -> None:
-    md: MultiDictStr = multidict.MultiDict()
-    assert _testcapi.md_size(md) == 0
-
-
-def test_md_size_cimultidict() -> None:
-    md: CIMultiDictStr = multidict.CIMultiDict(KEY="value")
-    assert _testcapi.md_size(md) == 1
-
-
-def test_md_size_proxy() -> None:
+def test_md_size_proxy_reflects_live_changes() -> None:
     md: MultiDictStr = multidict.MultiDict(key="value")
     proxy = multidict.MultiDictProxy(md)
     assert _testcapi.md_size(proxy) == 1
@@ -360,16 +307,103 @@ def test_md_size_proxy() -> None:
     assert _testcapi.md_size(proxy) == 2
 
 
-def test_md_size_ciproxy() -> None:
-    md: CIMultiDictStr = multidict.CIMultiDict(key="value")
-    proxy = multidict.CIMultiDictProxy(md)
-    assert _testcapi.md_size(proxy) == 1
+def _md_for_foreach_all() -> list[tuple[object, list[tuple[str, str]]]]:
+    md_plain: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
+    md_ci: CIMultiDictStr = multidict.CIMultiDict(KEY="value")
+    md_for_proxy: MultiDictStr = multidict.MultiDict([("a", "1"), ("a", "2")])
+    md_for_ciproxy: CIMultiDictStr = multidict.CIMultiDict(key="value")
+    return [
+        (md_plain, list(md_plain.items())),
+        (md_ci, list(md_ci.items())),
+        (multidict.MultiDictProxy(md_for_proxy), list(md_for_proxy.items())),
+        (multidict.CIMultiDictProxy(md_for_ciproxy), list(md_for_ciproxy.items())),
+    ]
 
 
-def test_md_size_wrong_type() -> None:
+@pytest.mark.parametrize(
+    "container, expected",
+    _md_for_foreach_all(),
+    ids=["multidict", "cimultidict", "proxy", "ciproxy"],
+)
+def test_md_foreach_all(container: object, expected: list[tuple[str, str]]) -> None:
+    assert _testcapi.md_foreach(container, None, -1) == expected
+
+
+def test_md_foreach_all_empty() -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    assert _testcapi.md_foreach(md, None, -1) == []
+
+
+def test_md_foreach_all_early_stop() -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("c", "3")])
+    assert _testcapi.md_foreach(md, None, 1) == [("a", "1")]
+
+
+def test_md_foreach_key_multidict() -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
+    assert _testcapi.md_foreach(md, "a", -1) == [("a", "1"), ("a", "3")]
+    assert [v for _, v in _testcapi.md_foreach(md, "a", -1)] == md.getall("a")
+
+
+def test_md_foreach_key_cimultidict() -> None:
+    md: CIMultiDictStr = multidict.CIMultiDict()
+    md.add("KEY", "v1")
+    md.add("key", "v2")
+    assert [v for _, v in _testcapi.md_foreach(md, "Key", -1)] == md.getall("key")
+
+
+def test_md_foreach_key_missing() -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    assert _testcapi.md_foreach(md, "missing", -1) == []
+
+
+def test_md_foreach_key_early_stop() -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("a", "2"), ("a", "3")])
+    assert _testcapi.md_foreach(md, "a", 1) == [("a", "1")]
+
+
+@pytest.mark.parametrize(
+    "func, args",
+    [
+        (_testcapi.md_add, ("key", "value")),
+        (_testcapi.md_clear, ()),
+        (_testcapi.md_contains, ("key",)),
+        (_testcapi.md_getitem, ("key",)),
+        (_testcapi.md_setitem, ("key", "value")),
+        (_testcapi.md_delitem, ("key",)),
+        (_testcapi.md_pop, ("key",)),
+        (_testcapi.md_setdefault, ("key", "default")),
+    ],
+    ids=[
+        "add",
+        "clear",
+        "contains",
+        "getitem",
+        "setitem",
+        "delitem",
+        "pop",
+        "setdefault",
+    ],
+)
+def test_md_wrong_type(func: object, args: tuple[object, ...]) -> None:
+    with pytest.raises(TypeError, match="should be a MultiDict instance"):
+        func({}, *args)  # type: ignore[operator]
+
+
+@pytest.mark.parametrize(
+    "func, args",
+    [
+        (_testcapi.md_getversion, ()),
+        (_testcapi.md_size, ()),
+        (_testcapi.md_foreach, (None, -1)),
+        (_testcapi.md_foreach, ("key", -1)),
+    ],
+    ids=["getversion", "size", "foreach_all", "foreach_key"],
+)
+def test_any_multidict_wrong_type(func: object, args: tuple[object, ...]) -> None:
     with pytest.raises(
         TypeError,
         match="should be a MultiDict, CIMultiDict, MultiDictProxy or "
         "CIMultiDictProxy instance",
     ):
-        _testcapi.md_size({})
+        func({}, *args)  # type: ignore[operator]

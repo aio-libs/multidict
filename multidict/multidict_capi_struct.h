@@ -12,6 +12,9 @@ extern "C" {
 #define MultiDict_CAPI_NAME "CAPI"
 #define MultiDict_CAPSULE_NAME MultiDict_MODULE_NAME "." MultiDict_CAPI_NAME
 
+typedef int (*MultiDict_ItemVisitor)(void* user_data, PyObject* key,
+                                     PyObject* value);
+
 typedef struct {
     void* state;
 
@@ -30,10 +33,10 @@ typedef struct {
     PyObject* (*MultiDictProxy_New)(void* state, PyObject* arg);
     PyObject* (*CIMultiDictProxy_New)(void* state, PyObject* arg);
 
+    Py_ssize_t (*MultiDict_Size)(void* state, PyObject* self);
     int (*MultiDict_Contains)(void* state, PyObject* self, PyObject* key);
     int (*MultiDict_GetItem)(void* state, PyObject* self, PyObject* key,
                              PyObject** result);
-    Py_ssize_t (*MultiDict_Size)(void* state, PyObject* self);
 
     int (*MultiDict_Add)(void* state, PyObject* self, PyObject* key,
                          PyObject* value);
@@ -45,6 +48,10 @@ typedef struct {
                                 PyObject* default_value, PyObject** result);
     int (*MultiDict_SetItem)(void* state, PyObject* self, PyObject* key,
                              PyObject* value);
+
+    Py_ssize_t (*MultiDict_ForEach)(void* state, PyObject* self, PyObject* key,
+                                    MultiDict_ItemVisitor visitor,
+                                    void* user_data);
 } MultiDict_CAPI;
 
 #ifdef __cplusplus
