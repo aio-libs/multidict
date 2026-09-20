@@ -1496,9 +1496,18 @@ md_readonly_find_next(md_readonly_finder_t* finder, PyObject** pkey,
            tells a repeat apart from a fresh match via the mark it
            leaves on the entry; this scan never marks (see the comment
            above md_readonly_finder_t), so it tracks its own
-           already-returned slots here instead. */
+           already-returned slots here instead.
+
+           This function returns without advancing past a match, so the
+           very next call re-examines the exact same slot and depends on
+           finding it here to move on -- the slot it's looking for is
+           always the one most recently appended. Walking from the end
+           makes that the common O(1) case instead of an O(visited_count)
+           scan; a htkeysiter_next() repeat that isn't immediate (the
+           iter's own doc comment allows one, e.g. "1, 2, 3, 1") still
+           gets found, just not on the first comparison. */
         bool already_returned = false;
-        for (Py_ssize_t i = 0; i < finder->visited_count; i++) {
+        for (Py_ssize_t i = finder->visited_count - 1; i >= 0; i--) {
             if (finder->visited[i] == finder->iter.index) {
                 already_returned = true;
                 break;
