@@ -1455,6 +1455,41 @@ md_readonly_finder_init(MultiDictObject* md, PyObject* identity,
     return 0;
 }
 
+/* Grows finder->visited past MD_READONLY_FINDER_INLINE_VISITED entries.
+   Kept out of line (and out of md_readonly_find_next()'s hot loop): a
+   getall() with more than a handful of duplicates for one key is rare,
+   and folding this into the loop body was enough extra code to stop the
+   compiler inlining that loop into its callers, regressing the common,
+   never-grows case along with it. Returns 0 on success, -1 (with an
+   exception set) on allocation failure. */
+HT_COLD static int
+_md_readonly_finder_grow_visited(md_readonly_finder_t* finder)
+{
+    Py_ssize_t new_capacity = finder->visited_capacity * 2;
+    size_t new_size = (size_t)new_capacity * sizeof(Py_ssize_t);
+    Py_ssize_t* new_visited;
+    if (finder->visited == finder->visited_inline) {
+        /* Switching off the inline array for the first time: can't
+           PyMem_Realloc() it in place -- it isn't a PyMem allocation,
+           and it's about to go out of scope as part of *finder anyway. */
+        new_visited = PyMem_Malloc(new_size);
+        if (new_visited != NULL) {
+            memcpy(new_visited,
+                   finder->visited,
+                   (size_t)finder->visited_count * sizeof(Py_ssize_t));
+        }
+    } else {
+        new_visited = PyMem_Realloc(finder->visited, new_size);
+    }
+    if (new_visited == NULL) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    finder->visited = new_visited;
+    finder->visited_capacity = new_capacity;
+    return 0;
+}
+
 static inline int
 md_readonly_find_next(md_readonly_finder_t* finder, PyObject** pkey,
                       PyObject** pvalue)
@@ -1516,32 +1551,11 @@ md_readonly_find_next(md_readonly_finder_t* finder, PyObject** pkey,
         if (already_returned) {
             continue;
         }
-        if (finder->visited_count == finder->visited_capacity) {
-            Py_ssize_t new_capacity = finder->visited_capacity * 2;
-            size_t new_size = (size_t)new_capacity * sizeof(Py_ssize_t);
-            Py_ssize_t* new_visited;
-            if (finder->visited == finder->visited_inline) {
-                /* Past MD_READONLY_FINDER_INLINE_VISITED duplicates for
-                   this one key: switch to a heap-allocated buffer.
-                   Can't PyMem_Realloc() the inline array in place -- it
-                   isn't a PyMem allocation, and it's about to go out of
-                   scope as part of *finder anyway. */
-                new_visited = PyMem_Malloc(new_size);
-                if (new_visited != NULL) {
-                    memcpy(new_visited,
-                           finder->visited,
-                           (size_t)finder->visited_count * sizeof(Py_ssize_t));
-                }
-            } else {
-                new_visited = PyMem_Realloc(finder->visited, new_size);
-            }
-            if (new_visited == NULL) {
-                PyErr_NoMemory();
+        if (HT_UNLIKELY(finder->visited_count == finder->visited_capacity)) {
+            if (_md_readonly_finder_grow_visited(finder) < 0) {
                 ret = -1;
                 goto cleanup;
             }
-            finder->visited = new_visited;
-            finder->visited_capacity = new_capacity;
         }
         finder->visited[finder->visited_count++] = finder->iter.index;
 
