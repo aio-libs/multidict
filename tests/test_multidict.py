@@ -2329,7 +2329,7 @@ def test_setdefault_vs_update_same_key_thread_safety() -> None:
         "freed. Confirmed this reproduces identically on unmodified "
         "upstream master, so it predates and is unrelated to this PR; "
         "only reliable on a GIL build, where the fix here actually "
-        "applies -- see the follow-up issue suggested in this PR's body"
+        "applies -- see aio-libs/multidict#1492"
     ),
 )
 def test_del_pop_vs_update_same_key_gil_build_thread_safety() -> None:
