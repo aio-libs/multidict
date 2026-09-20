@@ -1,7 +1,0 @@
-Corrected several comments in the free-threaded C extension that
-attributed critical-section suspension to a blocking ``PyMem_Malloc()``
-call; allocation alone never suspends an acquired critical section, and
-the real risk at those sites is a decref running
-a finalizer or weakref callback. Also dropped a retry loop in
-``md_clone_from_ht()`` that guarded against the same, non-existent
-allocation-triggered suspension -- by :user:`asvetlov`.
