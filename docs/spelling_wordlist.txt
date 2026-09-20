@@ -48,6 +48,7 @@ eof
 fallback
 fallbacks
 fastpath
+finalizer
 filename
 formatters
 frontend
