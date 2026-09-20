@@ -1190,9 +1190,13 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
             ASSERT_CONSISTENT(self, true);
         }
 #ifdef Py_GIL_DISABLED
-        md_post_update(self, &defer);
+        if (md_post_update(self, &defer) < 0 && ret == 0) {
+            ret = -1;
+        }
 #else
-        md_post_update(self);
+        if (md_post_update(self) < 0 && ret == 0) {
+            ret = -1;
+        }
 #endif
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
@@ -1213,9 +1217,13 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
             ASSERT_CONSISTENT(self, true);
         }
 #ifdef Py_GIL_DISABLED
-        md_post_update(self, &defer);
+        if (md_post_update(self, &defer) < 0 && ret == 0) {
+            ret = -1;
+        }
 #else
-        md_post_update(self);
+        if (md_post_update(self) < 0 && ret == 0) {
+            ret = -1;
+        }
 #endif
         Py_END_CRITICAL_SECTION2();
     } else {
@@ -1240,9 +1248,13 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
             ASSERT_CONSISTENT(self, true);
         }
 #ifdef Py_GIL_DISABLED
-        md_post_update(self, &defer);
+        if (md_post_update(self, &defer) < 0 && ret == 0) {
+            ret = -1;
+        }
 #else
-        md_post_update(self);
+        if (md_post_update(self) < 0 && ret == 0) {
+            ret = -1;
+        }
 #endif
         Py_END_CRITICAL_SECTION();
     }
@@ -1296,9 +1308,13 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
             ASSERT_CONSISTENT(self, true);
         }
 #ifdef Py_GIL_DISABLED
-        md_post_update(self, NULL);
+        if (md_post_update(self, NULL) < 0 && ret == 0) {
+            ret = -1;
+        }
 #else
-        md_post_update(self);
+        if (md_post_update(self) < 0 && ret == 0) {
+            ret = -1;
+        }
 #endif
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
@@ -1319,9 +1335,13 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
             ASSERT_CONSISTENT(self, true);
         }
 #ifdef Py_GIL_DISABLED
-        md_post_update(self, NULL);
+        if (md_post_update(self, NULL) < 0 && ret == 0) {
+            ret = -1;
+        }
 #else
-        md_post_update(self);
+        if (md_post_update(self) < 0 && ret == 0) {
+            ret = -1;
+        }
 #endif
         Py_END_CRITICAL_SECTION2();
     } else {
@@ -1346,9 +1366,13 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
             ASSERT_CONSISTENT(self, true);
         }
 #ifdef Py_GIL_DISABLED
-        md_post_update(self, NULL);
+        if (md_post_update(self, NULL) < 0 && ret == 0) {
+            ret = -1;
+        }
 #else
-        md_post_update(self);
+        if (md_post_update(self) < 0 && ret == 0) {
+            ret = -1;
+        }
 #endif
         Py_END_CRITICAL_SECTION();
     }

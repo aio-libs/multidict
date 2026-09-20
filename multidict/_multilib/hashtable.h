@@ -2507,8 +2507,16 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                 entry->key = Py_NewRef(key);
                 _md_entry_publish_value(entry, Py_NewRef(value));
                 _md_entry_store_hash(entry, finder.hash | MD_HASH_MARK);
-                if (md_deferred_decref_push(defer, old_key) < 0 ||
-                    md_deferred_decref_push(defer, old_value) < 0) {
+                /* Push both unconditionally, not with `||`: a failed
+                   first push already decref'd old_key itself (see
+                   md_deferred_decref_push()'s doc comment), but
+                   short-circuiting past the second push would leak
+                   old_value -- neither deferred nor decref'd. */
+                int push_ret = md_deferred_decref_push(defer, old_key);
+                if (md_deferred_decref_push(defer, old_value) < 0) {
+                    push_ret = -1;
+                }
+                if (push_ret < 0) {
                     md_finder_cleanup(&finder);
                     return -1;
                 }
@@ -2670,8 +2678,17 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                         entry->key = Py_NewRef(key);
                         _md_entry_publish_value(entry, Py_NewRef(value));
                         _md_entry_store_hash(entry, hash | MD_HASH_MARK);
-                        if (md_deferred_decref_push(defer, old_key) < 0 ||
-                            md_deferred_decref_push(defer, old_value) < 0) {
+                        /* Push both unconditionally, not with `||`: a
+                           failed first push already decref'd old_key
+                           itself (see md_deferred_decref_push()'s doc
+                           comment), but short-circuiting past the
+                           second push would leak old_value -- neither
+                           deferred nor decref'd. */
+                        int push_ret = md_deferred_decref_push(defer, old_key);
+                        if (md_deferred_decref_push(defer, old_value) < 0) {
+                            push_ret = -1;
+                        }
+                        if (push_ret < 0) {
                             goto fail;
                         }
 #else
@@ -2750,7 +2767,7 @@ fail:
     return -1;
 }
 
-static inline void
+static inline int
 md_post_update(MultiDictObject* md
 #ifdef Py_GIL_DISABLED
                ,
@@ -2770,6 +2787,7 @@ md_post_update(MultiDictObject* md
        copy already drops, so it simply isn't there to revisit; anything
        not yet finished still has its original identity and is copied
        over unchanged. */
+    int ret = 0;
     for (;;) {
         htkeys_t* keys = md->keys;
 #ifdef Py_GIL_DISABLED
@@ -2791,7 +2809,9 @@ md_post_update(MultiDictObject* md
                     htkeys_set_index(keys, slot, DKIX_DUMMY);
                     _md_add_used(md, -1);
                     if (defer != NULL) {
-                        md_deferred_decref_push(defer, old_identity);
+                        if (md_deferred_decref_push(defer, old_identity) < 0) {
+                            ret = -1;
+                        }
                     } else {
                         /* Defensive fallback only: a pure .merge() call
                            (defer == NULL here) never half-deletes an
@@ -2826,6 +2846,7 @@ md_post_update(MultiDictObject* md
     }
     md->version = NEXT_VERSION(md->state);
     ASSERT_CONSISTENT(md, false);
+    return ret;
 }
 
 static inline int
