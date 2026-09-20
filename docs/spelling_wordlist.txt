@@ -50,6 +50,7 @@ fallback
 fallbacks
 falsy
 fastpath
+finalizer
 filename
 formatters
 frontend
