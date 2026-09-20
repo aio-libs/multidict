@@ -199,11 +199,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 Py_BEGIN_CRITICAL_SECTION(other);
                 ret = md_init(self, is_ci, md_len(other) + nkwargs);
                 if (ret == 0) {
-#ifdef Py_GIL_DISABLED
                     ret = md_update_from_ht(self, other, Extend, NULL);
-#else
-                    ret = md_update_from_ht(self, other, Extend);
-#endif
                     ASSERT_CONSISTENT(self, false);
                 }
                 Py_END_CRITICAL_SECTION();
@@ -212,11 +208,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             Py_BEGIN_CRITICAL_SECTION(arg);
             ret = md_init(self, is_ci, PyDict_GET_SIZE(arg) + nkwargs);
             if (ret == 0) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_dict(self, arg, Extend, NULL);
-#else
-                ret = md_update_from_dict(self, arg, Extend);
-#endif
                 ASSERT_CONSISTENT(self, false);
             }
             Py_END_CRITICAL_SECTION();
@@ -233,11 +225,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             ret = md_init(self, is_ci, nkwargs + extra);
             if (ret == 0) {
                 if (arg != NULL) {
-#ifdef Py_GIL_DISABLED
                     ret = md_update_from_seq(self, arg, Extend, NULL);
-#else
-                    ret = md_update_from_seq(self, arg, Extend);
-#endif
                 }
                 ASSERT_CONSISTENT(self, false);
             }
@@ -611,24 +599,16 @@ static int
 multidict_mp_as_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
 {
     int ret;
-#ifdef Py_GIL_DISABLED
     md_deferred_decref_t defer;
     md_deferred_decref_init(&defer);
-#endif
     Py_BEGIN_CRITICAL_SECTION(self);
     if (val == NULL) {
         ret = md_del(self, key);
     } else {
-#ifdef Py_GIL_DISABLED
         ret = md_replace(self, key, val, &defer);
-#else
-        ret = md_replace(self, key, val);
-#endif
     }
     Py_END_CRITICAL_SECTION();
-#ifdef Py_GIL_DISABLED
     md_deferred_decref_release(&defer);
-#endif
     return ret;
 }
 
@@ -775,17 +755,10 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_init(self, false, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_ht(self, other, Extend, NULL);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL);
             }
-#else
-            ret = md_update_from_ht(self, other, Extend);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend);
-            }
-#endif
             ASSERT_CONSISTENT(self, false);
         }
         Py_END_CRITICAL_SECTION2();
@@ -793,17 +766,10 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_init(self, false, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_dict(self, arg, Extend, NULL);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL);
             }
-#else
-            ret = md_update_from_dict(self, arg, Extend);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend);
-            }
-#endif
             ASSERT_CONSISTENT(self, false);
         }
         Py_END_CRITICAL_SECTION2();
@@ -814,18 +780,10 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (other != NULL) {
                 ret = md_extend_self(self);
             } else if (arg != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_seq(self, arg, Extend, NULL);
-#else
-                ret = md_update_from_seq(self, arg, Extend);
-#endif
             }
             if (ret == 0 && kwds != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_dict(self, kwds, Extend, NULL);
-#else
-                ret = md_update_from_dict(self, kwds, Extend);
-#endif
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -907,17 +865,10 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_ht(self, other, Extend, NULL);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL);
             }
-#else
-            ret = md_update_from_ht(self, other, Extend);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend);
-            }
-#endif
             ASSERT_CONSISTENT(self, false);
         }
         Py_END_CRITICAL_SECTION2();
@@ -925,17 +876,10 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_reserve(self, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_dict(self, arg, Extend, NULL);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL);
             }
-#else
-            ret = md_update_from_dict(self, arg, Extend);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend);
-            }
-#endif
             ASSERT_CONSISTENT(self, false);
         }
         Py_END_CRITICAL_SECTION2();
@@ -946,18 +890,10 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (other != NULL) {
                 ret = md_extend_self(self);
             } else if (arg != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_seq(self, arg, Extend, NULL);
-#else
-                ret = md_update_from_seq(self, arg, Extend);
-#endif
             }
             if (ret == 0 && kwds != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_dict(self, kwds, Extend, NULL);
-#else
-                ret = md_update_from_dict(self, kwds, Extend);
-#endif
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -1168,63 +1104,35 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
-#ifdef Py_GIL_DISABLED
     md_deferred_decref_t defer;
     md_deferred_decref_init(&defer);
-#endif
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_ht(self, other, Update, &defer);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Update, &defer);
             }
-#else
-            ret = md_update_from_ht(self, other, Update);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Update);
-            }
-#endif
             ASSERT_CONSISTENT(self, true);
         }
-#ifdef Py_GIL_DISABLED
         if (md_post_update(self, &defer) < 0 && ret == 0) {
             ret = -1;
         }
-#else
-        if (md_post_update(self) < 0 && ret == 0) {
-            ret = -1;
-        }
-#endif
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_reserve(self, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_dict(self, arg, Update, &defer);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Update, &defer);
             }
-#else
-            ret = md_update_from_dict(self, arg, Update);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Update);
-            }
-#endif
             ASSERT_CONSISTENT(self, true);
         }
-#ifdef Py_GIL_DISABLED
         if (md_post_update(self, &defer) < 0 && ret == 0) {
             ret = -1;
         }
-#else
-        if (md_post_update(self) < 0 && ret == 0) {
-            ret = -1;
-        }
-#endif
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
@@ -1232,35 +1140,19 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
         if (ret == 0) {
             // self-referential update() is a no-op: entries already match
             if (other == NULL && arg != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_seq(self, arg, Update, &defer);
-#else
-                ret = md_update_from_seq(self, arg, Update);
-#endif
             }
             if (ret == 0 && kwds != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_dict(self, kwds, Update, &defer);
-#else
-                ret = md_update_from_dict(self, kwds, Update);
-#endif
             }
             ASSERT_CONSISTENT(self, true);
         }
-#ifdef Py_GIL_DISABLED
         if (md_post_update(self, &defer) < 0 && ret == 0) {
             ret = -1;
         }
-#else
-        if (md_post_update(self) < 0 && ret == 0) {
-            ret = -1;
-        }
-#endif
         Py_END_CRITICAL_SECTION();
     }
-#ifdef Py_GIL_DISABLED
     md_deferred_decref_release(&defer);
-#endif
     if (ret < 0) {
         goto fail;
     }
@@ -1294,55 +1186,29 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_ht(self, other, Merge, NULL);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Merge, NULL);
             }
-#else
-            ret = md_update_from_ht(self, other, Merge);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Merge);
-            }
-#endif
             ASSERT_CONSISTENT(self, true);
         }
-#ifdef Py_GIL_DISABLED
         if (md_post_update(self, NULL) < 0 && ret == 0) {
             ret = -1;
         }
-#else
-        if (md_post_update(self) < 0 && ret == 0) {
-            ret = -1;
-        }
-#endif
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_reserve(self, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_dict(self, arg, Merge, NULL);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Merge, NULL);
             }
-#else
-            ret = md_update_from_dict(self, arg, Merge);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Merge);
-            }
-#endif
             ASSERT_CONSISTENT(self, true);
         }
-#ifdef Py_GIL_DISABLED
         if (md_post_update(self, NULL) < 0 && ret == 0) {
             ret = -1;
         }
-#else
-        if (md_post_update(self) < 0 && ret == 0) {
-            ret = -1;
-        }
-#endif
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
@@ -1350,30 +1216,16 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
         if (ret == 0) {
             // self-referential merge() is a no-op: entries already match
             if (other == NULL && arg != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_seq(self, arg, Merge, NULL);
-#else
-                ret = md_update_from_seq(self, arg, Merge);
-#endif
             }
             if (ret == 0 && kwds != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_dict(self, kwds, Merge, NULL);
-#else
-                ret = md_update_from_dict(self, kwds, Merge);
-#endif
             }
             ASSERT_CONSISTENT(self, true);
         }
-#ifdef Py_GIL_DISABLED
         if (md_post_update(self, NULL) < 0 && ret == 0) {
             ret = -1;
         }
-#else
-        if (md_post_update(self) < 0 && ret == 0) {
-            ret = -1;
-        }
-#endif
         Py_END_CRITICAL_SECTION();
     }
     if (ret < 0) {
@@ -1621,17 +1473,10 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_init(self, true, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_ht(self, other, Extend, NULL);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL);
             }
-#else
-            ret = md_update_from_ht(self, other, Extend);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend);
-            }
-#endif
             ASSERT_CONSISTENT(self, false);
         }
         Py_END_CRITICAL_SECTION2();
@@ -1639,17 +1484,10 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_init(self, true, size);
         if (ret == 0) {
-#ifdef Py_GIL_DISABLED
             ret = md_update_from_dict(self, arg, Extend, NULL);
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL);
             }
-#else
-            ret = md_update_from_dict(self, arg, Extend);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend);
-            }
-#endif
             ASSERT_CONSISTENT(self, false);
         }
         Py_END_CRITICAL_SECTION2();
@@ -1660,18 +1498,10 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (other != NULL) {
                 ret = md_extend_self(self);
             } else if (arg != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_seq(self, arg, Extend, NULL);
-#else
-                ret = md_update_from_seq(self, arg, Extend);
-#endif
             }
             if (ret == 0 && kwds != NULL) {
-#ifdef Py_GIL_DISABLED
                 ret = md_update_from_dict(self, kwds, Extend, NULL);
-#else
-                ret = md_update_from_dict(self, kwds, Extend);
-#endif
             }
             ASSERT_CONSISTENT(self, false);
         }

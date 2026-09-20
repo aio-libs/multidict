@@ -1,0 +1,10 @@
+Fixed a segmentation fault on the standard (non-free-threaded) C extension
+build when a value type's ``__del__`` released the GIL (for example by
+calling ``time.sleep()``) while ``update()``, ``merge()``, ``__setitem__()``,
+``__delitem__()``, ``pop()``, ``popone()``, or ``popall()`` was dropping a
+replaced or removed value. ``Py_BEGIN_CRITICAL_SECTION`` compiles to a no-op
+on this build, so nothing else was stopping a second thread from mutating the
+very same ``MultiDict`` concurrently once the GIL was released mid-mutation.
+Every such decref is now deferred until the mutation has fully finished, the
+same technique already used to close the analogous free-threaded-build race
+-- by :user:`asvetlov`.
