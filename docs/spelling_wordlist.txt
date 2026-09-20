@@ -7,8 +7,10 @@ ppc64le
 s390x
 x86_64
 aiohttp
+allocator
 args
 async
+atomics
 autocalculated
 autodetection
 autogenerates
@@ -126,6 +128,7 @@ subdirectory
 subprotocol
 subprotocols
 Svetlov
+syscalls
 toolbar
 toolset
 truthy

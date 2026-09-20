@@ -103,7 +103,7 @@ _md_dump(MultiDictObject* md);
 #define ASSERT_CONSISTENT(md, update) assert(1)
 #endif
 
-static inline bool
+HT_ALWAYS_INLINE static inline bool
 _str_cmp(PyObject* s1, PyObject* s2)
 {
     /* implementation is borrowed from PyUnicode_Equal() but without
@@ -217,7 +217,7 @@ safety argument in full:
                                         &empty_htkeys, which is never
                                         retired or freed)
            ... walk keys ...
-           keys->num_readers -= 1         (D, relaxed)
+           keys->num_readers -= 1         (D, release)
            num_active_readers -= 1        (E, seq_cst)
 
   writer:  store(md->keys, new)       (seq_cst)
@@ -245,6 +245,27 @@ a redundant check of what the coarse gate already guarantees.
 _md_drain_retired() treats it that way: a table whose own num_readers
 is still nonzero is pushed back onto md->retired for a later attempt
 instead of freed.
+
+Unlike A/B/E above, C/D is not a criss-cross between two independent
+atomics -- it is a one-directional handoff: a reader finishes reading
+this specific table's fields, then signals "done" via D; the drainer
+reads that signal and, once it sees zero, may free the table. That is
+the textbook release/acquire pattern, not Dekker's algorithm, and
+release/acquire is sufficient (seq_cst is not required): D is a
+release atomic_fetch_add_ssize_release(), so every ordinary read the
+reader performed while walking keys (in _md_get_one_lockfree() and
+friends) is ordered-before D becomes visible to another thread. The
+drain's own check, atomic_load_ssize_acquire(&t->num_readers) == 0 in
+_md_drain_retired(), pairs with that release: observing the
+post-decrement value there means the drainer also observes everything
+the departing reader read before D, so freeing the table (via
+htkeys_free(), reached through _md_free_retired()) cannot race the
+reader's now-finished walk. C itself (the increment in
+_md_reader_enter()) stays a plain relaxed
+atomic_fetch_add_ssize_relaxed(): no other thread's correctness
+depends on observing the increment's ordering relative to any other
+memory location -- only the decrement side of the handoff needs to
+publish anything.
 
 _md_reader_exit()'s own num_active_readers decrement (E above) is a
 seq_cst atomic_fetch_add_ssize(), which hands back the pre-decrement
@@ -328,7 +349,7 @@ static inline void
 _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys != &empty_htkeys) {
-        atomic_fetch_add_ssize_relaxed(&keys->num_readers, -1);
+        atomic_fetch_add_ssize_release(&keys->num_readers, -1);
     }
     Py_ssize_t prev_active_readers =
         atomic_fetch_add_ssize(&md->num_active_readers, -1);
@@ -371,7 +392,7 @@ _md_drain_retired(MultiDictObject* md)
     htkeys_t* pending_tail = NULL;
     while (t != NULL) {
         htkeys_t* next = t->retired_next;
-        if (atomic_load_ssize_relaxed(&t->num_readers) == 0) {
+        if (atomic_load_ssize_acquire(&t->num_readers) == 0) {
             _md_free_retired(t);
         } else {
             t->retired_next = pending_head;
@@ -1380,6 +1401,168 @@ md_finder_cleanup(md_finder_t* finder)
     finder->md = NULL;
 }
 
+/* Duplicate values for one key are uncommon, but not rare enough to size
+   for 0: a handful of real usages and this project's own getall()
+   benchmark carry around 8 duplicates per key. That fits inline with
+   room to spare, so the common case never touches the allocator. */
+#define MD_READONLY_FINDER_INLINE_VISITED 8
+
+typedef struct _md_readonly_finder {
+    MultiDictObject* md;
+    htkeysiter_t iter;
+    uint64_t version;
+    Py_hash_t hash;
+    PyObject* identity;  // borrowed ref
+    Py_ssize_t visited_inline[MD_READONLY_FINDER_INLINE_VISITED];
+    Py_ssize_t* visited;
+    Py_ssize_t visited_count;
+    Py_ssize_t visited_capacity;
+} md_readonly_finder_t;
+
+static inline int
+md_readonly_finder_init(MultiDictObject* md, PyObject* identity,
+                        md_readonly_finder_t* finder)
+{
+    finder->version = md->version;
+    finder->md = md;
+    finder->identity = identity;
+    finder->hash = _unicode_hash(identity);
+    if (finder->hash == -1) {
+        return -1;
+    }
+    finder->visited = finder->visited_inline;
+    finder->visited_count = 0;
+    finder->visited_capacity = MD_READONLY_FINDER_INLINE_VISITED;
+    htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
+    return 0;
+}
+
+HT_COLD static int
+_md_readonly_finder_grow_visited(md_readonly_finder_t* finder)
+{
+    Py_ssize_t new_capacity = finder->visited_capacity * 2;
+    size_t new_size = (size_t)new_capacity * sizeof(Py_ssize_t);
+    Py_ssize_t* new_visited;
+    if (finder->visited == finder->visited_inline) {
+        new_visited = PyMem_Malloc(new_size);
+        if (new_visited != NULL) {
+            memcpy(new_visited,
+                   finder->visited,
+                   (size_t)finder->visited_count * sizeof(Py_ssize_t));
+        }
+    } else {
+        new_visited = PyMem_Realloc(finder->visited, new_size);
+    }
+    if (new_visited == NULL) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    finder->visited = new_visited;
+    finder->visited_capacity = new_capacity;
+    return 0;
+}
+
+static inline int
+md_readonly_find_next(md_readonly_finder_t* finder, PyObject** pkey,
+                      PyObject** pvalue)
+{
+    int ret = 0;
+    assert(finder->iter.keys == finder->md->keys);
+    if (finder->iter.keys != finder->md->keys ||
+        finder->version != finder->md->version) {
+        ret = -1;
+        PyErr_SetString(PyExc_RuntimeError,
+                        "MultiDict is changed during iteration");
+        goto cleanup;
+    }
+
+    entry_t* entries = htkeys_entries(finder->md->keys);
+
+    for (; finder->iter.index != DKIX_EMPTY; htkeysiter_next(&finder->iter)) {
+        if (finder->iter.index < 0) {
+            continue;
+        }
+        entry_t* entry = entries + finder->iter.index;
+        /* Masked, not a raw comparison: entry->hash can legitimately
+           carry MD_HASH_MARK right now if a different, concurrently-
+           suspended _md_replace()/_md_update() (see its comment on why
+           a decref can suspend it) has already written this entry's
+           final key/value but not yet reached its own cleanup. The
+           entry is fully valid at this point, just mid-flight -- this
+           scan never writes entry->hash, so it can't step on whichever
+           finder or update batch owns that mark. */
+        if ((entry->hash & PY_SSIZE_T_MAX) != finder->hash) {
+            continue;
+        }
+        if (!_str_cmp(finder->identity, entry->identity)) {
+            continue;
+        }
+
+        /* htkeysiter_next() can legitimately repeat a slot already seen
+           in this same scan (see its own doc comment). md_find_next()
+           tells a repeat apart from a fresh match via the mark it
+           leaves on the entry; this scan never marks (see the comment
+           above md_readonly_finder_t), so it tracks its own
+           already-returned slots here instead.
+
+           This function returns without advancing past a match, so the
+           very next call re-examines the exact same slot and depends on
+           finding it here to move on -- the slot it's looking for is
+           always the one most recently appended. Walking from the end
+           makes that the common O(1) case instead of an O(visited_count)
+           scan; a htkeysiter_next() repeat that isn't immediate (the
+           iter's own doc comment allows one, e.g. "1, 2, 3, 1") still
+           gets found, just not on the first comparison. */
+        bool already_returned = false;
+        for (Py_ssize_t i = finder->visited_count - 1; i >= 0; i--) {
+            if (finder->visited[i] == finder->iter.index) {
+                already_returned = true;
+                break;
+            }
+        }
+        if (already_returned) {
+            continue;
+        }
+        if (HT_UNLIKELY(finder->visited_count == finder->visited_capacity)) {
+            if (_md_readonly_finder_grow_visited(finder) < 0) {
+                ret = -1;
+                goto cleanup;
+            }
+        }
+        finder->visited[finder->visited_count++] = finder->iter.index;
+
+        if (pkey) {
+            *pkey = _md_ensure_key(finder->md, entry);
+            if (*pkey == NULL) {
+                ret = -1;
+                goto cleanup;
+            }
+        }
+        if (pvalue) {
+            *pvalue = Py_NewRef(entry->value);
+        }
+        return 1;
+    }
+    ret = 0;
+cleanup:
+    if (pkey) {
+        *pkey = NULL;
+    }
+    if (pvalue) {
+        *pvalue = NULL;
+    }
+    return ret;
+}
+
+static inline void
+md_readonly_finder_cleanup(md_readonly_finder_t* finder)
+{
+    if (finder->visited != finder->visited_inline) {
+        PyMem_Free(finder->visited);
+    }
+    finder->visited = NULL;
+}
+
 static inline int
 _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                     PyObject** pret)
@@ -1675,19 +1858,27 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     PyObject* value = NULL;
     *ret = NULL;
 
-    md_finder_t finder = {0};
+    /* Only `visited` needs a value before md_readonly_finder_init() runs:
+       md_calc_identity() below can fail first and jump straight to
+       cleanup, which frees `visited` if it isn't still visited_inline.
+       Zeroing the rest of the struct here (in particular the 64-byte
+       visited_inline buffer) would be wasted work, since init() sets
+       every other field itself and nothing reads visited_inline before
+       init() points `visited` at it. */
+    md_readonly_finder_t finder;
+    finder.visited = NULL;
 
     PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
         goto fail;
     }
 
-    if (md_init_finder(md, identity, &finder) < 0) {
+    if (md_readonly_finder_init(md, identity, &finder) < 0) {
         assert(PyErr_Occurred());
         goto fail;
     }
 
-    while ((tmp = md_find_next(&finder, NULL, &value)) > 0) {
+    while ((tmp = md_readonly_find_next(&finder, NULL, &value)) > 0) {
         if (*ret == NULL) {
             *ret = PyList_New(1);
             if (*ret == NULL) {
@@ -1706,32 +1897,31 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         goto fail;
     }
 
-    if (*ret != NULL) {
-        // there is no need to restore hashes if none was marked
-        md_finder_cleanup(&finder);
-    }
+    md_readonly_finder_cleanup(&finder);
     Py_DECREF(identity);
     return *ret != NULL;
 fail:
-    md_finder_cleanup(&finder);
+    md_readonly_finder_cleanup(&finder);
     Py_XDECREF(identity);
     Py_XDECREF(value);
     Py_CLEAR(*ret);
     return -1;
 }
 
-/* Collect every (key, value) pair matching `identity` into a fresh list,
-   fully marking and restoring the finder chain before returning. Run any
-   user code (a value comparison that may call a custom __eq__) against
-   the result only after this returns, never mid-walk: entries stay
-   marked until md_finder_cleanup(), and reentering the same MultiDict
-   (e.g. via getall()) while marked would hide some matching entries.
+/* Collect every (key, value) pair matching `identity` into a fresh list.
+   Uses md_readonly_finder_t (see its comment), so nothing here is ever
+   marked: a custom __eq__ run against the result after this returns can
+   safely re-enter this MultiDict (e.g. via getall()) without observing
+   any leftover bookkeeping from this walk.
 
    `with_keys` selects values (false) or (key, value) tuples (true). */
 static inline PyObject*
 md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
 {
-    md_finder_t finder = {0};
+    /* No zero-init needed: md_readonly_finder_cleanup() below is only ever
+       reached after md_readonly_finder_init() has already set every field
+       it touches. */
+    md_readonly_finder_t finder;
     PyObject* key = NULL;
     PyObject* value = NULL;
     PyObject* item;
@@ -1742,14 +1932,14 @@ md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
         return NULL;
     }
 
-    if (md_init_finder(md, identity, &finder) < 0) {
+    if (md_readonly_finder_init(md, identity, &finder) < 0) {
         assert(PyErr_Occurred());
         Py_DECREF(ret);
         return NULL;
     }
 
-    while ((tmp = md_find_next(&finder, with_keys ? &key : NULL, &value)) >
-           0) {
+    while ((tmp = md_readonly_find_next(
+                &finder, with_keys ? &key : NULL, &value)) > 0) {
         if (with_keys) {
             item = PyTuple_Pack(2, key, value);
             Py_CLEAR(key);
@@ -1767,13 +1957,13 @@ md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
             goto fail;
         }
     }
-    md_finder_cleanup(&finder);
+    md_readonly_finder_cleanup(&finder);
     if (tmp < 0) {
         goto fail_no_cleanup;
     }
     return ret;
 fail:
-    md_finder_cleanup(&finder);
+    md_readonly_finder_cleanup(&finder);
 fail_no_cleanup:
     Py_CLEAR(key);
     Py_CLEAR(value);
@@ -2669,6 +2859,32 @@ _err_cannot_fetch(Py_ssize_t i, const char* name)
                  name);
 }
 
+/* list[i] as a new reference. On a free-threaded build another thread can
+   drop the item between a borrow and its incref, or shrink the list after
+   its length was checked, so PyList_GetItemRef takes the reference
+   atomically (locking the list only if its lock-free attempt fails). An
+   item that is gone by then means the list changed under the caller, and
+   is reported as a RuntimeError: the caller sees NULL with the error set.
+   GIL builds keep the macro and compile the check away: nothing can run
+   between the length check and the borrow. */
+#ifdef Py_GIL_DISABLED
+static inline PyObject*
+_list_getitem_ref(PyObject* list, Py_ssize_t i)
+{
+    PyObject* item = PyList_GetItemRef(list, i);
+    if (item == NULL && PyErr_ExceptionMatches(PyExc_IndexError)) {
+        PyErr_Clear();
+        PyErr_SetString(PyExc_RuntimeError,
+                        "list changed size during iteration");
+    }
+    return item;
+}
+#define _list_item_gone(item) ((item) == NULL)
+#else
+#define _list_getitem_ref(list, i) Py_NewRef(PyList_GET_ITEM((list), (i)))
+#define _list_item_gone(item) (0)
+#endif
+
 static int
 _md_parse_item(Py_ssize_t i, PyObject* item, PyObject** pkey,
                PyObject** pvalue)
@@ -2689,8 +2905,14 @@ _md_parse_item(Py_ssize_t i, PyObject* item, PyObject** pkey,
             _err_bad_length(i, n);
             goto fail;
         }
-        *pkey = Py_NewRef(PyList_GET_ITEM(item, 0));
-        *pvalue = Py_NewRef(PyList_GET_ITEM(item, 1));
+        *pkey = _list_getitem_ref(item, 0);
+        if (_list_item_gone(*pkey)) {
+            goto fail;
+        }
+        *pvalue = _list_getitem_ref(item, 1);
+        if (_list_item_gone(*pvalue)) {
+            goto fail;
+        }
     } else {
         if (!PySequence_Check(item)) {
             _err_not_sequence(i);
@@ -2780,11 +3002,10 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op)
                 if (i >= PyList_GET_SIZE(seq)) {
                     goto exit;
                 }
-                item = PyList_GET_ITEM(seq, i);
-                if (item == NULL) {
+                item = _list_getitem_ref(seq, i);
+                if (_list_item_gone(item)) {
                     goto fail;
                 }
-                Py_INCREF(item);
                 break;
             case TUPLE:
                 if (i >= size) {

@@ -1,0 +1,8 @@
+Fixed a free-threaded build bug where ``getall()`` and the ``items()``/
+``keys()``/``values()`` equality path could raise ``KeyError`` or report a
+present, never-deleted key as missing. A concurrent ``update()``/``extend()``/
+``__setitem__()`` call can have its critical section transiently suspended
+(a decref triggering a blocking allocator call) while an entry is marked as
+part of its own bookkeeping; a reader landing in that window used to treat
+the mark as "not found" instead of "still there, in flight" -- by
+:user:`asvetlov`.
