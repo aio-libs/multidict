@@ -355,15 +355,15 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
     }
     Py_ssize_t count = 0;
     bool failed = false;
-    md_finder_t finder = {0};
+    md_readonly_finder_t finder;
     Py_BEGIN_CRITICAL_SECTION(md);
-    if (md_init_finder(md, identity, &finder) < 0) {
+    if (md_readonly_finder_init(md, identity, &finder) < 0) {
         failed = true;
     } else {
         PyObject* k;
         PyObject* v;
         int found;
-        while ((found = md_find_next(&finder, &k, &v)) > 0) {
+        while ((found = md_readonly_find_next(&finder, &k, &v)) > 0) {
             count++;
             int ret = visitor(user_data, k, v);
             Py_DECREF(k);
@@ -380,7 +380,7 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
         if (found < 0) {
             failed = true;
         }
-        md_finder_cleanup(&finder);
+        md_readonly_finder_cleanup(&finder);
         ASSERT_CONSISTENT(md, false);
     }
     Py_END_CRITICAL_SECTION();
