@@ -2203,7 +2203,21 @@ def test_getall_update_vs_lock_free_reads_thread_safety() -> None:
     assert len(d) == 500
 
 
+_requires_free_threading = pytest.mark.skipif(
+    not hasattr(sys, "_is_gil_enabled") or sys._is_gil_enabled(),
+    reason=(
+        "exercises the free-threaded build's critical-section suspension "
+        "window specifically; the Evil.__del__ technique this needs also "
+        "happens to trigger an unrelated, pre-existing crash on the "
+        "GIL-only build (a decref's __del__ releasing the GIL mid-mutation "
+        "with no critical section to suspend there), so this only runs "
+        "under free threading -- see aio-libs/multidict#1489"
+    ),
+)
+
+
 @pytest.mark.c_extension
+@_requires_free_threading
 def test_update_vs_update_same_key_thread_safety() -> None:
     """Concurrent update()/__setitem__/merge() calls all targeting the
     *same*, pre-existing key must never lose it or leave a duplicate
@@ -2263,6 +2277,7 @@ def test_update_vs_update_same_key_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+@_requires_free_threading
 def test_setdefault_vs_update_same_key_thread_safety() -> None:
     """Concurrent setdefault() and update() calls targeting the same,
     pre-existing key must not leave a duplicate entry behind.
