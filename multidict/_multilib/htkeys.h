@@ -46,12 +46,15 @@ typedef struct entry {
 #if defined(__GNUC__) || defined(__clang__)
 #define HT_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #define HT_COLD __attribute__((cold, noinline))
+#define HT_ALWAYS_INLINE __attribute__((always_inline))
 #elif defined(_MSC_VER)
 #define HT_UNLIKELY(x) (x)
 #define HT_COLD __declspec(noinline)
+#define HT_ALWAYS_INLINE __forceinline
 #else
 #define HT_UNLIKELY(x) (x)
 #define HT_COLD
+#define HT_ALWAYS_INLINE
 #endif
 
 typedef struct _htkeys {

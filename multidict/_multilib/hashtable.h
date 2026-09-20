@@ -103,7 +103,13 @@ _md_dump(MultiDictObject* md);
 #define ASSERT_CONSISTENT(md, update) assert(1)
 #endif
 
-static inline bool
+/* Called from every identity-comparison hot path in this file (get,
+   contains, getall, replace, update). Left to the compiler's own
+   heuristics, it was inlined at some call sites and kept as a real
+   call at others (confirmed via nm -S on a release build), so where
+   its cost got attributed depended on which caller reached it.
+   Forcing it removes that inconsistency. */
+HT_ALWAYS_INLINE static inline bool
 _str_cmp(PyObject* s1, PyObject* s2)
 {
     /* implementation is borrowed from PyUnicode_Equal() but without
