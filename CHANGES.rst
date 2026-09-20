@@ -14,6 +14,106 @@ Changelog
 
 .. towncrier release notes start
 
+6.9.1
+==========
+
+*(2026-09-20)*
+
+
+Bug fixes
+---------
+
+- Fixed the C extension reading freed memory on free-threaded builds when a
+  list handed to :py:meth:`~multidict.MultiDict.update`,
+  :py:meth:`~multidict.MultiDict.extend`, :py:meth:`~multidict.MultiDict.merge`
+  or the :py:class:`~multidict.MultiDict` and :py:class:`~multidict.CIMultiDict`
+  constructors, a ``[key, value]`` item inside any iterable handed to them, or a
+  list tested with ``in`` against :py:meth:`~multidict.MultiDict.items`, is
+  changed by another thread; a call that catches the list shrinking under it
+  now raises :py:exc:`RuntimeError` -- by :user:`rodrigobnogueira`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1437`.
+
+- Fixed a data race on the free-threaded build where a retired hash table's
+  reader count used relaxed atomics, letting a lock-free ``get()``/``getone()``/
+  ``__getitem__()`` read race a concurrent free of that table. The reader-exit
+  decrement and the drain's free check now use release/acquire ordering
+  instead -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1481`.
+
+- Fixed a free-threaded build bug where two threads calling ``update()``,
+  ``merge()``, or ``__setitem__()`` on the same key at the same time could lose
+  the key entirely instead of just racing on which value wins. A decref of the
+  replaced value could transiently suspend the writer's critical section,
+  letting a second writer for the same key observe the first writer's
+  in-progress entry as absent and, once both settled, mistake it for a stale
+  duplicate and delete it. Every such decref is now deferred until the writer
+  has released its critical section, so the window can no longer open.
+  ``setdefault()`` had an unrelated instance of the same blind spot (it could
+  insert a duplicate rather than recognizing an in-flight key), fixed alongside
+  it -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1483`.
+
+- Fixed a free-threaded build bug where ``getall()`` and the ``items()``/
+  ``keys()``/``values()`` equality path could raise ``KeyError`` or report a
+  present, never-deleted key as missing. A concurrent ``update()``/``extend()``/
+  ``__setitem__()`` call can have its critical section transiently suspended
+  (a decref triggering a blocking allocator call) while an entry is marked as
+  part of its own bookkeeping; a reader landing in that window used to treat
+  the mark as "not found" instead of "still there, in flight" -- by
+  :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1484`.
+
+
+Contributor-facing changes
+--------------------------
+
+- Removed a redundant ``include`` and a duplicated ``exclude`` line from
+  ``MANIFEST.in``; sdist contents are unchanged -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1478`.
+
+- Added ``.claudeignore`` file -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1479`.
+
+- Scaled up the pure-Python ``pop()``, ``popitem()``, ``__delitem__()``,
+  ``add()`` and item-insertion benchmarks to do more work per measurement.
+  Repeated CodSpeed runs on the same commit showed these particular
+  benchmarks flagged as dominated by syscalls, understating their real
+  cost and adding noise to the reported values; a larger working set
+  amortizes that overhead -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1485`.
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Corrected several comments in the free-threaded C extension that
+  attributed critical-section suspension to a blocking ``PyMem_Malloc()``
+  call; allocation alone never suspends an acquired critical section, and
+  the real risk at those sites is a decref running
+  a finalizer or weakref callback. Also dropped a retry loop in
+  ``md_clone_from_ht()`` that guarded against the same, non-existent
+  allocation-triggered suspension -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1486`.
+
+
+----
+
 
 6.9.0
 ==========
