@@ -1,0 +1,6 @@
+Scaled up the pure-Python ``pop()``, ``popitem()``, ``__delitem__()``,
+``add()`` and item-insertion benchmarks to do more work per measurement.
+Repeated CodSpeed runs on the same commit showed these particular
+benchmarks flagged as dominated by syscalls, understating their real
+cost and adding noise to the reported values; a larger working set
+amortizes that overhead -- by :user:`asvetlov`.
