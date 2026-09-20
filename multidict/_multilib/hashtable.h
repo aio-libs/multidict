@@ -999,18 +999,18 @@ fail:
 /* Old key/value/identity references pulled out of an entry mid-update
    (an overwrite, or a stale-duplicate cleanup) must not be decref'd
    until the calling thread has fully finished mutating `md` and
-   released its critical section: a decref can run arbitrary finalizer
-   code or contend the allocator's lock, either of which can suspend a
-   held critical section (see the comment above _md_resize()) and let a
-   second thread's own update to the very same key observe this
-   thread's not-yet-unmarked, half-finished work. Deferring every such
-   decref into this scratch buffer, and only releasing it once the
-   caller has left its critical section, means nothing can suspend the
-   critical section while it's held, so no other thread can ever
-   observe an in-progress mutation. Sized like md_readonly_finder_t's
-   visited buffer, for the same reason: the common case (0-1 replaced
-   entries per call) fits inline, pathological cases spill to the
-   allocator. */
+   released its critical section: dropping the last reference to an
+   object can run arbitrary Python code (a __del__ method, or a weakref
+   callback), and if that code itself performs a blocking operation, it
+   can suspend a held critical section, letting a second thread's own
+   update to the very same key observe this thread's not-yet-unmarked,
+   half-finished work. Deferring every such decref into this scratch
+   buffer, and only releasing it once the caller has left its critical
+   section, means nothing can suspend the critical section while it's
+   held, so no other thread can ever observe an in-progress mutation.
+   Sized like md_readonly_finder_t's visited buffer, for the same
+   reason: the common case (0-1 replaced entries per call) fits inline,
+   pathological cases spill to the allocator. */
 #define MD_DEFERRED_DECREF_INLINE 8
 
 typedef struct _md_deferred_decref {
