@@ -1,5 +1,0 @@
-Fixed a data race on the free-threaded build where a retired hash table's
-reader count used relaxed atomics, letting a lock-free ``get()``/``getone()``/
-``__getitem__()`` read race a concurrent free of that table. The reader-exit
-decrement and the drain's free check now use release/acquire ordering
-instead -- by :user:`asvetlov`.

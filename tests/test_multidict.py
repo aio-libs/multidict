@@ -2203,6 +2203,124 @@ def test_getall_update_vs_lock_free_reads_thread_safety() -> None:
     assert len(d) == 500
 
 
+_requires_free_threading = pytest.mark.skipif(
+    not hasattr(sys, "_is_gil_enabled") or sys._is_gil_enabled(),
+    reason=(
+        "exercises the free-threaded build's critical-section suspension "
+        "window specifically; the Evil.__del__ technique this needs also "
+        "happens to trigger an unrelated, pre-existing crash on the "
+        "GIL-only build (a decref's __del__ releasing the GIL mid-mutation "
+        "with no critical section to suspend there), so this only runs "
+        "under free threading -- see aio-libs/multidict#1489"
+    ),
+)
+
+
+@pytest.mark.c_extension
+@_requires_free_threading
+def test_update_vs_update_same_key_thread_safety() -> None:
+    """Concurrent update()/__setitem__/merge() calls all targeting the
+    *same*, pre-existing key must never lose it or leave a duplicate
+    behind.
+
+    Regression test for #1483: _md_update()/_md_replace() mark the entry
+    they are about to overwrite before decref'ing its old key/value.
+    Under the free-threaded build, releasing a value can run arbitrary
+    Python code (a __del__, see test_clear_finalizer_thread_safety's
+    Evil for the same technique) which can suspend the writer's held
+    critical section, letting a second thread racing the very same key
+    see the marked entry as absent (a raw, unmasked hash comparison
+    can't tell a marked entry from a missing one) and insert a
+    duplicate; whichever thread's post-update unmark sweep ran first
+    could then unmark the other thread's still in-flight entry, making
+    that thread mistake its own live entry for a stale duplicate and
+    delete it -- silently losing the key (``len(d)`` dropping to 0, not
+    growing). The fix defers every such decref until each caller has
+    left its own critical section, so nothing can suspend mid-scan.
+    Natural thread interleaving alone essentially never hits this
+    specific window (it needs a second writer to land its own scan
+    inside one writer's brief mark-then-decref gap on this exact key),
+    so Evil's slow release is what makes the race reliable here."""
+
+    class Evil:
+        def __init__(self, n: int) -> None:
+            self.n = n
+
+        def __del__(self) -> None:
+            time.sleep(0.002)
+
+    d: MultiDict[Evil] = MultiDict(k=Evil(-1))
+
+    def update_worker(n: int) -> None:
+        for i in range(40):
+            d.update({"k": Evil(n * 1000 + i)})
+
+    def setitem_worker(n: int) -> None:
+        for i in range(40):
+            d["k"] = Evil(n * 1000 + i)
+
+    def merge_worker(n: int) -> None:
+        for i in range(40):
+            d.merge({"k": Evil(n * 1000 + i)})
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = [executor.submit(update_worker, i) for i in range(4)]
+        futures += [executor.submit(setitem_worker, i) for i in range(4)]
+        futures += [executor.submit(merge_worker, i) for i in range(4)]
+        for f in futures:
+            f.result()
+
+    # Either writer's value is a legitimate outcome of the race; only the
+    # invariants the bug actually broke are asserted.
+    assert len(d) == 1
+    assert len(d.getall("k")) == 1
+
+
+@pytest.mark.c_extension
+@_requires_free_threading
+def test_setdefault_vs_update_same_key_thread_safety() -> None:
+    """Concurrent setdefault() and update() calls targeting the same,
+    pre-existing key must not leave a duplicate entry behind.
+
+    Regression test for a bug in the same family as #1483:
+    md_set_default()'s existence scan used the same raw, unmasked hash
+    comparison, so it could conclude a key was absent while a
+    concurrently-suspended update()/__setitem__ call had it transiently
+    marked (see test_update_vs_update_same_key_thread_safety's Evil
+    technique for why a slow __del__ is needed to make that window
+    reliably observable), and insert a spurious duplicate. setdefault()
+    never marks or decrefs anything itself, so the fix here is
+    independent of the deferred-decref mechanism above: it masks the
+    comparison so a foreign in-flight mark is recognized as "the key
+    already exists"."""
+
+    class Evil:
+        def __init__(self, n: int) -> None:
+            self.n = n
+
+        def __del__(self) -> None:
+            time.sleep(0.002)
+
+    d: MultiDict[Evil] = MultiDict(k=Evil(-1))
+
+    def setdefault_worker(n: int) -> None:
+        for i in range(40):
+            d.setdefault("k", Evil(n * 1000 + i))
+
+    def update_worker(n: int) -> None:
+        for i in range(40):
+            d.update({"k": Evil(n * 1000 + i)})
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(setdefault_worker, i) for i in range(4)]
+        futures += [executor.submit(update_worker, i) for i in range(4)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == 1
+    assert len(d.getall("k")) == 1
+
+
 @pytest.mark.c_extension
 def test_to_dict_vs_lock_free_reads_thread_safety() -> None:
     """Concurrent to_dict() alongside lock-free contains()/get() on the
