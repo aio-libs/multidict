@@ -123,6 +123,7 @@ subdirectory
 subprotocol
 subprotocols
 Svetlov
+syscalls
 toolbar
 toolset
 tuples
