@@ -103,12 +103,6 @@ _md_dump(MultiDictObject* md);
 #define ASSERT_CONSISTENT(md, update) assert(1)
 #endif
 
-/* Called from every identity-comparison hot path in this file (get,
-   contains, getall, replace, update). Left to the compiler's own
-   heuristics, it was inlined at some call sites and kept as a real
-   call at others (confirmed via nm -S on a release build), so where
-   its cost got attributed depended on which caller reached it.
-   Forcing it removes that inconsistency. */
 HT_ALWAYS_INLINE static inline bool
 _str_cmp(PyObject* s1, PyObject* s2)
 {
@@ -1413,30 +1407,12 @@ md_finder_cleanup(md_finder_t* finder)
    room to spare, so the common case never touches the allocator. */
 #define MD_READONLY_FINDER_INLINE_VISITED 8
 
-/* A dedicated scan for getall() and md_finder_collect(), kept entirely
-   separate from md_finder_t/md_find_next() rather than adding a mode
-   flag to them: those two need to tell an entry they already marked
-   apart from a fresh duplicate across a restarted scan, which needs
-   the raw, unmasked comparison and the mark on the entry itself. This
-   scan runs once, never restarts, and never mutates an entry, so it
-   works the opposite way -- a masked comparison, and its own state
-   instead of the entry's. Folding both into one struct/functions with
-   a runtime branch measurably regressed both: the extra field bloats
-   every md_finder_t use (including _md_replace()'s and
-   md_to_dict()'s, which need none of this), and the extra branch runs
-   on every entry either kind of scan visits, hit or miss. */
 typedef struct _md_readonly_finder {
     MultiDictObject* md;
     htkeysiter_t iter;
     uint64_t version;
     Py_hash_t hash;
     PyObject* identity;  // borrowed ref
-    /* Slots already returned by this scan -- see md_readonly_find_next().
-       `visited` points at `visited_inline` until more than
-       MD_READONLY_FINDER_INLINE_VISITED duplicates are seen, only then
-       switching to a PyMem-allocated buffer (freed by
-       md_readonly_finder_cleanup(); the inline one never is, it's part
-       of this struct). */
     Py_ssize_t visited_inline[MD_READONLY_FINDER_INLINE_VISITED];
     Py_ssize_t* visited;
     Py_ssize_t visited_count;
@@ -1461,13 +1437,6 @@ md_readonly_finder_init(MultiDictObject* md, PyObject* identity,
     return 0;
 }
 
-/* Grows finder->visited past MD_READONLY_FINDER_INLINE_VISITED entries.
-   Kept out of line (and out of md_readonly_find_next()'s hot loop): a
-   getall() with more than a handful of duplicates for one key is rare,
-   and folding this into the loop body was enough extra code to stop the
-   compiler inlining that loop into its callers, regressing the common,
-   never-grows case along with it. Returns 0 on success, -1 (with an
-   exception set) on allocation failure. */
 HT_COLD static int
 _md_readonly_finder_grow_visited(md_readonly_finder_t* finder)
 {
@@ -1475,9 +1444,6 @@ _md_readonly_finder_grow_visited(md_readonly_finder_t* finder)
     size_t new_size = (size_t)new_capacity * sizeof(Py_ssize_t);
     Py_ssize_t* new_visited;
     if (finder->visited == finder->visited_inline) {
-        /* Switching off the inline array for the first time: can't
-           PyMem_Realloc() it in place -- it isn't a PyMem allocation,
-           and it's about to go out of scope as part of *finder anyway. */
         new_visited = PyMem_Malloc(new_size);
         if (new_visited != NULL) {
             memcpy(new_visited,
