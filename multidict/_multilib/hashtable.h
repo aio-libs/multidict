@@ -1886,7 +1886,15 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     PyObject* value = NULL;
     *ret = NULL;
 
-    md_readonly_finder_t finder = {0};
+    /* Only `visited` needs a value before md_readonly_finder_init() runs:
+       md_calc_identity() below can fail first and jump straight to
+       cleanup, which frees `visited` if it isn't still visited_inline.
+       Zeroing the rest of the struct here (in particular the 64-byte
+       visited_inline buffer) would be wasted work, since init() sets
+       every other field itself and nothing reads visited_inline before
+       init() points `visited` at it. */
+    md_readonly_finder_t finder;
+    finder.visited = NULL;
 
     PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
@@ -1938,7 +1946,10 @@ fail:
 static inline PyObject*
 md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
 {
-    md_readonly_finder_t finder = {0};
+    /* No zero-init needed: md_readonly_finder_cleanup() below is only ever
+       reached after md_readonly_finder_init() has already set every field
+       it touches. */
+    md_readonly_finder_t finder;
     PyObject* key = NULL;
     PyObject* value = NULL;
     PyObject* item;
