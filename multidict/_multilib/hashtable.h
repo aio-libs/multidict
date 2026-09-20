@@ -132,9 +132,6 @@ _str_cmp(PyObject* s1, PyObject* s2)
 static inline PyObject*
 _key_to_identity(mod_state* state, PyObject* key)
 {
-    if (IStr_Check(state, key)) {
-        return Py_NewRef(((istrobject*)key)->canonical);
-    }
     if (PyUnicode_CheckExact(key)) {
         return Py_NewRef(key);
     }
@@ -220,7 +217,7 @@ safety argument in full:
                                         &empty_htkeys, which is never
                                         retired or freed)
            ... walk keys ...
-           keys->num_readers -= 1         (D, relaxed)
+           keys->num_readers -= 1         (D, release)
            num_active_readers -= 1        (E, seq_cst)
 
   writer:  store(md->keys, new)       (seq_cst)
@@ -228,27 +225,47 @@ safety argument in full:
            else: move old onto md->retired, freed by a later drain
 
 A is always sequenced-before B on the reader's own thread, so if the
-writer's check observes num_active_readers == 0, no reader can be between
-A and E for *any* table -- in particular none can be between B and C
-for the table being freed. Anything weaker than seq_cst here (plain
-acquire/release, or relaxed) is not enough: the writer's store to
-md->keys and its read of num_active_readers, versus the reader's write to
-num_active_readers and its read of md->keys, is a criss-cross on two
-independent atomics (the same shape as Dekker's algorithm), and only a
-single global seq_cst order over all four operations closes it -- see
-the design discussion that produced this file for the specific
-interleaving that a weaker order permits.
+writer's check observes num_active_readers == 0, no reader can be
+*starting* a walk of any table that was retired before that check --
+none can be caught between A and B for the table being freed. Anything
+weaker than seq_cst here (plain acquire/release, or relaxed) is not
+enough: the writer's store to md->keys and its read of num_active_readers,
+versus the reader's write to num_active_readers and its read of
+md->keys, is a criss-cross on two independent atomics (the same shape
+as Dekker's algorithm), and only a single global seq_cst order over all
+four operations closes it -- see the design discussion that produced
+this file for the specific interleaving that a weaker order permits.
 
-keys->num_readers (C/D) does not participate in that ordering and stays
-relaxed: it is only ever inspected in _md_drain_retired(), which never
-runs except at a point already known -- via the num_active_readers check
-above -- to have no reader anywhere near it. It exists purely as a
-cheap defensive assertion that the coarse gate actually worked, not as
-an independent freeing trigger; freeing a specific retired table ahead
-of the whole object's num_active_readers reaching 0 would reintroduce the
-same bootstrap race the coarse gate exists to close (see the design
-discussion; true per-table precision under sustained concurrent read
-load needs epoch tagging, which this does not attempt).
+That guarantee is coarser than it looks, though: num_active_readers
+reaching zero does not mean every reader that incremented it has also
+reached its own D/E -- a reader can be preempted between C and D for
+an arbitrary stretch. So keys->num_readers (C/D) is the actual
+per-table authority on whether a specific table is safe to free, not
+a redundant check of what the coarse gate already guarantees.
+_md_drain_retired() treats it that way: a table whose own num_readers
+is still nonzero is pushed back onto md->retired for a later attempt
+instead of freed.
+
+Unlike A/B/E above, C/D is not a criss-cross between two independent
+atomics -- it is a one-directional handoff: a reader finishes reading
+this specific table's fields, then signals "done" via D; the drainer
+reads that signal and, once it sees zero, may free the table. That is
+the textbook release/acquire pattern, not Dekker's algorithm, and
+release/acquire is sufficient (seq_cst is not required): D is a
+release atomic_fetch_add_ssize_release(), so every ordinary read the
+reader performed while walking keys (in _md_get_one_lockfree() and
+friends) is ordered-before D becomes visible to another thread. The
+drain's own check, atomic_load_ssize_acquire(&t->num_readers) == 0 in
+_md_drain_retired(), pairs with that release: observing the
+post-decrement value there means the drainer also observes everything
+the departing reader read before D, so freeing the table (via
+htkeys_free(), reached through _md_free_retired()) cannot race the
+reader's now-finished walk. C itself (the increment in
+_md_reader_enter()) stays a plain relaxed
+atomic_fetch_add_ssize_relaxed(): no other thread's correctness
+depends on observing the increment's ordering relative to any other
+memory location -- only the decrement side of the handoff needs to
+publish anything.
 
 _md_reader_exit()'s own num_active_readers decrement (E above) is a
 seq_cst atomic_fetch_add_ssize(), which hands back the pre-decrement
@@ -332,7 +349,7 @@ static inline void
 _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys != &empty_htkeys) {
-        atomic_fetch_add_ssize_relaxed(&keys->num_readers, -1);
+        atomic_fetch_add_ssize_release(&keys->num_readers, -1);
     }
     Py_ssize_t prev_active_readers =
         atomic_fetch_add_ssize(&md->num_active_readers, -1);
@@ -364,11 +381,39 @@ _md_drain_retired(MultiDictObject* md)
         return;
     }
     htkeys_t* t = (htkeys_t*)atomic_exchange_ptr((void**)&md->retired, NULL);
+
+    /* The coarse gate above can read zero while a specific table's own
+       num_readers is still nonzero -- a reader can be preempted between
+       incrementing it and decrementing it. A table is only actually
+       safe to free once its own count is zero, so anything still
+       nonzero goes back onto md->retired for a later attempt instead of
+       being freed here. */
+    htkeys_t* pending_head = NULL;
+    htkeys_t* pending_tail = NULL;
     while (t != NULL) {
         htkeys_t* next = t->retired_next;
-        assert(atomic_load_ssize_relaxed(&t->num_readers) == 0);
-        _md_free_retired(t);
+        if (atomic_load_ssize_acquire(&t->num_readers) == 0) {
+            _md_free_retired(t);
+        } else {
+            t->retired_next = pending_head;
+            pending_head = t;
+            if (pending_tail == NULL) {
+                pending_tail = t;
+            }
+        }
         t = next;
+    }
+
+    if (pending_head != NULL) {
+        htkeys_t* old_head =
+            (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
+        for (;;) {
+            pending_tail->retired_next = old_head;
+            if (atomic_compare_exchange_ptr(
+                    (void**)&md->retired, (void**)&old_head, pending_head)) {
+                break;
+            }
+        }
     }
 }
 
@@ -540,108 +585,74 @@ _md_entry_try_get_ref(PyObject** addr)
 static inline int
 _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
 {
-    for (;;) {
-        if (log2_newsize >= SIZEOF_SIZE_T * 8) {
-            PyErr_NoMemory();
-            return -1;
-        }
-        assert(log2_newsize >= HT_LOG_MINSIZE);
+    if (log2_newsize >= SIZEOF_SIZE_T * 8) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    assert(log2_newsize >= HT_LOG_MINSIZE);
 
-        /* Allocating the new table can transiently suspend our critical
-           section on md: PyMem_Malloc() may block acquiring an internal
-           allocator lock, and CPython suspends critical sections around
-           blocking lock acquisitions on the free-threaded build (see
-           Include/cpython/critical_section.h). While suspended, another
-           thread that also locks md can run an entire add()/pop()/
-           update()/extend()/merge() to completion, mutating or replacing
-           md->keys. Therefore nothing read from md before this call may
-           be trusted afterward: oldkeys and numentries are (re-)read only
-           below, once the critical section is guaranteed to be held
-           again. */
-        htkeys_t* newkeys = htkeys_new(log2_newsize);
-        assert(newkeys);
-        if (newkeys == NULL) {
-            return -1;
-        }
+    htkeys_t* newkeys = htkeys_new(log2_newsize);
+    if (newkeys == NULL) {
+        return -1;
+    }
 
-        htkeys_t* oldkeys = md->keys;
-        Py_ssize_t numentries = md->used;
-        if (newkeys->usable < numentries) {
-            /* A concurrent operation grew md while our critical section
-               was suspended during the allocation above, so the table we
-               just built is already too small. Discard it and retry with
-               a fresh estimate based on the current size. newkeys was
-               never published, so freeing it directly (not via
-               _md_retire()) is safe even under Py_GIL_DISABLED. */
-            htkeys_free(newkeys);
-            log2_newsize = estimate_log2_keysize(numentries);
-            continue;
-        }
-
-        entry_t* oldentries = htkeys_entries(oldkeys);
-        entry_t* newentries = htkeys_entries(newkeys);
-        if (oldkeys->nentries == numentries) {
-            memcpy(newentries, oldentries, numentries * sizeof(entry_t));
-        } else {
-            entry_t* new_ep = newentries;
-            entry_t* old_ep = oldentries;
-            Py_ssize_t oldnumentries = oldkeys->nentries;
-            for (Py_ssize_t i = 0; i < oldnumentries; ++i, ++old_ep) {
-                if (old_ep->identity != NULL) {
-                    *new_ep++ = *old_ep;
-                }
+    htkeys_t* oldkeys = md->keys;
+    Py_ssize_t numentries = md->used;
+    entry_t* oldentries = htkeys_entries(oldkeys);
+    entry_t* newentries = htkeys_entries(newkeys);
+    if (oldkeys->nentries == numentries) {
+        memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+    } else {
+        entry_t* new_ep = newentries;
+        entry_t* old_ep = oldentries;
+        Py_ssize_t oldnumentries = oldkeys->nentries;
+        for (Py_ssize_t i = 0; i < oldnumentries; ++i, ++old_ep) {
+            if (old_ep->identity != NULL) {
+                *new_ep++ = *old_ep;
             }
         }
-
-        if (htkeys_build_indices(newkeys, newentries, numentries, update) <
-            0) {
-            return -1;
-        }
-
-        /* Finalize newkeys's usable/nentries before publishing it to
-           md->keys and before _md_retire() below, which can also suspend
-           this thread's critical section (same mechanism as the alloc
-           above, this time around freeing oldkeys). Otherwise a
-           concurrent insert could observe newkeys published with its
-           stale, fresh-from-htkeys_new() values during that window and
-           corrupt already-copied entries. */
-        newkeys->usable = newkeys->usable - numentries;
-        newkeys->nentries = numentries;
-
-#ifdef Py_GIL_DISABLED
-        _md_store_keys(md, newkeys);
-#else
-        md->keys = newkeys;
-#endif
-
-#ifdef Py_GIL_DISABLED
-        /* Bump the version on every resize, not just when a caller's
-           own insert/delete/replace would bump it anyway: a freed
-           htkeys_t can get reallocated at the very same address by a
-           later resize (same size class, common in practice), so code
-           elsewhere that detects "did md->keys change under me" by
-           comparing the raw pointer alone (see _md_replace()'s and
-           _md_update()'s comments) needs a companion signal that can't
-           coincidentally repeat. */
-        md->version = NEXT_VERSION(md->state);
-
-        /* Ownership of oldkeys's entries has already moved to newkeys via
-           the memcpy/copy loop above; zeroing nentries tells
-           _md_retire()'s cleanup there is nothing left to decref, only
-           memory to free. */
-        if (oldkeys != &empty_htkeys) {
-            oldkeys->nentries = 0;
-        }
-        _md_retire(md, oldkeys);
-#else
-        if (oldkeys != &empty_htkeys) {
-            htkeys_free(oldkeys);
-        }
-#endif
-
-        ASSERT_CONSISTENT(md, update);
-        return 0;
     }
+
+    if (htkeys_build_indices(newkeys, newentries, numentries, update) < 0) {
+        return -1;
+    }
+
+    newkeys->usable = newkeys->usable - numentries;
+    newkeys->nentries = numentries;
+
+#ifdef Py_GIL_DISABLED
+    _md_store_keys(md, newkeys);
+#else
+    md->keys = newkeys;
+#endif
+
+#ifdef Py_GIL_DISABLED
+    /* Bump the version on every resize, not just when a caller's
+       own insert/delete/replace would bump it anyway: a freed
+       htkeys_t can get reallocated at the very same address by a
+       later resize (same size class, common in practice), so code
+       elsewhere that detects "did md->keys change under me" by
+       comparing the raw pointer alone (see _md_replace()'s and
+       _md_update()'s comments) needs a companion signal that can't
+       coincidentally repeat. */
+    md->version = NEXT_VERSION(md->state);
+
+    /* Ownership of oldkeys's entries has already moved to newkeys via
+       the memcpy/copy loop above; zeroing nentries tells
+       _md_retire()'s cleanup there is nothing left to decref, only
+       memory to free. */
+    if (oldkeys != &empty_htkeys) {
+        oldkeys->nentries = 0;
+    }
+    _md_retire(md, oldkeys);
+#else
+    if (oldkeys != &empty_htkeys) {
+        htkeys_free(oldkeys);
+    }
+#endif
+
+    ASSERT_CONSISTENT(md, update);
+    return 0;
 }
 
 static inline int
@@ -728,8 +739,9 @@ static inline int
 md_clear(MultiDictObject* md);
 
 static inline int
-md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
+md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
 {
+    assert(md->state != NULL);
     htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
 
     if (minused > USABLE_FRACTION(HT_MINSIZE)) {
@@ -751,7 +763,6 @@ md_init(MultiDictObject* md, mod_state* state, bool is_ci, Py_ssize_t minused)
     }
 
     md_clear(md);
-    md->state = state;
     md->is_ci = is_ci;
 #ifdef Py_GIL_DISABLED
     _md_store_used(md, 0);
@@ -803,6 +814,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
         }
 
         memcpy(keys, fresh_src, size);
+        keys->resume_slots = NULL;
 #ifdef Py_GIL_DISABLED
         keys->num_readers = 0;
         keys->retired_next = NULL;
@@ -819,13 +831,11 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     /* No allocation happens between here and the writes to md below, so
        this snapshot of other's remaining fields is consistent with the
        keys buffer just copied above. */
-    mod_state* state = other->state;
     Py_ssize_t used = other->used;
     uint64_t version = other->version;
     bool is_ci = other->is_ci;
 
     md_clear(md);
-    md->state = state;
 #ifdef Py_GIL_DISABLED
     _md_store_used(md, used);
 #else
@@ -1731,6 +1741,67 @@ fail:
     return -1;
 }
 
+/* Collect every (key, value) pair matching `identity` into a fresh list,
+   fully marking and restoring the finder chain before returning. Run any
+   user code (a value comparison that may call a custom __eq__) against
+   the result only after this returns, never mid-walk: entries stay
+   marked until md_finder_cleanup(), and reentering the same MultiDict
+   (e.g. via getall()) while marked would hide some matching entries.
+
+   `with_keys` selects values (false) or (key, value) tuples (true). */
+static inline PyObject*
+md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
+{
+    md_finder_t finder = {0};
+    PyObject* key = NULL;
+    PyObject* value = NULL;
+    PyObject* item;
+    int tmp;
+
+    PyObject* ret = PyList_New(0);
+    if (ret == NULL) {
+        return NULL;
+    }
+
+    if (md_init_finder(md, identity, &finder) < 0) {
+        assert(PyErr_Occurred());
+        Py_DECREF(ret);
+        return NULL;
+    }
+
+    while ((tmp = md_find_next(&finder, with_keys ? &key : NULL, &value)) >
+           0) {
+        if (with_keys) {
+            item = PyTuple_Pack(2, key, value);
+            Py_CLEAR(key);
+            Py_CLEAR(value);
+            if (item == NULL) {
+                goto fail;
+            }
+        } else {
+            item = value;
+            value = NULL;
+        }
+        tmp = PyList_Append(ret, item);
+        Py_DECREF(item);
+        if (tmp < 0) {
+            goto fail;
+        }
+    }
+    md_finder_cleanup(&finder);
+    if (tmp < 0) {
+        goto fail_no_cleanup;
+    }
+    return ret;
+fail:
+    md_finder_cleanup(&finder);
+fail_no_cleanup:
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_DECREF(ret);
+    return NULL;
+}
+
 /* Restore every entry hash md_to_dict()'s walk left marked.
 
    md_finder_cleanup() restores one hash chain, which is what a single
@@ -2378,6 +2449,7 @@ md_post_update(MultiDictObject* md)
             break;
         }
     }
+    md->version = NEXT_VERSION(md->state);
     ASSERT_CONSISTENT(md, false);
 }
 

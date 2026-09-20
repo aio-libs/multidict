@@ -1,6 +1,7 @@
 armv
 aarch
 aarch64
+abstractmethods
 i686
 ppc64le
 s390x
@@ -8,13 +9,16 @@ x86_64
 aiohttp
 args
 async
+atomics
 autocalculated
 autodetection
 autogenerates
 autogeneration
 backend
+backends
 basename
 bugfixes
+bytecode
 cchardet
 cChardet
 changelog
@@ -82,6 +86,7 @@ multidicts
 Multidicts
 multipart
 Multipart
+musllinux
 mypy
 Nikolay
 param
@@ -93,6 +98,7 @@ pickable
 pickleable
 postfix
 pre
+prebuilt
 proxied
 pyenv
 pyinstaller
@@ -107,6 +113,8 @@ riscv
 riscv64
 runtime
 runtimes
+sdist
+stateful
 str
 subclassable
 subclassed

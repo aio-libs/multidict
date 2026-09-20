@@ -1,9 +1,0 @@
-Made the pure-Python ``MultiDict``/``CIMultiDict`` implementation safe to
-use from multiple threads under a free-threaded (no-GIL) build. Every
-method that touches an instance's hash table now takes that instance's own
-lock, two-object operations (``update()``, ``extend()``, ``merge()``,
-``__eq__()``, copying) lock both objects in a fixed, deadlock-safe order,
-and the version counter shared by every instance is guarded separately. On
-a regular (GIL-enabled) interpreter this adds no overhead: the locked
-methods are the exact same function objects as before -- by
-:user:`asvetlov`.

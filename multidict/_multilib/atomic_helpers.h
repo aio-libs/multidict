@@ -40,6 +40,12 @@ atomic_load_ssize(const Py_ssize_t* obj)
     return __atomic_load_n(obj, __ATOMIC_SEQ_CST);
 }
 
+static inline Py_ssize_t
+atomic_load_ssize_acquire(const Py_ssize_t* obj)
+{
+    return __atomic_load_n(obj, __ATOMIC_ACQUIRE);
+}
+
 static inline void
 atomic_store_ssize_relaxed(Py_ssize_t* obj, Py_ssize_t value)
 {
@@ -58,11 +64,35 @@ atomic_fetch_add_ssize(Py_ssize_t* obj, Py_ssize_t value)
     return __atomic_fetch_add(obj, value, __ATOMIC_SEQ_CST);
 }
 
+static inline Py_ssize_t
+atomic_fetch_add_ssize_release(Py_ssize_t* obj, Py_ssize_t value)
+{
+    return __atomic_fetch_add(obj, value, __ATOMIC_RELEASE);
+}
+
 static inline uint64_t
 atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
 {
     return __atomic_fetch_add(obj, value, __ATOMIC_RELAXED);
 }
+
+#define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
+    static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return __atomic_load_n(obj, __ATOMIC_RELAXED);                       \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        __atomic_store_n(obj, value, __ATOMIC_RELAXED);                      \
+    }
+
+_MULTIDICT_DEFINE_INDEX_ATOMICS(8)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(16)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(32)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(64)
+#undef _MULTIDICT_DEFINE_INDEX_ATOMICS
 
 static inline void*
 atomic_load_ptr(void* const* obj)
@@ -112,6 +142,13 @@ atomic_load_ssize(const Py_ssize_t* obj)
                                 memory_order_seq_cst);
 }
 
+static inline Py_ssize_t
+atomic_load_ssize_acquire(const Py_ssize_t* obj)
+{
+    return atomic_load_explicit((const _Atomic(Py_ssize_t)*)obj,
+                                memory_order_acquire);
+}
+
 static inline void
 atomic_store_ssize_relaxed(Py_ssize_t* obj, Py_ssize_t value)
 {
@@ -133,12 +170,39 @@ atomic_fetch_add_ssize(Py_ssize_t* obj, Py_ssize_t value)
         (_Atomic(Py_ssize_t)*)obj, value, memory_order_seq_cst);
 }
 
+static inline Py_ssize_t
+atomic_fetch_add_ssize_release(Py_ssize_t* obj, Py_ssize_t value)
+{
+    return atomic_fetch_add_explicit(
+        (_Atomic(Py_ssize_t)*)obj, value, memory_order_release);
+}
+
 static inline uint64_t
 atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
 {
     return atomic_fetch_add_explicit(
         (_Atomic(uint64_t)*)obj, value, memory_order_relaxed);
 }
+
+#define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
+    static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return atomic_load_explicit((const _Atomic(int##bits##_t)*)obj,      \
+                                    memory_order_relaxed);                   \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        atomic_store_explicit(                                               \
+            (_Atomic(int##bits##_t)*)obj, value, memory_order_relaxed);      \
+    }
+
+_MULTIDICT_DEFINE_INDEX_ATOMICS(8)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(16)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(32)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(64)
+#undef _MULTIDICT_DEFINE_INDEX_ATOMICS
 
 static inline void*
 atomic_load_ptr(void* const* obj)
@@ -205,6 +269,16 @@ atomic_load_ssize(const Py_ssize_t* obj)
     return *(volatile const Py_ssize_t*)obj;
 }
 
+static inline Py_ssize_t
+atomic_load_ssize_acquire(const Py_ssize_t* obj)
+{
+    /* Same volatile read as atomic_load_ssize_relaxed()/atomic_load_ssize()
+       above: on x86/x86_64 and ARM64 MSVC a volatile load already carries
+       acquire-or-stronger semantics, so there is nothing cheaper to do
+       for acquire specifically. */
+    return *(volatile const Py_ssize_t*)obj;
+}
+
 static inline void
 atomic_store_ssize_relaxed(Py_ssize_t* obj, Py_ssize_t value)
 {
@@ -230,6 +304,16 @@ atomic_fetch_add_ssize(Py_ssize_t* obj, Py_ssize_t value)
     return atomic_fetch_add_ssize_relaxed(obj, value);
 }
 
+static inline Py_ssize_t
+atomic_fetch_add_ssize_release(Py_ssize_t* obj, Py_ssize_t value)
+{
+    /* _InterlockedExchangeAdd* already carries a full fence (see
+       atomic_fetch_add_ssize() above); there is no cheaper release-only
+       MSVC intrinsic, so this collapses to the same body as the relaxed
+       and seq_cst variants. */
+    return atomic_fetch_add_ssize_relaxed(obj, value);
+}
+
 static inline uint64_t
 atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
 {
@@ -252,6 +336,24 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     return (uint64_t)initial;
 #endif
 }
+
+#define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
+    static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return *(volatile const int##bits##_t*)obj;                          \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        *(volatile int##bits##_t*)obj = value;                               \
+    }
+
+_MULTIDICT_DEFINE_INDEX_ATOMICS(8)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(16)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(32)
+_MULTIDICT_DEFINE_INDEX_ATOMICS(64)
+#undef _MULTIDICT_DEFINE_INDEX_ATOMICS
 
 static inline void*
 atomic_load_ptr(void* const* obj)

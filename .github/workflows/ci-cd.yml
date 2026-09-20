@@ -438,6 +438,319 @@ jobs:
         run: python -m pytest --no-cov -vvvvv --codspeed
         mode: instrumentation
 
+  hypothesis-gil:
+    name: Hypothesis (GIL)
+    needs:
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v7
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.13"
+        cache: pip
+        cache-dependency-path: requirements/*.txt
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4
+      with:
+        path: requirements/pytest.txt
+    - name: Install Hypothesis
+      # Kept out of requirements/pytest.txt: hypothesis now ships a Rust
+      # extension, and pulling it into jobs that never run `-m hypothesis`
+      # (wheel-testing in particular) forces a from-source build with
+      # maturin/rustup on platforms lacking a prebuilt wheel, e.g.
+      # musllinux i686.
+      run: python -m pip install -r requirements/pytest-hypothesis.txt
+    - name: Self-install
+      run: python -m pip install -e .
+    - name: Run the Hypothesis test suite
+      # `-m hypothesis` overrides pytest.ini's default `-m "not hypothesis"`:
+      # these tests are excluded from the regular `test` job (and from
+      # asan/tsan/wheel-testing) and only run here. A single run already
+      # covers both the C-extension and pure-Python backends, since the
+      # `any_multidict_class`-style fixtures import both directly.
+      run: >-
+        python -Im pytest tests -v
+        --cov-report xml
+        --junitxml=.test-results/pytest/test.xml
+        -m hypothesis
+    - name: Produce markdown test summary from JUnit
+      if: >-
+        !cancelled()
+      uses: test-summary/action@v2.6
+      with:
+        paths: .test-results/pytest/test.xml
+    - name: Append coverage results to Job Summary
+      if: >-
+        !cancelled()
+      run: >-
+        python -Im coverage report --format=markdown
+        >> "${GITHUB_STEP_SUMMARY}"
+      shell: bash
+    - name: Prepare coverage artifact
+      uses: aio-libs/prepare-coverage@v24.9.2
+
+  hypothesis-freethreading:
+    name: Hypothesis (free-threading)
+    needs:
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v7
+    - name: Setup Python 3.14t
+      uses: actions/setup-python@v7
+      with:
+        python-version: 3.14t
+        allow-prereleases: true
+        cache: pip
+        cache-dependency-path: requirements/*.txt
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4
+      with:
+        path: requirements/pytest.txt
+    - name: Install Hypothesis
+      # See the same step in the `hypothesis-gil` job for why this is kept
+      # out of requirements/pytest.txt.
+      run: python -m pip install -r requirements/pytest-hypothesis.txt
+    - name: Self-install
+      run: python -m pip install -e .
+    - name: Run the Hypothesis test suite
+      # Free-threaded: the only build test_reciprocal_ops_no_deadlock's
+      # body actually runs under (it's a no-op elsewhere), and real thread
+      # parallelism makes the C-extension race fuzzing more likely to
+      # exercise the "changed during iteration" path too.
+      run: >-
+        python -Im pytest tests -v
+        --cov-report xml
+        --junitxml=.test-results/pytest/test.xml
+        -m hypothesis
+    - name: Produce markdown test summary from JUnit
+      if: >-
+        !cancelled()
+      uses: test-summary/action@v2.6
+      with:
+        paths: .test-results/pytest/test.xml
+    - name: Append coverage results to Job Summary
+      if: >-
+        !cancelled()
+      run: >-
+        python -Im coverage report --format=markdown
+        >> "${GITHUB_STEP_SUMMARY}"
+      shell: bash
+    - name: Prepare coverage artifact
+      uses: aio-libs/prepare-coverage@v24.9.2
+
+  asan:
+    name: AddressSanitizer
+    needs:
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v7
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v7
+      with:
+        python-version: 3.13
+        cache: pip
+        cache-dependency-path: requirements/*.txt
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v4
+      with:
+        path: requirements/pytest.txt
+    - name: Self-install with AddressSanitizer and UndefinedBehaviorSanitizer
+      env:
+        MULTIDICT_DEBUG_BUILD: 1
+        MULTIDICT_ASAN_BUILD: 1
+      run: python -m pip install -e .
+    - name: Enable core dumps
+      run: |
+        sudo mkdir -p /tmp/cores
+        sudo chmod 1777 /tmp/cores
+        # A plain path (not a "|pipe" one) bypasses apport, which
+        # otherwise intercepts the core before we can collect it.
+        echo '/tmp/cores/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
+      shell: bash
+    - name: Run the test suite under AddressSanitizer
+      env:
+        # detect_leaks=0: CPython itself retains allocations at
+        # shutdown (interned strings, caches) that LeakSanitizer
+        # would otherwise report as leaks unrelated to multidict.
+        # disable_coredump=0: the sanitizer runtime disables core dumps
+        # for its own aborts by default, independently of the kernel
+        # core_pattern/ulimit setup above.
+        ASAN_OPTIONS: detect_leaks=0:halt_on_error=1:disable_coredump=0
+        PYTHONMALLOC: malloc
+      run: |
+        ulimit -c unlimited
+        ASAN_SO="$(cc -print-file-name=libasan.so)"
+        # --capture=no: the sanitizer runtime writes its report straight
+        # to fd 2. pytest's default capturing dups that fd per test and
+        # only prints the buffer for a failing test, but a sanitizer
+        # abort calls _exit() before pytest gets to flush it, silently
+        # dropping the report. Uncaptured output goes straight to the
+        # job log instead.
+        LD_PRELOAD="${ASAN_SO}" python -Im pytest tests -q --no-cov \
+          --capture=no -k "not test_leak"
+      shell: bash
+    - name: Check for a core dump
+      id: check-core
+      if: failure()
+      run: |
+        if compgen -G "/tmp/cores/core.*" > /dev/null; then
+          echo "found=true" >> "${GITHUB_OUTPUT}"
+        else
+          echo "found=false" >> "${GITHUB_OUTPUT}"
+        fi
+      shell: bash
+    - name: Copy the interpreter binary for postmortem debugging
+      if: failure() && steps.check-core.outputs.found == 'true'
+      run: cp "$(command -v python)" /tmp/cores/python-asan
+      shell: bash
+    - name: Upload core dump on crash
+      if: failure() && steps.check-core.outputs.found == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: asan-coredump
+        path: |
+          /tmp/cores/core.*
+          /tmp/cores/python-asan
+          multidict/*.so
+        if-no-files-found: ignore
+        retention-days: 7
+
+  tsan:
+    name: ThreadSanitizer
+    needs:
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Pinned to 3.14 for now; bump deliberately (and the cache key
+      # below along with it) rather than tracking latest automatically.
+      TSAN_CPYTHON_VERSION: 3.14.7
+      # SHA-256 of Python-3.14.7.tar.xz from python.org/ftp/python/, so a
+      # substituted or corrupted download is caught before it's extracted
+      # and executed. Update this alongside TSAN_CPYTHON_VERSION.
+      TSAN_CPYTHON_SHA256: >-
+        3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81
+      TSAN_CPYTHON_PREFIX: /home/runner/tsan-cpython
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v7
+    - name: Cache the TSan-instrumented free-threaded CPython build
+      id: tsan-cpython-cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ env.TSAN_CPYTHON_PREFIX }}
+        # NOTE: There's no other way to invalidate this cache, so bump
+        # NOTE: the trailing "-vN" suffix whenever the configure
+        # NOTE: invocation below changes.
+        key: >-
+          tsan-cpython-${{ runner.os }}-${{ env.TSAN_CPYTHON_VERSION }}-v1
+    - name: Install CPython build dependencies
+      if: steps.tsan-cpython-cache.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install --no-install-recommends -y \
+          build-essential libssl-dev zlib1g-dev libbz2-dev \
+          libreadline-dev libsqlite3-dev libncurses-dev libffi-dev \
+          liblzma-dev uuid-dev
+      shell: bash
+    - name: >-
+        Build a TSan-instrumented free-threaded
+        CPython ${{ env.TSAN_CPYTHON_VERSION }}
+      if: steps.tsan-cpython-cache.outputs.cache-hit != 'true'
+      run: |
+        curl -fsSL -o /tmp/cpython-tsan-src.tar.xz \
+          "https://www.python.org/ftp/python/${TSAN_CPYTHON_VERSION}/Python-${TSAN_CPYTHON_VERSION}.tar.xz"
+        echo "${TSAN_CPYTHON_SHA256}  /tmp/cpython-tsan-src.tar.xz" \
+          | sha256sum --check --strict -
+        mkdir -p /tmp/cpython-tsan-src
+        tar -xf /tmp/cpython-tsan-src.tar.xz -C /tmp/cpython-tsan-src \
+          --strip-components=1
+        cd /tmp/cpython-tsan-src
+        CC=clang CXX=clang++ ./configure \
+          --disable-gil \
+          --with-thread-sanitizer \
+          --prefix="${TSAN_CPYTHON_PREFIX}"
+        make -j"$(nproc)"
+        make install
+      shell: bash
+    - name: Self-install multidict against the TSan-instrumented CPython
+      env:
+        CC: clang
+        CXX: clang++
+        MULTIDICT_DEBUG_BUILD: 1
+        MULTIDICT_TSAN_BUILD: 1
+      run: >-
+        "${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t"
+        -m pip install -e .
+      shell: bash
+    - name: Install test dependencies
+      run: >-
+        "${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t"
+        -m pip install -r requirements/pytest.txt
+      shell: bash
+    - name: Enable core dumps
+      run: |
+        sudo mkdir -p /tmp/cores
+        sudo chmod 1777 /tmp/cores
+        # A plain path (not a "|pipe" one) bypasses apport, which
+        # otherwise intercepts the core before we can collect it.
+        echo '/tmp/cores/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
+      shell: bash
+    - name: Run the test suite under ThreadSanitizer
+      env:
+        # Fail the job as soon as a race is detected instead of only
+        # logging it: an undetected race would otherwise still show
+        # up as "tests passed".
+        # disable_coredump=0: the sanitizer runtime disables core dumps
+        # for its own aborts by default, independently of the kernel
+        # core_pattern/ulimit setup above.
+        TSAN_OPTIONS: halt_on_error=1:disable_coredump=0
+      run: |
+        ulimit -c unlimited
+        # --capture=no: the sanitizer runtime writes its report straight
+        # to fd 2. pytest's default capturing dups that fd per test and
+        # only prints the buffer for a failing test, but a sanitizer
+        # abort calls _exit() before pytest gets to flush it, silently
+        # dropping the report. Uncaptured output goes straight to the
+        # job log instead.
+        "${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t" \
+          -m pytest tests -q --no-cov --capture=no \
+          -k "not test_leak" \
+          --ignore=tests/test_multidict_benchmarks.py \
+          --ignore=tests/test_views_benchmarks.py
+      shell: bash
+    - name: Check for a core dump
+      id: check-core
+      if: failure()
+      run: |
+        if compgen -G "/tmp/cores/core.*" > /dev/null; then
+          echo "found=true" >> "${GITHUB_OUTPUT}"
+        else
+          echo "found=false" >> "${GITHUB_OUTPUT}"
+        fi
+      shell: bash
+    - name: Upload core dump on crash
+      if: failure() && steps.check-core.outputs.found == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: tsan-coredump
+        path: |
+          /tmp/cores/core.*
+          ${{ env.TSAN_CPYTHON_PREFIX }}/bin/python3.14t
+          multidict/*.so
+        if-no-files-found: ignore
+        retention-days: 7
+
   test-summary:
     name: Tests status
     if: always()
@@ -449,6 +762,10 @@ jobs:
     - pre-setup  # transitive, for accessing settings
     - test
     - benchmark
+    - hypothesis-gil
+    - hypothesis-freethreading
+    - asan
+    - tsan
     steps:
     - name: Decide whether the needed jobs succeeded or failed
       uses: re-actors/alls-green@release/v1

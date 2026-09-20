@@ -1,0 +1,30 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+# C extension build artifacts
+*.so
+build/
+dist/
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tox/
+.hypothesis/
+.testmondata
+# Coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+# Docs build output
+docs/_build/
+# Vendored upstream file; AGENTS.md says never edit it, no need in context
+multidict/_multilib/pythoncapi_compat.h
+# Editor / VCS cruft
+.idea/
+.vscode/
+.history/
+TAGS
