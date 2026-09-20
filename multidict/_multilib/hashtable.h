@@ -786,34 +786,15 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 
     htkeys_t* keys = (htkeys_t*)&empty_htkeys;
     htkeys_t* src = other->keys;
-    while (src != &empty_htkeys) {
+    if (src != &empty_htkeys) {
         size_t size = htkeys_sizeof(src);
-
-        /* Allocating can transiently suspend our critical section on
-           `other`, for the same reason explained in _md_resize(): a
-           blocking PyMem_Malloc() may release the lock, letting another
-           thread that also locks `other` run to completion (e.g. resizing
-           other->keys and freeing this exact buffer) before we resume.
-           `size` and `src` were computed before the call and cannot be
-           trusted afterward, so re-read other->keys and retry if it no
-           longer matches what we sized the allocation for, instead of
-           copying `size` bytes from a possibly different (or freed)
-           buffer. */
         keys = PyMem_Malloc(size);
         if (keys == NULL) {
             PyErr_NoMemory();
             return -1;
         }
 
-        htkeys_t* fresh_src = other->keys;
-        if (fresh_src != src) {
-            PyMem_Free(keys);
-            keys = (htkeys_t*)&empty_htkeys;
-            src = fresh_src;
-            continue;
-        }
-
-        memcpy(keys, fresh_src, size);
+        memcpy(keys, src, size);
         keys->resume_slots = NULL;
 #ifdef Py_GIL_DISABLED
         keys->num_readers = 0;
@@ -825,7 +806,6 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
             Py_XINCREF(entry->key);
             Py_XINCREF(entry->value);
         }
-        break;
     }
 
     /* No allocation happens between here and the writes to md below, so
@@ -1022,10 +1002,10 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
     assert(keys != &empty_htkeys);
 #ifdef Py_GIL_DISABLED
     /* Null out every field and finish md's bookkeeping (index, used)
-       before dropping any reference. A decref below can transiently
-       suspend this thread's critical section -- freeing an object can
-       contend the same allocator lock as PyMem_Malloc(), see the
-       comment above _md_resize() -- letting a concurrent resize run
+       before dropping any reference. Freeing an object below can run
+       a finalizer or weakref callback, which can hit a safepoint and
+       transiently suspend this thread's critical section (PyMem_Malloc
+       itself never does, see #1469), letting a concurrent resize run
        in between. If that resize caught this entry with some fields
        already NULL and others (or md->used, or the index) not yet
        updated, it would see md in a state that is neither "entry
@@ -1069,13 +1049,13 @@ _md_del_at_for_upd(MultiDictObject* md, size_t slot, entry_t* entry)
     */
     assert(md->keys != &empty_htkeys);
 #ifdef Py_GIL_DISABLED
-    /* Null out both fields before dropping either reference: a decref
-       between the two can transiently suspend the critical section
-       (same allocator-lock mechanism as _md_resize()'s PyMem_Malloc(),
-       see its comment) and let a concurrent resize free the table
-       `entry` lives in, in which case the *second* field access below
-       would be a use-after-free rather than just an inconsistency a
-       caller could later detect. */
+    /* Null out both fields before dropping either reference: freeing
+       old_key or old_value can run a finalizer or weakref callback
+       that hits a safepoint and transiently suspends the critical
+       section (PyMem_Malloc itself never does, see #1469), letting a
+       concurrent resize free the table `entry` lives in, in which
+       case the *second* field access below would be a use-after-free
+       rather than just an inconsistency a caller could later detect. */
     PyObject* old_key = entry->key;
     PyObject* old_value = _md_entry_load_value(entry);
     entry->key = NULL;
@@ -2345,11 +2325,12 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                 found = 1;
 #ifdef Py_GIL_DISABLED
                 /* Finish every store to this slot before dropping the
-                   old key/value: a decref can transiently suspend the
-                   critical section (same allocator-lock mechanism as
-                   _md_resize()'s PyMem_Malloc(), see its comment),
-                   letting a concurrent resize free the table `entry`
-                   lives in. Deferring the decref to locally-saved
+                   old key/value: freeing old_key/old_value can run a
+                   finalizer or weakref callback that hits a safepoint
+                   and transiently suspends the critical section
+                   (PyMem_Malloc itself never does, see #1469), letting
+                   a concurrent resize free the table `entry` lives in.
+                   Deferring the decref to locally-saved
                    pointers, once entry is already in its final form,
                    means a concurrent resize's copy always sees this
                    slot correctly replaced, whether or not it caught us
