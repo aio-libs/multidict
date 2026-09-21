@@ -319,10 +319,11 @@ Iteration
    :class:`~multidict.CIMultiDictProxy` instance).
 
    *visitor* must not call back into any method on *self* while
-   running. The whole walk executes under one internal lock, and for
-   the keyed form specifically, reentering *self* would observe
-   entries that are temporarily marked while matching duplicate keys
-   are being located, which could hide some of them.
+   running. The whole walk executes under one internal lock, and the
+   walk itself compares a version stamped at its start against
+   *self*'s current version on every step, raising a
+   :exc:`RuntimeError` the moment a reentrant mutation changes it,
+   rather than silently corrupting or hiding results.
 
 Example
 =======

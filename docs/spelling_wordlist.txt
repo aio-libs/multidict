@@ -110,6 +110,7 @@ pyenv
 pyinstaller
 pytest
 pyupgrade
+reentrant
 refactor
 refactored
 regex

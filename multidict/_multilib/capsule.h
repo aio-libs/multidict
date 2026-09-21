@@ -295,25 +295,28 @@ MultiDict_SetItem(void* state_, PyObject* self, PyObject* key, PyObject* value)
 {
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
     int ret;
-    md_deferred_decref_t defer;
-    md_deferred_decref_init(&defer);
+    deferred_decref_t defer;
+    deferred_decref_init(&defer);
     Py_BEGIN_CRITICAL_SECTION(self);
     ret = md_replace((MultiDictObject*)self, key, value, &defer);
     Py_END_CRITICAL_SECTION();
-    md_deferred_decref_release(&defer);
+    deferred_decref_release(&defer);
     return ret;
 }
 
 /* ================= Iteration ================= */
 
-// `visitor` receives borrowed references: md_next/md_find_next hand back new
+// `visitor` receives borrowed references: md_next/find_next hand back new
 // references for `k`/`v`, held here for the duration of the visitor call and
 // released right after, so the value cannot be freed out from under the
 // visitor even under Py_GIL_DISABLED -- the critical section held for the
 // whole walk also blocks any other thread from mutating `md` in the
 // meantime. `visitor` must not call back into any method on the multidict
-// being walked: for the keyed walk that would reenter it while entries are
-// still marked (see md_finder_cleanup's contract) and could hide matches.
+// being walked: both md_next and find_next compare a version stamped at
+// walk start against `md->version` on every step and raise
+// "MultiDict is changed during iteration" the moment they diverge, so a
+// reentrant mutation aborts the walk with a clear error instead of
+// silently corrupting or hiding results.
 
 static Py_ssize_t
 _md_foreach_all(MultiDictObject* md, MultiDict_ItemVisitor visitor,
@@ -358,15 +361,15 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
     }
     Py_ssize_t count = 0;
     bool failed = false;
-    md_readonly_finder_t finder;
+    finder_t finder;
     Py_BEGIN_CRITICAL_SECTION(md);
-    if (md_readonly_finder_init(md, identity, &finder) < 0) {
+    if (finder_init(md, identity, &finder) < 0) {
         failed = true;
     } else {
         PyObject* k;
         PyObject* v;
         int found;
-        while ((found = md_readonly_find_next(&finder, &k, &v)) > 0) {
+        while ((found = find_next(&finder, &k, &v)) > 0) {
             count++;
             int ret = visitor(user_data, k, v);
             Py_DECREF(k);
@@ -383,7 +386,7 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
         if (found < 0) {
             failed = true;
         }
-        md_readonly_finder_cleanup(&finder);
+        finder_cleanup(&finder);
         ASSERT_CONSISTENT(md, false);
     }
     Py_END_CRITICAL_SECTION();
