@@ -1,0 +1,5 @@
+Dropped ``-I`` from the AddressSanitizer test command in ``AGENTS.md``
+and in the CI job. It implies ``-E``, which made Python ignore
+``PYTHONMALLOC=malloc``, so small hash tables were still served from
+``pymalloc`` arenas where use-after-free went undetected
+-- by :user:`asvetlov`.

@@ -2276,6 +2276,32 @@ def test_setdefault_vs_update_same_key_thread_safety() -> None:
     assert len(d.getall("k")) == 1
 
 
+@pytest.mark.parametrize("op", ["setitem", "update"])
+def test_replace_many_duplicates_releases_all(
+    case_sensitive_multidict_class: type[MultiDict[object]], op: str
+) -> None:
+    """Enough replaced duplicates to overflow the free-threaded build's
+    deferred-decref buffer into several heap blocks; every old value
+    must still be released."""
+
+    class Tracked:
+        pass
+
+    values = [Tracked() for _ in range(3000)]
+    refs = [weakref.ref(v) for v in values]
+    d = case_sensitive_multidict_class([("k", v) for v in values])
+    del values
+
+    if op == "setitem":
+        d["k"] = "v"
+    else:
+        d.update(k="v")
+
+    assert list(d.items()) == [("k", "v")]
+    gc.collect()
+    assert all(r() is None for r in refs)
+
+
 @pytest.mark.c_extension
 @pytest.mark.skipif(
     hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled(),
@@ -3270,3 +3296,68 @@ def test_items_contains_list_shrunk_by_another_thread() -> None:
     stop.set()
     for t in mutators:
         t.join()
+
+
+def test_items_iter_key_finalizer_mutates(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """Caching the istr drops the stored str key, whose __del__ can mutate
+    the multidict; the C iterator used to read the freed entry after it."""
+
+    class Key(str):
+        def __del__(self) -> None:
+            d.clear()
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with contextlib.suppress(RuntimeError):
+        next(it)
+    d.clear()
+    assert not d
+
+
+def test_items_iter_key_str_mutates(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """Building the istr calls a str subclass's __str__, which can mutate the
+    multidict and free the entry the C iterator is still converting."""
+
+    class Key(str):
+        def __str__(self) -> str:
+            d.clear()
+            return str.__str__(self)
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with pytest.raises(RuntimeError, match="changed during iteration"):
+        next(it)
+    assert not d
+
+
+def test_items_iter_key_str_reinits(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """A __str__ re-initializing the multidict from a copy frees the entry
+    being converted; the C clone used to restore the version checked after."""
+
+    class Key(str):
+        def __str__(self) -> str:
+            d.__init__(other)  # type: ignore[misc]
+            return str.__str__(self)
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    other = d.copy()
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with contextlib.suppress(RuntimeError):
+        next(it)
+    assert len(d) == 2
+    assert d["b"] == "w"
