@@ -1064,6 +1064,36 @@ md_deferred_decref_push(md_deferred_decref_t* defer, PyObject* obj)
     return 0;
 }
 
+/* Grows `defer` up front so `n` subsequent md_deferred_decref_push_reserved()
+ * calls can't fail. Callers that must null out an entry's fields before
+ * pushing them (a half-deletion mid-mutation) need this: pushing the normal
+ * way risks md_deferred_decref_push()'s OOM fallback decref'ing while the
+ * entry is only half torn down, exposing it to a concurrent reader -- see
+ * #1491 review. Object refcounts are untouched, so a failure here leaves
+ * the caller free to unwind without having mutated anything yet. */
+static inline int
+_md_deferred_decref_reserve(md_deferred_decref_t* defer, Py_ssize_t n)
+{
+    while (defer->capacity - defer->count < n) {
+        if (_md_deferred_decref_grow(defer) < 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+/* Steals the reference like md_deferred_decref_push(), but assumes capacity
+ * was already reserved via _md_deferred_decref_reserve() -- never fails, so
+ * it never needs the immediate-decref fallback. `obj` may be NULL. */
+static inline void
+md_deferred_decref_push_reserved(md_deferred_decref_t* defer, PyObject* obj)
+{
+    if (obj != NULL) {
+        assert(defer->count < defer->capacity);
+        defer->buf[defer->count++] = obj;
+    }
+}
+
 static inline void
 md_deferred_decref_release(md_deferred_decref_t* defer)
 {
@@ -1170,7 +1200,12 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
 }
 
 /* Deferred half-deletion: entry may be replaced later or finished off by
- * md_post_update() (identity=NULL, used -= 1, hash & DKIX_DUMMY). */
+ * md_post_update() (identity=NULL, used -= 1, hash & DKIX_DUMMY). Unlike
+ * _md_del_at_deferred(), this leaves identity/hash/index live -- a reader's
+ * hash-chain scan can still reach this slot -- so capacity is reserved
+ * before key/value are nulled: md_deferred_decref_push()'s OOM fallback
+ * would otherwise decref old_value immediately while the entry sits in
+ * that half-deleted, still-reachable state. */
 static inline int
 _md_del_at_for_upd_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
                             md_deferred_decref_t* defer)
@@ -1178,6 +1213,9 @@ _md_del_at_for_upd_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     (void)md;
     (void)slot;
     assert(md->keys != &empty_htkeys);
+    if (_md_deferred_decref_reserve(defer, 2) < 0) {
+        return -1;
+    }
 #ifdef Py_GIL_DISABLED
     PyObject* old_key = entry->key;
     PyObject* old_value = _md_entry_load_value(entry);
@@ -1189,11 +1227,9 @@ _md_del_at_for_upd_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     entry->key = NULL;
     entry->value = NULL;
 #endif
-    int ret = md_deferred_decref_push(defer, old_key);
-    if (md_deferred_decref_push(defer, old_value) < 0) {
-        ret = -1;
-    }
-    return ret;
+    md_deferred_decref_push_reserved(defer, old_key);
+    md_deferred_decref_push_reserved(defer, old_value);
+    return 0;
 }
 
 static inline int
