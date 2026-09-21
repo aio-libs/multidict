@@ -274,11 +274,9 @@ multidict_itemsview_and1_impl(_Multidict_ViewObject* self, PyObject* other)
             continue;
         }
 
-        /* Materialize the matches (and let md_finder_collect() fully
-           restore the finder chain) before running PyObject_RichCompareBool()
-           below: a custom __eq__ on `value` could re-enter this MultiDict,
-           and must never observe entries still marked by an in-progress
-           finder walk. */
+        /* Materialize the matches before running PyObject_RichCompareBool()
+           below: a custom __eq__ on `value` could re-enter and mutate this
+           MultiDict mid-walk. */
         matches = md_finder_collect(self->md, identity, true);
         if (matches == NULL) {
             goto fail;

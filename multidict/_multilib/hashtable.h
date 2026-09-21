@@ -32,8 +32,6 @@ typedef enum _UpdateOp {
     Merge,
 } UpdateOp;
 
-#define MD_HASH_MARK PY_SSIZE_T_MIN
-
 /*
 The multidict's implementation is close to Python's dict except for multiple
 keys.
@@ -55,12 +53,8 @@ amount.
 
 The iteration for operations like getall() is a little tricky. The next index
 calculation could return the already visited index before reaching the end. To
-eliminate duplicates, the code marks already visited entries. Entry hashes are
-folded non-negative (_unicode_hash() masks with PY_SSIZE_T_MAX), so
-MD_HASH_MARK, the hash range's high bit, can mark a hash as temporarily
-invalid: OR it in, AND it out with PY_SSIZE_T_MAX to restore. A real folded
-hash never has that bit set, so a marked entry is simply one whose hash is
-negative. After the iteration finishes, all marked entries are restored. Double
+eliminate duplicates, the code records visited entry indices in a bitmap
+private to the walk (see bitmap.h); the table itself is never marked. Double
 iteration over the indices still has O(1) amortized time, it is ok.
 
 `.add()`, `val = md[key]`, `md[key] = val`, `md.setdefault()` all have O(1).
@@ -585,8 +579,111 @@ _md_entry_try_get_ref(PyObject** addr)
 
 #endif /* Py_GIL_DISABLED */
 
+/* Per-batch bookkeeping for update() and merge(), keyed by entry index.
+
+   `updated` holds the entries this batch has written (replaced, revived
+   or added): a later item for the same key must not find them again.
+   `deleted` holds the entries this batch has half-deleted (key and value
+   gone, identity kept), for md_post_update() to finish off.
+
+   Unlike marks stored in the table, these are invisible to every other
+   reader and writer. The price is that they describe one exact table
+   layout: our own resizes carry them over (see _md_update_marks_remap()),
+   but a mutation made from outside the batch -- Python code run between
+   items, or another thread while this one's critical section is
+   suspended -- invalidates them. _md_update_marks_sync() detects that,
+   drops them, and `lost` tells md_post_update() to fall back to a
+   full-table sweep. */
+typedef struct _md_update_marks {
+    md_bitmap_t updated;
+    md_bitmap_t deleted;
+    uint64_t version;
+    bool lost;
+} md_update_marks_t;
+
+static inline Py_ssize_t
+_md_entries_capacity(htkeys_t* keys)
+{
+    return keys->nentries + keys->usable;
+}
+
+static inline void
+md_update_marks_init(md_update_marks_t* marks, MultiDictObject* md)
+{
+    Py_ssize_t capacity = _md_entries_capacity(md->keys);
+    md_bitmap_init(&marks->updated, md->keys, capacity);
+    md_bitmap_init(&marks->deleted, md->keys, capacity);
+    marks->version = md->version;
+    marks->lost = false;
+}
+
+static inline void
+md_update_marks_release(md_update_marks_t* marks)
+{
+    md_bitmap_release(&marks->updated);
+    md_bitmap_release(&marks->deleted);
+}
+
+static inline void
+_md_update_marks_sync(md_update_marks_t* marks, MultiDictObject* md)
+{
+    if (UNLIKELY(md->keys != marks->updated.keys ||
+                    md->version != marks->version)) {
+        md_update_marks_release(marks);
+        md_update_marks_init(marks, md);
+        marks->lost = true;
+    }
+}
+
+/* Rebuilds `bm` for `newkeys`, given that the resize keeps exactly the
+   entries with a non-NULL identity, in order. */
+COLD static int
+_md_bitmap_remap(md_bitmap_t* bm, entry_t* oldentries, Py_ssize_t oldnentries,
+                 htkeys_t* newkeys, Py_ssize_t newcapacity)
+{
+    md_bitmap_t fresh;
+    md_bitmap_init(&fresh, newkeys, newcapacity);
+    if (md_bitmap_next(bm, 0) >= 0) {
+        if (md_bitmap_reserve(&fresh) < 0) {
+            return -1;
+        }
+        Py_ssize_t j = 0;
+        for (Py_ssize_t i = 0; i < oldnentries; i++) {
+            if (oldentries[i].identity == NULL) {
+                continue;
+            }
+            if (md_bitmap_test(bm, i)) {
+                md_bitmap_set(&fresh, j);  // can't fail, reserved above
+            }
+            j++;
+        }
+    }
+    md_bitmap_move(bm, &fresh);
+    return 0;
+}
+
+/* Must run before the resize moves any entry: it reads the old layout,
+   and failing here leaves the table untouched. */
 static inline int
-_md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
+_md_update_marks_remap(md_update_marks_t* marks, htkeys_t* oldkeys,
+                       htkeys_t* newkeys, Py_ssize_t newcapacity)
+{
+    if (marks == NULL) {
+        return 0;
+    }
+    entry_t* oldentries = htkeys_entries(oldkeys);
+    Py_ssize_t oldnentries = oldkeys->nentries;
+    if (_md_bitmap_remap(
+            &marks->updated, oldentries, oldnentries, newkeys, newcapacity) <
+        0) {
+        return -1;
+    }
+    return _md_bitmap_remap(
+        &marks->deleted, oldentries, oldnentries, newkeys, newcapacity);
+}
+
+static inline int
+_md_resize(MultiDictObject* md, uint8_t log2_newsize, md_update_marks_t* marks)
 {
     if (log2_newsize >= SIZEOF_SIZE_T * 8) {
         PyErr_NoMemory();
@@ -600,6 +697,10 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
     }
 
     htkeys_t* oldkeys = md->keys;
+    if (_md_update_marks_remap(marks, oldkeys, newkeys, newkeys->usable) < 0) {
+        htkeys_free(newkeys);
+        return -1;
+    }
     Py_ssize_t numentries = md->used;
     entry_t* oldentries = htkeys_entries(oldkeys);
     entry_t* newentries = htkeys_entries(newkeys);
@@ -616,7 +717,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
         }
     }
 
-    if (htkeys_build_indices(newkeys, newentries, numentries, update) < 0) {
+    if (htkeys_build_indices(newkeys, newentries, numentries) < 0) {
         return -1;
     }
 
@@ -654,12 +755,12 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, bool update)
     }
 #endif
 
-    ASSERT_CONSISTENT(md, update);
+    ASSERT_CONSISTENT(md, marks != NULL);
     return 0;
 }
 
 static inline int
-_md_shrink(MultiDictObject* md, bool update)
+_md_shrink(MultiDictObject* md, md_update_marks_t* marks)
 {
 #ifdef Py_GIL_DISABLED
     /* The in-place compaction below rewrites the currently-published
@@ -672,9 +773,13 @@ _md_shrink(MultiDictObject* md, bool update)
        at the *current* size does exactly what shrinking means here
        (drop the dummy-slot gaps) without a second, duplicate
        implementation of that shape. */
-    return _md_resize(md, md->keys->log2_size, update);
+    return _md_resize(md, md->keys->log2_size, marks);
 #else
     htkeys_t* keys = md->keys;
+    if (_md_update_marks_remap(marks, keys, keys, _md_entries_capacity(keys)) <
+        0) {
+        return -1;
+    }
     Py_ssize_t nentries = keys->nentries;
     entry_t* entries = htkeys_entries(keys);
     entry_t* new_ep = entries;
@@ -694,10 +799,10 @@ _md_shrink(MultiDictObject* md, bool update)
     keys->usable += nentries - newnentries;
     memset(&keys->indices[0], 0xff, ((size_t)1 << keys->log2_index_bytes));
     memset(new_ep, 0, sizeof(entry_t) * (size_t)(nentries - newnentries));
-    if (htkeys_build_indices(keys, entries, newnentries, update) < 0) {
+    if (htkeys_build_indices(keys, entries, newnentries) < 0) {
         return -1;
     }
-    ASSERT_CONSISTENT(md, update);
+    ASSERT_CONSISTENT(md, marks != NULL);
     return 0;
 #endif
 }
@@ -706,28 +811,29 @@ static inline int
 _md_resize_for_insert(MultiDictObject* md)
 {
     if (md->used < md->keys->nentries) {
-        return _md_shrink(md, false);
+        return _md_shrink(md, NULL);
     } else {
-        return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), false);
+        return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), NULL);
     }
 }
 
 static inline int
-_md_resize_for_update(MultiDictObject* md)
+_md_resize_for_update(MultiDictObject* md, md_update_marks_t* marks)
 {
     if (md->used < md->keys->nentries) {
-        return _md_shrink(md, true);
+        return _md_shrink(md, marks);
     } else {
-        return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), true);
+        return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), marks);
     }
 }
 
 static inline int
-_md_reserve(MultiDictObject* md, Py_ssize_t extra_size, bool update)
+_md_reserve(MultiDictObject* md, Py_ssize_t extra_size,
+            md_update_marks_t* marks)
 {
     uint8_t new_size = estimate_log2_keysize(extra_size + md->used);
     if (new_size > md->keys->log2_size) {
-        return _md_resize(md, new_size, update);
+        return _md_resize(md, new_size, marks);
     }
     return 0;
 }
@@ -735,7 +841,7 @@ _md_reserve(MultiDictObject* md, Py_ssize_t extra_size, bool update)
 static inline int
 md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 {
-    return _md_reserve(md, extra_size, false);
+    return _md_reserve(md, extra_size, NULL);
 }
 
 static inline int
@@ -943,15 +1049,19 @@ _md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 
 static inline int
 _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
-                           PyObject* identity, PyObject* key, PyObject* value)
+                           PyObject* identity, PyObject* key, PyObject* value,
+                           md_update_marks_t* marks)
 {
     htkeys_t* keys = md->keys;
     if (keys->usable <= 0 || keys == &empty_htkeys) {
         /* Need to resize. */
-        if (_md_resize_for_update(md) < 0) {
+        if (_md_resize_for_update(md, marks) < 0) {
             return -1;
         }
         keys = md->keys;  // updated by resizing
+    }
+    if (md_bitmap_set(&marks->updated, keys->nentries) < 0) {
+        return -1;
     }
     Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
     htkeys_set_index(keys, hashpos, keys->nentries);
@@ -960,14 +1070,14 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
 
 #ifdef Py_GIL_DISABLED
     entry->key = key;
-    _md_entry_store_hash(entry, hash | MD_HASH_MARK);
+    _md_entry_store_hash(entry, hash);
     _md_entry_store_value(entry, value);
     _md_entry_publish_identity(entry, identity);
 #else
     entry->identity = identity;
     entry->key = key;
     entry->value = value;
-    entry->hash = hash | MD_HASH_MARK;
+    entry->hash = hash;
 #endif
 
     md->version = NEXT_VERSION(md->state);
@@ -983,12 +1093,13 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
 
 static inline int
 _md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-                PyObject* key, PyObject* value)
+                PyObject* key, PyObject* value, md_update_marks_t* marks)
 {
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    if (_md_add_for_upd_steal_refs(md, hash, identity, key, value) < 0) {
+    if (_md_add_for_upd_steal_refs(md, hash, identity, key, value, marks) <
+        0) {
         /* Not deferred: the caller still holds its own references, so
            none of these can drop to zero and run __del__. */
         Py_DECREF(identity);
@@ -1114,7 +1225,7 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
 }
 
 /* Deferred half-deletion: entry may be replaced later or finished off by
- * md_post_update() (identity=NULL, used -= 1, hash & DKIX_DUMMY). Unlike
+ * md_post_update() (identity=NULL, used -= 1, slot -> DKIX_DUMMY). Unlike
  * _md_del_at_deferred(), this leaves identity/hash/index live -- a reader's
  * hash-chain scan can still reach this slot -- so each field is reserved
  * and pushed before it's nulled, one at a time: deferred_decref_push()'s
@@ -1398,15 +1509,7 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
             continue;
         }
         entry_t* entry = entries + finder->iter.index;
-        /* Masked, not a raw comparison: entry->hash can legitimately
-           carry MD_HASH_MARK right now if a different, concurrently-
-           suspended _md_replace()/_md_update() (see its comment on why
-           a decref can suspend it) has already written this entry's
-           final key/value but not yet reached its own cleanup. The
-           entry is fully valid at this point, just mid-flight -- this
-           scan never writes entry->hash, so it can't step on whichever
-           finder or update batch owns that mark. */
-        if ((entry->hash & PY_SSIZE_T_MAX) != finder->hash) {
+        if (entry->hash != finder->hash) {
             continue;
         }
         if (!_str_cmp(finder->identity, entry->identity)) {
@@ -1522,14 +1625,7 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
             break;
         }
 
-        /* Masked, not a raw comparison: entry->hash can legitimately
-           carry MD_HASH_MARK right now if a different, concurrently-
-           suspended _md_replace()/_md_update() call has this exact
-           entry marked (see the comment above MD_HASH_MARK). A raw
-           comparison would treat that as "wrong hash, not a match" and
-           skip a key that is genuinely present both before and after
-           that operation -- a false miss, not just a stale read. */
-        if ((_md_entry_load_hash(entry) & PY_SSIZE_T_MAX) != hash) {
+        if (_md_entry_load_hash(entry) != hash) {
             Py_DECREF(entry_identity);
             continue;
         }
@@ -1651,12 +1747,7 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             break;
         }
 
-        /* Masked, not a raw comparison -- see the identical comment in
-           _md_contains_lockfree(): entry->hash can be legitimately
-           MD_HASH_MARK-ed by a different, concurrently-suspended
-           _md_replace()/_md_update() call right now, and a raw
-           comparison would wrongly treat a present key as absent. */
-        if ((_md_entry_load_hash(entry) & PY_SSIZE_T_MAX) != hash) {
+        if (_md_entry_load_hash(entry) != hash) {
             Py_DECREF(entry_identity);
             continue;
         }
@@ -1804,11 +1895,8 @@ fail:
     return -1;
 }
 
-/* Collect every (key, value) pair matching `identity` into a fresh list.
-   Uses md_finder_t (see its comment), so nothing here is ever
-   marked: a custom __eq__ run against the result after this returns can
-   safely re-enter this MultiDict (e.g. via getall()) without observing
-   any leftover bookkeeping from this walk.
+/* Collect every (key, value) pair matching `identity` into a fresh list,
+   so that callers can run a custom __eq__ against it after the walk.
 
    `with_keys` selects values (false) or (key, value) tuples (true). */
 static inline PyObject*
@@ -1894,7 +1982,7 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
 
         /* Equal keys sit on one hash chain in insertion order. Nothing in
            this walk runs Python. */
-        Py_hash_t hash = entry->hash & PY_SSIZE_T_MAX;
+        Py_hash_t hash = entry->hash;
         htkeysiter_t iter;
         htkeysiter_init(&iter, md->keys, hash);
         for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
@@ -1902,8 +1990,7 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
                 continue;
             }
             entry_t* e = entries + iter.index;
-            if ((e->hash & PY_SSIZE_T_MAX) != hash ||
-                !_str_cmp(entry->identity, e->identity)) {
+            if (e->hash != hash || !_str_cmp(entry->identity, e->identity)) {
                 continue;
             }
             int seen = md_bitmap_test_and_set(&collected, iter.index);
@@ -1982,23 +2069,9 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
         }
         entry_t* entry = entries + iter.index;
 
-#ifdef Py_GIL_DISABLED
-        /* Masked, not a raw comparison: entry->hash can legitimately
-           carry MD_HASH_MARK right now if a different, concurrently-
-           suspended _md_replace()/_md_update() call has this exact
-           identity mid-write (see the comment above MD_HASH_MARK).
-           Unlike those two, setdefault() never marks or mutates an
-           existing entry itself, so there's no dedup/self-match
-           bookkeeping to get confused here -- a masked match is simply
-           "the key already exists". */
-        if ((entry->hash & PY_SSIZE_T_MAX) != hash) {
-            continue;
-        }
-#else
         if (hash != entry->hash) {
             continue;
         }
-#endif
         if (_str_cmp(identity, entry->identity)) {
             Py_DECREF(identity);
             ASSERT_CONSISTENT(md, false);
@@ -2291,14 +2364,20 @@ fail:
 
 static inline int
 _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-           PyObject* key, PyObject* value, deferred_decref_t* defer)
+           PyObject* key, PyObject* value, deferred_decref_t* defer,
+           md_update_marks_t* marks)
 {
     bool found = false;
+    _md_update_marks_sync(marks, md);
 
     // See _md_replace() on the retry/deferred-decref shape used here.
     for (;;) {
         htkeysiter_t iter;
         htkeysiter_init(&iter, md->keys, hash);
+        /* A retry may have lost the mark on the entry this call already
+           wrote; equal keys sit on their chain in insertion order, so it
+           is the first unmarked match. */
+        bool skip_first = found;
         bool stale = false;
 
         for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
@@ -2311,60 +2390,73 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 #endif
             entry_t* entries = htkeys_entries(md->keys);
             entry_t* entry = entries + iter.index;
-            if (hash != entry->hash) {
+            if (hash != entry->hash ||
+                md_bitmap_test(&marks->updated, iter.index) ||
+                !_str_cmp(identity, entry->identity)) {
                 continue;
             }
-            if (_str_cmp(identity, entry->identity)) {
-                if (!found) {
-                    found = true;
-                    if (entry->key == NULL) {
-                        /* entry->key could be NULL if it was deleted
-                           by the previous _md_update call during the iteration
-                           in md_update_from* functions. */
-                        assert(entry->value == NULL);
-                        entry->key = Py_NewRef(key);
+            if (skip_first) {
+                skip_first = false;
+                if (md_bitmap_set(&marks->updated, iter.index) < 0) {
+                    goto fail;
+                }
+                continue;
+            }
+            if (!found) {
+                found = true;
+                /* Marked first: nothing below can fail half-way after
+                   the entry has changed. */
+                if (md_bitmap_set(&marks->updated, iter.index) < 0) {
+                    goto fail;
+                }
+                if (entry->key == NULL) {
+                    /* Half-deleted by an earlier item of this batch; reusing
+                       it keeps the key at its original position. */
+                    assert(entry->value == NULL);
+                    md_bitmap_clear(&marks->deleted, iter.index);
+                    entry->key = Py_NewRef(key);
 #ifdef Py_GIL_DISABLED
-                        _md_entry_publish_value(entry, Py_NewRef(value));
-                        _md_entry_store_hash(entry, hash | MD_HASH_MARK);
+                    _md_entry_publish_value(entry, Py_NewRef(value));
 #else
-                        entry->value = Py_NewRef(value);
-                        entry->hash = hash | MD_HASH_MARK;
+                    entry->value = Py_NewRef(value);
 #endif
-                    } else {
-                        /* old_key/old_value decref deferred -- see
-                         * deferred_decref_t */
-#ifdef Py_GIL_DISABLED
-                        PyObject* old_key = entry->key;
-                        PyObject* old_value = _md_entry_load_value(entry);
-                        entry->key = Py_NewRef(key);
-                        _md_entry_publish_value(entry, Py_NewRef(value));
-                        _md_entry_store_hash(entry, hash | MD_HASH_MARK);
-#else
-                        PyObject* old_key = entry->key;
-                        PyObject* old_value = entry->value;
-                        entry->key = Py_NewRef(key);
-                        entry->value = Py_NewRef(value);
-                        entry->hash = hash | MD_HASH_MARK;
-#endif
-                        /* Push both unconditionally, not with `||`: a
-                           failed first push already decref'd old_key
-                           itself (see deferred_decref_push()'s doc
-                           comment), but short-circuiting past the
-                           second push would leak old_value -- neither
-                           deferred nor decref'd. */
-                        int push_ret = deferred_decref_push(defer, old_key);
-                        if (deferred_decref_push(defer, old_value) < 0) {
-                            push_ret = -1;
-                        }
-                        if (push_ret < 0) {
-                            goto fail;
-                        }
-                    }
                 } else {
-                    if (_md_del_at_for_upd_deferred(
-                            md, iter.slot, entry, defer) < 0) {
+                    /* old_key/old_value decref deferred -- see
+                     * deferred_decref_t */
+                    PyObject* old_key = entry->key;
+#ifdef Py_GIL_DISABLED
+                    PyObject* old_value = _md_entry_load_value(entry);
+                    entry->key = Py_NewRef(key);
+                    _md_entry_publish_value(entry, Py_NewRef(value));
+#else
+                    PyObject* old_value = entry->value;
+                    entry->key = Py_NewRef(key);
+                    entry->value = Py_NewRef(value);
+#endif
+                    /* Push both unconditionally, not with `||`: a
+                       failed first push already decref'd old_key
+                       itself (see deferred_decref_push()'s doc
+                       comment), but short-circuiting past the
+                       second push would leak old_value -- neither
+                       deferred nor decref'd. */
+                    int push_ret = deferred_decref_push(defer, old_key);
+                    if (deferred_decref_push(defer, old_value) < 0) {
+                        push_ret = -1;
+                    }
+                    if (push_ret < 0) {
                         goto fail;
                     }
+                }
+            } else {
+                if (md_bitmap_test(&marks->deleted, iter.index)) {
+                    continue;
+                }
+                if (md_bitmap_set(&marks->deleted, iter.index) < 0) {
+                    goto fail;
+                }
+                if (_md_del_at_for_upd_deferred(md, iter.slot, entry, defer) <
+                    0) {
+                    goto fail;
                 }
             }
 #ifdef Py_GIL_DISABLED
@@ -2377,30 +2469,30 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 #endif
         }
         if (stale) {
-            /* No cleanup to skip here (unlike _md_replace()'s finder):
-               md_post_update() unmarks everything once, for the whole
-               batch, at the very end -- so the marks this attempt
-               already made simply need to survive into the rescan,
-               which they do since nothing above touches them. */
+            /* Whatever moved the table also invalidated the marks. */
+            _md_update_marks_sync(marks, md);
             continue;
         }
         break;
     }
 
     if (!found) {
-        if (_md_add_for_upd(md, hash, identity, key, value) < 0) {
+        if (_md_add_for_upd(md, hash, identity, key, value, marks) < 0) {
             goto fail;
         }
     }
+    marks->version = md->version;
     return 0;
 fail:
+    marks->version = md->version;
     return -1;
 }
 
 static inline int
 _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-          PyObject* key, PyObject* value)
+          PyObject* key, PyObject* value, md_update_marks_t* marks)
 {
+    _md_update_marks_sync(marks, md);
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
@@ -2410,7 +2502,9 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             continue;
         }
         entry_t* entry = entries + iter.index;
-        if (hash != entry->hash) {
+        /* An entry this batch added doesn't count as already present. */
+        if (hash != entry->hash ||
+            md_bitmap_test(&marks->updated, iter.index)) {
             continue;
         }
         if (_str_cmp(identity, entry->identity)) {
@@ -2418,19 +2512,36 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         }
     }
 
-    if (_md_add_for_upd(md, hash, identity, key, value) < 0) {
-        goto fail;
-    }
-    return 0;
-fail:
-    return -1;
+    int ret = _md_add_for_upd(md, hash, identity, key, value, marks);
+    marks->version = md->version;
+    return ret;
 }
 
+/* Finishes off one half-deleted entry: `slot` must index it. */
 static inline int
-md_post_update(MultiDictObject* md, deferred_decref_t* defer)
+_md_post_update_del(MultiDictObject* md, htkeys_t* keys, size_t slot,
+                    entry_t* entry, deferred_decref_t* defer)
 {
-    /* `defer` is NULL only for a pure .merge() sweep, which never
-     * half-deletes. */
+    assert(entry->key == NULL);
+#ifdef Py_GIL_DISABLED
+    PyObject* old_identity = _md_entry_load_identity(entry);
+    atomic_store_ptr((void**)&entry->identity, NULL);
+    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    _md_add_used(md, -1);
+#else
+    PyObject* old_identity = entry->identity;
+    entry->identity = NULL;
+    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    md->used -= 1;
+#endif
+    return deferred_decref_push(defer, old_identity);
+}
+
+/* The fallback when the `deleted` marks can't be trusted: every half-deleted
+   entry still has a NULL key, so a full sweep finds them all. */
+COLD static int
+_md_post_update_sweep(MultiDictObject* md, deferred_decref_t* defer)
+{
     int ret = 0;
     for (;;) {
         htkeys_t* keys = md->keys;
@@ -2442,49 +2553,81 @@ md_post_update(MultiDictObject* md, deferred_decref_t* defer)
         bool stale = false;
         for (size_t slot = 0; slot < num_slots; slot++) {
             Py_ssize_t index = htkeys_get_index(keys, slot);
-            if (index >= 0) {
-                entry_t* entry = entries + index;
-                if (entry->key == NULL) {
-                    /* the entry is marked for deletion during .update() call
-                       and not replaced with a new value */
-#ifdef Py_GIL_DISABLED
-                    PyObject* old_identity = _md_entry_load_identity(entry);
-                    atomic_store_ptr((void**)&entry->identity, NULL);
-                    htkeys_set_index(keys, slot, DKIX_DUMMY);
-                    _md_add_used(md, -1);
-#else
-                    PyObject* old_identity = entry->identity;
-                    entry->identity = NULL;
-                    htkeys_set_index(keys, slot, DKIX_DUMMY);
-                    md->used -= 1;
-#endif
-                    if (defer != NULL) {
-                        if (deferred_decref_push(defer, old_identity) < 0) {
-                            ret = -1;
-                        }
-                    } else {
-                        Py_XDECREF(
-                            old_identity);  // defensive; shouldn't be reached
-                    }
-#ifdef Py_GIL_DISABLED
-                    if (md->keys != keys || md->version != version_before) {
-                        stale = true;
-                        break;
-                    }
-#endif
+            if (index >= 0 && entries[index].key == NULL) {
+                if (_md_post_update_del(
+                        md, keys, slot, entries + index, defer) < 0) {
+                    ret = -1;
                 }
-                if (entry->hash < 0) {
 #ifdef Py_GIL_DISABLED
-                    _md_entry_store_hash(entry, entry->hash & PY_SSIZE_T_MAX);
-#else
-                    entry->hash &= PY_SSIZE_T_MAX;
-#endif
+                if (md->keys != keys || md->version != version_before) {
+                    stale = true;
+                    break;
                 }
+#endif
             }
         }
         if (!stale) {
+            return ret;
+        }
+    }
+}
+
+static inline int
+_md_post_update_deleted(MultiDictObject* md, deferred_decref_t* defer,
+                        md_update_marks_t* marks)
+{
+    _md_update_marks_sync(marks, md);
+    if (marks->lost) {
+        return _md_post_update_sweep(md, defer);
+    }
+    int ret = 0;
+    htkeys_t* keys = md->keys;
+#ifdef Py_GIL_DISABLED
+    uint64_t version_before = md->version;
+#endif
+    entry_t* entries = htkeys_entries(keys);
+    for (Py_ssize_t pos = md_bitmap_next(&marks->deleted, 0); pos >= 0;
+         pos = md_bitmap_next(&marks->deleted, pos + 1)) {
+        entry_t* entry = entries + pos;
+        /* Another thread's update(), run while this one's critical section
+           was suspended, can revive or finish off one of these in place
+           without moving anything. */
+        if (entry->identity == NULL || entry->key != NULL) {
+            continue;
+        }
+        htkeysiter_t iter;
+        htkeysiter_init(&iter, keys, entry->hash);
+        while (iter.index != pos && iter.index != DKIX_EMPTY) {
+            htkeysiter_next(&iter);
+        }
+        assert(iter.index == pos);
+        if (iter.index != pos) {
+            continue;
+        }
+        if (_md_post_update_del(md, keys, iter.slot, entry, defer) < 0) {
+            ret = -1;
+        }
+#ifdef Py_GIL_DISABLED
+        /* Only an out-of-memory fallback decref above can run Python. */
+        if (md->keys != keys || md->version != version_before) {
+            if (_md_post_update_sweep(md, defer) < 0) {
+                ret = -1;
+            }
             break;
         }
+#endif
+    }
+    return ret;
+}
+
+static inline int
+md_post_update(MultiDictObject* md, deferred_decref_t* defer,
+               md_update_marks_t* marks)
+{
+    int ret = 0;
+    /* `defer` is NULL only for merge(), which never half-deletes. */
+    if (defer != NULL) {
+        ret = _md_post_update_deleted(md, defer, marks);
     }
     md->version = NEXT_VERSION(md->state);
     ASSERT_CONSISTENT(md, false);
@@ -2493,7 +2636,7 @@ md_post_update(MultiDictObject* md, deferred_decref_t* defer)
 
 static inline int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
-                  deferred_decref_t* defer)
+                  deferred_decref_t* defer, md_update_marks_t* marks)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
@@ -2518,7 +2661,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
        we iterate here, a use-after-free.  Reserving up front also lets us
        snapshot the entry count so self-extension does not reprocess the
        entries it just appended. */
-    if (md_reserve(md, other->used) < 0) {
+    if (_md_reserve(md, other->used, marks) < 0) {
         return -1;
     }
 
@@ -2551,7 +2694,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         }
         switch (op) {
             case Update:
-                if (_md_update(md, hash, identity, key, entry->value, defer) <
+                if (_md_update(
+                        md, hash, identity, key, entry->value, defer, marks) <
                     0) {
                     goto fail;
                 }
@@ -2563,7 +2707,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                 }
                 break;
             case Merge:
-                if (_md_merge(md, hash, identity, key, entry->value) < 0) {
+                if (_md_merge(md, hash, identity, key, entry->value, marks) <
+                    0) {
                     goto fail;
                 }
                 break;
@@ -2608,7 +2753,7 @@ md_extend_self(MultiDictObject* md)
 
 static inline int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
-                    deferred_decref_t* defer)
+                    deferred_decref_t* defer, md_update_marks_t* marks)
 {
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
@@ -2630,7 +2775,8 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
         }
         switch (op) {
             case Update: {
-                if (_md_update(md, hash, identity, key, value, defer) < 0) {
+                if (_md_update(md, hash, identity, key, value, defer, marks) <
+                    0) {
                     goto fail;
                 }
                 Py_CLEAR(identity);
@@ -2651,7 +2797,7 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                 break;
             }
             case Merge: {
-                if (_md_merge(md, hash, identity, key, value) < 0) {
+                if (_md_merge(md, hash, identity, key, value, marks) < 0) {
                     goto fail;
                 }
                 Py_CLEAR(identity);
@@ -2815,7 +2961,7 @@ fail:
 
 static inline int
 md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
-                   deferred_decref_t* defer)
+                   deferred_decref_t* defer, md_update_marks_t* marks)
 {
     PyObject* it = NULL;
     PyObject* item = NULL;  // seq[i]
@@ -2918,7 +3064,8 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
 
         switch (op) {
             case Update:
-                if (_md_update(md, hash, identity, key, value, defer) < 0) {
+                if (_md_update(md, hash, identity, key, value, defer, marks) <
+                    0) {
                     goto fail;
                 }
                 Py_CLEAR(identity);
@@ -2935,7 +3082,7 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                 value = NULL;
                 break;
             case Merge:
-                if (_md_merge(md, hash, identity, key, value) < 0) {
+                if (_md_merge(md, hash, identity, key, value, marks) < 0) {
                     goto fail;
                 }
                 Py_CLEAR(identity);
@@ -3307,9 +3454,9 @@ _md_check_consistency(MultiDictObject* md, bool update)
 #ifdef Py_GIL_DISABLED
             /* `update` describes only this call's own operation, not
                whether some entirely different, concurrently-suspended
-               thread's _md_replace()/_md_update() (on some other key)
-               currently has an entry of its own marked (hash < 0) or
-               half-deleted (key == NULL, identity kept) pending that
+               thread's _md_update() (on some other key) currently has
+               an entry of its own half-deleted (key == NULL, identity
+               kept) pending that
                thread's own cleanup -- critical section suspension
                means that can be true regardless of what this call's
                update flag says. So always use the tolerant checks
@@ -3323,7 +3470,6 @@ _md_check_consistency(MultiDictObject* md, bool update)
             }
 #else
             if (!update) {
-                CHECK(entry->hash >= 0);
                 CHECK(entry->key != NULL);
                 CHECK(entry->value != NULL);
             } else {
@@ -3336,10 +3482,7 @@ _md_check_consistency(MultiDictObject* md, bool update)
 #endif
 
             CHECK(PyUnicode_CheckExact(identity));
-            if (entry->hash >= 0) {
-                Py_hash_t hash = _unicode_hash(identity);
-                CHECK(entry->hash == hash);
-            }
+            CHECK(entry->hash == _unicode_hash(identity));
         }
     }
     return 1;

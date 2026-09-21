@@ -368,11 +368,7 @@ htkeys_free(htkeys_t* dk)
     PyMem_Free(dk);
 }
 
-/* Returns the identity's hash folded into its non-negative half (see the
-   MD_HASH_MARK comment in hashtable.h), or -1 if hashing raised. Only the
-   value returned to the caller is folded; the unicode object's own cached
-   hash slot is left untouched, since it is shared with the rest of the
-   process. */
+/* Returns the identity's hash, or -1 if hashing raised. */
 static inline Py_hash_t
 _unicode_hash(PyObject* o)
 {
@@ -385,7 +381,7 @@ _unicode_hash(PyObject* o)
             return -1;
         }
     }
-    return hash & PY_SSIZE_T_MAX;
+    return hash;
 }
 
 /* Values for the same key share a probe sequence, so without resume slots the
@@ -435,7 +431,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 Internal routine used by ht_resize() to build a hashtable of entries.
 */
 static inline int
-htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
+htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
 {
     size_t mask = htkeys_mask(keys);
     if (keys->resume_slots != NULL) {
@@ -444,24 +440,6 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
     }
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
-#ifdef Py_GIL_DISABLED
-        /* Unconditionally, not just when update: under free threading
-           a marked entry copied in here can belong to an entirely
-           different, concurrently-suspended _md_replace()/_md_update()
-           call (on some other key) that this resize's own update flag
-           knows nothing about -- see the comment in
-           _md_check_consistency(). Indexing it by its temporary marked
-           hash would place it somewhere its real hash's probe sequence
-           never looks, making it permanently unfindable once the
-           owning call unmarks it back. */
-        if (hash < 0) {
-            hash &= PY_SSIZE_T_MAX;
-        }
-#else
-        if (update && hash < 0) {
-            hash &= PY_SSIZE_T_MAX;
-        }
-#endif
         size_t i = hash & mask;
         for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
             perturb >>= HT_PERTURB_SHIFT;
@@ -526,10 +504,8 @@ htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
    multiple times, eiter consequently (1, 2, 2, 3)
    or with different slots in the middle (1, 2, 3, 1).
 
-   The caller is responsible to mark visited slots
-   and cleanup the mark after the iteration finish.
-
-   See ht_finder_t for an object designed for such operations.
+   The caller is responsible for skipping repeats; md_finder_t
+   in hashtable.h does it with a bitmap of visited entries.
 */
 
 typedef struct _htkeysiter {

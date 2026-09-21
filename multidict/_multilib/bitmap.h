@@ -78,7 +78,7 @@ _md_bitmap_alloc(md_bitmap_t* bm, Py_ssize_t nsummary)
     return 0;
 }
 
-static inline int
+COLD static int
 _md_bitmap_start(md_bitmap_t* bm)
 {
     Py_ssize_t nsummary = _md_bitmap_nwords(bm->nwords);
@@ -92,12 +92,22 @@ _md_bitmap_start(md_bitmap_t* bm)
     return 0;
 }
 
+/* Sets up storage now, so that no later mark on this bitmap can fail. */
+static inline int
+md_bitmap_reserve(md_bitmap_t* bm)
+{
+    if (bm->summary != NULL) {
+        return 0;
+    }
+    return _md_bitmap_start(bm);
+}
+
 /* Safe to call more than once, and on a bitmap whose init never ran,
    provided `summary` was set to NULL up front. */
 static inline void
 md_bitmap_release(md_bitmap_t* bm)
 {
-    if (bm->summary != bm->inline_summary) {
+    if (bm->summary != NULL && bm->summary != bm->inline_summary) {
         PyMem_Free(bm->summary);
     }
     bm->summary = NULL;
