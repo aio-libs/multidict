@@ -26,14 +26,6 @@ typedef struct _md_pos {
     uint64_t version;
 } md_pos_t;
 
-typedef struct _md_finder {
-    MultiDictObject* md;
-    htkeysiter_t iter;
-    uint64_t version;
-    Py_hash_t hash;
-    PyObject* identity;  // borrowed ref
-} md_finder_t;
-
 typedef enum _UpdateOp {
     Extend,
     Update,
@@ -1358,122 +1350,7 @@ cleanup:
     return ret;
 }
 
-static inline int
-md_init_finder(MultiDictObject* md, PyObject* identity, md_finder_t* finder)
-{
-    finder->version = md->version;
-    finder->md = md;
-    finder->identity = identity;
-    finder->hash = _unicode_hash(identity);
-    if (finder->hash == -1) {
-        return -1;
-    }
-    htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
-    return 0;
-}
-
-static inline Py_ssize_t
-md_finder_slot(md_finder_t* finder)
-{
-    assert(finder->md != NULL);
-    return finder->iter.slot;
-}
-
-static inline Py_ssize_t
-md_finder_index(md_finder_t* finder)
-{
-    assert(finder->md != NULL);
-    assert(finder->iter.index >= 0);
-    return finder->iter.index;
-}
-
-static inline int
-md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
-{
-    int ret = 0;
-    assert(finder->iter.keys == finder->md->keys);
-    if (finder->iter.keys != finder->md->keys ||
-        finder->version != finder->md->version) {
-        ret = -1;
-        PyErr_SetString(PyExc_RuntimeError,
-                        "MultiDict is changed during iteration");
-        goto cleanup;
-    }
-
-    entry_t* entries = htkeys_entries(finder->md->keys);
-
-    for (; finder->iter.index != DKIX_EMPTY; htkeysiter_next(&finder->iter)) {
-        if (finder->iter.index < 0) {
-            continue;
-        }
-        entry_t* entry = entries + finder->iter.index;
-        if (entry->hash != finder->hash) {
-            continue;
-        }
-        if (!_str_cmp(finder->identity, entry->identity)) {
-            continue;
-        }
-
-        /* found, mark the entry as visited */
-#ifdef Py_GIL_DISABLED
-        _md_entry_store_hash(entry, finder->hash | MD_HASH_MARK);
-#else
-        entry->hash = finder->hash | MD_HASH_MARK;
-#endif
-
-        if (pvalue) {
-            *pvalue = Py_NewRef(entry->value);
-        }
-        if (pkey) {
-            *pkey = _md_ensure_key(finder->md, entry);  // last entry access
-            if (*pkey == NULL) {
-                if (pvalue) {
-                    Py_CLEAR(*pvalue);
-                }
-                ret = -1;
-                goto cleanup;
-            }
-        }
-        return 1;
-    }
-    ret = 0;
-cleanup:
-    if (pkey) {
-        *pkey = NULL;
-    }
-    if (pvalue) {
-        *pvalue = NULL;
-    }
-    return ret;
-}
-
-static inline void
-md_finder_cleanup(md_finder_t* finder)
-{
-    if (finder->md == NULL) {
-        return;
-    }
-
-    htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
-    entry_t* entries = htkeys_entries(finder->md->keys);
-    for (; finder->iter.index != DKIX_EMPTY; htkeysiter_next(&finder->iter)) {
-        if (finder->iter.index < 0) {
-            continue;
-        }
-        entry_t* entry = entries + finder->iter.index;
-        if (entry->hash == (finder->hash | MD_HASH_MARK)) {
-#ifdef Py_GIL_DISABLED
-            _md_entry_store_hash(entry, finder->hash);
-#else
-            entry->hash = finder->hash;
-#endif
-        }
-    }
-    ASSERT_CONSISTENT(finder->md, false);
-    finder->md = NULL;
-}
-
-typedef struct _md_readonly_finder {
+typedef struct _md_finder {
     MultiDictObject* md;
     htkeysiter_t iter;
     uint64_t version;
@@ -1483,11 +1360,10 @@ typedef struct _md_readonly_finder {
        bitmap and the bitmap never gets started. */
     Py_ssize_t first_visited;
     md_bitmap_t visited;
-} md_readonly_finder_t;
+} md_finder_t;
 
 static inline int
-md_readonly_finder_init(MultiDictObject* md, PyObject* identity,
-                        md_readonly_finder_t* finder)
+md_finder_init(MultiDictObject* md, PyObject* identity, md_finder_t* finder)
 {
     finder->version = md->version;
     finder->md = md;
@@ -1503,8 +1379,7 @@ md_readonly_finder_init(MultiDictObject* md, PyObject* identity,
 }
 
 static inline int
-md_readonly_find_next(md_readonly_finder_t* finder, PyObject** pkey,
-                      PyObject** pvalue)
+md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
 {
     int ret = 0;
     assert(finder->iter.keys == finder->md->keys);
@@ -1584,7 +1459,7 @@ cleanup:
 }
 
 static inline void
-md_readonly_finder_cleanup(md_readonly_finder_t* finder)
+md_finder_cleanup(md_finder_t* finder)
 {
     md_bitmap_release(&finder->visited);
 }
@@ -1886,7 +1761,7 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 
     /* Not zero-initialized: the bitmap's inline buffer is 4 KB. Cleanup
        only needs `visited.summary`. */
-    md_readonly_finder_t finder;
+    md_finder_t finder;
     finder.visited.summary = NULL;
 
     PyObject* identity = md_calc_identity(md, key);
@@ -1894,12 +1769,12 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         goto fail;
     }
 
-    if (md_readonly_finder_init(md, identity, &finder) < 0) {
+    if (md_finder_init(md, identity, &finder) < 0) {
         assert(PyErr_Occurred());
         goto fail;
     }
 
-    while ((tmp = md_readonly_find_next(&finder, NULL, &value)) > 0) {
+    while ((tmp = md_find_next(&finder, NULL, &value)) > 0) {
         if (*ret == NULL) {
             *ret = PyList_New(1);
             if (*ret == NULL) {
@@ -1918,11 +1793,11 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         goto fail;
     }
 
-    md_readonly_finder_cleanup(&finder);
+    md_finder_cleanup(&finder);
     Py_DECREF(identity);
     return *ret != NULL;
 fail:
-    md_readonly_finder_cleanup(&finder);
+    md_finder_cleanup(&finder);
     Py_XDECREF(identity);
     Py_XDECREF(value);
     Py_CLEAR(*ret);
@@ -1930,7 +1805,7 @@ fail:
 }
 
 /* Collect every (key, value) pair matching `identity` into a fresh list.
-   Uses md_readonly_finder_t (see its comment), so nothing here is ever
+   Uses md_finder_t (see its comment), so nothing here is ever
    marked: a custom __eq__ run against the result after this returns can
    safely re-enter this MultiDict (e.g. via getall()) without observing
    any leftover bookkeeping from this walk.
@@ -1939,7 +1814,7 @@ fail:
 static inline PyObject*
 md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
 {
-    md_readonly_finder_t finder;
+    md_finder_t finder;
     finder.visited.summary = NULL;
     PyObject* key = NULL;
     PyObject* value = NULL;
@@ -1951,14 +1826,14 @@ md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
         return NULL;
     }
 
-    if (md_readonly_finder_init(md, identity, &finder) < 0) {
+    if (md_finder_init(md, identity, &finder) < 0) {
         assert(PyErr_Occurred());
         Py_DECREF(ret);
         return NULL;
     }
 
-    while ((tmp = md_readonly_find_next(
-                &finder, with_keys ? &key : NULL, &value)) > 0) {
+    while ((tmp = md_find_next(&finder, with_keys ? &key : NULL, &value)) >
+           0) {
         if (with_keys) {
             item = PyTuple_Pack(2, key, value);
             Py_CLEAR(key);
@@ -1976,13 +1851,13 @@ md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
             goto fail;
         }
     }
-    md_readonly_finder_cleanup(&finder);
+    md_finder_cleanup(&finder);
     if (tmp < 0) {
         goto fail_no_cleanup;
     }
     return ret;
 fail:
-    md_readonly_finder_cleanup(&finder);
+    md_finder_cleanup(&finder);
 fail_no_cleanup:
     Py_CLEAR(key);
     Py_CLEAR(value);
@@ -1990,149 +1865,94 @@ fail_no_cleanup:
     return NULL;
 }
 
-/* Restore every entry hash md_to_dict()'s walk left marked.
-
-   md_finder_cleanup() restores one hash chain, which is what a single
-   getall() needs. md_to_dict() instead keeps the marks of every key it has
-   collected, so that a later duplicate of the same key tests as collected
-   and is skipped, and clears the whole table once at the end. */
-static inline void
-_md_restore_all_hashes(MultiDictObject* md)
-{
-    entry_t* entries = htkeys_entries(md->keys);
-    Py_ssize_t nentries = md->keys->nentries;
-    for (Py_ssize_t pos = 0; pos < nentries; pos++) {
-        entry_t* entry = entries + pos;
-#ifdef Py_GIL_DISABLED
-        Py_hash_t hash = _md_entry_load_hash(entry);
-        if (hash < 0) {
-            _md_entry_store_hash(entry, hash & PY_SSIZE_T_MAX);
-        }
-#else
-        if (entry->hash < 0) {
-            entry->hash &= PY_SSIZE_T_MAX;
-        }
-#endif
-    }
-}
-
 static inline int
 md_to_dict(MultiDictObject* md, PyObject** ret)
 {
     PyObject* key = NULL;
-    PyObject* value = NULL;
     PyObject* lst = NULL;
-    PyObject* pos_obj = NULL;
-    md_finder_t finder = {0};
     uint64_t version = md->version;
-    int tmp;
+    md_bitmap_t collected;
+    collected.summary = NULL;
 
-    *ret = NULL;
-
-    /* Collected as [position, values, position, values, ...], in the order
-       the keys are first seen; the walk below cannot build the keys yet,
-       see the second loop for why. */
-    PyObject* pending = PyList_New(0);
-    if (pending == NULL) {
+    *ret = PyDict_New();
+    if (*ret == NULL) {
         return -1;
     }
+    md_bitmap_init(&collected, md->keys, md->keys->nentries);
 
     /* Walk the entries in insertion order, so every key is collected at its
-       first spelling; md_find_next() walks a hash chain, which is not
-       insertion-ordered. Nothing in this loop runs Python, which is what
-       makes it safe to leave the marks set until the walk is over. */
+       first spelling; a hash chain walk is not insertion-ordered. */
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
-        entry_t* entry = htkeys_entries(md->keys) + pos;
+        entry_t* entries = htkeys_entries(md->keys);
+        entry_t* entry = entries + pos;
         if (entry->identity == NULL) {
             continue;  // deleted
         }
-        if (entry->hash < 0) {
-            continue;  // marked, so collected already under its first key
+        if (md_bitmap_test(&collected, pos)) {
+            continue;  // collected already under its first key
         }
 
-        if (md_init_finder(md, entry->identity, &finder) < 0) {
-            goto fail;
-        }
-        /* Collects this key's values in insertion order, marking every entry
-           it visits. The marks stay: they are what makes the duplicates of
-           this key, later in the walk, test as collected. */
-        while ((tmp = md_find_next(&finder, NULL, &value)) > 0) {
+        /* Equal keys sit on one hash chain in insertion order. Nothing in
+           this walk runs Python. */
+        Py_hash_t hash = entry->hash & PY_SSIZE_T_MAX;
+        htkeysiter_t iter;
+        htkeysiter_init(&iter, md->keys, hash);
+        for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+            if (iter.index < 0) {
+                continue;
+            }
+            entry_t* e = entries + iter.index;
+            if ((e->hash & PY_SSIZE_T_MAX) != hash ||
+                !_str_cmp(entry->identity, e->identity)) {
+                continue;
+            }
+            int seen = md_bitmap_test_and_set(&collected, iter.index);
+            if (seen < 0) {
+                goto fail;
+            }
+            if (seen) {
+                continue;
+            }
             if (lst == NULL) {
                 lst = PyList_New(1);
                 if (lst == NULL) {
                     goto fail;
                 }
-                PyList_SET_ITEM(lst, 0, value);
-                value = NULL;  // stolen by PyList_SET_ITEM
-            } else {
-                if (PyList_Append(lst, value) < 0) {
-                    goto fail;
-                }
-                Py_CLEAR(value);
+                PyList_SET_ITEM(lst, 0, Py_NewRef(e->value));
+            } else if (PyList_Append(lst, e->value) < 0) {
+                goto fail;
             }
-        }
-        if (tmp < 0) {
-            goto fail;
         }
         if (lst == NULL) {
             continue;  // not reachable from its own hash chain
         }
 
-        pos_obj = PyLong_FromSsize_t(pos);
-        if (pos_obj == NULL) {
-            goto fail;
-        }
-        if (PyList_Append(pending, pos_obj) < 0) {
-            goto fail;
-        }
-        if (PyList_Append(pending, lst) < 0) {
-            goto fail;
-        }
-        Py_CLEAR(pos_obj);
-        Py_CLEAR(lst);
-    }
-
-    _md_restore_all_hashes(md);
-
-    /* Only now, with nothing left marked, may the keys be built and hashed.
-       Both calls below can run a str subclass's own __hash__, __eq__ or
-       __del__, and code that re-enters this multidict from there must not
-       meet a table in which the collected keys read as absent. A mutation
-       from there is refused the way md_next() refuses one. */
-    *ret = PyDict_New();
-    if (*ret == NULL) {
-        goto fail_restored;
-    }
-    Py_ssize_t npending = PyList_GET_SIZE(pending);
-    for (Py_ssize_t i = 0; i < npending; i += 2) {
-        Py_ssize_t pos = PyLong_AsSsize_t(PyList_GET_ITEM(pending, i));
-        key = _md_ensure_key(md, htkeys_entries(md->keys) + pos);
+        /* Both calls below can run a str subclass's own __hash__, __eq__
+           or __del__, which may mutate this multidict. That is refused the
+           way md_next() refuses one, before `entry` or `collected` is
+           trusted again. */
+        key = _md_ensure_key(md, entry);
         if (key == NULL) {
-            goto fail_restored;
+            goto fail;
         }
-        if (PyDict_SetItem(*ret, key, PyList_GET_ITEM(pending, i + 1)) < 0) {
-            goto fail_restored;
+        if (PyDict_SetItem(*ret, key, lst) < 0) {
+            goto fail;
         }
         Py_CLEAR(key);
-        /* Checked after each step, so a mutation is caught before the next
-           one reads an entry the table may since have moved. */
+        Py_CLEAR(lst);
         if (md->version != version) {
             PyErr_SetString(PyExc_RuntimeError,
                             "MultiDict is changed during iteration");
-            goto fail_restored;
+            goto fail;
         }
     }
 
-    Py_DECREF(pending);
+    md_bitmap_release(&collected);
     return 0;
 fail:
-    _md_restore_all_hashes(md);
-fail_restored:
-    Py_XDECREF(pos_obj);
+    md_bitmap_release(&collected);
     Py_XDECREF(key);
-    Py_XDECREF(value);
     Py_XDECREF(lst);
-    Py_DECREF(pending);
     Py_CLEAR(*ret);
     return -1;
 }
@@ -2350,44 +2170,55 @@ static inline int
 _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
             PyObject* identity, Py_hash_t hash, deferred_decref_t* defer)
 {
-    int found = 0;
+    bool found = false;
 
     /* Retries on a concurrent resize (Py_GIL_DISABLED only); deferred
      * decrefs mean nothing here can trigger one, so this shouldn't loop. */
     for (;;) {
-        md_finder_t finder = {0};
-        if (md_init_finder(md, identity, &finder) < 0) {
-            assert(PyErr_Occurred());
-            return -1;
-        }
-
-        int tmp;
+        htkeysiter_t iter;
+        htkeysiter_init(&iter, md->keys, hash);
+        /* The one entry to keep. Later matches are deleted, which turns
+           their slots into DKIX_DUMMY, so only this one can show up again
+           when htkeysiter_next() repeats a slot. */
+        Py_ssize_t replaced = -1;
+        /* Equal keys sit on their hash chain in insertion order, before
+           and after a resize alike, so on a retry the first match is the
+           entry an earlier attempt already replaced. */
+        bool skip_first = found;
         bool stale = false;
 
-        // don't grab neither key nor value but use the calculated index
-        while ((tmp = md_find_next(&finder, NULL, NULL)) > 0) {
+        for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+            if (iter.index < 0 || iter.index == replaced) {
+                continue;
+            }
 #ifdef Py_GIL_DISABLED
             htkeys_t* keys_before = md->keys;
             uint64_t version_before = md->version;
 #endif
             entry_t* entries = htkeys_entries(md->keys);
-            entry_t* entry = entries + md_finder_index(&finder);
+            entry_t* entry = entries + iter.index;
+            if (entry->hash != hash || !_str_cmp(identity, entry->identity)) {
+                continue;
+            }
+            if (skip_first) {
+                skip_first = false;
+                replaced = iter.index;
+                continue;
+            }
             if (!found) {
-                found = 1;
+                found = true;
+                replaced = iter.index;
                 /* old_key/old_value decref deferred -- see
                  * deferred_decref_t */
-#ifdef Py_GIL_DISABLED
                 PyObject* old_key = entry->key;
+#ifdef Py_GIL_DISABLED
                 PyObject* old_value = _md_entry_load_value(entry);
                 entry->key = Py_NewRef(key);
                 _md_entry_publish_value(entry, Py_NewRef(value));
-                _md_entry_store_hash(entry, finder.hash | MD_HASH_MARK);
 #else
-                PyObject* old_key = entry->key;
                 PyObject* old_value = entry->value;
                 entry->key = Py_NewRef(key);
                 entry->value = Py_NewRef(value);
-                entry->hash = finder.hash | MD_HASH_MARK;
 #endif
                 /* Push both unconditionally, not with `||`: a failed
                    first push already decref'd old_key itself (see
@@ -2399,13 +2230,10 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                     push_ret = -1;
                 }
                 if (push_ret < 0) {
-                    md_finder_cleanup(&finder);
                     return -1;
                 }
             } else {
-                if (_md_del_at_deferred(
-                        md, md_finder_slot(&finder), entry, defer) < 0) {
-                    md_finder_cleanup(&finder);
+                if (_md_del_at_deferred(md, iter.slot, entry, defer) < 0) {
                     return -1;
                 }
             }
@@ -2423,29 +2251,14 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
 #endif
         }
         if (stale) {
-            /* Deliberately not calling md_finder_cleanup() here: it
-               would unmark the entry the block above just replaced,
-               making the rescan below treat it as a second occurrence
-               instead of skipping it. The eventual, non-stale finder's
-               own cleanup unmarks everything this hash's chain still
-               has marked, from every attempt, not just its own. */
             continue;
         }
-        if (tmp < 0) {
-            md_finder_cleanup(&finder);
-            return -1;
-        }
 
-        md_finder_cleanup(&finder);
         if (!found) {
-            if (_md_add_with_hash(md, hash, identity, key, value) < 0) {
-                return -1;
-            }
-            return 0;
-        } else {
-            md->version = NEXT_VERSION(md->state);
-            return 0;
+            return _md_add_with_hash(md, hash, identity, key, value);
         }
+        md->version = NEXT_VERSION(md->state);
+        return 0;
     }
 }
 
