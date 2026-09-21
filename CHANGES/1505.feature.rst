@@ -1,0 +1,11 @@
+Changed the C extension to track the entries that
+:meth:`~multidict.MultiDict.getall`, item assignment,
+:meth:`~multidict.MultiDict.update`, :meth:`~multidict.MultiDict.merge`
+and :meth:`~multidict.MultiDict.to_dict` have visited in a bitmap private
+to the call, instead of temporarily marking entry hashes in the table
+itself. Concurrent readers on free-threaded builds no longer have to
+tolerate marked entries. Item assignment,
+:meth:`~multidict.MultiDict.to_dict` and lookups of keys with many values
+got faster, while :meth:`~multidict.MultiDict.update` with many repeated
+keys got somewhat slower
+-- by :user:`asvetlov`.
