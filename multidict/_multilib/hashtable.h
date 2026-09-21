@@ -13,6 +13,7 @@ extern "C" {
 #include <string.h>
 
 #include "atomic_helpers.h"
+#include "bitmap.h"
 #include "compiler.h"
 #include "deferred_decref.h"
 #include "dict.h"
@@ -1472,22 +1473,16 @@ md_finder_cleanup(md_finder_t* finder)
     finder->md = NULL;
 }
 
-/* Duplicate values for one key are uncommon, but not rare enough to size
-   for 0: a handful of real usages and this project's own getall()
-   benchmark carry around 8 duplicates per key. That fits inline with
-   room to spare, so the common case never touches the allocator. */
-#define MD_READONLY_FINDER_INLINE_VISITED 8
-
 typedef struct _md_readonly_finder {
     MultiDictObject* md;
     htkeysiter_t iter;
     uint64_t version;
     Py_hash_t hash;
     PyObject* identity;  // borrowed ref
-    Py_ssize_t visited_inline[MD_READONLY_FINDER_INLINE_VISITED];
-    Py_ssize_t* visited;
-    Py_ssize_t visited_count;
-    Py_ssize_t visited_capacity;
+    /* Most lookups match once, so the first match is kept out of the
+       bitmap and the bitmap never gets started. */
+    Py_ssize_t first_visited;
+    md_bitmap_t visited;
 } md_readonly_finder_t;
 
 static inline int
@@ -1501,35 +1496,9 @@ md_readonly_finder_init(MultiDictObject* md, PyObject* identity,
     if (finder->hash == -1) {
         return -1;
     }
-    finder->visited = finder->visited_inline;
-    finder->visited_count = 0;
-    finder->visited_capacity = MD_READONLY_FINDER_INLINE_VISITED;
+    finder->first_visited = -1;
+    md_bitmap_init(&finder->visited, md->keys, md->keys->nentries);
     htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
-    return 0;
-}
-
-COLD static int
-_md_readonly_finder_grow_visited(md_readonly_finder_t* finder)
-{
-    Py_ssize_t new_capacity = finder->visited_capacity * 2;
-    size_t new_size = (size_t)new_capacity * sizeof(Py_ssize_t);
-    Py_ssize_t* new_visited;
-    if (finder->visited == finder->visited_inline) {
-        new_visited = PyMem_Malloc(new_size);
-        if (new_visited != NULL) {
-            memcpy(new_visited,
-                   finder->visited,
-                   (size_t)finder->visited_count * sizeof(Py_ssize_t));
-        }
-    } else {
-        new_visited = PyMem_Realloc(finder->visited, new_size);
-    }
-    if (new_visited == NULL) {
-        PyErr_NoMemory();
-        return -1;
-    }
-    finder->visited = new_visited;
-    finder->visited_capacity = new_capacity;
     return 0;
 }
 
@@ -1569,38 +1538,24 @@ md_readonly_find_next(md_readonly_finder_t* finder, PyObject** pkey,
             continue;
         }
 
-        /* htkeysiter_next() can legitimately repeat a slot already seen
-           in this same scan (see its own doc comment). md_find_next()
-           tells a repeat apart from a fresh match via the mark it
-           leaves on the entry; this scan never marks (see the comment
-           above md_readonly_finder_t), so it tracks its own
-           already-returned slots here instead.
-
-           This function returns without advancing past a match, so the
-           very next call re-examines the exact same slot and depends on
-           finding it here to move on -- the slot it's looking for is
-           always the one most recently appended. Walking from the end
-           makes that the common O(1) case instead of an O(visited_count)
-           scan; a htkeysiter_next() repeat that isn't immediate (the
-           iter's own doc comment allows one, e.g. "1, 2, 3, 1") still
-           gets found, just not on the first comparison. */
-        bool already_returned = false;
-        for (Py_ssize_t i = finder->visited_count - 1; i >= 0; i--) {
-            if (finder->visited[i] == finder->iter.index) {
-                already_returned = true;
-                break;
-            }
-        }
-        if (already_returned) {
+        /* htkeysiter_next() can repeat a slot already seen in this scan
+           (see its doc comment), and this scan never marks the table. */
+        if (finder->iter.index == finder->first_visited) {
             continue;
         }
-        if (UNLIKELY(finder->visited_count == finder->visited_capacity)) {
-            if (_md_readonly_finder_grow_visited(finder) < 0) {
+        if (finder->first_visited < 0) {
+            finder->first_visited = finder->iter.index;
+        } else {
+            int seen =
+                md_bitmap_test_and_set(&finder->visited, finder->iter.index);
+            if (seen < 0) {
                 ret = -1;
                 goto cleanup;
             }
+            if (seen) {
+                continue;
+            }
         }
-        finder->visited[finder->visited_count++] = finder->iter.index;
 
         if (pvalue) {
             *pvalue = Py_NewRef(entry->value);
@@ -1631,10 +1586,7 @@ cleanup:
 static inline void
 md_readonly_finder_cleanup(md_readonly_finder_t* finder)
 {
-    if (finder->visited != finder->visited_inline) {
-        PyMem_Free(finder->visited);
-    }
-    finder->visited = NULL;
+    md_bitmap_release(&finder->visited);
 }
 
 static inline int
@@ -1932,15 +1884,10 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     PyObject* value = NULL;
     *ret = NULL;
 
-    /* Only `visited` needs a value before md_readonly_finder_init() runs:
-       md_calc_identity() below can fail first and jump straight to
-       cleanup, which frees `visited` if it isn't still visited_inline.
-       Zeroing the rest of the struct here (in particular the 64-byte
-       visited_inline buffer) would be wasted work, since init() sets
-       every other field itself and nothing reads visited_inline before
-       init() points `visited` at it. */
+    /* Not zero-initialized: the bitmap's inline buffer is 4 KB. Cleanup
+       only needs `visited.summary`. */
     md_readonly_finder_t finder;
-    finder.visited = NULL;
+    finder.visited.summary = NULL;
 
     PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
@@ -1992,10 +1939,8 @@ fail:
 static inline PyObject*
 md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
 {
-    /* No zero-init needed: md_readonly_finder_cleanup() below is only ever
-       reached after md_readonly_finder_init() has already set every field
-       it touches. */
     md_readonly_finder_t finder;
+    finder.visited.summary = NULL;
     PyObject* key = NULL;
     PyObject* value = NULL;
     PyObject* item;
