@@ -199,7 +199,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 Py_BEGIN_CRITICAL_SECTION(other);
                 ret = md_init(self, is_ci, md_len(other) + nkwargs);
                 if (ret == 0) {
-                    ret = md_update_from_ht(self, other, Extend, NULL);
+                    ret = md_update_from_ht(self, other, Extend, NULL, NULL);
                     ASSERT_CONSISTENT(self, false);
                 }
                 Py_END_CRITICAL_SECTION();
@@ -208,7 +208,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             Py_BEGIN_CRITICAL_SECTION(arg);
             ret = md_init(self, is_ci, PyDict_GET_SIZE(arg) + nkwargs);
             if (ret == 0) {
-                ret = md_update_from_dict(self, arg, Extend, NULL);
+                ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
                 ASSERT_CONSISTENT(self, false);
             }
             Py_END_CRITICAL_SECTION();
@@ -225,7 +225,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             ret = md_init(self, is_ci, nkwargs + extra);
             if (ret == 0) {
                 if (arg != NULL) {
-                    ret = md_update_from_seq(self, arg, Extend, NULL);
+                    ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
                 }
                 ASSERT_CONSISTENT(self, false);
             }
@@ -760,9 +760,9 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_init(self, false, size);
         if (ret == 0) {
-            ret = md_update_from_ht(self, other, Extend, NULL);
+            ret = md_update_from_ht(self, other, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL);
+                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -771,9 +771,9 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_init(self, false, size);
         if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Extend, NULL);
+            ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL);
+                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -785,10 +785,10 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (other != NULL) {
                 ret = md_extend_self(self);
             } else if (arg != NULL) {
-                ret = md_update_from_seq(self, arg, Extend, NULL);
+                ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
             }
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL);
+                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -870,9 +870,9 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);
         if (ret == 0) {
-            ret = md_update_from_ht(self, other, Extend, NULL);
+            ret = md_update_from_ht(self, other, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL);
+                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -881,9 +881,9 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_reserve(self, size);
         if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Extend, NULL);
+            ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL);
+                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -895,10 +895,10 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (other != NULL) {
                 ret = md_extend_self(self);
             } else if (arg != NULL) {
-                ret = md_update_from_seq(self, arg, Extend, NULL);
+                ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
             }
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL);
+                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -1109,54 +1109,59 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
+    update_marks_t marks;
     deferred_decref_t defer;
     deferred_decref_init(&defer);
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);
+        update_marks_init(&marks, self);
         if (ret == 0) {
-            ret = md_update_from_ht(self, other, Update, &defer);
+            ret = md_update_from_ht(self, other, Update, &defer, &marks);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Update, &defer);
+                ret = md_update_from_dict(self, kwds, Update, &defer, &marks);
             }
             ASSERT_CONSISTENT(self, true);
         }
-        if (md_post_update(self, &defer) < 0 && ret == 0) {
+        if (md_post_update(self, &defer, &marks) < 0 && ret == 0) {
             ret = -1;
         }
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_reserve(self, size);
+        update_marks_init(&marks, self);
         if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Update, &defer);
+            ret = md_update_from_dict(self, arg, Update, &defer, &marks);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Update, &defer);
+                ret = md_update_from_dict(self, kwds, Update, &defer, &marks);
             }
             ASSERT_CONSISTENT(self, true);
         }
-        if (md_post_update(self, &defer) < 0 && ret == 0) {
+        if (md_post_update(self, &defer, &marks) < 0 && ret == 0) {
             ret = -1;
         }
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
         ret = md_reserve(self, size);
+        update_marks_init(&marks, self);
         if (ret == 0) {
             // self-referential update() is a no-op: entries already match
             if (other == NULL && arg != NULL) {
-                ret = md_update_from_seq(self, arg, Update, &defer);
+                ret = md_update_from_seq(self, arg, Update, &defer, &marks);
             }
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Update, &defer);
+                ret = md_update_from_dict(self, kwds, Update, &defer, &marks);
             }
             ASSERT_CONSISTENT(self, true);
         }
-        if (md_post_update(self, &defer) < 0 && ret == 0) {
+        if (md_post_update(self, &defer, &marks) < 0 && ret == 0) {
             ret = -1;
         }
         Py_END_CRITICAL_SECTION();
     }
+    update_marks_release(&marks);
     deferred_decref_release(&defer);
     if (ret < 0) {
         goto fail;
@@ -1183,6 +1188,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
+    update_marks_t marks;
     /* No deferred-decref accumulator here: _md_merge() never decrefs
        anything mid-scan (it either returns early on a match or inserts
        a brand-new entry), so it has no suspension window of its own to
@@ -1190,49 +1196,53 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);
+        update_marks_init(&marks, self);
         if (ret == 0) {
-            ret = md_update_from_ht(self, other, Merge, NULL);
+            ret = md_update_from_ht(self, other, Merge, NULL, &marks);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Merge, NULL);
+                ret = md_update_from_dict(self, kwds, Merge, NULL, &marks);
             }
             ASSERT_CONSISTENT(self, true);
         }
-        if (md_post_update(self, NULL) < 0 && ret == 0) {
+        if (md_post_update(self, NULL, &marks) < 0 && ret == 0) {
             ret = -1;
         }
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_reserve(self, size);
+        update_marks_init(&marks, self);
         if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Merge, NULL);
+            ret = md_update_from_dict(self, arg, Merge, NULL, &marks);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Merge, NULL);
+                ret = md_update_from_dict(self, kwds, Merge, NULL, &marks);
             }
             ASSERT_CONSISTENT(self, true);
         }
-        if (md_post_update(self, NULL) < 0 && ret == 0) {
+        if (md_post_update(self, NULL, &marks) < 0 && ret == 0) {
             ret = -1;
         }
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
         ret = md_reserve(self, size);
+        update_marks_init(&marks, self);
         if (ret == 0) {
             // self-referential merge() is a no-op: entries already match
             if (other == NULL && arg != NULL) {
-                ret = md_update_from_seq(self, arg, Merge, NULL);
+                ret = md_update_from_seq(self, arg, Merge, NULL, &marks);
             }
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Merge, NULL);
+                ret = md_update_from_dict(self, kwds, Merge, NULL, &marks);
             }
             ASSERT_CONSISTENT(self, true);
         }
-        if (md_post_update(self, NULL) < 0 && ret == 0) {
+        if (md_post_update(self, NULL, &marks) < 0 && ret == 0) {
             ret = -1;
         }
         Py_END_CRITICAL_SECTION();
     }
+    update_marks_release(&marks);
     if (ret < 0) {
         goto fail;
     }
@@ -1478,9 +1488,9 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_init(self, true, size);
         if (ret == 0) {
-            ret = md_update_from_ht(self, other, Extend, NULL);
+            ret = md_update_from_ht(self, other, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL);
+                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -1489,9 +1499,9 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_init(self, true, size);
         if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Extend, NULL);
+            ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL);
+                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
             ASSERT_CONSISTENT(self, false);
         }
@@ -1503,10 +1513,10 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (other != NULL) {
                 ret = md_extend_self(self);
             } else if (arg != NULL) {
-                ret = md_update_from_seq(self, arg, Extend, NULL);
+                ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
             }
             if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL);
+                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
             ASSERT_CONSISTENT(self, false);
         }
