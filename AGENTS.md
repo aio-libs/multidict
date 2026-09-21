@@ -51,7 +51,8 @@ Useful entry points:
 | `multidict/_multidict_py.py`          | pure-Python `MultiDict`, `CIMultiDict`, `istr`, proxies         |
 | `multidict/_multidict.c`              | C implementation entry points and type definitions              |
 | `multidict/_multilib/hashtable.h`     | core hash table (``md_*`` functions, resize, lookup)            |
-| `multidict/_multilib/deferred_decref.h` | ``md_deferred_decref_t``, postpones decrefs until a mutation ends |
+| `multidict/_multilib/compiler.h`      | ``UNLIKELY``, ``COLD``, ``ALWAYS_INLINE`` portability macros |
+| `multidict/_multilib/deferred_decref.h` | ``deferred_decref_t``, postpones decrefs until a mutation ends |
 | `multidict/_multilib/htkeys.h`        | key-storage layout, ``estimate_log2_keysize``                   |
 | `multidict/_multilib/istr.h`          | C ``istr`` (case-insensitive str)                               |
 | `multidict/_multilib/iter.h`          | views and iterators for the C impl                              |
