@@ -1,0 +1,3 @@
+Added CodSpeed benchmarks for ``getall()`` on a large table, ``update()``
+with duplicate keys, ``merge()``, ``to_dict()`` and items view containment
+with duplicate keys -- by :user:`asvetlov`.
