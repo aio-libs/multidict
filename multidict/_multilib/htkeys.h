@@ -504,7 +504,7 @@ htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
    multiple times, eiter consequently (1, 2, 2, 3)
    or with different slots in the middle (1, 2, 3, 1).
 
-   The caller is responsible for skipping repeats; md_finder_t
+   The caller is responsible for skipping repeats; finder_t
    in hashtable.h does it with a bitmap of visited entries.
 */
 

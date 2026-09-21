@@ -1109,13 +1109,13 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
-    md_update_marks_t marks;
+    update_marks_t marks;
     deferred_decref_t defer;
     deferred_decref_init(&defer);
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);
-        md_update_marks_init(&marks, self);
+        update_marks_init(&marks, self);
         if (ret == 0) {
             ret = md_update_from_ht(self, other, Update, &defer, &marks);
             if (ret == 0 && kwds != NULL) {
@@ -1130,7 +1130,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_reserve(self, size);
-        md_update_marks_init(&marks, self);
+        update_marks_init(&marks, self);
         if (ret == 0) {
             ret = md_update_from_dict(self, arg, Update, &defer, &marks);
             if (ret == 0 && kwds != NULL) {
@@ -1145,7 +1145,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
         ret = md_reserve(self, size);
-        md_update_marks_init(&marks, self);
+        update_marks_init(&marks, self);
         if (ret == 0) {
             // self-referential update() is a no-op: entries already match
             if (other == NULL && arg != NULL) {
@@ -1161,7 +1161,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
         }
         Py_END_CRITICAL_SECTION();
     }
-    md_update_marks_release(&marks);
+    update_marks_release(&marks);
     deferred_decref_release(&defer);
     if (ret < 0) {
         goto fail;
@@ -1188,7 +1188,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
-    md_update_marks_t marks;
+    update_marks_t marks;
     /* No deferred-decref accumulator here: _md_merge() never decrefs
        anything mid-scan (it either returns early on a match or inserts
        a brand-new entry), so it has no suspension window of its own to
@@ -1196,7 +1196,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);
-        md_update_marks_init(&marks, self);
+        update_marks_init(&marks, self);
         if (ret == 0) {
             ret = md_update_from_ht(self, other, Merge, NULL, &marks);
             if (ret == 0 && kwds != NULL) {
@@ -1211,7 +1211,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = md_reserve(self, size);
-        md_update_marks_init(&marks, self);
+        update_marks_init(&marks, self);
         if (ret == 0) {
             ret = md_update_from_dict(self, arg, Merge, NULL, &marks);
             if (ret == 0 && kwds != NULL) {
@@ -1226,7 +1226,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
         ret = md_reserve(self, size);
-        md_update_marks_init(&marks, self);
+        update_marks_init(&marks, self);
         if (ret == 0) {
             // self-referential merge() is a no-op: entries already match
             if (other == NULL && arg != NULL) {
@@ -1242,7 +1242,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
         }
         Py_END_CRITICAL_SECTION();
     }
-    md_update_marks_release(&marks);
+    update_marks_release(&marks);
     if (ret < 0) {
         goto fail;
     }

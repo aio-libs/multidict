@@ -18,9 +18,9 @@ extern "C" {
 #include "htkeys.h"
 #include "identity.h"
 
-#define MD_FINDER_FEW 8
+#define FINDER_FEW 8
 
-typedef struct _md_finder {
+typedef struct _finder {
     MultiDictObject* md;
     htkeysiter_t iter;
     uint64_t version;
@@ -29,13 +29,13 @@ typedef struct _md_finder {
     /* Most keys have a handful of values, so the first few matches are
        kept in a short list and the bitmap only starts past it: on a big
        table, starting it means a heap allocation. */
-    Py_ssize_t visited_few[MD_FINDER_FEW];
+    Py_ssize_t visited_few[FINDER_FEW];
     Py_ssize_t nvisited_few;
-    md_bitmap_t visited;
-} md_finder_t;
+    bitmap_t visited;
+} finder_t;
 
 static inline int
-md_finder_init(MultiDictObject* md, PyObject* identity, md_finder_t* finder)
+finder_init(MultiDictObject* md, PyObject* identity, finder_t* finder)
 {
     finder->version = md->version;
     finder->md = md;
@@ -51,13 +51,13 @@ md_finder_init(MultiDictObject* md, PyObject* identity, md_finder_t* finder)
 
 /* Past this many matches, the short list is moved into the bitmap. */
 COLD static int
-_md_finder_spill(md_finder_t* finder)
+_finder_spill(finder_t* finder)
 {
-    md_bitmap_init(
+    bitmap_init(
         &finder->visited, finder->md->keys, finder->md->keys->nentries);
-    finder->nvisited_few = MD_FINDER_FEW + 1;
-    for (Py_ssize_t i = 0; i < MD_FINDER_FEW; i++) {
-        if (md_bitmap_set(&finder->visited, finder->visited_few[i]) < 0) {
+    finder->nvisited_few = FINDER_FEW + 1;
+    for (Py_ssize_t i = 0; i < FINDER_FEW; i++) {
+        if (bitmap_set(&finder->visited, finder->visited_few[i]) < 0) {
             return -1;
         }
     }
@@ -67,10 +67,10 @@ _md_finder_spill(md_finder_t* finder)
 /* 1 if `index` was already returned by this walk, 0 if not (it is now
    recorded), -1 on error. */
 static inline int
-_md_finder_seen(md_finder_t* finder, Py_ssize_t index)
+_finder_seen(finder_t* finder, Py_ssize_t index)
 {
     Py_ssize_t n = finder->nvisited_few;
-    if (n <= MD_FINDER_FEW) {
+    if (n <= FINDER_FEW) {
         /* A repeat is most often the slot just returned, which the next
            call re-examines, so the list is scanned from its end. */
         for (Py_ssize_t i = n - 1; i >= 0; i--) {
@@ -78,20 +78,20 @@ _md_finder_seen(md_finder_t* finder, Py_ssize_t index)
                 return 1;
             }
         }
-        if (n < MD_FINDER_FEW) {
+        if (n < FINDER_FEW) {
             finder->visited_few[n] = index;
             finder->nvisited_few = n + 1;
             return 0;
         }
-        if (_md_finder_spill(finder) < 0) {
+        if (_finder_spill(finder) < 0) {
             return -1;
         }
     }
-    return md_bitmap_test_and_set(&finder->visited, index);
+    return bitmap_test_and_set(&finder->visited, index);
 }
 
 static inline int
-md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
+find_next(finder_t* finder, PyObject** pkey, PyObject** pvalue)
 {
     int ret = 0;
     assert(finder->iter.keys == finder->md->keys);
@@ -119,7 +119,7 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
 
         /* htkeysiter_next() can repeat a slot already seen in this scan
            (see its doc comment), and this scan never marks the table. */
-        int seen = _md_finder_seen(finder, finder->iter.index);
+        int seen = _finder_seen(finder, finder->iter.index);
         if (seen < 0) {
             ret = -1;
             goto cleanup;
@@ -155,10 +155,10 @@ cleanup:
 }
 
 static inline void
-md_finder_cleanup(md_finder_t* finder)
+finder_cleanup(finder_t* finder)
 {
-    if (finder->nvisited_few > MD_FINDER_FEW) {
-        md_bitmap_release(&finder->visited);
+    if (finder->nvisited_few > FINDER_FEW) {
+        bitmap_release(&finder->visited);
     }
 }
 
@@ -171,7 +171,7 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 
     /* Not zero-initialized: the bitmap's inline buffer is 4 KB. Cleanup
        only needs `nvisited_few`. */
-    md_finder_t finder;
+    finder_t finder;
     finder.nvisited_few = 0;
 
     PyObject* identity = md_calc_identity(md, key);
@@ -179,12 +179,12 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         goto fail;
     }
 
-    if (md_finder_init(md, identity, &finder) < 0) {
+    if (finder_init(md, identity, &finder) < 0) {
         assert(PyErr_Occurred());
         goto fail;
     }
 
-    while ((tmp = md_find_next(&finder, NULL, &value)) > 0) {
+    while ((tmp = find_next(&finder, NULL, &value)) > 0) {
         if (*ret == NULL) {
             *ret = PyList_New(1);
             if (*ret == NULL) {
@@ -203,11 +203,11 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         goto fail;
     }
 
-    md_finder_cleanup(&finder);
+    finder_cleanup(&finder);
     Py_DECREF(identity);
     return *ret != NULL;
 fail:
-    md_finder_cleanup(&finder);
+    finder_cleanup(&finder);
     Py_XDECREF(identity);
     Py_XDECREF(value);
     Py_CLEAR(*ret);
@@ -219,9 +219,9 @@ fail:
 
    `with_keys` selects values (false) or (key, value) tuples (true). */
 static inline PyObject*
-md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
+finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
 {
-    md_finder_t finder;
+    finder_t finder;
     finder.nvisited_few = 0;
     PyObject* key = NULL;
     PyObject* value = NULL;
@@ -233,14 +233,13 @@ md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
         return NULL;
     }
 
-    if (md_finder_init(md, identity, &finder) < 0) {
+    if (finder_init(md, identity, &finder) < 0) {
         assert(PyErr_Occurred());
         Py_DECREF(ret);
         return NULL;
     }
 
-    while ((tmp = md_find_next(&finder, with_keys ? &key : NULL, &value)) >
-           0) {
+    while ((tmp = find_next(&finder, with_keys ? &key : NULL, &value)) > 0) {
         if (with_keys) {
             item = PyTuple_Pack(2, key, value);
             Py_CLEAR(key);
@@ -258,13 +257,13 @@ md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
             goto fail;
         }
     }
-    md_finder_cleanup(&finder);
+    finder_cleanup(&finder);
     if (tmp < 0) {
         goto fail_no_cleanup;
     }
     return ret;
 fail:
-    md_finder_cleanup(&finder);
+    finder_cleanup(&finder);
 fail_no_cleanup:
     Py_CLEAR(key);
     Py_CLEAR(value);

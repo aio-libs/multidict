@@ -487,7 +487,7 @@ _md_entry_try_get_ref(PyObject** addr)
 #endif /* Py_GIL_DISABLED */
 
 static inline int
-_md_resize(MultiDictObject* md, uint8_t log2_newsize, md_update_marks_t* marks)
+_md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
 {
     if (log2_newsize >= SIZEOF_SIZE_T * 8) {
         PyErr_NoMemory();
@@ -501,7 +501,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, md_update_marks_t* marks)
     }
 
     htkeys_t* oldkeys = md->keys;
-    if (_md_update_marks_remap(marks, oldkeys, newkeys, newkeys->usable) < 0) {
+    if (_update_marks_remap(marks, oldkeys, newkeys, newkeys->usable) < 0) {
         htkeys_free(newkeys);
         return -1;
     }
@@ -564,7 +564,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, md_update_marks_t* marks)
 }
 
 static inline int
-_md_shrink(MultiDictObject* md, md_update_marks_t* marks)
+_md_shrink(MultiDictObject* md, update_marks_t* marks)
 {
 #ifdef Py_GIL_DISABLED
     /* The in-place compaction below rewrites the currently-published
@@ -580,7 +580,7 @@ _md_shrink(MultiDictObject* md, md_update_marks_t* marks)
     return _md_resize(md, md->keys->log2_size, marks);
 #else
     htkeys_t* keys = md->keys;
-    if (_md_update_marks_remap(marks, keys, keys, _md_entries_capacity(keys)) <
+    if (_update_marks_remap(marks, keys, keys, _md_entries_capacity(keys)) <
         0) {
         return -1;
     }
@@ -622,7 +622,7 @@ _md_resize_for_insert(MultiDictObject* md)
 }
 
 static inline int
-_md_resize_for_update(MultiDictObject* md, md_update_marks_t* marks)
+_md_resize_for_update(MultiDictObject* md, update_marks_t* marks)
 {
     if (md->used < md->keys->nentries) {
         return _md_shrink(md, marks);
@@ -632,8 +632,7 @@ _md_resize_for_update(MultiDictObject* md, md_update_marks_t* marks)
 }
 
 static inline int
-_md_reserve(MultiDictObject* md, Py_ssize_t extra_size,
-            md_update_marks_t* marks)
+_md_reserve(MultiDictObject* md, Py_ssize_t extra_size, update_marks_t* marks)
 {
     uint8_t new_size = estimate_log2_keysize(extra_size + md->used);
     if (new_size > md->keys->log2_size) {
@@ -815,7 +814,7 @@ _md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 static inline int
 _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
                            PyObject* identity, PyObject* key, PyObject* value,
-                           md_update_marks_t* marks)
+                           update_marks_t* marks)
 {
     htkeys_t* keys = md->keys;
     if (keys->usable <= 0 || keys == &empty_htkeys) {
@@ -825,7 +824,7 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
         }
         keys = md->keys;  // updated by resizing
     }
-    if (md_bitmap_set(&marks->updated, keys->nentries) < 0) {
+    if (bitmap_set(&marks->updated, keys->nentries) < 0) {
         return -1;
     }
     Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
@@ -858,7 +857,7 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
 
 static inline int
 _md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-                PyObject* key, PyObject* value, md_update_marks_t* marks)
+                PyObject* key, PyObject* value, update_marks_t* marks)
 {
     Py_INCREF(identity);
     Py_INCREF(key);
@@ -1508,14 +1507,14 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
     PyObject* key = NULL;
     PyObject* lst = NULL;
     uint64_t version = md->version;
-    md_bitmap_t collected;
+    bitmap_t collected;
     collected.summary = NULL;
 
     *ret = PyDict_New();
     if (*ret == NULL) {
         return -1;
     }
-    md_bitmap_init(&collected, md->keys, md->keys->nentries);
+    bitmap_init(&collected, md->keys, md->keys->nentries);
 
     /* Walk the entries in insertion order, so every key is collected at its
        first spelling; a hash chain walk is not insertion-ordered. */
@@ -1525,7 +1524,7 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
         if (entry->identity == NULL) {
             continue;  // deleted
         }
-        if (md_bitmap_test(&collected, pos)) {
+        if (bitmap_test(&collected, pos)) {
             continue;  // collected already under its first key
         }
 
@@ -1542,7 +1541,7 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
             if (e->hash != hash || !_str_cmp(entry->identity, e->identity)) {
                 continue;
             }
-            int seen = md_bitmap_test_and_set(&collected, iter.index);
+            int seen = bitmap_test_and_set(&collected, iter.index);
             if (seen < 0) {
                 goto fail;
             }
@@ -1583,10 +1582,10 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
         }
     }
 
-    md_bitmap_release(&collected);
+    bitmap_release(&collected);
     return 0;
 fail:
-    md_bitmap_release(&collected);
+    bitmap_release(&collected);
     Py_XDECREF(key);
     Py_XDECREF(lst);
     Py_CLEAR(*ret);
@@ -1914,10 +1913,10 @@ fail:
 static inline int
 _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
            PyObject* key, PyObject* value, deferred_decref_t* defer,
-           md_update_marks_t* marks)
+           update_marks_t* marks)
 {
     bool found = false;
-    _md_update_marks_sync(marks, md);
+    _update_marks_sync(marks, md);
 
     // See _md_replace() on the retry/deferred-decref shape used here.
     for (;;) {
@@ -1940,13 +1939,13 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             entry_t* entries = htkeys_entries(md->keys);
             entry_t* entry = entries + iter.index;
             if (hash != entry->hash ||
-                md_bitmap_test(&marks->updated, iter.index) ||
+                bitmap_test(&marks->updated, iter.index) ||
                 !_str_cmp(identity, entry->identity)) {
                 continue;
             }
             if (skip_first) {
                 skip_first = false;
-                if (md_bitmap_set(&marks->updated, iter.index) < 0) {
+                if (bitmap_set(&marks->updated, iter.index) < 0) {
                     goto fail;
                 }
                 continue;
@@ -1955,14 +1954,14 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                 found = true;
                 /* Marked first: nothing below can fail half-way after
                    the entry has changed. */
-                if (md_bitmap_set(&marks->updated, iter.index) < 0) {
+                if (bitmap_set(&marks->updated, iter.index) < 0) {
                     goto fail;
                 }
                 if (entry->key == NULL) {
                     /* Half-deleted by an earlier item of this batch; reusing
                        it keeps the key at its original position. */
                     assert(entry->value == NULL);
-                    md_bitmap_clear(&marks->deleted, iter.index);
+                    bitmap_clear(&marks->deleted, iter.index);
                     entry->key = Py_NewRef(key);
 #ifdef Py_GIL_DISABLED
                     _md_entry_publish_value(entry, Py_NewRef(value));
@@ -1997,10 +1996,10 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     }
                 }
             } else {
-                if (md_bitmap_test(&marks->deleted, iter.index)) {
+                if (bitmap_test(&marks->deleted, iter.index)) {
                     continue;
                 }
-                if (md_bitmap_set(&marks->deleted, iter.index) < 0) {
+                if (bitmap_set(&marks->deleted, iter.index) < 0) {
                     goto fail;
                 }
                 if (_md_del_at_for_upd_deferred(md, iter.slot, entry, defer) <
@@ -2019,7 +2018,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         }
         if (stale) {
             /* Whatever moved the table also invalidated the marks. */
-            _md_update_marks_sync(marks, md);
+            _update_marks_sync(marks, md);
             continue;
         }
         break;
@@ -2039,9 +2038,9 @@ fail:
 
 static inline int
 _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-          PyObject* key, PyObject* value, md_update_marks_t* marks)
+          PyObject* key, PyObject* value, update_marks_t* marks)
 {
-    _md_update_marks_sync(marks, md);
+    _update_marks_sync(marks, md);
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
@@ -2052,8 +2051,7 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         }
         entry_t* entry = entries + iter.index;
         /* An entry this batch added doesn't count as already present. */
-        if (hash != entry->hash ||
-            md_bitmap_test(&marks->updated, iter.index)) {
+        if (hash != entry->hash || bitmap_test(&marks->updated, iter.index)) {
             continue;
         }
         if (_str_cmp(identity, entry->identity)) {
@@ -2123,9 +2121,9 @@ _md_post_update_sweep(MultiDictObject* md, deferred_decref_t* defer)
 
 static inline int
 _md_post_update_deleted(MultiDictObject* md, deferred_decref_t* defer,
-                        md_update_marks_t* marks)
+                        update_marks_t* marks)
 {
-    _md_update_marks_sync(marks, md);
+    _update_marks_sync(marks, md);
     if (marks->lost) {
         return _md_post_update_sweep(md, defer);
     }
@@ -2135,8 +2133,8 @@ _md_post_update_deleted(MultiDictObject* md, deferred_decref_t* defer,
     uint64_t version_before = md->version;
 #endif
     entry_t* entries = htkeys_entries(keys);
-    for (Py_ssize_t pos = md_bitmap_next(&marks->deleted, 0); pos >= 0;
-         pos = md_bitmap_next(&marks->deleted, pos + 1)) {
+    for (Py_ssize_t pos = bitmap_next(&marks->deleted, 0); pos >= 0;
+         pos = bitmap_next(&marks->deleted, pos + 1)) {
         entry_t* entry = entries + pos;
         /* Another thread's update(), run while this one's critical section
            was suspended, can revive or finish off one of these in place
@@ -2171,7 +2169,7 @@ _md_post_update_deleted(MultiDictObject* md, deferred_decref_t* defer,
 
 static inline int
 md_post_update(MultiDictObject* md, deferred_decref_t* defer,
-               md_update_marks_t* marks)
+               update_marks_t* marks)
 {
     int ret = 0;
     /* `defer` is NULL only for merge(), which never half-deletes. */
@@ -2185,7 +2183,7 @@ md_post_update(MultiDictObject* md, deferred_decref_t* defer,
 
 static inline int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
-                  deferred_decref_t* defer, md_update_marks_t* marks)
+                  deferred_decref_t* defer, update_marks_t* marks)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
@@ -2302,7 +2300,7 @@ md_extend_self(MultiDictObject* md)
 
 static inline int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
-                    deferred_decref_t* defer, md_update_marks_t* marks)
+                    deferred_decref_t* defer, update_marks_t* marks)
 {
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
@@ -2510,7 +2508,7 @@ fail:
 
 static inline int
 md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
-                   deferred_decref_t* defer, md_update_marks_t* marks)
+                   deferred_decref_t* defer, update_marks_t* marks)
 {
     PyObject* it = NULL;
     PyObject* item = NULL;  // seq[i]
