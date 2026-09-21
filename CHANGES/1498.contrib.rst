@@ -1,0 +1,4 @@
+Made the CodSpeed benchmarks more stable: cyclic garbage collection is now
+disabled while a benchmark runs, the ``repr()`` and view inequality
+benchmarks repeat their operation in a loop, and the benchmark job runs on
+Python 3.15 -- by :user:`asvetlov`.

@@ -1,8 +1,11 @@
 """codspeed benchmarks for multidict views."""
 
+import pytest
 from pytest_codspeed import BenchmarkFixture
 
 from multidict import MultiDict
+
+pytestmark = pytest.mark.usefixtures("gc_disabled")
 
 
 def test_keys_view_equals(
@@ -24,7 +27,8 @@ def test_keys_view_not_equals(
 
     @benchmark
     def _run() -> None:
-        assert md1.keys() != md2.keys()
+        for _ in range(100):
+            assert md1.keys() != md2.keys()
 
 
 def test_keys_view_more(
@@ -133,7 +137,8 @@ def test_keys_view_repr(
 
     @benchmark
     def _run() -> None:
-        repr(md.keys())
+        for _ in range(100):
+            repr(md.keys())
 
 
 def test_items_view_equals(
@@ -155,7 +160,8 @@ def test_items_view_not_equals(
 
     @benchmark
     def _run() -> None:
-        assert md1.items() != md2.items()
+        for _ in range(100):
+            assert md1.items() != md2.items()
 
 
 def test_items_view_more(
@@ -264,7 +270,8 @@ def test_items_view_repr(
 
     @benchmark
     def _run() -> None:
-        repr(md.items())
+        for _ in range(100):
+            repr(md.items())
 
 
 def test_values_view_repr(
@@ -274,4 +281,5 @@ def test_values_view_repr(
 
     @benchmark
     def _run() -> None:
-        repr(md.values())
+        for _ in range(100):
+            repr(md.values())
