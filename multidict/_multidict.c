@@ -599,8 +599,11 @@ static int
 multidict_mp_as_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
 {
     int ret;
+    // md_del() never touches defer; skip init/release for it
     md_deferred_decref_t defer;
-    md_deferred_decref_init(&defer);
+    if (val != NULL) {
+        md_deferred_decref_init(&defer);
+    }
     Py_BEGIN_CRITICAL_SECTION(self);
     if (val == NULL) {
         ret = md_del(self, key);
@@ -608,7 +611,9 @@ multidict_mp_as_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
         ret = md_replace(self, key, val, &defer);
     }
     Py_END_CRITICAL_SECTION();
-    md_deferred_decref_release(&defer);
+    if (val != NULL) {
+        md_deferred_decref_release(&defer);
+    }
     return ret;
 }
 

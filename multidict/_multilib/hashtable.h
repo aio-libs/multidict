@@ -1022,12 +1022,14 @@ typedef struct _md_deferred_decref {
     md_deferred_decref_block_t inline_block;
 } md_deferred_decref_t;
 
+/* `current == NULL` means untouched: no block is wired up yet, and
+ * `count`/`inline_block` are not meaningful until the first push lazily
+ * initializes them. Keeps the common "nothing to defer" call cheap to
+ * just this one store. */
 static inline void
 md_deferred_decref_init(md_deferred_decref_t* defer)
 {
-    defer->inline_block.next = NULL;
-    defer->current = &defer->inline_block;
-    defer->count = 0;
+    defer->current = NULL;
 }
 
 HT_COLD static int
@@ -1059,6 +1061,12 @@ md_deferred_decref_push(md_deferred_decref_t* defer, PyObject* obj)
     if (obj == NULL) {
         return 0;
     }
+    if (HT_UNLIKELY(defer->current == NULL)) {
+        // first push ever: wire up the inline block now, not on init()
+        defer->inline_block.next = NULL;
+        defer->current = &defer->inline_block;
+        defer->count = 0;
+    }
     if (HT_UNLIKELY(defer->count == MD_DEFERRED_DECREF_BLOCK)) {
         if (_md_deferred_decref_grow(defer) < 0) {
             Py_DECREF(obj);
@@ -1084,6 +1092,12 @@ md_deferred_decref_push(md_deferred_decref_t* defer, PyObject* obj)
 static inline int
 _md_deferred_decref_reserve_one(md_deferred_decref_t* defer)
 {
+    if (HT_UNLIKELY(defer->current == NULL)) {
+        defer->inline_block.next = NULL;
+        defer->current = &defer->inline_block;
+        defer->count = 0;
+        return 0;
+    }
     if (defer->count == MD_DEFERRED_DECREF_BLOCK) {
         if (_md_deferred_decref_grow(defer) < 0) {
             return -1;
@@ -1104,9 +1118,13 @@ md_deferred_decref_push_reserved(md_deferred_decref_t* defer, PyObject* obj)
     }
 }
 
+// Untouched defer (current == NULL): nothing was ever pushed, skip the walk
 static inline void
 md_deferred_decref_release(md_deferred_decref_t* defer)
 {
+    if (defer->current == NULL) {
+        return;
+    }
     md_deferred_decref_block_t* block = defer->current;
     Py_ssize_t n = defer->count;
     while (block != NULL) {
