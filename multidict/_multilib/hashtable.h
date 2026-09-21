@@ -382,6 +382,13 @@ _md_drain_retired(MultiDictObject* md)
     }
     htkeys_t* t = (htkeys_t*)atomic_exchange_ptr((void**)&md->retired, NULL);
 
+    /* The check above says nothing about a table retired after it: a
+       reader may have loaded it as md->keys but not yet counted itself
+       in its num_readers. Every reader of a table taken here entered
+       before that table's retirement, so a zero read now means each of
+       them has also exited. */
+    bool readers_active = atomic_load_ssize(&md->num_active_readers) != 0;
+
     /* The coarse gate above can read zero while a specific table's own
        num_readers is still nonzero -- a reader can be preempted between
        incrementing it and decrementing it. A table is only actually
@@ -392,7 +399,8 @@ _md_drain_retired(MultiDictObject* md)
     htkeys_t* pending_tail = NULL;
     while (t != NULL) {
         htkeys_t* next = t->retired_next;
-        if (atomic_load_ssize_acquire(&t->num_readers) == 0) {
+        if (!readers_active &&
+            atomic_load_ssize_acquire(&t->num_readers) == 0) {
             _md_free_retired(t);
         } else {
             t->retired_next = pending_head;
