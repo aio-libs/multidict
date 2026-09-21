@@ -436,7 +436,7 @@ jobs:
         token: ${{ secrets.CODSPEED_TOKEN }}
         # Note: -I is missed, otherwise PYTHONHASHSEED is ignored
         run: python -m pytest --no-cov -vvvvv --codspeed
-        mode: instrumentation
+        mode: simulation
 
   hypothesis-gil:
     name: Hypothesis (GIL)

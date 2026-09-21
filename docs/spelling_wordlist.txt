@@ -27,6 +27,7 @@ charset
 charsetdetect
 cibuildwheel
 codecov
+codspeed
 CPython
 criterias
 css
