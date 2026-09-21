@@ -2321,6 +2321,31 @@ def test_setdefault_vs_update_same_key_thread_safety() -> None:
     assert len(d.getall("k")) == 1
 
 
+@pytest.mark.parametrize("op", ["setitem", "update"])
+def test_replace_many_duplicates_releases_all(
+    case_sensitive_multidict_class: type[MultiDict[object]], op: str
+) -> None:
+    """Enough replaced duplicates to overflow the free-threaded build's
+    deferred-decref buffer into several heap blocks; every old value
+    must still be released."""
+
+    class Tracked:
+        pass
+
+    values = [Tracked() for _ in range(3000)]
+    refs = [weakref.ref(v) for v in values]
+    d = case_sensitive_multidict_class([("k", v) for v in values])
+    del values
+
+    if op == "setitem":
+        d["k"] = "v"
+    else:
+        d.update(k="v")
+
+    assert list(d.items()) == [("k", "v")]
+    assert all(r() is None for r in refs)
+
+
 @pytest.mark.c_extension
 def test_to_dict_vs_lock_free_reads_thread_safety() -> None:
     """Concurrent to_dict() alongside lock-free contains()/get() on the
