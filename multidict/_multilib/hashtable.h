@@ -937,7 +937,13 @@ _md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    return _md_add_with_hash_steal_refs(md, hash, identity, key, value);
+    if (_md_add_with_hash_steal_refs(md, hash, identity, key, value) < 0) {
+        Py_DECREF(identity);
+        Py_DECREF(key);
+        Py_DECREF(value);
+        return -1;
+    }
+    return 0;
 }
 
 static inline int
@@ -987,7 +993,15 @@ _md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    return _md_add_for_upd_steal_refs(md, hash, identity, key, value);
+    if (_md_add_for_upd_steal_refs(md, hash, identity, key, value) < 0) {
+        /* Not deferred: the caller still holds its own references, so
+           none of these can drop to zero and run __del__. */
+        Py_DECREF(identity);
+        Py_DECREF(key);
+        Py_DECREF(value);
+        return -1;
+    }
+    return 0;
 }
 
 static inline int
