@@ -1,0 +1,5 @@
+Fixed a reference leak of the key and value in the C extension when
+growing the hash table fails with :exc:`MemoryError` during
+:meth:`~multidict.MultiDict.add`, :meth:`~multidict.MultiDict.update`,
+:meth:`~multidict.MultiDict.merge`, :meth:`~multidict.MultiDict.setdefault`
+or item assignment -- by :user:`asvetlov`.

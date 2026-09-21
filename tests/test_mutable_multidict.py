@@ -1,5 +1,8 @@
+import functools
+import itertools
 import string
 import sys
+from collections import deque
 
 import pytest
 
@@ -1055,3 +1058,49 @@ def test_duplicate_key_hints_only_allocated_when_needed(
     distinct_drop = sys.getsizeof(distinct) - sys.getsizeof(distinct.copy())
     duplicates_drop = sys.getsizeof(duplicates) - sys.getsizeof(duplicates.copy())
     assert duplicates_drop > distinct_drop
+
+
+@pytest.mark.c_extension
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy" or "free-threading" in sys.version,
+    reason="getrefcount is not reliable",
+)
+@pytest.mark.parametrize("cls", (MultiDict, CIMultiDict))
+@pytest.mark.parametrize(
+    "method", ("update", "merge", "extend", "add", "setdefault", "__setitem__")
+)
+def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -> None:
+    """A table resize failing with MemoryError must not leak the key or
+    value.  Items arrive one by one (an iterator defeats the up-front
+    reservation), so the table grows mid-insert.  C-extension only: the
+    pure-Python version has no manual refcounting, and failing allocations
+    in interpreted code hits CPython's own unraisable-error paths."""
+    testcapi = pytest.importorskip("_testcapi")
+    keys = [f"Key-{i}" for i in range(20)]
+    values = [object() for _ in range(20)]
+    pairs = list(zip(keys, values))
+    baseline = [sys.getrefcount(obj) for obj in keys + values]
+
+    # Fail the n-th allocation, for each n, until the call gets through.
+    n = 0
+    while True:
+        md = cls()
+        bound = getattr(md, method)
+        if method in ("update", "merge", "extend"):
+            call = functools.partial(bound, map(tuple, pairs))
+        else:
+            call = functools.partial(deque, itertools.starmap(bound, pairs), 0)
+        try:
+            # One line, so no tracer line event can take the failure.
+            testcapi.set_nomemory(n, n + 1), call(), testcapi.remove_mem_hooks()
+        except MemoryError:
+            testcapi.remove_mem_hooks()
+            failed = True
+        else:
+            failed = False
+        del md, bound, call
+        assert [sys.getrefcount(obj) for obj in keys + values] == baseline
+        if not failed:
+            break
+        n += 1
+    assert n > 0
