@@ -1,3 +1,5 @@
+# cython: freethreading_compatible=True
+
 # Exercises the public C API capsule from the test suite, from Cython. Not
 # part of the public API and not meant to be imported or relied on outside
 # tests. Mirrors _testcapi.c function-for-function.
