@@ -14,12 +14,16 @@ def _model_update(
     pairs: Iterable[tuple[str, int]], new_pairs: Iterable[tuple[str, int]]
 ) -> list[tuple[str, int]]:
     entries = [[k, v, True] for k, v in pairs]
+    by_key: dict[str, list[int]] = {}
+    for i, (k, _, _) in enumerate(entries):
+        by_key.setdefault(k, []).append(i)  # type: ignore[arg-type]
     written: set[int] = set()
     for k, v in new_pairs:
         found = False
-        for i, e in enumerate(entries):
-            if e[0] != k or i in written:
+        for i in by_key.get(k, []):
+            if i in written:
                 continue
+            e = entries[i]
             if not found:
                 found = True
                 e[1] = v
@@ -29,6 +33,7 @@ def _model_update(
                 e[2] = False
         if not found:
             written.add(len(entries))
+            by_key.setdefault(k, []).append(len(entries))
             entries.append([k, v, True])
     return [(k, v) for k, v, live in entries if live]  # type: ignore[misc]
 
@@ -42,7 +47,8 @@ def _model_merge(
 
 def _big_pairs() -> list[tuple[str, int]]:
     pairs = [(f"k{i}", i) for i in range(BIG)]
-    for i in range(0, BIG, 5000):
+    # More values than the C finder tracks before starting its bitmap.
+    for i in range(0, BIG, 3500):
         pairs.insert(i, ("dup", -i))
     return pairs
 
@@ -54,7 +60,7 @@ def test_getall_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     assert md.getall("dup") == expected
     assert md.getall("k123") == [123]
     assert md.getall("missing", None) is None
-    assert ("dup", -35000) in md.items()
+    assert ("dup", -38500) in md.items()
     assert ("dup", 1) not in md.items()
 
 
@@ -83,20 +89,22 @@ def test_update_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     assert list(md.items()) == _model_update(pairs, new_pairs)
 
 
+@pytest.mark.parametrize("size", [8, 3000])
 @pytest.mark.parametrize("deleted", [0, 3])
 def test_update_resizes_mid_batch(
-    any_multidict_class: type[MultiDict[int]], deleted: int
+    any_multidict_class: type[MultiDict[int]], deleted: int, size: int
 ) -> None:
     """Items come from a generator, so nothing is reserved up front and the
     batch resizes as it goes: first compacting away the deleted entries,
     then growing, with marks from before each resize still honoured."""
     pairs = [(f"k{i % 4}", i) for i in range(8)]
+    pairs += [(f"b{i}", i) for i in range(size - 8)]
     md = any_multidict_class(pairs)
     for i in range(deleted):
         del md[f"k{i}"]
     pairs = [(k, v) for k, v in pairs if k not in {f"k{i}" for i in range(deleted)}]
     new_pairs = [("k3", -1)]
-    new_pairs += [(f"n{i % 50}", i) for i in range(200)]
+    new_pairs += [(f"n{i % (size // 4)}", i) for i in range(size * 4)]
     new_pairs += [("k3", -2), ("k3", -3), ("k3", -4)]
 
     md.update(p for p in new_pairs)

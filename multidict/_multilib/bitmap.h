@@ -49,6 +49,7 @@ typedef size_t md_bitmap_word_t;
 #define MD_BITMAP_ALL (~(md_bitmap_word_t)0)
 
 #define MD_BITMAP_INLINE_BYTES 4096
+#define MD_BITMAP_DENSE_WORDS 64
 #define MD_BITMAP_INLINE_WORDS \
     (MD_BITMAP_INLINE_BYTES / sizeof(md_bitmap_word_t))
 #define MD_BITMAP_INLINE_SUMMARY (MD_BITMAP_INLINE_WORDS / MD_BITMAP_WORD_BITS)
@@ -58,6 +59,7 @@ typedef struct _md_bitmap {
     md_bitmap_word_t* summary;
     Py_ssize_t nwords;
     htkeys_t* keys;
+    bool dense;
     md_bitmap_word_t inline_summary[MD_BITMAP_INLINE_SUMMARY];
     md_bitmap_word_t inline_words[MD_BITMAP_INLINE_WORDS];
 } md_bitmap_t;
@@ -76,6 +78,7 @@ md_bitmap_init(md_bitmap_t* bm, htkeys_t* keys, Py_ssize_t nbits)
     bm->keys = keys;
     bm->words = NULL;
     bm->summary = NULL;
+    bm->dense = false;
 }
 
 COLD static int
@@ -96,6 +99,15 @@ COLD static int
 _md_bitmap_start(md_bitmap_t* bm)
 {
     Py_ssize_t nsummary = _md_bitmap_nwords(bm->nwords);
+    if (bm->nwords <= MD_BITMAP_DENSE_WORDS) {
+        /* Small enough to zero outright, which spares every later access
+           the summary lookup. */
+        bm->dense = true;
+        bm->summary = bm->inline_summary;
+        bm->words = bm->inline_words;
+        memset(bm->words, 0, (size_t)bm->nwords * sizeof(md_bitmap_word_t));
+        return 0;
+    }
     if ((size_t)bm->nwords <= MD_BITMAP_INLINE_WORDS) {
         bm->summary = bm->inline_summary;
         bm->words = bm->inline_words;
@@ -131,8 +143,16 @@ md_bitmap_release(md_bitmap_t* bm)
 ALWAYS_INLINE static inline bool
 _md_bitmap_word_ready(const md_bitmap_t* bm, Py_ssize_t wi)
 {
-    return (bm->summary[wi >> MD_BITMAP_WORD_SHIFT] >>
-            (wi & MD_BITMAP_WORD_MASK)) &
+    return bm->dense || ((bm->summary[wi >> MD_BITMAP_WORD_SHIFT] >>
+                          (wi & MD_BITMAP_WORD_MASK)) &
+                         1);
+}
+
+ALWAYS_INLINE static inline bool
+_md_bitmap_dense_test(const md_bitmap_t* bm, Py_ssize_t i)
+{
+    return (bm->words[i >> MD_BITMAP_WORD_SHIFT] >>
+            (i & MD_BITMAP_WORD_MASK)) &
            1;
 }
 
@@ -142,12 +162,18 @@ ALWAYS_INLINE static inline md_bitmap_word_t*
 _md_bitmap_word(md_bitmap_t* bm, Py_ssize_t i)
 {
     assert(i >= 0 && i < bm->nwords * MD_BITMAP_WORD_BITS);
+    Py_ssize_t wi = i >> MD_BITMAP_WORD_SHIFT;
+    if (bm->dense) {
+        return bm->words + wi;
+    }
     if (UNLIKELY(bm->summary == NULL)) {
         if (_md_bitmap_start(bm) < 0) {
             return NULL;
         }
+        if (bm->dense) {
+            return bm->words + wi;
+        }
     }
-    Py_ssize_t wi = i >> MD_BITMAP_WORD_SHIFT;
     md_bitmap_word_t* s = bm->summary + (wi >> MD_BITMAP_WORD_SHIFT);
     md_bitmap_word_t sbit = MD_BITMAP_ONE << (wi & MD_BITMAP_WORD_MASK);
     if (!(*s & sbit)) {
@@ -165,9 +191,18 @@ md_bitmap_move(md_bitmap_t* dst, md_bitmap_t* src)
     md_bitmap_release(dst);
     dst->nwords = src->nwords;
     dst->keys = src->keys;
+    dst->dense = src->dense;
     if (src->summary == src->inline_summary) {
         dst->words = dst->inline_words;
         dst->summary = dst->inline_summary;
+        if (src->dense) {
+            memcpy(dst->words,
+                   src->words,
+                   (size_t)src->nwords * sizeof(md_bitmap_word_t));
+            src->words = NULL;
+            src->summary = NULL;
+            return;
+        }
         memcpy(
             dst->summary,
             src->summary,
@@ -189,12 +224,14 @@ ALWAYS_INLINE static inline bool
 md_bitmap_test(const md_bitmap_t* bm, Py_ssize_t i)
 {
     assert(i >= 0 && i < bm->nwords * MD_BITMAP_WORD_BITS);
+    if (bm->dense) {
+        return _md_bitmap_dense_test(bm, i);
+    }
     if (bm->summary == NULL) {
         return false;
     }
-    Py_ssize_t wi = i >> MD_BITMAP_WORD_SHIFT;
-    return _md_bitmap_word_ready(bm, wi) &&
-           ((bm->words[wi] >> (i & MD_BITMAP_WORD_MASK)) & 1);
+    return _md_bitmap_word_ready(bm, i >> MD_BITMAP_WORD_SHIFT) &&
+           _md_bitmap_dense_test(bm, i);
 }
 
 ALWAYS_INLINE static inline int
@@ -283,6 +320,13 @@ md_bitmap_next(const md_bitmap_t* bm, Py_ssize_t start)
             return (wi << MD_BITMAP_WORD_SHIFT) + _md_bitmap_ctz(w);
         }
         wi++;
+        if (bm->dense) {
+            if (wi >= bm->nwords) {
+                return -1;
+            }
+            w = bm->words[wi];
+            continue;
+        }
         /* Next ready word at or after wi, via the summary. */
         Py_ssize_t si = wi >> MD_BITMAP_WORD_SHIFT;
         Py_ssize_t nsummary = _md_bitmap_nwords(bm->nwords);

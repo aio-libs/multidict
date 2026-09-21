@@ -1461,15 +1461,19 @@ cleanup:
     return ret;
 }
 
+#define MD_FINDER_FEW 8
+
 typedef struct _md_finder {
     MultiDictObject* md;
     htkeysiter_t iter;
     uint64_t version;
     Py_hash_t hash;
     PyObject* identity;  // borrowed ref
-    /* Most lookups match once, so the first match is kept out of the
-       bitmap and the bitmap never gets started. */
-    Py_ssize_t first_visited;
+    /* Most keys have a handful of values, so the first few matches are
+       kept in a short list and the bitmap only starts past it: on a big
+       table, starting it means a heap allocation. */
+    Py_ssize_t visited_few[MD_FINDER_FEW];
+    Py_ssize_t nvisited_few;
     md_bitmap_t visited;
 } md_finder_t;
 
@@ -1483,10 +1487,50 @@ md_finder_init(MultiDictObject* md, PyObject* identity, md_finder_t* finder)
     if (finder->hash == -1) {
         return -1;
     }
-    finder->first_visited = -1;
-    md_bitmap_init(&finder->visited, md->keys, md->keys->nentries);
+    finder->nvisited_few = 0;
     htkeysiter_init(&finder->iter, finder->md->keys, finder->hash);
     return 0;
+}
+
+/* Past this many matches, the short list is moved into the bitmap. */
+COLD static int
+_md_finder_spill(md_finder_t* finder)
+{
+    md_bitmap_init(
+        &finder->visited, finder->md->keys, finder->md->keys->nentries);
+    finder->nvisited_few = MD_FINDER_FEW + 1;
+    for (Py_ssize_t i = 0; i < MD_FINDER_FEW; i++) {
+        if (md_bitmap_set(&finder->visited, finder->visited_few[i]) < 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+/* 1 if `index` was already returned by this walk, 0 if not (it is now
+   recorded), -1 on error. */
+static inline int
+_md_finder_seen(md_finder_t* finder, Py_ssize_t index)
+{
+    Py_ssize_t n = finder->nvisited_few;
+    if (n <= MD_FINDER_FEW) {
+        /* A repeat is most often the slot just returned, which the next
+           call re-examines, so the list is scanned from its end. */
+        for (Py_ssize_t i = n - 1; i >= 0; i--) {
+            if (finder->visited_few[i] == index) {
+                return 1;
+            }
+        }
+        if (n < MD_FINDER_FEW) {
+            finder->visited_few[n] = index;
+            finder->nvisited_few = n + 1;
+            return 0;
+        }
+        if (_md_finder_spill(finder) < 0) {
+            return -1;
+        }
+    }
+    return md_bitmap_test_and_set(&finder->visited, index);
 }
 
 static inline int
@@ -1518,21 +1562,13 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
 
         /* htkeysiter_next() can repeat a slot already seen in this scan
            (see its doc comment), and this scan never marks the table. */
-        if (finder->iter.index == finder->first_visited) {
-            continue;
+        int seen = _md_finder_seen(finder, finder->iter.index);
+        if (seen < 0) {
+            ret = -1;
+            goto cleanup;
         }
-        if (finder->first_visited < 0) {
-            finder->first_visited = finder->iter.index;
-        } else {
-            int seen =
-                md_bitmap_test_and_set(&finder->visited, finder->iter.index);
-            if (seen < 0) {
-                ret = -1;
-                goto cleanup;
-            }
-            if (seen) {
-                continue;
-            }
+        if (seen) {
+            continue;
         }
 
         if (pvalue) {
@@ -1564,7 +1600,9 @@ cleanup:
 static inline void
 md_finder_cleanup(md_finder_t* finder)
 {
-    md_bitmap_release(&finder->visited);
+    if (finder->nvisited_few > MD_FINDER_FEW) {
+        md_bitmap_release(&finder->visited);
+    }
 }
 
 static inline int
@@ -1851,9 +1889,9 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     *ret = NULL;
 
     /* Not zero-initialized: the bitmap's inline buffer is 4 KB. Cleanup
-       only needs `visited.summary`. */
+       only needs `nvisited_few`. */
     md_finder_t finder;
-    finder.visited.summary = NULL;
+    finder.nvisited_few = 0;
 
     PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
@@ -1903,7 +1941,7 @@ static inline PyObject*
 md_finder_collect(MultiDictObject* md, PyObject* identity, bool with_keys)
 {
     md_finder_t finder;
-    finder.visited.summary = NULL;
+    finder.nvisited_few = 0;
     PyObject* key = NULL;
     PyObject* value = NULL;
     PyObject* item;
