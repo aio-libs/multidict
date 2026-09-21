@@ -1110,9 +1110,9 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
     Py_XDECREF(key);
     Py_XDECREF(value);
 #else
-    // GIL-build mirror of the branch above: decref after bookkeeping so a
-    // __del__-triggered GIL release (Py_BEGIN_CRITICAL_SECTION is a no-op
-    // here) never exposes a half-deleted entry -- see #1489.
+    /* GIL-build mirror of the branch above: decref after bookkeeping so a
+     * __del__-triggered GIL release (Py_BEGIN_CRITICAL_SECTION is a no-op
+     * here) never exposes a half-deleted entry -- see #1489. */
     PyObject* identity = entry->identity;
     PyObject* key = entry->key;
     PyObject* value = entry->value;
@@ -1129,8 +1129,8 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
 #endif
 }
 
-// _md_del_at() variant that defers the decref (see md_deferred_decref_t);
-// used by _md_replace()'s duplicate-cleanup path on both builds.
+/* _md_del_at() variant that defers the decref (see md_deferred_decref_t);
+ * used by _md_replace()'s duplicate-cleanup path on both builds. */
 static inline int
 _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
                     md_deferred_decref_t* defer)
@@ -1169,8 +1169,8 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     return ret;
 }
 
-// Deferred half-deletion: entry may be replaced later or finished off by
-// md_post_update() (identity=NULL, used -= 1, hash & DKIX_DUMMY).
+/* Deferred half-deletion: entry may be replaced later or finished off by
+ * md_post_update() (identity=NULL, used -= 1, hash & DKIX_DUMMY). */
 static inline int
 _md_del_at_for_upd_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
                             md_deferred_decref_t* defer)
@@ -2441,8 +2441,8 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
 {
     int found = 0;
 
-    // Retries on a concurrent resize (Py_GIL_DISABLED only); deferred
-    // decrefs mean nothing here can trigger one, so this shouldn't loop.
+    /* Retries on a concurrent resize (Py_GIL_DISABLED only); deferred
+     * decrefs mean nothing here can trigger one, so this shouldn't loop. */
     for (;;) {
         md_finder_t finder = {0};
         if (md_init_finder(md, identity, &finder) < 0) {
@@ -2463,8 +2463,8 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
             entry_t* entry = entries + md_finder_index(&finder);
             if (!found) {
                 found = 1;
-                // old_key/old_value decref deferred -- see
-                // md_deferred_decref_t
+                /* old_key/old_value decref deferred -- see
+                 * md_deferred_decref_t */
 #ifdef Py_GIL_DISABLED
                 PyObject* old_key = entry->key;
                 PyObject* old_value = _md_entry_load_value(entry);
@@ -2553,8 +2553,8 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
     }
 
     int ret = _md_replace(md, key, value, identity, hash, defer);
-    // identity decref deferred too; `defer` owned/released by
-    // multidict_mp_as_subscript()
+    /* identity decref deferred too; `defer` owned/released by
+     * multidict_mp_as_subscript() */
     if (md_deferred_decref_push(defer, identity) < 0) {
         ret = -1;
     }
@@ -2607,8 +2607,8 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                         entry->hash = hash | MD_HASH_MARK;
 #endif
                     } else {
-                        // old_key/old_value decref deferred -- see
-                        // md_deferred_decref_t
+                        /* old_key/old_value decref deferred -- see
+                         * md_deferred_decref_t */
 #ifdef Py_GIL_DISABLED
                         PyObject* old_key = entry->key;
                         PyObject* old_value = _md_entry_load_value(entry);
@@ -2705,8 +2705,8 @@ fail:
 static inline int
 md_post_update(MultiDictObject* md, md_deferred_decref_t* defer)
 {
-    // `defer` is NULL only for a pure .merge() sweep, which never
-    // half-deletes.
+    /* `defer` is NULL only for a pure .merge() sweep, which never
+     * half-deletes. */
     int ret = 0;
     for (;;) {
         htkeys_t* keys = md->keys;
