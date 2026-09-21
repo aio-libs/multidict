@@ -162,22 +162,30 @@ def md_foreach_raises(md):
     MultiDict_ForEach(_capi, md, NULL, _raising_visitor, NULL)
 
 
-def md_foreach_py(md, key, Py_ssize_t limit):
+cdef int _collect_pair_cy(object key, object value, void *user_data) except -1:
+    cdef _ForeachCtx *ctx = <_ForeachCtx*>user_data
+    cdef object result = <object>ctx.list
+    result.append((key, value))
+    if ctx.limit >= 0 and len(result) >= ctx.limit:
+        return 0
+    return 1
+
+
+def md_foreach_cy(md, key, Py_ssize_t limit):
     result = []
-
-    def callback(k, v):
-        result.append((k, v))
-        return limit < 0 or len(result) < limit
-
+    cdef _ForeachCtx ctx
+    ctx.list = <PyObject*>result
+    ctx.limit = limit
     if key is None:
-        MultiDict_ForEachAll(_capi, md, callback)
+        MultiDict_ForEachAll(_capi, md, _collect_pair_cy, &ctx)
     else:
-        MultiDict_ForEachKey(_capi, md, key, callback)
+        MultiDict_ForEachKey(_capi, md, key, _collect_pair_cy, &ctx)
     return result
 
 
-def md_foreach_py_raises(md):
-    def callback(k, v):
-        raise RuntimeError("boom from py callback")
+cdef int _raising_visitor_cy(object key, object value, void *user_data) except -1:
+    raise RuntimeError("boom from cy visitor")
 
-    MultiDict_ForEachAll(_capi, md, callback)
+
+def md_foreach_cy_raises(md):
+    MultiDict_ForEachAll(_capi, md, _raising_visitor_cy, NULL)

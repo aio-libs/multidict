@@ -130,8 +130,8 @@ there is nothing to mutate through one. None of these have a separate
 Iteration
 =========
 
-``MultiDict_ItemVisitor`` is the callback type for the ``ForEach``
-functions below:
+``MultiDict_ItemVisitor`` is the callback type for
+:c:func:`MultiDict_ForEach` below:
 
 .. code-block:: cython
 
@@ -163,23 +163,32 @@ same raw parameter types as the typedef itself.
   dynamically, or wants to match the C API's signature exactly (for
   example when translating a C example from :ref:`multidict-capi`
   directly); ordinary code should prefer the two functions below.
-- ``MultiDict_ForEachAll(capi, self, callback) except -1 -> Py_ssize_t``
+- ``MultiDict_ForEachAll(capi, self, visitor, user_data) except -1 -> Py_ssize_t``
   -- visits every ``(key, value)`` pair of *self*.
-- ``MultiDict_ForEachKey(capi, self, key, callback) except -1 -> Py_ssize_t``
+- ``MultiDict_ForEachKey(capi, self, key, visitor, user_data) except -1 -> Py_ssize_t``
   -- visits only the entries for *key*.
 
-*callback* is an ordinary ``(key, value) -> bool``-ish callable -- any
-truthy/falsy return decides continue/stop -- called through a small
-trampoline that also lets a raised exception propagate out of
-``ForEachAll``/``ForEachKey`` as a genuine Python exception, no manual
-``PyErr_SetString`` and ``return -1`` required. The trade-off against
-``MultiDict_ForEach`` with a raw ``visitor`` is one Python call per
-visited item instead of a raw C callback.
+*visitor* here is ``MultiDict_CyItemVisitor``, a second callback type
+declared alongside ``MultiDict_ItemVisitor``:
+
+.. code-block:: cython
+
+   ctypedef int (*MultiDict_CyItemVisitor)(object key, object value,
+                                           void *user_data) except -1
+
+It is still a real ``cdef`` function -- one indirect C call per visited
+item, not a Python-level call through an arbitrary callable -- but takes
+Cython's own ``object`` type for *key*/*value* instead of
+``MultiDict_ItemVisitor``'s raw ``PyObject *``, so a visitor needs no
+``<object>`` cast of its own. It shares the same three-way return
+contract: a positive value keeps the walk going, ``0`` stops early (not
+an error), and ``except -1`` reports an exception the visitor itself
+raised with an ordinary ``raise`` -- no manual ``PyErr_SetString`` and
+``return -1`` required, unlike a ``MultiDict_ItemVisitor``.
 
 All three return the number of items visited (``>= 0``) on success and
-execute under one internal lock; *visitor* (or *callback*) must not call
-back into any method on *self* while running (see :c:func:`MultiDict_ForEach`
-for why).
+execute under one internal lock; *visitor* must not call back into any
+method on *self* while running (see :c:func:`MultiDict_ForEach` for why).
 
 Worked example
 ================

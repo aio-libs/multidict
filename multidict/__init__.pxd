@@ -140,36 +140,59 @@ cdef inline object MultiDict_SetDefault(MultiDict_CAPI *capi, object self, objec
 # also risk colliding with an actual `None` key (see docs/cyapi.rst). It
 # stays exposed under its own name as the low-level entry point (matching
 # the C API exactly, for direct/advanced use); MultiDict_ForEachAll/Key
-# below cover the ordinary case with a plain Python callable instead of a
-# raw-pointer MultiDict_ItemVisitor, so nothing else needs to touch a raw
-# pointer or a NULL sentinel.
+# below cover the ordinary case without a raw pointer or a NULL sentinel.
 #
-# `callback` is (key, value) -> bool-ish, called once per visited item.
-# The trampoline can't just `raise` on a callback exception -- it's
-# assigned to a `noexcept` C function pointer, so Cython would treat that
-# as an unraisable exception here, print it, and clear it rather than
-# propagate it. PyErr_SetObject is a raw C call, not a Cython `raise`: it
-# reinstates the caught exception as the current one without going
-# through that noexcept-triggered unraisable-and-clear handling, so the
-# -1 this function then returns has a real exception attached, which
-# MultiDict_ForEachAll/Key's `except -1` propagates normally.
+# The visitor passed to ForEachAll/Key is still a real `cdef` function --
+# one indirect C call per visited item, not a Python-level call through
+# an arbitrary callable -- but declared with Cython's own `object` type
+# for key/value instead of MultiDict_ItemVisitor's raw `PyObject *`, so a
+# visitor needs no <object> cast of its own. Same three-way return
+# contract as MultiDict_ItemVisitor: a positive value keeps the walk
+# going, 0 stops early (not an error), and `except -1` reports an
+# exception the visitor itself raised.
 
-cdef inline int _py_visitor_trampoline(void *user_data, PyObject *key, PyObject *value) noexcept:
-    cdef object callback = <object>user_data
-    cdef object keep_going
+ctypedef int (*MultiDict_CyItemVisitor)(object key, object value,
+                                        void *user_data) except -1
+
+
+cdef struct _CyVisitorCtx:
+    MultiDict_CyItemVisitor visitor
+    void *user_data
+
+
+# `_cy_visitor_trampoline` still can't just let an exception propagate --
+# it's assigned to a `noexcept` C function pointer (MultiDict_ItemVisitor),
+# so Cython would treat an escaping exception as unraisable here, print
+# it, and clear it rather than propagate it. `ctx.visitor`'s own
+# `except -1` already turns its raw -1 return into a raised exception at
+# this call site; PyErr_SetObject then reinstates it as the current
+# exception (a raw C call, not a Cython `raise`) without going through
+# that noexcept-triggered unraisable-and-clear handling, so the -1
+# returned here has a real exception attached, which MultiDict_ForEachAll/
+# Key's `except -1` propagates normally.
+
+cdef inline int _cy_visitor_trampoline(void *ctx_, PyObject *key, PyObject *value) noexcept:
+    cdef _CyVisitorCtx *ctx = <_CyVisitorCtx*>ctx_
     try:
-        keep_going = callback(<object>key, <object>value)
+        return ctx.visitor(<object>key, <object>value, ctx.user_data)
     except BaseException as exc:
         PyErr_SetObject(type(exc), exc)
         return -1
-    return 1 if keep_going else 0
 
 
 cdef inline Py_ssize_t MultiDict_ForEachAll(MultiDict_CAPI *capi, object self,
-                                            object callback) except -1:
-    return MultiDict_ForEach(capi, self, NULL, _py_visitor_trampoline, <void*>callback)
+                                            MultiDict_CyItemVisitor visitor,
+                                            void *user_data) except -1:
+    cdef _CyVisitorCtx ctx
+    ctx.visitor = visitor
+    ctx.user_data = user_data
+    return MultiDict_ForEach(capi, self, NULL, _cy_visitor_trampoline, &ctx)
 
 
 cdef inline Py_ssize_t MultiDict_ForEachKey(MultiDict_CAPI *capi, object self, object key,
-                                            object callback) except -1:
-    return MultiDict_ForEach(capi, self, <PyObject*>key, _py_visitor_trampoline, <void*>callback)
+                                            MultiDict_CyItemVisitor visitor,
+                                            void *user_data) except -1:
+    cdef _CyVisitorCtx ctx
+    ctx.visitor = visitor
+    ctx.user_data = user_data
+    return MultiDict_ForEach(capi, self, <PyObject*>key, _cy_visitor_trampoline, &ctx)

@@ -447,41 +447,41 @@ def test_md_foreach_raises(api: object) -> None:
     _testcyapi is None,
     reason="multidict._testcyapi not built (Cython not available at build time)",
 )
-def test_md_foreach_py_all() -> None:
+def test_md_foreach_cy_all() -> None:
     assert _testcyapi is not None
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
-    assert _testcyapi.md_foreach_py(md, None, -1) == list(md.items())
+    assert _testcyapi.md_foreach_cy(md, None, -1) == list(md.items())
 
 
 @pytest.mark.skipif(
     _testcyapi is None,
     reason="multidict._testcyapi not built (Cython not available at build time)",
 )
-def test_md_foreach_py_key() -> None:
+def test_md_foreach_cy_key() -> None:
     assert _testcyapi is not None
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
-    assert _testcyapi.md_foreach_py(md, "a", -1) == [("a", "1"), ("a", "3")]
+    assert _testcyapi.md_foreach_cy(md, "a", -1) == [("a", "1"), ("a", "3")]
 
 
 @pytest.mark.skipif(
     _testcyapi is None,
     reason="multidict._testcyapi not built (Cython not available at build time)",
 )
-def test_md_foreach_py_early_stop() -> None:
+def test_md_foreach_cy_early_stop() -> None:
     assert _testcyapi is not None
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("c", "3")])
-    assert _testcyapi.md_foreach_py(md, None, 1) == [("a", "1")]
+    assert _testcyapi.md_foreach_cy(md, None, 1) == [("a", "1")]
 
 
 @pytest.mark.skipif(
     _testcyapi is None,
     reason="multidict._testcyapi not built (Cython not available at build time)",
 )
-def test_md_foreach_py_raises() -> None:
+def test_md_foreach_cy_raises() -> None:
     assert _testcyapi is not None
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2")])
-    with pytest.raises(RuntimeError, match="boom from py callback"):
-        _testcyapi.md_foreach_py_raises(md)
+    with pytest.raises(RuntimeError, match="boom from cy visitor"):
+        _testcyapi.md_foreach_cy_raises(md)
 
 
 @pytest.mark.parametrize(
