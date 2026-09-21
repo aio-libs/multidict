@@ -586,6 +586,12 @@ jobs:
         # for its own aborts by default, independently of the kernel
         # core_pattern/ulimit setup above.
         ASAN_OPTIONS: detect_leaks=0:halt_on_error=1:disable_coredump=0
+        # pymalloc serves small blocks (<= 512 bytes, most hash tables)
+        # from its own arenas, so ASan never sees them freed and misses
+        # use-after-free on them. Route every allocation through libc
+        # malloc instead. Free-threaded builds reject this value (they
+        # only accept the mimalloc allocators), so keep this job on a
+        # GIL build.
         PYTHONMALLOC: malloc
       run: |
         ulimit -c unlimited
