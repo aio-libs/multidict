@@ -2343,6 +2343,7 @@ def test_replace_many_duplicates_releases_all(
         d.update(k="v")
 
     assert list(d.items()) == [("k", "v")]
+    gc.collect()  # PyPy has no refcounting
     assert all(r() is None for r in refs)
 
 
