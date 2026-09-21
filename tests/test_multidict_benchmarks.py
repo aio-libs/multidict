@@ -843,6 +843,57 @@ def test_multidict_getall_str_hit_large_table(
             md.getall(key)
 
 
+def test_multidict_getall_str_hit_large_table_many_values(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    md = any_multidict_class(
+        (f"key{j}", f"{i}-{j}") for i in range(16) for j in range(4096)
+    )
+
+    keys = [f"key{j}" for j in range(128)]
+
+    @benchmark
+    def _run() -> None:
+        for key in keys:
+            md.getall(key)
+
+
+def test_multidict_getall_str_hit_many_values(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    md = any_multidict_class(
+        (f"key{j}", f"{i}-{j}") for i in range(64) for j in range(16)
+    )
+
+    keys = [f"key{j}" for j in range(16)]
+
+    @benchmark
+    def _run() -> None:
+        for i in range(8):
+            for key in keys:
+                md.getall(key)
+
+
+def test_cimultidict_getall_istr_hit_many_values(
+    benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
+    case_insensitive_str_class: type[istr],
+) -> None:
+    md = case_insensitive_multidict_class(
+        (f"key{j}", case_insensitive_str_class(f"{i}-{j}"))
+        for i in range(64)
+        for j in range(16)
+    )
+
+    keys = [case_insensitive_str_class(f"key{j}") for j in range(16)]
+
+    @benchmark
+    def _run() -> None:
+        for i in range(8):
+            for key in keys:
+                md.getall(key)
+
+
 def test_multidict_update_str_with_duplicates(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
