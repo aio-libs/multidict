@@ -1009,10 +1009,10 @@ fail:
    section, means nothing can suspend the critical section while it's
    held, so no other thread can ever observe an in-progress mutation.
    Storage is a list of fixed-size blocks, newest first: the inline
-   block (8 KiB on the stack) is always the last one and covers any
+   block (4 KiB on the stack) is always the last one and covers any
    realistic call; each overflow prepends a heap block, so every block
    past `current` is full. Self-referential: never copy after init. */
-#define MD_DEFERRED_DECREF_BLOCK 1023
+#define MD_DEFERRED_DECREF_BLOCK 511
 
 typedef struct _md_deferred_decref_block {
     PyObject* items[MD_DEFERRED_DECREF_BLOCK];
