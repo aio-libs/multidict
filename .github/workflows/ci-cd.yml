@@ -1028,13 +1028,29 @@ jobs:
           ./dist/*.whl
 
     - name: Upload artifact signatures to GitHub Release
-      # Confusingly, this action also supports updating releases, not
-      # just creating them. This is what we want here, since we've manually
-      # created the release above.
-      uses: softprops/action-gh-release@v3
-      with:
-        # dist/ contains the built packages, which smoketest-artifacts/
-        # contains the signatures and certificates.
-        files: dist/**
+      # Upload one file at a time: a parallel burst of 500+ assets trips
+      # GitHub's secondary rate limit. Assets already on the release are
+      # skipped so a re-run only fills in what a previous attempt missed.
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.ref_name }}
+      run: |
+        gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
+          --json assets --jq '.assets[].name' > "${RUNNER_TEMP}/existing"
+        for file in dist/*; do
+          if grep -qxF "$(basename "${file}")" "${RUNNER_TEMP}/existing"; then
+            continue
+          fi
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "${TAG}" "${file}" \
+                --repo "${GITHUB_REPOSITORY}"; then
+              break
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 60))
+          done
+        done
 
 ...

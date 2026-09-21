@@ -1,0 +1,5 @@
+The release job now uploads distributions and their signatures to the
+GitHub Release one file at a time, skipping assets that are already
+attached and retrying after a pause, so a parallel upload burst no
+longer trips the GitHub secondary rate limit
+-- by :user:`asvetlov`.
