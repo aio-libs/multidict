@@ -600,9 +600,9 @@ multidict_mp_as_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
 {
     int ret;
     // md_del() never touches defer; skip init/release for it
-    md_deferred_decref_t defer;
+    deferred_decref_t defer;
     if (val != NULL) {
-        md_deferred_decref_init(&defer);
+        deferred_decref_init(&defer);
     }
     Py_BEGIN_CRITICAL_SECTION(self);
     if (val == NULL) {
@@ -612,7 +612,7 @@ multidict_mp_as_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
     }
     Py_END_CRITICAL_SECTION();
     if (val != NULL) {
-        md_deferred_decref_release(&defer);
+        deferred_decref_release(&defer);
     }
     return ret;
 }
@@ -1109,8 +1109,8 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     MultiDictObject* other = _multidict_resolve_other(self->state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
-    md_deferred_decref_t defer;
-    md_deferred_decref_init(&defer);
+    deferred_decref_t defer;
+    deferred_decref_init(&defer);
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);
@@ -1157,7 +1157,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
         }
         Py_END_CRITICAL_SECTION();
     }
-    md_deferred_decref_release(&defer);
+    deferred_decref_release(&defer);
     if (ret < 0) {
         goto fail;
     }
@@ -1186,7 +1186,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     /* No deferred-decref accumulator here: _md_merge() never decrefs
        anything mid-scan (it either returns early on a match or inserts
        a brand-new entry), so it has no suspension window of its own to
-       close -- see the comment above md_deferred_decref_t. */
+       close -- see the comment above deferred_decref_t. */
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = md_reserve(self, size);

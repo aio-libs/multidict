@@ -1,0 +1,4 @@
+Moved the deferred decref accumulator used by the C extension out of
+``hashtable.h`` into its own ``deferred_decref.h`` header, and the
+compiler hint macros out of ``htkeys.h`` into ``compiler.h``; dropped
+the ``md_`` and ``HT_`` prefixes from their names -- by :user:`asvetlov`.

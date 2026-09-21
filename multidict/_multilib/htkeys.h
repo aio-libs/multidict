@@ -11,6 +11,7 @@ extern "C" {
 #include <stdbool.h>
 
 #include "atomic_helpers.h"
+#include "compiler.h"
 
 /* Implementation note.
 identity always has exact PyUnicode_Type type, not a subclass.
@@ -41,21 +42,6 @@ typedef struct entry {
 #define HT_LOG_RESUME_SLOTS_MINSIZE 10
 /* Probe steps after perturb is 0 before resume slots are allocated */
 #define HT_RESUME_SLOTS_MIN_STEPS 32
-
-/* Py_NO_INLINE is 3.11+ */
-#if defined(__GNUC__) || defined(__clang__)
-#define HT_UNLIKELY(x) __builtin_expect(!!(x), 0)
-#define HT_COLD __attribute__((cold, noinline))
-#define HT_ALWAYS_INLINE __attribute__((always_inline))
-#elif defined(_MSC_VER)
-#define HT_UNLIKELY(x) (x)
-#define HT_COLD __declspec(noinline)
-#define HT_ALWAYS_INLINE __forceinline
-#else
-#define HT_UNLIKELY(x) (x)
-#define HT_COLD
-#define HT_ALWAYS_INLINE
-#endif
 
 typedef struct _htkeys {
     /* Size of the hash table (indices). It must be a power of 2. */
@@ -406,7 +392,7 @@ _unicode_hash(PyObject* o)
    n-th one walks past the n - 1 before it. Called once perturb is 0 and
    slot i is next to probe. Resume slots are only allocated once a probe here
    is long, so tables without long chains don't pay for them. */
-HT_COLD static Py_ssize_t
+COLD static Py_ssize_t
 _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 {
     const size_t mask = htkeys_mask(keys);
@@ -480,7 +466,7 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
         for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
             perturb >>= HT_PERTURB_SHIFT;
             i = mask & (i * 5 + perturb + 1);
-            if (HT_UNLIKELY(perturb == 0)) {
+            if (UNLIKELY(perturb == 0)) {
                 i = (size_t)_htkeys_find_empty_slot_resume(keys, i);
                 break;
             }
@@ -495,7 +481,7 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n, bool update)
     while (LOAD_INDEX(keys, size, i) != DKIX_EMPTY) {       \
         perturb >>= HT_PERTURB_SHIFT;                       \
         i = (i * 5 + perturb + 1) & mask;                   \
-        if (HT_UNLIKELY(perturb == 0)) {                    \
+        if (UNLIKELY(perturb == 0)) {                       \
             return _htkeys_find_empty_slot_resume(keys, i); \
         }                                                   \
     }                                                       \
