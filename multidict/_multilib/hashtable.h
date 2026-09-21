@@ -1015,47 +1015,43 @@ fail:
    buffer, and only releasing it once the caller has left its critical
    section, means nothing can suspend the critical section while it's
    held, so no other thread can ever observe an in-progress mutation.
-   Sized like md_readonly_finder_t's visited buffer, for the same
-   reason: the common case (0-1 replaced entries per call) fits inline,
-   pathological cases spill to the allocator. */
-#define MD_DEFERRED_DECREF_INLINE 8
+   Storage is a list of fixed-size blocks, newest first: the inline
+   block (4 KiB on the stack) is always the last one and covers any
+   realistic call; each overflow prepends a heap block, so every block
+   past `current` is full. Self-referential: never copy after init. */
+#define MD_DEFERRED_DECREF_BLOCK 511
+
+typedef struct _md_deferred_decref_block {
+    PyObject* items[MD_DEFERRED_DECREF_BLOCK];
+    struct _md_deferred_decref_block* next;
+} md_deferred_decref_block_t;
 
 typedef struct _md_deferred_decref {
-    PyObject* inline_buf[MD_DEFERRED_DECREF_INLINE];
-    PyObject** buf;
+    md_deferred_decref_block_t* current;
     Py_ssize_t count;
-    Py_ssize_t capacity;
+    md_deferred_decref_block_t inline_block;
 } md_deferred_decref_t;
 
 static inline void
 md_deferred_decref_init(md_deferred_decref_t* defer)
 {
-    defer->buf = defer->inline_buf;
+    defer->inline_block.next = NULL;
+    defer->current = &defer->inline_block;
     defer->count = 0;
-    defer->capacity = MD_DEFERRED_DECREF_INLINE;
 }
 
 HT_COLD static int
 _md_deferred_decref_grow(md_deferred_decref_t* defer)
 {
-    Py_ssize_t new_capacity = defer->capacity * 2;
-    size_t new_size = (size_t)new_capacity * sizeof(PyObject*);
-    PyObject** new_buf;
-    if (defer->buf == defer->inline_buf) {
-        new_buf = PyMem_Malloc(new_size);
-        if (new_buf != NULL) {
-            memcpy(
-                new_buf, defer->buf, (size_t)defer->count * sizeof(PyObject*));
-        }
-    } else {
-        new_buf = PyMem_Realloc(defer->buf, new_size);
-    }
-    if (new_buf == NULL) {
+    md_deferred_decref_block_t* block =
+        PyMem_Malloc(sizeof(md_deferred_decref_block_t));
+    if (block == NULL) {
         PyErr_NoMemory();
         return -1;
     }
-    defer->buf = new_buf;
-    defer->capacity = new_capacity;
+    block->next = defer->current;
+    defer->current = block;
+    defer->count = 0;
     return 0;
 }
 
@@ -1073,24 +1069,31 @@ md_deferred_decref_push(md_deferred_decref_t* defer, PyObject* obj)
     if (obj == NULL) {
         return 0;
     }
-    if (HT_UNLIKELY(defer->count == defer->capacity)) {
+    if (HT_UNLIKELY(defer->count == MD_DEFERRED_DECREF_BLOCK)) {
         if (_md_deferred_decref_grow(defer) < 0) {
             Py_DECREF(obj);
             return -1;
         }
     }
-    defer->buf[defer->count++] = obj;
+    defer->current->items[defer->count++] = obj;
     return 0;
 }
 
 static inline void
 md_deferred_decref_release(md_deferred_decref_t* defer)
 {
-    for (Py_ssize_t i = 0; i < defer->count; i++) {
-        Py_DECREF(defer->buf[i]);
-    }
-    if (defer->buf != defer->inline_buf) {
-        PyMem_Free(defer->buf);
+    md_deferred_decref_block_t* block = defer->current;
+    Py_ssize_t n = defer->count;
+    while (block != NULL) {
+        for (Py_ssize_t i = 0; i < n; i++) {
+            Py_DECREF(block->items[i]);
+        }
+        md_deferred_decref_block_t* next = block->next;
+        if (block != &defer->inline_block) {
+            PyMem_Free(block);
+        }
+        block = next;
+        n = MD_DEFERRED_DECREF_BLOCK;
     }
 }
 #endif
