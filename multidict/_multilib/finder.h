@@ -18,7 +18,11 @@ extern "C" {
 #include "htkeys.h"
 #include "identity.h"
 
+/* Matches kept in the short list before starting the bitmap: FINDER_FEW
+   when the bitmap fits its inline buffer, FINDER_MANY when it would need
+   a heap allocation, which a longer list scan still beats. */
 #define FINDER_FEW 8
+#define FINDER_MANY 32
 
 typedef struct _finder {
     MultiDictObject* md;
@@ -26,10 +30,9 @@ typedef struct _finder {
     uint64_t version;
     Py_hash_t hash;
     PyObject* identity;  // borrowed ref
-    /* Most keys have a handful of values, so the first few matches are
-       kept in a short list and the bitmap only starts past it: on a big
-       table, starting it means a heap allocation. */
-    Py_ssize_t visited_few[FINDER_FEW];
+    /* Most keys have a handful of values, so the first matches go in a
+       short list and the bitmap only starts past it. */
+    Py_ssize_t visited_few[FINDER_MANY];
     Py_ssize_t nvisited_few;
     bitmap_t visited;
 } finder_t;
@@ -55,8 +58,9 @@ _finder_spill(finder_t* finder)
 {
     bitmap_init(
         &finder->visited, finder->md->keys, finder->md->keys->nentries);
-    finder->nvisited_few = FINDER_FEW + 1;
-    for (Py_ssize_t i = 0; i < FINDER_FEW; i++) {
+    Py_ssize_t n = finder->nvisited_few;
+    finder->nvisited_few = FINDER_MANY + 1;
+    for (Py_ssize_t i = 0; i < n; i++) {
         if (bitmap_set(&finder->visited, finder->visited_few[i]) < 0) {
             return -1;
         }
@@ -70,7 +74,7 @@ static inline int
 _finder_seen(finder_t* finder, Py_ssize_t index)
 {
     Py_ssize_t n = finder->nvisited_few;
-    if (n <= FINDER_FEW) {
+    if (n <= FINDER_MANY) {
         /* A repeat is most often the slot just returned, which the next
            call re-examines, so the list is scanned from its end. */
         for (Py_ssize_t i = n - 1; i >= 0; i--) {
@@ -78,7 +82,8 @@ _finder_seen(finder_t* finder, Py_ssize_t index)
                 return 1;
             }
         }
-        if (n < FINDER_FEW) {
+        if (n < FINDER_FEW || (n < FINDER_MANY && finder->md->keys->nentries >
+                                                      BITMAP_INLINE_BITS)) {
             finder->visited_few[n] = index;
             finder->nvisited_few = n + 1;
             return 0;
@@ -157,7 +162,7 @@ cleanup:
 static inline void
 finder_cleanup(finder_t* finder)
 {
-    if (finder->nvisited_few > FINDER_FEW) {
+    if (finder->nvisited_few > FINDER_MANY) {
         bitmap_release(&finder->visited);
     }
 }

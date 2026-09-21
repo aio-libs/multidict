@@ -51,6 +51,8 @@ typedef size_t bitmap_word_t;
 #define BITMAP_INLINE_BYTES 4096
 #define BITMAP_DENSE_WORDS 64
 #define BITMAP_INLINE_WORDS (BITMAP_INLINE_BYTES / sizeof(bitmap_word_t))
+#define BITMAP_INLINE_BITS \
+    ((Py_ssize_t)(BITMAP_INLINE_WORDS * BITMAP_WORD_BITS))
 #define BITMAP_INLINE_SUMMARY (BITMAP_INLINE_WORDS / BITMAP_WORD_BITS)
 
 typedef struct _bitmap {

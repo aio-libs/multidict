@@ -48,7 +48,7 @@ def _model_merge(
 def _big_pairs() -> list[tuple[str, int]]:
     pairs = [(f"k{i}", i) for i in range(BIG)]
     # More values than the C finder tracks before starting its bitmap.
-    for i in range(0, BIG, 3500):
+    for i in range(0, BIG, 1000):
         pairs.insert(i, ("dup", -i))
     return pairs
 
@@ -60,7 +60,7 @@ def test_getall_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     assert md.getall("dup") == expected
     assert md.getall("k123") == [123]
     assert md.getall("missing", None) is None
-    assert ("dup", -38500) in md.items()
+    assert ("dup", -39000) in md.items()
     assert ("dup", 1) not in md.items()
 
 
