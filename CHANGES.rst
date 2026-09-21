@@ -15,9 +15,9 @@ Changelog
 .. towncrier release notes start
 
 6.9.1
-==========
+=====
 
-*(2026-09-20)*
+*(2026-09-21)*
 
 
 Bug fixes
@@ -71,6 +71,53 @@ Bug fixes
   *Related issues and pull requests on GitHub:*
   :issue:`1484`.
 
+- Fixed a reference leak in the C extension where ``operand | md.items()``
+  and ``md.items() - operand`` leaked one key and one value reference per
+  element of ``operand``, letting a large operand grow memory without bound
+  (:gh:`GHSA-54p9-h82j-f925 <aio-libs/multidict/security/advisories/GHSA-54p9-h82j-f925>`)
+  -- by :user:`asvetlov`.
+
+  The issue was reported by :user:`waydeshi`.
+
+  *Related commits on GitHub:*
+  :commit:`350b4a0`.
+
+- Fixed a segmentation fault on the standard (non-free-threaded) C extension
+  build when a value type's ``__del__`` released the GIL (for example by
+  calling ``time.sleep()``) while ``update()``, ``merge()``, ``__setitem__()``,
+  ``__delitem__()``, ``pop()``, ``popone()``, or ``popall()`` was dropping a
+  replaced or removed value. ``Py_BEGIN_CRITICAL_SECTION`` compiles to a no-op
+  on this build, so nothing else was stopping a second thread from mutating the
+  very same ``MultiDict`` concurrently once the GIL was released mid-mutation.
+  Every such decref is now deferred until the mutation has fully finished, the
+  same technique already used to close the analogous free-threaded-build race
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1489`.
+
+- Fixed the C extension reading freed memory while iterating a
+  :py:class:`~multidict.CIMultiDict` whose keys are plain :py:class:`str`.
+  Converting such a key to :py:class:`~multidict.istr` could run Python code
+  (a :py:class:`str` subclass's ``__str__`` or ``__del__``) or, on free-threaded
+  builds, suspend the iterator's critical section, after which the iterator read
+  the entry again even though a concurrent mutation could already have freed it.
+  As part of the fix, :py:meth:`~multidict.MultiDict.copy` and re-initializing
+  from another multidict now assign a new version in the C extension instead of
+  reusing the source's, matching the pure Python implementation
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1496`.
+
+- Fixed a use-after-free on the free-threaded build where a lock-free
+  ``get()``, ``[]`` or ``in`` could read a hash table that a concurrent
+  resize had just retired and another reader was freeing
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1497`.
+
 
 Contributor-facing changes
 --------------------------
@@ -96,6 +143,57 @@ Contributor-facing changes
   *Related issues and pull requests on GitHub:*
   :issue:`1485`.
 
+- Replaced deprecated *instrumentation* codspeed mode with *simulation* -- by :user:`asvetlov`
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1493`.
+
+- Reorganized the mutating benchmarks (item insertion, ``update()``,
+  ``add()`` of the same key, ``pop()``, ``popitem()``, ``clear()``,
+  ``__delitem__()`` and ``__setitem__()``) to copy a fresh multidict and
+  apply the operation in a loop, like the ``add()`` and ``extend()``
+  benchmarks already do. The insertion, ``update()`` and ``clear()``
+  benchmarks previously mutated a single multidict shared across
+  rounds, so only the first round measured the intended operation; the
+  rest did a single copy per round, letting per-round overhead dominate
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1494`.
+
+- The ``repr()`` and view inequality benchmarks were updated to repeat their
+  operation in a loop, like the other benchmarks, and the CodSpeed benchmark
+  job was moved to Python 3.14 -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1498`.
+
+- Dropped ``-I`` from the AddressSanitizer test command in ``AGENTS.md``
+  and in the CI job. It implies ``-E``, which made Python ignore
+  ``PYTHONMALLOC=malloc``, so small hash tables were still served from
+  ``pymalloc`` arenas where use-after-free went undetected
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1499`.
+
+- The CI/CD workflow was updated to stop superseded runs of the same pull request
+  when a new commit is pushed; runs on ``master``, release branches, tags,
+  the merge queue, and the daily schedule are never interrupted
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1500`.
+
+- The release job was changed to upload distributions and their signatures
+  to the GitHub Release one file at a time, skipping assets that were
+  already attached and retrying after a pause, so that a parallel upload
+  burst no longer tripped the GitHub secondary rate limit
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1503`.
+
 
 Miscellaneous internal changes
 ------------------------------
@@ -110,6 +208,14 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`1486`.
+
+- Changed the free-threaded build's deferred decref buffer, used by
+  ``update()`` and ``__setitem__()``, to a chain of fixed-size blocks
+  with a large inline first block instead of a small inline array that
+  was reallocated on growth -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1501`.
 
 
 ----

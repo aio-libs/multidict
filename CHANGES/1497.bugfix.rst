@@ -1,4 +1,0 @@
-Fixed a use-after-free on the free-threaded build where a lock-free
-``get()``, ``[]`` or ``in`` could read a hash table that a concurrent
-resize had just retired and another reader was freeing
--- by :user:`asvetlov`.

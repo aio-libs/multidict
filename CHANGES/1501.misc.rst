@@ -1,4 +1,0 @@
-Changed the free-threaded build's deferred decref buffer, used by
-``update()`` and ``__setitem__()``, to a chain of fixed-size blocks
-with a large inline first block instead of a small inline array that
-was reallocated on growth -- by :user:`asvetlov`.
