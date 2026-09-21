@@ -596,7 +596,9 @@ jobs:
         # abort calls _exit() before pytest gets to flush it, silently
         # dropping the report. Uncaptured output goes straight to the
         # job log instead.
-        LD_PRELOAD="${ASAN_SO}" python -Im pytest tests -q --no-cov \
+        # No -I: it implies -E, which ignores PYTHONMALLOC and leaves
+        # small allocations in pymalloc arenas that ASan cannot check.
+        LD_PRELOAD="${ASAN_SO}" python -m pytest tests -q --no-cov \
           --capture=no -k "not test_leak"
       shell: bash
     - name: Check for a core dump
