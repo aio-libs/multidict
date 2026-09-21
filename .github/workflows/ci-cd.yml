@@ -586,6 +586,12 @@ jobs:
         # for its own aborts by default, independently of the kernel
         # core_pattern/ulimit setup above.
         ASAN_OPTIONS: detect_leaks=0:halt_on_error=1:disable_coredump=0
+        # pymalloc serves small blocks (<= 512 bytes, most hash tables)
+        # from its own arenas, so ASan never sees them freed and misses
+        # use-after-free on them. Route every allocation through libc
+        # malloc instead. Free-threaded builds reject this value (they
+        # only accept the mimalloc allocators), so keep this job on a
+        # GIL build.
         PYTHONMALLOC: malloc
       run: |
         ulimit -c unlimited
@@ -596,7 +602,9 @@ jobs:
         # abort calls _exit() before pytest gets to flush it, silently
         # dropping the report. Uncaptured output goes straight to the
         # job log instead.
-        LD_PRELOAD="${ASAN_SO}" python -Im pytest tests -q --no-cov \
+        # No -I: it implies -E, which ignores PYTHONMALLOC and leaves
+        # small allocations in pymalloc arenas that ASan cannot check.
+        LD_PRELOAD="${ASAN_SO}" python -m pytest tests -q --no-cov \
           --capture=no -k "not test_leak"
       shell: bash
     - name: Check for a core dump
