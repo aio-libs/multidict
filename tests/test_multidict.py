@@ -2205,33 +2205,11 @@ def test_getall_update_vs_lock_free_reads_thread_safety() -> None:
 
 @pytest.mark.c_extension
 def test_update_vs_update_same_key_thread_safety() -> None:
-    """Concurrent update()/__setitem__/merge() calls all targeting the
-    *same*, pre-existing key must never lose it or leave a duplicate
-    behind, and must not crash even on a standard GIL build.
-
-    Regression test for #1483: _md_update()/_md_replace() mark the entry
-    they are about to overwrite before decref'ing its old key/value.
-    Releasing a value can run arbitrary Python code (a __del__, see
-    test_clear_finalizer_thread_safety's Evil for the same technique)
-    which can suspend the writer's held critical section (on a
-    free-threaded build) or release the GIL outright (on a standard
-    build, where Py_BEGIN_CRITICAL_SECTION is a no-op -- see
-    aio-libs/multidict#1489), letting a second thread racing the very
-    same key see the marked entry as absent (a raw, unmasked hash
-    comparison can't tell a marked entry from a missing one) and insert
-    a duplicate; whichever thread's post-update unmark sweep ran first
-    could then unmark the other thread's still in-flight entry, making
-    that thread mistake its own live entry for a stale duplicate and
-    delete it -- silently losing the key (``len(d)`` dropping to 0, not
-    growing) or, on a GIL build with nothing at all guarding the
-    concurrent access, segfaulting outright. The fix defers every such
-    decref until each caller has left its own critical section (or, on
-    a GIL build, its own notionally-locked region), so nothing can
-    suspend -- or release the GIL -- mid-scan. Natural thread
-    interleaving alone essentially never hits this specific window (it
-    needs a second writer to land its own scan inside one writer's
-    brief mark-then-decref gap on this exact key), so Evil's slow
-    release is what makes the race reliable here."""
+    """Regression for #1483/#1489: concurrent update()/__setitem__/merge()
+    on the same key must not lose it, duplicate it, or crash (GIL build:
+    Py_BEGIN_CRITICAL_SECTION is a no-op, so a __del__-triggered GIL
+    release is the only suspension point). Evil's slow __del__ widens the
+    race window enough to hit it reliably."""
 
     class Evil:
         def __init__(self, n: int) -> None:
@@ -2261,33 +2239,15 @@ def test_update_vs_update_same_key_thread_safety() -> None:
         for f in futures:
             f.result()
 
-    # Either writer's value is a legitimate outcome of the race; only the
-    # invariants the bug actually broke are asserted.
-    assert len(d) == 1
+    assert len(d) == 1  # winner is racy; presence/uniqueness isn't
     assert len(d.getall("k")) == 1
 
 
 @pytest.mark.c_extension
 def test_setdefault_vs_update_same_key_thread_safety() -> None:
-    """Concurrent setdefault() and update() calls targeting the same,
-    pre-existing key must not leave a duplicate entry behind, and must
-    not crash even on a standard GIL build.
-
-    Regression test for a bug in the same family as #1483:
-    md_set_default()'s existence scan used the same raw, unmasked hash
-    comparison, so it could conclude a key was absent while a
-    concurrently-suspended update()/__setitem__ call had it transiently
-    marked (see test_update_vs_update_same_key_thread_safety's Evil
-    technique for why a slow __del__ is needed to make that window
-    reliably observable), and insert a spurious duplicate. setdefault()
-    never marks or decrefs anything itself, so the fix here is
-    independent of the deferred-decref mechanism above: it masks the
-    comparison so a foreign in-flight mark is recognized as "the key
-    already exists". On a GIL build this window used to also be able to
-    open via update()'s decref releasing the GIL outright rather than
-    suspending a critical section (aio-libs/multidict#1489); once that
-    decref is deferred, update() never leaves a mark observable by a
-    concurrent setdefault() on either build."""
+    """Same family as #1483/#1489: setdefault() racing update() on the
+    same key must not insert a duplicate. setdefault()'s masked-comparison
+    fix (not deferred-decref) closes this; both builds covered."""
 
     class Evil:
         def __init__(self, n: int) -> None:
@@ -2320,40 +2280,17 @@ def test_setdefault_vs_update_same_key_thread_safety() -> None:
 @pytest.mark.skipif(
     hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled(),
     reason=(
-        "on a free-threaded build, this mix also reaches a separate, "
-        "pre-existing bug this PR does not fix: md_del()/md_pop_all()'s "
-        "own multi-entry loops cache `entries`/the iterator once at loop "
-        "start and never refresh them the way _md_replace()/_md_update() "
-        "do, so a decref-triggered critical-section suspension mid-loop "
-        "can leave them pointing at a table a concurrent resize already "
-        "freed. Confirmed this reproduces identically on unmodified "
-        "upstream master, so it predates and is unrelated to this PR; "
-        "only reliable on a GIL build, where the fix here actually "
-        "applies -- see aio-libs/multidict#1492"
+        "hits a separate, pre-existing bug on free-threaded builds "
+        "(stale cached entries/iterator in md_del()/md_pop_all(), "
+        "unrelated to this fix) -- see aio-libs/multidict#1492"
     ),
 )
 def test_del_pop_vs_update_same_key_gil_build_thread_safety() -> None:
-    """Concurrent __delitem__/pop()/popall() must not crash or corrupt
-    the table when racing update()/__setitem__/merge() on the same key,
-    even on a standard GIL build.
-
-    Regression test for aio-libs/multidict#1489, the standard-build
-    counterpart to test_update_vs_update_same_key_thread_safety: on a
-    GIL build, Py_BEGIN_CRITICAL_SECTION is a no-op, so a decref whose
-    __del__ (see Evil below) itself releases the GIL is the only thing
-    that can let a second thread run concurrently. _md_del_at() (used by
-    __delitem__/pop()/popall()/popitem()) used to Py_CLEAR() an entry's
-    fields one at a time, decref'ing (and so potentially releasing the
-    GIL) before the slot was fully removed from the table's bookkeeping;
-    a second thread that got to run in that window could observe (or
-    itself mutate) a half-deleted entry, or a stale index/count. The fix
-    nulls every field and finishes the table's own bookkeeping before
-    dropping any reference, exactly like the free-threaded build already
-    did for the same reason. Each worker below always leaves the key
-    present when it returns (a delete is immediately followed by a
-    __setitem__, which cannot itself create a duplicate), so the
-    post-join invariants below hold regardless of how the threads
-    interleave."""
+    """Regression for #1489 (GIL-build __delitem__/pop()/popall()):
+    _md_del_at() now finishes table bookkeeping before any decref, so a
+    __del__-triggered GIL release can't expose a half-deleted entry.
+    Each worker re-sets the key after removing it, so it's always
+    present at join regardless of interleaving."""
 
     class Evil:
         def __init__(self, n: int) -> None:
