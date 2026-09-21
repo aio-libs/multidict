@@ -184,9 +184,10 @@ def gc_disabled() -> Iterator[None]:
     No gc.collect() first: it can release pymalloc arenas that the benchmark
     then has to map again.
     """
+    was_enabled = gc.isenabled()
     gc.disable()
     yield
-    gc.enable()
+    (gc.enable if was_enabled else gc.disable)()
 
 
 def pytest_addoption(
