@@ -944,7 +944,9 @@ jobs:
     - build-wheels-for-tested-arches
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Sequential release asset uploads plus their retry pauses need
+    # well over the 15 minutes the rest of the job takes.
+    timeout-minutes: 45
 
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
