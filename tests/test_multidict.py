@@ -2203,44 +2203,13 @@ def test_getall_update_vs_lock_free_reads_thread_safety() -> None:
     assert len(d) == 500
 
 
-_requires_free_threading = pytest.mark.skipif(
-    not hasattr(sys, "_is_gil_enabled") or sys._is_gil_enabled(),
-    reason=(
-        "exercises the free-threaded build's critical-section suspension "
-        "window specifically; the Evil.__del__ technique this needs also "
-        "happens to trigger an unrelated, pre-existing crash on the "
-        "GIL-only build (a decref's __del__ releasing the GIL mid-mutation "
-        "with no critical section to suspend there), so this only runs "
-        "under free threading -- see aio-libs/multidict#1489"
-    ),
-)
-
-
 @pytest.mark.c_extension
-@_requires_free_threading
 def test_update_vs_update_same_key_thread_safety() -> None:
-    """Concurrent update()/__setitem__/merge() calls all targeting the
-    *same*, pre-existing key must never lose it or leave a duplicate
-    behind.
-
-    Regression test for #1483: _md_update()/_md_replace() mark the entry
-    they are about to overwrite before decref'ing its old key/value.
-    Under the free-threaded build, releasing a value can run arbitrary
-    Python code (a __del__, see test_clear_finalizer_thread_safety's
-    Evil for the same technique) which can suspend the writer's held
-    critical section, letting a second thread racing the very same key
-    see the marked entry as absent (a raw, unmasked hash comparison
-    can't tell a marked entry from a missing one) and insert a
-    duplicate; whichever thread's post-update unmark sweep ran first
-    could then unmark the other thread's still in-flight entry, making
-    that thread mistake its own live entry for a stale duplicate and
-    delete it -- silently losing the key (``len(d)`` dropping to 0, not
-    growing). The fix defers every such decref until each caller has
-    left its own critical section, so nothing can suspend mid-scan.
-    Natural thread interleaving alone essentially never hits this
-    specific window (it needs a second writer to land its own scan
-    inside one writer's brief mark-then-decref gap on this exact key),
-    so Evil's slow release is what makes the race reliable here."""
+    """Regression for #1483/#1489: concurrent update()/__setitem__/merge()
+    on the same key must not lose it, duplicate it, or crash (GIL build:
+    Py_BEGIN_CRITICAL_SECTION is a no-op, so a __del__-triggered GIL
+    release is the only suspension point). Evil's slow __del__ widens the
+    race window enough to hit it reliably."""
 
     class Evil:
         def __init__(self, n: int) -> None:
@@ -2270,29 +2239,15 @@ def test_update_vs_update_same_key_thread_safety() -> None:
         for f in futures:
             f.result()
 
-    # Either writer's value is a legitimate outcome of the race; only the
-    # invariants the bug actually broke are asserted.
-    assert len(d) == 1
+    assert len(d) == 1  # winner is racy; presence/uniqueness isn't
     assert len(d.getall("k")) == 1
 
 
 @pytest.mark.c_extension
-@_requires_free_threading
 def test_setdefault_vs_update_same_key_thread_safety() -> None:
-    """Concurrent setdefault() and update() calls targeting the same,
-    pre-existing key must not leave a duplicate entry behind.
-
-    Regression test for a bug in the same family as #1483:
-    md_set_default()'s existence scan used the same raw, unmasked hash
-    comparison, so it could conclude a key was absent while a
-    concurrently-suspended update()/__setitem__ call had it transiently
-    marked (see test_update_vs_update_same_key_thread_safety's Evil
-    technique for why a slow __del__ is needed to make that window
-    reliably observable), and insert a spurious duplicate. setdefault()
-    never marks or decrefs anything itself, so the fix here is
-    independent of the deferred-decref mechanism above: it masks the
-    comparison so a foreign in-flight mark is recognized as "the key
-    already exists"."""
+    """Same family as #1483/#1489: setdefault() racing update() on the
+    same key must not insert a duplicate. setdefault()'s masked-comparison
+    fix (not deferred-decref) closes this; both builds covered."""
 
     class Evil:
         def __init__(self, n: int) -> None:
@@ -2314,6 +2269,99 @@ def test_setdefault_vs_update_same_key_thread_safety() -> None:
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = [executor.submit(setdefault_worker, i) for i in range(4)]
         futures += [executor.submit(update_worker, i) for i in range(4)]
+        for f in futures:
+            f.result()
+
+    assert len(d) == 1
+    assert len(d.getall("k")) == 1
+
+
+@pytest.mark.parametrize("op", ["setitem", "update"])
+def test_replace_many_duplicates_releases_all(
+    case_sensitive_multidict_class: type[MultiDict[object]], op: str
+) -> None:
+    """Enough replaced duplicates to overflow the free-threaded build's
+    deferred-decref buffer into several heap blocks; every old value
+    must still be released."""
+
+    class Tracked:
+        pass
+
+    values = [Tracked() for _ in range(3000)]
+    refs = [weakref.ref(v) for v in values]
+    d = case_sensitive_multidict_class([("k", v) for v in values])
+    del values
+
+    if op == "setitem":
+        d["k"] = "v"
+    else:
+        d.update(k="v")
+
+    assert list(d.items()) == [("k", "v")]
+    gc.collect()
+    assert all(r() is None for r in refs)
+
+
+@pytest.mark.c_extension
+@pytest.mark.skipif(
+    hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled(),
+    reason=(
+        "hits a separate, pre-existing bug on free-threaded builds "
+        "(stale cached entries/iterator in md_del()/md_pop_all(), "
+        "unrelated to this fix) -- see aio-libs/multidict#1492"
+    ),
+)
+def test_del_pop_vs_update_same_key_gil_build_thread_safety() -> None:
+    """Regression for #1489 (GIL-build __delitem__/pop()/popall()):
+    _md_del_at() now finishes table bookkeeping before any decref, so a
+    __del__-triggered GIL release can't expose a half-deleted entry.
+    Each worker re-sets the key after removing it, so it's always
+    present at join regardless of interleaving."""
+
+    class Evil:
+        def __init__(self, n: int) -> None:
+            self.n = n
+
+        def __del__(self) -> None:
+            time.sleep(0.002)
+
+    d: MultiDict[Evil] = MultiDict(k=Evil(-1))
+
+    def update_worker(n: int) -> None:
+        for i in range(30):
+            d.update({"k": Evil(n * 1000 + i)})
+
+    def setitem_worker(n: int) -> None:
+        for i in range(30):
+            d["k"] = Evil(n * 1000 + i)
+
+    def merge_worker(n: int) -> None:
+        for i in range(30):
+            d.merge({"k": Evil(n * 1000 + i)})
+
+    def delitem_worker(n: int) -> None:
+        for i in range(30):
+            with contextlib.suppress(KeyError):
+                del d["k"]
+            d["k"] = Evil(n * 4000 + i)
+
+    def pop_worker(n: int) -> None:
+        for i in range(30):
+            d.pop("k", None)
+            d["k"] = Evil(n * 5000 + i)
+
+    def popall_worker(n: int) -> None:
+        for i in range(30):
+            d.popall("k", None)
+            d["k"] = Evil(n * 6000 + i)
+
+    with ThreadPoolExecutor(max_workers=18) as executor:
+        futures = [executor.submit(update_worker, i) for i in range(3)]
+        futures += [executor.submit(setitem_worker, i) for i in range(3)]
+        futures += [executor.submit(merge_worker, i) for i in range(3)]
+        futures += [executor.submit(delitem_worker, i) for i in range(3)]
+        futures += [executor.submit(pop_worker, i) for i in range(3)]
+        futures += [executor.submit(popall_worker, i) for i in range(3)]
         for f in futures:
             f.result()
 
@@ -3248,3 +3296,68 @@ def test_items_contains_list_shrunk_by_another_thread() -> None:
     stop.set()
     for t in mutators:
         t.join()
+
+
+def test_items_iter_key_finalizer_mutates(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """Caching the istr drops the stored str key, whose __del__ can mutate
+    the multidict; the C iterator used to read the freed entry after it."""
+
+    class Key(str):
+        def __del__(self) -> None:
+            d.clear()
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with contextlib.suppress(RuntimeError):
+        next(it)
+    d.clear()
+    assert not d
+
+
+def test_items_iter_key_str_mutates(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """Building the istr calls a str subclass's __str__, which can mutate the
+    multidict and free the entry the C iterator is still converting."""
+
+    class Key(str):
+        def __str__(self) -> str:
+            d.clear()
+            return str.__str__(self)
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with pytest.raises(RuntimeError, match="changed during iteration"):
+        next(it)
+    assert not d
+
+
+def test_items_iter_key_str_reinits(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """A __str__ re-initializing the multidict from a copy frees the entry
+    being converted; the C clone used to restore the version checked after."""
+
+    class Key(str):
+        def __str__(self) -> str:
+            d.__init__(other)  # type: ignore[misc]
+            return str.__str__(self)
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    other = d.copy()
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with contextlib.suppress(RuntimeError):
+        next(it)
+    assert len(d) == 2
+    assert d["b"] == "w"

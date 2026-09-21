@@ -573,6 +573,8 @@ multidict_itemsview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
             }
         }
         Py_CLEAR(arg);
+        Py_CLEAR(identity);
+        Py_CLEAR(value);
     }
     if (st < 0) {
         goto fail;
@@ -694,6 +696,8 @@ multidict_itemsview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
             }
         }
         Py_CLEAR(arg);
+        Py_CLEAR(identity);
+        Py_CLEAR(value);
     }
     if (st < 0) {
         goto fail;
@@ -731,13 +735,13 @@ multidict_itemsview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_CLEAR(tmp_set);
     return ret;
 fail:
+    Py_CLEAR(arg);
     Py_CLEAR(identity);
     Py_CLEAR(key);
     Py_CLEAR(value);
     Py_CLEAR(ret);
     Py_CLEAR(tmp_set);
     Py_CLEAR(iter);
-    Py_CLEAR(ret);
     return NULL;
 }
 

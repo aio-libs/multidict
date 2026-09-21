@@ -314,3 +314,15 @@ def test_popitem_key_error(
     v2 = multidict_getversion_callable(m)
     assert v2 == v
     assert v2 == multidict_getversion_callable(p)
+
+
+def test_clone_gets_new_version(
+    any_multidict_class: type[MultiDict[str]],
+    multidict_getversion_callable: GetVersion[str],
+) -> None:
+    m = any_multidict_class(key="val")
+    v = multidict_getversion_callable(m)
+    assert multidict_getversion_callable(m.copy()) > v
+    m2 = any_multidict_class()
+    m2.__init__(m)  # type: ignore[misc]
+    assert multidict_getversion_callable(m2) > v

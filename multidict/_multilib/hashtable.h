@@ -382,6 +382,13 @@ _md_drain_retired(MultiDictObject* md)
     }
     htkeys_t* t = (htkeys_t*)atomic_exchange_ptr((void**)&md->retired, NULL);
 
+    /* The check above says nothing about a table retired after it: a
+       reader may have loaded it as md->keys but not yet counted itself
+       in its num_readers. Every reader of a table taken here entered
+       before that table's retirement, so a zero read now means each of
+       them has also exited. */
+    bool readers_active = atomic_load_ssize(&md->num_active_readers) != 0;
+
     /* The coarse gate above can read zero while a specific table's own
        num_readers is still nonzero -- a reader can be preempted between
        incrementing it and decrementing it. A table is only actually
@@ -392,7 +399,8 @@ _md_drain_retired(MultiDictObject* md)
     htkeys_t* pending_tail = NULL;
     while (t != NULL) {
         htkeys_t* next = t->retired_next;
-        if (atomic_load_ssize_acquire(&t->num_readers) == 0) {
+        if (!readers_active &&
+            atomic_load_ssize_acquire(&t->num_readers) == 0) {
             _md_free_retired(t);
         } else {
             t->retired_next = pending_head;
@@ -812,7 +820,6 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
        this snapshot of other's remaining fields is consistent with the
        keys buffer just copied above. */
     Py_ssize_t used = other->used;
-    uint64_t version = other->version;
     bool is_ci = other->is_ci;
 
     md_clear(md);
@@ -821,7 +828,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 #else
     md->used = used;
 #endif
-    md->version = version;
+    md->version = NEXT_VERSION(md->state);  // never reuse other's version
     md->is_ci = is_ci;
 #ifdef Py_GIL_DISABLED
     _md_store_keys(md, keys);
@@ -857,16 +864,24 @@ _md_ensure_key(MultiDictObject* md, entry_t* entry)
 {
     assert(entry >= htkeys_entries(md->keys));
     assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
-    PyObject* key = _md_calc_key(md, entry->key, entry->identity);
-    if (key == NULL) {
-        return NULL;
+    if (!md->is_ci || IStr_Check(md->state, entry->key)) {
+        return _md_calc_key(md, entry->key, entry->identity);
     }
-    if (key != entry->key) {
-        Py_SETREF(entry->key, key);
-    } else {
-        Py_CLEAR(key);
+    /* Building the istr can run Python code (a str subclass's __str__, a GC
+       finalizer) that mutates md and frees entry, so hold our own refs. */
+    uint64_t version = md->version;
+    PyObject* old_key = Py_NewRef(entry->key);
+    PyObject* identity = Py_NewRef(entry->identity);
+    PyObject* key = _md_calc_key(md, old_key, identity);
+    if (key != NULL && md->version == version) {
+        entry->key = Py_NewRef(key);
+        Py_DECREF(old_key);
     }
-    return Py_NewRef(entry->key);
+    /* These can run __del__ or suspend the critical section, so the caller
+       must not touch entry after this returns. */
+    Py_DECREF(identity);
+    Py_DECREF(old_key);
+    return key;
 }
 
 static inline int
@@ -995,60 +1010,48 @@ fail:
     return -1;
 }
 
-#ifdef Py_GIL_DISABLED
-/* Old key/value/identity references pulled out of an entry mid-update
-   (an overwrite, or a stale-duplicate cleanup) must not be decref'd
-   until the calling thread has fully finished mutating `md` and
-   released its critical section: dropping the last reference to an
-   object can run arbitrary Python code (a __del__ method, or a weakref
-   callback), and if that code itself performs a blocking operation, it
-   can suspend a held critical section, letting a second thread's own
-   update to the very same key observe this thread's not-yet-unmarked,
-   half-finished work. Deferring every such decref into this scratch
-   buffer, and only releasing it once the caller has left its critical
-   section, means nothing can suspend the critical section while it's
-   held, so no other thread can ever observe an in-progress mutation.
-   Sized like md_readonly_finder_t's visited buffer, for the same
-   reason: the common case (0-1 replaced entries per call) fits inline,
-   pathological cases spill to the allocator. */
-#define MD_DEFERRED_DECREF_INLINE 8
+/* Defers decref of replaced/removed entry refs until the mutation fully
+ * finishes: an early decref's __del__ could suspend the critical section
+ * (or release the GIL on a GIL build, see #1489), exposing a half-updated
+ * entry to another thread. Storage is a list of fixed-size blocks, newest
+ * first: the inline block (4 KiB on the stack) is always the last one and
+ * covers any realistic call; each overflow prepends a heap block, so every
+ * block past `current` is full. Self-referential: never copy after init. */
+#define MD_DEFERRED_DECREF_BLOCK 511
+
+typedef struct _md_deferred_decref_block {
+    PyObject* items[MD_DEFERRED_DECREF_BLOCK];
+    struct _md_deferred_decref_block* next;
+} md_deferred_decref_block_t;
 
 typedef struct _md_deferred_decref {
-    PyObject* inline_buf[MD_DEFERRED_DECREF_INLINE];
-    PyObject** buf;
+    md_deferred_decref_block_t* current;
     Py_ssize_t count;
-    Py_ssize_t capacity;
+    md_deferred_decref_block_t inline_block;
 } md_deferred_decref_t;
 
+/* `current == NULL` means untouched: no block is wired up yet, and
+ * `count`/`inline_block` are not meaningful until the first push lazily
+ * initializes them. Keeps the common "nothing to defer" call cheap to
+ * just this one store. */
 static inline void
 md_deferred_decref_init(md_deferred_decref_t* defer)
 {
-    defer->buf = defer->inline_buf;
-    defer->count = 0;
-    defer->capacity = MD_DEFERRED_DECREF_INLINE;
+    defer->current = NULL;
 }
 
 HT_COLD static int
 _md_deferred_decref_grow(md_deferred_decref_t* defer)
 {
-    Py_ssize_t new_capacity = defer->capacity * 2;
-    size_t new_size = (size_t)new_capacity * sizeof(PyObject*);
-    PyObject** new_buf;
-    if (defer->buf == defer->inline_buf) {
-        new_buf = PyMem_Malloc(new_size);
-        if (new_buf != NULL) {
-            memcpy(
-                new_buf, defer->buf, (size_t)defer->count * sizeof(PyObject*));
-        }
-    } else {
-        new_buf = PyMem_Realloc(defer->buf, new_size);
-    }
-    if (new_buf == NULL) {
+    md_deferred_decref_block_t* block =
+        PyMem_Malloc(sizeof(md_deferred_decref_block_t));
+    if (block == NULL) {
         PyErr_NoMemory();
         return -1;
     }
-    defer->buf = new_buf;
-    defer->capacity = new_capacity;
+    block->next = defer->current;
+    defer->current = block;
+    defer->count = 0;
     return 0;
 }
 
@@ -1066,27 +1069,84 @@ md_deferred_decref_push(md_deferred_decref_t* defer, PyObject* obj)
     if (obj == NULL) {
         return 0;
     }
-    if (HT_UNLIKELY(defer->count == defer->capacity)) {
+    if (HT_UNLIKELY(defer->current == NULL)) {
+        // first push ever: wire up the inline block now, not on init()
+        defer->inline_block.next = NULL;
+        defer->current = &defer->inline_block;
+        defer->count = 0;
+    }
+    if (HT_UNLIKELY(defer->count == MD_DEFERRED_DECREF_BLOCK)) {
         if (_md_deferred_decref_grow(defer) < 0) {
             Py_DECREF(obj);
             return -1;
         }
     }
-    defer->buf[defer->count++] = obj;
+    defer->current->items[defer->count++] = obj;
     return 0;
 }
 
+/* Grows `defer` only when its current block is exactly full, so the very
+ * next md_deferred_decref_push_reserved() call can't fail. Only ever grows
+ * at that exact boundary -- never early -- so it can't strand a retired
+ * block short of MD_DEFERRED_DECREF_BLOCK items, which release() assumes
+ * every non-current block has. PyMem_Malloc() itself never suspends a
+ * critical section (#1469), so this is always safe to call before mutating
+ * an entry; a failure here leaves `defer` untouched. Callers that must null
+ * out an entry's field before pushing it (a half-deletion mid-mutation)
+ * need this: pushing the normal way risks md_deferred_decref_push()'s OOM
+ * fallback decref'ing while the entry sits half torn down, exposing it to
+ * a concurrent reader -- see #1491 review. Guarantees only the next single
+ * push; call again before each subsequent reserved push. */
+static inline int
+_md_deferred_decref_reserve_one(md_deferred_decref_t* defer)
+{
+    if (HT_UNLIKELY(defer->current == NULL)) {
+        defer->inline_block.next = NULL;
+        defer->current = &defer->inline_block;
+        defer->count = 0;
+        return 0;
+    }
+    if (defer->count == MD_DEFERRED_DECREF_BLOCK) {
+        if (_md_deferred_decref_grow(defer) < 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+/* Steals the reference like md_deferred_decref_push(), but assumes capacity
+ * was already reserved via _md_deferred_decref_reserve() -- never fails, so
+ * it never needs the immediate-decref fallback. `obj` may be NULL. */
+static inline void
+md_deferred_decref_push_reserved(md_deferred_decref_t* defer, PyObject* obj)
+{
+    if (obj != NULL) {
+        assert(defer->count < MD_DEFERRED_DECREF_BLOCK);
+        defer->current->items[defer->count++] = obj;
+    }
+}
+
+// Untouched defer (current == NULL): nothing was ever pushed, skip the walk
 static inline void
 md_deferred_decref_release(md_deferred_decref_t* defer)
 {
-    for (Py_ssize_t i = 0; i < defer->count; i++) {
-        Py_DECREF(defer->buf[i]);
+    if (defer->current == NULL) {
+        return;
     }
-    if (defer->buf != defer->inline_buf) {
-        PyMem_Free(defer->buf);
+    md_deferred_decref_block_t* block = defer->current;
+    Py_ssize_t n = defer->count;
+    while (block != NULL) {
+        for (Py_ssize_t i = 0; i < n; i++) {
+            Py_DECREF(block->items[i]);
+        }
+        md_deferred_decref_block_t* next = block->next;
+        if (block != &defer->inline_block) {
+            PyMem_Free(block);
+        }
+        block = next;
+        n = MD_DEFERRED_DECREF_BLOCK;
     }
 }
-#endif
 
 static inline void
 _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
@@ -1123,57 +1183,34 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
     Py_XDECREF(key);
     Py_XDECREF(value);
 #else
-    Py_CLEAR(entry->identity);
-    Py_CLEAR(entry->key);
-    Py_CLEAR(entry->value);
+    /* GIL-build mirror of the branch above: decref after bookkeeping so a
+     * __del__-triggered GIL release (Py_BEGIN_CRITICAL_SECTION is a no-op
+     * here) never exposes a half-deleted entry -- see #1489. */
+    PyObject* identity = entry->identity;
+    PyObject* key = entry->key;
+    PyObject* value = entry->value;
+
+    entry->identity = NULL;
+    entry->key = NULL;
+    entry->value = NULL;
     htkeys_set_index(keys, slot, DKIX_DUMMY);
     md->used -= 1;
+
+    Py_XDECREF(identity);
+    Py_XDECREF(key);
+    Py_XDECREF(value);
 #endif
 }
 
-static inline void
-_md_del_at_for_upd(MultiDictObject* md, size_t slot, entry_t* entry)
-{
-    /* half deletion,
-       the entry could be replaced later with key and value set
-       or it will be finally cleaned up with identity=NULL,
-       used -= 1, and setting the hash to DKIX_DUMMY
-       in md_post_update()
-    */
-    assert(md->keys != &empty_htkeys);
-#ifdef Py_GIL_DISABLED
-    /* Null out both fields before dropping either reference: freeing
-       old_key or old_value can run a finalizer or weakref callback
-       that hits a safepoint and transiently suspends the critical
-       section (PyMem_Malloc itself never does, see #1469), letting a
-       concurrent resize free the table `entry` lives in, in which
-       case the *second* field access below would be a use-after-free
-       rather than just an inconsistency a caller could later detect. */
-    PyObject* old_key = entry->key;
-    PyObject* old_value = _md_entry_load_value(entry);
-    entry->key = NULL;
-    atomic_store_ptr((void**)&entry->value, NULL);
-    Py_XDECREF(old_key);
-    Py_XDECREF(old_value);
-#else
-    Py_CLEAR(entry->key);
-    Py_CLEAR(entry->value);
-#endif
-}
-
-#ifdef Py_GIL_DISABLED
-/* Same bookkeeping as _md_del_at(), but for a caller (_md_replace())
-   that has eliminated its own critical section's suspension points by
-   deferring every decref -- see the comment above md_deferred_decref_t.
-   Only used under Py_GIL_DISABLED: the non-free-threaded build's
-   _md_replace() never suspends in the first place, so it keeps calling
-   _md_del_at() directly. */
+/* _md_del_at() variant that defers the decref (see md_deferred_decref_t);
+ * used by _md_replace()'s duplicate-cleanup path on both builds. */
 static inline int
 _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
                     md_deferred_decref_t* defer)
 {
     htkeys_t* keys = md->keys;
     assert(keys != &empty_htkeys);
+#ifdef Py_GIL_DISABLED
     PyObject* identity = _md_entry_load_identity(entry);
     PyObject* key = entry->key;
     PyObject* value = _md_entry_load_value(entry);
@@ -1183,6 +1220,17 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     atomic_store_ptr((void**)&entry->value, NULL);
     htkeys_set_index(keys, slot, DKIX_DUMMY);
     _md_add_used(md, -1);
+#else
+    PyObject* identity = entry->identity;
+    PyObject* key = entry->key;
+    PyObject* value = entry->value;
+
+    entry->identity = NULL;
+    entry->key = NULL;
+    entry->value = NULL;
+    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    md->used -= 1;
+#endif
 
     int ret = md_deferred_decref_push(defer, identity);
     if (md_deferred_decref_push(defer, key) < 0) {
@@ -1194,8 +1242,13 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     return ret;
 }
 
-/* Same half-deletion as _md_del_at_for_upd(), but deferred -- see the
-   comment above _md_del_at_deferred(). */
+/* Deferred half-deletion: entry may be replaced later or finished off by
+ * md_post_update() (identity=NULL, used -= 1, hash & DKIX_DUMMY). Unlike
+ * _md_del_at_deferred(), this leaves identity/hash/index live -- a reader's
+ * hash-chain scan can still reach this slot -- so each field is reserved
+ * and pushed before it's nulled, one at a time: md_deferred_decref_push()'s
+ * OOM fallback would otherwise decref a field's old value immediately
+ * while the entry sits in that half-deleted, still-reachable state. */
 static inline int
 _md_del_at_for_upd_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
                             md_deferred_decref_t* defer)
@@ -1203,17 +1256,26 @@ _md_del_at_for_upd_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     (void)md;
     (void)slot;
     assert(md->keys != &empty_htkeys);
-    PyObject* old_key = entry->key;
-    PyObject* old_value = _md_entry_load_value(entry);
-    entry->key = NULL;
-    atomic_store_ptr((void**)&entry->value, NULL);
-    int ret = md_deferred_decref_push(defer, old_key);
-    if (md_deferred_decref_push(defer, old_value) < 0) {
-        ret = -1;
+    if (_md_deferred_decref_reserve_one(defer) < 0) {
+        return -1;
     }
-    return ret;
-}
+    PyObject* old_key = entry->key;
+    entry->key = NULL;
+    md_deferred_decref_push_reserved(defer, old_key);
+
+    if (_md_deferred_decref_reserve_one(defer) < 0) {
+        return -1;
+    }
+#ifdef Py_GIL_DISABLED
+    PyObject* old_value = _md_entry_load_value(entry);
+    atomic_store_ptr((void**)&entry->value, NULL);
+#else
+    PyObject* old_value = entry->value;
+    entry->value = NULL;
 #endif
+    md_deferred_decref_push_reserved(defer, old_value);
+    return 0;
+}
 
 static inline int
 md_del(MultiDictObject* md, PyObject* key)
@@ -1310,22 +1372,23 @@ md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         *pidentity = Py_NewRef(entry->identity);
     }
 
+    if (pvalue) {
+        *pvalue = Py_NewRef(entry->value);
+    }
     if (pkey) {
         assert(entry->key != NULL);
-        *pkey = _md_ensure_key(md, entry);
+        *pkey = _md_ensure_key(md, entry);  // last entry access
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
-            // *pidentity was already set above; release it before cleanup
-            // NULLs it, otherwise the identity reference leaks.
             if (pidentity) {
                 Py_CLEAR(*pidentity);
+            }
+            if (pvalue) {
+                Py_CLEAR(*pvalue);
             }
             ret = -1;
             goto cleanup;
         }
-    }
-    if (pvalue) {
-        *pvalue = Py_NewRef(entry->value);
     }
 
     ++pos->pos;
@@ -1382,23 +1445,23 @@ md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         *pidentity = Py_NewRef(entry->identity);
     }
 
+    if (pvalue) {
+        *pvalue = Py_NewRef(entry->value);
+    }
     if (pkey) {
         assert(entry->key != NULL);
-        *pkey = _md_ensure_key(md, entry);
+        *pkey = _md_ensure_key(md, entry);  // last entry access
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
-            ret = -1;
-            // *pidentity was already set above; release it before cleanup
-            // NULLs it, otherwise the identity reference leaks.
             if (pidentity) {
                 Py_CLEAR(*pidentity);
             }
-
+            if (pvalue) {
+                Py_CLEAR(*pvalue);
+            }
+            ret = -1;
             goto cleanup;
         }
-    }
-    if (pvalue) {
-        *pvalue = Py_NewRef(entry->value);
     }
 
     --pos->pos;
@@ -1479,15 +1542,18 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
         entry->hash = finder->hash | MD_HASH_MARK;
 #endif
 
+        if (pvalue) {
+            *pvalue = Py_NewRef(entry->value);
+        }
         if (pkey) {
-            *pkey = _md_ensure_key(finder->md, entry);
+            *pkey = _md_ensure_key(finder->md, entry);  // last entry access
             if (*pkey == NULL) {
+                if (pvalue) {
+                    Py_CLEAR(*pvalue);
+                }
                 ret = -1;
                 goto cleanup;
             }
-        }
-        if (pvalue) {
-            *pvalue = Py_NewRef(entry->value);
         }
         return 1;
     }
@@ -1658,15 +1724,18 @@ md_readonly_find_next(md_readonly_finder_t* finder, PyObject** pkey,
         }
         finder->visited[finder->visited_count++] = finder->iter.index;
 
+        if (pvalue) {
+            *pvalue = Py_NewRef(entry->value);
+        }
         if (pkey) {
-            *pkey = _md_ensure_key(finder->md, entry);
+            *pkey = _md_ensure_key(finder->md, entry);  // last entry access
             if (*pkey == NULL) {
+                if (pvalue) {
+                    Py_CLEAR(*pvalue);
+                }
                 ret = -1;
                 goto cleanup;
             }
-        }
-        if (pvalue) {
-            *pvalue = Py_NewRef(entry->value);
         }
         return 1;
     }
@@ -2456,25 +2525,12 @@ md_pop_item(MultiDictObject* md)
 
 static inline int
 _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
-            PyObject* identity, Py_hash_t hash
-#ifdef Py_GIL_DISABLED
-            ,
-            md_deferred_decref_t* defer
-#endif
-)
+            PyObject* identity, Py_hash_t hash, md_deferred_decref_t* defer)
 {
     int found = 0;
 
-    /* Loops at most once per concurrent resize this scan actually
-       collides with (see the Py_GIL_DISABLED branch below); a fresh
-       finder each pass means a retry costs nothing beyond redoing the
-       scan. In practice this should never actually loop under
-       Py_GIL_DISABLED any more: every decref below is deferred to
-       `defer`, released only after the caller leaves its critical
-       section (see the comment above md_deferred_decref_t), so nothing
-       in this loop body can itself suspend the critical section and
-       let a concurrent resize in. The retry machinery is kept as
-       defensive belt-and-braces rather than removed. */
+    /* Retries on a concurrent resize (Py_GIL_DISABLED only); deferred
+     * decrefs mean nothing here can trigger one, so this shouldn't loop. */
     for (;;) {
         md_finder_t finder = {0};
         if (md_init_finder(md, identity, &finder) < 0) {
@@ -2495,18 +2551,21 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
             entry_t* entry = entries + md_finder_index(&finder);
             if (!found) {
                 found = 1;
+                /* old_key/old_value decref deferred -- see
+                 * md_deferred_decref_t */
 #ifdef Py_GIL_DISABLED
-                /* Defer old_key/old_value's decref until the caller
-                   has released its critical section entirely -- see
-                   the comment above md_deferred_decref_t for why a
-                   decref here can't be allowed to run at all while
-                   this thread still holds the lock, not even once
-                   this slot is back in a consistent state. */
                 PyObject* old_key = entry->key;
                 PyObject* old_value = _md_entry_load_value(entry);
                 entry->key = Py_NewRef(key);
                 _md_entry_publish_value(entry, Py_NewRef(value));
                 _md_entry_store_hash(entry, finder.hash | MD_HASH_MARK);
+#else
+                PyObject* old_key = entry->key;
+                PyObject* old_value = entry->value;
+                entry->key = Py_NewRef(key);
+                entry->value = Py_NewRef(value);
+                entry->hash = finder.hash | MD_HASH_MARK;
+#endif
                 /* Push both unconditionally, not with `||`: a failed
                    first push already decref'd old_key itself (see
                    md_deferred_decref_push()'s doc comment), but
@@ -2520,21 +2579,12 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                     md_finder_cleanup(&finder);
                     return -1;
                 }
-#else
-                Py_SETREF(entry->key, Py_NewRef(key));
-                Py_SETREF(entry->value, Py_NewRef(value));
-                entry->hash = finder.hash | MD_HASH_MARK;
-#endif
             } else {
-#ifdef Py_GIL_DISABLED
                 if (_md_del_at_deferred(
                         md, md_finder_slot(&finder), entry, defer) < 0) {
                     md_finder_cleanup(&finder);
                     return -1;
                 }
-#else
-                _md_del_at(md, md_finder_slot(&finder), entry);
-#endif
             }
 #ifdef Py_GIL_DISABLED
             /* Checking the pointer alone isn't enough: a freed table
@@ -2577,12 +2627,8 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
 }
 
 static inline int
-md_replace(MultiDictObject* md, PyObject* key, PyObject* value
-#ifdef Py_GIL_DISABLED
-           ,
-           md_deferred_decref_t* defer
-#endif
-)
+md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
+           md_deferred_decref_t* defer)
 {
     PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
@@ -2594,21 +2640,12 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value
         goto fail;
     }
 
-#ifdef Py_GIL_DISABLED
     int ret = _md_replace(md, key, value, identity, hash, defer);
-    /* Deferring this decref too: it's the identity computed for this
-       very lookup, dropped while still holding md's critical section,
-       so it's just as capable of suspending it as any other decref
-       above -- see the comment above md_deferred_decref_t. `defer` is
-       owned and released by the caller (multidict_setitem() in
-       _multidict.c) once it has left the critical section. */
+    /* identity decref deferred too; `defer` owned/released by
+     * multidict_mp_as_subscript() */
     if (md_deferred_decref_push(defer, identity) < 0) {
         ret = -1;
     }
-#else
-    int ret = _md_replace(md, key, value, identity, hash);
-    Py_DECREF(identity);
-#endif
     ASSERT_CONSISTENT(md, false);
     return ret;
 fail:
@@ -2618,21 +2655,11 @@ fail:
 
 static inline int
 _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-           PyObject* key, PyObject* value
-#ifdef Py_GIL_DISABLED
-           ,
-           md_deferred_decref_t* defer
-#endif
-)
+           PyObject* key, PyObject* value, md_deferred_decref_t* defer)
 {
     bool found = false;
 
-    /* See _md_replace()'s comment for why this can loop, and for why it
-       should never actually need to any more under Py_GIL_DISABLED:
-       every decref below is deferred to `defer` instead of running
-       inline, so nothing in this loop can itself suspend the critical
-       section and let a concurrent resize replace md->keys out from
-       under this scan. */
+    // See _md_replace() on the retry/deferred-decref shape used here.
     for (;;) {
         htkeysiter_t iter;
         htkeysiter_init(&iter, md->keys, hash);
@@ -2668,16 +2695,21 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                         entry->hash = hash | MD_HASH_MARK;
 #endif
                     } else {
+                        /* old_key/old_value decref deferred -- see
+                         * md_deferred_decref_t */
 #ifdef Py_GIL_DISABLED
-                        /* Defer old_key/old_value's decref until the
-                           caller has released its critical section
-                           entirely -- see the comment above
-                           md_deferred_decref_t. */
                         PyObject* old_key = entry->key;
                         PyObject* old_value = _md_entry_load_value(entry);
                         entry->key = Py_NewRef(key);
                         _md_entry_publish_value(entry, Py_NewRef(value));
                         _md_entry_store_hash(entry, hash | MD_HASH_MARK);
+#else
+                        PyObject* old_key = entry->key;
+                        PyObject* old_value = entry->value;
+                        entry->key = Py_NewRef(key);
+                        entry->value = Py_NewRef(value);
+                        entry->hash = hash | MD_HASH_MARK;
+#endif
                         /* Push both unconditionally, not with `||`: a
                            failed first push already decref'd old_key
                            itself (see md_deferred_decref_push()'s doc
@@ -2691,21 +2723,12 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                         if (push_ret < 0) {
                             goto fail;
                         }
-#else
-                        Py_SETREF(entry->key, Py_NewRef(key));
-                        Py_SETREF(entry->value, Py_NewRef(value));
-                        entry->hash = hash | MD_HASH_MARK;
-#endif
                     }
                 } else {
-#ifdef Py_GIL_DISABLED
                     if (_md_del_at_for_upd_deferred(
                             md, iter.slot, entry, defer) < 0) {
                         goto fail;
                     }
-#else
-                    _md_del_at_for_upd(md, iter.slot, entry);
-#endif
                 }
             }
 #ifdef Py_GIL_DISABLED
@@ -2768,25 +2791,10 @@ fail:
 }
 
 static inline int
-md_post_update(MultiDictObject* md
-#ifdef Py_GIL_DISABLED
-               ,
-               md_deferred_decref_t* defer
-#endif
-)
+md_post_update(MultiDictObject* md, md_deferred_decref_t* defer)
 {
-    /* See _md_replace()'s comment for why this can loop, and for why it
-       should never actually need to any more under Py_GIL_DISABLED: the
-       one decref here is deferred to `defer` (non-NULL whenever this
-       sweep can actually reach an entry.key == NULL entry -- i.e. after
-       an .update() call; NULL after a pure .merge(), which never
-       half-deletes anything, so the branch below is not expected to
-       fire there at all). Restarting from slot 0 against the current
-       table is safe either way: an entry this function already
-       finished (identity cleared) is exactly the kind _md_resize()'s
-       copy already drops, so it simply isn't there to revisit; anything
-       not yet finished still has its original identity and is copied
-       over unchanged. */
+    /* `defer` is NULL only for a pure .merge() sweep, which never
+     * half-deletes. */
     int ret = 0;
     for (;;) {
         htkeys_t* keys = md->keys;
@@ -2808,27 +2816,25 @@ md_post_update(MultiDictObject* md
                     atomic_store_ptr((void**)&entry->identity, NULL);
                     htkeys_set_index(keys, slot, DKIX_DUMMY);
                     _md_add_used(md, -1);
+#else
+                    PyObject* old_identity = entry->identity;
+                    entry->identity = NULL;
+                    htkeys_set_index(keys, slot, DKIX_DUMMY);
+                    md->used -= 1;
+#endif
                     if (defer != NULL) {
                         if (md_deferred_decref_push(defer, old_identity) < 0) {
                             ret = -1;
                         }
                     } else {
-                        /* Defensive fallback only: a pure .merge() call
-                           (defer == NULL here) never half-deletes an
-                           entry, so this branch is not expected to be
-                           reached with defer == NULL in practice. */
-                        Py_XDECREF(old_identity);
+                        Py_XDECREF(
+                            old_identity);  // defensive; shouldn't be reached
                     }
-                    /* See _md_replace()'s comment on why both the
-                       pointer and the version are checked. */
+#ifdef Py_GIL_DISABLED
                     if (md->keys != keys || md->version != version_before) {
                         stale = true;
                         break;
                     }
-#else
-                    Py_CLEAR(entry->identity);
-                    htkeys_set_index(keys, slot, DKIX_DUMMY);
-                    md->used -= 1;
 #endif
                 }
                 if (entry->hash < 0) {
@@ -2850,12 +2856,8 @@ md_post_update(MultiDictObject* md
 }
 
 static inline int
-md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op
-#ifdef Py_GIL_DISABLED
-                  ,
-                  md_deferred_decref_t* defer
-#endif
-)
+md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
+                  md_deferred_decref_t* defer)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
@@ -2913,12 +2915,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op
         }
         switch (op) {
             case Update:
-#ifdef Py_GIL_DISABLED
                 if (_md_update(md, hash, identity, key, entry->value, defer) <
                     0) {
-#else
-                if (_md_update(md, hash, identity, key, entry->value) < 0) {
-#endif
                     goto fail;
                 }
                 break;
@@ -2973,12 +2971,8 @@ md_extend_self(MultiDictObject* md)
 }
 
 static inline int
-md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op
-#ifdef Py_GIL_DISABLED
-                    ,
-                    md_deferred_decref_t* defer
-#endif
-)
+md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
+                    md_deferred_decref_t* defer)
 {
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
@@ -3000,11 +2994,7 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op
         }
         switch (op) {
             case Update: {
-#ifdef Py_GIL_DISABLED
                 if (_md_update(md, hash, identity, key, value, defer) < 0) {
-#else
-                if (_md_update(md, hash, identity, key, value) < 0) {
-#endif
                     goto fail;
                 }
                 Py_CLEAR(identity);
@@ -3188,12 +3178,8 @@ fail:
 }
 
 static inline int
-md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op
-#ifdef Py_GIL_DISABLED
-                   ,
-                   md_deferred_decref_t* defer
-#endif
-)
+md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
+                   md_deferred_decref_t* defer)
 {
     PyObject* it = NULL;
     PyObject* item = NULL;  // seq[i]
@@ -3296,11 +3282,7 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op
 
         switch (op) {
             case Update:
-#ifdef Py_GIL_DISABLED
                 if (_md_update(md, hash, identity, key, value, defer) < 0) {
-#else
-                if (_md_update(md, hash, identity, key, value) < 0) {
-#endif
                     goto fail;
                 }
                 Py_CLEAR(identity);
