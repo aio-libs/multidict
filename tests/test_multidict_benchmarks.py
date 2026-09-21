@@ -602,7 +602,8 @@ def test_multidict_repr(
 
     @benchmark
     def _run() -> None:
-        repr(md)
+        for _ in range(100):
+            repr(md)
 
 
 def test_create_empty_multidict(

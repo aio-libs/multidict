@@ -15,6 +15,13 @@ on:
   schedule:
   - cron: 0 6 * * *  # Daily 6AM UTC build
 
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{
+      github.event.pull_request.number || github.run_id
+    }}
+  cancel-in-progress: true
+
 
 env:
   COLOR: >-  # Supposedly, pytest or coveragepy use this
@@ -411,15 +418,15 @@ jobs:
     needs:
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
     - name: Checkout project
       uses: actions/checkout@v7
-    - name: Setup Python 3.13
+    - name: Setup Python 3.14
       id: python-install
       uses: actions/setup-python@v7
       with:
-        python-version: 3.13
+        python-version: 3.14
         cache: pip
         cache-dependency-path: requirements/*.txt
     - name: Install dependencies
@@ -586,6 +593,12 @@ jobs:
         # for its own aborts by default, independently of the kernel
         # core_pattern/ulimit setup above.
         ASAN_OPTIONS: detect_leaks=0:halt_on_error=1:disable_coredump=0
+        # pymalloc serves small blocks (<= 512 bytes, most hash tables)
+        # from its own arenas, so ASan never sees them freed and misses
+        # use-after-free on them. Route every allocation through libc
+        # malloc instead. Free-threaded builds reject this value (they
+        # only accept the mimalloc allocators), so keep this job on a
+        # GIL build.
         PYTHONMALLOC: malloc
       run: |
         ulimit -c unlimited
@@ -596,7 +609,9 @@ jobs:
         # abort calls _exit() before pytest gets to flush it, silently
         # dropping the report. Uncaptured output goes straight to the
         # job log instead.
-        LD_PRELOAD="${ASAN_SO}" python -Im pytest tests -q --no-cov \
+        # No -I: it implies -E, which ignores PYTHONMALLOC and leaves
+        # small allocations in pymalloc arenas that ASan cannot check.
+        LD_PRELOAD="${ASAN_SO}" python -m pytest tests -q --no-cov \
           --capture=no -k "not test_leak"
       shell: bash
     - name: Check for a core dump

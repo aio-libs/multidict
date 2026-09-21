@@ -812,7 +812,6 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
        this snapshot of other's remaining fields is consistent with the
        keys buffer just copied above. */
     Py_ssize_t used = other->used;
-    uint64_t version = other->version;
     bool is_ci = other->is_ci;
 
     md_clear(md);
@@ -821,7 +820,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 #else
     md->used = used;
 #endif
-    md->version = version;
+    md->version = NEXT_VERSION(md->state);  // never reuse other's version
     md->is_ci = is_ci;
 #ifdef Py_GIL_DISABLED
     _md_store_keys(md, keys);
@@ -857,16 +856,24 @@ _md_ensure_key(MultiDictObject* md, entry_t* entry)
 {
     assert(entry >= htkeys_entries(md->keys));
     assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
-    PyObject* key = _md_calc_key(md, entry->key, entry->identity);
-    if (key == NULL) {
-        return NULL;
+    if (!md->is_ci || IStr_Check(md->state, entry->key)) {
+        return _md_calc_key(md, entry->key, entry->identity);
     }
-    if (key != entry->key) {
-        Py_SETREF(entry->key, key);
-    } else {
-        Py_CLEAR(key);
+    /* Building the istr can run Python code (a str subclass's __str__, a GC
+       finalizer) that mutates md and frees entry, so hold our own refs. */
+    uint64_t version = md->version;
+    PyObject* old_key = Py_NewRef(entry->key);
+    PyObject* identity = Py_NewRef(entry->identity);
+    PyObject* key = _md_calc_key(md, old_key, identity);
+    if (key != NULL && md->version == version) {
+        entry->key = Py_NewRef(key);
+        Py_DECREF(old_key);
     }
-    return Py_NewRef(entry->key);
+    /* These can run __del__ or suspend the critical section, so the caller
+       must not touch entry after this returns. */
+    Py_DECREF(identity);
+    Py_DECREF(old_key);
+    return key;
 }
 
 static inline int
@@ -1313,22 +1320,23 @@ md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         *pidentity = Py_NewRef(entry->identity);
     }
 
+    if (pvalue) {
+        *pvalue = Py_NewRef(entry->value);
+    }
     if (pkey) {
         assert(entry->key != NULL);
-        *pkey = _md_ensure_key(md, entry);
+        *pkey = _md_ensure_key(md, entry);  // last entry access
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
-            // *pidentity was already set above; release it before cleanup
-            // NULLs it, otherwise the identity reference leaks.
             if (pidentity) {
                 Py_CLEAR(*pidentity);
+            }
+            if (pvalue) {
+                Py_CLEAR(*pvalue);
             }
             ret = -1;
             goto cleanup;
         }
-    }
-    if (pvalue) {
-        *pvalue = Py_NewRef(entry->value);
     }
 
     ++pos->pos;
@@ -1385,23 +1393,23 @@ md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         *pidentity = Py_NewRef(entry->identity);
     }
 
+    if (pvalue) {
+        *pvalue = Py_NewRef(entry->value);
+    }
     if (pkey) {
         assert(entry->key != NULL);
-        *pkey = _md_ensure_key(md, entry);
+        *pkey = _md_ensure_key(md, entry);  // last entry access
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
-            ret = -1;
-            // *pidentity was already set above; release it before cleanup
-            // NULLs it, otherwise the identity reference leaks.
             if (pidentity) {
                 Py_CLEAR(*pidentity);
             }
-
+            if (pvalue) {
+                Py_CLEAR(*pvalue);
+            }
+            ret = -1;
             goto cleanup;
         }
-    }
-    if (pvalue) {
-        *pvalue = Py_NewRef(entry->value);
     }
 
     --pos->pos;
@@ -1482,15 +1490,18 @@ md_find_next(md_finder_t* finder, PyObject** pkey, PyObject** pvalue)
         entry->hash = finder->hash | MD_HASH_MARK;
 #endif
 
+        if (pvalue) {
+            *pvalue = Py_NewRef(entry->value);
+        }
         if (pkey) {
-            *pkey = _md_ensure_key(finder->md, entry);
+            *pkey = _md_ensure_key(finder->md, entry);  // last entry access
             if (*pkey == NULL) {
+                if (pvalue) {
+                    Py_CLEAR(*pvalue);
+                }
                 ret = -1;
                 goto cleanup;
             }
-        }
-        if (pvalue) {
-            *pvalue = Py_NewRef(entry->value);
         }
         return 1;
     }
@@ -1661,15 +1672,18 @@ md_readonly_find_next(md_readonly_finder_t* finder, PyObject** pkey,
         }
         finder->visited[finder->visited_count++] = finder->iter.index;
 
+        if (pvalue) {
+            *pvalue = Py_NewRef(entry->value);
+        }
         if (pkey) {
-            *pkey = _md_ensure_key(finder->md, entry);
+            *pkey = _md_ensure_key(finder->md, entry);  // last entry access
             if (*pkey == NULL) {
+                if (pvalue) {
+                    Py_CLEAR(*pvalue);
+                }
                 ret = -1;
                 goto cleanup;
             }
-        }
-        if (pvalue) {
-            *pvalue = Py_NewRef(entry->value);
         }
         return 1;
     }

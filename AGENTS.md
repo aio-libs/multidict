@@ -379,8 +379,22 @@ ASAN_SO=$(cc -print-file-name=libasan.so)
 MULTIDICT_DEBUG_BUILD=1 MULTIDICT_ASAN_BUILD=1 \
     pip install -e . --force-reinstall --no-deps
 LD_PRELOAD="$ASAN_SO" ASAN_OPTIONS=detect_leaks=0 PYTHONMALLOC=malloc \
-    python -Im pytest tests -q -k "not test_leak"
+    python -m pytest tests -q -k "not test_leak"
 ```
+
+`PYTHONMALLOC=malloc` routes every allocation through libc `malloc`,
+which ASan intercepts. Without it, pymalloc serves small blocks
+(512 bytes or less, which covers most hash tables) from its own
+arenas; ASan sees the arena as one live allocation, so a freed block
+is never flagged and use-after-free goes unreported. Free-threaded
+builds do not support it: they abort at startup with
+`PYTHONMALLOC: unknown allocator`, since only the mimalloc allocators
+are available there. Run ASan on a GIL build.
+
+Do not add `-I` (or `-E`) to that command. Both make Python ignore
+`PYTHON*` environment variables, so `PYTHONMALLOC=malloc` is silently
+dropped and small allocations (most hash tables) come from pymalloc
+arenas, where ASan cannot see use-after-free.
 
 `detect_leaks=0` and excluding `test_leaks.py` are required: CPython
 itself retains allocations at shutdown (interned strings, caches)
