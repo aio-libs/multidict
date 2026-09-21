@@ -411,7 +411,7 @@ jobs:
     needs:
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
     - name: Checkout project
       uses: actions/checkout@v7
