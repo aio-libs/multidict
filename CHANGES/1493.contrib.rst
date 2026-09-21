@@ -1,0 +1,1 @@
+Replaced deprecated *instrumentation* codspeed mode with *simulation* -- by :user:`asvetlov`
