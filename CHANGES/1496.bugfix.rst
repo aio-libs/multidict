@@ -1,0 +1,7 @@
+Fixed the C extension reading freed memory while iterating a
+:py:class:`~multidict.CIMultiDict` whose keys are plain :py:class:`str`.
+Converting such a key to :py:class:`~multidict.istr` could run Python code
+(a :py:class:`str` subclass's ``__str__`` or ``__del__``) or, on free-threaded
+builds, suspend the iterator's critical section, after which the iterator read
+the entry again even though a concurrent mutation could already have freed it
+-- by :user:`asvetlov`.

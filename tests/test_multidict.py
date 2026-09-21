@@ -3248,3 +3248,45 @@ def test_items_contains_list_shrunk_by_another_thread() -> None:
     stop.set()
     for t in mutators:
         t.join()
+
+
+def test_items_iter_key_finalizer_mutates(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """Caching the istr drops the stored str key, whose __del__ can mutate
+    the multidict; the C iterator used to read the freed entry after it."""
+
+    class Key(str):
+        def __del__(self) -> None:
+            d.clear()
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with contextlib.suppress(RuntimeError):
+        next(it)
+    d.clear()
+    assert not d
+
+
+def test_items_iter_key_str_mutates(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """Building the istr calls a str subclass's __str__, which can mutate the
+    multidict and free the entry the C iterator is still converting."""
+
+    class Key(str):
+        def __str__(self) -> str:
+            d.clear()
+            return str.__str__(self)
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with pytest.raises(RuntimeError, match="changed during iteration"):
+        next(it)
+    assert not d
