@@ -280,3 +280,15 @@ def test_values_view_repr(
     def _run() -> None:
         for _ in range(100):
             repr(md.values())
+
+
+def test_items_view_contains_with_duplicates(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    md: MultiDict[str] = any_multidict_class((str(i % 50), str(i)) for i in range(150))
+    items = [(str(i % 50), str(i)) for i in range(100, 150)]
+
+    @benchmark
+    def _run() -> None:
+        for item in items:
+            assert item in md.items()

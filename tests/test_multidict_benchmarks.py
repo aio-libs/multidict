@@ -826,3 +826,76 @@ def test_iterate_multidict_items(
     def _run() -> None:
         for _, _ in md.items():
             pass
+
+
+def test_multidict_getall_str_hit_large_table(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    md = any_multidict_class(
+        (f"key{j}", f"{i}-{j}") for i in range(8) for j in range(8192)
+    )
+
+    keys = [f"key{j}" for j in range(128)]
+
+    @benchmark
+    def _run() -> None:
+        for key in keys:
+            md.getall(key)
+
+
+def test_multidict_update_str_with_duplicates(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    base_md = any_multidict_class((str(i % 50), str(i)) for i in range(150))
+    items = [(str(i % 75), str(i)) for i in range(100)]
+
+    @benchmark
+    def _run() -> None:
+        for _ in range(100):
+            md = base_md.copy()
+            md.update(items)
+
+
+def test_cimultidict_update_istr_with_duplicates(
+    benchmark: BenchmarkFixture,
+    case_insensitive_multidict_class: type[CIMultiDict[istr]],
+    case_insensitive_str_class: type[istr],
+) -> None:
+    base_md = case_insensitive_multidict_class(
+        (case_insensitive_str_class(i % 50), case_insensitive_str_class(i))
+        for i in range(150)
+    )
+    items = [
+        (case_insensitive_str_class(i % 75), case_insensitive_str_class(i))
+        for i in range(100)
+    ]
+
+    @benchmark
+    def _run() -> None:
+        for _ in range(100):
+            md = base_md.copy()
+            md.update(items)
+
+
+def test_multidict_merge_str(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    base_md = any_multidict_class((str(i), str(i)) for i in range(150))
+    items = {str(i): str(i) for i in range(100, 200)}
+
+    @benchmark
+    def _run() -> None:
+        for _ in range(100):
+            md = base_md.copy()
+            md.merge(items)
+
+
+def test_multidict_to_dict_str(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    md = any_multidict_class((str(i % 50), str(i)) for i in range(150))
+
+    @benchmark
+    def _run() -> None:
+        for _ in range(100):
+            md.to_dict()
