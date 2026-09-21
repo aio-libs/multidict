@@ -1,0 +1,4 @@
+The CI/CD workflow now stops superseded runs of the same pull request
+when a new commit is pushed; runs on ``master``, release branches, tags,
+the merge queue, and the daily schedule are never interrupted
+-- by :user:`asvetlov`.
