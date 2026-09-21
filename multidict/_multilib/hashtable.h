@@ -812,7 +812,6 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
        this snapshot of other's remaining fields is consistent with the
        keys buffer just copied above. */
     Py_ssize_t used = other->used;
-    uint64_t version = other->version;
     bool is_ci = other->is_ci;
 
     md_clear(md);
@@ -821,7 +820,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 #else
     md->used = used;
 #endif
-    md->version = version;
+    md->version = NEXT_VERSION(md->state);  // never reuse other's version
     md->is_ci = is_ci;
 #ifdef Py_GIL_DISABLED
     _md_store_keys(md, keys);

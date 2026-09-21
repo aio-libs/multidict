@@ -3290,3 +3290,26 @@ def test_items_iter_key_str_mutates(
     with pytest.raises(RuntimeError, match="changed during iteration"):
         next(it)
     assert not d
+
+
+def test_items_iter_key_str_reinits(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """A __str__ re-initializing the multidict from a copy frees the entry
+    being converted; the C clone used to restore the version checked after."""
+
+    class Key(str):
+        def __str__(self) -> str:
+            d.__init__(other)  # type: ignore[misc]
+            return str.__str__(self)
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    other = d.copy()
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with contextlib.suppress(RuntimeError):
+        next(it)
+    assert len(d) == 2
+    assert d["b"] == "w"
