@@ -1,0 +1,2 @@
+Moved the deferred decref accumulator used by the C extension out of
+``hashtable.h`` into its own ``deferred_decref.h`` header -- by :user:`asvetlov`.
