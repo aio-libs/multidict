@@ -1,6 +1,5 @@
 """codspeed benchmarks for multidict."""
 
-import pytest
 from pytest_codspeed import BenchmarkFixture
 
 from multidict import (
@@ -10,8 +9,6 @@ from multidict import (
     MultiDictProxy,
     istr,
 )
-
-pytestmark = pytest.mark.usefixtures("gc_disabled")
 
 # Note that this benchmark should not be refactored to use pytest.mark.parametrize
 # since each benchmark name should be unique.

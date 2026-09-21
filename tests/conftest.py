@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import argparse
-import gc
 import pickle
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from importlib import import_module
@@ -175,19 +174,6 @@ def multidict_getversion_callable(
 ) -> Callable[[MultiDict[object] | MultiDictProxy[object]], int]:
     """Return a ``getversion()`` function for current implementation."""
     return multidict_module.getversion  # type: ignore[no-any-return]
-
-
-@pytest.fixture
-def gc_disabled() -> Iterator[None]:
-    """Keep GC passes, whose timing depends on earlier tests, out of benchmarks.
-
-    No gc.collect() first: it can release pymalloc arenas that the benchmark
-    then has to map again.
-    """
-    was_enabled = gc.isenabled()
-    gc.disable()
-    yield
-    (gc.enable if was_enabled else gc.disable)()
 
 
 def pytest_addoption(
