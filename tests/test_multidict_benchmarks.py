@@ -19,13 +19,15 @@ _SENTINEL = object()
 def test_multidict_insert_str(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
-    md = any_multidict_class()
-    items = [str(i) for i in range(500)]
+    base_md = any_multidict_class()
+    items = [str(i) for i in range(200)]
 
     @benchmark
     def _run() -> None:
-        for i in items:
-            md[i] = i
+        for _ in range(100):
+            md = base_md.copy()
+            for i in items:
+                md[i] = i
 
 
 def test_cimultidict_insert_istr(
@@ -33,13 +35,15 @@ def test_cimultidict_insert_istr(
     case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
-    md = case_insensitive_multidict_class()
-    items = [case_insensitive_str_class(i) for i in range(500)]
+    base_md = case_insensitive_multidict_class()
+    items = [case_insensitive_str_class(i) for i in range(200)]
 
     @benchmark
     def _run() -> None:
-        for i in items:
-            md[i] = i
+        for _ in range(100):
+            md = base_md.copy()
+            for i in items:
+                md[i] = i
 
 
 def test_multidict_add_str(
@@ -66,7 +70,7 @@ def test_cimultidict_add_istr(
 
     @benchmark
     def _run() -> None:
-        for j in range(100):
+        for _ in range(100):
             md = base_md.copy()
             for i in items:
                 md.add(i, i)
@@ -76,26 +80,28 @@ def test_multidict_add_same_key(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
     base_md = any_multidict_class()
-    values = [str(i) for i in range(1000)]
+    values = [str(i) for i in range(100)]
 
     @benchmark
     def _run() -> None:
-        md = base_md.copy()
-        for v in values:
-            md.add("key", v)
+        for _ in range(100):
+            md = base_md.copy()
+            for v in values:
+                md.add("key", v)
 
 
 def test_multidict_pop_str(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
-    md_base = any_multidict_class((str(i), str(i)) for i in range(1000))
-    items = [str(i) for i in range(250, 750)]
+    md_base = any_multidict_class((str(i), str(i)) for i in range(400))
+    items = [str(i) for i in range(100, 300)]
 
     @benchmark
     def _run() -> None:
-        md = md_base.copy()
-        for i in items:
-            md.pop(i)
+        for _ in range(100):
+            md = md_base.copy()
+            for i in items:
+                md.pop(i)
 
 
 def test_cimultidict_pop_istr(
@@ -105,48 +111,54 @@ def test_cimultidict_pop_istr(
 ) -> None:
     md_base = case_insensitive_multidict_class(
         (case_insensitive_str_class(i), case_insensitive_str_class(i))
-        for i in range(1000)
+        for i in range(400)
     )
-    items = [case_insensitive_str_class(i) for i in range(250, 750)]
+    items = [case_insensitive_str_class(i) for i in range(100, 300)]
 
     @benchmark
     def _run() -> None:
-        md = md_base.copy()
-        for i in items:
-            md.pop(i)
+        for _ in range(100):
+            md = md_base.copy()
+            for i in items:
+                md.pop(i)
 
 
 def test_multidict_popitem_str(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
-    md_base = any_multidict_class((str(i), str(i)) for i in range(500))
+    md_base = any_multidict_class((str(i), str(i)) for i in range(200))
 
     @benchmark
     def _run() -> None:
-        md = md_base.copy()
-        for _ in range(500):
-            md.popitem()
+        for _ in range(100):
+            md = md_base.copy()
+            for _ in range(200):
+                md.popitem()
 
 
 def test_multidict_clear_str(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
-    md = any_multidict_class((str(i), str(i)) for i in range(100))
+    md_base = any_multidict_class((str(i), str(i)) for i in range(100))
 
     @benchmark
     def _run() -> None:
-        md.clear()
+        for _ in range(100):
+            md = md_base.copy()
+            md.clear()
 
 
 def test_multidict_update_str(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
-    md = any_multidict_class((str(i), str(i)) for i in range(150))
+    base_md = any_multidict_class((str(i), str(i)) for i in range(150))
     items = {str(i): str(i) for i in range(100, 200)}
 
     @benchmark
     def _run() -> None:
-        md.update(items)
+        for _ in range(100):
+            md = base_md.copy()
+            md.update(items)
 
 
 def test_cimultidict_update_istr(
@@ -154,7 +166,7 @@ def test_cimultidict_update_istr(
     case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
-    md = case_insensitive_multidict_class(
+    base_md = case_insensitive_multidict_class(
         (case_insensitive_str_class(i), case_insensitive_str_class(i))
         for i in range(150)
     )
@@ -165,19 +177,23 @@ def test_cimultidict_update_istr(
 
     @benchmark
     def _run() -> None:
-        md.update(items)
+        for _ in range(100):
+            md = base_md.copy()
+            md.update(items)
 
 
 def test_multidict_update_str_with_kwargs(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
-    md = any_multidict_class((str(i), str(i)) for i in range(150))
+    base_md = any_multidict_class((str(i), str(i)) for i in range(150))
     items = {str(i): str(i) for i in range(100, 200)}
     kwargs = {str(i): str(i) for i in range(200, 300)}
 
     @benchmark
     def _run() -> None:
-        md.update(items, **kwargs)
+        for _ in range(100):
+            md = base_md.copy()
+            md.update(items, **kwargs)
 
 
 def test_cimultidict_update_istr_with_kwargs(
@@ -185,7 +201,7 @@ def test_cimultidict_update_istr_with_kwargs(
     case_insensitive_multidict_class: type[CIMultiDict[istr]],
     case_insensitive_str_class: type[istr],
 ) -> None:
-    md = case_insensitive_multidict_class(
+    base_md = case_insensitive_multidict_class(
         (case_insensitive_str_class(i), case_insensitive_str_class(i))
         for i in range(150)
     )
@@ -197,7 +213,9 @@ def test_cimultidict_update_istr_with_kwargs(
 
     @benchmark
     def _run() -> None:
-        md.update(items, **kwargs)
+        for _ in range(100):
+            md = base_md.copy()
+            md.update(items, **kwargs)
 
 
 def test_multidict_extend_str(
@@ -208,7 +226,7 @@ def test_multidict_extend_str(
 
     @benchmark
     def _run() -> None:
-        for j in range(100):
+        for _ in range(100):
             md = base_md.copy()
             md.extend(items)
 
@@ -242,7 +260,7 @@ def test_multidict_extend_str_with_kwargs(
 
     @benchmark
     def _run() -> None:
-        for j in range(100):
+        for _ in range(100):
             md = base_md.copy()
             md.extend(items, **kwargs)
 
@@ -271,14 +289,15 @@ def test_cimultidict_extend_istr_with_kwargs(
 def test_multidict_delitem_str(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
-    md_base = any_multidict_class((str(i), str(i)) for i in range(500))
-    items = [str(i) for i in range(500)]
+    md_base = any_multidict_class((str(i), str(i)) for i in range(200))
+    items = [str(i) for i in range(200)]
 
     @benchmark
     def _run() -> None:
-        md = md_base.copy()
-        for i in items:
-            del md[i]
+        for _ in range(100):
+            md = md_base.copy()
+            for i in items:
+                del md[i]
 
 
 def test_cimultidict_delitem_istr(
@@ -288,15 +307,16 @@ def test_cimultidict_delitem_istr(
 ) -> None:
     md_base = case_insensitive_multidict_class(
         (case_insensitive_str_class(i), case_insensitive_str_class(i))
-        for i in range(500)
+        for i in range(200)
     )
-    items = [case_insensitive_str_class(i) for i in range(500)]
+    items = [case_insensitive_str_class(i) for i in range(200)]
 
     @benchmark
     def _run() -> None:
-        md = md_base.copy()
-        for i in items:
-            del md[i]
+        for _ in range(100):
+            md = md_base.copy()
+            for i in items:
+                del md[i]
 
 
 def test_multidict_setitem_str(
@@ -307,9 +327,10 @@ def test_multidict_setitem_str(
 
     @benchmark
     def _run() -> None:
-        md = md_base.copy()
-        for key, val in items:
-            md[key] = val
+        for _ in range(100):
+            md = md_base.copy()
+            for key, val in items:
+                md[key] = val
 
 
 def test_cimultidict_setitem_istr(
@@ -328,9 +349,10 @@ def test_cimultidict_setitem_istr(
 
     @benchmark
     def _run() -> None:
-        md = md_base.copy()
-        for key, val in items:
-            md[key] = val
+        for _ in range(100):
+            md = md_base.copy()
+            for key, val in items:
+                md[key] = val
 
 
 def test_multidict_getall_str_hit(

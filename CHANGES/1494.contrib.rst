@@ -1,0 +1,9 @@
+Reorganized the mutating benchmarks (item insertion, ``update()``,
+``add()`` of the same key, ``pop()``, ``popitem()``, ``clear()``,
+``__delitem__()`` and ``__setitem__()``) to copy a fresh multidict and
+apply the operation in a loop, like the ``add()`` and ``extend()``
+benchmarks already do. The insertion, ``update()`` and ``clear()``
+benchmarks previously mutated a single multidict shared across
+rounds, so only the first round measured the intended operation; the
+rest did a single copy per round, letting per-round overhead dominate
+-- by :user:`asvetlov`.
