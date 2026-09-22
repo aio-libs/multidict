@@ -98,15 +98,16 @@ guarantees `CPython's own thread safety documentation
 <https://docs.python.org/3/builtins/threadsafety.html#threadsafety-levels>`_
 uses for :class:`dict`:
 
-- **Atomic** -- the call touches no state shared with any other
-  :class:`~multidict.MultiDict` instance (a type check, a type object
-  lookup, or a freshly allocated object nothing else can see yet), so
-  it needs no synchronization at all.
+- **Atomic** -- either the call touches no mutable state shared with
+  any other :class:`~multidict.MultiDict` instance (a type check, a
+  type object lookup, or a freshly allocated object nothing else can
+  see yet), or it is a single relaxed atomic read of one already-
+  consistent counter on *self*. Either way it needs no lock.
 - **Safe for concurrent use on the same object** -- the call reads or
-  mutates *self*'s own contents. Concurrent calls on the *same*
-  instance, from any threads, cannot corrupt it or crash, whether
-  through a lock-free read path or *self*'s own internal critical
-  section.
+  mutates *self*'s own contents through more than a single atomic
+  access. Concurrent calls on the *same* instance, from any threads,
+  cannot corrupt it or crash, whether through a lock-free read path or
+  *self*'s own internal critical section.
 
 istr
 ====
@@ -141,11 +142,8 @@ Version counter
 
 .. c:function:: uint64_t MultiDict_GetVersion(MultiDict_CAPI *capi, PyObject *self)
 
-   **Thread safety:** Safe for concurrent use on the same object. The
-   counter is read without taking *self*'s lock, so a mutation racing
-   the read may or may not be reflected in the returned value; the
-   read itself never blocks or corrupts state, and it is meant only as
-   a fast change-detection hint, not a precise synchronization point.
+   **Thread safety:** Atomic. A lock-free relaxed read of *self*'s
+   version counter, same as :c:func:`MultiDict_Size`.
 
    Return *self*'s version counter, equivalent to
    :func:`multidict.getversion`. It changes every time *self* is
