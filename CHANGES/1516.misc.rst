@@ -1,0 +1,3 @@
+Changed the internal ``htkeys_build_indices()`` helper in the C
+extension to return ``void``; it cannot fail, so both callers were
+checking for an error that never occurred -- by :user:`asvetlov`.

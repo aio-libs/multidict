@@ -512,9 +512,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
         }
     }
 
-    if (htkeys_build_indices(newkeys, newentries, numentries) < 0) {
-        return -1;
-    }
+    htkeys_build_indices(newkeys, newentries, numentries);
 
     newkeys->usable = newkeys->usable - numentries;
     newkeys->nentries = numentries;
@@ -594,9 +592,7 @@ _md_shrink(MultiDictObject* md, update_marks_t* marks)
     keys->usable += nentries - newnentries;
     memset(&keys->indices[0], 0xff, ((size_t)1 << keys->log2_index_bytes));
     memset(new_ep, 0, sizeof(entry_t) * (size_t)(nentries - newnentries));
-    if (htkeys_build_indices(keys, entries, newnentries) < 0) {
-        return -1;
-    }
+    htkeys_build_indices(keys, entries, newnentries);
     ASSERT_CONSISTENT(md, marks != NULL);
     return 0;
 #endif
