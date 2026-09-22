@@ -171,16 +171,28 @@ def test_race_condition_getversion_vs_mutation(
     stop = threading.Event()
     errors: list[str] = []
     seen: list[int] = []
+    n_readers = 3
+    # Start every thread together; without this the writer (or a reader)
+    # can get a head start before the others are even scheduled.
+    ready = threading.Barrier(n_readers + 1)
 
     def writer() -> None:
-        for i in range(4000):
+        ready.wait()
+        # Loops until every reader is done, so mutation pressure lasts as
+        # long as any reader is reading: giving the writer a fixed
+        # iteration count instead would let it race to completion before
+        # a reader ever gets scheduled, leaving `seen` empty for reasons
+        # that have nothing to do with the atomic version fix.
+        i = 0
+        while not stop.is_set():
             md["k"] = f"v{i}"
-        stop.set()
+            i += 1
 
     def reader() -> None:
+        ready.wait()
         last = -1
         try:
-            while not stop.is_set():
+            for _ in range(20_000):
                 version = getversion(cast("MultiDict[object]", md))
                 if version < last:
                     errors.append(f"version went backwards: {last} -> {version}")
@@ -189,13 +201,15 @@ def test_race_condition_getversion_vs_mutation(
         except Exception as e:  # pragma: no cover
             errors.append(f"{type(e).__name__}: {e}")
 
-    threads = [threading.Thread(target=reader) for _ in range(3)]
-    threads.append(threading.Thread(target=writer))
+    reader_threads = [threading.Thread(target=reader) for _ in range(n_readers)]
+    writer_thread = threading.Thread(target=writer)
 
-    for t in threads:
+    for t in [*reader_threads, writer_thread]:
         t.start()
-    for t in threads:
+    for t in reader_threads:
         t.join()
+    stop.set()
+    writer_thread.join()
 
     # A relaxed atomic load on a single object is still totally ordered
     # with every store to it, so a reader must never observe the version
