@@ -1,0 +1,4 @@
+Documented that the pure-Python test leg needs ``--no-c-extensions``
+alongside ``MULTIDICT_NO_EXTENSIONS=1``; the environment variable picks
+the backend that gets imported, but only the flag deselects the
+C-extension half of the test matrix -- by :user:`asvetlov`.
