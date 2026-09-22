@@ -1,4 +1,6 @@
-Fixed a segmentation fault in the C extension when ``del md[key]`` or
-:meth:`~multidict.MultiDict.popall` released a value whose finalizer let
-another thread resize the same multidict while the deletion was still
-scanning the table -- by :user:`asvetlov`.
+Fixed a segmentation fault in the C extension when a finalizer let the
+same multidict be resized while ``del md[key]`` or
+:meth:`~multidict.MultiDict.popall` was still scanning the table, and a
+spurious :exc:`RuntimeError` from :meth:`~multidict.MultiDict.getall`
+when a garbage collection triggered while building its result mutated
+the multidict -- by :user:`asvetlov`.

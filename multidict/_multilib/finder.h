@@ -17,6 +17,7 @@ extern "C" {
 #include "dict.h"
 #include "htkeys.h"
 #include "identity.h"
+#include "reflist.h"
 
 /* Matches kept in the short list before starting the bitmap: FINDER_FEW
    when the bitmap fits its inline buffer, FINDER_MANY when it would need
@@ -167,12 +168,12 @@ finder_cleanup(finder_t* finder)
     }
 }
 
+// Caller holds md's critical section
 static inline int
-md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+_md_get_all_locked(MultiDictObject* md, PyObject* key, reflist_t* values)
 {
     int tmp;
     PyObject* value = NULL;
-    *ret = NULL;
 
     /* Not zero-initialized: the bitmap's inline buffer is 4 KB. Cleanup
        only needs `nvisited_few`. */
@@ -190,18 +191,10 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     }
 
     while ((tmp = find_next(&finder, NULL, &value)) > 0) {
-        if (*ret == NULL) {
-            *ret = PyList_New(1);
-            if (*ret == NULL) {
-                goto fail;
-            }
-            PyList_SET_ITEM(*ret, 0, value);
-            value = NULL;  // stealed by PyList_SET_ITEM
-        } else {
-            if (PyList_Append(*ret, value) < 0) {
-                goto fail;
-            }
-            Py_CLEAR(value);
+        tmp = reflist_push(values, value);
+        value = NULL;
+        if (tmp < 0) {
+            goto fail;
         }
     }
     if (tmp < 0) {
@@ -210,13 +203,32 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 
     finder_cleanup(&finder);
     Py_DECREF(identity);
-    return *ret != NULL;
+    return 0;
 fail:
     finder_cleanup(&finder);
     Py_XDECREF(identity);
-    Py_XDECREF(value);
-    Py_CLEAR(*ret);
     return -1;
+}
+
+static inline int
+md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    reflist_t values;
+    reflist_init(&values);
+    int tmp;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    tmp = _md_get_all_locked(md, key, &values);
+    Py_END_CRITICAL_SECTION();
+    *ret = NULL;
+    if (tmp < 0) {
+        reflist_clear(&values);
+        return -1;
+    }
+    if (values.size == 0) {
+        return 0;
+    }
+    *ret = reflist_to_list(&values);
+    return *ret != NULL ? 1 : -1;
 }
 
 /* Collect every (key, value) pair matching `identity` into a fresh list,

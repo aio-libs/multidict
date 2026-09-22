@@ -22,6 +22,7 @@ extern "C" {
 #include "identity.h"
 #include "istr.h"
 #include "md_debug.h"
+#include "reflist.h"
 #include "state.h"
 #include "update_marks.h"
 
@@ -1685,14 +1686,13 @@ fail:
     return -1;
 }
 
+// Caller holds md's critical section
 static inline int
-md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+_md_pop_all_locked(MultiDictObject* md, PyObject* key, reflist_t* values)
 {
-    PyObject* lst = NULL;
-
     PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
-        goto fail;
+        return -1;
     }
 
     Py_hash_t hash = _unicode_hash(identity);
@@ -1721,15 +1721,7 @@ restart:;
             continue;
         }
         if (_str_cmp(identity, entry->identity)) {
-            if (lst == NULL) {
-                lst = PyList_New(1);
-                if (lst == NULL) {
-                    goto fail;
-                }
-                if (PyList_SetItem(lst, 0, Py_NewRef(entry->value)) < 0) {
-                    goto fail;
-                }
-            } else if (PyList_Append(lst, entry->value) < 0) {
+            if (reflist_push(values, Py_NewRef(entry->value)) < 0) {
                 goto fail;
             }
             uint64_t version = NEXT_VERSION(md->state);
@@ -1742,14 +1734,32 @@ restart:;
         }
     }
 
-    *ret = lst;
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
-    return lst != NULL;
+    return 0;
 fail:
-    Py_XDECREF(identity);
-    Py_XDECREF(lst);
+    Py_DECREF(identity);
     return -1;
+}
+
+static inline int
+md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    reflist_t values;
+    reflist_init(&values);
+    int tmp;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    tmp = _md_pop_all_locked(md, key, &values);
+    Py_END_CRITICAL_SECTION();
+    if (tmp < 0) {
+        reflist_clear(&values);
+        return -1;
+    }
+    if (values.size == 0) {
+        return 0;
+    }
+    *ret = reflist_to_list(&values);
+    return *ret != NULL ? 1 : -1;
 }
 
 static inline PyObject*

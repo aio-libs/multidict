@@ -2302,6 +2302,38 @@ def test_replace_many_duplicates_releases_all(
     assert all(r() is None for r in refs)
 
 
+@pytest.mark.parametrize("method", ["getall", "popall"])
+def test_getall_popall_gc_finalizer_mutates(
+    any_multidict_class: type[MultiDict[int]], method: str
+) -> None:
+    """Building the result list can run a GC (synchronously before 3.12),
+    and a finalizer there that grows the table used to make getall() raise
+    RuntimeError and popall() walk a freed table."""
+    d = any_multidict_class([("k", 0), ("k", 1), ("k", 2), ("x", 0)])
+
+    class Evil:
+        def __del__(self) -> None:
+            for i in range(100):
+                d.add(f"n{i}", i)
+
+    meth = getattr(d, method)
+    keep: list[list[int]] = [[] for _ in range(200)]  # drain list freelist
+    old = gc.get_threshold()
+    gc.disable()
+    e = Evil()
+    e.self = e  # type: ignore[attr-defined]
+    del e
+    gc.set_threshold(1)
+    gc.enable()
+    try:
+        assert meth("k") == [0, 1, 2]
+    finally:
+        gc.set_threshold(*old)
+    gc.collect()
+    assert len(d) == (4 if method == "getall" else 1) + 100
+    del keep
+
+
 @pytest.mark.c_extension
 def test_del_pop_vs_update_same_key_thread_safety() -> None:
     """Regression for #1489 and #1492 (__delitem__/pop()/popall()): a
