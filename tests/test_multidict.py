@@ -1418,8 +1418,28 @@ class TestCIMultiDict(BaseMultiDictTest):
         self, cls: type[CIMultiDict[str]]
     ) -> None:
         """Every ASCII code point must fold exactly the way ``str.lower()``
-        folds it, including the ones that are not letters."""
-        keys = [f"a{chr(i)}b" for i in range(128)]
+        folds it, including the ones that are not letters.  The paddings
+        span the shapes the C extension's scan distinguishes: shorter than
+        one eight-byte step, exactly one step, and lengths that leave a
+        remainder, with the code point before, on and after each boundary
+        so that the overlapping final word is covered from both sides."""
+        paddings = (
+            (0, 0),  # 1, below one step
+            (3, 3),  # 7, below one step
+            (0, 7),  # 8, exactly one step
+            (0, 11),  # 12, remainder, first byte
+            (7, 4),  # 12, remainder, last byte of the first word
+            (8, 3),  # 12, remainder, first byte only the last word covers
+            (11, 0),  # 12, remainder, last byte
+            (0, 18),  # 19, two steps plus a remainder
+            (9, 9),  # 19, inside the second word
+            (18, 0),  # 19, last byte
+        )
+        keys = [
+            "x" * before + chr(code) + "y" * after
+            for code in range(128)
+            for before, after in paddings
+        ]
         d = cls([(k, k) for k in keys])
 
         grouped: dict[str, list[str]] = {}

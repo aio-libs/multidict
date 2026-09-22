@@ -59,37 +59,70 @@ _key_to_identity(mod_state* state, PyObject* key)
     return NULL;
 }
 
-/* Index of the first ASCII uppercase byte in s[0:len], or len if there is
-   none. */
-ALWAYS_INLINE static inline Py_ssize_t
-_ascii_find_upper(const Py_UCS1* s, Py_ssize_t len)
+/* True if the eight bytes at p hold an ASCII uppercase one. */
+ALWAYS_INLINE static inline bool
+_word_has_upper(const Py_UCS1* p)
 {
-    for (Py_ssize_t i = 0; i < len; i++) {
-        if (s[i] >= 'A' && s[i] <= 'Z') {
-            return i;
-        }
-    }
-    return len;
+    const uint64_t ones = UINT64_C(0x0101010101010101);
+    const uint64_t highs = UINT64_C(0x8080808080808080);
+    uint64_t w;
+    /* memcpy, not a cast: the data of a non-compact str need not be word
+       aligned, and the test below asks only whether some lane is uppercase,
+       never which, so the byte order does not matter. */
+    memcpy(&w, p, 8);
+    /* Every byte is below 0x80, so neither sum carries out of its lane: the
+       high bit of a lane marks b >= 'A' and b > 'Z' respectively. */
+    uint64_t ge_a = w + (0x80 - 'A') * ones;
+    uint64_t gt_z = w + (0x80 - 'Z' - 1) * ones;
+    return (ge_a & ~gt_z & highs) != 0;
 }
 
-/* Lowercase an all-ASCII string into a fresh exact str, given the index of
-   its first uppercase byte.  str.lower() routes ASCII through
-   ascii_upper_or_lower(), which is PyUnicode_New(len, 127) filled by
-   Py_TOLOWER() per byte, so this is byte-identical to it. */
+/* True if s[0:len] holds an ASCII uppercase byte. */
+ALWAYS_INLINE static inline bool
+_ascii_has_upper(const Py_UCS1* s, Py_ssize_t len)
+{
+    /* Too short for a word.  A compact ASCII str is allocated as its header
+       plus len + 1 bytes, so reading a whole word here would run off the end
+       of the block, which is what AddressSanitizer reports.  This is also
+       what lets the last word below start at len - 8. */
+    if (len < 8) {
+        for (Py_ssize_t i = 0; i < len; i++) {
+            if (s[i] >= 'A' && s[i] <= 'Z') {
+                return true;
+            }
+        }
+        return false;
+    }
+    Py_ssize_t i = 0;
+    for (; i + 8 <= len; i += 8) {
+        if (_word_has_upper(s + i)) {
+            return true;
+        }
+    }
+    /* A last word ending at the end of the key rather than a byte loop: it
+       overlaps the previous one when len is not a multiple of 8, and
+       re-reading a few bytes costs nothing for a yes/no answer.  Scanning
+       the leftover byte by byte instead is what made the eight-byte word
+       lose to a four-byte one on short keys. */
+    return i < len ? _word_has_upper(s + len - 8) : false;
+}
+
+/* Lowercase an all-ASCII string into a fresh exact str.  str.lower() routes
+   ASCII through ascii_upper_or_lower(), which is PyUnicode_New(len, 127)
+   filled by Py_TOLOWER() per byte, so this is byte-identical to it. */
 static inline PyObject*
-_ascii_lower(const Py_UCS1* data, Py_ssize_t len, Py_ssize_t pos)
+_ascii_lower(const Py_UCS1* data, Py_ssize_t len)
 {
     /* PyUnicode_New(0, 127) hands back the shared empty string; writing into
        it would corrupt a singleton.  Unreachable: a zero-length key has no
        uppercase byte, so the caller reuses it instead of calling here. */
-    assert(pos < len);
+    assert(len > 0);
     PyObject* ret = PyUnicode_New(len, 127);
     if (ret == NULL) {
         return NULL;
     }
     Py_UCS1* dst = (Py_UCS1*)PyUnicode_DATA(ret);
-    memcpy(dst, data, (size_t)pos);
-    for (Py_ssize_t i = pos; i < len; i++) {
+    for (Py_ssize_t i = 0; i < len; i++) {
         dst[i] = (Py_UCS1)Py_TOLOWER(data[i]);
     }
     return ret;
@@ -106,14 +139,13 @@ _ci_key_to_identity(mod_state* state, PyObject* key)
     if (PyUnicode_CheckExact(key) && PyUnicode_IS_ASCII(key)) {
         Py_ssize_t len = PyUnicode_GET_LENGTH(key);
         const Py_UCS1* data = (const Py_UCS1*)PyUnicode_DATA(key);
-        Py_ssize_t pos = _ascii_find_upper(data, len);
-        if (pos == len) {
+        if (!_ascii_has_upper(data, len)) {
             /* The key already is its own identity, so reuse it: no copy, and
                _unicode_hash() gets the key's cached hash instead of hashing
                a fresh string. */
             return Py_NewRef(key);
         }
-        return _ascii_lower(data, len, pos);
+        return _ascii_lower(data, len);
     }
     if (PyUnicode_Check(key)) {
         PyObject* ret = PyObject_CallMethodNoArgs(key, state->str_lower);
