@@ -21,6 +21,8 @@ extern "C" {
 #include "htkeys.h"
 #include "identity.h"
 #include "istr.h"
+#include "md_debug.h"
+#include "reflist.h"
 #include "state.h"
 #include "update_marks.h"
 
@@ -83,17 +85,6 @@ GROWTH_RATE(MultiDictObject* md)
 {
     return md->used * 3;
 }
-
-#ifndef NDEBUG
-static inline int
-_md_check_consistency(MultiDictObject* md, bool update);
-static inline int
-_md_dump(MultiDictObject* md);
-
-#define ASSERT_CONSISTENT(md, update) assert(_md_check_consistency(md, update))
-#else
-#define ASSERT_CONSISTENT(md, update) assert(1)
-#endif
 
 #ifdef Py_GIL_DISABLED
 
@@ -1039,10 +1030,13 @@ md_del(MultiDictObject* md, PyObject* key)
 
     bool found = false;
 
+restart:;
+    htkeys_t* keys = md->keys;
+    uint64_t version = md->version;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    htkeysiter_init(&iter, keys, hash);
 
-    entry_t* entries = htkeys_entries(md->keys);
+    entry_t* entries = htkeys_entries(keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1058,6 +1052,10 @@ md_del(MultiDictObject* md, PyObject* key)
 
         found = true;
         _md_del_at(md, iter.slot, entry);
+        // the decref can run a __del__ that lets another thread resize
+        if (UNLIKELY(md->keys != keys || md->version != version)) {
+            goto restart;
+        }
     }
 
     if (!found) {
@@ -1689,14 +1687,13 @@ fail:
     return -1;
 }
 
+// Caller holds md's critical section
 static inline int
-md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+_md_pop_all_locked(MultiDictObject* md, PyObject* key, reflist_t* values)
 {
-    PyObject* lst = NULL;
-
     PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
-        goto fail;
+        return -1;
     }
 
     Py_hash_t hash = _unicode_hash(identity);
@@ -1709,9 +1706,11 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         return 0;
     }
 
+restart:;
+    htkeys_t* keys = md->keys;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
-    entry_t* entries = htkeys_entries(md->keys);
+    htkeysiter_init(&iter, keys, hash);
+    entry_t* entries = htkeys_entries(keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1723,30 +1722,45 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
             continue;
         }
         if (_str_cmp(identity, entry->identity)) {
-            if (lst == NULL) {
-                lst = PyList_New(1);
-                if (lst == NULL) {
-                    goto fail;
-                }
-                if (PyList_SetItem(lst, 0, Py_NewRef(entry->value)) < 0) {
-                    goto fail;
-                }
-            } else if (PyList_Append(lst, entry->value) < 0) {
+            if (reflist_push(values, Py_NewRef(entry->value)) < 0) {
                 goto fail;
             }
+            uint64_t version = NEXT_VERSION(md->state);
+            atomic_store_uint64_relaxed(&md->version, version);
             _md_del_at(md, iter.slot, entry);
-            atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
+            // the decref can run a __del__ that lets another thread resize
+            if (UNLIKELY(md->keys != keys || md->version != version)) {
+                goto restart;
+            }
         }
     }
 
-    *ret = lst;
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
-    return lst != NULL;
+    return 0;
 fail:
-    Py_XDECREF(identity);
-    Py_XDECREF(lst);
+    Py_DECREF(identity);
     return -1;
+}
+
+static inline int
+md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    reflist_t values;
+    reflist_init(&values);
+    int tmp;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    tmp = _md_pop_all_locked(md, key, &values);
+    Py_END_CRITICAL_SECTION();
+    if (tmp < 0) {
+        reflist_clear(&values);
+        return -1;
+    }
+    if (values.size == 0) {
+        return 0;
+    }
+    *ret = reflist_to_list(&values);
+    return *ret != NULL ? 1 : -1;
 }
 
 static inline PyObject*
@@ -2965,115 +2979,6 @@ md_clear(MultiDictObject* md)
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
-
-#ifndef NDEBUG
-
-static inline int
-_md_check_consistency(MultiDictObject* md, bool update)
-{
-    //    ASSERT_WORLD_STOPPED_OR_DICT_LOCKED(op);
-
-#define CHECK(expr) assert(expr)
-    //    do { if (!(expr)) { assert(0 && Py_STRINGIFY(expr)); } } while (0)
-
-    htkeys_t* keys = md->keys;
-    CHECK(keys != NULL);
-    Py_ssize_t calc_usable = USABLE_FRACTION(htkeys_nslots(keys));
-
-    Py_ssize_t usable = keys->usable;
-    Py_ssize_t nentries = keys->nentries;
-
-    CHECK(0 <= md->used && md->used <= calc_usable);
-    CHECK(0 <= usable && usable <= calc_usable);
-    CHECK(0 <= nentries && nentries <= calc_usable);
-    CHECK(usable + nentries <= calc_usable);
-
-    for (Py_ssize_t i = 0; i < htkeys_nslots(keys); i++) {
-        Py_ssize_t ix = htkeys_get_index(keys, i);
-        CHECK(DKIX_DUMMY <= ix && ix <= calc_usable);
-    }
-
-    entry_t* entries = htkeys_entries(keys);
-    for (Py_ssize_t i = 0; i < calc_usable; i++) {
-        entry_t* entry = &entries[i];
-        PyObject* identity = entry->identity;
-
-        if (identity != NULL) {
-#ifdef Py_GIL_DISABLED
-            /* `update` describes only this call's own operation, not
-               whether some entirely different, concurrently-suspended
-               thread's _md_update() (on some other key) currently has
-               an entry of its own half-deleted (key == NULL, identity
-               kept) pending that
-               thread's own cleanup -- critical section suspension
-               means that can be true regardless of what this call's
-               update flag says. So always use the tolerant checks
-               here; the strict !update ones remain meaningful only
-               where nothing else can be concurrently mid-operation,
-               i.e. the GIL build below. */
-            if (entry->key == NULL) {
-                CHECK(entry->value == NULL);
-            } else {
-                CHECK(entry->value != NULL);
-            }
-#else
-            if (!update) {
-                CHECK(entry->key != NULL);
-                CHECK(entry->value != NULL);
-            } else {
-                if (entry->key == NULL) {
-                    CHECK(entry->value == NULL);
-                } else {
-                    CHECK(entry->value != NULL);
-                }
-            }
-#endif
-
-            CHECK(PyUnicode_CheckExact(identity));
-            CHECK(entry->hash == _unicode_hash(identity));
-        }
-    }
-    return 1;
-
-#undef CHECK
-}
-
-static inline int
-_md_dump(MultiDictObject* md)
-{
-    htkeys_t* keys = md->keys;
-    printf("Dump %p [%zd from %zd usable %zd nentries %zd]\n",
-           (void*)md,
-           md->used,
-           htkeys_nslots(keys),
-           keys->usable,
-           keys->nentries);
-    for (Py_ssize_t i = 0; i < htkeys_nslots(keys); i++) {
-        Py_ssize_t ix = htkeys_get_index(keys, i);
-        printf("  %zd -> %zd\n", i, ix);
-    }
-    printf("  --------\n");
-    entry_t* entries = htkeys_entries(keys);
-    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-        entry_t* entry = &entries[i];
-        PyObject* identity = entry->identity;
-
-        if (identity == NULL) {
-            printf("  %zd [deleted]\n", i);
-        } else {
-            printf("  %zd h=%20zd, i=\'", i, entry->hash);
-            PyObject_Print(entry->identity, stdout, Py_PRINT_RAW);
-            printf("\', k=\'");
-            PyObject_Print(entry->key, stdout, Py_PRINT_RAW);
-            printf("\', v=\'");
-            PyObject_Print(entry->value, stdout, Py_PRINT_RAW);
-            printf("\'\n");
-        }
-    }
-    printf("\n");
-    return 1;
-}
-#endif  // NDEBUG
 
 #ifdef __cplusplus
 }

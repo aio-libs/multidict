@@ -7,6 +7,7 @@ extern "C" {
 
 #include "dict.h"
 #include "hashtable.h"
+#include "md_debug.h"
 #include "state.h"
 
 typedef struct {
