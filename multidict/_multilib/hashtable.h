@@ -22,6 +22,7 @@ extern "C" {
 #include "identity.h"
 #include "istr.h"
 #include "md_debug.h"
+#include "reflist.h"
 #include "state.h"
 #include "update_marks.h"
 
@@ -1028,10 +1029,13 @@ md_del(MultiDictObject* md, PyObject* key)
 
     bool found = false;
 
+restart:;
+    htkeys_t* keys = md->keys;
+    uint64_t version = md->version;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    htkeysiter_init(&iter, keys, hash);
 
-    entry_t* entries = htkeys_entries(md->keys);
+    entry_t* entries = htkeys_entries(keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1047,6 +1051,10 @@ md_del(MultiDictObject* md, PyObject* key)
 
         found = true;
         _md_del_at(md, iter.slot, entry);
+        // the decref can run a __del__ that lets another thread resize
+        if (UNLIKELY(md->keys != keys || md->version != version)) {
+            goto restart;
+        }
     }
 
     if (!found) {
@@ -1678,14 +1686,13 @@ fail:
     return -1;
 }
 
+// Caller holds md's critical section
 static inline int
-md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+_md_pop_all_locked(MultiDictObject* md, PyObject* key, reflist_t* values)
 {
-    PyObject* lst = NULL;
-
     PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
-        goto fail;
+        return -1;
     }
 
     Py_hash_t hash = _unicode_hash(identity);
@@ -1698,9 +1705,11 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         return 0;
     }
 
+restart:;
+    htkeys_t* keys = md->keys;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
-    entry_t* entries = htkeys_entries(md->keys);
+    htkeysiter_init(&iter, keys, hash);
+    entry_t* entries = htkeys_entries(keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1712,30 +1721,45 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
             continue;
         }
         if (_str_cmp(identity, entry->identity)) {
-            if (lst == NULL) {
-                lst = PyList_New(1);
-                if (lst == NULL) {
-                    goto fail;
-                }
-                if (PyList_SetItem(lst, 0, Py_NewRef(entry->value)) < 0) {
-                    goto fail;
-                }
-            } else if (PyList_Append(lst, entry->value) < 0) {
+            if (reflist_push(values, Py_NewRef(entry->value)) < 0) {
                 goto fail;
             }
+            uint64_t version = NEXT_VERSION(md->state);
+            md->version = version;
             _md_del_at(md, iter.slot, entry);
-            md->version = NEXT_VERSION(md->state);
+            // the decref can run a __del__ that lets another thread resize
+            if (UNLIKELY(md->keys != keys || md->version != version)) {
+                goto restart;
+            }
         }
     }
 
-    *ret = lst;
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
-    return lst != NULL;
+    return 0;
 fail:
-    Py_XDECREF(identity);
-    Py_XDECREF(lst);
+    Py_DECREF(identity);
     return -1;
+}
+
+static inline int
+md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    reflist_t values;
+    reflist_init(&values);
+    int tmp;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    tmp = _md_pop_all_locked(md, key, &values);
+    Py_END_CRITICAL_SECTION();
+    if (tmp < 0) {
+        reflist_clear(&values);
+        return -1;
+    }
+    if (values.size == 0) {
+        return 0;
+    }
+    *ret = reflist_to_list(&values);
+    return *ret != NULL ? 1 : -1;
 }
 
 static inline PyObject*
