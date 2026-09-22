@@ -564,24 +564,21 @@ _md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
     htkeys_set_index(keys, hashpos, keys->nentries);
 
     entry_t* entry = htkeys_entries(keys) + keys->nentries;
+    assert(entry->identity == NULL && entry->key == NULL &&
+           entry->value == NULL);
 
-#ifdef Py_GIL_DISABLED
     /* identity is published last: it's the field a lock-free reader
        checks first (before ever touching hash/key/value), treating
        NULL as "not populated yet, keep probing". See the comment
-       above load_identity(). The GIL build has no reader to
-       order against and keeps its own order, which is what stops the
-       two arms from merging. */
+       above load_identity(). The GIL build has no reader to order
+       against, so it just follows along. The entry is carved out of
+       the zeroed tail past every live one, so value is still NULL and
+       publish_value() is enough; nothing here has an old reference to
+       drop. */
     entry->key = key;
     store_hash(entry, hash);
-    store_value(entry, value);
-    publish_identity(entry, identity);
-#else
-    publish_identity(entry, identity);
-    entry->key = key;
     publish_value(entry, value);
-    store_hash(entry, hash);
-#endif
+    publish_identity(entry, identity);
 
     store_version(md, next_version(md->state));
     add_used(md, 1);
@@ -626,18 +623,14 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     htkeys_set_index(keys, hashpos, keys->nentries);
 
     entry_t* entry = htkeys_entries(keys) + keys->nentries;
+    assert(entry->identity == NULL && entry->key == NULL &&
+           entry->value == NULL);
 
-#ifdef Py_GIL_DISABLED
+    /* See _md_add_with_hash_steal_refs() for the ordering. */
     entry->key = key;
     store_hash(entry, hash);
-    store_value(entry, value);
-    publish_identity(entry, identity);
-#else
-    publish_identity(entry, identity);
-    entry->key = key;
     publish_value(entry, value);
-    store_hash(entry, hash);
-#endif
+    publish_identity(entry, identity);
 
     store_version(md, next_version(md->state));
     add_used(md, 1);
