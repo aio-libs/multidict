@@ -18,6 +18,7 @@ extern "C" {
 #include "deferred_decref.h"
 #include "dict.h"
 #include "finder.h"
+#include "freethreading.h"
 #include "htkeys.h"
 #include "identity.h"
 #include "istr.h"
@@ -190,34 +191,6 @@ push), the loop rereads the new head and relinks before retrying, so
 visible.
 */
 
-/* Every write to md->keys that a lock-free reader could observe must
-   use this, matching _md_reader_enter()'s atomic_load_ptr(): mixing a
-   plain store here with an atomic load there is a data race regardless
-   of what the surrounding critical section or num_active_readers protocol
-   otherwise guarantees, and on architectures weaker than x86 a plain
-   store carries no ordering guarantee at all relative to the
-   num_active_readers check the retiring code depends on. */
-static inline void
-_md_store_keys(MultiDictObject* md, htkeys_t* keys)
-{
-    atomic_store_ptr((void**)&md->keys, keys);
-}
-
-/* md_len() reads md->used lock-free via atomic_load_ssize_relaxed(); every
-   write to it needs the matching relaxed atomic op for the same reason
-   _md_store_keys() exists above. */
-static inline void
-_md_store_used(MultiDictObject* md, Py_ssize_t used)
-{
-    atomic_store_ssize_relaxed(&md->used, used);
-}
-
-static inline void
-_md_add_used(MultiDictObject* md, Py_ssize_t delta)
-{
-    atomic_fetch_add_ssize_relaxed(&md->used, delta);
-}
-
 static inline htkeys_t*
 _md_reader_enter(MultiDictObject* md)
 {
@@ -332,149 +305,6 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
     _md_drain_retired(md);
 }
 
-#if PY_VERSION_HEX >= 0x030e0000
-#define _MD_HAVE_TRYINCREF 1
-#else
-#define _MD_HAVE_TRYINCREF 0
-#endif
-
-/*
-Lock-free-safe access to individual entry fields.
-
-The table-retirement scheme above only protects an htkeys_t blob's own
-memory. It says nothing about a single entry's identity/value fields
-*within* a table that is still md->keys, still published, still being
-mutated in the ordinary way by add()/__setitem__/pop()/update() -- all
-of which run under md's critical section, which does not exclude a
-lock-free reader at all.
-
-entry->identity doubles as the "is this slot populated" signal a
-lock-free walk checks first (mirroring CPython's own me_key in
-compare_unicode_unicode_threadsafe): insertion publishes every other
-field an entry needs (hash, key, value) before publishing identity,
-last, and deletion clears identity. entry->identity is never replaced
-with a *different* non-NULL identity while an entry stays populated
-(only key/value change on replace/update), so the only transitions a
-reader can race are NULL -> real (insertion) and real -> NULL
-(deletion) -- never real -> different-real.
-
-That ordering alone is not enough to safely dereference the identity
-or value object's *contents* (_str_cmp, PyUnstable_TryIncRef's own
-caller), though: a concurrent delete's Py_CLEAR() is an ordinary
-decref with no deferred reclamation, so it can free the object
-immediately. Every lock-free read of entry->identity or entry->value
-therefore needs PyUnstable_TryIncRef() (safe even if the object is
-mid-teardown on another thread; fails cleanly instead of racing it)
-followed by re-reading the field to confirm it still holds what was
-just incref'd -- if either step fails, the field changed or is
-changing under us and the caller must fall back to the critical
-section, exactly like CPython's DKIX_KEY_CHANGED retry.
-*/
-
-static inline PyObject*
-_md_entry_load_identity(entry_t* entry)
-{
-    return (PyObject*)atomic_load_ptr((void* const*)&entry->identity);
-}
-
-static inline void
-_md_entry_publish_identity(entry_t* entry, PyObject* identity)
-{
-#if _MD_HAVE_TRYINCREF
-    PyUnstable_EnableTryIncRef(identity);
-#endif
-    atomic_store_ptr((void**)&entry->identity, identity);
-}
-
-static inline void
-_md_entry_clear_identity(entry_t* entry)
-{
-    PyObject* old = _md_entry_load_identity(entry);
-    atomic_store_ptr((void**)&entry->identity, NULL);
-    Py_XDECREF(old);
-}
-
-static inline PyObject*
-_md_entry_load_value(entry_t* entry)
-{
-    return (PyObject*)atomic_load_ptr((void* const*)&entry->value);
-}
-
-static inline void
-_md_entry_publish_value(entry_t* entry, PyObject* value)
-{
-#if _MD_HAVE_TRYINCREF
-    PyUnstable_EnableTryIncRef(value);
-#endif
-    atomic_store_ptr((void**)&entry->value, value);
-}
-
-static inline void
-_md_entry_store_value(entry_t* entry, PyObject* value)
-{
-    PyObject* old = _md_entry_load_value(entry);
-    _md_entry_publish_value(entry, value);
-    Py_XDECREF(old);
-}
-
-static inline void
-_md_entry_clear_value(entry_t* entry)
-{
-    PyObject* old = _md_entry_load_value(entry);
-    atomic_store_ptr((void**)&entry->value, NULL);
-    Py_XDECREF(old);
-}
-
-/* entry->hash also needs an atomic accessor once a lock-free reader
-   compares against it: _md_replace()/_md_update() overwrite it in
-   place on an already-populated entry (a plain write racing the
-   reader's plain read is still a data race even though Py_hash_t
-   isn't a pointer and can't crash on a torn value). Relaxed is enough
-   -- it's read only after the identity check above already
-   established happens-before for everything else in the entry;
-   nothing else depends on this specific field's ordering. */
-static inline Py_hash_t
-_md_entry_load_hash(entry_t* entry)
-{
-    return (Py_hash_t)atomic_load_ssize_relaxed((Py_ssize_t*)&entry->hash);
-}
-
-static inline void
-_md_entry_store_hash(entry_t* entry, Py_hash_t hash)
-{
-    atomic_store_ssize_relaxed((Py_ssize_t*)&entry->hash, (Py_ssize_t)hash);
-}
-
-#if _MD_HAVE_TRYINCREF
-/* Tries to safely grab a strong reference to *addr's current value for
-   a lock-free reader: PyUnstable_TryIncRef() (fails cleanly if the
-   object is concurrently being torn down) followed by re-reading
-   *addr to confirm it is still what was just incref'd. Returns NULL
-   (with no reference held) if either step fails, meaning the caller
-   must fall back to the critical section; the field may be NULL
-   legitimately (not populated / deleted), which is reported the same
-   way, since either way the caller cannot proceed lock-free. Only
-   defined where PyUnstable_TryIncRef() exists at all (see the
-   _MD_HAVE_TRYINCREF comment above); callers must be equally
-   guarded. */
-static inline PyObject*
-_md_entry_try_get_ref(PyObject** addr)
-{
-    PyObject* value = (PyObject*)atomic_load_ptr((void* const*)addr);
-    if (value == NULL) {
-        return NULL;
-    }
-    if (!PyUnstable_TryIncRef(value)) {
-        return NULL;
-    }
-    if ((PyObject*)atomic_load_ptr((void* const*)addr) != value) {
-        Py_DECREF(value);
-        return NULL;
-    }
-    return value;
-}
-#endif /* _MD_HAVE_TRYINCREF */
-
 #endif /* Py_GIL_DISABLED */
 
 static inline int
@@ -517,11 +347,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     newkeys->usable = newkeys->usable - numentries;
     newkeys->nentries = numentries;
 
-#ifdef Py_GIL_DISABLED
-    _md_store_keys(md, newkeys);
-#else
-    md->keys = newkeys;
-#endif
+    store_keys(md, newkeys);
 
 #ifdef Py_GIL_DISABLED
     /* Bump the version on every resize, not just when a caller's
@@ -532,7 +358,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
        comparing the raw pointer alone (see _md_replace()'s and
        _md_update()'s comments) needs a companion signal that can't
        coincidentally repeat. */
-    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
+    store_version(md, next_version(md->state));
 
     /* Ownership of oldkeys's entries has already moved to newkeys via
        the memcpy/copy loop above; zeroing nentries tells
@@ -663,17 +489,9 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
 
     md_clear(md);
     md->is_ci = is_ci;
-#ifdef Py_GIL_DISABLED
-    _md_store_used(md, 0);
-#else
-    md->used = 0;
-#endif
-    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
-#ifdef Py_GIL_DISABLED
-    _md_store_keys(md, new_keys);
-#else
-    md->keys = new_keys;
-#endif
+    store_used(md, 0);
+    store_version(md, next_version(md->state));
+    store_keys(md, new_keys);
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
@@ -714,19 +532,10 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     bool is_ci = other->is_ci;
 
     md_clear(md);
-#ifdef Py_GIL_DISABLED
-    _md_store_used(md, used);
-#else
-    md->used = used;
-#endif
-    atomic_store_uint64_relaxed(
-        &md->version, NEXT_VERSION(md->state));  // never reuse other's version
+    store_used(md, used);
+    store_version(md, next_version(md->state));  // never reuse other's version
     md->is_ci = is_ci;
-#ifdef Py_GIL_DISABLED
-    _md_store_keys(md, keys);
-#else
-    md->keys = keys;
-#endif
+    store_keys(md, keys);
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
@@ -734,7 +543,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 static inline Py_ssize_t
 md_len(MultiDictObject* md)
 {
-    return atomic_load_ssize_relaxed(&md->used);
+    return load_used(md);
 }
 
 static inline int
@@ -760,24 +569,22 @@ _md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
     /* identity is published last: it's the field a lock-free reader
        checks first (before ever touching hash/key/value), treating
        NULL as "not populated yet, keep probing". See the comment
-       above _md_entry_load_identity(). */
+       above load_identity(). The GIL build has no reader to
+       order against and keeps its own order, which is what stops the
+       two arms from merging. */
     entry->key = key;
-    _md_entry_store_hash(entry, hash);
-    _md_entry_store_value(entry, value);
-    _md_entry_publish_identity(entry, identity);
+    store_hash(entry, hash);
+    store_value(entry, value);
+    publish_identity(entry, identity);
 #else
-    entry->identity = identity;
+    publish_identity(entry, identity);
     entry->key = key;
-    entry->value = value;
-    entry->hash = hash;
+    publish_value(entry, value);
+    store_hash(entry, hash);
 #endif
 
-    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
-#ifdef Py_GIL_DISABLED
-    _md_add_used(md, 1);
-#else
-    md->used += 1;
-#endif
+    store_version(md, next_version(md->state));
+    add_used(md, 1);
     keys->usable -= 1;
     keys->nentries += 1;
     return 0;
@@ -822,22 +629,18 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
 
 #ifdef Py_GIL_DISABLED
     entry->key = key;
-    _md_entry_store_hash(entry, hash);
-    _md_entry_store_value(entry, value);
-    _md_entry_publish_identity(entry, identity);
+    store_hash(entry, hash);
+    store_value(entry, value);
+    publish_identity(entry, identity);
 #else
-    entry->identity = identity;
+    publish_identity(entry, identity);
     entry->key = key;
-    entry->value = value;
-    entry->hash = hash;
+    publish_value(entry, value);
+    store_hash(entry, hash);
 #endif
 
-    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
-#ifdef Py_GIL_DISABLED
-    _md_add_used(md, 1);
-#else
-    md->used += 1;
-#endif
+    store_version(md, next_version(md->state));
+    add_used(md, 1);
     keys->usable -= 1;
     keys->nentries += 1;
     return 0;
@@ -887,7 +690,6 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
 {
     htkeys_t* keys = md->keys;
     assert(keys != &empty_htkeys);
-#ifdef Py_GIL_DISABLED
     /* Null out every field and finish md's bookkeeping (index, used)
        before dropping any reference. Freeing an object below can run
        a finalizer or weakref callback, which can hit a safepoint and
@@ -900,40 +702,25 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
        objects locally and decref'ing them only once md is already
        fully self-consistent means a concurrent resize -- however far
        into this function it catches us -- always sees a coherent
-       view. entry->key is read/written as a plain pointer: unlike
-       identity/value, no lock-free reader ever touches it (see the
-       comment above _md_entry_load_identity()). */
-    PyObject* identity = _md_entry_load_identity(entry);
+       view. The GIL build needs the same order for its own reason: a
+       __del__ there can release the GIL (Py_BEGIN_CRITICAL_SECTION is
+       a no-op on that build), which would otherwise expose a
+       half-deleted entry -- see #1489. entry->key is read/written as
+       a plain pointer: unlike identity/value, no lock-free reader
+       ever touches it (see the comment above load_identity()). */
+    PyObject* identity = load_identity(entry);
     PyObject* key = entry->key;
-    PyObject* value = _md_entry_load_value(entry);
+    PyObject* value = load_value(entry);
 
-    atomic_store_ptr((void**)&entry->identity, NULL);
+    reset_identity(entry);
     entry->key = NULL;
-    atomic_store_ptr((void**)&entry->value, NULL);
+    reset_value(entry);
     htkeys_set_index(keys, slot, DKIX_DUMMY);
-    _md_add_used(md, -1);
+    add_used(md, -1);
 
     Py_XDECREF(identity);
     Py_XDECREF(key);
     Py_XDECREF(value);
-#else
-    /* GIL-build mirror of the branch above: decref after bookkeeping so a
-     * __del__-triggered GIL release (Py_BEGIN_CRITICAL_SECTION is a no-op
-     * here) never exposes a half-deleted entry -- see #1489. */
-    PyObject* identity = entry->identity;
-    PyObject* key = entry->key;
-    PyObject* value = entry->value;
-
-    entry->identity = NULL;
-    entry->key = NULL;
-    entry->value = NULL;
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
-    md->used -= 1;
-
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-#endif
 }
 
 /* _md_del_at() variant that defers the decref (see deferred_decref_t);
@@ -944,27 +731,15 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
 {
     htkeys_t* keys = md->keys;
     assert(keys != &empty_htkeys);
-#ifdef Py_GIL_DISABLED
-    PyObject* identity = _md_entry_load_identity(entry);
+    PyObject* identity = load_identity(entry);
     PyObject* key = entry->key;
-    PyObject* value = _md_entry_load_value(entry);
+    PyObject* value = load_value(entry);
 
-    atomic_store_ptr((void**)&entry->identity, NULL);
+    reset_identity(entry);
     entry->key = NULL;
-    atomic_store_ptr((void**)&entry->value, NULL);
+    reset_value(entry);
     htkeys_set_index(keys, slot, DKIX_DUMMY);
-    _md_add_used(md, -1);
-#else
-    PyObject* identity = entry->identity;
-    PyObject* key = entry->key;
-    PyObject* value = entry->value;
-
-    entry->identity = NULL;
-    entry->key = NULL;
-    entry->value = NULL;
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
-    md->used -= 1;
-#endif
+    add_used(md, -1);
 
     int ret = deferred_decref_push(defer, identity);
     if (deferred_decref_push(defer, key) < 0) {
@@ -1000,13 +775,8 @@ _md_del_at_for_upd_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     if (_deferred_decref_reserve_one(defer) < 0) {
         return -1;
     }
-#ifdef Py_GIL_DISABLED
-    PyObject* old_value = _md_entry_load_value(entry);
-    atomic_store_ptr((void**)&entry->value, NULL);
-#else
-    PyObject* old_value = entry->value;
-    entry->value = NULL;
-#endif
+    PyObject* old_value = load_value(entry);
+    reset_value(entry);
     deferred_decref_push_reserved(defer, old_value);
     return 0;
 }
@@ -1058,7 +828,7 @@ restart:;
         PyErr_SetObject(PyExc_KeyError, key);
         goto fail;
     } else {
-        atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
+        store_version(md, next_version(md->state));
     }
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
@@ -1066,12 +836,6 @@ restart:;
 fail:
     Py_XDECREF(identity);
     return -1;
-}
-
-static inline uint64_t
-md_version(MultiDictObject* md)
-{
-    return atomic_load_uint64_relaxed(&md->version);
 }
 
 static inline void
@@ -1269,16 +1033,16 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
         }
         entry_t* entry = entries + iter.index;
 
-        PyObject* entry_identity = _md_entry_try_get_ref(&entry->identity);
+        PyObject* entry_identity = try_get_ref(&entry->identity);
         if (entry_identity == NULL) {
-            if (_md_entry_load_identity(entry) == NULL) {
+            if (load_identity(entry) == NULL) {
                 continue;  // not populated (or deleted); keep probing
             }
             result = 2;  // _MD_NEED_LOCK
             break;
         }
 
-        if (_md_entry_load_hash(entry) != hash) {
+        if (load_hash(entry) != hash) {
             Py_DECREF(entry_identity);
             continue;
         }
@@ -1391,16 +1155,16 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         }
         entry_t* entry = entries + iter.index;
 
-        PyObject* entry_identity = _md_entry_try_get_ref(&entry->identity);
+        PyObject* entry_identity = try_get_ref(&entry->identity);
         if (entry_identity == NULL) {
-            if (_md_entry_load_identity(entry) == NULL) {
+            if (load_identity(entry) == NULL) {
                 continue;  // not populated (or deleted); keep probing
             }
             result = _MD_NEED_LOCK;  // racing a concurrent change
             break;
         }
 
-        if (_md_entry_load_hash(entry) != hash) {
+        if (load_hash(entry) != hash) {
             Py_DECREF(entry_identity);
             continue;
         }
@@ -1411,7 +1175,7 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
 
-        PyObject* value = _md_entry_try_get_ref(&entry->value);
+        PyObject* value = try_get_ref(&entry->value);
         if (value == NULL) {
             result = _MD_NEED_LOCK;
             break;
@@ -1669,7 +1433,7 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
             _md_del_at(md, iter.slot, entry);
             Py_DECREF(identity);
             *ret = value;
-            atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
+            store_version(md, next_version(md->state));
             ASSERT_CONSISTENT(md, false);
             return 1;
         }
@@ -1721,14 +1485,13 @@ restart:;
             if (reflist_push(values, Py_NewRef(entry->value)) < 0) {
                 goto fail;
             }
-            uint64_t version = NEXT_VERSION(md->state);
-            atomic_store_uint64_relaxed(&md->version, version);
+            uint64_t version = next_version(md->state);
+            store_version(md, version);
             _md_del_at(md, iter.slot, entry);
             // the decref can run a __del__ that lets another thread resize
             // and bump the version through the atomic store above, so this
             // side of the comparison must be an atomic load too
-            if (UNLIKELY(md->keys != keys || atomic_load_uint64_relaxed(
-                                                 &md->version) != version)) {
+            if (UNLIKELY(md->keys != keys || load_version(md) != version)) {
                 goto restart;
             }
         }
@@ -1796,7 +1559,7 @@ md_pop_item(MultiDictObject* md)
     for (; iter.index != pos; htkeysiter_next(&iter)) {
     }
     _md_del_at(md, iter.slot, entry);
-    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
+    store_version(md, next_version(md->state));
     ASSERT_CONSISTENT(md, false);
     return ret;
 }
@@ -1846,15 +1609,9 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                 /* old_key/old_value decref deferred -- see
                  * deferred_decref_t */
                 PyObject* old_key = entry->key;
-#ifdef Py_GIL_DISABLED
-                PyObject* old_value = _md_entry_load_value(entry);
+                PyObject* old_value = load_value(entry);
                 entry->key = Py_NewRef(key);
-                _md_entry_publish_value(entry, Py_NewRef(value));
-#else
-                PyObject* old_value = entry->value;
-                entry->key = Py_NewRef(key);
-                entry->value = Py_NewRef(value);
-#endif
+                publish_value(entry, Py_NewRef(value));
                 /* Push both unconditionally, not with `||`: a failed
                    first push already decref'd old_key itself (see
                    deferred_decref_push()'s doc comment), but
@@ -1892,7 +1649,7 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
         if (!found) {
             return _md_add_with_hash(md, hash, identity, key, value);
         }
-        atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
+        store_version(md, next_version(md->state));
         return 0;
     }
 }
@@ -1977,24 +1734,14 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     assert(entry->value == NULL);
                     bitmap_clear(&marks->deleted, iter.index);
                     entry->key = Py_NewRef(key);
-#ifdef Py_GIL_DISABLED
-                    _md_entry_publish_value(entry, Py_NewRef(value));
-#else
-                    entry->value = Py_NewRef(value);
-#endif
+                    publish_value(entry, Py_NewRef(value));
                 } else {
                     /* old_key/old_value decref deferred -- see
                      * deferred_decref_t */
                     PyObject* old_key = entry->key;
-#ifdef Py_GIL_DISABLED
-                    PyObject* old_value = _md_entry_load_value(entry);
+                    PyObject* old_value = load_value(entry);
                     entry->key = Py_NewRef(key);
-                    _md_entry_publish_value(entry, Py_NewRef(value));
-#else
-                    PyObject* old_value = entry->value;
-                    entry->key = Py_NewRef(key);
-                    entry->value = Py_NewRef(value);
-#endif
+                    publish_value(entry, Py_NewRef(value));
                     /* Push both unconditionally, not with `||`: a
                        failed first push already decref'd old_key
                        itself (see deferred_decref_push()'s doc
@@ -2084,17 +1831,10 @@ _md_post_update_del(MultiDictObject* md, htkeys_t* keys, size_t slot,
                     entry_t* entry, deferred_decref_t* defer)
 {
     assert(entry->key == NULL);
-#ifdef Py_GIL_DISABLED
-    PyObject* old_identity = _md_entry_load_identity(entry);
-    atomic_store_ptr((void**)&entry->identity, NULL);
+    PyObject* old_identity = load_identity(entry);
+    reset_identity(entry);
     htkeys_set_index(keys, slot, DKIX_DUMMY);
-    _md_add_used(md, -1);
-#else
-    PyObject* old_identity = entry->identity;
-    entry->identity = NULL;
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
-    md->used -= 1;
-#endif
+    add_used(md, -1);
     return deferred_decref_push(defer, old_identity);
 }
 
@@ -2190,7 +1930,7 @@ md_post_update(MultiDictObject* md, deferred_decref_t* defer,
     if (defer != NULL) {
         ret = _md_post_update_deleted(md, defer, marks);
     }
-    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
+    store_version(md, next_version(md->state));
     ASSERT_CONSISTENT(md, false);
     return ret;
 }
@@ -2942,7 +2682,7 @@ md_clear(MultiDictObject* md)
     if (md->keys == NULL || md->keys == &empty_htkeys) {
         return 0;
     }
-    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
+    store_version(md, next_version(md->state));
 
     // Publish the empty table before releasing any entry's reference: a
     // decref below may run arbitrary Python code (a __del__), which can
@@ -2952,13 +2692,8 @@ md_clear(MultiDictObject* md)
     // not yet). Swapping first means a suspended thread only ever sees
     // either the fully-populated old table or the fully-empty one.
     htkeys_t* old_keys = md->keys;
-#ifdef Py_GIL_DISABLED
-    _md_store_used(md, 0);
-    _md_store_keys(md, (htkeys_t*)&empty_htkeys);
-#else
-    md->used = 0;
-    md->keys = (htkeys_t*)&empty_htkeys;
-#endif
+    store_used(md, 0);
+    store_keys(md, (htkeys_t*)&empty_htkeys);
 
 #ifdef Py_GIL_DISABLED
     _md_retire(md, old_keys);

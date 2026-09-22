@@ -1,0 +1,6 @@
+Every field of the C extension's hash table that more than one thread
+can reach is now read and written through a named accessor in the new
+``_multilib/freethreading.h`` header, instead of each call site choosing
+between an atomic and a plain access behind ``#ifdef Py_GIL_DISABLED``.
+Each accessor keeps the operation and memory ordering its call sites
+already used, so neither build changes behavior -- by :user:`asvetlov`.
