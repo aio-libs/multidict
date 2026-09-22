@@ -3224,6 +3224,21 @@ def test_sizing_argument_does_not_swallow_exceptions(
         getattr(md, method)(BadLen())
 
 
+def test_subclass_construction_does_not_swallow_exceptions(
+    any_multidict_class: type[MutableMultiMapping[str]],
+) -> None:
+    """A subclass runs through ``tp_init()`` rather than the constructor
+    vectorcall, so it sizes its argument and must not discard the error."""
+
+    class BadLen:
+        def __len__(self) -> int:
+            raise MemoryError("boom")
+
+    subclass = type("Sub", (any_multidict_class,), {})
+    with pytest.raises(MemoryError):
+        subclass(BadLen())
+
+
 @pytest.mark.parametrize("method", ("extend", "update", "merge"))
 def test_unusable_length_hint_is_ignored(
     any_multidict_class: type[MutableMultiMapping[str]], method: str
