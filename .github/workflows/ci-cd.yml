@@ -144,14 +144,14 @@ jobs:
         - runner-vm-os: windows-11-arm
           tag: >-
            ${{
-           (github.event_name != 'push' || github.ref_type != 'tag')
-           && '' || 'none'
+           (github.event_name == 'push' && github.ref_type == 'tag')
+           && 'none' || ''
            }}
         - runner-vm-os: ubuntu-latest
           tag: >-
            ${{
-           (github.event_name != 'push' || github.ref_type != 'tag')
-           && 'musllinux' || 'none'
+           (github.event_name == 'push' && github.ref_type == 'tag')
+           && 'none' || 'musllinux'
            }}
     uses: ./.github/workflows/reusable-cibuildwheel.yml
     with:
@@ -162,8 +162,24 @@ jobs:
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+      # CIBW_TEST_SKIP: x86_64 macOS wheels are tested under Rosetta at
+      # about twice the arm64 cost; outside release tags only one GIL and
+      # one free-threaded ABI are tested there.
       environment-variables: |-
         CIBW_ARCHS_MACOS=x86_64 arm64 universal2
+
+        CIBW_TEST_SKIP<<EOF
+        ${{
+          (github.event_name != 'push' || !contains(github.ref, 'refs/tags/'))
+          && 'cp310-macosx_x86_64
+          cp311-macosx_x86_64
+          cp312-macosx_x86_64
+          cp313-macosx_x86_64
+          cp315-macosx_x86_64
+          cp315t-macosx_x86_64'
+          || ''
+        }}
+        EOF
 
         CIBW_SKIP<<EOF
         ${{
@@ -178,7 +194,7 @@ jobs:
         EOF
 
   test:
-    name: >-
+    name: &test-name >-
       Test ${{ matrix.os }}
       ${{ matrix.pyver }}
       ${{ matrix.no-extensions == 'Y' && ' ' || 'ext' }}
@@ -187,9 +203,11 @@ jobs:
     - build-pure-python-dists  # transitive, for accessing settings
     - build-wheels-for-tested-arches
     - pre-setup  # transitive, for accessing settings
+    # macOS and Windows wheels are tested by cibuildwheel itself; only the
+    # ubuntu wheels are re-tested here, for coverage.
     strategy:
       matrix:
-        pyver:
+        pyver: &test-pyvers
         - 3.14t
         - 3.14
         # Skipping 3.13t because cibuildwheel dropped support
@@ -197,42 +215,21 @@ jobs:
         - 3.12
         - 3.11
         - "3.10"
-        no-extensions: ['', 'Y']
-        os: [ubuntu, macos, windows]
-        debug: ['', 'Y']
-        exclude:
-        - no-extensions: Y
-          debug: Y
-        - os: macos
-          no-extensions: Y
-        - os: windows
-          no-extensions: Y
-        # Debug builds verify Py_DEBUG refcount/bounds checks against the
-        # C extension. The extension source is platform-portable, so the
-        # ubuntu debug matrix already covers the same code paths. Dropping
-        # debug on macOS and Windows removes 12 jobs (the two slowest
-        # runner pools) from every CI run.
-        - os: macos
-          debug: Y
-        - os: windows
-          debug: Y
-        include:
-        - pyver: pypy-3.10
-          no-extensions: Y
-          os: ubuntu
-          debug: ''
+        no-extensions: ['']
+        os: [ubuntu]
+        debug: ['']
       fail-fast: false
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: &test-runs-on ${{ matrix.os }}-latest
     timeout-minutes: 15
 
-    continue-on-error: >-
+    continue-on-error: &test-continue-on-error >-
       ${{
         endsWith(matrix.pyver, '-dev')
         && true
         || false
       }}
 
-    steps:
+    steps: &test-steps
     - name: Determine build type
       id: build_type
       run: |
@@ -252,7 +249,13 @@ jobs:
       if: steps.build_type.outputs.build_type == 'wheel'
       uses: actions/download-artifact@v8
       with:
-        pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
+        # `test-without-cibuildwheel` starts before the wheel builds finish,
+        # so it takes only the pure-python wheel instead of whichever
+        # platform wheels happen to be uploaded already.
+        pattern: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}${{
+            github.job == 'test' && '*' || ''
+          }}
         merge-multiple: true
         path: dist
 
@@ -407,10 +410,36 @@ jobs:
         && exit 1
       shell: bash
     - name: Prepare coverage artifact
-      # combining Linux and Windows paths is tricky, left this exercise for
-      # others multidict has no Windows or macOS specific code paths anyway
-      if: ${{ matrix.os == 'ubuntu' }}
       uses: aio-libs/prepare-coverage@v24.9.2
+
+  test-without-cibuildwheel:
+    name: *test-name
+    # Debug legs build from source and pure-python legs install the
+    # pure-python wheel, so neither waits for the cibuildwheel jobs.
+    needs:
+    - build-pure-python-dists  # transitive, for accessing settings
+    - pre-setup  # transitive, for accessing settings
+    strategy:
+      matrix:
+        pyver: *test-pyvers
+        no-extensions: ['', 'Y']
+        os: [ubuntu]
+        debug: ['', 'Y']
+        exclude:
+        - no-extensions: ''
+          debug: ''
+        - no-extensions: Y
+          debug: Y
+        include:
+        - pyver: pypy-3.10
+          no-extensions: Y
+          os: ubuntu
+          debug: ''
+      fail-fast: false
+    runs-on: *test-runs-on
+    timeout-minutes: 15
+    continue-on-error: *test-continue-on-error
+    steps: *test-steps
 
 
   benchmark:
@@ -776,6 +805,7 @@ jobs:
     - lint
     - pre-setup  # transitive, for accessing settings
     - test
+    - test-without-cibuildwheel
     - benchmark
     - hypothesis-gil
     - hypothesis-freethreading
