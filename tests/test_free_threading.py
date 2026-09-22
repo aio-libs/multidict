@@ -1,9 +1,10 @@
 import threading
 import traceback
+from typing import cast
 
 import pytest
 
-from multidict import CIMultiDict, MultiDict, MutableMultiMapping
+from multidict import CIMultiDict, MultiDict, MutableMultiMapping, getversion
 
 
 @pytest.mark.c_extension
@@ -149,3 +150,55 @@ def test_race_condition_extend_vs_source_mutation(
     # snapshot must have seen at least those.
     assert sizes
     assert min(sizes) >= 64
+
+
+@pytest.mark.c_extension
+def test_race_condition_getversion_vs_mutation(
+    any_multidict_class: type[CIMultiDict[str] | MultiDict[str]],
+) -> None:
+    """getversion() reads ``md->version`` without taking the object's
+    critical section, so it races a writer bumping that same field under
+    the lock on every mutation. Exercises the atomic relaxed load/store
+    pair backing ``md->version``, the same pattern ``len()`` already uses
+    for the lock-free read of ``md->used``.
+    """
+    if getattr(any_multidict_class, "__module__", "").endswith("_multidict_py"):
+        pytest.skip("Test is only applicable to the C extension")
+
+    md: MutableMultiMapping[str] = any_multidict_class()
+    md["k"] = "v0"
+
+    stop = threading.Event()
+    errors: list[str] = []
+    seen: list[int] = []
+
+    def writer() -> None:
+        for i in range(4000):
+            md["k"] = f"v{i}"
+        stop.set()
+
+    def reader() -> None:
+        last = -1
+        try:
+            while not stop.is_set():
+                version = getversion(cast("MultiDict[object]", md))
+                if version < last:
+                    errors.append(f"version went backwards: {last} -> {version}")
+                last = version
+                seen.append(version)
+        except Exception as e:  # pragma: no cover
+            errors.append(f"{type(e).__name__}: {e}")
+
+    threads = [threading.Thread(target=reader) for _ in range(3)]
+    threads.append(threading.Thread(target=writer))
+
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    # A relaxed atomic load on a single object is still totally ordered
+    # with every store to it, so a reader must never observe the version
+    # go backwards even though it can see stale values.
+    assert not errors, f"Unexpected errors during concurrent execution: {errors}"
+    assert seen

@@ -1,0 +1,6 @@
+Fixed a data race on the free-threaded build of the C extension where a
+``MultiDict``'s own version counter was read by
+:func:`~multidict.getversion` and written on every mutation with a plain,
+non-atomic load and store. Both sides now use a relaxed atomic
+load/store, matching the pattern already used for the object's item
+count -- by :user:`asvetlov`.
