@@ -356,8 +356,20 @@ pytest -q
 
 # Pure Python
 MULTIDICT_NO_EXTENSIONS=1 pip install -e . --force-reinstall --no-deps
-pytest -q
+MULTIDICT_NO_EXTENSIONS=1 pytest -q --no-c-extensions
 ```
+
+The pure-Python leg needs both of those, for two separate reasons.
+`MULTIDICT_NO_EXTENSIONS` is read by `multidict/_compat.py` on every
+import, not just at install time, so it has to be set for the test run
+as well to make `import multidict` resolve to `_multidict_py`. It does
+not affect test selection, though: the C-extension half of the matrix
+in `tests/conftest.py` is parametrised with a `c_extension` marker, and
+only `--no-c-extensions` deselects it. Those tests import
+`multidict._multidict` directly, so without the flag they either fail
+with `ModuleNotFoundError` when no extension has been built, or, worse,
+quietly run against a stale `.so` left in the tree by an earlier
+C-extension install and report a pass that means nothing.
 
 `make lint` runs the full pre-commit suite across the tree;
 `make cov-dev` runs the suite with coverage.
