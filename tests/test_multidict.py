@@ -2302,6 +2302,7 @@ def test_replace_many_duplicates_releases_all(
     assert all(r() is None for r in refs)
 
 
+@pytest.mark.skipif(IS_PYPY, reason="gc thresholds are not supported on PyPy")
 @pytest.mark.parametrize("method", ["getall", "popall"])
 def test_getall_popall_gc_finalizer_mutates(
     any_multidict_class: type[MultiDict[int]], method: str
