@@ -366,13 +366,32 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
 static inline uint64_t
 atomic_load_uint64_relaxed(const uint64_t* obj)
 {
+#if SIZEOF_VOID_P == 8
     return *(volatile const uint64_t*)obj;
+#else
+    /* 32-bit x86: a plain 64-bit load is two 32-bit accesses and can tear.
+       A no-op compare-exchange reads the current value atomically instead:
+       it only ever writes back what was already there. */
+    return (uint64_t)_InterlockedCompareExchange64(
+        (volatile __int64*)obj, 0, 0);
+#endif
 }
 
 static inline void
 atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
 {
+#if SIZEOF_VOID_P == 8
     *(volatile uint64_t*)obj = value;
+#else
+    /* 32-bit x86 has no _InterlockedExchange64; retry a compare-exchange
+       against whatever is currently there until it sticks, same technique
+       as atomic_fetch_add_uint64_relaxed() above. */
+    __int64 initial;
+    do {
+        initial = *(volatile __int64*)obj;
+    } while (_InterlockedCompareExchange64(
+                 (volatile __int64*)obj, (__int64)value, initial) != initial);
+#endif
 }
 
 #define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \

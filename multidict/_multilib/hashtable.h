@@ -1729,7 +1729,10 @@ restart:;
             atomic_store_uint64_relaxed(&md->version, version);
             _md_del_at(md, iter.slot, entry);
             // the decref can run a __del__ that lets another thread resize
-            if (UNLIKELY(md->keys != keys || md->version != version)) {
+            // and bump the version through the atomic store above, so this
+            // side of the comparison must be an atomic load too
+            if (UNLIKELY(md->keys != keys || atomic_load_uint64_relaxed(
+                                                 &md->version) != version)) {
                 goto restart;
             }
         }
