@@ -430,7 +430,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 /*
 Internal routine used by ht_resize() to build a hashtable of entries.
 */
-static inline int
+static inline void
 htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
 {
     size_t mask = htkeys_mask(keys);
@@ -451,7 +451,6 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
         }
         htkeys_set_index(keys, i, ix);
     }
-    return 0;
 }
 
 /* Uses keys, mask, i and perturb from the caller and returns. */
