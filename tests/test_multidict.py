@@ -3208,6 +3208,41 @@ def test_non_typeerror_exceptions_are_not_swallowed() -> None:
     assert md != [("a", "1")]
 
 
+@pytest.mark.parametrize("method", ("extend", "update", "merge"))
+def test_sizing_argument_does_not_swallow_exceptions(
+    any_multidict_class: type[MutableMultiMapping[str]], method: str
+) -> None:
+    """Estimating the size of the positional argument must not discard a
+    ``MemoryError`` or ``KeyboardInterrupt`` raised by its ``__len__``."""
+
+    class BadLen:
+        def __len__(self) -> int:
+            raise MemoryError("boom")
+
+    md = any_multidict_class()
+    with pytest.raises(MemoryError):
+        getattr(md, method)(BadLen())
+
+
+@pytest.mark.parametrize("method", ("extend", "update", "merge"))
+def test_unusable_length_hint_is_ignored(
+    any_multidict_class: type[MutableMultiMapping[str]], method: str
+) -> None:
+    """A ``__length_hint__`` that is not an integer costs only the
+    preallocation estimate; the argument is still consumed."""
+
+    class BadHint:
+        def __iter__(self) -> Iterator[tuple[str, str]]:
+            return iter([("a", "1")])
+
+        def __length_hint__(self) -> str:
+            return "not an int"
+
+    md = any_multidict_class()
+    getattr(md, method)(BadHint())
+    assert list(md.items()) == [("a", "1")]
+
+
 @pytest.mark.parametrize(
     "probe",
     ([], ["key"], ["key", "one", "extra"], ["nope", "one"], ["key", "nope"]),
