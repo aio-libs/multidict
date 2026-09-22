@@ -1,0 +1,6 @@
+The CI test matrix stopped re-testing the macOS and Windows wheels that
+cibuildwheel had already tested. Cibuildwheel also stopped running the benchmark
+bodies and, outside release tags, limited Rosetta testing to the ``cp314`` and
+``cp314t`` x86_64 macOS wheels. Debug and pure-Python test jobs started without
+waiting for the wheel builds, and the ``windows-11-arm`` wheel build was again
+limited to release tags -- by :user:`asvetlov`.
