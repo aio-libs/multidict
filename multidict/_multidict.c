@@ -1916,7 +1916,7 @@ getversion(PyObject* self, PyObject* arg)
         PyErr_Format(PyExc_TypeError, "unexpected type");
         return NULL;
     }
-    return PyLong_FromUnsignedLong(md_version(md));
+    return PyLong_FromUnsignedLong(load_version(md));
 }
 
 /******************** Module ********************/

@@ -374,7 +374,12 @@ _unicode_hash(PyObject* o)
 {
     assert(PyUnicode_CheckExact(o));
     PyASCIIObject* ascii = (PyASCIIObject*)o;
+    /* Another thread may be filling in the cached hash concurrently. */
+#ifdef Py_GIL_DISABLED
     Py_hash_t hash = atomic_load_ssize_relaxed(&ascii->hash);
+#else
+    Py_hash_t hash = ascii->hash;
+#endif
     if (hash == -1) {
         hash = PyUnicode_Type.tp_hash(o);
         if (hash == -1) {
