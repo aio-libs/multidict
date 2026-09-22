@@ -22,6 +22,7 @@ extern "C" {
 #include "identity.h"
 #include "istr.h"
 #include "md_debug.h"
+#include "reflist.h"
 #include "state.h"
 #include "update_marks.h"
 
@@ -533,7 +534,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
        comparing the raw pointer alone (see _md_replace()'s and
        _md_update()'s comments) needs a companion signal that can't
        coincidentally repeat. */
-    md->version = NEXT_VERSION(md->state);
+    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
 
     /* Ownership of oldkeys's entries has already moved to newkeys via
        the memcpy/copy loop above; zeroing nentries tells
@@ -671,7 +672,7 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
 #else
     md->used = 0;
 #endif
-    md->version = NEXT_VERSION(md->state);
+    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
 #ifdef Py_GIL_DISABLED
     _md_store_keys(md, new_keys);
 #else
@@ -722,7 +723,8 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 #else
     md->used = used;
 #endif
-    md->version = NEXT_VERSION(md->state);  // never reuse other's version
+    atomic_store_uint64_relaxed(
+        &md->version, NEXT_VERSION(md->state));  // never reuse other's version
     md->is_ci = is_ci;
 #ifdef Py_GIL_DISABLED
     _md_store_keys(md, keys);
@@ -774,7 +776,7 @@ _md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
     entry->hash = hash;
 #endif
 
-    md->version = NEXT_VERSION(md->state);
+    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
 #ifdef Py_GIL_DISABLED
     _md_add_used(md, 1);
 #else
@@ -834,7 +836,7 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     entry->hash = hash;
 #endif
 
-    md->version = NEXT_VERSION(md->state);
+    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
 #ifdef Py_GIL_DISABLED
     _md_add_used(md, 1);
 #else
@@ -1028,10 +1030,13 @@ md_del(MultiDictObject* md, PyObject* key)
 
     bool found = false;
 
+restart:;
+    htkeys_t* keys = md->keys;
+    uint64_t version = md->version;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    htkeysiter_init(&iter, keys, hash);
 
-    entry_t* entries = htkeys_entries(md->keys);
+    entry_t* entries = htkeys_entries(keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1047,13 +1052,17 @@ md_del(MultiDictObject* md, PyObject* key)
 
         found = true;
         _md_del_at(md, iter.slot, entry);
+        // the decref can run a __del__ that lets another thread resize
+        if (UNLIKELY(md->keys != keys || md->version != version)) {
+            goto restart;
+        }
     }
 
     if (!found) {
         PyErr_SetObject(PyExc_KeyError, key);
         goto fail;
     } else {
-        md->version = NEXT_VERSION(md->state);
+        atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
     }
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
@@ -1066,7 +1075,7 @@ fail:
 static inline uint64_t
 md_version(MultiDictObject* md)
 {
-    return md->version;
+    return atomic_load_uint64_relaxed(&md->version);
 }
 
 static inline void
@@ -1664,7 +1673,7 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
             _md_del_at(md, iter.slot, entry);
             Py_DECREF(identity);
             *ret = value;
-            md->version = NEXT_VERSION(md->state);
+            atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
             ASSERT_CONSISTENT(md, false);
             return 1;
         }
@@ -1678,14 +1687,13 @@ fail:
     return -1;
 }
 
+// Caller holds md's critical section
 static inline int
-md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+_md_pop_all_locked(MultiDictObject* md, PyObject* key, reflist_t* values)
 {
-    PyObject* lst = NULL;
-
     PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
-        goto fail;
+        return -1;
     }
 
     Py_hash_t hash = _unicode_hash(identity);
@@ -1698,9 +1706,11 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         return 0;
     }
 
+restart:;
+    htkeys_t* keys = md->keys;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
-    entry_t* entries = htkeys_entries(md->keys);
+    htkeysiter_init(&iter, keys, hash);
+    entry_t* entries = htkeys_entries(keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1712,30 +1722,48 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
             continue;
         }
         if (_str_cmp(identity, entry->identity)) {
-            if (lst == NULL) {
-                lst = PyList_New(1);
-                if (lst == NULL) {
-                    goto fail;
-                }
-                if (PyList_SetItem(lst, 0, Py_NewRef(entry->value)) < 0) {
-                    goto fail;
-                }
-            } else if (PyList_Append(lst, entry->value) < 0) {
+            if (reflist_push(values, Py_NewRef(entry->value)) < 0) {
                 goto fail;
             }
+            uint64_t version = NEXT_VERSION(md->state);
+            atomic_store_uint64_relaxed(&md->version, version);
             _md_del_at(md, iter.slot, entry);
-            md->version = NEXT_VERSION(md->state);
+            // the decref can run a __del__ that lets another thread resize
+            // and bump the version through the atomic store above, so this
+            // side of the comparison must be an atomic load too
+            if (UNLIKELY(md->keys != keys || atomic_load_uint64_relaxed(
+                                                 &md->version) != version)) {
+                goto restart;
+            }
         }
     }
 
-    *ret = lst;
     Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
-    return lst != NULL;
+    return 0;
 fail:
-    Py_XDECREF(identity);
-    Py_XDECREF(lst);
+    Py_DECREF(identity);
     return -1;
+}
+
+static inline int
+md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    reflist_t values;
+    reflist_init(&values);
+    int tmp;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    tmp = _md_pop_all_locked(md, key, &values);
+    Py_END_CRITICAL_SECTION();
+    if (tmp < 0) {
+        reflist_clear(&values);
+        return -1;
+    }
+    if (values.size == 0) {
+        return 0;
+    }
+    *ret = reflist_to_list(&values);
+    return *ret != NULL ? 1 : -1;
 }
 
 static inline PyObject*
@@ -1772,7 +1800,7 @@ md_pop_item(MultiDictObject* md)
     for (; iter.index != pos; htkeysiter_next(&iter)) {
     }
     _md_del_at(md, iter.slot, entry);
-    md->version = NEXT_VERSION(md->state);
+    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
     ASSERT_CONSISTENT(md, false);
     return ret;
 }
@@ -1868,7 +1896,7 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
         if (!found) {
             return _md_add_with_hash(md, hash, identity, key, value);
         }
-        md->version = NEXT_VERSION(md->state);
+        atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
         return 0;
     }
 }
@@ -2166,7 +2194,7 @@ md_post_update(MultiDictObject* md, deferred_decref_t* defer,
     if (defer != NULL) {
         ret = _md_post_update_deleted(md, defer, marks);
     }
-    md->version = NEXT_VERSION(md->state);
+    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
     ASSERT_CONSISTENT(md, false);
     return ret;
 }
@@ -2918,7 +2946,7 @@ md_clear(MultiDictObject* md)
     if (md->keys == NULL || md->keys == &empty_htkeys) {
         return 0;
     }
-    md->version = NEXT_VERSION(md->state);
+    atomic_store_uint64_relaxed(&md->version, NEXT_VERSION(md->state));
 
     // Publish the empty table before releasing any entry's reference: a
     // decref below may run arbitrary Python code (a __del__), which can

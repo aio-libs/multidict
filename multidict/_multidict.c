@@ -425,12 +425,7 @@ multidict_getall(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
-    int tmp;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    tmp = md_get_all(self, key, &list);
-    ASSERT_CONSISTENT(self, false);
-    Py_END_CRITICAL_SECTION();
-    if (tmp < 0) {
+    if (md_get_all(self, key, &list) < 0) {
         return NULL;
     }
 
@@ -1036,12 +1031,7 @@ multidict_popall(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
-    int tmp;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    tmp = md_pop_all(self, key, &ret_val);
-    ASSERT_CONSISTENT(self, false);
-    Py_END_CRITICAL_SECTION();
-    if (tmp < 0) {
+    if (md_pop_all(self, key, &ret_val) < 0) {
         return NULL;
     }
 

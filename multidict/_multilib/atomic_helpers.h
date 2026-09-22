@@ -76,6 +76,18 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
     return __atomic_fetch_add(obj, value, __ATOMIC_RELAXED);
 }
 
+static inline uint64_t
+atomic_load_uint64_relaxed(const uint64_t* obj)
+{
+    return __atomic_load_n(obj, __ATOMIC_RELAXED);
+}
+
+static inline void
+atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
+{
+    __atomic_store_n(obj, value, __ATOMIC_RELAXED);
+}
+
 #define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
     static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
         const int##bits##_t* obj)                                            \
@@ -181,6 +193,20 @@ static inline uint64_t
 atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
 {
     return atomic_fetch_add_explicit(
+        (_Atomic(uint64_t)*)obj, value, memory_order_relaxed);
+}
+
+static inline uint64_t
+atomic_load_uint64_relaxed(const uint64_t* obj)
+{
+    return atomic_load_explicit((const _Atomic(uint64_t)*)obj,
+                                memory_order_relaxed);
+}
+
+static inline void
+atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
+{
+    atomic_store_explicit(
         (_Atomic(uint64_t)*)obj, value, memory_order_relaxed);
 }
 
@@ -337,6 +363,37 @@ atomic_fetch_add_uint64_relaxed(uint64_t* obj, uint64_t value)
 #endif
 }
 
+static inline uint64_t
+atomic_load_uint64_relaxed(const uint64_t* obj)
+{
+#if SIZEOF_VOID_P == 8
+    return *(volatile const uint64_t*)obj;
+#else
+    /* 32-bit x86: a plain 64-bit load is two 32-bit accesses and can tear.
+       A no-op compare-exchange reads the current value atomically instead:
+       it only ever writes back what was already there. */
+    return (uint64_t)_InterlockedCompareExchange64(
+        (volatile __int64*)obj, 0, 0);
+#endif
+}
+
+static inline void
+atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
+{
+#if SIZEOF_VOID_P == 8
+    *(volatile uint64_t*)obj = value;
+#else
+    /* 32-bit x86 has no _InterlockedExchange64; retry a compare-exchange
+       against whatever is currently there until it sticks, same technique
+       as atomic_fetch_add_uint64_relaxed() above. */
+    __int64 initial;
+    do {
+        initial = *(volatile __int64*)obj;
+    } while (_InterlockedCompareExchange64(
+                 (volatile __int64*)obj, (__int64)value, initial) != initial);
+#endif
+}
+
 #define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
     static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
         const int##bits##_t* obj)                                            \
@@ -396,6 +453,18 @@ static inline Py_ssize_t
 atomic_load_ssize_relaxed(const Py_ssize_t* obj)
 {
     return *obj;
+}
+
+static inline uint64_t
+atomic_load_uint64_relaxed(const uint64_t* obj)
+{
+    return *obj;
+}
+
+static inline void
+atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
+{
+    *obj = value;
 }
 
 #endif /* Py_GIL_DISABLED */
