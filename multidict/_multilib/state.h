@@ -37,14 +37,6 @@ get_mod_state(PyObject* mod)
     return state;
 }
 
-static inline mod_state*
-get_mod_state_by_cls(PyTypeObject* cls)
-{
-    mod_state* state = (mod_state*)PyType_GetModuleState(cls);
-    assert(state != NULL);
-    return state;
-}
-
 #if PY_VERSION_HEX < 0x030b0000
 PyObject*
 PyType_GetModuleByDef(PyTypeObject* tp, PyModuleDef* def)
