@@ -2303,20 +2303,12 @@ def test_replace_many_duplicates_releases_all(
 
 
 @pytest.mark.c_extension
-@pytest.mark.skipif(
-    hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled(),
-    reason=(
-        "hits a separate, pre-existing bug on free-threaded builds "
-        "(stale cached entries/iterator in md_del()/md_pop_all(), "
-        "unrelated to this fix) -- see aio-libs/multidict#1492"
-    ),
-)
-def test_del_pop_vs_update_same_key_gil_build_thread_safety() -> None:
-    """Regression for #1489 (GIL-build __delitem__/pop()/popall()):
-    _md_del_at() now finishes table bookkeeping before any decref, so a
-    __del__-triggered GIL release can't expose a half-deleted entry.
-    Each worker re-sets the key after removing it, so it's always
-    present at join regardless of interleaving."""
+def test_del_pop_vs_update_same_key_thread_safety() -> None:
+    """Regression for #1489 and #1492 (__delitem__/pop()/popall()): a
+    __del__ run mid-walk used to let a concurrent resize free the table
+    md_del() was still iterating. Each worker re-sets the key after
+    removing it, so it's always present at join regardless of
+    interleaving."""
 
     class Evil:
         def __init__(self, n: int) -> None:

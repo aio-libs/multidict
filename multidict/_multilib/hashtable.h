@@ -1028,10 +1028,13 @@ md_del(MultiDictObject* md, PyObject* key)
 
     bool found = false;
 
+restart:;
+    htkeys_t* keys = md->keys;
+    uint64_t version = md->version;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    htkeysiter_init(&iter, keys, hash);
 
-    entry_t* entries = htkeys_entries(md->keys);
+    entry_t* entries = htkeys_entries(keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1047,6 +1050,10 @@ md_del(MultiDictObject* md, PyObject* key)
 
         found = true;
         _md_del_at(md, iter.slot, entry);
+        // the decref can run a __del__ that lets another thread resize
+        if (UNLIKELY(md->keys != keys || md->version != version)) {
+            goto restart;
+        }
     }
 
     if (!found) {
@@ -1698,9 +1705,11 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         return 0;
     }
 
+restart:;
+    htkeys_t* keys = md->keys;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
-    entry_t* entries = htkeys_entries(md->keys);
+    htkeysiter_init(&iter, keys, hash);
+    entry_t* entries = htkeys_entries(keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1723,8 +1732,13 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
             } else if (PyList_Append(lst, entry->value) < 0) {
                 goto fail;
             }
+            uint64_t version = NEXT_VERSION(md->state);
+            md->version = version;
             _md_del_at(md, iter.slot, entry);
-            md->version = NEXT_VERSION(md->state);
+            // the decref can run a __del__ that lets another thread resize
+            if (UNLIKELY(md->keys != keys || md->version != version)) {
+                goto restart;
+            }
         }
     }
 
