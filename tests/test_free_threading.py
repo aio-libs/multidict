@@ -58,7 +58,7 @@ def test_race_condition_iterator_vs_mutation(
                 # what makes an unlocked consistency check observable.
                 target.getall(f"k-{i % 64}", None)
                 target.get(f"k-{i % 64}", None)
-            except RuntimeError:
+            except RuntimeError:  # pragma: no cover
                 # "MultiDict changed during iteration" is exactly the expected
                 # and memory-safe outcome when iterating a resizing dictionary.
                 pass
@@ -194,7 +194,7 @@ def test_race_condition_getversion_vs_mutation(
         try:
             for _ in range(20_000):
                 version = getversion(cast("MultiDict[object]", md))
-                if version < last:
+                if version < last:  # pragma: no cover
                     errors.append(f"version went backwards: {last} -> {version}")
                 last = version
                 seen.append(version)
