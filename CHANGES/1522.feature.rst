@@ -1,0 +1,4 @@
+Sped up ``CIMultiDict`` operations keyed by a plain ``str`` in the C
+extension. An all-ASCII key is now lowered directly instead of through a
+``str.lower()`` call, and a key that is already lowercase becomes its own
+identity, which saves both a copy and a rehash -- by :user:`asvetlov`.

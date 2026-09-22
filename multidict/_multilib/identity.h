@@ -59,11 +59,61 @@ _key_to_identity(mod_state* state, PyObject* key)
     return NULL;
 }
 
+/* Index of the first ASCII uppercase byte in s[0:len], or len if there is
+   none. */
+ALWAYS_INLINE static inline Py_ssize_t
+_ascii_find_upper(const Py_UCS1* s, Py_ssize_t len)
+{
+    for (Py_ssize_t i = 0; i < len; i++) {
+        if (s[i] >= 'A' && s[i] <= 'Z') {
+            return i;
+        }
+    }
+    return len;
+}
+
+/* Lowercase an all-ASCII string into a fresh exact str, given the index of
+   its first uppercase byte.  str.lower() routes ASCII through
+   ascii_upper_or_lower(), which is PyUnicode_New(len, 127) filled by
+   Py_TOLOWER() per byte, so this is byte-identical to it. */
+static inline PyObject*
+_ascii_lower(const Py_UCS1* data, Py_ssize_t len, Py_ssize_t pos)
+{
+    /* PyUnicode_New(0, 127) hands back the shared empty string; writing into
+       it would corrupt a singleton.  Unreachable: a zero-length key has no
+       uppercase byte, so the caller reuses it instead of calling here. */
+    assert(pos < len);
+    PyObject* ret = PyUnicode_New(len, 127);
+    if (ret == NULL) {
+        return NULL;
+    }
+    Py_UCS1* dst = (Py_UCS1*)PyUnicode_DATA(ret);
+    memcpy(dst, data, (size_t)pos);
+    for (Py_ssize_t i = pos; i < len; i++) {
+        dst[i] = (Py_UCS1)Py_TOLOWER(data[i]);
+    }
+    return ret;
+}
+
 static inline PyObject*
 _ci_key_to_identity(mod_state* state, PyObject* key)
 {
     if (IStr_Check(state, key)) {
         return Py_NewRef(((istrobject*)key)->canonical);
+    }
+    /* Exact str only: a str subclass may override lower(), and callers rely
+       on the override running. */
+    if (PyUnicode_CheckExact(key) && PyUnicode_IS_ASCII(key)) {
+        Py_ssize_t len = PyUnicode_GET_LENGTH(key);
+        const Py_UCS1* data = (const Py_UCS1*)PyUnicode_DATA(key);
+        Py_ssize_t pos = _ascii_find_upper(data, len);
+        if (pos == len) {
+            /* The key already is its own identity, so reuse it: no copy, and
+               _unicode_hash() gets the key's cached hash instead of hashing
+               a fresh string. */
+            return Py_NewRef(key);
+        }
+        return _ascii_lower(data, len, pos);
     }
     if (PyUnicode_Check(key)) {
         PyObject* ret = PyObject_CallMethodNoArgs(key, state->str_lower);
