@@ -90,20 +90,44 @@ Importing the capsule
    was shipped with, and fails instead of reading past the end of an
    older, smaller struct.
 
+Thread safety
+=============
+
+Most functions below carry a **Thread safety** note, using the same two
+guarantees `CPython's own thread safety documentation
+<https://docs.python.org/3/builtins/threadsafety.html#threadsafety-levels>`_
+uses for :class:`dict`:
+
+- **Atomic** -- the call touches no state shared with any other
+  :class:`~multidict.MultiDict` instance (a type check, a type object
+  lookup, or a freshly allocated object nothing else can see yet), so
+  it needs no synchronization at all.
+- **Safe for concurrent use on the same object** -- the call reads or
+  mutates *self*'s own contents. Concurrent calls on the *same*
+  instance, from any threads, cannot corrupt it or crash, whether
+  through a lock-free read path or *self*'s own internal critical
+  section.
+
 istr
 ====
 
 .. c:function:: PyTypeObject *IStr_GetType(MultiDict_CAPI *capi)
+
+   **Thread safety:** Atomic.
 
    Return a new reference to the :class:`~multidict.istr` type object.
 
 .. c:function:: int IStr_Check(MultiDict_CAPI *capi, PyObject *op)
                  int IStr_CheckExact(MultiDict_CAPI *capi, PyObject *op)
 
+   **Thread safety:** Atomic.
+
    Like :c:func:`MultiDict_Check` / :c:func:`MultiDict_CheckExact`, but
    for :class:`~multidict.istr`.
 
 .. c:function:: PyObject *IStr_FromUnicode(MultiDict_CAPI *capi, PyObject *str)
+
+   **Thread safety:** Atomic.
 
    Return a new reference to an :class:`~multidict.istr` built from
    *str*, or ``NULL`` with an exception set on failure. Equivalent to
@@ -116,6 +140,12 @@ Version counter
 ===============
 
 .. c:function:: uint64_t MultiDict_GetVersion(MultiDict_CAPI *capi, PyObject *self)
+
+   **Thread safety:** Safe for concurrent use on the same object. The
+   counter is read without taking *self*'s lock, so a mutation racing
+   the read may or may not be reflected in the returned value; the
+   read itself never blocks or corrupts state, and it is meant only as
+   a fast change-detection hint, not a precise synchronization point.
 
    Return *self*'s version counter, equivalent to
    :func:`multidict.getversion`. It changes every time *self* is
@@ -136,6 +166,8 @@ Type objects and type checks
                  PyTypeObject *MultiDictProxy_GetType(MultiDict_CAPI *capi)
                  PyTypeObject *CIMultiDictProxy_GetType(MultiDict_CAPI *capi)
 
+   **Thread safety:** Atomic.
+
    Return a new reference to the :class:`~multidict.MultiDict`,
    :class:`~multidict.CIMultiDict`, :class:`~multidict.MultiDictProxy`
    or :class:`~multidict.CIMultiDictProxy` type object.
@@ -144,6 +176,8 @@ Type objects and type checks
                  int CIMultiDict_Check(MultiDict_CAPI *capi, PyObject *op)
                  int MultiDictProxy_Check(MultiDict_CAPI *capi, PyObject *op)
                  int CIMultiDictProxy_Check(MultiDict_CAPI *capi, PyObject *op)
+
+   **Thread safety:** Atomic.
 
    Return true if *op* is an instance of the corresponding type or one
    of its subclasses. Since :class:`~multidict.CIMultiDict` is a
@@ -158,6 +192,8 @@ Type objects and type checks
                  int MultiDictProxy_CheckExact(MultiDict_CAPI *capi, PyObject *op)
                  int CIMultiDictProxy_CheckExact(MultiDict_CAPI *capi, PyObject *op)
 
+   **Thread safety:** Atomic.
+
    Like the ``_Check`` variants above, but return true only if *op*'s
    type is exactly the corresponding type, not a subclass.
 
@@ -166,6 +202,8 @@ Constructors
 
 .. c:function:: PyObject *MultiDict_New(MultiDict_CAPI *capi, Py_ssize_t prealloc_size)
                  PyObject *CIMultiDict_New(MultiDict_CAPI *capi, Py_ssize_t prealloc_size)
+
+   **Thread safety:** Atomic.
 
    Return a new, empty :class:`~multidict.MultiDict` or
    :class:`~multidict.CIMultiDict` instance, or ``NULL`` with an
@@ -176,6 +214,10 @@ Constructors
 
 .. c:function:: PyObject *MultiDictProxy_New(MultiDict_CAPI *capi, PyObject *arg)
 
+   **Thread safety:** Atomic. The only touch on *arg* itself is a new
+   reference (an atomic refcount increment); *arg*'s hash table is
+   never read.
+
    Return a new :class:`~multidict.MultiDictProxy` wrapping *arg*, or
    ``NULL`` with an exception set on failure. *arg* may be a
    :class:`~multidict.MultiDict`, :class:`~multidict.CIMultiDict`,
@@ -185,6 +227,9 @@ Constructors
    ``MultiDictProxy(arg)``.
 
 .. c:function:: PyObject *CIMultiDictProxy_New(MultiDict_CAPI *capi, PyObject *arg)
+
+   **Thread safety:** Atomic, for the same reason as
+   :c:func:`MultiDictProxy_New`.
 
    Same as :c:func:`MultiDictProxy_New`, but returns a
    :class:`~multidict.CIMultiDictProxy` and only accepts a
@@ -197,6 +242,9 @@ Item access
 
 .. c:function:: Py_ssize_t MultiDict_Size(MultiDict_CAPI *capi, PyObject *self)
 
+   **Thread safety:** Atomic. A lock-free relaxed read of *self*'s item
+   count.
+
    Return the number of items in *self*, equivalent to ``len(self)``.
 
    *self* may be a :class:`~multidict.MultiDict`,
@@ -206,6 +254,8 @@ Item access
 
 .. c:function:: int MultiDict_Contains(MultiDict_CAPI *capi, PyObject *self, PyObject *key)
 
+   **Thread safety:** Safe for concurrent use on the same object.
+
    Return ``1`` if *key* is in *self*, ``0`` if not, or ``-1`` with an
    exception set on failure (including when *self* is not a
    :class:`~multidict.MultiDict`, :class:`~multidict.CIMultiDict`,
@@ -214,6 +264,8 @@ Item access
    ``key in self``.
 
 .. c:function:: int MultiDict_GetItem(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject **result)
+
+   **Thread safety:** Safe for concurrent use on the same object.
 
    Look up the *first* value for *key* in *self*, equivalent to
    ``self[key]``. Return ``1`` and set ``*result`` to a new reference to
@@ -228,12 +280,16 @@ Item access
 
 .. c:function:: int MultiDict_Add(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject *value)
 
+   **Thread safety:** Safe for concurrent use on the same object.
+
    Append the ``(key, value)`` pair to *self*, equivalent to
    :meth:`~multidict.MultiDict.add`. Return ``0`` on
    success, ``-1`` with an exception set on failure (including when
    *self* is not a :class:`~multidict.MultiDict` instance).
 
 .. c:function:: int MultiDict_Clear(MultiDict_CAPI *capi, PyObject *self)
+
+   **Thread safety:** Safe for concurrent use on the same object.
 
    Remove all items from *self*, equivalent to
    :meth:`~multidict.MultiDict.clear`. Return ``0``
@@ -242,6 +298,8 @@ Item access
 
 .. c:function:: int MultiDict_DelItem(MultiDict_CAPI *capi, PyObject *self, PyObject *key)
 
+   **Thread safety:** Safe for concurrent use on the same object.
+
    Remove every item in *self* whose key is *key*, equivalent to ``del
    self[key]``. Return ``0`` on success, ``-1`` with :exc:`KeyError`
    set if *key* is not in *self*, or with another exception set on
@@ -249,6 +307,8 @@ Item access
    :class:`~multidict.MultiDict` instance).
 
 .. c:function:: int MultiDict_Pop(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject **result)
+
+   **Thread safety:** Safe for concurrent use on the same object.
 
    Remove *key* from *self*, equivalent to ``self.pop(key)`` with no
    default. Return ``1`` and set ``*result`` to a
@@ -259,6 +319,8 @@ Item access
    is not a :class:`~multidict.MultiDict` instance).
 
 .. c:function:: int MultiDict_SetDefault(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject *default_value, PyObject **result)
+
+   **Thread safety:** Safe for concurrent use on the same object.
 
    Equivalent to ``self.setdefault(key, default_value)``, except
    *default_value* is required here (the Python method defaults it to
@@ -271,6 +333,8 @@ Item access
    :class:`~multidict.MultiDict` instance).
 
 .. c:function:: int MultiDict_SetItem(MultiDict_CAPI *capi, PyObject *self, PyObject *key, PyObject *value)
+
+   **Thread safety:** Safe for concurrent use on the same object.
 
    Replace every item in *self* whose key is *key* with the single
    ``(key, value)`` pair, adding it if *key* is not present.
@@ -302,6 +366,11 @@ Iteration
    error -- a Python exception must already be set in that case.
 
 .. c:function:: Py_ssize_t MultiDict_ForEach(MultiDict_CAPI *capi, PyObject *self, PyObject *key, MultiDict_ItemVisitor visitor, void *user_data)
+
+   **Thread safety:** Safe for concurrent use on the same object. The
+   whole walk, including every *visitor* call, runs under *self*'s
+   internal critical section; see the note on reentrancy below for the
+   one thing that guarantee does not cover.
 
    Visit items of *self* without building a list. If *key* is
    ``NULL``, call *visitor* once for every ``(key, value)`` pair of

@@ -110,9 +110,11 @@ pyenv
 pyinstaller
 pytest
 pyupgrade
+reentrancy
 reentrant
 refactor
 refactored
+refcount
 regex
 regexs
 repo
