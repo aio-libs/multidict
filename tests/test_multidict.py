@@ -2074,25 +2074,18 @@ def test_get_lock_free_thread_safety() -> None:
     """Concurrent get()/getone()/__getitem__ alongside heavy add()/pop()
     churn must not crash.
 
-    Regression test for the free-threaded build: on CPython 3.14+,
+    Regression test for the free-threaded build:
     get()/getone()/__getitem__ (md_get_one() with pret == NULL) are now
     genuinely lock-free, falling back to a critical section only when a
     candidate entry's identity or value can't be safely referenced
-    (PyUnstable_TryIncRef() fails, or the field changed mid-read). On
-    3.13 -- which has no public API for a third-party extension to
-    safely try-incref an object that might concurrently be reaching
-    refcount zero (PyUnstable_TryIncRef()/PyUnstable_EnableTryIncRef()
-    were only added in 3.14) -- it always takes the critical section,
-    same as before this file added any lock-free reading of entry
-    contents. Either way this must not crash: it drives many entry
-    inserts/deletes concurrently with many get() calls to exercise
-    both the lock-free fast path (3.14+) and the locked fallback
-    (3.13, or a 3.14+ TryIncRef failure). Deliberately uses only
-    add()/pop() on the mutating side, not __setitem__: __setitem__'s
-    replace path has a separate, pre-existing, unrelated race that
-    this test is not about and should not trip. This is a
-    C-extension-only concern: the pure-Python implementation has no
-    locking of its own to regress."""
+    (PyUnstable_TryIncRef() fails, or the field changed mid-read). It
+    drives many entry inserts/deletes concurrently with many get() calls
+    to exercise both the lock-free fast path and the locked fallback.
+    Deliberately uses only add()/pop() on the mutating side, not
+    __setitem__: __setitem__'s replace path has a separate,
+    pre-existing, unrelated race that this test is not about and should
+    not trip. This is a C-extension-only concern: the pure-Python
+    implementation has no locking of its own to regress."""
     d: MultiDict[int] = MultiDict((str(i), i) for i in range(500))
 
     def mutator(n: int) -> None:

@@ -18,10 +18,11 @@ extern "C" {
 /* Each field uses one memory order throughout, so the names do not
    carry one. */
 
-#if PY_VERSION_HEX >= 0x030e0000
-#define _MD_HAVE_TRYINCREF 1
-#else
-#define _MD_HAVE_TRYINCREF 0
+/* 3.13t is the only free-threaded build without PyUnstable_TryIncRef(),
+   and it is unsupported since 6.8.0; the lock-free readers below assume
+   it away. */
+#if defined(Py_GIL_DISABLED) && PY_VERSION_HEX < 0x030e0000
+#error "the free-threaded build requires CPython 3.14 or newer"
 #endif
 
 /*
@@ -93,9 +94,7 @@ load_identity(entry_t* entry)
 static inline void
 publish_identity(entry_t* entry, PyObject* identity)
 {
-#if _MD_HAVE_TRYINCREF
     PyUnstable_EnableTryIncRef(identity);
-#endif
     atomic_store_ptr((void**)&entry->identity, identity);
 }
 
@@ -118,9 +117,7 @@ load_value(entry_t* entry)
 static inline void
 publish_value(entry_t* entry, PyObject* value)
 {
-#if _MD_HAVE_TRYINCREF
     PyUnstable_EnableTryIncRef(value);
-#endif
     atomic_store_ptr((void**)&entry->value, value);
 }
 
@@ -155,7 +152,6 @@ store_hash(entry_t* entry, Py_hash_t hash)
     atomic_store_ssize_relaxed((Py_ssize_t*)&entry->hash, (Py_ssize_t)hash);
 }
 
-#if _MD_HAVE_TRYINCREF
 /* NULL means the caller must fall back to the critical section, which
    includes the case of the field legitimately being NULL. */
 static inline PyObject*
@@ -174,7 +170,6 @@ try_get_ref(PyObject** addr)
     }
     return value;
 }
-#endif /* _MD_HAVE_TRYINCREF */
 
 #else /* Py_GIL_DISABLED */
 

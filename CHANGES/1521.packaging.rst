@@ -1,0 +1,6 @@
+Removed the C extension code path that existed only for free-threaded
+Python 3.13, whose support was dropped in v6.8.0. The free-threaded
+build now requires CPython 3.14 or newer and fails with a clear
+compiler error on older free-threaded interpreters; builds with the GIL
+enabled are unaffected and still go down to Python 3.10
+-- by :user:`asvetlov`.
