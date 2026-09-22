@@ -6,6 +6,7 @@
 #include "_multilib/hashtable.h"
 #include "_multilib/istr.h"
 #include "_multilib/iter.h"
+#include "_multilib/md_debug.h"
 #include "_multilib/parser.h"
 #include "_multilib/pythoncapi_compat.h"
 #include "_multilib/state.h"

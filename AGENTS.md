@@ -54,6 +54,7 @@ Useful entry points:
 | `multidict/_multilib/compiler.h`      | ``UNLIKELY``, ``COLD``, ``ALWAYS_INLINE`` portability macros |
 | `multidict/_multilib/deferred_decref.h` | ``deferred_decref_t``, postpones decrefs until a mutation ends |
 | `multidict/_multilib/htkeys.h`        | key-storage layout, ``estimate_log2_keysize``                   |
+| `multidict/_multilib/md_debug.h`      | ``ASSERT_CONSISTENT``, ``_md_check_consistency``, ``_md_dump`` (debug only) |
 | `multidict/_multilib/istr.h`          | C ``istr`` (case-insensitive str)                               |
 | `multidict/_multilib/iter.h`          | views and iterators for the C impl                              |
 | `multidict/_multilib/parser.h`        | argument parsing for ``extend`` / ``update`` / constructors     |
