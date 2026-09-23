@@ -1,0 +1,8 @@
+Sped up building and dropping multidicts in the C extension by reusing
+freed hash tables instead of returning them to the allocator. Small
+tables are kept in a bounded per-size-class pool held in the module
+state, the way CPython reuses key objects for :class:`dict`. Only on
+builds with the GIL: a shared pool needs an atomic exchange to take a
+table and another to put one back, which measured slower than the
+per-thread allocator a free-threaded build already has
+-- by :user:`asvetlov`.

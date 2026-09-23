@@ -1,0 +1,5 @@
+Added a ``MULTIDICT_NO_FREELIST=1`` build option that stops the C
+extension reusing freed blocks. A reused block never reaches ``free()``,
+so AddressSanitizer can neither poison it nor report a use-after-free on
+it; an instrumented run now wants a second pass with this set, as
+``AGENTS.md`` describes -- by :user:`asvetlov`.
