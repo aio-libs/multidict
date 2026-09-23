@@ -295,12 +295,12 @@ MultiDict_SetItem(void* state_, PyObject* self, PyObject* key, PyObject* value)
 {
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
     int ret;
-    deferred_decref_t defer;
-    deferred_decref_init(&defer);
+    reflist_t defer;
+    reflist_init(&defer);
     Py_BEGIN_CRITICAL_SECTION(self);
     ret = md_replace((MultiDictObject*)self, key, value, &defer);
     Py_END_CRITICAL_SECTION();
-    deferred_decref_release(&defer);
+    reflist_clear(&defer);
     return ret;
 }
 
