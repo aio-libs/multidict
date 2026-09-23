@@ -35,9 +35,15 @@ typedef struct {
 
     uint64_t global_version;
 
-    /* Raw blocks only, so module_traverse() has nothing to visit here;
-       drained by module_clear(). */
+    /* Nothing pooled here holds a reference, so module_traverse() has
+       nothing to visit; all of them are drained by module_clear().
+
+       One pool serves all three view types and one all three iterator
+       types: within a family the types differ only in their methods, so
+       a shell fits any of them. */
     pool_t htkeys_pools[HTKEYS_POOL_CLASSES];
+    pool_t view_pool;
+    pool_t iter_pool;
 } mod_state;
 
 static inline mod_state*

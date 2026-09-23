@@ -1910,6 +1910,10 @@ static void
 drain_pools(mod_state* state)
 {
     htkeys_pools_clear(state->htkeys_pools);
+    /* Callers must drain before releasing the types: PyObject_GC_Del()
+       reads a shell's type to find the start of its allocation. */
+    pool_clear(&state->view_pool, PyObject_GC_Del);
+    pool_clear(&state->iter_pool, PyObject_GC_Del);
 }
 
 /* A warm pool lets an operation run without calling the allocator at
@@ -1975,6 +1979,8 @@ module_exec(PyObject* mod)
     PyObject* tpl = NULL;
 
     htkeys_pools_init(state->htkeys_pools);
+    pool_init(&state->view_pool, POOL_MAX_DEPTH);
+    pool_init(&state->iter_pool, POOL_MAX_DEPTH);
 
     state->str_lower = PyUnicode_InternFromString("lower");
     if (state->str_lower == NULL) {

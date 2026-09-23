@@ -123,6 +123,49 @@ def test_live_multidicts_never_share_storage(
         assert list(md.items()) == [(f"k{i}", f"v{i}")]
 
 
+def test_live_views_and_iterators_never_share_storage(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    """The three view types share a pool, and the three iterator types
+    share another, so a shell has to be handed to one owner at a time."""
+    md = any_multidict_class(_pairs(4))
+    live: list[object] = []
+    for _ in range(ROUNDS):
+        live += [md.keys(), md.items(), md.values()]
+        live += [iter(md), iter(md.keys()), iter(md.items())]
+        if len(live) > 12:
+            del live[:6]
+        assert len({id(obj) for obj in live}) == len(live)
+    assert list(md.items()) == _pairs(4)
+
+
+def test_views_outlive_each_other(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    """Dropping views out of order is what fills a pool unevenly."""
+    md = any_multidict_class(_pairs(3))
+    for _ in range(ROUNDS):
+        keys, items, values = md.keys(), md.items(), md.values()
+        del items
+        assert list(keys) == ["k0", "k1", "k2"]
+        del keys
+        assert list(values) == ["v0", "v1", "v2"]
+        assert list(md.items()) == _pairs(3)
+
+
+def test_iterators_keep_their_place_across_recycling(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    """A recycled iterator must not inherit the position of the last one."""
+    md = any_multidict_class(_pairs(4))
+    for _ in range(ROUNDS):
+        first = iter(md)
+        assert next(first) == "k0"
+        del first
+        second = iter(md)
+        assert list(second) == ["k0", "k1", "k2", "k3"]
+
+
 @pytest.mark.c_extension
 @pytest.mark.skipif(_FREE_THREADED, reason="nothing is pooled on this build")
 @pytest.mark.skipif(not _COUNTS_BLOCKS, reason="allocations are not counted")
