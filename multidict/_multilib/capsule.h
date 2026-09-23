@@ -75,7 +75,7 @@ MultiDict_GetVersion(void* state_, PyObject* self)
 {
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, 0);
-    return md_version(md);
+    return load_version(md);
 }
 
 /* ==== MultiDict / CIMultiDict / proxy type objects ==== */
@@ -306,13 +306,13 @@ MultiDict_SetItem(void* state_, PyObject* self, PyObject* key, PyObject* value)
 
 /* ================= Iteration ================= */
 
-// `visitor` receives borrowed references: md_next/find_next hand back new
+// `visitor` receives borrowed references: md_next/md_walk hand back new
 // references for `k`/`v`, held here for the duration of the visitor call and
 // released right after, so the value cannot be freed out from under the
 // visitor even under Py_GIL_DISABLED -- the critical section held for the
 // whole walk also blocks any other thread from mutating `md` in the
 // meantime. `visitor` must not call back into any method on the multidict
-// being walked: both md_next and find_next compare a version stamped at
+// being walked: both md_next and md_walk compare a version stamped at
 // walk start against `md->version` on every step and raise
 // "MultiDict is changed during iteration" the moment they diverge, so a
 // reentrant mutation aborts the walk with a clear error instead of
@@ -359,39 +359,13 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
     if (identity == NULL) {
         return -1;
     }
-    Py_ssize_t count = 0;
-    bool failed = false;
-    finder_t finder;
+    Py_ssize_t count;
     Py_BEGIN_CRITICAL_SECTION(md);
-    if (finder_init(md, identity, &finder) < 0) {
-        failed = true;
-    } else {
-        PyObject* k;
-        PyObject* v;
-        int found;
-        while ((found = find_next(&finder, &k, &v)) > 0) {
-            count++;
-            int ret = visitor(user_data, k, v);
-            Py_DECREF(k);
-            Py_DECREF(v);
-            if (ret < 0) {
-                assert(PyErr_Occurred());
-                failed = true;
-                break;
-            }
-            if (ret == 0) {
-                break;
-            }
-        }
-        if (found < 0) {
-            failed = true;
-        }
-        finder_cleanup(&finder);
-        ASSERT_CONSISTENT(md, false);
-    }
+    count = md_walk(md, identity, true, visitor, user_data);
+    ASSERT_CONSISTENT(md, false);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
-    return failed ? -1 : count;
+    return count;
 }
 
 static Py_ssize_t
