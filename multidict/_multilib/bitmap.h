@@ -48,7 +48,15 @@ typedef size_t bitmap_word_t;
 #define BITMAP_ONE ((bitmap_word_t)1)
 #define BITMAP_ALL (~(bitmap_word_t)0)
 
-#define BITMAP_INLINE_BYTES 4096
+/* The inline buffer sits in the caller's frame: once in md_walk(), which
+   is always inlined, so it lands in getall(), the views' match collector
+   and the C API's foreach-key; once in md_to_dict(); and twice over
+   inside update_marks_t, on every update(). Past about 1 KB it costs
+   those callers more in the inlining it crowds out than it saves in
+   allocations: dropping it from 4096 takes 2.7% off a getall() that
+   hits, 1.4% off one over a 16384-entry table, and nothing off anything
+   else. */
+#define BITMAP_INLINE_BYTES 1024
 #define BITMAP_DENSE_WORDS 64
 #define BITMAP_INLINE_WORDS (BITMAP_INLINE_BYTES / sizeof(bitmap_word_t))
 #define BITMAP_INLINE_BITS \
