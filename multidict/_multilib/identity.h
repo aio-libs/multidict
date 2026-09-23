@@ -128,12 +128,14 @@ _ascii_lower(const Py_UCS1* data, Py_ssize_t len)
     return ret;
 }
 
-static inline PyObject*
-_ci_key_to_identity(mod_state* state, PyObject* key)
+/* Out of line on purpose.  md_calc_identity() carries this whole function
+   into every md_*() that takes a key, and inlining it there costs more than
+   it saves: the extra size pushes md_contains() and md_next() past the
+   inliner's budget at their own call sites, which slowed keys().isdisjoint()
+   by 31% even on a case-sensitive MultiDict, whose keys never reach here. */
+NOINLINE static PyObject*
+_ci_str_to_identity(mod_state* state, PyObject* key)
 {
-    if (IStr_Check(state, key)) {
-        return Py_NewRef(((istrobject*)key)->canonical);
-    }
     /* Exact str only: a str subclass may override lower(), and callers rely
        on the override running. */
     if (PyUnicode_CheckExact(key) && PyUnicode_IS_ASCII(key)) {
@@ -167,6 +169,15 @@ _ci_key_to_identity(mod_state* state, PyObject* key)
                     "or subclasses of str");
 fail:
     return NULL;
+}
+
+static inline PyObject*
+_ci_key_to_identity(mod_state* state, PyObject* key)
+{
+    if (IStr_Check(state, key)) {
+        return Py_NewRef(((istrobject*)key)->canonical);
+    }
+    return _ci_str_to_identity(state, key);
 }
 
 static inline PyObject*
