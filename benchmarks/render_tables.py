@@ -204,6 +204,19 @@ def main() -> int:
         print(tables)
         return 0
 
+    unbracketed = [
+        path
+        for path, data in ((args.gil_json, gil), (args.ft_json, ft))
+        if not data["metadata"]["bracketed"]
+    ]
+    if unbracketed:
+        raise SystemExit(
+            f"error: {', '.join(unbracketed)} counted the whole process, which "
+            "undercounts every operation that leaves the mapping smaller than "
+            "the baseline arm does. Install pytest-codspeed so the driver can "
+            "bracket the measured region, and collect again."
+        )
+
     with open(args.write) as fp:
         text = fp.read()
     try:
