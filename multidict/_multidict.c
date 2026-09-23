@@ -475,7 +475,6 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
 {
     PyObject* key = NULL;
     PyObject* _default = NULL;
-    bool decref_default = false;
 
     if (parse2("get",
                args,
@@ -488,18 +487,18 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
                &_default) < 0) {
         return NULL;
     }
-    if (_default == NULL) {
-        _default = Py_GetConstant(Py_CONSTANT_NONE);
-        if (_default == NULL) {
-            return NULL;
-        }
-        decref_default = true;
+    PyObject* val = NULL;
+    if (md_get_one(self, key, &val) < 0) {
+        return NULL;
     }
-    PyObject* ret = _multidict_getone(self, key, _default);
-    if (decref_default) {
-        Py_CLEAR(_default);
+    if (val != NULL) {
+        return val;
     }
-    return ret;
+    if (_default != NULL) {
+        return Py_NewRef(_default);
+    }
+    // None is only needed when the key is missing.
+    return Py_GetConstant(Py_CONSTANT_NONE);
 }
 
 static PyObject*
