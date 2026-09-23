@@ -9,6 +9,7 @@ extern "C" {
 #include "hashtable.h"
 #include "md_debug.h"
 #include "state.h"
+#include "unpack.h"
 
 typedef struct {
     PyObject_HEAD
@@ -974,49 +975,40 @@ multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
     PyObject* key = NULL;
     PyObject* value = NULL;
     PyObject* matches = NULL;
+    Py_ssize_t len;
     int tmp;
     int ret = 0;
 
-    if (PyTuple_CheckExact(obj)) {
-        if (PyTuple_GET_SIZE(obj) != 2) {
+    switch (unpack_pair(obj, &key, &value, &len)) {
+        case UNPACK_OK:
+            break;
+        case UNPACK_LENGTH:
             return 0;
-        }
-        key = Py_NewRef(PyTuple_GET_ITEM(obj, 0));
-        value = Py_NewRef(PyTuple_GET_ITEM(obj, 1));
-    } else if (PyList_CheckExact(obj)) {
-        if (PyList_GET_SIZE(obj) != 2) {
-            return 0;
-        }
-        key = _list_getitem_ref(obj, 0);
-        if (_list_item_gone(key)) {
+        case UNPACK_ERROR:
             return -1;
-        }
-        value = _list_getitem_ref(obj, 1);
-        if (_list_item_gone(value)) {
-            Py_DECREF(key);
-            return -1;
-        }
-    } else {
-        tmp = PyObject_Length(obj);
-        if (tmp < 0) {
-            if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
-                return -1;  // propagate MemoryError / KeyboardInterrupt / etc.
+        case UNPACK_OTHER:
+            tmp = PyObject_Length(obj);
+            if (tmp < 0) {
+                if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
+                    // propagate MemoryError / KeyboardInterrupt / etc.
+                    return -1;
+                }
+                PyErr_Clear();
+                return 0;
             }
-            PyErr_Clear();
-            return 0;
-        }
-        if (tmp != 2) {
-            return 0;
-        }
-        key = PySequence_GetItem(obj, 0);
-        if (key == NULL) {
-            return -1;
-        }
-        value = PySequence_GetItem(obj, 1);
-        if (value == NULL) {
-            Py_DECREF(key);  // key is owned here; do not leak it
-            return -1;
-        }
+            if (tmp != 2) {
+                return 0;
+            }
+            key = PySequence_GetItem(obj, 0);
+            if (key == NULL) {
+                return -1;
+            }
+            value = PySequence_GetItem(obj, 1);
+            if (value == NULL) {
+                Py_DECREF(key);  // key is owned here; do not leak it
+                return -1;
+            }
+            break;
     }
 
     identity = md_calc_identity(self->md, key);

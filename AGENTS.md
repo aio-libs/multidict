@@ -58,6 +58,7 @@ Useful entry points:
 | `multidict/_multilib/md_debug.h`      | ``ASSERT_CONSISTENT``, ``_md_check_consistency``, ``_md_dump`` (debug only) |
 | `multidict/_multilib/istr.h`          | C ``istr`` (case-insensitive str)                               |
 | `multidict/_multilib/iter.h`          | views and iterators for the C impl                              |
+| `multidict/_multilib/unpack.h`        | reads a (key, value) pair out of a two-element tuple, list or sequence |
 | `multidict/_multilib/parser.h`        | argument parsing for ``extend`` / ``update`` / constructors     |
 | `multidict/_multilib/pythoncapi_compat.h` | vendored upstream; do not edit                              |
 | `multidict/multidict_capi.h`          | public C API header; client-facing inline wrappers               |

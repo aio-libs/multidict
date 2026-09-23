@@ -21,6 +21,7 @@ extern "C" {
 #include "identity.h"
 #include "md_debug.h"
 #include "reflist.h"
+#include "unpack.h"
 #include "update_marks.h"
 
 typedef enum _UpdateOp {
@@ -529,48 +530,36 @@ _md_parse_item(Py_ssize_t i, PyObject* item, PyObject** pkey,
 {
     Py_ssize_t n;
 
-    if (PyTuple_CheckExact(item)) {
-        n = PyTuple_GET_SIZE(item);
-        if (n != 2) {
+    switch (unpack_pair(item, pkey, pvalue, &n)) {
+        case UNPACK_OK:
+            return 0;
+        case UNPACK_LENGTH:
             _err_bad_length(i, n);
             goto fail;
-        }
-        *pkey = Py_NewRef(PyTuple_GET_ITEM(item, 0));
-        *pvalue = Py_NewRef(PyTuple_GET_ITEM(item, 1));
-    } else if (PyList_CheckExact(item)) {
-        n = PyList_GET_SIZE(item);
-        if (n != 2) {
-            _err_bad_length(i, n);
+        case UNPACK_ERROR:
             goto fail;
-        }
-        *pkey = _list_getitem_ref(item, 0);
-        if (_list_item_gone(*pkey)) {
-            goto fail;
-        }
-        *pvalue = _list_getitem_ref(item, 1);
-        if (_list_item_gone(*pvalue)) {
-            goto fail;
-        }
-    } else {
-        if (!PySequence_Check(item)) {
-            _err_not_sequence(i);
-            goto fail;
-        }
-        n = PySequence_Size(item);
-        if (n != 2) {
-            _err_bad_length(i, n);
-            goto fail;
-        }
-        *pkey = PySequence_ITEM(item, 0);
-        if (*pkey == NULL) {
-            _err_cannot_fetch(i, "key");
-            goto fail;
-        }
-        *pvalue = PySequence_ITEM(item, 1);
-        if (*pvalue == NULL) {
-            _err_cannot_fetch(i, "value");
-            goto fail;
-        }
+        case UNPACK_OTHER:
+            break;
+    }
+
+    if (!PySequence_Check(item)) {
+        _err_not_sequence(i);
+        goto fail;
+    }
+    n = PySequence_Size(item);
+    if (n != 2) {
+        _err_bad_length(i, n);
+        goto fail;
+    }
+    *pkey = PySequence_ITEM(item, 0);
+    if (*pkey == NULL) {
+        _err_cannot_fetch(i, "key");
+        goto fail;
+    }
+    *pvalue = PySequence_ITEM(item, 1);
+    if (*pvalue == NULL) {
+        _err_cannot_fetch(i, "value");
+        goto fail;
     }
     return 0;
 fail:

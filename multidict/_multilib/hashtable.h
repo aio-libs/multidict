@@ -1688,32 +1688,6 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     return ret;
 }
 
-/* list[i] as a new reference. On a free-threaded build another thread can
-   drop the item between a borrow and its incref, or shrink the list after
-   its length was checked, so PyList_GetItemRef takes the reference
-   atomically (locking the list only if its lock-free attempt fails). An
-   item that is gone by then means the list changed under the caller, and
-   is reported as a RuntimeError: the caller sees NULL with the error set.
-   GIL builds keep the macro and compile the check away: nothing can run
-   between the length check and the borrow. */
-#ifdef Py_GIL_DISABLED
-static inline PyObject*
-_list_getitem_ref(PyObject* list, Py_ssize_t i)
-{
-    PyObject* item = PyList_GetItemRef(list, i);
-    if (item == NULL && PyErr_ExceptionMatches(PyExc_IndexError)) {
-        PyErr_Clear();
-        PyErr_SetString(PyExc_RuntimeError,
-                        "list changed size during iteration");
-    }
-    return item;
-}
-#define _list_item_gone(item) ((item) == NULL)
-#else
-#define _list_getitem_ref(list, i) Py_NewRef(PyList_GET_ITEM((list), (i)))
-#define _list_item_gone(item) (0)
-#endif
-
 static inline int
 md_eq(MultiDictObject* md, MultiDictObject* other)
 {
