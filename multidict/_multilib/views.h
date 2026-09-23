@@ -8,8 +8,8 @@ extern "C" {
 #include "dict.h"
 #include "hashtable.h"
 #include "md_debug.h"
-#include "pair.h"
 #include "state.h"
+#include "unpack.h"
 
 typedef struct {
     PyObject_HEAD

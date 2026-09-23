@@ -20,8 +20,8 @@ extern "C" {
 #include "htkeys.h"
 #include "identity.h"
 #include "md_debug.h"
-#include "pair.h"
 #include "reflist.h"
+#include "unpack.h"
 #include "update_marks.h"
 
 typedef enum _UpdateOp {

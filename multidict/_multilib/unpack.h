@@ -1,7 +1,7 @@
 #include "pythoncapi_compat.h"
 
-#ifndef _MULTIDICT_PAIR_H
-#define _MULTIDICT_PAIR_H
+#ifndef _MULTIDICT_UNPACK_H
+#define _MULTIDICT_UNPACK_H
 
 #ifdef __cplusplus
 extern "C" {
