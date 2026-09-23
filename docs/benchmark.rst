@@ -51,7 +51,8 @@ What is measured
 The rows are the operations :class:`dict` and :class:`~multidict.MultiDict`
 both have. Each is measured on a mapping of 200 :class:`str` keys whose values
 equal their keys, except ``d.update(other)``, which merges a 100-item
-:class:`dict`.
+:class:`dict` whose keys are all already present, so it measures replacement
+rather than insertion.
 
 Operations that destroy the mapping, such as ``d.pop(key)`` and ``d.clear()``,
 rebuild it before each measured round. The rebuild happens outside the

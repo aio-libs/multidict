@@ -14,6 +14,12 @@ subtracting the ``noop`` arm cancels the driving loop.  The formula is the same
 whether or not the child could bracket the instrumented region, which is why
 four children are used rather than two.
 
+Without bracketing the untimed setup falls inside the counted region, and it
+only cancels where both arms leave the mapping in the same state; a destructive
+operation such as ``d.clear()`` then reads far too cheap, because the run arm
+hands the round a mapping that is cheaper to deallocate.  Numbers published in
+the documentation must come from a bracketed run.
+
 Instruction counts do not depend on scheduling, so the children are safe to run
 in parallel on a loaded machine.
 """
@@ -76,13 +82,22 @@ def check_interpreter(python: str) -> None:
 
 
 def measure(
-    valgrind: str, python: str, impl_id: str, op_id: str, variant: str, rounds: int
+    valgrind: str,
+    python: str,
+    impl_id: str,
+    op_id: str,
+    variant: str,
+    rounds: int,
+    is_bracketed: bool,
 ) -> int:
     proc = subprocess.run(
         [
             valgrind,
             "--tool=callgrind",
-            "--instr-atstart=no",
+            # Only the child that can turn instrumentation on may start with it
+            # off; without the client requests nothing would ever enable it and
+            # every count would come back zero.
+            f"--instr-atstart={'no' if is_bracketed else 'yes'}",
             "--callgrind-out-file=/dev/null",
             python,
             CHILD,
@@ -150,7 +165,7 @@ def metadata(python: str, valgrind: str, is_bracketed: bool) -> dict[str, object
                 if line.startswith("model name"):
                     cpu_model = line.split(":", 1)[1].strip()
                     break
-    except OSError:
+    except OSError:  # a non-Linux box just reports an unknown CPU
         pass
 
     valgrind_version = subprocess.run(
@@ -168,7 +183,7 @@ def metadata(python: str, valgrind: str, is_bracketed: bool) -> dict[str, object
         "python_version_full": sys.version,
         "python_executable": python,
         "gil_disabled": bool(sysconfig.get_config_var("Py_GIL_DISABLED")),
-        "gil_enabled_runtime": sys._is_gil_enabled(),
+        "gil_enabled_runtime": getattr(sys, "_is_gil_enabled", lambda: True)(),
         "valgrind_version": valgrind_version,
         "cpu_model": cpu_model,
         "platform": platform.platform(),
@@ -227,13 +242,28 @@ def main() -> int:
         f"{'bracketed' if is_bracketed else 'whole-process'} counting",
         flush=True,
     )
+    if not is_bracketed:
+        print(
+            "warning: the Valgrind client requests are unavailable, so the "
+            "untimed setup is counted too and destructive operations read too "
+            "cheap. Install pytest-codspeed before publishing these numbers.",
+            file=sys.stderr,
+            flush=True,
+        )
 
     points: dict[tuple[str, str, str, int], int] = {}
     started = time.monotonic()
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
         futures = {
             pool.submit(
-                measure, args.valgrind, python, impl.id, op.id, variant, rounds
+                measure,
+                args.valgrind,
+                python,
+                impl.id,
+                op.id,
+                variant,
+                rounds,
+                is_bracketed,
             ): (op.id, impl.id, variant, rounds)
             for op, impl, variant, rounds in jobs
         }
@@ -249,15 +279,19 @@ def main() -> int:
     canary = cells[0]
     op, impl = canary
     r1, r2 = op.rounds
-    if points[(op.id, impl.id, "run", r2)] <= points[(op.id, impl.id, "run", r1)] * 1.5:
+    span = (r2 - r1) * op.inner
+    scaling = points[(op.id, impl.id, "run", r2)] - points[(op.id, impl.id, "run", r1)]
+    if scaling < span:
         raise DriverError(
-            "instruction counts do not scale with the round count; Valgrind is "
-            "not instrumenting the interpreter"
+            f"{r2 - r1} extra rounds of {op.id}/{impl.id} added only {scaling} "
+            "instructions, less than one per operation; Valgrind is not counting "
+            "the measured code. A wrapper script instead of a real interpreter is "
+            "the usual cause."
         )
 
-    repeat = measure(args.valgrind, python, impl.id, op.id, "run", r1)
+    repeat = measure(args.valgrind, python, impl.id, op.id, "run", r1, is_bracketed)
     drift = repeat - points[(op.id, impl.id, "run", r1)]
-    tolerance = 0 if is_bracketed else points[(op.id, impl.id, "run", r1)] // 1000
+    tolerance = 0 if is_bracketed else scaling // 100
     if abs(drift) > tolerance:
         raise DriverError(
             f"counts are not reproducible: {drift:+} instructions between two "

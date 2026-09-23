@@ -5,8 +5,9 @@ Run by ``callgrind_driver.py``, never directly.  The interesting output is the
 
 ``setup`` runs outside the instrumented region, so the rebuild a destructive
 operation needs is not counted.  When the Valgrind client requests are not
-available the whole process is counted instead; the driver's four-point
-subtraction cancels the difference either way.
+available the whole process is counted instead, which the driver still reduces
+with the same arithmetic; those numbers are approximate rather than exact, so
+the driver warns about them.
 """
 
 import sys

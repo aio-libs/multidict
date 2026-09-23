@@ -312,7 +312,7 @@ def _make_popitem(cls: type, size: int) -> Case:
 
     def run(d: Any) -> None:
         nonlocal sink
-        for k in keys:
+        for _ in keys:
             sink = d.popitem()
 
     def noop(d: Any) -> None:
@@ -513,7 +513,14 @@ SHARED_OPERATIONS = (
     Operation("delitem", "``del d[key]``", BOTH, _make_delitem, SIZE, (2, 6)),
     Operation("pop", "``d.pop(key)``", BOTH, _make_pop, SIZE, (2, 6)),
     Operation("popitem", "``d.popitem()``", BOTH, _make_popitem, SIZE, (2, 6)),
-    Operation("update", "``d.update(other)``", BOTH, _make_update, 1, (20, 60)),
+    Operation(
+        "update",
+        "``d.update(other)``, 100 existing keys",
+        BOTH,
+        _make_update,
+        1,
+        (20, 60),
+    ),
     Operation("clear", "``d.clear()``", BOTH, _make_clear, 1, (20, 60)),
     Operation("iter_keys", "``for k in d``", BOTH, _make_iter_keys, SIZE, (2, 6)),
     Operation(
