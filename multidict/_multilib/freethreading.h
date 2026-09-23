@@ -100,8 +100,7 @@ publish_identity(entry_t* entry, PyObject* identity)
 }
 
 /* Leaves the old reference to the caller, which decrefs it only once
-   md's bookkeeping is consistent again. store_value() instead
-   drops it on the spot. */
+   md's bookkeeping is consistent again. */
 static inline void
 reset_identity(entry_t* entry)
 {
@@ -129,15 +128,6 @@ static inline void
 reset_value(entry_t* entry)
 {
     atomic_store_ptr((void**)&entry->value, NULL);
-}
-
-/* Replaces the value and drops the reference the entry held. */
-static inline void
-store_value(entry_t* entry, PyObject* value)
-{
-    PyObject* old = load_value(entry);
-    publish_value(entry, value);
-    Py_XDECREF(old);
 }
 
 /* _md_replace()/_md_update() overwrite hash in place on a live entry,
@@ -254,15 +244,6 @@ static inline void
 reset_value(entry_t* entry)
 {
     entry->value = NULL;
-}
-
-/* Replaces the value and drops the reference the entry held. */
-static inline void
-store_value(entry_t* entry, PyObject* value)
-{
-    PyObject* old = load_value(entry);
-    publish_value(entry, value);
-    Py_XDECREF(old);
 }
 
 static inline Py_hash_t
