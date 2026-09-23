@@ -2,4 +2,6 @@ Added ``tools/codegen_diff.py``, which reports the functions GCC emits
 differently before and after a change to the C extension. Addresses,
 RIP-relative displacements and branch offsets inside a symbol are
 normalized away first, so a single instruction-length change no longer
-makes every later function look modified -- by :user:`asvetlov`.
+makes every later function look modified, while constants and structure
+offsets are left alone so that a real change is not folded away
+-- by :user:`asvetlov`.

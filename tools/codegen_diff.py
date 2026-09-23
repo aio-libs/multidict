@@ -13,13 +13,20 @@ Typical use, on a branch, against both builds::
         --python ~/.pyenv/versions/3.13.2/bin/python3 \\
         --python ~/.pyenv/versions/3.14.7t/bin/python3.14t
 
-Some difference is normal and does not mean the change is wrong.
-Shrinking a ``static inline`` helper frees inlining budget, so GCC may
-inline something else nearby and perturb a function the change never
-touched.  The per-function report prints the instruction count and
-whether the set of called symbols moved, which separates the two cases:
-an unchanged count with unchanged call targets is register allocation and
-block layout, while a changed set of call targets is worth reading.
+Only fields that move when code is relocated are normalized: the
+address column, RIP-relative displacements, and branch or call offsets
+inside a symbol.  Immediate operands and memory displacements are left
+alone, because those carry constants and structure offsets, and folding
+them together would report "no difference" for a store that moved to
+another field.  ``--self-test`` checks that.
+
+Expect several functions to be reported even for a change that is
+semantically neutral.  A helper that gets smaller frees inlining budget,
+and a stack slot that moves changes a displacement, neither of which is
+a behavior change.  The report carries the two numbers that separate
+those from a real one: an unchanged instruction count together with an
+unchanged set of called symbols is register allocation and block layout,
+while a changed set of call targets is worth reading.
 
 A helper that GCC always inlines has no standalone copy to compare.  To
 look at one on its own, write a small translation unit that includes the
@@ -66,9 +73,15 @@ CFLAGS = [
 
 FUNC_RE = re.compile(r"^[0-9a-f]+ <(.+)>:$")
 CALL_RE = re.compile(r"<([A-Za-z_.][A-Za-z_.0-9]*)(?:\+OFF)?>")
+RELOC_RE = re.compile(r"^R_[A-Z0-9_]+\s+(\S+?)(?:[+-]0x[0-9a-f]+)?$")
 
+# Only fields that move when code is relocated are normalised.  Immediate
+# operands and memory displacements are left alone on purpose: they carry
+# constants and structure offsets, so folding them together would report
+# "no difference" for a store that moved to another field.
 SUBSTITUTIONS = (
-    # Address column at the start of every instruction line.
+    # Address column at the start of an instruction, and the offset
+    # column of a relocation line.
     (re.compile(r"^\s*[0-9a-f]+:\s*"), ""),
     # RIP-relative displacements move with the function.
     (re.compile(r"0x[0-9a-f]+\(%rip\)"), "RIP"),
@@ -76,8 +89,6 @@ SUBSTITUTIONS = (
     # soon as any earlier instruction changes length.
     (re.compile(r"<([A-Za-z_.][A-Za-z_.0-9]*)\+0x[0-9a-f]+>"), r"<\1+OFF>"),
     (re.compile(r"\b[0-9a-f]+ <([A-Za-z_.][A-Za-z_.0-9]*(?:\+OFF)?)>"), r"TGT <\1>"),
-    (re.compile(r"\$0x[0-9a-f]+"), "IMM"),
-    (re.compile(r"0x[0-9a-f]+"), "HEX"),
     (re.compile(r"\s+$"), ""),
 )
 
@@ -130,7 +141,7 @@ def build_object(tree, python, source, out, keep_static):
 
 def disassemble(obj):
     return run(
-        ["objdump", "-d", "--no-show-raw-insn", obj], stdout=subprocess.PIPE
+        ["objdump", "-dr", "--no-show-raw-insn", obj], stdout=subprocess.PIPE
     ).stdout.splitlines()
 
 
@@ -156,6 +167,9 @@ def call_targets(instructions):
     targets = set()
     for line in instructions:
         targets.update(CALL_RE.findall(line))
+        reloc = RELOC_RE.match(line)
+        if reloc:
+            targets.add(reloc.group(1))
     return targets
 
 
@@ -193,6 +207,49 @@ def compare(before_obj, after_obj):
     return len(before), report
 
 
+# Pairs of translation units that differ in exactly one way, each of
+# which an earlier version of the normalization silently folded away.
+SELF_TEST_CASES = {
+    "immediate operand": (
+        "int f(int v) { return v == 1; }",
+        "int f(int v) { return v == 2; }",
+    ),
+    "structure offset": (
+        "struct S { long a; long b; };\nvoid f(struct S* s, long v) { s->a = v; }",
+        "struct S { long a; long b; };\nvoid f(struct S* s, long v) { s->b = v; }",
+    ),
+    "external call target": (
+        "extern int alpha(int);\nint f(int v) { return alpha(v); }",
+        "extern int beta(int);\nint f(int v) { return beta(v); }",
+    ),
+    "unchanged": (
+        "int f(int v) { return v == 1; }",
+        "int f(int v) { return v == 1; }",
+    ),
+}
+
+
+def self_test():
+    """Check that the comparison still sees differences it once missed."""
+    failures = 0
+    with tempfile.TemporaryDirectory(prefix="codegen-selftest-") as tmp:
+        tmp = Path(tmp)
+        for name, (before_src, after_src) in SELF_TEST_CASES.items():
+            objects = []
+            for label, source in (("before", before_src), ("after", after_src)):
+                path = tmp / f"{label}.c"
+                path.write_text(source + "\n")
+                obj = tmp / f"{label}.o"
+                run(["gcc", "-c", "-fPIC", "-O3", "-w", path, "-o", obj])
+                objects.append(obj)
+            _, report = compare(*objects)
+            expected = name != "unchanged"
+            ok = bool(report) is expected
+            failures += not ok
+            print(f"{'ok  ' if ok else 'FAIL'}  {name}")
+    return 1 if failures else 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -226,6 +283,12 @@ def main():
         "of some helpers that are otherwise only visible inlined",
     )
     parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="compile pairs of tiny sources that differ in one known way "
+        "and check the comparison reports each of them",
+    )
+    parser.add_argument(
         "--fail-on-diff",
         action="store_true",
         help="exit non-zero when any function differs",
@@ -234,6 +297,9 @@ def main():
 
     if shutil.which("objdump") is None:
         sys.exit("objdump not found; install binutils")
+
+    if args.self_test:
+        return self_test()
 
     root = Path(
         run(
@@ -255,7 +321,19 @@ def main():
         for python in pythons:
             objects = {}
             for label, tree in (("before", baseline), ("after", root)):
-                source = str(probe) if probe else tree / EXTENSION_SOURCE
+                if probe is None:
+                    source = tree / EXTENSION_SOURCE
+                else:
+                    # GCC searches the directory of the including file
+                    # before any -I, so compiling the probe where it lies
+                    # would resolve its quoted includes against the
+                    # working tree for both builds and hide the very
+                    # difference being looked for.  A scratch directory
+                    # has nothing to shadow with.
+                    scratch = tmp / f"{label}-probe"
+                    scratch.mkdir(exist_ok=True)
+                    source = scratch / probe.name
+                    shutil.copyfile(probe, source)
                 objects[label] = tmp / f"{label}.o"
                 build_object(tree, python, source, objects[label], args.keep_static)
 
