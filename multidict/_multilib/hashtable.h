@@ -990,7 +990,7 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     entry_t* entries = htkeys_entries(md->keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
+        if (UNLIKELY(iter.index < 0)) {
             continue;
         }
         entry_t* entry = entries + iter.index;
@@ -1025,7 +1025,7 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
 
     int result = 0;
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
+        if (UNLIKELY(iter.index < 0)) {
             continue;
         }
         entry_t* entry = entries + iter.index;
@@ -1110,7 +1110,7 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     entry_t* entries = htkeys_entries(md->keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
+        if (UNLIKELY(iter.index < 0)) {
             continue;
         }
         entry_t* entry = entries + iter.index;
@@ -1143,7 +1143,7 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
     int result = 0;
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
+        if (UNLIKELY(iter.index < 0)) {
             continue;
         }
         entry_t* entry = entries + iter.index;
