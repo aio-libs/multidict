@@ -1,0 +1,3 @@
+Fixed ``benchmarks/istr.py`` to import ``pyperf`` under its current
+name; it had been failing to start since the package was renamed from
+``perf`` -- by :user:`asvetlov`.
