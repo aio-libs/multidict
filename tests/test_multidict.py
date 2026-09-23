@@ -1414,6 +1414,108 @@ class TestCIMultiDict(BaseMultiDictTest):
         d = cls([("KEY", "one")])
         assert d.items().isdisjoint(arg) == expected
 
+    def test_ascii_identity_matches_str_lower(
+        self, cls: type[CIMultiDict[str]]
+    ) -> None:
+        """Every ASCII code point must fold exactly the way ``str.lower()``
+        folds it, including the ones that are not letters.  The paddings
+        span the shapes the C extension's scan distinguishes: shorter than
+        one eight-byte step, exactly one step, and lengths that leave a
+        remainder, with the code point before, on and after each boundary
+        so that the overlapping final word is covered from both sides."""
+        paddings = (
+            (0, 0),  # 1, below one step
+            (3, 3),  # 7, below one step
+            (0, 7),  # 8, exactly one step
+            (0, 11),  # 12, remainder, first byte
+            (7, 4),  # 12, remainder, last byte of the first word
+            (8, 3),  # 12, remainder, first byte only the last word covers
+            (11, 0),  # 12, remainder, last byte
+            (0, 18),  # 19, two steps plus a remainder
+            (9, 9),  # 19, inside the second word
+            (18, 0),  # 19, last byte
+        )
+        keys = [
+            "x" * before + chr(code) + "y" * after
+            for code in range(128)
+            for before, after in paddings
+        ]
+        d = cls([(k, k) for k in keys])
+
+        grouped: dict[str, list[str]] = {}
+        for k in keys:
+            grouped.setdefault(k.lower(), []).append(k)
+
+        for identity, matches in grouped.items():
+            assert d.getall(identity) == matches
+            assert d.getall(identity.upper()) == matches
+
+    def test_lower_case_ascii_key(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("content-type", "text/html")])
+
+        assert d["content-type"] == "text/html"
+        assert d["Content-Type"] == "text/html"
+        assert d["CONTENT-TYPE"] == "text/html"
+
+    def test_mixed_case_ascii_key_keeps_its_spelling(
+        self,
+        cls: type[CIMultiDict[str]],
+        case_insensitive_str_class: type[istr],
+    ) -> None:
+        d = cls([("Content-Type", "text/html")])
+
+        assert d["content-type"] == "text/html"
+        (key,) = d.keys()
+        assert str(key) == "Content-Type"
+        assert type(key) is case_insensitive_str_class
+
+    def test_empty_str_key(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("", "value")])
+
+        assert d[""] == "value"
+        assert list(d.keys()) == [""]
+
+    def test_non_ascii_key(self, cls: type[CIMultiDict[str]]) -> None:
+        d = cls([("Ä", "1"), ("X-Ärger", "2")])
+
+        assert d["ä"] == "1"
+        assert d["x-ärger"] == "2"
+
+    def test_folding_that_does_not_preserve_length_or_plane(
+        self, cls: type[CIMultiDict[str]]
+    ) -> None:
+        """``İ`` lowers to two code points and the Adlam capital is non-BMP,
+        so neither key may be folded as if it were a byte string."""
+        d = cls([("İ", "1"), ("\U0001e921", "2")])
+
+        assert d["i\u0307"] == "1"
+        assert d["\U0001e943"] == "2"
+
+    def test_str_subclass_lower_override_is_used(
+        self, cls: type[CIMultiDict[str]]
+    ) -> None:
+        """A ``str`` subclass may override ``lower()``, so the identity of a
+        subclass instance has to come from the override.  This is what keeps
+        the C extension's ASCII fast path gated on an exact ``str``."""
+
+        class ConstantLower(str):
+            def lower(self) -> str:
+                return "x"
+
+        d = cls([(ConstantLower("a"), "1"), (ConstantLower("b"), "2")])
+
+        assert d.getall("x") == ["1", "2"]
+
+    def test_key_outlives_the_multidict(self, cls: type[CIMultiDict[str]]) -> None:
+        key = "content-type"
+        d = cls([(key, "value")])
+
+        keys = list(d.keys())
+        del d
+        gc.collect()
+
+        assert keys == [key]
+
 
 class _ReentrantEq:
     """A value whose __eq__() calls back into `md` mid-comparison.
@@ -3107,6 +3209,21 @@ def test_update_from_list_mutated_by_key_lookup() -> None:
         seq.append([EvilKey(f"K{i}"), i])
     # Must not segfault; the exact result is unspecified, only memory safety.
     multidict.CIMultiDict(seq)  # type: ignore[arg-type]
+
+
+@pytest.mark.c_extension
+def test_ascii_identity_refcounts_are_balanced() -> None:
+    """An already-lowercase ASCII key is stored as both the entry's key and
+    its identity, so it picks up two references and must give both back."""
+    key = "".join(("content", "-type"))
+    before = sys.getrefcount(key)
+
+    d: multidict.CIMultiDict[str] = multidict.CIMultiDict()
+    d[key] = "value"
+    assert sys.getrefcount(key) - before == 2
+
+    del d[key]
+    assert sys.getrefcount(key) == before
 
 
 @pytest.mark.c_extension
