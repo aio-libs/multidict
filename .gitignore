@@ -68,6 +68,9 @@ target/
 
 multidict/_multidict.html
 multidict/_istr.html
+multidict/_testcyapi.html
+# Cython-generated, unlike the hand-written multidict/*.c files.
+multidict/_testcyapi.c
 
 .mypy_cache
 

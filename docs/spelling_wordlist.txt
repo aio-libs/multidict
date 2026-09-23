@@ -47,8 +47,10 @@ dists
 docstrings
 downstreams
 eof
+extern
 fallback
 fallbacks
+falsy
 fastpath
 finalizer
 filename
@@ -62,6 +64,7 @@ github
 google
 gunicorn
 Gunicorn
+increfs
 Indices
 init
 inplace
@@ -108,8 +111,11 @@ pyenv
 pyinstaller
 pytest
 pyupgrade
+reentrancy
+reentrant
 refactor
 refactored
+refcount
 regex
 regexs
 repo
@@ -122,6 +128,7 @@ stateful
 str
 subclassable
 subclassed
+subclasses
 subclassing
 subdirectory
 subprotocol
@@ -130,10 +137,13 @@ Svetlov
 syscalls
 toolbar
 toolset
+truthy
 tuples
+typedef
 un
 uncompiled
 unparseable
+unraisable
 upstr
 url
 urlencoded

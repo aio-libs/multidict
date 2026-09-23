@@ -1,0 +1,2 @@
+Added a public C and Cython API for third-party extensions
+-- by :user:`Vizonex` and :user:`asvetlov`.
