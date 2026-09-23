@@ -96,21 +96,18 @@ typedef int (*md_item_visitor_t)(void* user_data, PyObject* key,
                                  PyObject* value);
 
 /* Calls `visitor` once for every entry whose identity is `identity`, in probe
-   order. Returns how many entries were visited, or -1 with an exception set.
-   The caller holds md's critical section.
+   order; `hash` is that identity's hash. Returns how many entries were
+   visited, or -1 with an exception set. The caller holds md's critical
+   section.
 
    `visitor` must not call back into `md`: the version stamped at the start is
    rechecked after every visitor call, so a reentrant mutation ends the walk
    with "MultiDict is changed during iteration" instead of walking a table
    that moved. */
 ALWAYS_INLINE static inline Py_ssize_t
-md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
-        md_item_visitor_t visitor, void* user_data)
+md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                  bool with_keys, md_item_visitor_t visitor, void* user_data)
 {
-    Py_hash_t hash = _unicode_hash(identity);
-    if (hash == -1) {
-        return -1;
-    }
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
@@ -177,6 +174,19 @@ md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
 fail:
     _md_seen_release(&seen);
     return -1;
+}
+
+/* md_walk_with_hash() for callers that have no hash at hand yet. */
+ALWAYS_INLINE static inline Py_ssize_t
+md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
+        md_item_visitor_t visitor, void* user_data)
+{
+    Py_hash_t hash = _unicode_hash(identity);
+    if (hash == -1) {
+        return -1;
+    }
+    return md_walk_with_hash(
+        md, identity, hash, with_keys, visitor, user_data);
 }
 
 #ifdef __cplusplus

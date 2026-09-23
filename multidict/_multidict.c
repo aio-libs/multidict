@@ -573,23 +573,10 @@ multidict_mp_subscript(MultiDictObject* self, PyObject* key)
 static int
 multidict_mp_as_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
 {
-    int ret;
-    // md_del() never touches defer; skip init/release for it
-    reflist_t defer;
-    if (val != NULL) {
-        reflist_init(&defer);
-    }
-    Py_BEGIN_CRITICAL_SECTION(self);
     if (val == NULL) {
-        ret = md_del(self, key);
-    } else {
-        ret = md_replace(self, key, val, &defer);
+        return md_del(self, key);
     }
-    Py_END_CRITICAL_SECTION();
-    if (val != NULL) {
-        reflist_clear(&defer);
-    }
-    return ret;
+    return md_replace(self, key, val);
 }
 
 static int
@@ -815,12 +802,7 @@ multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
         0) {
         return NULL;
     }
-    int tmp;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    tmp = md_add(self, key, val);
-    ASSERT_CONSISTENT(self, false);
-    Py_END_CRITICAL_SECTION();
-    if (tmp < 0) {
+    if (md_add(self, key, val) < 0) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -930,12 +912,9 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
         }
         decref_none_default = true;
     }
-    Py_BEGIN_CRITICAL_SECTION(self);
-    ASSERT_CONSISTENT(self, false);
     if (md_set_default(self, key, _default, &ret) < 0) {
         assert(ret == NULL);
     }
-    Py_END_CRITICAL_SECTION();
     if (decref_none_default) {
         Py_CLEAR(_default);  // never raises exception
     }
@@ -959,12 +938,7 @@ multidict_popone(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
-    int tmp;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    tmp = md_pop_one(self, key, &ret_val);
-    ASSERT_CONSISTENT(self, false);
-    Py_END_CRITICAL_SECTION();
-    if (tmp < 0) {
+    if (md_pop_one(self, key, &ret_val) < 0) {
         return NULL;
     }
 
@@ -998,12 +972,7 @@ multidict_pop(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
                &_default) < 0) {
         return NULL;
     }
-    int tmp;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    tmp = md_pop_one(self, key, &ret_val);
-    ASSERT_CONSISTENT(self, false);
-    Py_END_CRITICAL_SECTION();
-    if (tmp < 0) {
+    if (md_pop_one(self, key, &ret_val) < 0) {
         return NULL;
     }
 

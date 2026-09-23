@@ -1,0 +1,5 @@
+Narrowed the critical section of the single-key methods (``add()``,
+``__setitem__()``, ``__delitem__()``, ``setdefault()``, ``pop()``,
+``popone()``, ``popall()`` and ``getall()``): a key is converted to its
+identity and hashed before the lock is taken, rather than while a
+free-threaded build holds the multidict locked -- by :user:`asvetlov`.
