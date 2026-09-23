@@ -297,33 +297,12 @@ static Py_ssize_t
 _md_foreach_all(MultiDictObject* md, MultiDict_ItemVisitor visitor,
                 void* user_data)
 {
-    md_pos_t pos;
-    PyObject* k;
-    PyObject* v;
-    int found;
-    Py_ssize_t count = 0;
-    bool failed = false;
+    Py_ssize_t count;
     Py_BEGIN_CRITICAL_SECTION(md);
-    md_init_pos(md, &pos);
-    while ((found = md_next(md, &pos, NULL, &k, &v)) > 0) {
-        count++;
-        int ret = visitor(user_data, k, v);
-        Py_DECREF(k);
-        Py_DECREF(v);
-        if (ret < 0) {
-            assert(PyErr_Occurred());
-            failed = true;
-            break;
-        }
-        if (ret == 0) {
-            break;
-        }
-    }
-    if (found < 0) {
-        failed = true;
-    }
+    count = md_walk_all(md, true, visitor, user_data);
+    ASSERT_CONSISTENT(md, false);
     Py_END_CRITICAL_SECTION();
-    return failed ? -1 : count;
+    return count;
 }
 
 static Py_ssize_t

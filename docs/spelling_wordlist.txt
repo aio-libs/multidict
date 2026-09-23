@@ -125,6 +125,7 @@ regex
 regexs
 repo
 reStructuredText
+resumable
 riscv
 riscv64
 runtime
