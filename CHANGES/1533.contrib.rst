@@ -1,0 +1,4 @@
+Moved the bulk ``extend()``, ``update()`` and ``merge()`` paths of the C
+extension out of ``hashtable.h`` into their own ``bulk_update.h``
+header, leaving ``hashtable.h`` to the table itself and the single-key
+operations -- by :user:`asvetlov`.

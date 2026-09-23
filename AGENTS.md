@@ -51,6 +51,7 @@ Useful entry points:
 | `multidict/_multidict_py.py`          | pure-Python `MultiDict`, `CIMultiDict`, `istr`, proxies         |
 | `multidict/_multidict.c`              | C implementation entry points and type definitions              |
 | `multidict/_multilib/hashtable.h`     | core hash table (``md_*`` functions, resize, lookup)            |
+| `multidict/_multilib/bulk_update.h`    | bulk ``extend()``, ``update()`` and ``merge()`` paths            |
 | `multidict/_multilib/compiler.h`      | ``UNLIKELY``, ``COLD``, ``ALWAYS_INLINE`` portability macros |
 | `multidict/_multilib/reflist.h`       | ``reflist_t``, collects refs under a lock; drained into a list or decref'd after |
 | `multidict/_multilib/htkeys.h`        | key-storage layout, ``estimate_log2_keysize``                   |
