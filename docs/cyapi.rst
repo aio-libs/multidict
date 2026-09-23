@@ -135,8 +135,13 @@ Iteration
 
 .. code-block:: cython
 
-   ctypedef int (*MultiDict_ItemVisitor)(void *user_data, PyObject *key,
-                                         PyObject *value) noexcept
+   ctypedef int (*MultiDict_ItemVisitor)(void *user_data, PyObject *identity,
+                                         PyObject *key, PyObject *value) noexcept
+
+*identity* is the entry's canonical key: the key itself for a
+:class:`~multidict.MultiDict`, the internal lower-cased form for a
+:class:`~multidict.CIMultiDict`. A visitor can group or compare
+entries by it without deriving that form from *key* itself.
 
 Return a positive value from it to keep the walk going, ``0`` to stop early
 (not an error by itself), or a negative value to abort with an error -- a
@@ -147,11 +152,12 @@ print it, and clear it rather than propagate it. Call ``PyErr_SetString``
 (or ``PyErr_Format``/``PyErr_SetObject``, from ``cpython.exc``) directly to
 set the exception state, then ``return -1`` yourself.
 
-A visitor's ``key``/``value`` parameters are raw ``PyObject *``, not
-``object``: Cython does not consider a function taking ``object``
-parameters interchangeable with one taking raw ``PyObject *`` parameters
-here, even though both compile, so a visitor must be declared with the
-same raw parameter types as the typedef itself.
+A visitor's ``identity``/``key``/``value`` parameters are raw
+``PyObject *``, not ``object``: Cython does not consider a function
+taking ``object`` parameters interchangeable with one taking raw
+``PyObject *`` parameters here, even though both compile, so a visitor
+must be declared with the same raw parameter types as the typedef
+itself.
 
 - ``MultiDict_ForEach(capi, self, key, visitor, user_data) except -1 -> Py_ssize_t``
   -- the low-level entry point, declared here exactly like its C
@@ -173,12 +179,13 @@ declared alongside ``MultiDict_ItemVisitor``:
 
 .. code-block:: cython
 
-   ctypedef int (*MultiDict_CyItemVisitor)(object key, object value,
+   ctypedef int (*MultiDict_CyItemVisitor)(object identity, object key,
+                                           object value,
                                            void *user_data) except -1
 
 It is still a real ``cdef`` function -- one indirect C call per visited
 item, not a Python-level call through an arbitrary callable -- but takes
-Cython's own ``object`` type for *key*/*value* instead of
+Cython's own ``object`` type for *identity*/*key*/*value* instead of
 ``MultiDict_ItemVisitor``'s raw ``PyObject *``, so a visitor needs no
 ``<object>`` cast of its own. It shares the same three-way return
 contract: a positive value keeps the walk going, ``0`` stops early (not

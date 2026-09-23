@@ -244,8 +244,10 @@ _set_add(PyObject* set, PyObject* key, PyObject* value)
 }
 
 static int
-_multidict_collect_visit(void* user_data, PyObject* key, PyObject* value)
+_multidict_collect_visit(void* user_data, PyObject* identity, PyObject* key,
+                         PyObject* value)
 {
+    (void)identity;
     PyObject* item;
     if (key != NULL) {
         item = PyTuple_Pack(2, key, value);

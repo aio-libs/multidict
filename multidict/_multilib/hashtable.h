@@ -1424,8 +1424,10 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 }
 
 static int
-_md_getall_visit(void* user_data, PyObject* key, PyObject* value)
+_md_getall_visit(void* user_data, PyObject* identity, PyObject* key,
+                 PyObject* value)
 {
+    (void)identity;
     (void)key;  // value-only walk
     if (reflist_push((reflist_t*)user_data, Py_NewRef(value)) < 0) {
         return -1;
