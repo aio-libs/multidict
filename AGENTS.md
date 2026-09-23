@@ -574,6 +574,33 @@ pure-Python leg under `MULTIDICT_NO_EXTENSIONS=1`. Do not regress
 the benchmarks under `benchmarks/` without flagging the trade-off
 in the PR body.
 
+### Refresh the comparison tables when performance moves
+
+[`docs/benchmark.rst`](docs/benchmark.rst) publishes per-operation
+instruction counts for `dict`, `MultiDict` and `CIMultiDict` on both
+the GIL and the free-threaded build. They are real measurements, not
+illustrations, so any change that significantly moves performance must
+regenerate them in the same PR and say in the PR body which rows moved
+and why:
+
+```bash
+.venv-gil/bin/python benchmarks/callgrind_driver.py -o gil.json
+.venv-ft/bin/python  benchmarks/callgrind_driver.py -o ft.json
+python benchmarks/render_tables.py gil.json ft.json --write docs/benchmark.rst
+```
+
+The measurement is deterministic, so it does not need a quiet machine;
+it does need Valgrind and one virtualenv per interpreter build, both on
+the same CPython patch release. `docs/benchmark.rst` has the setup and
+the traps. Adding or renaming a benchmarked operation means editing
+`benchmarks/operations.py`, which is the single registry all three
+entry points read; run `python benchmarks/callgrind_driver.py
+--self-check` afterwards.
+
+"Significantly" means a row moves by more than a couple of percent.
+Leaving stale numbers in place is worse than having none, because a
+reviewer cannot tell the difference.
+
 ### Every line in a test must be covered
 
 Coverage in this repo is collected over `source = .` (see
@@ -643,6 +670,9 @@ Design tests so every line runs:
   edited any `.rst` file (including `CHANGES/`). The docs build
   fails on unknown words and burns a CI run; see _Run the docs
   spell check before pushing_ above.
+- Do not land a performance change without refreshing the tables
+  in `docs/benchmark.rst`; see _Refresh the comparison tables when
+  performance moves_ above.
 - Do not skip the `CHANGES/` fragment "because the change is
   small". Even a one-line bugfix needs one.
 - Do not add `Co-Authored-By` trailers for LLM tools, in either

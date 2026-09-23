@@ -91,3 +91,7 @@ TAGS
 .python-version
 
 /.codspeed
+
+# benchmark artefacts
+/benchmarks/*.json
+/.venv-*/

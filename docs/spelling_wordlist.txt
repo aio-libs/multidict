@@ -19,8 +19,10 @@ autogeneration
 backend
 backends
 basename
+benchmarked
 bugfixes
 bytecode
+Callgrind
 cchardet
 cChardet
 changelog
@@ -109,6 +111,7 @@ prebuilt
 proxied
 pyenv
 pyinstaller
+pyperf
 pytest
 pyupgrade
 reentrancy
@@ -119,6 +122,7 @@ refcount
 regex
 regexs
 repo
+reStructuredText
 riscv
 riscv64
 runtime
@@ -149,7 +153,9 @@ url
 urlencoded
 urls
 utf
+Valgrind
 vectorcall
+virtualenv
 websocket
 websockets
 Websockets
