@@ -1009,7 +1009,7 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return 0;
 }
 
-#if defined(Py_GIL_DISABLED) && _MD_HAVE_TRYINCREF
+#ifdef Py_GIL_DISABLED
 
 static inline int
 _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
@@ -1052,7 +1052,7 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
     return result;
 }
 
-#endif /* Py_GIL_DISABLED && _MD_HAVE_TRYINCREF */
+#endif /* Py_GIL_DISABLED */
 
 static inline int
 md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
@@ -1079,7 +1079,7 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
     }
 
     int result;
-#if defined(Py_GIL_DISABLED) && _MD_HAVE_TRYINCREF
+#ifdef Py_GIL_DISABLED
     if (pret == NULL) {
         result = _md_contains_lockfree(md, identity, hash);
         if (result != 2 /* _MD_NEED_LOCK */) {
@@ -1087,10 +1087,6 @@ md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
             return result;
         }
     }
-    Py_BEGIN_CRITICAL_SECTION(md);
-    result = _md_contains_locked(md, identity, hash, pret);
-    Py_END_CRITICAL_SECTION();
-#elif defined(Py_GIL_DISABLED)
     Py_BEGIN_CRITICAL_SECTION(md);
     result = _md_contains_locked(md, identity, hash, pret);
     Py_END_CRITICAL_SECTION();
@@ -1125,7 +1121,7 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return 0;
 }
 
-#if defined(Py_GIL_DISABLED) && _MD_HAVE_TRYINCREF
+#ifdef Py_GIL_DISABLED
 
 /* Sentinel meaning "could not complete lock-free"; never returned to
    md_get_one()'s own caller, only used between the two functions
@@ -1209,28 +1205,6 @@ md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 }
 
 #undef _MD_NEED_LOCK
-
-#elif defined(Py_GIL_DISABLED)
-
-static inline int
-md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
-{
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        return -1;
-    }
-    Py_hash_t hash = _unicode_hash(identity);
-    if (hash == -1) {
-        Py_DECREF(identity);
-        return -1;
-    }
-    int result;
-    Py_BEGIN_CRITICAL_SECTION(md);
-    result = _md_get_one_locked(md, identity, hash, ret);
-    Py_END_CRITICAL_SECTION();
-    Py_DECREF(identity);
-    return result;
-}
 
 #else /* !Py_GIL_DISABLED */
 
