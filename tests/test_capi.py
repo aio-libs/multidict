@@ -970,10 +970,22 @@ def test_a_callback_may_mutate_the_multidict_it_watches(api: object) -> None:
     assert len(md) == 3
 
 
-def test_recording_out_of_memory_reports_one_lost_event(watcher: Watcher) -> None:
+def test_recording_out_of_memory_reports_one_lost_event(
+    watcher: Watcher, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # Recording cannot fail the mutation it describes, so an allocation
     # failure turns the whole burst into a single "resynchronize".
     cpython_testcapi = pytest.importorskip("_testcapi")
+    # The injected failure lands wherever the allocation counter says, and
+    # the callback below allocates too. One that fails is reported as
+    # unraisable, which is the documented behaviour but would otherwise
+    # reach pytest's unraisable plugin and fail the test.
+    monkeypatch.setattr(sys, "unraisablehook", lambda unraisable: None)
+    # Bound to short names so the arm/call/disarm below fits one physical
+    # line: split across lines, a tracer line event lands between them and
+    # the armed failure hits the tracer's own allocation instead.
+    nomemory = cpython_testcapi.set_nomemory
+    restore = cpython_testcapi.remove_mem_hooks
     md: MultiDictStr = multidict.MultiDict()
     watcher.watch(md, None)
     # Sweep which allocation fails rather than breaking out on the first
@@ -982,14 +994,9 @@ def test_recording_out_of_memory_reports_one_lost_event(watcher: Watcher) -> Non
     for nth in range(8):
         watcher.drain()
         try:
-            # One line, so no tracer line event can take the failure.
-            (
-                cpython_testcapi.set_nomemory(nth, nth + 1),
-                md.add("k", "v"),
-                cpython_testcapi.remove_mem_hooks(),
-            )
+            nomemory(nth, nth + 1), md.add("k", "v"), restore()
         except MemoryError:
-            cpython_testcapi.remove_mem_hooks()
+            restore()
         seen.extend(watcher.kinds())
     assert _testcapi.MultiDict_EVENT_LOST in seen
 
