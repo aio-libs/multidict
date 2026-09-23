@@ -14,13 +14,13 @@ extern "C" {
 
 #include "bitmap.h"
 #include "compiler.h"
-#include "deferred_decref.h"
 #include "dict.h"
 #include "freethreading.h"
 #include "hashtable.h"
 #include "htkeys.h"
 #include "identity.h"
 #include "md_debug.h"
+#include "reflist.h"
 #include "update_marks.h"
 
 typedef enum _UpdateOp {
@@ -31,7 +31,7 @@ typedef enum _UpdateOp {
 
 static inline int
 _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-           PyObject* key, PyObject* value, deferred_decref_t* defer,
+           PyObject* key, PyObject* value, reflist_t* defer,
            update_marks_t* marks)
 {
     bool found = false;
@@ -84,20 +84,18 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     entry->key = Py_NewRef(key);
                     publish_value(entry, Py_NewRef(value));
                 } else {
-                    /* old_key/old_value decref deferred -- see
-                     * deferred_decref_t */
+                    // old_key/old_value decref deferred: see reflist_t
                     PyObject* old_key = entry->key;
                     PyObject* old_value = load_value(entry);
                     entry->key = Py_NewRef(key);
                     publish_value(entry, Py_NewRef(value));
                     /* Push both unconditionally, not with `||`: a
-                       failed first push already decref'd old_key
-                       itself (see deferred_decref_push()'s doc
-                       comment), but short-circuiting past the
-                       second push would leak old_value -- neither
-                       deferred nor decref'd. */
-                    int push_ret = deferred_decref_push(defer, old_key);
-                    if (deferred_decref_push(defer, old_value) < 0) {
+                       failed first push already decref'd old_key itself
+                       (see reflist_push()'s doc comment), but
+                       short-circuiting past the second push would leak
+                       old_value -- neither deferred nor decref'd. */
+                    int push_ret = reflist_push(defer, old_key);
+                    if (reflist_push(defer, old_value) < 0) {
                         push_ret = -1;
                     }
                     if (push_ret < 0) {
@@ -176,20 +174,20 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 /* Finishes off one half-deleted entry: `slot` must index it. */
 static inline int
 _md_post_update_del(MultiDictObject* md, htkeys_t* keys, size_t slot,
-                    entry_t* entry, deferred_decref_t* defer)
+                    entry_t* entry, reflist_t* defer)
 {
     assert(entry->key == NULL);
     PyObject* old_identity = load_identity(entry);
     reset_identity(entry);
     htkeys_set_index(keys, slot, DKIX_DUMMY);
     add_used(md, -1);
-    return deferred_decref_push(defer, old_identity);
+    return reflist_push(defer, old_identity);
 }
 
 /* The fallback when the `deleted` marks can't be trusted: every half-deleted
    entry still has a NULL key, so a full sweep finds them all. */
 COLD static int
-_md_post_update_sweep(MultiDictObject* md, deferred_decref_t* defer)
+_md_post_update_sweep(MultiDictObject* md, reflist_t* defer)
 {
     int ret = 0;
     for (;;) {
@@ -222,7 +220,7 @@ _md_post_update_sweep(MultiDictObject* md, deferred_decref_t* defer)
 }
 
 static inline int
-_md_post_update_deleted(MultiDictObject* md, deferred_decref_t* defer,
+_md_post_update_deleted(MultiDictObject* md, reflist_t* defer,
                         update_marks_t* marks)
 {
     _update_marks_sync(marks, md);
@@ -270,8 +268,7 @@ _md_post_update_deleted(MultiDictObject* md, deferred_decref_t* defer,
 }
 
 static inline int
-md_post_update(MultiDictObject* md, deferred_decref_t* defer,
-               update_marks_t* marks)
+md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
 {
     int ret = 0;
     /* `defer` is NULL only for merge(), which never half-deletes. */
@@ -285,7 +282,7 @@ md_post_update(MultiDictObject* md, deferred_decref_t* defer,
 
 static inline int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
-                  deferred_decref_t* defer, update_marks_t* marks)
+                  reflist_t* defer, update_marks_t* marks)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
@@ -402,7 +399,7 @@ md_extend_self(MultiDictObject* md)
 
 static inline int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
-                    deferred_decref_t* defer, update_marks_t* marks)
+                    reflist_t* defer, update_marks_t* marks)
 {
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
@@ -584,7 +581,7 @@ fail:
 
 static inline int
 md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
-                   deferred_decref_t* defer, update_marks_t* marks)
+                   reflist_t* defer, update_marks_t* marks)
 {
     PyObject* it = NULL;
     PyObject* item = NULL;  // seq[i]
@@ -730,7 +727,6 @@ fail:
     Py_CLEAR(items);
     return -1;
 }
-
 #ifdef __cplusplus
 }
 #endif

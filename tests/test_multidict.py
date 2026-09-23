@@ -2430,6 +2430,17 @@ def test_getall_popall_gc_finalizer_mutates(
     del keep
 
 
+@pytest.mark.parametrize("method", ["getall", "popall"])
+def test_getall_popall_many_values_keep_order(
+    any_multidict_class: type[MultiDict[int]], method: str
+) -> None:
+    """Enough values to spill the C impl's collector into several heap
+    blocks, which are chained newest first; the result must still come
+    back in insertion order."""
+    d = any_multidict_class([("k", i) for i in range(1500)])
+    assert getattr(d, method)("k") == list(range(1500))
+
+
 @pytest.mark.c_extension
 def test_del_pop_vs_update_same_key_thread_safety() -> None:
     """Regression for #1489 and #1492 (__delitem__/pop()/popall()): a
