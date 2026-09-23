@@ -11,6 +11,33 @@ cdef extern from "multidict_capi_struct.h":
     ctypedef int (*MultiDict_ItemVisitor)(void *user_data, PyObject *key,
                                           PyObject *value) noexcept
 
+    int MULTIDICT_MAX_WATCHERS
+
+    ctypedef enum MultiDict_WatchEvent:
+        MultiDict_EVENT_ADDED
+        MultiDict_EVENT_REPLACED
+        MultiDict_EVENT_DELETED
+        MultiDict_EVENT_CLEARED
+        MultiDict_EVENT_CLONED
+        MultiDict_EVENT_DEALLOCATED
+        MultiDict_EVENT_BATCH_BEGIN
+        MultiDict_EVENT_BATCH_END
+        MultiDict_EVENT_LOST
+
+    # `self` is spelled `md` here because it is a reserved word in Cython;
+    # the C name is unchanged. Every PyObject * is borrowed and may be NULL.
+    ctypedef struct MultiDict_WatchInfo:
+        MultiDict_WatchEvent event
+        PyObject *md "self"
+        PyObject *identity
+        PyObject *key
+        PyObject *value
+        PyObject *old_value
+
+    ctypedef int (*MultiDict_WatchCallback)(
+        void *watcher_data, void *user_data,
+        const MultiDict_WatchInfo *info) noexcept
+
 
 cdef extern from "multidict_capi.h":
     MultiDict_CAPI *MultiDict_GetCAPI() except NULL
@@ -63,6 +90,14 @@ cdef extern from "multidict_capi.h":
     # iteration
     Py_ssize_t MultiDict_ForEach(MultiDict_CAPI *capi, object self, PyObject *key,
                                  MultiDict_ItemVisitor visitor, void *user_data) except -1
+
+    # watchers
+    int MultiDict_AddWatcher(MultiDict_CAPI *capi, MultiDict_WatchCallback callback,
+                             void *watcher_data) except -1
+    int MultiDict_ClearWatcher(MultiDict_CAPI *capi, int watcher_id) except -1
+    int MultiDict_Watch(MultiDict_CAPI *capi, int watcher_id, object self,
+                        void *user_data) except -1
+    int MultiDict_Unwatch(MultiDict_CAPI *capi, int watcher_id, object self) except -1
 
 
 # Adopts a NEW reference from a raw pointer into an ordinary,
@@ -196,3 +231,66 @@ cdef inline Py_ssize_t MultiDict_ForEachKey(MultiDict_CAPI *capi, object self, o
     ctx.visitor = visitor
     ctx.user_data = user_data
     return MultiDict_ForEach(capi, self, <PyObject*>key, _cy_visitor_trampoline, &ctx)
+
+
+# A watch callback reaches its context through MultiDict_AddWatcher's
+# `watcher_data`, which is the one slot Cython needs for a trampoline of
+# its own -- unlike MultiDict_ForEach, whose single void* already belongs
+# to the caller. So the Cython-facing callback below takes `key`, `value`
+# and friends as ordinary objects (None where the C API passes NULL) and
+# may raise, with `except -1` carrying the exception back out.
+#
+# `md` stays a raw PyObject * on purpose, and is the one argument that
+# does not become an object here: on a MultiDict_EVENT_DEALLOCATED event
+# it is at refcount 0, and Cython increfs anything typed `object` on the
+# way in, which would resurrect it and then free it twice. A callback
+# that wants the multidict must check the event first and only then cast
+# `<object>md`; on DEALLOCATED it may use the pointer as an identity and
+# nothing else. See docs/cyapi.rst.
+#
+# The trampoline's context is the caller's to own and keep alive for as
+# long as the watcher is registered: declare a module-level
+# `cdef MultiDict_CyWatcherCtx ctx` in the .pyx that registers it. Nothing
+# here allocates, so nothing here has to be freed.
+
+ctypedef int (*MultiDict_CyWatchCallback)(void *watcher_data, void *user_data,
+                                          MultiDict_WatchEvent event, PyObject *md,
+                                          object identity, object key,
+                                          object value, object old_value) except -1
+
+
+cdef struct MultiDict_CyWatcherCtx:
+    MultiDict_CyWatchCallback callback
+    void *watcher_data
+
+
+cdef inline object _opt(PyObject *ptr):
+    # The C API passes NULL for the fields an event does not carry.
+    if ptr == NULL:
+        return None
+    return <object>ptr
+
+
+# Same noexcept reasoning as _cy_visitor_trampoline above: this is
+# assigned to a `noexcept` C function pointer, so an escaping exception
+# would be printed and cleared instead of propagated. PyErr_SetObject
+# reinstates it as the current exception without going through that, and
+# multidict then reports it with PyErr_WriteUnraisable -- a watch callback
+# runs after the mutation it describes, so a failure can only ever be
+# reported, never propagated back into the operation.
+
+cdef inline int _cy_watch_trampoline(void *ctx_, void *user_data,
+                                     const MultiDict_WatchInfo *info) noexcept:
+    cdef MultiDict_CyWatcherCtx *ctx = <MultiDict_CyWatcherCtx*>ctx_
+    try:
+        return ctx.callback(ctx.watcher_data, user_data, info.event,
+                            info.md, _opt(info.identity), _opt(info.key),
+                            _opt(info.value), _opt(info.old_value))
+    except BaseException as exc:
+        PyErr_SetObject(type(exc), exc)
+        return -1
+
+
+cdef inline int MultiDict_AddCyWatcher(MultiDict_CAPI *capi,
+                                       MultiDict_CyWatcherCtx *ctx) except -1:
+    return MultiDict_AddWatcher(capi, _cy_watch_trampoline, ctx)

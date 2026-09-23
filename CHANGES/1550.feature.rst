@@ -1,0 +1,8 @@
+Added a watchers C API, so another C extension can be notified when a
+:class:`~multidict.MultiDict` or :class:`~multidict.CIMultiDict` changes.
+It follows CPython's :c:func:`!PyDict_AddWatcher` family, with two
+differences: the callback is passed two context pointers, one fixed per
+registered callback and one per watched multidict, and events are
+delivered once the operation that produced them has finished rather than
+mid-mutation. The events are multi-value aware, and each one that concerns
+a key carries the identity alongside it -- by :user:`asvetlov`.

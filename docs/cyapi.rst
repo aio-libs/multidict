@@ -190,6 +190,77 @@ All three return the number of items visited (``>= 0``) on success and
 execute under one internal lock; *visitor* must not call back into any
 method on *self* while running (see :c:func:`MultiDict_ForEach` for why).
 
+Watchers
+========
+
+The :ref:`C API's watchers <multidict-capi>` are available unchanged:
+:c:func:`MultiDict_AddWatcher`, :c:func:`MultiDict_ClearWatcher`,
+:c:func:`MultiDict_Watch` and :c:func:`MultiDict_Unwatch`, together with
+the :c:enum:`MultiDict_WatchEvent` enumerators, the
+:c:type:`MultiDict_WatchInfo` struct and the
+:c:type:`MultiDict_WatchCallback` typedef.
+
+.. versionadded:: 7.0
+
+Writing the callback against the raw typedef has the same wrinkle as
+``MultiDict_ItemVisitor``: it is ``noexcept``, so a ``raise`` inside it is
+printed and cleared rather than propagated. Report a failure with
+``PyErr_SetString(...)`` (or ``PyErr_SetObject(...)``) followed by
+``return -1``.
+
+``MultiDict_AddCyWatcher`` wraps that away, the way
+``MultiDict_ForEachAll``/``MultiDict_ForEachKey`` wrap the visitor. Unlike
+``MultiDict_ForEach``, whose single ``void *`` already belongs to the
+caller, ``MultiDict_AddWatcher``'s ``watcher_data`` gives the trampoline
+somewhere to keep its own context, so a real Cython callback is possible
+here::
+
+   ctypedef int (*MultiDict_CyWatchCallback)(
+       void *watcher_data, void *user_data, MultiDict_WatchEvent event,
+       PyObject *md, object identity, object key, object value,
+       object old_value) except -1
+
+   cdef struct MultiDict_CyWatcherCtx:
+       MultiDict_CyWatchCallback callback
+       void *watcher_data
+
+   cdef int MultiDict_AddCyWatcher(MultiDict_CAPI *capi,
+                                   MultiDict_CyWatcherCtx *ctx) except -1
+
+*identity*, *key*, *value* and *old_value* arrive as ordinary objects,
+``None`` where the C API passes ``NULL``, and the callback may ``raise``:
+``except -1`` carries the exception out to the trampoline, which hands it
+back for ``multidict`` to report as unraisable.
+
+*md* stays a raw ``PyObject *`` on purpose, and is the one argument that
+does not become an object. On a ``MultiDict_EVENT_DEALLOCATED`` event it
+is at refcount 0, and Cython increfs anything typed ``object`` on the way
+in, which would resurrect it and then free it twice. Check the event
+first and only then cast ``<object>md``; on ``DEALLOCATED`` use the
+pointer as an identity and nothing else.
+
+The context is yours to own and keep alive for as long as the watcher
+stays registered -- ``MultiDict_AddCyWatcher`` stores the pointer and
+allocates nothing. A module-level ``cdef`` is the simple way::
+
+   cdef MultiDict_CyWatcherCtx _ctx
+
+   cdef int on_change(void *watcher_data, void *user_data,
+                      MultiDict_WatchEvent event, PyObject *md,
+                      object identity, object key, object value,
+                      object old_value) except -1:
+       if event == MultiDict_EVENT_DEALLOCATED:
+           return 0
+       if identity == "content-length":
+           raise RuntimeError("reported as unraisable, not propagated")
+       return 0
+
+   def register(md, ctx_object):
+       _ctx.callback = on_change
+       _ctx.watcher_data = <void*>state
+       cdef int watcher_id = MultiDict_AddCyWatcher(_capi, &_ctx)
+       MultiDict_Watch(_capi, watcher_id, md, <void*>ctx_object)
+
 Worked example
 ================
 

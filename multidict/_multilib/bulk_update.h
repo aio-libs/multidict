@@ -23,6 +23,7 @@ extern "C" {
 #include "reflist.h"
 #include "unpack.h"
 #include "update_marks.h"
+#include "watch.h"
 
 typedef enum _UpdateOp {
     Extend,
@@ -84,12 +85,20 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     bitmap_clear(&marks->deleted, iter.index);
                     entry->key = Py_NewRef(key);
                     publish_value(entry, Py_NewRef(value));
+                    md_watch_record(
+                        md, MultiDict_EVENT_ADDED, identity, key, value, NULL);
                 } else {
                     // old_key/old_value decref deferred: see reflist_t
                     PyObject* old_key = entry->key;
                     PyObject* old_value = load_value(entry);
                     entry->key = Py_NewRef(key);
                     publish_value(entry, Py_NewRef(value));
+                    md_watch_record(md,
+                                    MultiDict_EVENT_REPLACED,
+                                    identity,
+                                    key,
+                                    value,
+                                    old_value);
                     /* Push both unconditionally, not with `||`: a
                        failed first push already decref'd old_key itself
                        (see reflist_push()'s doc comment), but
@@ -110,6 +119,12 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                 if (bitmap_set(&marks->deleted, iter.index) < 0) {
                     goto fail;
                 }
+                md_watch_record(md,
+                                MultiDict_EVENT_DELETED,
+                                entry->identity,
+                                entry->key,
+                                entry->value,
+                                NULL);
                 if (_md_del_at_for_upd_deferred(md, iter.slot, entry, defer) <
                     0) {
                     goto fail;
@@ -277,6 +292,7 @@ md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
         ret = _md_post_update_deleted(md, defer, marks);
     }
     store_version(md, next_version(md->state));
+    md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
     ASSERT_CONSISTENT(md, false);
     return ret;
 }

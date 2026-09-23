@@ -25,6 +25,7 @@ extern "C" {
 #include "state.h"
 #include "update_marks.h"
 #include "walk.h"
+#include "watch.h"
 
 typedef struct _md_pos {
     Py_ssize_t pos;
@@ -485,6 +486,7 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
     store_used(md, 0);
     store_version(md, next_version(md->state));
     store_keys(md, new_keys);
+    md_watch_record_simple(md, MultiDict_EVENT_CLEARED);
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
@@ -529,6 +531,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     store_version(md, next_version(md->state));  // never reuse other's version
     md->is_ci = is_ci;
     store_keys(md, keys);
+    md_watch_record_simple(md, MultiDict_EVENT_CLONED);
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
@@ -577,6 +580,7 @@ _md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
     add_used(md, 1);
     keys->usable -= 1;
     keys->nentries += 1;
+    md_watch_record(md, MultiDict_EVENT_ADDED, identity, key, value, NULL);
     return 0;
 }
 
@@ -629,6 +633,7 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     add_used(md, 1);
     keys->usable -= 1;
     keys->nentries += 1;
+    md_watch_record(md, MultiDict_EVENT_ADDED, identity, key, value, NULL);
     return 0;
 }
 
@@ -670,10 +675,13 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
         return -1;
     }
     int ret;
+    bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
     ret = _md_add_locked(md, identity, hash, key, value);
+    flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
+    md_watch_flush_if(md, flush);
     return ret;
 }
 
@@ -800,7 +808,16 @@ restart:;
             continue;
         }
 
-        found = true;
+        if (!found) {
+            found = true;
+            md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
+        }
+        md_watch_record(md,
+                        MultiDict_EVENT_DELETED,
+                        entry->identity,
+                        entry->key,
+                        entry->value,
+                        NULL);
         _md_del_at(md, iter.slot, entry);
         // the decref can run a __del__ that lets another thread resize
         if (UNLIKELY(md->keys != keys || md->version != version)) {
@@ -810,6 +827,7 @@ restart:;
 
     if (found) {
         store_version(md, next_version(md->state));
+        md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
     }
     ASSERT_CONSISTENT(md, false);
     return found;
@@ -824,10 +842,13 @@ md_del(MultiDictObject* md, PyObject* key)
         return -1;
     }
     bool found;
+    bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
     found = _md_del_locked(md, identity, hash);
+    flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
+    md_watch_flush_if(md, flush);
     if (!found) {
         PyErr_SetObject(PyExc_KeyError, key);
         return -1;
@@ -1369,10 +1390,13 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
         return -1;
     }
     int ret;
+    bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
     ret = _md_set_default_locked(md, identity, hash, key, value, result);
+    flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
+    md_watch_flush_if(md, flush);
     return ret;
 }
 
@@ -1396,6 +1420,12 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         }
         if (_str_cmp(identity, entry->identity)) {
             PyObject* value = Py_NewRef(entry->value);
+            md_watch_record(md,
+                            MultiDict_EVENT_DELETED,
+                            identity,
+                            entry->key,
+                            value,
+                            NULL);
             _md_del_at(md, iter.slot, entry);
             *ret = value;
             store_version(md, next_version(md->state));
@@ -1416,10 +1446,13 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
         return -1;
     }
     int result;
+    bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
     result = _md_pop_one_locked(md, identity, hash, ret);
+    flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
+    md_watch_flush_if(md, flush);
     return result;
 }
 
@@ -1479,6 +1512,8 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         return 0;
     }
 
+    bool batched = false;
+
 restart:;
     htkeys_t* keys = md->keys;
     htkeysiter_t iter;
@@ -1500,6 +1535,16 @@ restart:;
             }
             uint64_t version = next_version(md->state);
             store_version(md, version);
+            if (!batched) {
+                batched = true;
+                md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
+            }
+            md_watch_record(md,
+                            MultiDict_EVENT_DELETED,
+                            identity,
+                            entry->key,
+                            entry->value,
+                            NULL);
             _md_del_at(md, iter.slot, entry);
             // the decref can run a __del__ that lets another thread resize
             // and bump the version through the atomic store above, so this
@@ -1510,6 +1555,9 @@ restart:;
         }
     }
 
+    if (batched) {
+        md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+    }
     ASSERT_CONSISTENT(md, false);
     return 0;
 }
@@ -1525,10 +1573,13 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     reflist_t values;
     reflist_init(&values);
     int tmp;
+    bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
     tmp = _md_pop_all_locked(md, identity, hash, &values);
+    flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
+    md_watch_flush_if(md, flush);
     if (tmp < 0) {
         reflist_clear(&values);
         return -1;
@@ -1573,6 +1624,12 @@ md_pop_item(MultiDictObject* md)
 
     for (; iter.index != pos; htkeysiter_next(&iter)) {
     }
+    md_watch_record(md,
+                    MultiDict_EVENT_DELETED,
+                    entry->identity,
+                    entry->key,
+                    entry->value,
+                    NULL);
     _md_del_at(md, iter.slot, entry);
     store_version(md, next_version(md->state));
     ASSERT_CONSISTENT(md, false);
@@ -1626,6 +1683,12 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                 PyObject* old_value = load_value(entry);
                 entry->key = Py_NewRef(key);
                 publish_value(entry, Py_NewRef(value));
+                md_watch_record(md,
+                                MultiDict_EVENT_REPLACED,
+                                identity,
+                                key,
+                                value,
+                                old_value);
                 /* Push both unconditionally, not with `||`: a failed
                    first push already decref'd old_key itself (see
                    reflist_push()'s doc comment), but short-circuiting
@@ -1639,6 +1702,12 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                     return -1;
                 }
             } else {
+                md_watch_record(md,
+                                MultiDict_EVENT_DELETED,
+                                entry->identity,
+                                entry->key,
+                                entry->value,
+                                NULL);
                 if (_md_del_at_deferred(md, iter.slot, entry, defer) < 0) {
                     return -1;
                 }
@@ -1679,12 +1748,17 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     reflist_t defer;
     reflist_init(&defer);
     int ret;
+    bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
+    md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
     ret = _md_replace(md, key, value, identity, hash, &defer);
+    md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
     ASSERT_CONSISTENT(md, false);
+    flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
     reflist_clear(&defer);
     Py_DECREF(identity);
+    md_watch_flush_if(md, flush);
     return ret;
 }
 

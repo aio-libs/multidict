@@ -28,19 +28,18 @@ pytestmark = pytest.mark.capi
 MultiDictStr = multidict.MultiDict[str]
 CIMultiDictStr = multidict.CIMultiDict[str]
 
-_API_MODULES = [pytest.param(_testcapi, id="c")]
 if _testcyapi is not None:
-    _API_MODULES.append(pytest.param(_testcyapi, id="cython"))
+    _CYTHON_PARAM = pytest.param(_testcyapi, id="cython")
 else:
-    _API_MODULES.append(
-        pytest.param(
-            None,
-            id="cython",
-            marks=pytest.mark.skip(
-                reason="multidict._testcyapi not built (Cython not available at build time)"
-            ),
-        )
+    _CYTHON_PARAM = pytest.param(
+        None,
+        id="cython",
+        marks=pytest.mark.skip(
+            reason="multidict._testcyapi not built (Cython not available at build time)"
+        ),
     )
+
+_API_MODULES = [pytest.param(_testcapi, id="c"), _CYTHON_PARAM]
 
 
 @pytest.fixture(params=_API_MODULES)
@@ -574,10 +573,474 @@ def test_check_api_version_accepts_current_and_newer() -> None:
     # Not exercised through the `api` fixture: this checks the raw C
     # struct-versioning guard in multidict_capi.h directly, which has no
     # Cython-side counterpart to mirror.
-    _testcapi.check_api_version(1)
-    _testcapi.check_api_version(2)
+    _testcapi.check_api_version(_testcapi.MultiDict_CAPI_VERSION)
+    _testcapi.check_api_version(_testcapi.MultiDict_CAPI_VERSION + 1)
 
 
 def test_check_api_version_rejects_older() -> None:
     with pytest.raises(RuntimeError, match="C API version mismatch"):
-        _testcapi.check_api_version(0)
+        _testcapi.check_api_version(_testcapi.MultiDict_CAPI_VERSION - 1)
+
+
+# --------------------------- watchers ---------------------------
+
+ADDED = _testcapi.MultiDict_EVENT_ADDED
+REPLACED = _testcapi.MultiDict_EVENT_REPLACED
+DELETED = _testcapi.MultiDict_EVENT_DELETED
+CLEARED = _testcapi.MultiDict_EVENT_CLEARED
+CLONED = _testcapi.MultiDict_EVENT_CLONED
+DEALLOCATED = _testcapi.MultiDict_EVENT_DEALLOCATED
+BATCH_BEGIN = _testcapi.MultiDict_EVENT_BATCH_BEGIN
+BATCH_END = _testcapi.MultiDict_EVENT_BATCH_END
+MAX_WATCHERS = _testcapi.MULTIDICT_MAX_WATCHERS
+
+# Each recorded event is (event, self, user_data, identity, key, value,
+# old_value); `self` is the object except on DEALLOCATED, where it is its
+# address. See record_event() in _testcapi.c.
+Event = tuple[object, ...]
+
+
+class Watcher:
+    """One registered watcher plus the log its events land in."""
+
+    def __init__(self, api: object, watcher_id: int, log: list[Event]) -> None:
+        self.api = api
+        self.id = watcher_id
+        self.log = log
+
+    def watch(self, md: object, user_data: object) -> None:
+        self.api.md_watch(self.id, md, user_data)
+
+    def unwatch(self, md: object) -> None:
+        self.api.md_unwatch(self.id, md)
+
+    def drain(self) -> list[Event]:
+        """Every event so far, emptying the log.
+
+        Draining also drops the log's own references to the watched
+        multidict, which each recorded event holds; a test that wants a
+        DEALLOCATED event has to drain before dropping its own reference.
+        """
+        events = list(self.log)
+        self.log.clear()
+        return events
+
+    def kinds(self) -> list[object]:
+        return [event[0] for event in self.drain()]
+
+
+@pytest.fixture
+def watcher(api: object) -> object:
+    log: list[Event] = []
+    watcher_id = api.md_add_watcher(log)
+    yield Watcher(api, watcher_id, log)
+    api.md_clear_watcher(watcher_id)
+    api.watch_release_refs()
+
+
+def test_add_returns_the_added_pair(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, "ctx")
+    md.add("key", "value")
+    assert watcher.drain() == [(ADDED, md, "ctx", "key", "key", "value", None)]
+
+
+def test_user_data_is_per_watched_multidict(watcher: Watcher) -> None:
+    # The reason this API exists: one registered callback, many watched
+    # multidicts, each carrying the context of whatever owns it.
+    first: CIMultiDictStr = multidict.CIMultiDict()
+    second: CIMultiDictStr = multidict.CIMultiDict()
+    watcher.watch(first, "response-1")
+    watcher.watch(second, "response-2")
+    first.add("Content-Length", "10")
+    second.add("Content-Length", "20")
+    assert [(event[2], event[5]) for event in watcher.drain()] == [
+        ("response-1", "10"),
+        ("response-2", "20"),
+    ]
+
+
+def test_watcher_data_is_shared_by_every_watched_multidict(watcher: Watcher) -> None:
+    # `watcher_data` is the log itself: one object, fixed at registration.
+    first: MultiDictStr = multidict.MultiDict()
+    second: MultiDictStr = multidict.MultiDict()
+    watcher.watch(first, "a")
+    watcher.watch(second, "b")
+    first.add("k", "1")
+    second.add("k", "2")
+    assert len(watcher.log) == 2
+
+
+def test_rewatching_overwrites_user_data(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, "first")
+    watcher.watch(md, "second")
+    md.add("k", "v")
+    assert [event[2] for event in watcher.drain()] == ["second"]
+
+
+def test_identity_of_a_case_insensitive_key(watcher: Watcher) -> None:
+    md: CIMultiDictStr = multidict.CIMultiDict()
+    watcher.watch(md, None)
+    md.add("Content-Length", "10")
+    (event,) = watcher.drain()
+    assert (event[3], event[4]) == ("content-length", "Content-Length")
+
+
+def test_identity_of_a_case_sensitive_key(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    md.add("Content-Length", "10")
+    (event,) = watcher.drain()
+    assert (event[3], event[4]) == ("Content-Length", "Content-Length")
+
+
+def test_setitem_on_a_new_key_adds(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    md["key"] = "value"
+    assert watcher.kinds() == [BATCH_BEGIN, ADDED, BATCH_END]
+
+
+def test_setitem_replaces_the_first_and_deletes_the_rest(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("key", "one"), ("key", "two")])
+    watcher.watch(md, None)
+    md["key"] = "three"
+    begin, replaced, deleted, end = watcher.drain()
+    assert (begin[0], end[0]) == (BATCH_BEGIN, BATCH_END)
+    assert (replaced[0], replaced[5], replaced[6]) == (REPLACED, "three", "one")
+    assert (deleted[0], deleted[5], deleted[6]) == (DELETED, "two", None)
+
+
+def test_delitem_removes_every_match(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("key", "one"), ("key", "two")])
+    watcher.watch(md, None)
+    del md["key"]
+    assert watcher.kinds() == [BATCH_BEGIN, DELETED, DELETED, BATCH_END]
+
+
+def test_delitem_of_a_missing_key_records_nothing(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    with pytest.raises(KeyError):
+        del md["key"]
+    assert watcher.drain() == []
+
+
+def test_extend_batches_one_added_per_pair(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    md.extend([("a", "1"), ("b", "2")])
+    assert watcher.kinds() == [BATCH_BEGIN, ADDED, ADDED, BATCH_END]
+
+
+def test_update_replaces_the_first_match(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("a", "2")])
+    watcher.watch(md, None)
+    md.update([("a", "9")])
+    assert watcher.kinds() == [BATCH_BEGIN, REPLACED, DELETED, BATCH_END]
+
+
+def test_merge_only_adds_absent_keys(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1")])
+    watcher.watch(md, None)
+    md.merge([("a", "ignored"), ("b", "2")])
+    assert watcher.kinds() == [BATCH_BEGIN, ADDED, BATCH_END]
+
+
+def test_popall_batches_one_deleted_per_value(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("a", "2")])
+    watcher.watch(md, None)
+    assert md.popall("a") == ["1", "2"]
+    assert watcher.kinds() == [BATCH_BEGIN, DELETED, DELETED, BATCH_END]
+
+
+def test_popone_deletes(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1")])
+    watcher.watch(md, None)
+    assert md.popone("a") == "1"
+    assert watcher.kinds() == [DELETED]
+
+
+def test_popitem_deletes(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1")])
+    watcher.watch(md, None)
+    assert md.popitem() == ("a", "1")
+    assert watcher.kinds() == [DELETED]
+
+
+def test_setdefault_adds_only_when_absent(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    assert md.setdefault("a", "1") == "1"
+    assert md.setdefault("a", "ignored") == "1"
+    assert watcher.kinds() == [ADDED]
+
+
+def test_clear_records_one_event_not_one_per_pair(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2")])
+    watcher.watch(md, None)
+    md.clear()
+    assert watcher.kinds() == [CLEARED]
+
+
+def test_clear_of_an_empty_multidict_records_nothing(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    md.clear()
+    assert watcher.drain() == []
+
+
+def test_init_again_clears_then_adds(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1")])
+    watcher.watch(md, None)
+    md.__init__([("b", "2")])  # type: ignore[misc]
+    assert watcher.kinds() == [BATCH_BEGIN, CLEARED, ADDED, BATCH_END]
+
+
+def test_init_from_the_same_type_clones(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    md.__init__(multidict.MultiDict([("a", "1")]))  # type: ignore[misc]
+    assert watcher.kinds() == [CLONED]
+
+
+def test_copy_records_nothing(watcher: Watcher) -> None:
+    # The copy is a brand-new object, so it cannot be watched, and the
+    # source is not modified.
+    md: MultiDictStr = multidict.MultiDict([("a", "1")])
+    watcher.watch(md, None)
+    assert md.copy() == md
+    assert watcher.drain() == []
+
+
+def test_reading_records_nothing(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1")])
+    watcher.watch(md, None)
+    assert md["a"] == "1"
+    assert list(md.items()) == [("a", "1")]
+    assert "a" in md
+    assert len(md) == 1
+    assert watcher.drain() == []
+
+
+def test_watch_through_a_proxy_watches_the_underlying_multidict(
+    watcher: Watcher,
+) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(multidict.MultiDictProxy(md), "ctx")
+    md.add("a", "1")
+    assert [event[2] for event in watcher.drain()] == ["ctx"]
+
+
+def test_unwatch_through_another_proxy_removes_the_same_watch(
+    watcher: Watcher,
+) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(multidict.MultiDictProxy(md), "ctx")
+    watcher.unwatch(multidict.MultiDictProxy(md))
+    md.add("a", "1")
+    assert watcher.drain() == []
+
+
+def test_unwatch_stops_events(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    watcher.unwatch(md)
+    md.add("a", "1")
+    assert watcher.drain() == []
+
+
+def test_unwatch_of_an_unwatched_multidict_is_a_noop(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.unwatch(md)
+    md.add("a", "1")
+    assert watcher.drain() == []
+
+
+def test_clear_watcher_stops_events(api: object, watcher: Watcher) -> None:
+    # The bit stays on the multidict; it resolves to the now-empty slot
+    # and is skipped, exactly like CPython's PyDict_ClearWatcher().
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    api.md_clear_watcher(watcher.id)
+    md.add("a", "1")
+    assert watcher.drain() == []
+    # re-registering so the fixture's own clear has a live slot to clear
+    watcher.id = api.md_add_watcher(watcher.log)
+
+
+def test_dealloc_reports_the_address_not_the_object(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, "ctx")
+    address = id(md)
+    # each recorded event holds a reference to `md`, so drain first
+    watcher.drain()
+    del md
+    assert watcher.drain() == [(DEALLOCATED, address, "ctx", None, None, None, None)]
+
+
+def test_a_callback_may_read_the_multidict_it_watches(api: object) -> None:
+    # Delivery happens after the operation, with no lock held, so this is
+    # safe -- unlike a MultiDict_ForEach visitor.
+    log: list[Event] = []
+    watcher_id = api.md_add_watcher(log)
+    md: MultiDictStr = multidict.MultiDict()
+    api.md_watch(watcher_id, md, md)
+    md.add("a", "1")
+    seen = [api.md_size(event[2]) for event in log]
+    api.md_clear_watcher(watcher_id)
+    api.watch_release_refs()
+    assert seen == [1]
+
+
+def test_add_watcher_rejects_a_null_callback(api: object) -> None:
+    with pytest.raises(ValueError, match="callback must not be NULL"):
+        api.md_add_null_watcher()
+
+
+def test_add_watcher_runs_out_of_slots(api: object) -> None:
+    log: list[Event] = []
+    ids = [api.md_add_watcher(log) for _ in range(MAX_WATCHERS)]
+    try:
+        assert sorted(ids) == list(range(MAX_WATCHERS))
+        with pytest.raises(RuntimeError, match="no more multidict watcher IDs"):
+            api.md_add_watcher(log)
+    finally:
+        for watcher_id in ids:
+            api.md_clear_watcher(watcher_id)
+        api.watch_release_refs()
+
+
+@pytest.mark.parametrize("watcher_id", [-1, MAX_WATCHERS, 0])
+def test_unregistered_watcher_id_is_rejected(api: object, watcher_id: int) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    with pytest.raises(ValueError, match="invalid watcher ID"):
+        api.md_watch(watcher_id, md, None)
+    with pytest.raises(ValueError, match="invalid watcher ID"):
+        api.md_unwatch(watcher_id, md)
+    with pytest.raises(ValueError, match="invalid watcher ID"):
+        api.md_clear_watcher(watcher_id)
+
+
+@pytest.mark.parametrize("name", ["md_watch", "md_unwatch"])
+def test_watch_wrong_type(api: object, watcher: Watcher, name: str) -> None:
+    args: tuple[object, ...] = (
+        (watcher.id, {}, None) if name == "md_watch" else (watcher.id, {})
+    )
+    with pytest.raises(
+        TypeError,
+        match="should be a MultiDict, CIMultiDict, MultiDictProxy or "
+        "CIMultiDictProxy instance",
+    ):
+        getattr(api, name)(*args)
+
+
+def test_a_failing_callback_is_reported_as_unraisable(
+    api: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The mutation already happened and cannot be undone, so a failure can
+    # only be reported. Same rule as CPython's dict watchers.
+    unraisable: list[object] = []
+    monkeypatch.setattr(sys, "unraisablehook", unraisable.append)
+    log: list[Event] = []
+    watcher_id = api.md_add_failing_watcher(log)
+    md: MultiDictStr = multidict.MultiDict()
+    api.md_watch(watcher_id, md, None)
+    md.add("a", "1")
+    api.md_clear_watcher(watcher_id)
+    api.watch_release_refs()
+    assert md["a"] == "1"  # the mutation still happened
+    assert log == [None]  # the callback did run
+    assert len(unraisable) == 1
+
+
+def test_a_callback_may_mutate_the_multidict_it_watches(api: object) -> None:
+    # The events that produces are queued and delivered to the same
+    # callback before the flush returns, so the loop has to terminate.
+    log: list[object] = []
+    watcher_id = api.md_add_mutating_watcher(log)
+    md: MultiDictStr = multidict.MultiDict()
+    api.md_watch(watcher_id, md, None)
+    md.add("seed", "1")
+    api.md_unwatch(watcher_id, md)
+    api.md_clear_watcher(watcher_id)
+    api.watch_release_refs()
+    assert log == [ADDED] * 3
+    assert len(md) == 3
+
+
+def test_recording_out_of_memory_reports_one_lost_event(watcher: Watcher) -> None:
+    # Recording cannot fail the mutation it describes, so an allocation
+    # failure turns the whole burst into a single "resynchronize".
+    cpython_testcapi = pytest.importorskip("_testcapi")
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    # Sweep which allocation fails rather than breaking out on the first
+    # hit: an early exit would leave the loop's exhausted arm untaken.
+    seen: list[object] = []
+    for nth in range(8):
+        watcher.drain()
+        try:
+            # One line, so no tracer line event can take the failure.
+            (
+                cpython_testcapi.set_nomemory(nth, nth + 1),
+                md.add("k", "v"),
+                cpython_testcapi.remove_mem_hooks(),
+            )
+        except MemoryError:
+            cpython_testcapi.remove_mem_hooks()
+        seen.extend(watcher.kinds())
+    assert _testcapi.MultiDict_EVENT_LOST in seen
+
+
+def test_a_failing_operation_keeps_its_own_exception(watcher: Watcher) -> None:
+    # Delivery happens on the failure path too, so the flush must not let
+    # the pending exception be mistaken for one a callback raised.
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, None)
+    with pytest.raises(ValueError):
+        md.extend([("ok", "1"), "not-a-pair"])  # type: ignore[list-item]
+    # the pair that did land is still reported
+    assert ADDED in watcher.kinds()
+
+
+@pytest.fixture(params=[_CYTHON_PARAM])
+def cy_watcher(request: pytest.FixtureRequest) -> object:
+    # The Cython trampoline in multidict/__init__.pxd, which hands the
+    # callback ordinary objects instead of raw PyObject pointers. It has no
+    # counterpart in _testcapi.c, so it gets its own fixture rather than an
+    # arm inside the shared `api` one.
+    api = request.param
+    log: list[Event] = []
+    watcher_id = api.md_add_watcher_cy(log)
+    yield Watcher(api, watcher_id, log)
+    api.md_clear_watcher(watcher_id)
+    api.watch_release_refs()
+
+
+def test_cython_trampoline_delivers_objects(cy_watcher: Watcher) -> None:
+    md: CIMultiDictStr = multidict.CIMultiDict()
+    cy_watcher.watch(md, "ctx")
+    md.add("Key", "value")
+    assert cy_watcher.drain() == [(ADDED, md, "ctx", "key", "Key", "value", None)]
+
+
+def test_cython_trampoline_reports_a_raising_callback(
+    api: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Unlike the raw C callback, a Cython one may just `raise`; the
+    # trampoline reinstates the exception so multidict can report it.
+    cy_api = pytest.importorskip("multidict._testcyapi")
+    unraisable: list[object] = []
+    monkeypatch.setattr(sys, "unraisablehook", unraisable.append)
+    log: list[Event] = []
+    watcher_id = cy_api.md_add_failing_watcher_cy(log)
+    md: MultiDictStr = multidict.MultiDict()
+    cy_api.md_watch(watcher_id, md, None)
+    md.add("a", "1")
+    cy_api.md_clear_watcher(watcher_id)
+    cy_api.watch_release_refs()
+    assert md["a"] == "1"
+    assert log == [None]
+    assert len(unraisable) == 1

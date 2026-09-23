@@ -7,6 +7,11 @@
 
 typedef struct {
     MultiDict_CAPI* capi;
+    PyObject* log;  // mutating_event()'s log; see mutating_ctx below
+    /* Keeps every object handed to the C API as a raw `void*` alive: the
+       API stores those pointers without a reference, so the harness has
+       to. Emptied by watch_release_refs(). */
+    PyObject* refs;
 } mod_state;
 
 static inline mod_state*
@@ -372,6 +377,215 @@ md_foreach_raises(PyObject* self, PyObject* arg)
     Py_RETURN_NONE;
 }
 
+/* watchers */
+
+static PyObject*
+_or_none(PyObject* obj)
+{
+    return obj == NULL ? Py_None : obj;
+}
+
+/* `watcher_data` is the log list the events land in and `user_data` is
+   whatever the test attached to that particular multidict, which is the
+   pair the whole API exists for. */
+static int
+record_event(void* watcher_data, void* user_data,
+             const MultiDict_WatchInfo* info)
+{
+    /* The one discrimination in here: on DEALLOCATED `self` is at
+       refcount 0, so record its address instead of the object. */
+    PyObject* self = info->event == MultiDict_EVENT_DEALLOCATED
+                         ? PyLong_FromVoidPtr(info->self)
+                         : Py_NewRef(info->self);
+    if (self == NULL) {
+        return -1;
+    }
+    PyObject* item = Py_BuildValue("(iNOOOOO)",
+                                   (int)info->event,
+                                   self,
+                                   (PyObject*)user_data,
+                                   _or_none(info->identity),
+                                   _or_none(info->key),
+                                   _or_none(info->value),
+                                   _or_none(info->old_value));
+    if (item == NULL) {
+        return -1;
+    }
+    int ret = PyList_Append((PyObject*)watcher_data, item);
+    Py_DECREF(item);
+    return ret;
+}
+
+static int
+failing_event(void* watcher_data, void* user_data,
+              const MultiDict_WatchInfo* info)
+{
+    (void)user_data;
+    (void)info;
+    // records that it ran, so the test can tell "raised" from "never called"
+    int ret = PyList_Append((PyObject*)watcher_data, Py_None);
+    PyErr_SetString(PyExc_RuntimeError, "boom from watcher");
+    return ret == 0 ? -1 : ret;
+}
+
+/* Mutates the multidict it is watching, from inside the delivery of that
+   multidict's own events. Legal because delivery happens after the
+   operation with no lock held; it stops after a couple of rounds so the
+   flush's swap-and-recheck loop terminates. Its watcher_data is the
+   harness's own mod_state, since it needs the capsule to call back in. */
+#define MUTATING_WATCHER_ROUNDS 3
+
+static int
+mutating_event(void* watcher_data, void* user_data,
+               const MultiDict_WatchInfo* info)
+{
+    (void)user_data;
+    mod_state* state = (mod_state*)watcher_data;
+    PyObject* kind = PyLong_FromLong((long)info->event);
+    if (kind == NULL) {
+        return -1;
+    }
+    int appended = PyList_Append(state->log, kind);
+    Py_DECREF(kind);
+    if (appended < 0) {
+        return -1;
+    }
+    if (info->event != MultiDict_EVENT_ADDED ||
+        PyList_GET_SIZE(state->log) >= MUTATING_WATCHER_ROUNDS) {
+        return 0;
+    }
+    PyObject* again = PyUnicode_FromString("again");
+    if (again == NULL) {
+        return -1;
+    }
+    int ret = MultiDict_Add(state->capi, info->self, again, again);
+    Py_DECREF(again);
+    return ret;
+}
+
+static PyObject*
+md_add_mutating_watcher(PyObject* self, PyObject* arg)
+{
+    mod_state* state = get_mod_state(self);
+    Py_XSETREF(state->log, Py_NewRef(arg));
+    int watcher_id = MultiDict_AddWatcher(state->capi, mutating_event, state);
+    if (watcher_id < 0) {
+        return NULL;
+    }
+    return PyLong_FromLong(watcher_id);
+}
+
+static int
+_watch_keep_alive(mod_state* state, PyObject* obj)
+{
+    return PyList_Append(state->refs, obj);
+}
+
+static PyObject*
+_md_add_watcher(PyObject* self, PyObject* arg, MultiDict_WatchCallback cb)
+{
+    mod_state* state = get_mod_state(self);
+    if (_watch_keep_alive(state, arg) < 0) {
+        return NULL;
+    }
+    int watcher_id = MultiDict_AddWatcher(state->capi, cb, arg);
+    if (watcher_id < 0) {
+        return NULL;
+    }
+    return PyLong_FromLong(watcher_id);
+}
+
+static PyObject*
+md_add_watcher(PyObject* self, PyObject* arg)
+{
+    return _md_add_watcher(self, arg, record_event);
+}
+
+static PyObject*
+md_add_failing_watcher(PyObject* self, PyObject* arg)
+{
+    return _md_add_watcher(self, arg, failing_event);
+}
+
+static PyObject*
+md_add_null_watcher(PyObject* self, PyObject* unused)
+{
+    (void)unused;
+    mod_state* state = get_mod_state(self);
+    if (MultiDict_AddWatcher(state->capi, NULL, NULL) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+md_clear_watcher(PyObject* self, PyObject* arg)
+{
+    mod_state* state = get_mod_state(self);
+    int watcher_id = (int)PyLong_AsLong(arg);
+    if (watcher_id == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    if (MultiDict_ClearWatcher(state->capi, watcher_id) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+md_watch(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
+{
+    if (nargs != 3) {
+        PyErr_SetString(
+            PyExc_TypeError,
+            "md_watch should be called with watcher_id, md and user_data");
+        return NULL;
+    }
+    mod_state* state = get_mod_state(self);
+    int watcher_id = (int)PyLong_AsLong(args[0]);
+    if (watcher_id == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    if (_watch_keep_alive(state, args[2]) < 0) {
+        return NULL;
+    }
+    if (MultiDict_Watch(state->capi, watcher_id, args[1], args[2]) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+md_unwatch(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
+{
+    if (nargs != 2) {
+        PyErr_SetString(PyExc_TypeError,
+                        "md_unwatch should be called with watcher_id and md");
+        return NULL;
+    }
+    mod_state* state = get_mod_state(self);
+    int watcher_id = (int)PyLong_AsLong(args[0]);
+    if (watcher_id == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    if (MultiDict_Unwatch(state->capi, watcher_id, args[1]) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+watch_release_refs(PyObject* self, PyObject* unused)
+{
+    (void)unused;
+    mod_state* state = get_mod_state(self);
+    if (PyList_SetSlice(state->refs, 0, PyList_GET_SIZE(state->refs), NULL) <
+        0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 check_api_version(PyObject* self, PyObject* arg)
 {
@@ -395,12 +609,16 @@ check_api_version(PyObject* self, PyObject* arg)
 static int
 module_traverse(PyObject* mod, visitproc visit, void* arg)
 {
+    Py_VISIT(get_mod_state(mod)->refs);
+    Py_VISIT(get_mod_state(mod)->log);
     return 0;
 }
 
 static int
 module_clear(PyObject* mod)
 {
+    Py_CLEAR(get_mod_state(mod)->refs);
+    Py_CLEAR(get_mod_state(mod)->log);
     return 0;
 }
 
@@ -434,6 +652,14 @@ static PyMethodDef module_methods[] = {
     {"md_foreach", (PyCFunction)md_foreach, METH_FASTCALL},
     {"md_foreach_mutates", (PyCFunction)md_foreach_mutates, METH_FASTCALL},
     {"md_foreach_raises", (PyCFunction)md_foreach_raises, METH_O},
+    {"md_add_watcher", (PyCFunction)md_add_watcher, METH_O},
+    {"md_add_failing_watcher", (PyCFunction)md_add_failing_watcher, METH_O},
+    {"md_add_mutating_watcher", (PyCFunction)md_add_mutating_watcher, METH_O},
+    {"md_add_null_watcher", (PyCFunction)md_add_null_watcher, METH_NOARGS},
+    {"md_clear_watcher", (PyCFunction)md_clear_watcher, METH_O},
+    {"md_watch", (PyCFunction)md_watch, METH_FASTCALL},
+    {"md_unwatch", (PyCFunction)md_unwatch, METH_FASTCALL},
+    {"watch_release_refs", (PyCFunction)watch_release_refs, METH_NOARGS},
     {"check_api_version", (PyCFunction)check_api_version, METH_O},
     {NULL, NULL} /* sentinel */
 };
@@ -444,6 +670,43 @@ module_exec(PyObject* mod)
     mod_state* state = get_mod_state(mod);
     state->capi = MultiDict_GetCAPI();
     if (state->capi == NULL) {
+        return -1;
+    }
+    state->refs = PyList_New(0);
+    if (state->refs == NULL) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_CAPI_VERSION) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MULTIDICT_MAX_WATCHERS) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_EVENT_ADDED) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_EVENT_REPLACED) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_EVENT_DELETED) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_EVENT_CLEARED) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_EVENT_CLONED) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_EVENT_DEALLOCATED) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_EVENT_BATCH_BEGIN) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_EVENT_BATCH_END) < 0) {
+        return -1;
+    }
+    if (PyModule_AddIntMacro(mod, MultiDict_EVENT_LOST) < 0) {
         return -1;
     }
     return 0;
