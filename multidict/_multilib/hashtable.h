@@ -123,7 +123,7 @@ reached its own D/E -- a reader can be preempted between C and D for
 an arbitrary stretch. So keys->num_readers (C/D) is the actual
 per-table authority on whether a specific table is safe to free, not
 a redundant check of what the coarse gate already guarantees.
-_md_drain_retired() treats it that way: a table whose own num_readers
+_md_drain_retired_slow() treats it that way: a table whose own num_readers
 is still nonzero is pushed back onto md->retired for a later attempt
 instead of freed.
 
@@ -137,7 +137,7 @@ release atomic_fetch_add_ssize_release(), so every ordinary read the
 reader performed while walking keys (in _md_get_one_lockfree() and
 friends) is ordered-before D becomes visible to another thread. The
 drain's own check, atomic_load_ssize_acquire(&t->num_readers) == 0 in
-_md_drain_retired(), pairs with that release: observing the
+_md_drain_retired_slow(), pairs with that release: observing the
 post-decrement value there means the drainer also observes everything
 the departing reader read before D, so freeing the table (via
 htkeys_free(), reached through _md_free_retired()) cannot race the
@@ -163,7 +163,7 @@ retiring into the same list at the same time).
 
 md->retired is a lock-free stack (Treiber-style), not a plain
 writer-owned list: with readers now able to drain it too, pushes
-(_md_retire()) and pop-alls (_md_drain_retired()) can run concurrently
+(_md_retire()) and pop-alls (_md_drain_retired_slow()) can run concurrently
 with each other, on different threads, with no lock in common. A
 pop-all is a single atomic_exchange_ptr() that swaps the whole chain
 out for NULL and hands the caller sole ownership of whatever it
@@ -227,8 +227,8 @@ _md_free_retired(htkeys_t* keys)
     htkeys_free(keys);
 }
 
-static inline void
-_md_drain_retired(MultiDictObject* md)
+NOINLINE static void
+_md_drain_retired_slow(MultiDictObject* md)
 {
     if (atomic_load_ssize(&md->num_active_readers) != 0) {
         return;
@@ -276,6 +276,21 @@ _md_drain_retired(MultiDictObject* md)
             }
         }
     }
+}
+
+/* Every reader that brings num_active_readers back to zero drains, which
+   without a second thread is every lookup, and the list is almost always
+   empty; the work it guards sits behind a call so that a lookup pays a
+   relaxed load instead. Nothing is stranded by the narrower window: a table
+   retired after this load reads the same as one retired just after the
+   exchange, and _md_retire() drains again once its push is visible. */
+static inline void
+_md_drain_retired(MultiDictObject* md)
+{
+    if (atomic_load_ptr_relaxed((void* const*)&md->retired) == NULL) {
+        return;
+    }
+    _md_drain_retired_slow(md);
 }
 
 static inline void

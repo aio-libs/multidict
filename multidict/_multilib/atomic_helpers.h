@@ -113,6 +113,12 @@ atomic_load_ptr(void* const* obj)
 }
 
 static inline void*
+atomic_load_ptr_relaxed(void* const* obj)
+{
+    return __atomic_load_n(obj, __ATOMIC_RELAXED);
+}
+
+static inline void*
 atomic_exchange_ptr(void** obj, void* value)
 {
     return __atomic_exchange_n(obj, value, __ATOMIC_SEQ_CST);
@@ -235,6 +241,13 @@ atomic_load_ptr(void* const* obj)
 {
     return atomic_load_explicit((void* const _Atomic*)obj,
                                 memory_order_seq_cst);
+}
+
+static inline void*
+atomic_load_ptr_relaxed(void* const* obj)
+{
+    return atomic_load_explicit((void* const _Atomic*)obj,
+                                memory_order_relaxed);
 }
 
 static inline void
@@ -414,6 +427,12 @@ _MULTIDICT_DEFINE_INDEX_ATOMICS(64)
 
 static inline void*
 atomic_load_ptr(void* const* obj)
+{
+    return *(void* const volatile*)obj;
+}
+
+static inline void*
+atomic_load_ptr_relaxed(void* const* obj)
 {
     return *(void* const volatile*)obj;
 }
