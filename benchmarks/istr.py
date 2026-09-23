@@ -1,7 +1,7 @@
 import functools
 import textwrap
 
-import perf
+import pyperf
 
 IMPLEMENTATIONS = {
     "c": """\
@@ -41,7 +41,7 @@ def add_impl_option(cmd, args):
 
 
 if __name__ == "__main__":
-    runner = perf.Runner(add_cmdline_args=add_impl_option)
+    runner = pyperf.Runner(add_cmdline_args=add_impl_option)
 
     parser = runner.argparser
     parser.description = "Allows to measure performance of istr implementations"
