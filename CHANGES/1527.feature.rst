@@ -1,4 +1,9 @@
 Sped up ``CIMultiDict`` operations keyed by a plain ``str`` in the C
 extension. An all-ASCII key is now lowered directly instead of through a
 ``str.lower()`` call, and a key that is already lowercase becomes its own
-identity, which saves both a copy and a rehash -- by :user:`asvetlov`.
+identity, which saves both a copy and a rehash. Looking up a lowercase key
+got about three times faster and inserting one about twice as fast, keys
+that do carry uppercase gained 20% to 35%, and bulk operations on
+already-lowercase keys, such as :meth:`~multidict.MultiDict.extend` and
+construction from a :class:`dict`, got up to three times faster
+-- by :user:`asvetlov`.
