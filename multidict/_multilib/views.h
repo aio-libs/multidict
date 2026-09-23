@@ -242,6 +242,42 @@ _set_add(PyObject* set, PyObject* key, PyObject* value)
     return tmp;
 }
 
+static int
+_multidict_collect_visit(void* user_data, PyObject* key, PyObject* value)
+{
+    PyObject* item;
+    if (key != NULL) {
+        item = PyTuple_Pack(2, key, value);
+        if (item == NULL) {
+            return -1;
+        }
+    } else {
+        item = Py_NewRef(value);
+    }
+    int tmp = PyList_Append((PyObject*)user_data, item);
+    Py_DECREF(item);
+    return tmp < 0 ? -1 : 1;
+}
+
+/* Collect every (key, value) pair matching `identity` into a fresh list,
+   so that callers can run a custom __eq__ against it after the walk.
+
+   `with_keys` selects values (false) or (key, value) tuples (true). */
+static inline PyObject*
+_multidict_collect_matches(MultiDictObject* md, PyObject* identity,
+                           bool with_keys)
+{
+    PyObject* ret = PyList_New(0);
+    if (ret == NULL) {
+        return NULL;
+    }
+    if (md_walk(md, identity, with_keys, _multidict_collect_visit, ret) < 0) {
+        Py_DECREF(ret);
+        return NULL;
+    }
+    return ret;
+}
+
 static inline PyObject*
 multidict_itemsview_and1_impl(_Multidict_ViewObject* self, PyObject* other)
 {
@@ -278,7 +314,7 @@ multidict_itemsview_and1_impl(_Multidict_ViewObject* self, PyObject* other)
         /* Materialize the matches before running PyObject_RichCompareBool()
            below: a custom __eq__ on `value` could re-enter and mutate this
            MultiDict mid-walk. */
-        matches = finder_collect(self->md, identity, true);
+        matches = _multidict_collect_matches(self->md, identity, true);
         if (matches == NULL) {
             goto fail;
         }
@@ -365,7 +401,7 @@ multidict_itemsview_and2_impl(_Multidict_ViewObject* self, PyObject* other)
 
         /* See multidict_itemsview_and1_impl() for why matches are
            materialized before running PyObject_RichCompareBool(). */
-        matches = finder_collect(self->md, identity, false);
+        matches = _multidict_collect_matches(self->md, identity, false);
         if (matches == NULL) {
             goto fail;
         }
@@ -477,7 +513,7 @@ multidict_itemsview_or1_impl(_Multidict_ViewObject* self, PyObject* other)
 
         /* See multidict_itemsview_and1_impl() for why matches are
            materialized before running PyObject_RichCompareBool(). */
-        matches = finder_collect(self->md, identity, false);
+        matches = _multidict_collect_matches(self->md, identity, false);
         if (matches == NULL) {
             goto fail;
         }
@@ -792,7 +828,7 @@ multidict_itemsview_sub2_impl(_Multidict_ViewObject* self, PyObject* other)
 
         /* See multidict_itemsview_and1_impl() for why matches are
            materialized before running PyObject_RichCompareBool(). */
-        matches = finder_collect(self->md, identity, false);
+        matches = _multidict_collect_matches(self->md, identity, false);
         if (matches == NULL) {
             goto fail;
         }
@@ -996,7 +1032,7 @@ multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
 
     /* See multidict_itemsview_and1_impl() for why matches are materialized
        before running PyObject_RichCompareBool(). */
-    matches = finder_collect(self->md, identity, false);
+    matches = _multidict_collect_matches(self->md, identity, false);
     if (matches == NULL) {
         ret = -1;
         goto done;
@@ -1061,7 +1097,7 @@ multidict_itemsview_isdisjoint_impl(_Multidict_ViewObject* self,
 
         /* See multidict_itemsview_and1_impl() for why matches are
            materialized before running PyObject_RichCompareBool(). */
-        matches = finder_collect(self->md, identity, false);
+        matches = _multidict_collect_matches(self->md, identity, false);
         if (matches == NULL) {
             goto fail;
         }

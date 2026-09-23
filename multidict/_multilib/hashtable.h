@@ -17,7 +17,6 @@ extern "C" {
 #include "compiler.h"
 #include "deferred_decref.h"
 #include "dict.h"
-#include "finder.h"
 #include "freethreading.h"
 #include "htkeys.h"
 #include "identity.h"
@@ -26,6 +25,7 @@ extern "C" {
 #include "reflist.h"
 #include "state.h"
 #include "update_marks.h"
+#include "walk.h"
 
 typedef struct _md_pos {
     Py_ssize_t pos;
@@ -1445,6 +1445,50 @@ fail:
     Py_XDECREF(value);
     Py_XDECREF(identity);
     return -1;
+}
+
+static int
+_md_getall_visit(void* user_data, PyObject* key, PyObject* value)
+{
+    (void)key;  // value-only walk
+    if (reflist_push((reflist_t*)user_data, Py_NewRef(value)) < 0) {
+        return -1;
+    }
+    return 1;
+}
+
+// Caller holds md's critical section
+static inline int
+_md_get_all_locked(MultiDictObject* md, PyObject* key, reflist_t* values)
+{
+    PyObject* identity = md_calc_identity(md, key);
+    if (identity == NULL) {
+        return -1;
+    }
+    Py_ssize_t count = md_walk(md, identity, false, _md_getall_visit, values);
+    Py_DECREF(identity);
+    return count < 0 ? -1 : 0;
+}
+
+static inline int
+md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    reflist_t values;
+    reflist_init(&values);
+    int tmp;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    tmp = _md_get_all_locked(md, key, &values);
+    Py_END_CRITICAL_SECTION();
+    *ret = NULL;
+    if (tmp < 0) {
+        reflist_clear(&values);
+        return -1;
+    }
+    if (values.size == 0) {
+        return 0;
+    }
+    *ret = reflist_to_list(&values);
+    return *ret != NULL ? 1 : -1;
 }
 
 // Caller holds md's critical section
