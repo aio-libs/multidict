@@ -311,7 +311,9 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     }
     assert(log2_newsize >= HT_LOG_MINSIZE);
 
-    htkeys_t* newkeys = htkeys_new(MD_POOLS(md), log2_newsize);
+    /* The copy below writes the front of the entries array, so only
+       what it leaves over has to be zeroed. */
+    htkeys_t* newkeys = htkeys_new_unfilled(MD_POOLS(md), log2_newsize);
     if (newkeys == NULL) {
         return -1;
     }
@@ -324,8 +326,10 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     Py_ssize_t numentries = md->used;
     entry_t* oldentries = htkeys_entries(oldkeys);
     entry_t* newentries = htkeys_entries(newkeys);
+    Py_ssize_t filled;
     if (oldkeys->nentries == numentries) {
         memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+        filled = numentries;
     } else {
         entry_t* new_ep = newentries;
         entry_t* old_ep = oldentries;
@@ -335,7 +339,13 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
                 *new_ep++ = *old_ep;
             }
         }
+        filled = new_ep - newentries;
     }
+    /* What the copy actually wrote, rather than md->used: the two agree,
+       but taking the count from the copy means a table can never be
+       published over entries nothing has written. */
+    assert(filled == numentries);
+    htkeys_zero_entries(newkeys, filled);
 
     htkeys_build_indices(newkeys, newentries, numentries);
 
@@ -499,10 +509,12 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     htkeys_t* keys = (htkeys_t*)&empty_htkeys;
     htkeys_t* src = other->keys;
     if (src != &empty_htkeys) {
-        size_t size = htkeys_sizeof(src);
-        keys = PyMem_Malloc(size);
+        /* The copy overwrites every byte, so this skips both of the
+           memsets htkeys_new() would do; the byte count is a function
+           of log2_size alone, which is also what the pool keys on. */
+        size_t size = (size_t)htkeys_sizeof(src);
+        keys = _htkeys_alloc_sized(MD_POOLS(md), src->log2_size, size);
         if (keys == NULL) {
-            PyErr_NoMemory();
             return -1;
         }
 
