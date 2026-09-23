@@ -95,6 +95,59 @@ _md_seen_release(md_seen_t* seen)
 typedef int (*md_item_visitor_t)(void* user_data, PyObject* key,
                                  PyObject* value);
 
+/* Calls `visitor` once for every live entry, in insertion order. Returns how
+   many entries were visited, or -1 with an exception set. The caller holds
+   md's critical section.
+
+   The linear scan cannot reach an entry twice, so unlike md_walk() there is
+   no seen set to keep.
+
+   `visitor` must not call back into `md`, for the reason md_walk() gives. */
+ALWAYS_INLINE static inline Py_ssize_t
+md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
+            void* user_data)
+{
+    uint64_t version = md->version;
+    htkeys_t* keys = md->keys;
+    entry_t* entries = htkeys_entries(keys);
+
+    Py_ssize_t count = 0;
+    for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
+        entry_t* entry = entries + pos;
+        if (entry->identity == NULL) {
+            continue;
+        }
+
+        PyObject* value = Py_NewRef(entry->value);
+        PyObject* key = NULL;
+        if (with_keys) {
+            key = _md_ensure_key(md, entry);  // last entry access
+            if (key == NULL) {
+                Py_DECREF(value);
+                return -1;
+            }
+        }
+        count++;
+        int ret = visitor(user_data, key, value);
+        Py_XDECREF(key);
+        Py_DECREF(value);
+        if (ret < 0) {
+            assert(PyErr_Occurred());
+            return -1;
+        }
+        /* _md_ensure_key() and the visitor can both run Python code. */
+        if (keys != md->keys || version != md->version) {
+            PyErr_SetString(PyExc_RuntimeError,
+                            "MultiDict is changed during iteration");
+            return -1;
+        }
+        if (ret == 0) {
+            break;
+        }
+    }
+    return count;
+}
+
 /* Calls `visitor` once for every entry whose identity is `identity`, in probe
    order. Returns how many entries were visited, or -1 with an exception set.
    The caller holds md's critical section.
