@@ -32,6 +32,11 @@ class InvalidTestedMethodArgs:
             ("a",),
             {"wrong": 1},
         ),
+        InvalidTestedMethodArgs(
+            "key_passed_positionally_and_by_name",
+            ("a", "b"),
+            {"key": "c"},
+        ),
     ),
     ids=str,
 )
@@ -93,6 +98,17 @@ def test_setdefault_args(
         )
 
 
+def test_add_args(
+    multidict_object: MultiDict[int],
+    tested_method_args: InvalidTestedMethodArgs,
+) -> None:
+    with pytest.raises(TypeError, match=r".*argument.*"):
+        multidict_object.add(
+            *tested_method_args.positional,
+            **tested_method_args.keyword,
+        )
+
+
 def test_popone_args(
     multidict_object: MultiDict[int],
     tested_method_args: InvalidTestedMethodArgs,
@@ -124,3 +140,70 @@ def test_popall_args(
             *tested_method_args.positional,
             **tested_method_args.keyword,
         )
+
+
+@pytest.mark.parametrize(
+    ("method_name", "second_argname"),
+    (
+        ("getall", "default"),
+        ("getone", "default"),
+        ("get", "default"),
+        ("add", "value"),
+        ("setdefault", "default"),
+        ("popone", "default"),
+        ("pop", "default"),
+        ("popall", "default"),
+    ),
+)
+def test_key_passed_positionally_and_by_name(
+    multidict_object: MultiDict[int],
+    method_name: str,
+    second_argname: str,
+) -> None:
+    """Reject a key given both positionally and by name."""
+    with pytest.raises(
+        TypeError,
+        match=r"got multiple values for argument 'key'$",
+    ):
+        getattr(multidict_object, method_name)(
+            "a",
+            **{second_argname: 1, "key": "b"},
+        )
+
+
+def test_add_missing_both_args(multidict_object: MultiDict[int]) -> None:
+    with pytest.raises(
+        TypeError,
+        match=r"missing 2 required positional arguments: 'key' and 'value'$",
+    ):
+        multidict_object.add()  # type: ignore[call-arg]
+
+
+def test_add_missing_value(multidict_object: MultiDict[int]) -> None:
+    with pytest.raises(
+        TypeError,
+        match=r"missing 1 required positional argument: 'value'$",
+    ):
+        multidict_object.add("a")  # type: ignore[call-arg]
+
+
+def test_add_too_many_args_reports_a_fixed_count(
+    multidict_object: MultiDict[int],
+) -> None:
+    """``add()`` takes a fixed number of arguments, not a range."""
+    with pytest.raises(
+        TypeError,
+        match=r"takes (exactly )?\d+ positional arguments",
+    ):
+        multidict_object.add("a", "b", "c")  # type: ignore[call-arg]
+
+
+def test_getall_too_many_args_reports_a_range(
+    multidict_object: MultiDict[int],
+) -> None:
+    """``getall()`` has an optional second argument, so it takes a range."""
+    with pytest.raises(
+        TypeError,
+        match=r"takes from \d+ to \d+ positional arguments",
+    ):
+        multidict_object.getall("a", "b", "c")
