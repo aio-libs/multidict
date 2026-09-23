@@ -1,0 +1,2 @@
+Modernized the GitHub issue templates to guide contributors through bug reports
+and feature requests more consistently -- by :user:`Polandia94`.
