@@ -2740,6 +2740,10 @@ md_clear(MultiDictObject* md)
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         entry_t* entry = entries + pos;
         if (entry->identity != NULL) {
+            /* Py_CLEAR rather than freethreading.h's reset_identity() and
+               reset_value(): it skips the store when a field is already
+               NULL, which they cannot express, and this arm is GIL-only,
+               so there is no ordering left for an accessor to carry. */
             Py_CLEAR(entry->identity);
             Py_CLEAR(entry->key);
             Py_CLEAR(entry->value);
