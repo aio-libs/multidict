@@ -1,0 +1,5 @@
+Fixed the argument counts reported by the C extension when a method is
+called with too many positional arguments; methods with an optional
+second argument claimed to take exactly one, and methods requiring two
+claimed to take a range. A method called with none of its two required
+arguments now reports both as missing -- by :user:`asvetlov`.

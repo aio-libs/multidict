@@ -16,6 +16,16 @@ raise_unexpected_kwarg(const char* fname, PyObject* argname)
 }
 
 static inline int
+raise_multiple_values(const char* fname, const char* argname)
+{
+    PyErr_Format(PyExc_TypeError,
+                 "%.150s() got multiple values for argument '%.150s'",
+                 fname,
+                 argname);
+    return -1;
+}
+
+static inline int
 raise_missing_posarg(const char* fname, const char* argname)
 {
     PyErr_Format(PyExc_TypeError,
@@ -26,13 +36,15 @@ raise_missing_posarg(const char* fname, const char* argname)
 }
 
 /* Parse FASTCALL|METH_KEYWORDS arguments as two args,
-the first arg is mandatory and the second one is optional.
+the first arg is mandatory and the second one is optional
+unless minargs is 2.
 If the second arg is not passed it remains NULL pointer.
 
-The parser accepts three forms:
-1. all positional args,
-2. fist positional, second keyword-arg
-3. all named keyword args.
+Both args can be passed positionally or by keyword, in any combination.
+
+Errors are reported in the same order as CPython reports them for an
+equivalent def: the keywords are walked left to right and the first
+offending one wins, then the positional count, then missing args.
 */
 
 static inline int
@@ -43,130 +55,73 @@ parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
     assert(minargs >= 1);
     assert(minargs <= 2);
 
+    *arg1 = nargs >= 1 ? args[0] : NULL;
+    *arg2 = nargs >= 2 ? args[1] : NULL;
+
     if (kwnames != NULL) {
         Py_ssize_t kwsize = PyTuple_Size(kwnames);
         if (kwsize < 0) {
             return -1;
         }
-        PyObject* argname;  // borrowed ref
-        if (kwsize == 2) {
-            /* All args are passed by keyword, possible combinations:
-               arg1, arg2 and arg2, arg1 */
-            argname = PyTuple_GetItem(kwnames, 0);
+        for (Py_ssize_t i = 0; i < kwsize; i++) {
+            PyObject* argname = PyTuple_GetItem(kwnames, i);  // borrowed ref
             if (argname == NULL) {
                 return -1;
             }
+            /* The two names are distinct, so the comparison order is free.
+               Try the one still unbound first: that keeps the common
+               f(key, default=...) and f(key=...) forms at one comparison. */
+            if (*arg1 == NULL &&
+                PyUnicode_CompareWithASCIIString(argname, arg1name) == 0) {
+                *arg1 = args[nargs + i];
+                continue;
+            }
+            if (*arg2 == NULL &&
+                PyUnicode_CompareWithASCIIString(argname, arg2name) == 0) {
+                *arg2 = args[nargs + i];
+                continue;
+            }
+            // Names a parameter that is already bound, or none of them.
             if (PyUnicode_CompareWithASCIIString(argname, arg1name) == 0) {
-                argname = PyTuple_GetItem(kwnames, 1);
-                if (argname == NULL) {
-                    return -1;
-                }
-                if (PyUnicode_CompareWithASCIIString(argname, arg2name) == 0) {
-                    *arg1 = args[0];
-                    *arg2 = args[1];
-                    return 0;
-                } else {
-                    return raise_unexpected_kwarg(fname, argname);
-                }
-            } else if (PyUnicode_CompareWithASCIIString(argname, arg2name) ==
-                       0) {
-                argname = PyTuple_GetItem(kwnames, 1);
-                if (argname == NULL) {
-                    return -1;
-                }
-                if (PyUnicode_CompareWithASCIIString(argname, arg1name) == 0) {
-                    *arg1 = args[1];
-                    *arg2 = args[0];
-                    return 0;
-                } else {
-                    return raise_unexpected_kwarg(fname, argname);
-                }
-            } else {
-                return raise_unexpected_kwarg(fname, argname);
+                return raise_multiple_values(fname, arg1name);
             }
-        } else if (kwsize == 1) {
-            argname = PyTuple_GetItem(kwnames, 0);
-            if (argname == NULL) {
-                return -1;
+            if (PyUnicode_CompareWithASCIIString(argname, arg2name) == 0) {
+                return raise_multiple_values(fname, arg2name);
             }
-            if (nargs == 1) {
-                if (PyUnicode_CompareWithASCIIString(argname, arg2name) == 0) {
-                    *arg1 = args[0];
-                    *arg2 = args[1];
-                    return 0;
-                } else {
-                    return raise_unexpected_kwarg(fname, argname);
-                }
-            } else {
-                // nargs == 0
-                if (PyUnicode_CompareWithASCIIString(argname, arg1name) == 0) {
-                    if (minargs == 2) {
-                        /* Only one argument was supplied (by keyword), but
-                           this function requires two: arg2 is missing. Without
-                           this check arg2 stays NULL and the caller
-                           dereferences it. */
-                        return raise_missing_posarg(fname, arg2name);
-                    }
-                    *arg1 = args[0];
-                    *arg2 = NULL;
-                    return 0;
-                } else {
-                    return raise_missing_posarg(fname, arg1name);
-                }
-            }
-        } else {
-            /* kwsize < 1 is never produced (CPython passes a NULL kwnames when
-               there are no keyword arguments); kwsize > 2 means more keyword
-               arguments than this function accepts.  At most two names are
-               valid, so report the first unexpected one. */
-            for (Py_ssize_t i = 0; i < kwsize; i++) {
-                argname = PyTuple_GetItem(kwnames, i);
-                if (argname == NULL) {
-                    return -1;
-                }
-                if (PyUnicode_CompareWithASCIIString(argname, arg1name) != 0 &&
-                    PyUnicode_CompareWithASCIIString(argname, arg2name) != 0) {
-                    return raise_unexpected_kwarg(fname, argname);
-                }
-            }
-            // Unreachable from Python code, could be called only for
-            // hand-built vectorcall
-            PyErr_Format(PyExc_TypeError,
-                         "%.150s() got more than 2 expected arguments",
-                         fname);
-            return -1;
+            return raise_unexpected_kwarg(fname, argname);
         }
-    } else {
-        if (nargs < 1) {
-            PyErr_Format(
-                PyExc_TypeError,
-                "%.150s() missing 1 required positional argument: '%s'",
-                fname,
-                arg1name);
-            return -1;
-        }
-        if (nargs < minargs || nargs > 2) {
-            const char* txt;
-            if (minargs == 2) {
-                txt = "from 1 to 2 positional arguments";
-            } else {
-                txt = "exactly 1 positional argument";
-            }
-            PyErr_Format(PyExc_TypeError,
-                         "%.150s() takes %s but %zd were given",
-                         fname,
-                         txt,
-                         nargs);
-            return -1;
-        }
-        *arg1 = args[0];
-        if (nargs == 2) {
-            *arg2 = args[1];
-        } else {
-            *arg2 = NULL;
-        }
-        return 0;
     }
+
+    if (nargs > 2) {
+        const char* txt;
+        if (minargs == 2) {
+            txt = "exactly 2 positional arguments";
+        } else {
+            txt = "from 1 to 2 positional arguments";
+        }
+        PyErr_Format(PyExc_TypeError,
+                     "%.150s() takes %s but %zd were given",
+                     fname,
+                     txt,
+                     nargs);
+        return -1;
+    }
+    if (*arg1 == NULL) {
+        if (minargs == 2 && *arg2 == NULL) {
+            PyErr_Format(PyExc_TypeError,
+                         "%.150s() missing 2 required positional arguments: "
+                         "'%.150s' and '%.150s'",
+                         fname,
+                         arg1name,
+                         arg2name);
+            return -1;
+        }
+        return raise_missing_posarg(fname, arg1name);
+    }
+    if (minargs == 2 && *arg2 == NULL) {
+        return raise_missing_posarg(fname, arg2name);
+    }
+    return 0;
 }
 
 #ifdef __cplusplus
