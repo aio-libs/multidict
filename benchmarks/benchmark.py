@@ -1,109 +1,37 @@
-import functools
-import textwrap
+"""Wall-clock benchmarks for MultiMapping and MutableMultiMapping.
 
+Measures the operations in ``operations.py`` with :mod:`pyperf`.  Reported
+times are per operation and exclude the untimed rebuild that destructive
+operations need, but they do include the driving loop; ``callgrind_driver.py``
+subtracts that and is what the tables in ``docs/benchmark.rst`` are built from.
+
+Wall clock needs a tuned machine to be meaningful.  See
+``docs/benchmark.rst`` for how to prepare one.
+"""
+
+import functools
+import time
+
+import operations
 import pyperf
 
-IMPLEMENTATIONS = {
-    "dict": """\
-    cls = dict
-    """,
-    "multidict_c": """\
-    from multidict._multidict import MultiDict as cls, istr
-    """,
-    "cimultidict_c": """\
-    from multidict._multidict import CIMultiDict as cls, istr
-    """,
-    "multidict_py": """\
-    from multidict._multidict_py import MultiDict as cls, istr
-    """,
-    "cimultidict_py": """\
-    from multidict._multidict_py import CIMultiDict as cls, istr
-    """,
-}
 
-INIT = """\
-dct = cls()
-"""
-
-FILL = """\
-for i in range(20):
-    dct['key'+str(i)] = str(i)
-
-key = 'key10'
-"""
+def bench(case: operations.Case, loops: int) -> float:
+    total = 0.0
+    perf_counter, setup, run = time.perf_counter, case.setup, case.run
+    for _ in range(loops):
+        target = setup()
+        started = perf_counter()
+        run(target)
+        total += perf_counter() - started
+    return total
 
 
-FILL_ISTR = """\
-for i in range(20):
-    key = istr('key'+str(i))
-    dct[key] = str(i)
-
-key = istr('key10')
-"""
-
-
-SET_ITEM = (
-    """\
-dct[key] = '1'
-dct[key] = '2'
-dct[key] = '3'
-dct[key] = '4'
-dct[key] = '5'
-dct[key] = '6'
-dct[key] = '7'
-dct[key] = '8'
-dct[key] = '9'
-dct[key] = '10'
-"""
-    * 10
-)
-
-
-GET_ITEM = (
-    """\
-dct[key]
-dct[key]
-dct[key]
-dct[key]
-dct[key]
-dct[key]
-dct[key]
-dct[key]
-dct[key]
-dct[key]
-"""
-    * 10
-)
-
-
-ADD = (
-    """\
-add(key, '1')
-add(key, '2')
-add(key, '3')
-add(key, '4')
-add(key, '5')
-add(key, '6')
-add(key, '7')
-add(key, '8')
-add(key, '9')
-add(key, '10')
-"""
-    * 10
-)
-
-SETUP_ADD = """\
-add = dct.add
-"""
-
-
-def benchmark_name(name, ctx, prefix=None, use_prefix=False):
-    return f"{prefix % ctx}{name}" if use_prefix else name
-
-
-def add_impl_option(cmd, args):
-    if args.impl:
-        cmd.extend(["--impl", args.impl])
+def add_impl_option(cmd: list[str], args: object) -> None:
+    if args.impl:  # type: ignore[attr-defined]
+        cmd.extend(["--impl", args.impl])  # type: ignore[attr-defined]
+    if args.shared_only:  # type: ignore[attr-defined]
+        cmd.append("--shared-only")
 
 
 if __name__ == "__main__":
@@ -116,62 +44,22 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--impl",
-        choices=sorted(IMPLEMENTATIONS),
+        choices=sorted(operations.IMPLEMENTATIONS_BY_ID),
         help="specific implementation to benchmark",
+    )
+    parser.add_argument(
+        "--shared-only",
+        action="store_true",
+        help="only the operations a plain dict also has",
     )
 
     options = parser.parse_args()
-    implementations = (options.impl,) if options.impl else IMPLEMENTATIONS
-    inner_loops = 50
+    cells = operations.selected(impl_id=options.impl, shared_only=options.shared_only)
+    prefixed = options.impl is None
 
-    for impl in implementations:
-        # print("=======================", impl, "======================")
-        imports = textwrap.dedent(IMPLEMENTATIONS[impl])
-        name = functools.partial(
-            benchmark_name,
-            ctx=dict(impl=impl),
-            prefix="(impl = %(impl)s) ",
-            use_prefix=len(implementations) > 1,
-        )
-
-        runner.timeit(
-            name("setitem str"),
-            SET_ITEM,
-            imports + INIT + FILL,
-            inner_loops=inner_loops,
-        )
-        runner.timeit(
-            name("getitem str"),
-            GET_ITEM,
-            imports + INIT + FILL,
-            inner_loops=inner_loops,
-        )
-
-        # MultiDict specific
-        if impl == "dict":
-            continue
-
-        runner.timeit(
-            name("setitem istr"),
-            SET_ITEM,
-            imports + INIT + FILL_ISTR,
-            inner_loops=inner_loops,
-        )
-        runner.timeit(
-            name("getitem istr"),
-            GET_ITEM,
-            imports + INIT + FILL_ISTR,
-            inner_loops=inner_loops,
-        )
-        runner.timeit(
-            name("add str"),
-            ADD,
-            imports + INIT + FILL + SETUP_ADD,
-            inner_loops=inner_loops,
-        )
-        runner.timeit(
-            name("add istr"),
-            ADD,
-            imports + INIT + FILL_ISTR + SETUP_ADD,
-            inner_loops=inner_loops,
+    for op, impl in cells:
+        case = operations.build(op, impl)
+        name = f"(impl = {impl.id}) {op.id}" if prefixed else op.id
+        runner.bench_time_func(
+            name, functools.partial(bench, case), inner_loops=op.inner
         )

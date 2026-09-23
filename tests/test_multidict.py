@@ -3259,6 +3259,12 @@ def test_new_without_init_is_valid_empty(cls_name: str) -> None:
         e["A"] = "1"
         assert e["a"] == "1"
 
+    # __init__() on such an object reads the module state that __new__()
+    # stored, rather than looking it up again
+    f = cls.__new__(cls)
+    f.__init__([("b", "2")])
+    assert f["b"] == "2"
+
     # a subclass that forgets to call super().__init__() is also safe
     class Sub(cls):  # type: ignore[valid-type, misc]
         def __init__(self) -> None:

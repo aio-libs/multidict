@@ -11,7 +11,6 @@ extern "C" {
 typedef struct {
     PyUnicodeObject str;
     PyObject* canonical;
-    mod_state* state;
 } istrobject;
 
 #define IStr_CheckExact(state, obj) Py_IS_TYPE(obj, state->IStrType)
@@ -39,7 +38,6 @@ _istr_finish(mod_state* state, PyObject* ret)
         return NULL;
     }
     ((istrobject*)ret)->canonical = canonical;
-    ((istrobject*)ret)->state = state;
     return ret;
 }
 
@@ -209,7 +207,6 @@ IStr_New(mod_state* state, PyObject* str, PyObject* canonical)
     }
     Py_INCREF(canonical);
     ((istrobject*)res)->canonical = canonical;
-    ((istrobject*)res)->state = state;
 ret:
     Py_CLEAR(args);
     return res;
