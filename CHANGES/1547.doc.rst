@@ -1,0 +1,5 @@
+Documented what :class:`~multidict.istr` keys are worth on a
+:class:`~multidict.CIMultiDict`, as instruction counts next to the
+equivalent plain :class:`str` keys. The advice to create them once and
+reuse them was already there; the numbers behind it were not
+-- by :user:`asvetlov`.
