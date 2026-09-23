@@ -234,12 +234,7 @@ static int
 MultiDict_Add(void* state_, PyObject* self, PyObject* key, PyObject* value)
 {
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    int ret;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    ret = md_add((MultiDictObject*)self, key, value);
-    ASSERT_CONSISTENT((MultiDictObject*)self, false);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_add((MultiDictObject*)self, key, value);
 }
 
 static int
@@ -257,11 +252,7 @@ static int
 MultiDict_DelItem(void* state_, PyObject* self, PyObject* key)
 {
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    int ret;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    ret = md_del((MultiDictObject*)self, key);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_del((MultiDictObject*)self, key);
 }
 
 static int
@@ -269,12 +260,7 @@ MultiDict_Pop(void* state_, PyObject* self, PyObject* key, PyObject** result)
 {
     *result = NULL;
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    int ret;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    ret = md_pop_one((MultiDictObject*)self, key, result);
-    ASSERT_CONSISTENT((MultiDictObject*)self, false);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_pop_one((MultiDictObject*)self, key, result);
 }
 
 static int
@@ -283,25 +269,14 @@ MultiDict_SetDefault(void* state_, PyObject* self, PyObject* key,
 {
     *result = NULL;
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    int ret;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    ret = md_set_default((MultiDictObject*)self, key, default_value, result);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_set_default((MultiDictObject*)self, key, default_value, result);
 }
 
 static int
 MultiDict_SetItem(void* state_, PyObject* self, PyObject* key, PyObject* value)
 {
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    int ret;
-    reflist_t defer;
-    reflist_init(&defer);
-    Py_BEGIN_CRITICAL_SECTION(self);
-    ret = md_replace((MultiDictObject*)self, key, value, &defer);
-    Py_END_CRITICAL_SECTION();
-    reflist_clear(&defer);
-    return ret;
+    return md_replace((MultiDictObject*)self, key, value);
 }
 
 /* ================= Iteration ================= */
@@ -355,13 +330,14 @@ static Py_ssize_t
 _md_foreach_key(MultiDictObject* md, PyObject* key,
                 MultiDict_ItemVisitor visitor, void* user_data)
 {
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
         return -1;
     }
     Py_ssize_t count;
     Py_BEGIN_CRITICAL_SECTION(md);
-    count = md_walk(md, identity, true, visitor, user_data);
+    count = md_walk_with_hash(md, identity, hash, true, visitor, user_data);
     ASSERT_CONSISTENT(md, false);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);

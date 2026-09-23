@@ -214,6 +214,27 @@ md_calc_identity(MultiDictObject* md, PyObject* key)
     return _key_to_identity(md->state, key);
 }
 
+/* Reads only `key`, md->is_ci and md->state, all fixed for md's lifetime,
+   so the caller need not hold md's critical section. Always inlined: left
+   to itself GCC emits it out of line, and every caller pays the call. */
+ALWAYS_INLINE static inline int
+md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
+                      Py_hash_t* phash)
+{
+    PyObject* identity = md_calc_identity(md, key);
+    if (identity == NULL) {
+        return -1;
+    }
+    Py_hash_t hash = _unicode_hash(identity);
+    if (hash == -1) {
+        Py_DECREF(identity);
+        return -1;
+    }
+    *pidentity = identity;
+    *phash = hash;
+    return 0;
+}
+
 static inline PyObject*
 _md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
 {

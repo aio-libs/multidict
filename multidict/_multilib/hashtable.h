@@ -651,24 +651,30 @@ _md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
+// Caller holds md's critical section
+static inline int
+_md_add_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+               PyObject* key, PyObject* value)
+{
+    int ret = _md_add_with_hash(md, hash, identity, key, value);
+    ASSERT_CONSISTENT(md, false);
+    return ret;
+}
+
 static inline int
 md_add(MultiDictObject* md, PyObject* key, PyObject* value)
 {
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        goto fail;
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
     }
-    Py_hash_t hash = _unicode_hash(identity);
-    if (hash == -1) {
-        goto fail;
-    }
-    int ret = _md_add_with_hash(md, hash, identity, key, value);
-    ASSERT_CONSISTENT(md, false);
+    int ret;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = _md_add_locked(md, identity, hash, key, value);
+    Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
     return ret;
-fail:
-    Py_XDECREF(identity);
-    return -1;
 }
 
 static inline void
@@ -767,19 +773,11 @@ _md_del_at_for_upd_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     return 0;
 }
 
-static inline int
-md_del(MultiDictObject* md, PyObject* key)
+/* Caller holds md's critical section. Reports whether anything was removed;
+ * md_del() raises the KeyError outside the section. */
+static inline bool
+_md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
 {
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        goto fail;
-    }
-
-    Py_hash_t hash = _unicode_hash(identity);
-    if (hash == -1) {
-        goto fail;
-    }
-
     bool found = false;
 
 restart:;
@@ -810,18 +808,31 @@ restart:;
         }
     }
 
-    if (!found) {
-        PyErr_SetObject(PyExc_KeyError, key);
-        goto fail;
-    } else {
+    if (found) {
         store_version(md, next_version(md->state));
     }
-    Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
+    return found;
+}
+
+static inline int
+md_del(MultiDictObject* md, PyObject* key)
+{
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
+    }
+    bool found;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    found = _md_del_locked(md, identity, hash);
+    Py_END_CRITICAL_SECTION();
+    Py_DECREF(identity);
+    if (!found) {
+        PyErr_SetObject(PyExc_KeyError, key);
+        return -1;
+    }
     return 0;
-fail:
-    Py_XDECREF(identity);
-    return -1;
 }
 
 static inline void
@@ -1311,20 +1322,12 @@ fail:
     return -1;
 }
 
+// Caller holds md's critical section
 static inline int
-md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
-               PyObject** result)
+_md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                       PyObject* key, PyObject* value, PyObject** result)
 {
-    *result = NULL;
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        goto fail;
-    }
-
-    Py_hash_t hash = _unicode_hash(identity);
-    if (hash == -1) {
-        goto fail;
-    }
+    ASSERT_CONSISTENT(md, false);
 
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
@@ -1340,7 +1343,6 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
             continue;
         }
         if (_str_cmp(identity, entry->identity)) {
-            Py_DECREF(identity);
             ASSERT_CONSISTENT(md, false);
             *result = Py_NewRef(entry->value);
             return 1;
@@ -1348,33 +1350,37 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
     }
 
     if (_md_add_with_hash(md, hash, identity, key, value) < 0) {
-        goto fail;
+        return -1;
     }
 
-    Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
     *result = Py_NewRef(value);
     return 0;
-fail:
-    Py_XDECREF(identity);
-    return -1;
 }
 
 static inline int
-md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
+md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
+               PyObject** result)
 {
-    PyObject* value = NULL;
-
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        goto fail;
+    *result = NULL;
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
     }
+    int ret;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = _md_set_default_locked(md, identity, hash, key, value, result);
+    Py_END_CRITICAL_SECTION();
+    Py_DECREF(identity);
+    return ret;
+}
 
-    Py_hash_t hash = _unicode_hash(identity);
-    if (hash == -1) {
-        goto fail;
-    }
-
+// Caller holds md's critical section
+static inline int
+_md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                   PyObject** ret)
+{
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
@@ -1389,22 +1395,32 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
             continue;
         }
         if (_str_cmp(identity, entry->identity)) {
-            value = Py_NewRef(entry->value);
+            PyObject* value = Py_NewRef(entry->value);
             _md_del_at(md, iter.slot, entry);
-            Py_DECREF(identity);
             *ret = value;
             store_version(md, next_version(md->state));
             ASSERT_CONSISTENT(md, false);
             return 1;
         }
     }
-    Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
     return 0;
-fail:
-    Py_XDECREF(value);
-    Py_XDECREF(identity);
-    return -1;
+}
+
+static inline int
+md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
+    }
+    int result;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    result = _md_pop_one_locked(md, identity, hash, ret);
+    Py_END_CRITICAL_SECTION();
+    Py_DECREF(identity);
+    return result;
 }
 
 static int
@@ -1419,27 +1435,30 @@ _md_getall_visit(void* user_data, PyObject* key, PyObject* value)
 
 // Caller holds md's critical section
 static inline int
-_md_get_all_locked(MultiDictObject* md, PyObject* key, reflist_t* values)
+_md_get_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                   reflist_t* values)
 {
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        return -1;
-    }
-    Py_ssize_t count = md_walk(md, identity, false, _md_getall_visit, values);
-    Py_DECREF(identity);
+    Py_ssize_t count =
+        md_walk_with_hash(md, identity, hash, false, _md_getall_visit, values);
     return count < 0 ? -1 : 0;
 }
 
 static inline int
 md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
+    *ret = NULL;
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
+    }
     reflist_t values;
     reflist_init(&values);
     int tmp;
     Py_BEGIN_CRITICAL_SECTION(md);
-    tmp = _md_get_all_locked(md, key, &values);
+    tmp = _md_get_all_locked(md, identity, hash, &values);
     Py_END_CRITICAL_SECTION();
-    *ret = NULL;
+    Py_DECREF(identity);
     if (tmp < 0) {
         reflist_clear(&values);
         return -1;
@@ -1453,20 +1472,10 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 
 // Caller holds md's critical section
 static inline int
-_md_pop_all_locked(MultiDictObject* md, PyObject* key, reflist_t* values)
+_md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                   reflist_t* values)
 {
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        return -1;
-    }
-
-    Py_hash_t hash = _unicode_hash(identity);
-    if (hash == -1) {
-        goto fail;
-    }
-
     if (md_len(md) == 0) {
-        Py_DECREF(identity);
         return 0;
     }
 
@@ -1487,7 +1496,7 @@ restart:;
         }
         if (_str_cmp(identity, entry->identity)) {
             if (reflist_push(values, Py_NewRef(entry->value)) < 0) {
-                goto fail;
+                return -1;
             }
             uint64_t version = next_version(md->state);
             store_version(md, version);
@@ -1501,23 +1510,25 @@ restart:;
         }
     }
 
-    Py_DECREF(identity);
     ASSERT_CONSISTENT(md, false);
     return 0;
-fail:
-    Py_DECREF(identity);
-    return -1;
 }
 
 static inline int
 md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
+    }
     reflist_t values;
     reflist_init(&values);
     int tmp;
     Py_BEGIN_CRITICAL_SECTION(md);
-    tmp = _md_pop_all_locked(md, key, &values);
+    tmp = _md_pop_all_locked(md, identity, hash, &values);
     Py_END_CRITICAL_SECTION();
+    Py_DECREF(identity);
     if (tmp < 0) {
         reflist_clear(&values);
         return -1;
@@ -1658,30 +1669,23 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
 }
 
 static inline int
-md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
-           reflist_t* defer)
+md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
 {
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        goto fail;
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
     }
-
-    Py_hash_t hash = _unicode_hash(identity);
-    if (hash == -1) {
-        goto fail;
-    }
-
-    int ret = _md_replace(md, key, value, identity, hash, defer);
-    /* identity decref deferred too; `defer` owned/released by
-     * multidict_mp_as_subscript() */
-    if (reflist_push(defer, identity) < 0) {
-        ret = -1;
-    }
+    reflist_t defer;
+    reflist_init(&defer);
+    int ret;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = _md_replace(md, key, value, identity, hash, &defer);
     ASSERT_CONSISTENT(md, false);
+    Py_END_CRITICAL_SECTION();
+    reflist_clear(&defer);
+    Py_DECREF(identity);
     return ret;
-fail:
-    Py_XDECREF(identity);
-    return -1;
 }
 
 /* list[i] as a new reference. On a free-threaded build another thread can
