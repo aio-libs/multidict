@@ -1,0 +1,7 @@
+Moved the two list-reading helpers behind ``itemsview.__contains__()`` and
+the ``extend()``/``update()``/``merge()`` sequence parser out of
+``hashtable.h`` and into a new ``multidict/_multilib/pair.h``, together with
+a shared ``unpack_pair()`` that both now call to read a ``(key, value)``
+pair out of an exact two-element tuple or list. C extension only; the pure
+Python implementation has no header layout to mirror
+-- by :user:`asvetlov`.

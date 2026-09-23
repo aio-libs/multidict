@@ -21,6 +21,7 @@ extern "C" {
 #include "identity.h"
 #include "istr.h"
 #include "md_debug.h"
+#include "pair.h"
 #include "reflist.h"
 #include "state.h"
 #include "update_marks.h"
@@ -2184,80 +2185,42 @@ _err_cannot_fetch(Py_ssize_t i, const char* name)
                  name);
 }
 
-/* list[i] as a new reference. On a free-threaded build another thread can
-   drop the item between a borrow and its incref, or shrink the list after
-   its length was checked, so PyList_GetItemRef takes the reference
-   atomically (locking the list only if its lock-free attempt fails). An
-   item that is gone by then means the list changed under the caller, and
-   is reported as a RuntimeError: the caller sees NULL with the error set.
-   GIL builds keep the macro and compile the check away: nothing can run
-   between the length check and the borrow. */
-#ifdef Py_GIL_DISABLED
-static inline PyObject*
-_list_getitem_ref(PyObject* list, Py_ssize_t i)
-{
-    PyObject* item = PyList_GetItemRef(list, i);
-    if (item == NULL && PyErr_ExceptionMatches(PyExc_IndexError)) {
-        PyErr_Clear();
-        PyErr_SetString(PyExc_RuntimeError,
-                        "list changed size during iteration");
-    }
-    return item;
-}
-#define _list_item_gone(item) ((item) == NULL)
-#else
-#define _list_getitem_ref(list, i) Py_NewRef(PyList_GET_ITEM((list), (i)))
-#define _list_item_gone(item) (0)
-#endif
-
 static int
 _md_parse_item(Py_ssize_t i, PyObject* item, PyObject** pkey,
                PyObject** pvalue)
 {
     Py_ssize_t n;
 
-    if (PyTuple_CheckExact(item)) {
-        n = PyTuple_GET_SIZE(item);
-        if (n != 2) {
+    switch (unpack_pair(item, pkey, pvalue, &n)) {
+        case UNPACK_OK:
+            return 0;
+        case UNPACK_LENGTH:
             _err_bad_length(i, n);
             goto fail;
-        }
-        *pkey = Py_NewRef(PyTuple_GET_ITEM(item, 0));
-        *pvalue = Py_NewRef(PyTuple_GET_ITEM(item, 1));
-    } else if (PyList_CheckExact(item)) {
-        n = PyList_GET_SIZE(item);
-        if (n != 2) {
-            _err_bad_length(i, n);
+        case UNPACK_ERROR:
             goto fail;
-        }
-        *pkey = _list_getitem_ref(item, 0);
-        if (_list_item_gone(*pkey)) {
-            goto fail;
-        }
-        *pvalue = _list_getitem_ref(item, 1);
-        if (_list_item_gone(*pvalue)) {
-            goto fail;
-        }
-    } else {
-        if (!PySequence_Check(item)) {
-            _err_not_sequence(i);
-            goto fail;
-        }
-        n = PySequence_Size(item);
-        if (n != 2) {
-            _err_bad_length(i, n);
-            goto fail;
-        }
-        *pkey = PySequence_ITEM(item, 0);
-        if (*pkey == NULL) {
-            _err_cannot_fetch(i, "key");
-            goto fail;
-        }
-        *pvalue = PySequence_ITEM(item, 1);
-        if (*pvalue == NULL) {
-            _err_cannot_fetch(i, "value");
-            goto fail;
-        }
+        case UNPACK_OTHER:
+            break;
+    }
+
+    if (!PySequence_Check(item)) {
+        _err_not_sequence(i);
+        goto fail;
+    }
+    n = PySequence_Size(item);
+    if (n != 2) {
+        _err_bad_length(i, n);
+        goto fail;
+    }
+    *pkey = PySequence_ITEM(item, 0);
+    if (*pkey == NULL) {
+        _err_cannot_fetch(i, "key");
+        goto fail;
+    }
+    *pvalue = PySequence_ITEM(item, 1);
+    if (*pvalue == NULL) {
+        _err_cannot_fetch(i, "value");
+        goto fail;
     }
     return 0;
 fail:
