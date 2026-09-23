@@ -74,6 +74,290 @@ Results
 -------
 
 .. BEGIN GENERATED TABLES
+
+.. code-block:: text
+
+   multidict   6.9.2.dev0 (dd9c64f)
+   CPython     3.14.7, GIL and free-threaded builds
+   valgrind    3.26.0, callgrind, client-request bracketing
+   CPU         Intel(R) Core(TM) Ultra 7 155H
+   platform    Linux-6.17.0-29-generic-x86_64-with-glibc2.43
+   collected   2026-09-23
+
+.. list-table:: Instructions per operation, ``CPython 3.14.7``, GIL build
+   :header-rows: 1
+   :widths: 32 14 16 18 20
+
+   * - Operation
+     - ``dict``
+     - ``MultiDict``
+     - ``CIMultiDict``
+     - ``CIMultiDict`` vs ``dict``
+   * - ``cls(items)``
+     - 91,366
+     - 44,866
+     - 62,942
+     - 0.69x
+   * - ``d.copy()``
+     - 9,670
+     - 25,749
+     - 26,142
+     - 2.70x
+   * - ``d[key]``
+     - 184
+     - 150
+     - 240
+     - 1.30x
+   * - ``d.get(key)``, miss
+     - 358
+     - 377
+     - 646
+     - 1.80x
+   * - ``key in d``
+     - 174
+     - 134
+     - 226
+     - 1.29x
+   * - ``d[key] = v``, existing key
+     - 252
+     - 358
+     - 445
+     - 1.76x
+   * - ``d[key] = v``, new key
+     - 388
+     - 509
+     - 595
+     - 1.53x
+   * - ``d.setdefault(key, v)``, new key
+     - 584
+     - 650
+     - 930
+     - 1.59x
+   * - ``del d[key]``
+     - 295
+     - 262
+     - 352
+     - 1.19x
+   * - ``d.pop(key)``
+     - 476
+     - 446
+     - 727
+     - 1.53x
+   * - ``d.popitem()``
+     - 447
+     - 1,111
+     - 2,400
+     - 5.37x
+   * - ``d.update(other)``
+     - 30,724
+     - 38,252
+     - 47,216
+     - 1.54x
+   * - ``d.clear()``
+     - 4,821
+     - 7,207
+     - 7,464
+     - 1.55x
+   * - ``for k in d``
+     - 53
+     - 63
+     - 66
+     - 1.24x
+   * - ``for k, v in d.items()``
+     - 88
+     - 380
+     - 384
+     - 4.37x
+
+.. list-table:: Instructions per operation, ``CPython 3.14.7``, free-threaded build
+   :header-rows: 1
+   :widths: 32 14 16 18 20
+
+   * - Operation
+     - ``dict``
+     - ``MultiDict``
+     - ``CIMultiDict``
+     - ``CIMultiDict`` vs ``dict``
+   * - ``cls(items)``
+     - 114,472
+     - 65,823
+     - 82,853
+     - 0.72x
+   * - ``d.copy()``
+     - 12,756
+     - 29,006
+     - 29,348
+     - 2.30x
+   * - ``d[key]``
+     - 224
+     - 317
+     - 403
+     - 1.80x
+   * - ``d.get(key)``, miss
+     - 392
+     - 499
+     - 750
+     - 1.92x
+   * - ``key in d``
+     - 235
+     - 283
+     - 370
+     - 1.57x
+   * - ``d[key] = v``, existing key
+     - 344
+     - 538
+     - 625
+     - 1.82x
+   * - ``d[key] = v``, new key
+     - 525
+     - 683
+     - 770
+     - 1.47x
+   * - ``d.setdefault(key, v)``, new key
+     - 730
+     - 811
+     - 1,072
+     - 1.47x
+   * - ``del d[key]``
+     - 404
+     - 403
+     - 488
+     - 1.21x
+   * - ``d.pop(key)``
+     - 587
+     - 562
+     - 823
+     - 1.40x
+   * - ``d.popitem()``
+     - 482
+     - 1,245
+     - 2,695
+     - 5.59x
+   * - ``d.update(other)``
+     - 38,263
+     - 48,646
+     - 56,962
+     - 1.49x
+   * - ``d.clear()``
+     - 6,732
+     - 8,971
+     - 9,223
+     - 1.37x
+   * - ``for k in d``
+     - 55
+     - 103
+     - 105
+     - 1.92x
+   * - ``for k, v in d.items()``
+     - 114
+     - 452
+     - 456
+     - 4.01x
+
+.. list-table:: Free-threading overhead, ``3.14.7`` free-threaded versus GIL build
+   :header-rows: 1
+   :widths: 26 15 12 13 24
+
+   * - Class
+     - Median
+     - Best
+     - Worst
+     - Worst operation
+   * - ``dict``
+     - 1.25x
+     - 1.02x
+     - 1.40x
+     - ``d.clear()``
+   * - ``MultiDict``
+     - 1.32x
+     - 1.12x
+     - 2.11x
+     - ``key in d``
+   * - ``CIMultiDict``
+     - 1.24x
+     - 1.12x
+     - 1.68x
+     - ``d[key]``
+   * - ``MultiDict`` (Python)
+     - 1.23x
+     - 0.94x
+     - 2.96x
+     - ``for k in d``
+   * - ``CIMultiDict`` (Python)
+     - 1.22x
+     - 0.94x
+     - 2.09x
+     - ``for k in d``
+
+.. list-table:: Pure-Python backend, instructions per operation, ``CPython 3.14.7``, GIL build
+   :header-rows: 1
+   :widths: 34 20 20 26
+
+   * - Operation
+     - ``MultiDict``
+     - ``CIMultiDict``
+     - ``MultiDict`` vs the C extension
+   * - ``cls(items)``
+     - 2,488,517
+     - 2,729,412
+     - 55.46x
+   * - ``d.copy()``
+     - 449,986
+     - 454,590
+     - 17.48x
+   * - ``d[key]``
+     - 7,478
+     - 8,738
+     - 49.75x
+   * - ``d.get(key)``, miss
+     - 7,733
+     - 8,977
+     - 20.53x
+   * - ``key in d``
+     - 7,756
+     - 9,017
+     - 57.84x
+   * - ``d[key] = v``, existing key
+     - 26,248
+     - 27,504
+     - 73.26x
+   * - ``d[key] = v``, new key
+     - 27,138
+     - 28,174
+     - 53.35x
+   * - ``d.setdefault(key, v)``, new key
+     - 34,859
+     - 37,051
+     - 53.62x
+   * - ``del d[key]``
+     - 19,699
+     - 20,897
+     - 75.04x
+   * - ``d.pop(key)``
+     - 15,509
+     - 16,733
+     - 34.81x
+   * - ``d.popitem()``
+     - 11,915
+     - 13,851
+     - 10.73x
+   * - ``d.update(other)``
+     - 2,047,750
+     - 2,167,521
+     - 53.53x
+   * - ``d.clear()``
+     - 114,389
+     - 114,381
+     - 15.87x
+   * - ``for k in d``
+     - 2,190
+     - 4,066
+     - 34.60x
+   * - ``for k, v in d.items()``
+     - 2,510
+     - 4,445
+     - 6.60x
+
 .. END GENERATED TABLES
 
 How to read these numbers
