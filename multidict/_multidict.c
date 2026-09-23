@@ -1932,6 +1932,8 @@ module_clear(PyObject* mod)
 {
     mod_state* state = get_mod_state(mod);
 
+    htkeys_pools_clear(state->htkeys_pools);
+
     Py_CLEAR(state->IStrType);
 
     Py_CLEAR(state->MultiDictType);
@@ -1971,6 +1973,8 @@ module_exec(PyObject* mod)
     mod_state* state = get_mod_state(mod);
     PyObject* tmp;
     PyObject* tpl = NULL;
+
+    htkeys_pools_init(state->htkeys_pools);
 
     state->str_lower = PyUnicode_InternFromString("lower");
     if (state->str_lower == NULL) {
