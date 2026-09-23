@@ -713,7 +713,7 @@ PyDoc_STRVAR(multidict_values_doc,
 static int
 multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
-    mod_state* state = get_mod_state_by_def((PyObject*)self);
+    mod_state* state = self->state;
     PyObject* arg = NULL;
     Py_ssize_t size =
         _multidict_extend_parse_args(state, args, kwds, "MultiDict", &arg);
@@ -1436,7 +1436,7 @@ cimultidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 static int
 cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
-    mod_state* state = get_mod_state_by_def((PyObject*)self);
+    mod_state* state = self->state;
     PyObject* arg = NULL;
     Py_ssize_t size =
         _multidict_extend_parse_args(state, args, kwds, "CIMultiDict", &arg);
