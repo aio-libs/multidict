@@ -371,6 +371,30 @@ with `ModuleNotFoundError` when no extension has been built, or, worse,
 quietly run against a stale `.so` left in the tree by an earlier
 C-extension install and report a pass that means nothing.
 
+None of the commands above run the property/fuzz tests under
+`tests/test_hypothesis_*.py`. `pytest.ini` sets `-m "not hypothesis"`,
+so a plain `make test` skips them without saying so, and
+`make install-dev` does not install hypothesis either: the pin lives
+in its own `requirements/pytest-hypothesis.txt`, kept out of
+`requirements/pytest.txt` because hypothesis ships a Rust extension
+that builds from source wherever no wheel exists. To run them:
+
+```bash
+pip install -r requirements/pytest-hypothesis.txt
+pip install -e .   # the C half of the matrix needs a built extension
+pytest -q -m hypothesis
+```
+
+Passing `-m hypothesis` overrides the default marker expression. One
+run covers both backends, because those fixtures import `_multidict`
+and `_multidict_py` directly instead of going through
+`MULTIDICT_NO_EXTENSIONS`, so there is no second leg to run here. That
+is also why the reinstall is in there: coming straight from the
+pure-Python block above leaves no extension for the C half to import,
+and those cases error out rather than skipping. To run only the
+pure-Python half instead, add `--no-c-extensions`. CI runs this as two
+jobs, one on a GIL build and one free-threaded.
+
 `make lint` runs the full pre-commit suite across the tree;
 `make cov-dev` runs the suite with coverage.
 
