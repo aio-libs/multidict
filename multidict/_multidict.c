@@ -1927,12 +1927,29 @@ module_traverse(PyObject* mod, visitproc visit, void* arg)
     return 0;
 }
 
+static void
+drain_pools(mod_state* state)
+{
+    htkeys_pools_clear(state->htkeys_pools);
+}
+
+/* A warm pool lets an operation run without calling the allocator at
+   all, which hides it from a test that injects an allocation failure to
+   check the recovery path. Draining first puts that path back in reach.
+   For tests only, like getversion(). */
+static PyObject*
+freelist_clear(PyObject* mod, PyObject* Py_UNUSED(ignored))
+{
+    drain_pools(get_mod_state(mod));
+    Py_RETURN_NONE;
+}
+
 static int
 module_clear(PyObject* mod)
 {
     mod_state* state = get_mod_state(mod);
 
-    htkeys_pools_clear(state->htkeys_pools);
+    drain_pools(state);
 
     Py_CLEAR(state->IStrType);
 
@@ -1964,6 +1981,7 @@ module_free(void* mod)
 
 static PyMethodDef module_methods[] = {
     {"getversion", (PyCFunction)getversion, METH_O},
+    {"_freelist_clear", (PyCFunction)freelist_clear, METH_NOARGS},
     {NULL, NULL} /* sentinel */
 };
 

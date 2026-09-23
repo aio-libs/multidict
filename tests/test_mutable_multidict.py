@@ -1076,6 +1076,7 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
     pure-Python version has no manual refcounting, and failing allocations
     in interpreted code hits CPython's own unraisable-error paths."""
     testcapi = pytest.importorskip("_testcapi")
+    c_ext = pytest.importorskip("multidict._multidict")
     keys = [f"Key-{i}" for i in range(20)]
     values = [object() for _ in range(20)]
     pairs = list(zip(keys, values))
@@ -1090,6 +1091,9 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
             call = functools.partial(bound, map(tuple, pairs))
         else:
             call = functools.partial(deque, itertools.starmap(bound, pairs), 0)
+        # A pooled hash table would let the call allocate nothing at all,
+        # and the injected failure would never fire.
+        c_ext._freelist_clear()
         try:
             # One line, so no tracer line event can take the failure.
             testcapi.set_nomemory(n, n + 1), call(), testcapi.remove_mem_hooks()
