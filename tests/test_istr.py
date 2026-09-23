@@ -34,6 +34,52 @@ def test_ctor_repr(case_insensitive_str_class: type[str]) -> None:
     assert "None" == s
 
 
+def test_ctor_encoding(case_insensitive_str_class: type[str]) -> None:
+    s = case_insensitive_str_class(b"aBc", "utf-8")
+    assert "aBc" == s
+    assert "abc" == s.lower()
+
+
+def test_ctor_encoding_and_errors(case_insensitive_str_class: type[str]) -> None:
+    s = case_insensitive_str_class(b"\xff", "utf-8", "replace")
+    assert "\ufffd" == s
+
+
+def test_ctor_keyword_arguments(case_insensitive_str_class: type[str]) -> None:
+    s = case_insensitive_str_class(object=b"aBc", encoding="utf-8", errors="strict")
+    assert "aBc" == s
+
+
+def test_ctor_object_keyword_only(case_insensitive_str_class: type[str]) -> None:
+    s = case_insensitive_str_class(object="aBc")
+    assert "aBc" == s
+
+
+def test_ctor_too_many_arguments(case_insensitive_str_class: type[str]) -> None:
+    with pytest.raises(TypeError):
+        case_insensitive_str_class("a", "utf-8", "strict", "extra")  # type: ignore[call-overload]
+
+
+def test_ctor_unknown_keyword(case_insensitive_str_class: type[str]) -> None:
+    with pytest.raises(TypeError):
+        case_insensitive_str_class(bogus=1)  # type: ignore[call-overload]
+
+
+def test_ctor_encoding_rejects_str(case_insensitive_str_class: type[str]) -> None:
+    with pytest.raises(TypeError):
+        case_insensitive_str_class("aBc", "utf-8")  # type: ignore[call-overload]
+
+
+def test_subclass_ctor(case_insensitive_str_class: type[str]) -> None:
+    class Sub(case_insensitive_str_class):  # type: ignore[valid-type, misc]
+        pass
+
+    s = Sub("aBcD")
+    assert type(s) is Sub
+    assert "aBcD" == s
+    assert "abcd" == s.lower()
+
+
 def test_str(case_insensitive_str_class: type[str]) -> None:
     s = case_insensitive_str_class("aBcD")
     s1 = str(s)
