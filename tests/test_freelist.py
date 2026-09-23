@@ -13,11 +13,13 @@ only, since there is nothing to reuse otherwise.
 import gc
 import sys
 import sysconfig
+import weakref
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 
-from multidict import MultiDict
+from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 
 # Table sizes are powers of two from 8 up, each holding two thirds of its
 # slots, so a multidict crosses into a new one at 6, 11, 22, 43 and 86
@@ -164,6 +166,88 @@ def test_iterators_keep_their_place_across_recycling(
         del first
         second = iter(md)
         assert list(second) == ["k0", "k1", "k2", "k3"]
+
+
+class _SubDict(MultiDict[str]):
+    """A subclass has its own basicsize and __dict__, so it can never use
+    a pooled shell."""
+
+
+def test_subclasses_do_not_take_pooled_shells() -> None:
+    for _ in range(ROUNDS):
+        sub = _SubDict(_pairs(3))
+        sub.tag = "x" * 64  # type: ignore[attr-defined]
+        plain = MultiDict(_pairs(3))
+        assert sub.tag == "x" * 64  # type: ignore[attr-defined]
+        assert list(sub.items()) == _pairs(3)
+        assert list(plain.items()) == _pairs(3)
+        assert id(sub) != id(plain)
+        del sub, plain
+
+
+@pytest.mark.skipif(
+    sys.implementation.name != "cpython",
+    reason="PyPy does not free an object the moment its last reference goes",
+)
+def test_weakrefs_do_not_survive_into_a_recycled_shell(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    """A shell carries a weakref list, which has to be empty again on reuse."""
+    collected: list[int] = []
+    for i in range(ROUNDS):
+        md = any_multidict_class([(f"k{i}", f"v{i}")])
+        ref = weakref.ref(md, lambda _r: collected.append(1))
+        assert ref() is md
+        del md
+        assert ref() is None
+    assert len(collected) == ROUNDS
+
+
+def test_proxies_round_trip(
+    any_multidict_class: type[MultiDict[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+) -> None:
+    md = any_multidict_class(_pairs(5))
+    for _ in range(ROUNDS):
+        proxy = any_multidict_proxy_class(md)
+        assert list(proxy.items()) == _pairs(5)
+        assert weakref.ref(proxy)() is proxy
+        del proxy
+
+
+def test_case_insensitive_shells_do_not_leak_into_case_sensitive_ones(
+    multidict_module: object,
+) -> None:
+    """MultiDict and CIMultiDict share a pool and a struct, differing only
+    in a flag, so a recycled shell must not carry the old one's."""
+    ci_cls: type[CIMultiDict[str]] = multidict_module.CIMultiDict  # type: ignore[attr-defined]
+    cs_cls: type[MultiDict[str]] = multidict_module.MultiDict  # type: ignore[attr-defined]
+    for _ in range(ROUNDS):
+        ci = ci_cls([(istr("Key"), "v")])
+        assert ci["KEY"] == "v"
+        del ci
+        cs = cs_cls([("Key", "v")])
+        assert "KEY" not in cs
+        assert cs["Key"] == "v"
+        del cs
+
+
+def test_objects_cleared_by_the_collector(
+    any_multidict_class: type[MultiDict[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+) -> None:
+    """A shell the collector clears loses the link it reaches its pool
+    through, so it takes the un-pooled path out."""
+    cls: type[MultiDict[Any]] = any_multidict_class
+    for _ in range(ROUNDS):
+        md = cls()
+        proxy = any_multidict_proxy_class(md)
+        md["proxy"] = proxy
+        md["items"] = md.items()
+        md["iter"] = iter(md.keys())
+        del md, proxy
+    gc.collect()
+    assert list(any_multidict_class(_pairs(2)).items()) == _pairs(2)
 
 
 @pytest.mark.c_extension

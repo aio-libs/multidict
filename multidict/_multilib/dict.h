@@ -5,6 +5,9 @@
 extern "C" {
 #endif
 
+#include <string.h>
+
+#include "freelist.h"
 #include "htkeys.h"
 #include "pythoncapi_compat.h"
 #include "state.h"
@@ -40,6 +43,56 @@ typedef struct {
 #endif
     MultiDictObject* md;
 } MultiDictProxyObject;
+
+/* Shells for the exact MultiDict, CIMultiDict and proxy types come from
+   a module-state pool. Only those: a subclass has its own basicsize, and
+   possibly its own __dict__ and __weakref__ preheader, so a pooled shell
+   would be the wrong shape for it.
+
+   MultiDict and CIMultiDict share a pool because they share a struct and
+   differ only in md->is_ci, and the two proxy types likewise. */
+static inline pool_t*
+_md_pool_for(mod_state* state, PyTypeObject* tp)
+{
+    if (tp == state->MultiDictType || tp == state->CIMultiDictType) {
+        return &state->md_pool;
+    }
+    if (tp == state->MultiDictProxyType || tp == state->CIMultiDictProxyType) {
+        return &state->proxy_pool;
+    }
+    return NULL;
+}
+
+/* Out of line for the reason _multidict_view_alloc() gives: inlined,
+   these two cost del d[key] its inlined md_calc_identity(). */
+NOINLINE static PyObject*
+_md_shell_alloc(mod_state* state, PyTypeObject* tp)
+{
+    pool_t* pool = _md_pool_for(state, tp);
+    PyObject* obj = pool == NULL ? NULL : pool_pop(pool);
+    if (obj == NULL) {
+        return tp->tp_alloc(tp, 0);
+    }
+    /* What PyType_GenericAlloc() does, less the allocation. The
+       preheader needs nothing: PyObject_GC_UnTrack() left the GC header
+       untracked, and PyObject_ClearWeakRefs() left the managed weakref
+       slot NULL. */
+    memset(obj, 0, (size_t)tp->tp_basicsize);
+    PyObject_Init(obj, tp);
+    PyObject_GC_Track(obj);
+    return obj;
+}
+
+/* True once the shell is parked, false to leave the caller to free it. */
+NOINLINE static bool
+_md_shell_recycle(mod_state* state, PyObject* obj)
+{
+    if (state == NULL) {
+        return false;
+    }
+    pool_t* pool = _md_pool_for(state, Py_TYPE(obj));
+    return pool != NULL && pool_push(pool, obj);
+}
 
 #ifdef __cplusplus
 }
