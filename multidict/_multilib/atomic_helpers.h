@@ -447,26 +447,6 @@ atomic_compare_exchange_ptr(void** obj, void** expected, void* desired)
 #error "no available atomic implementation for this platform/compiler"
 #endif
 
-#else /* Py_GIL_DISABLED */
-
-static inline Py_ssize_t
-atomic_load_ssize_relaxed(const Py_ssize_t* obj)
-{
-    return *obj;
-}
-
-static inline uint64_t
-atomic_load_uint64_relaxed(const uint64_t* obj)
-{
-    return *obj;
-}
-
-static inline void
-atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
-{
-    *obj = value;
-}
-
 #endif /* Py_GIL_DISABLED */
 
 #ifdef __cplusplus

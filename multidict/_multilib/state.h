@@ -1,8 +1,6 @@
 #ifndef _MULTIDICT_STATE_H
 #define _MULTIDICT_STATE_H
 
-#include "atomic_helpers.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,14 +33,6 @@ static inline mod_state*
 get_mod_state(PyObject* mod)
 {
     mod_state* state = (mod_state*)PyModule_GetState(mod);
-    assert(state != NULL);
-    return state;
-}
-
-static inline mod_state*
-get_mod_state_by_cls(PyTypeObject* cls)
-{
-    mod_state* state = (mod_state*)PyType_GetModuleState(cls);
     assert(state != NULL);
     return state;
 }
@@ -125,16 +115,6 @@ get_mod_state_by_def(PyObject* self)
     PyObject* mod = PyType_GetModuleByDef(tp, &multidict_module);
     assert(mod != NULL);
     return get_mod_state(mod);
-}
-
-static inline uint64_t
-NEXT_VERSION(mod_state* state)
-{
-#ifdef Py_GIL_DISABLED
-    return atomic_fetch_add_uint64_relaxed(&state->global_version, 1) + 1;
-#else
-    return ++state->global_version;
-#endif
 }
 
 #define MultiDict_CheckExact(state, obj) Py_IS_TYPE(obj, state->MultiDictType)

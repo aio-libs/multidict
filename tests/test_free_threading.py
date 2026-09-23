@@ -54,7 +54,7 @@ def test_race_condition_iterator_vs_mutation(
                 list(target.items())
                 list(target.keys())
                 list(target.values())
-                # getall()/get() walk the table with a finder open, which is
+                # getall()/get() walk the table mid-mutation, which is
                 # what makes an unlocked consistency check observable.
                 target.getall(f"k-{i % 64}", None)
                 target.get(f"k-{i % 64}", None)

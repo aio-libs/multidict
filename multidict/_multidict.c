@@ -91,7 +91,13 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
         } else {
             s = PyObject_LengthHint(*parg, 0);
             if (s < 0) {
-                // e.g. cannot calc size of generator object
+                if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
+                    // propagate MemoryError / KeyboardInterrupt / etc.
+                    // *parg is cleared by the caller's fail label
+                    return -1;
+                }
+                // a __length_hint__ that is not an integer costs only the
+                // preallocation estimate, so fall back to no hint
                 PyErr_Clear();
             } else {
                 size += s;
@@ -1889,7 +1895,7 @@ getversion(PyObject* self, PyObject* arg)
         PyErr_Format(PyExc_TypeError, "unexpected type");
         return NULL;
     }
-    return PyLong_FromUnsignedLong(md_version(md));
+    return PyLong_FromUnsignedLong(load_version(md));
 }
 
 /******************** Module ********************/

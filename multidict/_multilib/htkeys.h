@@ -110,19 +110,44 @@ htkeys_entries(const htkeys_t* dk)
     return (entry_t*)(&indices[index]);
 }
 
+/* A slot in indices[] is written under md's critical section but read by
+   lock-free walks too, so both sides go through a relaxed atomic; on the
+   GIL build atomic_*_int*_relaxed() is the plain access. The slot width
+   follows the table size (see the indices[] comment above), hence one
+   pair per width rather than one generic pair. */
 #ifdef Py_GIL_DISABLED
-#define LOAD_INDEX(keys, size, idx)  \
-    atomic_load_int##size##_relaxed( \
-        &((const int##size##_t*)(keys->indices))[idx])
-#define STORE_INDEX(keys, size, idx, value)                                   \
-    atomic_store_int##size##_relaxed(&((int##size##_t*)(keys->indices))[idx], \
-                                     (int##size##_t)value)
+#define _MD_DEFINE_INDEX_ACCESSORS(bits)                                      \
+    static inline int##bits##_t htkeys_load_index##bits(const htkeys_t* keys, \
+                                                        Py_ssize_t i)         \
+    {                                                                         \
+        return atomic_load_int##bits##_relaxed(                               \
+            &((const int##bits##_t*)(keys->indices))[i]);                     \
+    }                                                                         \
+    static inline void htkeys_store_index##bits(                              \
+        htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
+    {                                                                         \
+        atomic_store_int##bits##_relaxed(                                     \
+            &((int##bits##_t*)(keys->indices))[i], (int##bits##_t)ix);        \
+    }
 #else
-#define LOAD_INDEX(keys, size, idx) \
-    ((const int##size##_t*)(keys->indices))[idx]
-#define STORE_INDEX(keys, size, idx, value) \
-    ((int##size##_t*)(keys->indices))[idx] = (int##size##_t)value
+#define _MD_DEFINE_INDEX_ACCESSORS(bits)                                      \
+    static inline int##bits##_t htkeys_load_index##bits(const htkeys_t* keys, \
+                                                        Py_ssize_t i)         \
+    {                                                                         \
+        return ((const int##bits##_t*)(keys->indices))[i];                    \
+    }                                                                         \
+    static inline void htkeys_store_index##bits(                              \
+        htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
+    {                                                                         \
+        ((int##bits##_t*)(keys->indices))[i] = (int##bits##_t)ix;             \
+    }
 #endif
+
+_MD_DEFINE_INDEX_ACCESSORS(8)
+_MD_DEFINE_INDEX_ACCESSORS(16)
+_MD_DEFINE_INDEX_ACCESSORS(32)
+_MD_DEFINE_INDEX_ACCESSORS(64)
+#undef _MD_DEFINE_INDEX_ACCESSORS
 
 /* lookup indices.  returns DKIX_EMPTY, DKIX_DUMMY, or ix >=0 */
 static inline Py_ssize_t
@@ -132,17 +157,17 @@ htkeys_get_index(const htkeys_t* keys, Py_ssize_t i)
     Py_ssize_t ix;
 
     if (log2size < 8) {
-        ix = LOAD_INDEX(keys, 8, i);
+        ix = htkeys_load_index8(keys, i);
     } else if (log2size < 16) {
-        ix = LOAD_INDEX(keys, 16, i);
+        ix = htkeys_load_index16(keys, i);
     }
 #if SIZEOF_VOID_P > 4
     else if (log2size >= 32) {
-        ix = LOAD_INDEX(keys, 64, i);
+        ix = htkeys_load_index64(keys, i);
     }
 #endif
     else {
-        ix = LOAD_INDEX(keys, 32, i);
+        ix = htkeys_load_index32(keys, i);
     }
     assert(ix >= DKIX_DUMMY);
     return ix;
@@ -158,19 +183,19 @@ htkeys_set_index(htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)
 
     if (log2size < 8) {
         assert(ix <= 0x7f);
-        STORE_INDEX(keys, 8, i, ix);
+        htkeys_store_index8(keys, i, ix);
     } else if (log2size < 16) {
         assert(ix <= 0x7fff);
-        STORE_INDEX(keys, 16, i, ix);
+        htkeys_store_index16(keys, i, ix);
     }
 #if SIZEOF_VOID_P > 4
     else if (log2size >= 32) {
-        STORE_INDEX(keys, 64, i, ix);
+        htkeys_store_index64(keys, i, ix);
     }
 #endif
     else {
         assert(ix <= 0x7fffffff);
-        STORE_INDEX(keys, 32, i, ix);
+        htkeys_store_index32(keys, i, ix);
     }
 }
 
@@ -374,7 +399,12 @@ _unicode_hash(PyObject* o)
 {
     assert(PyUnicode_CheckExact(o));
     PyASCIIObject* ascii = (PyASCIIObject*)o;
+    /* Another thread may be filling in the cached hash concurrently. */
+#ifdef Py_GIL_DISABLED
     Py_hash_t hash = atomic_load_ssize_relaxed(&ascii->hash);
+#else
+    Py_hash_t hash = ascii->hash;
+#endif
     if (hash == -1) {
         hash = PyUnicode_Type.tp_hash(o);
         if (hash == -1) {
@@ -454,14 +484,14 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
 }
 
 /* Uses keys, mask, i and perturb from the caller and returns. */
-#define _HT_FIND_EMPTY_SLOT(size)                           \
-    while (LOAD_INDEX(keys, size, i) != DKIX_EMPTY) {       \
-        perturb >>= HT_PERTURB_SHIFT;                       \
-        i = (i * 5 + perturb + 1) & mask;                   \
-        if (UNLIKELY(perturb == 0)) {                       \
-            return _htkeys_find_empty_slot_resume(keys, i); \
-        }                                                   \
-    }                                                       \
+#define _HT_FIND_EMPTY_SLOT(size)                                        \
+    while (htkeys_load_index##size(keys, (Py_ssize_t)i) != DKIX_EMPTY) { \
+        perturb >>= HT_PERTURB_SHIFT;                                    \
+        i = (i * 5 + perturb + 1) & mask;                                \
+        if (UNLIKELY(perturb == 0)) {                                    \
+            return _htkeys_find_empty_slot_resume(keys, i);              \
+        }                                                                \
+    }                                                                    \
     return (Py_ssize_t)i;
 
 /* Internal function to find slot for an item from its hash
@@ -478,7 +508,7 @@ htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
     size_t perturb = (size_t)hash;
     uint8_t log2size = keys->log2_size;
     if (log2size < 8) {
-        while (LOAD_INDEX(keys, 8, i) != DKIX_EMPTY) {
+        while (htkeys_load_index8(keys, (Py_ssize_t)i) != DKIX_EMPTY) {
             perturb >>= HT_PERTURB_SHIFT;
             i = (i * 5 + perturb + 1) & mask;
         }
@@ -503,8 +533,8 @@ htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
    multiple times, eiter consequently (1, 2, 2, 3)
    or with different slots in the middle (1, 2, 3, 1).
 
-   The caller is responsible for skipping repeats; finder_t
-   in hashtable.h does it with a bitmap of visited entries.
+   The caller is responsible for skipping repeats; md_walk() in
+   walk.h does it with a bitmap of visited entries.
 */
 
 typedef struct _htkeysiter {

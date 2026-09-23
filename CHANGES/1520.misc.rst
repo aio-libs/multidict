@@ -1,0 +1,2 @@
+Removed ``get_mod_state_by_cls()``, an unused helper in the C extension
+-- by :user:`asvetlov`.

@@ -47,7 +47,7 @@ def _model_merge(
 
 def _big_pairs() -> list[tuple[str, int]]:
     pairs = [(f"k{i}", i) for i in range(BIG)]
-    # More values than the C finder tracks before starting its bitmap.
+    # More values than the C walk tracks before starting its bitmap.
     for i in range(0, BIG, 1000):
         pairs.insert(i, ("dup", -i))
     return pairs
