@@ -174,3 +174,24 @@ def test_generic_alias(multidict_module: types.ModuleType) -> None:
     assert multidict_module.CIMultiDictProxy[int] == types.GenericAlias(
         multidict_module.CIMultiDictProxy, (int,)
     )
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize(
+    ("base", "derived"),
+    [("MultiDict", "CIMultiDict"), ("MultiDictProxy", "CIMultiDictProxy")],
+)
+def test_ci_methods_bound_to_own_type(base: str, derived: str) -> None:
+    # CPython specializes a method call on descr.__objclass__ being the
+    # exact type of self; an inherited descriptor deopts every call.
+    c_ext = pytest.importorskip("multidict._multidict")
+    base_cls = getattr(c_ext, base)
+    derived_cls = getattr(c_ext, derived)
+    methods = [
+        name
+        for name, member in vars(base_cls).items()
+        if isinstance(member, types.MethodDescriptorType)
+    ]
+    assert methods
+    for name in methods:
+        assert vars(derived_cls)[name].__objclass__ is derived_cls

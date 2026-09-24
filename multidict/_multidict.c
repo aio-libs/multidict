@@ -392,12 +392,6 @@ fail:
     return NULL;
 }
 
-static inline PyObject*
-_multidict_proxy_copy(MultiDictProxyObject* self, PyTypeObject* type)
-{
-    return multidict_copy(self->md);
-}
-
 PyDoc_STRVAR(multidict_to_dict_doc,
              "Return a dict with lists of all values for each key.");
 
@@ -1486,6 +1480,11 @@ PyDoc_STRVAR(
 
 static PyType_Slot cimultidict_slots[] = {
     {Py_tp_doc, (void*)CIMultDict_doc},
+    /* The same table as MultiDict, listed again so the descriptors are
+       bound to CIMultiDict: CPython's CALL_METHOD_DESCRIPTOR_* guards
+       on Py_IS_TYPE(self, descr->d_type) and deopts every call whose
+       descriptor was inherited from a base type. */
+    {Py_tp_methods, multidict_methods},
     {Py_tp_init, cimultidict_tp_init},
     {Py_tp_new, cimultidict_tp_new},
 #if PY_VERSION_HEX >= 0x030e00f0
@@ -1592,7 +1591,7 @@ multidict_proxy_values(MultiDictProxyObject* self)
 static PyObject*
 multidict_proxy_copy(MultiDictProxyObject* self)
 {
-    return _multidict_proxy_copy(self, self->md->state->MultiDictType);
+    return multidict_copy(self->md);
 }
 
 static PyObject*
@@ -1824,27 +1823,11 @@ cimultidict_proxy_tp_init(MultiDictProxyObject* self, PyObject* args,
     return 0;
 }
 
-static PyObject*
-cimultidict_proxy_copy(MultiDictProxyObject* self)
-{
-    return _multidict_proxy_copy(self, self->md->state->CIMultiDictType);
-}
-
 PyDoc_STRVAR(CIMultDictProxy_doc, "Read-only proxy for CIMultiDict instance.");
-
-PyDoc_STRVAR(cimultidict_proxy_copy_doc, "Return copy of itself");
-
-static PyMethodDef cimultidict_proxy_methods[] = {
-    {"copy",
-     (PyCFunction)cimultidict_proxy_copy,
-     METH_NOARGS,
-     cimultidict_proxy_copy_doc},
-    {NULL, NULL} /* sentinel */
-};
 
 static PyType_Slot cimultidict_proxy_slots[] = {
     {Py_tp_doc, (void*)CIMultDictProxy_doc},
-    {Py_tp_methods, cimultidict_proxy_methods},
+    {Py_tp_methods, multidict_proxy_methods},  // see cimultidict_slots
     {Py_tp_init, cimultidict_proxy_tp_init},
 #if PY_VERSION_HEX >= 0x030e00f0
     {Py_tp_vectorcall, cimultidict_proxy_vectorcall},
