@@ -470,6 +470,20 @@ def test_md_foreach_raises(api: object) -> None:
         api.md_foreach_raises(md)
 
 
+def test_a_callback_that_unwatches_gets_no_further_events(api: object) -> None:
+    # Delivery reads the watch bits afresh for each event, so a client
+    # that unwatches mid-burst can free its user_data right after.
+    log: list[object] = []
+    watcher_id = api.md_add_unwatching_watcher(log)
+    md: MultiDictStr = multidict.MultiDict([("key", "one"), ("key", "two")])
+    api.md_watch(watcher_id, md, None)
+    md["key"] = "three"  # BATCH_BEGIN, REPLACED, DELETED, BATCH_END
+    api.md_clear_watcher(watcher_id)
+    api.watch_release_refs()
+    assert log == [BATCH_BEGIN]
+    assert list(md.items()) == [("key", "three")]
+
+
 @pytest.mark.skipif(
     _testcyapi is None,
     reason="multidict._testcyapi not built (Cython not available at build time)",
@@ -688,6 +702,15 @@ def watcher(api: object) -> object:
     api.watch_release_refs()
 
 
+@pytest.fixture
+def other_watcher(api: object) -> object:
+    log: list[Event] = []
+    watcher_id = api.md_add_watcher(log)
+    yield Watcher(api, watcher_id, log)
+    api.md_clear_watcher(watcher_id)
+    api.watch_release_refs()
+
+
 def test_add_returns_the_added_pair(watcher: Watcher) -> None:
     md: MultiDictStr = multidict.MultiDict()
     watcher.watch(md, "ctx")
@@ -721,6 +744,31 @@ def test_watcher_data_is_shared_by_every_watched_multidict(watcher: Watcher) -> 
     first.add("k", "1")
     second.add("k", "2")
     assert len(watcher.log) == 2
+
+
+def test_two_watchers_can_watch_one_multidict(
+    watcher: Watcher, other_watcher: Watcher
+) -> None:
+    # The bit mask holds one slot per registered watcher, so a multidict
+    # can carry all of them at once, each with its own user_data.
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, "first")
+    other_watcher.watch(md, "second")
+    md.add("key", "value")
+    assert [event[2] for event in watcher.drain()] == ["first"]
+    assert [event[2] for event in other_watcher.drain()] == ["second"]
+
+
+def test_unwatching_one_watcher_leaves_the_other(
+    watcher: Watcher, other_watcher: Watcher
+) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, "first")
+    other_watcher.watch(md, "second")
+    watcher.unwatch(md)
+    md.add("key", "value")
+    assert watcher.drain() == []
+    assert [event[2] for event in other_watcher.drain()] == ["second"]
 
 
 def test_rewatching_overwrites_user_data(watcher: Watcher) -> None:

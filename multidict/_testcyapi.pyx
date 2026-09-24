@@ -379,6 +379,24 @@ def md_add_failing_watcher_cy(log):
 DEF MUTATING_WATCHER_ROUNDS = 3
 
 
+# See unwatching_event() in _testcapi.c.
+cdef int _unwatch_id = -1
+
+
+cdef int _unwatching_event(void *watcher_data, void *user_data,
+                           const MultiDict_WatchInfo *info) noexcept:
+    (<object>watcher_data).append(<int>info.event)
+    MultiDict_Unwatch(_capi, _unwatch_id, <object>info.md)
+    return 0
+
+
+def md_add_unwatching_watcher(log):
+    global _unwatch_id
+    _watch_refs.append(log)
+    _unwatch_id = MultiDict_AddWatcher(_capi, _unwatching_event, <void*>log)
+    return _unwatch_id
+
+
 cdef int _mutating_event_cy(void *watcher_data, void *user_data,
                             MultiDict_WatchEvent event, PyObject *md,
                             object identity, Py_hash_t hash, object key,

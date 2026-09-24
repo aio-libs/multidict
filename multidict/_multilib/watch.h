@@ -60,11 +60,28 @@ _md_watch_call(mod_state* state, uint8_t bits, void* const* user_data,
     }
 }
 
+/* Who to call, read afresh for each event: a callback that unwatches must
+   not be called again, and its user_data must not outlive the unwatch. */
+static uint8_t
+_md_watch_recipients(MultiDictObject* md, void** user_data)
+{
+    uint8_t bits = 0;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    if (md->watch != NULL) {
+        bits = md->watch->bits;
+        memcpy(user_data,
+               md->watch->user_data,
+               sizeof(void*) * MULTIDICT_MAX_WATCHERS);
+    }
+    Py_END_CRITICAL_SECTION();
+    return bits;
+}
+
 COLD static void
-_md_watch_deliver(MultiDictObject* md, uint8_t bits, void* const* user_data,
-                  watchlog_t* snapshot)
+_md_watch_deliver(MultiDictObject* md, watchlog_t* snapshot)
 {
     mod_state* state = md->state;
+    void* user_data[MULTIDICT_MAX_WATCHERS];
     MultiDict_WatchInfo info;
     info.self = (PyObject*)md;
     if (UNLIKELY(snapshot->overflowed)) {
@@ -78,7 +95,8 @@ _md_watch_deliver(MultiDictObject* md, uint8_t bits, void* const* user_data,
         info.key = NULL;
         info.value = NULL;
         info.old_value = NULL;
-        _md_watch_call(state, bits, user_data, &info);
+        _md_watch_call(
+            state, _md_watch_recipients(md, user_data), user_data, &info);
         return;
     }
     for (watchlog_block_t* block = snapshot->head; block != NULL;) {
@@ -90,7 +108,8 @@ _md_watch_deliver(MultiDictObject* md, uint8_t bits, void* const* user_data,
             info.key = rec->key;
             info.value = rec->value;
             info.old_value = rec->old_value;
-            _md_watch_call(state, bits, user_data, &info);
+            _md_watch_call(
+                state, _md_watch_recipients(md, user_data), user_data, &info);
             Py_XDECREF(rec->identity);
             Py_XDECREF(rec->key);
             Py_XDECREF(rec->value);
@@ -127,23 +146,17 @@ md_watch_flush(MultiDictObject* md)
     PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
     for (;;) {
         watchlog_t snapshot;
-        uint8_t bits = 0;
-        void* user_data[MULTIDICT_MAX_WATCHERS];
         bool taken = false;
         Py_BEGIN_CRITICAL_SECTION(md);
         if (md->watch != NULL && !watchlog_empty(&md->watch->log)) {
             watchlog_take(&md->watch->log, &snapshot);
-            bits = md->watch->bits;
-            /* Copied out: a callback may MultiDict_Unwatch() or even
-               drop the last reference to `md` while we iterate. */
-            memcpy(user_data, md->watch->user_data, sizeof(user_data));
             taken = true;
         }
         Py_END_CRITICAL_SECTION();
         if (!taken) {
             break;
         }
-        _md_watch_deliver(md, bits, user_data, &snapshot);
+        _md_watch_deliver(md, &snapshot);
     }
     PyErr_Restore(exc_type, exc_value, exc_tb);
 }

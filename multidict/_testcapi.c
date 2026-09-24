@@ -7,7 +7,8 @@
 
 typedef struct {
     MultiDict_CAPI* capi;
-    PyObject* log;  // mutating_event()'s log; see mutating_ctx below
+    PyObject* log;   // mutating_event()'s log; see mutating_ctx below
+    int unwatch_id;  // unwatching_event()'s own watcher id
     /* Keeps every object handed to the C API as a raw `void*` alive: the
        API stores those pointers without a reference, so the harness has
        to. Emptied by watch_release_refs(). */
@@ -471,6 +472,41 @@ mutating_event(void* watcher_data, void* user_data,
     return ret;
 }
 
+/* Unwatches from inside the first event of a burst; nothing recorded by
+   the same operation may reach it afterwards. Never sees DEALLOCATED,
+   since it stops being a watcher before the multidict can die. */
+static int
+unwatching_event(void* watcher_data, void* user_data,
+                 const MultiDict_WatchInfo* info)
+{
+    (void)user_data;
+    mod_state* state = (mod_state*)watcher_data;
+    PyObject* kind = PyLong_FromLong((long)info->event);
+    if (kind == NULL) {
+        return -1;
+    }
+    int appended = PyList_Append(state->log, kind);
+    Py_DECREF(kind);
+    if (appended < 0) {
+        return -1;
+    }
+    return MultiDict_Unwatch(state->capi, state->unwatch_id, info->self);
+}
+
+static PyObject*
+md_add_unwatching_watcher(PyObject* self, PyObject* arg)
+{
+    mod_state* state = get_mod_state(self);
+    Py_XSETREF(state->log, Py_NewRef(arg));
+    int watcher_id =
+        MultiDict_AddWatcher(state->capi, unwatching_event, state);
+    if (watcher_id < 0) {
+        return NULL;
+    }
+    state->unwatch_id = watcher_id;
+    return PyLong_FromLong(watcher_id);
+}
+
 static PyObject*
 md_add_mutating_watcher(PyObject* self, PyObject* arg)
 {
@@ -663,6 +699,9 @@ static PyMethodDef module_methods[] = {
     {"md_add_watcher", (PyCFunction)md_add_watcher, METH_O},
     {"md_add_failing_watcher", (PyCFunction)md_add_failing_watcher, METH_O},
     {"md_add_mutating_watcher", (PyCFunction)md_add_mutating_watcher, METH_O},
+    {"md_add_unwatching_watcher",
+     (PyCFunction)md_add_unwatching_watcher,
+     METH_O},
     {"md_add_null_watcher", (PyCFunction)md_add_null_watcher, METH_NOARGS},
     {"md_clear_watcher", (PyCFunction)md_clear_watcher, METH_O},
     {"md_watch", (PyCFunction)md_watch, METH_FASTCALL},
