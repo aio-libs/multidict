@@ -232,6 +232,7 @@ _md_free_retired(pool_t* pools, htkeys_t* keys)
 NOINLINE static void
 _md_drain_retired_slow(MultiDictObject* md)
 {
+retry:
     if (atomic_load_ssize(&md->num_active_readers) != 0) {
         return;
     }
@@ -277,6 +278,15 @@ _md_drain_retired_slow(MultiDictObject* md)
                 break;
             }
         }
+        /* Pushing back leaves the tables to the reader the gate showed, but
+           that reader can have looked already, between the exchange above
+           and this push-back, and found the list empty. Rereading the gate
+           is what tells the two apart: nonzero means the reader it sees
+           decrements after this read, so after the push-back, and its own
+           drain observes them; zero means nothing else will. Each pass
+           either frees or leaves a reader for that read to find, so this
+           does not spin. */
+        goto retry;
     }
 }
 

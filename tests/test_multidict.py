@@ -2643,6 +2643,67 @@ def test_reader_exit_drains_retired_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+def test_drain_retired_retries_after_pushing_back_thread_safety() -> None:
+    """A clear() racing reader traffic must release what its table held
+    without waiting for another operation on the multidict.
+
+    Regression test for the free-threaded build. A drain that reads the
+    active-readers gate as nonzero pushes the tables it holds back onto
+    md->retired and leaves them to the reader it saw, but that reader can
+    have run its own drain already, between the exchange and the push-back,
+    and found the list empty. Nothing was then scheduled to free those
+    tables, so they sat there until the multidict was next used, and if it
+    was dropped instead, its references were never released.  Rereading the
+    gate after the push-back and retrying is what frees them. Forcing that
+    interleaving needs an artificially widened drain window (see the PR
+    description); this drives the shape, a clear() against continuous
+    lock-free reads followed by teardown with no further operation, many
+    times over. This is a C-extension-only concern: the pure-Python
+    implementation has no retirement scheme to regress."""
+
+    class Marker:
+        pass
+
+    refs: list[weakref.ReferenceType[Marker]] = []
+
+    def cycle() -> None:
+        d: MultiDict[Marker] = MultiDict()
+        markers = [Marker() for _ in range(50)]
+        refs.extend(weakref.ref(m) for m in markers)
+        for i, m in enumerate(markers):
+            d.add(str(i), m)
+        del markers, i, m
+
+        ready = threading.Event()
+        stop = threading.Event()
+
+        def reader() -> None:
+            for i in range(200):
+                str(i % 50) in d
+            ready.set()
+            while not stop.is_set():
+                for i in range(50):
+                    str(i) in d
+
+        t = threading.Thread(target=reader)
+        t.start()
+        # clear() must not land before the reader has started, so that the
+        # gate is nonzero when the drain checks it.
+        ready.wait()
+        d.clear()
+        stop.set()
+        t.join()
+
+    # Every local of cycle(), the multidict included, dies on return, so
+    # nothing is left to drain md->retired afterwards.
+    for _ in range(50):
+        cycle()
+
+    gc.collect()
+    assert all(r() is None for r in refs)
+
+
+@pytest.mark.c_extension
 def test_setitem_update_thread_safety() -> None:
     """Concurrent __setitem__()/update() on colliding keys, alongside
     concurrent add()/pop() churn that drives frequent resizes, must not
