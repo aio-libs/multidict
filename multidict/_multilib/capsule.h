@@ -281,13 +281,16 @@ MultiDict_SetItem(void* state_, PyObject* self, PyObject* key, PyObject* value)
 
 /* ================= Iteration ================= */
 
-// `visitor` receives borrowed references: md_next/md_walk hand back new
-// references for `k`/`v`, held here for the duration of the visitor call and
-// released right after, so the value cannot be freed out from under the
-// visitor even under Py_GIL_DISABLED -- the critical section held for the
-// whole walk also blocks any other thread from mutating `md` in the
-// meantime. `visitor` must not call back into any method on the multidict
-// being walked: both md_next and md_walk compare a version stamped at
+// `visitor` receives borrowed references: the walk holds a reference to each
+// of `identity`/`key`/`value` for the duration of the visitor call and
+// releases it right after, so none can be freed out from under the visitor
+// even under Py_GIL_DISABLED -- the critical section held for the whole walk
+// also blocks any other thread from mutating `md` in the meantime. The
+// foreach-key form passes the identity computed from `key`, which compares
+// equal to every visited entry's own identity.
+//
+// `visitor` must not call back into any method on the multidict
+// being walked: both walks compare a version stamped at
 // walk start against `md->version` on every step and raise
 // "MultiDict is changed during iteration" the moment they diverge, so a
 // reentrant mutation aborts the walk with a clear error instead of

@@ -85,15 +85,16 @@ _md_seen_release(md_seen_t* seen)
 
 /* Visitor for md_walk().
 
-   `key` and `value` are borrowed: the walk holds a reference to each for the
-   duration of the call and releases it right after, so neither can be freed
-   under the visitor even on Py_GIL_DISABLED. `key` is NULL unless the walk
-   was started with `with_keys`.
+   `identity`, `key` and `value` are borrowed: the walk holds a reference to
+   each for the duration of the call and releases it right after, so none can
+   be freed under the visitor even on Py_GIL_DISABLED. `key` is NULL unless
+   the walk was started with `with_keys`; `identity` is always passed, since
+   both walks have it in hand anyway.
 
    Return > 0 to continue the walk, 0 to stop it, < 0 to abort it with the
    exception the visitor has set. */
-typedef int (*md_item_visitor_t)(void* user_data, PyObject* key,
-                                 PyObject* value);
+typedef int (*md_item_visitor_t)(void* user_data, PyObject* identity,
+                                 PyObject* key, PyObject* value);
 
 /* Calls `visitor` once for every live entry, in insertion order. Returns how
    many entries were visited, or -1 with an exception set. The caller holds
@@ -118,19 +119,22 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
             continue;
         }
 
+        PyObject* identity = Py_NewRef(entry->identity);
         PyObject* value = Py_NewRef(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
             key = _md_ensure_key(md, entry);  // last entry access
             if (key == NULL) {
                 Py_DECREF(value);
+                Py_DECREF(identity);
                 return -1;
             }
         }
         count++;
-        int ret = visitor(user_data, key, value);
+        int ret = visitor(user_data, identity, key, value);
         Py_XDECREF(key);
         Py_DECREF(value);
+        Py_DECREF(identity);
         if (ret < 0) {
             assert(PyErr_Occurred());
             return -1;
@@ -152,6 +156,9 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
    order; `hash` is that identity's hash. Returns how many entries were
    visited, or -1 with an exception set. The caller holds md's critical
    section.
+
+   `visitor` gets `identity` itself rather than the matched entry's own
+   identity; the two always compare equal, since that is the match predicate.
 
    `visitor` must not call back into `md`: the version stamped at the start is
    rechecked after every visitor call, so a reentrant mutation ends the walk
@@ -205,7 +212,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             }
         }
         count++;
-        int ret = visitor(user_data, key, value);
+        int ret = visitor(user_data, identity, key, value);
         Py_XDECREF(key);
         Py_DECREF(value);
         if (ret < 0) {
