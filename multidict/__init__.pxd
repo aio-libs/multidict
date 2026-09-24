@@ -9,7 +9,8 @@ cdef extern from "multidict_capi_struct.h":
         pass
 
     ctypedef int (*MultiDict_ItemVisitor)(void *user_data, PyObject *identity,
-                                          PyObject *key, PyObject *value) noexcept
+                                          Py_hash_t hash, PyObject *key,
+                                          PyObject *value) noexcept
 
 
 cdef extern from "multidict_capi.h":
@@ -150,13 +151,14 @@ cdef inline object MultiDict_SetDefault(MultiDict_CAPI *capi, object self, objec
 # one indirect C call per visited item, not a Python-level call through
 # an arbitrary callable -- but declared with Cython's own `object` type
 # for identity/key/value instead of MultiDict_ItemVisitor's raw
-# `PyObject *`, so a visitor needs no <object> cast of its own. Same
+# `PyObject *`, so a visitor needs no <object> cast of its own; `hash` is
+# a plain C `Py_hash_t` in both. Same
 # three-way return contract as MultiDict_ItemVisitor: a positive value
 # keeps the walk going, 0 stops early (not an error), and `except -1`
 # reports an exception the visitor itself raised.
 
-ctypedef int (*MultiDict_CyItemVisitor)(object identity, object key,
-                                        object value,
+ctypedef int (*MultiDict_CyItemVisitor)(object identity, Py_hash_t hash,
+                                        object key, object value,
                                         void *user_data) except -1
 
 
@@ -176,11 +178,13 @@ cdef struct _CyVisitorCtx:
 # returned here has a real exception attached, which MultiDict_ForEachAll/
 # Key's `except -1` propagates normally.
 
-cdef inline int _cy_visitor_trampoline(void *ctx_, PyObject *identity, PyObject *key,
+cdef inline int _cy_visitor_trampoline(void *ctx_, PyObject *identity,
+                                       Py_hash_t hash, PyObject *key,
                                        PyObject *value) noexcept:
     cdef _CyVisitorCtx *ctx = <_CyVisitorCtx*>ctx_
     try:
-        return ctx.visitor(<object>identity, <object>key, <object>value, ctx.user_data)
+        return ctx.visitor(<object>identity, hash, <object>key, <object>value,
+                           ctx.user_data)
     except BaseException as exc:
         PyErr_SetObject(type(exc), exc)
         return -1
