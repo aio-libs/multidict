@@ -17,7 +17,11 @@ extern "C" {
    older version of this header keeps working against a newer
    multidict runtime; MultiDict_GetCAPI() uses this to refuse the
    other direction (an older runtime that predates a field the client
-   was built to expect). */
+   was built to expect).
+
+   The watcher entry points were appended without a bump on purpose:
+   version 1 has never shipped, so no client can hold a capsule that
+   lacks them. */
 #define MultiDict_CAPI_VERSION 1
 
 typedef int (*MultiDict_ItemVisitor)(void* user_data, PyObject* identity,

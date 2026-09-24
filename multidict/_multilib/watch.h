@@ -61,7 +61,11 @@ _md_watch_call(mod_state* state, uint8_t bits, void* const* user_data,
 }
 
 /* Who to call, read afresh for each event: a callback that unwatches must
-   not be called again, and its user_data must not outlive the unwatch. */
+   not be called again, and its user_data must not outlive the unwatch.
+   The same freshness lets a watcher attached from inside a callback join
+   part-way through a bulk operation, so BATCH_BEGIN/BATCH_END pair per
+   operation but not per watcher; that is the accepted trade, documented
+   under MultiDict_EVENT_BATCH_BEGIN in docs/capi.rst. */
 static uint8_t
 _md_watch_recipients(MultiDictObject* md, void** user_data)
 {

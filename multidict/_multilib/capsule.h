@@ -399,7 +399,15 @@ MultiDict_ClearWatcher(void* state_, int watcher_id)
     }
     /* Multidicts still carrying the bit keep it: nothing enumerates them.
        A stale bit resolves to this NULL slot and is skipped, same as
-       CPython's PyDict_ClearWatcher(). */
+       CPython's PyDict_ClearWatcher().
+
+       Only until the slot is handed out again, though: the next
+       AddWatcher() takes this ID, and those multidicts then report to
+       the new callback with the previous one's user_data. Left as the
+       documented contract (register at module init, unwatch before
+       clearing) rather than fixed, since closing it means a generation
+       counter per slot mirrored in every md_watch_t. See the warning
+       under MultiDict_ClearWatcher in docs/capi.rst. */
     state->watchers[watcher_id] = NULL;
     state->watcher_data[watcher_id] = NULL;
     return 0;
