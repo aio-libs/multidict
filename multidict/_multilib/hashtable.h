@@ -280,14 +280,19 @@ _md_drain_retired_slow(MultiDictObject* md)
 
 /* Every reader that brings num_active_readers back to zero drains, which
    without a second thread is every lookup, and the list is almost always
-   empty; the work it guards sits behind a call so that a lookup pays a
-   relaxed load instead. Nothing is stranded by the narrower window: a table
-   retired after this load reads the same as one retired just after the
-   exchange, and _md_retire() drains again once its push is visible. */
+   empty; the work it guards sits behind a call so that a lookup pays a load
+   instead. The load stays seq_cst, not relaxed: a writer that pushes and
+   then reads num_active_readers as nonzero leaves the table for whoever
+   brings that count to zero, so the reader doing so must not be able to
+   miss the push. Both are seq_cst, so the push precedes the writer's read,
+   which precedes this reader's decrement, which precedes this load in the
+   single total order -- a relaxed load here has no such guarantee, and the
+   table would be stranded until md's next operation. On x86-64 a seq_cst
+   load is a plain mov; the cost this removes is the exchange below it. */
 static inline void
 _md_drain_retired(MultiDictObject* md)
 {
-    if (atomic_load_ptr_relaxed((void* const*)&md->retired) == NULL) {
+    if (atomic_load_ptr((void* const*)&md->retired) == NULL) {
         return;
     }
     _md_drain_retired_slow(md);

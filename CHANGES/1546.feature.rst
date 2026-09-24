@@ -2,7 +2,7 @@ Sped up lock-free reads on the free-threaded build of the C extension.
 Every reader that leaves a :class:`~multidict.MultiDict` last used to
 call into the retired-table drain, whose first act is a sequentially
 consistent read-modify-write, even though the retired list is empty
-almost every time; a relaxed load now answers that case and the drain
+almost every time; a plain load now answers that case and the drain
 itself moved out of line. ``key in md`` got about 10% cheaper,
 ``md[key]`` about 8% and a missing ``md.get(key)`` about 5%, measured as
 instruction counts on CPython 3.14. Builds with the GIL enabled emit
