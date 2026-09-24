@@ -1993,6 +1993,29 @@ fail:
 static inline int
 md_traverse(MultiDictObject* md, visitproc visit, void* arg)
 {
+#ifdef Py_GIL_DISABLED
+    /* A table waiting on md->retired still owns its entries' references, so
+       a cycle running through them is invisible to the collector unless they
+       are reported here too. Only md_clear() retires a table with entries
+       left, since _md_resize() zeroes nentries once it has handed ownership
+       to the new table, so nothing is reported twice. Reading the list
+       without the lock is what the walk below already relies on: the
+       collector stops the world, and nothing may block here, since a
+       stopped thread can hold any lock this would take. */
+    for (htkeys_t* t = (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
+         t != NULL;
+         t = t->retired_next) {
+        entry_t* retired_entries = htkeys_entries(t);
+        for (Py_ssize_t pos = 0; pos < t->nentries; pos++) {
+            entry_t* entry = retired_entries + pos;
+            if (entry->identity != NULL) {
+                Py_VISIT(entry->key);
+                Py_VISIT(entry->value);
+            }
+        }
+    }
+#endif
+
     if (md->used == 0) {
         return 0;
     }
