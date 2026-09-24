@@ -898,7 +898,6 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
 {
     PyObject* key = NULL;
     PyObject* _default = NULL;
-    bool decref_none_default = false;
     PyObject* ret = NULL;
 
     if (parse2("setdefault",
@@ -913,17 +912,11 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
         return NULL;
     }
     if (_default == NULL) {
-        _default = Py_GetConstant(Py_CONSTANT_NONE);
-        if (_default == NULL) {
-            return NULL;
-        }
-        decref_none_default = true;
+        // Borrowed; md_set_default() references whatever it stores.
+        _default = self->state->none;
     }
     if (md_set_default(self, key, _default, &ret) < 0) {
         assert(ret == NULL);
-    }
-    if (decref_none_default) {
-        Py_CLEAR(_default);  // never raises exception
     }
     return ret;
 }
@@ -1902,6 +1895,7 @@ module_traverse(PyObject* mod, visitproc visit, void* arg)
     Py_VISIT(state->str_key);
     Py_VISIT(state->str_default);
     Py_VISIT(state->str_value);
+    Py_VISIT(state->none);
 
     return 0;
 }
@@ -1955,6 +1949,7 @@ module_clear(PyObject* mod)
     Py_CLEAR(state->str_key);
     Py_CLEAR(state->str_default);
     Py_CLEAR(state->str_value);
+    Py_CLEAR(state->none);
 
     return 0;
 }
@@ -2004,6 +1999,10 @@ module_exec(PyObject* mod)
     }
     state->str_value = PyUnicode_InternFromString("value");
     if (state->str_value == NULL) {
+        goto fail;
+    }
+    state->none = Py_GetConstant(Py_CONSTANT_NONE);
+    if (state->none == NULL) {
         goto fail;
     }
 
