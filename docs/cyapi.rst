@@ -136,12 +136,14 @@ Iteration
 .. code-block:: cython
 
    ctypedef int (*MultiDict_ItemVisitor)(void *user_data, PyObject *identity,
-                                         PyObject *key, PyObject *value) noexcept
+                                         Py_hash_t hash, PyObject *key,
+                                         PyObject *value) noexcept
 
 *identity* is the entry's canonical key: the key itself for a
 :class:`~multidict.MultiDict`, the internal lower-cased form for a
 :class:`~multidict.CIMultiDict`. A visitor can group or compare
-entries by it without deriving that form from *key* itself.
+entries by it without deriving that form from *key* itself. *hash* is
+that identity's hash, the one the mapping stores alongside the entry.
 
 Return a positive value from it to keep the walk going, ``0`` to stop early
 (not an error by itself), or a negative value to abort with an error -- a
@@ -157,7 +159,8 @@ A visitor's ``identity``/``key``/``value`` parameters are raw
 taking ``object`` parameters interchangeable with one taking raw
 ``PyObject *`` parameters here, even though both compile, so a visitor
 must be declared with the same raw parameter types as the typedef
-itself.
+itself. ``hash`` is a plain C ``Py_hash_t``, which needs no cast in
+either form.
 
 - ``MultiDict_ForEach(capi, self, key, visitor, user_data) except -1 -> Py_ssize_t``
   -- the low-level entry point, declared here exactly like its C
@@ -179,8 +182,8 @@ declared alongside ``MultiDict_ItemVisitor``:
 
 .. code-block:: cython
 
-   ctypedef int (*MultiDict_CyItemVisitor)(object identity, object key,
-                                           object value,
+   ctypedef int (*MultiDict_CyItemVisitor)(object identity, Py_hash_t hash,
+                                           object key, object value,
                                            void *user_data) except -1
 
 It is still a real ``cdef`` function -- one indirect C call per visited

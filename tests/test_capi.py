@@ -380,18 +380,32 @@ def test_md_size_proxy_reflects_live_changes(api: object) -> None:
     assert api.md_size(proxy) == 2
 
 
-# The visitor is handed (identity, key, value); for a CIMultiDict the
-# identity is the lower-cased key, so it differs from the key itself.
-def _md_for_foreach_all() -> list[tuple[object, list[tuple[str, str, str]]]]:
+# The visitor is handed (identity, hash, key, value); for a CIMultiDict
+# the identity is the lower-cased key, so it differs from the key itself,
+# and so does its hash.
+def _md_for_foreach_all() -> list[tuple[object, list[tuple[str, int, str, str]]]]:
     md_plain: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
     md_ci: CIMultiDictStr = multidict.CIMultiDict(KEY="value")
     md_for_proxy: MultiDictStr = multidict.MultiDict([("a", "1"), ("a", "2")])
     md_for_ciproxy: CIMultiDictStr = multidict.CIMultiDict(key="value")
     return [
-        (md_plain, [("a", "a", "1"), ("b", "b", "2"), ("a", "a", "3")]),
-        (md_ci, [("key", "KEY", "value")]),
-        (multidict.MultiDictProxy(md_for_proxy), [("a", "a", "1"), ("a", "a", "2")]),
-        (multidict.CIMultiDictProxy(md_for_ciproxy), [("key", "key", "value")]),
+        (
+            md_plain,
+            [
+                ("a", hash("a"), "a", "1"),
+                ("b", hash("b"), "b", "2"),
+                ("a", hash("a"), "a", "3"),
+            ],
+        ),
+        (md_ci, [("key", hash("key"), "KEY", "value")]),
+        (
+            multidict.MultiDictProxy(md_for_proxy),
+            [("a", hash("a"), "a", "1"), ("a", hash("a"), "a", "2")],
+        ),
+        (
+            multidict.CIMultiDictProxy(md_for_ciproxy),
+            [("key", hash("key"), "key", "value")],
+        ),
     ]
 
 
@@ -401,7 +415,7 @@ def _md_for_foreach_all() -> list[tuple[object, list[tuple[str, str, str]]]]:
     ids=["multidict", "cimultidict", "proxy", "ciproxy"],
 )
 def test_md_foreach_all(
-    api: object, container: object, expected: list[tuple[str, str, str]]
+    api: object, container: object, expected: list[tuple[str, int, str, str]]
 ) -> None:
     assert api.md_foreach(container, None, -1) == expected
 
@@ -413,13 +427,16 @@ def test_md_foreach_all_empty(api: object) -> None:
 
 def test_md_foreach_all_early_stop(api: object) -> None:
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("c", "3")])
-    assert api.md_foreach(md, None, 1) == [("a", "a", "1")]
+    assert api.md_foreach(md, None, 1) == [("a", hash("a"), "a", "1")]
 
 
 def test_md_foreach_key_multidict(api: object) -> None:
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
-    assert api.md_foreach(md, "a", -1) == [("a", "a", "1"), ("a", "a", "3")]
-    assert [v for _, _, v in api.md_foreach(md, "a", -1)] == md.getall("a")
+    assert api.md_foreach(md, "a", -1) == [
+        ("a", hash("a"), "a", "1"),
+        ("a", hash("a"), "a", "3"),
+    ]
+    assert [v for *_, v in api.md_foreach(md, "a", -1)] == md.getall("a")
 
 
 def test_md_foreach_key_cimultidict(api: object) -> None:
@@ -427,12 +444,13 @@ def test_md_foreach_key_cimultidict(api: object) -> None:
     md.add("KEY", "v1")
     md.add("key", "v2")
     # The identity is the lower-cased lookup key, the same for both entries
-    # and distinct from the "KEY" one of them was added under.
+    # and distinct from the "KEY" one of them was added under; the hash is
+    # that identity's, not the "Key" the walk was asked for.
     assert api.md_foreach(md, "Key", -1) == [
-        ("key", "KEY", "v1"),
-        ("key", "key", "v2"),
+        ("key", hash("key"), "KEY", "v1"),
+        ("key", hash("key"), "key", "v2"),
     ]
-    assert [v for _, _, v in api.md_foreach(md, "Key", -1)] == md.getall("key")
+    assert [v for *_, v in api.md_foreach(md, "Key", -1)] == md.getall("key")
 
 
 def test_md_foreach_key_missing(api: object) -> None:
@@ -442,7 +460,7 @@ def test_md_foreach_key_missing(api: object) -> None:
 
 def test_md_foreach_key_early_stop(api: object) -> None:
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("a", "2"), ("a", "3")])
-    assert api.md_foreach(md, "a", 1) == [("a", "a", "1")]
+    assert api.md_foreach(md, "a", 1) == [("a", hash("a"), "a", "1")]
 
 
 @pytest.mark.parametrize("key", [None, "a"], ids=["all", "key"])
@@ -466,9 +484,9 @@ def test_md_foreach_cy_all() -> None:
     assert _testcyapi is not None
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
     assert _testcyapi.md_foreach_cy(md, None, -1) == [
-        ("a", "a", "1"),
-        ("b", "b", "2"),
-        ("a", "a", "3"),
+        ("a", hash("a"), "a", "1"),
+        ("b", hash("b"), "b", "2"),
+        ("a", hash("a"), "a", "3"),
     ]
 
 
@@ -479,7 +497,10 @@ def test_md_foreach_cy_all() -> None:
 def test_md_foreach_cy_key() -> None:
     assert _testcyapi is not None
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("a", "3")])
-    assert _testcyapi.md_foreach_cy(md, "a", -1) == [("a", "a", "1"), ("a", "a", "3")]
+    assert _testcyapi.md_foreach_cy(md, "a", -1) == [
+        ("a", hash("a"), "a", "1"),
+        ("a", hash("a"), "a", "3"),
+    ]
 
 
 @pytest.mark.skipif(
@@ -489,7 +510,9 @@ def test_md_foreach_cy_key() -> None:
 def test_md_foreach_cy_all_cimultidict() -> None:
     assert _testcyapi is not None
     md: CIMultiDictStr = multidict.CIMultiDict(KEY="value")
-    assert _testcyapi.md_foreach_cy(md, None, -1) == [("key", "KEY", "value")]
+    assert _testcyapi.md_foreach_cy(md, None, -1) == [
+        ("key", hash("key"), "KEY", "value")
+    ]
 
 
 @pytest.mark.skipif(
@@ -502,8 +525,8 @@ def test_md_foreach_cy_key_cimultidict() -> None:
     md.add("KEY", "v1")
     md.add("key", "v2")
     assert _testcyapi.md_foreach_cy(md, "Key", -1) == [
-        ("key", "KEY", "v1"),
-        ("key", "key", "v2"),
+        ("key", hash("key"), "KEY", "v1"),
+        ("key", hash("key"), "key", "v2"),
     ]
 
 
@@ -514,7 +537,7 @@ def test_md_foreach_cy_key_cimultidict() -> None:
 def test_md_foreach_cy_early_stop() -> None:
     assert _testcyapi is not None
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2"), ("c", "3")])
-    assert _testcyapi.md_foreach_cy(md, None, 1) == [("a", "a", "1")]
+    assert _testcyapi.md_foreach_cy(md, None, 1) == [("a", hash("a"), "a", "1")]
 
 
 @pytest.mark.skipif(

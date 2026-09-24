@@ -21,7 +21,8 @@ extern "C" {
 #define MultiDict_CAPI_VERSION 1
 
 typedef int (*MultiDict_ItemVisitor)(void* user_data, PyObject* identity,
-                                     PyObject* key, PyObject* value);
+                                     Py_hash_t hash, PyObject* key,
+                                     PyObject* value);
 
 typedef struct {
     int api_version;

@@ -355,7 +355,7 @@ separate ``CIMultiDict_Contains``, ``CIMultiDict_Add`` and so on:
 Iteration
 =========
 
-.. c:type:: int (*MultiDict_ItemVisitor)(void *user_data, PyObject *identity, PyObject *key, PyObject *value)
+.. c:type:: int (*MultiDict_ItemVisitor)(void *user_data, PyObject *identity, Py_hash_t hash, PyObject *key, PyObject *value)
 
    Callback type for :c:func:`MultiDict_ForEach`.
 
@@ -364,6 +364,10 @@ Iteration
    :class:`~multidict.CIMultiDict`. It is what the mapping actually
    looks entries up by, so a visitor can group or compare entries
    without deriving that form from *key* itself.
+
+   *hash* is *identity*'s hash, the one the mapping stores alongside
+   the entry, so a visitor bucketing entries of its own does not have
+   to hash *identity* again.
 
    *identity*, *key* and *value* are borrowed references, kept alive
    for the duration of the call.
@@ -386,9 +390,9 @@ Iteration
    key equals *key* -- the same values
    :meth:`~multidict.MultiDict.getall` would return, paired with *key*
    for a uniform callback signature; a missing key visits nothing, it
-   is not an error. In that form the *identity* passed to *visitor* is
-   the one computed from the *key* argument, which compares equal to
-   every visited entry's own identity.
+   is not an error. In that form the *identity* and *hash* passed to
+   *visitor* are the ones computed from the *key* argument, which
+   compare equal to every visited entry's own.
 
    Return the number of items visited (``>= 0``) on success, or ``-1``
    with an exception set on failure (including when *self* is not a
@@ -437,8 +441,8 @@ Example
    }
 
    static int
-   print_pair(void *user_data, PyObject *identity, PyObject *key,
-              PyObject *value)
+   print_pair(void *user_data, PyObject *identity, Py_hash_t hash,
+              PyObject *key, PyObject *value)
    {
        PyObject_Print(key, stdout, 0);
        printf(": ");

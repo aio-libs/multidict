@@ -275,11 +275,16 @@ typedef struct {
 } mutate_ctx;
 
 static int
-collect_pair(void* user_data, PyObject* identity, PyObject* key,
-             PyObject* value)
+collect_pair(void* user_data, PyObject* identity, Py_hash_t hash,
+             PyObject* key, PyObject* value)
 {
     visit_ctx* ctx = (visit_ctx*)user_data;
-    PyObject* pair = PyTuple_Pack(3, identity, key, value);
+    PyObject* hash_obj = PyLong_FromSsize_t((Py_ssize_t)hash);
+    if (hash_obj == NULL) {
+        return -1;
+    }
+    PyObject* pair = PyTuple_Pack(4, identity, hash_obj, key, value);
+    Py_DECREF(hash_obj);
     if (pair == NULL) {
         return -1;
     }
@@ -322,11 +327,12 @@ md_foreach(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
 }
 
 static int
-raising_visitor(void* user_data, PyObject* identity, PyObject* key,
-                PyObject* value)
+raising_visitor(void* user_data, PyObject* identity, Py_hash_t hash,
+                PyObject* key, PyObject* value)
 {
     (void)user_data;
     (void)identity;
+    (void)hash;
     (void)key;
     (void)value;
     PyErr_SetString(PyExc_RuntimeError, "boom from visitor");
@@ -335,10 +341,11 @@ raising_visitor(void* user_data, PyObject* identity, PyObject* key,
 
 /* Mutates `md` from inside the walk, which the walk must refuse. */
 static int
-mutating_visitor(void* user_data, PyObject* identity, PyObject* key,
-                 PyObject* value)
+mutating_visitor(void* user_data, PyObject* identity, Py_hash_t hash,
+                 PyObject* key, PyObject* value)
 {
     (void)identity;
+    (void)hash;
     (void)key;
     (void)value;
     mutate_ctx* ctx = (mutate_ctx*)user_data;
