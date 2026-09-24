@@ -911,10 +911,7 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
-    if (_default == NULL) {
-        // Borrowed; md_set_default() references whatever it stores.
-        _default = self->state->none;
-    }
+    // md_set_default() reads a NULL default as None.
     if (md_set_default(self, key, _default, &ret) < 0) {
         assert(ret == NULL);
     }

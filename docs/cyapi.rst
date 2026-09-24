@@ -109,9 +109,9 @@ Item access
 - ``MultiDict_DelItem(capi, self, key) except -1 -> int`` -- ``del self[key]``.
 - ``MultiDict_Pop(capi, self, key) -> object`` -- ``self.pop(key)`` with no
   default, same ``(found, value)`` return shape as ``MultiDict_GetItem``.
-- ``MultiDict_SetDefault(capi, self, key, default_value) -> object`` --
-  ``self.setdefault(key, default_value)`` (*default_value* required);
-  returns ``(True, existing_value)`` if *key* was already present, or
+- ``MultiDict_SetDefault(capi, self, key, default_value=None) -> object``
+  -- ``self.setdefault(key, default_value)``; returns
+  ``(True, existing_value)`` if *key* was already present, or
   ``(False, default_value)`` if it was just inserted.
 - ``MultiDict_SetItem(capi, self, key, value) except -1 -> int`` --
   ``self[key] = value``.

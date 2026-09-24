@@ -232,16 +232,18 @@ md_pop(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
 static PyObject*
 md_setdefault(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
 {
-    if (nargs != 3) {
-        PyErr_SetString(
-            PyExc_TypeError,
-            "md_setdefault should be called with md, key and default");
+    if (nargs != 2 && nargs != 3) {
+        PyErr_SetString(PyExc_TypeError,
+                        "md_setdefault should be called with md, key and "
+                        "optional default");
         return NULL;
     }
     mod_state* state = get_mod_state(self);
     PyObject* result = NULL;
-    int ret =
-        MultiDict_SetDefault(state->capi, args[0], args[1], args[2], &result);
+    // Omitting the default passes NULL, which the C API reads as None.
+    PyObject* default_value = nargs == 3 ? args[2] : NULL;
+    int ret = MultiDict_SetDefault(
+        state->capi, args[0], args[1], default_value, &result);
     if (ret < 0) {
         return NULL;
     }

@@ -110,8 +110,11 @@ def md_pop(md, key):
     return MultiDict_Pop(_capi, md, key)
 
 
-def md_setdefault(md, key, default):
-    return MultiDict_SetDefault(_capi, md, key, default)
+def md_setdefault(md, key, *default):
+    # Mirrors _testcapi.c: omitting the default exercises the implicit one.
+    if default:
+        return MultiDict_SetDefault(_capi, md, key, default[0])
+    return MultiDict_SetDefault(_capi, md, key)
 
 
 def md_setitem(md, key, value):

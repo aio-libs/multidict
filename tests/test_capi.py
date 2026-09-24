@@ -323,6 +323,19 @@ def test_md_setdefault_keeps_existing(api: object) -> None:
     assert list(md.items()) == [("key", "value")]
 
 
+def test_md_setdefault_omitted_default_inserts_none(api: object) -> None:
+    # No default passes NULL through the C API, which reads it as None.
+    md: multidict.MultiDict[str | None] = multidict.MultiDict()
+    assert api.md_setdefault(md, "key") == (False, None)
+    assert list(md.items()) == [("key", None)]
+
+
+def test_md_setdefault_omitted_default_keeps_existing(api: object) -> None:
+    md: MultiDictStr = multidict.MultiDict(key="value")
+    assert api.md_setdefault(md, "key") == (True, "value")
+    assert list(md.items()) == [("key", "value")]
+
+
 def test_md_setdefault_cimultidict(api: object) -> None:
     md: CIMultiDictStr = multidict.CIMultiDict()
     assert api.md_setdefault(md, "KEY", "v1") == (False, "v1")

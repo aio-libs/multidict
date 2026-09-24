@@ -1397,6 +1397,13 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
                PyObject** result)
 {
     *result = NULL;
+    if (value == NULL) {
+        /* The caller wants the implicit None default.  Substituting it
+           here keeps it out of the critical section below, where the
+           pythoncapi_compat shim for Py_GetConstant() used on 3.10 to
+           3.12 could allocate on its first call. */
+        value = md->state->none;
+    }
     PyObject* identity;
     Py_hash_t hash;
     if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
