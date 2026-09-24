@@ -4,6 +4,7 @@ import contextlib
 import gc
 import operator
 import platform
+import subprocess
 import sys
 import threading
 import time
@@ -28,6 +29,7 @@ from multidict import (
 
 _T = TypeVar("_T")
 IS_PYPY = platform.python_implementation() == "PyPy"
+_C_MODULE = "multidict._multidict"
 
 
 def chained_callable(
@@ -3563,3 +3565,40 @@ def test_items_iter_key_str_reinits(
         next(it)
     assert len(d) == 2
     assert d["b"] == "w"
+
+
+@pytest.mark.c_extension
+def test_multidict_refers_to_its_module() -> None:
+    """Every multidict holds a strong reference to ``multidict._multidict``.
+
+    A multidict caches the module state, which is freed with the module
+    object, and `type_clear()` drops the type's own reference to the module.
+    """
+    md: MultiDict[int] = MultiDict()
+    assert any(ref is md for ref in gc.get_referrers(sys.modules[_C_MODULE]))
+
+
+@pytest.mark.c_extension
+def test_multidict_torn_down_with_its_module() -> None:
+    """The final collection can reach the module and the multidicts at once.
+
+    `md_clear()` reads the module state, so a module freed first left it
+    reading freed memory; that crashed the interpreter on exit rather than
+    raising.
+    """
+    script = """
+import gc
+import sys
+
+import multidict
+from multidict import MultiDict
+
+md = MultiDict((f"k{i}", i) for i in range(64))
+cycle = [md, md.items(), iter(md)]
+cycle.append(cycle)
+for name in [n for n in sys.modules if n.startswith("multidict")]:
+    del sys.modules[name]
+del multidict, MultiDict, md, cycle
+gc.collect()
+"""
+    subprocess.run([sys.executable, "-c", script], check=True, timeout=60)

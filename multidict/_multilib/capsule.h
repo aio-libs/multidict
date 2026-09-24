@@ -120,6 +120,7 @@ MultiDict_New(void* state_, Py_ssize_t prealloc_size)
         return NULL;
     }
     md->state = state;
+    md_set_module(md, state->mod);
     if (md_init(md, false, prealloc_size) < 0) {
         Py_CLEAR(md);
         return NULL;
@@ -137,6 +138,7 @@ CIMultiDict_New(void* state_, Py_ssize_t prealloc_size)
         return NULL;
     }
     md->state = state;
+    md_set_module(md, state->mod);
     if (md_init(md, true, prealloc_size) < 0) {
         Py_CLEAR(md);
         return NULL;
