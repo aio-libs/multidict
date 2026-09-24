@@ -1,0 +1,6 @@
+Fixed reference cycles through a multidict going uncollected in the
+free-threaded build of the C extension. A hash table waiting to be freed
+still owns the references of the entries left in it, and those were not
+reported to the garbage collector, which then read the values as reachable
+from outside the cycle and kept it alive. Builds with the GIL enabled emit
+byte-identical code and are unaffected -- by :user:`asvetlov`.

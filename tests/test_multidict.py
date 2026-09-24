@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 import weakref
-from collections import deque
+from collections import Counter, deque
 from collections.abc import Callable, Iterable, Iterator, KeysView, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
@@ -2774,6 +2774,100 @@ def test_drain_retired_retries_after_pushing_back_thread_safety() -> None:
 
     # Every local of cycle(), the multidict included, dies on return, so
     # nothing is left to drain md->retired afterwards.
+    for _ in range(50):
+        cycle()
+
+    gc.collect()
+    assert all(r() is None for r in refs)
+
+
+@pytest.mark.c_extension
+def test_get_referents_reports_each_entry_once() -> None:
+    """The collector must be told about every key and value exactly once.
+
+    md_traverse() reports the entries of the tables waiting on md->retired
+    as well as those of md->keys, which is only sound because the two never
+    hold the same entry: _md_resize() zeroes the old table's nentries when
+    it hands ownership to the new one, so only md_clear() retires a table
+    with entries left in it. Reporting a reference twice would make the
+    collector believe an object has fewer references than it does, and free
+    it while the multidict still holds it, so this pins the count. Enough
+    entries to have forced several resizes, each with a value of its own."""
+    values = [object() for _ in range(200)]
+    d: MultiDict[object] = MultiDict()
+    for i, value in enumerate(values):
+        d.add(str(i), value)
+
+    counts = Counter(id(referent) for referent in gc.get_referents(d))
+
+    assert [counts[id(value)] for value in values] == [1] * len(values)
+    assert [counts[id(key)] for key in d] == [1] * len(values)
+
+
+@pytest.mark.c_extension
+def test_collect_cycle_through_retired_entries_thread_safety() -> None:
+    """A reference cycle running through a multidict cleared under reader
+    traffic must still be collectable.
+
+    A table the drain leaves on md->retired keeps its entries' references,
+    and md_traverse() used to report the entries of md->keys only, so the
+    collector could not see a cycle that ran through one of them: it read
+    the values as reachable from outside and kept the whole cycle alive.
+    This does not fail on an unfixed build, as review pointed out: the last
+    reader's own exit drains the table and releases its entries before the
+    collection runs, so the walk this adds usually has an empty list to go
+    over. Catching a table there instead needs an artificially widened drain
+    window (see the PR description); measured against an ordinary build it
+    happens in roughly 1% of clears, which is too rare to assert on and too
+    machine-dependent to gate CI with. What this drives, many times over, is
+    the shape, a cycle through a multidict cleared against continuous
+    lock-free reads and then dropped, so the walk runs against a table a
+    reader may still be holding. The deterministic half of the pair is
+    test_get_referents_reports_each_entry_once() above, which fails if an
+    entry is ever reported twice. This is a C-extension-only concern: the
+    pure-Python implementation has no retirement scheme, and its containers
+    are traversed by the interpreter itself."""
+
+    class Node:
+        value: object
+
+    refs: list[weakref.ReferenceType[Node]] = []
+
+    def cycle() -> None:
+        node = Node()
+        d: MultiDict[object] = MultiDict()
+        for i in range(50):
+            d.add(str(i), node)
+        node.value = d  # the cycle: node -> d -> entries -> node
+        refs.append(weakref.ref(node))
+        del node
+
+        ready = threading.Event()
+        stop = threading.Event()
+
+        def reader() -> None:
+            for i in range(200):
+                str(i % 50) in d
+            ready.set()
+            while not stop.is_set():
+                for i in range(50):
+                    str(i) in d
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(reader)
+            try:
+                # clear() must not land before the reader has started, so
+                # that the gate is nonzero when the drain checks it; bounded
+                # so a reader that died instead fails the test here rather
+                # than blocking the run.
+                assert ready.wait(60)
+                d.clear()
+            finally:
+                # Whatever clear() did, the reader has to be let go, or
+                # leaving the executor's block waits for it forever.
+                stop.set()
+            future.result()
+
     for _ in range(50):
         cycle()
 
