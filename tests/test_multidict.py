@@ -2655,11 +2655,13 @@ def test_dealloc_after_clear_drains_retired_thread_safety() -> None:
     and the entry references it still owned, never freed: dealloc calls
     md_clear(), and the reader exits that would otherwise have drained it
     have all happened by then. Forcing the interleaving needs an
-    artificially widened drain window (see the PR description); what runs
-    here is the shape, many times over, so that the added drain is
-    exercised on a table a reader may still be walking rather than only on
-    an empty list. This is a C-extension-only concern: the pure-Python
-    implementation has no retirement scheme to regress."""
+    artificially widened drain window (see the PR description), so this does
+    not fail on an unfixed build: the last reader's own exit ordinarily
+    drains the table before deallocation. What it does run, many times over,
+    is the shape, so that the drain added at teardown is exercised against a
+    table a reader may still be walking rather than only against an empty
+    list. This is a C-extension-only concern: the pure-Python implementation
+    has no retirement scheme to regress."""
 
     class Marker:
         pass
@@ -2685,14 +2687,20 @@ def test_dealloc_after_clear_drains_retired_thread_safety() -> None:
                 for i in range(50):
                     str(i) in d
 
-        t = threading.Thread(target=reader)
-        t.start()
-        # clear() must not land before the reader has actually started, so
-        # that the gate is nonzero when the drain checks it.
-        ready.wait()
-        d.clear()
-        stop.set()
-        t.join()
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(reader)
+            try:
+                # clear() must not land before the reader has actually
+                # started, so that the gate is nonzero when the drain checks
+                # it; bounded so a reader that died instead fails the test
+                # here rather than blocking the run.
+                assert ready.wait(60)
+                d.clear()
+            finally:
+                # Whatever clear() did, the reader has to be let go, or
+                # leaving the executor's block waits for it forever.
+                stop.set()
+            future.result()
 
     # Every local of cycle(), the multidict included, dies on return, so
     # nothing is left to drain md->retired afterwards.
