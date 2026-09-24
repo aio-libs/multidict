@@ -1,0 +1,3 @@
+Refreshed the tables in the benchmarking reference, which had gone stale
+for the operations the object-shell pools made cheaper
+-- by :user:`asvetlov`.
