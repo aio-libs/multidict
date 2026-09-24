@@ -54,6 +54,13 @@ equal their keys, except ``d.update(other)``, which merges a 100-item
 :class:`dict` whose keys are all already present, so it measures replacement
 rather than insertion.
 
+Three rows use a different size, because what they cost is dominated by an
+allocation rather than by the entries: ``cls()`` builds an empty mapping, and
+``cls(items)``, 20 items and ``d.copy()``, 20 items use a request's worth of
+headers. An allocation is a fixed cost, so at 200 entries it is divided across
+them and all but disappears; ``d.items()`` and ``iter(d)`` are listed for the
+same reason, since they allocate one object each however large the mapping is.
+
 Operations that destroy the mapping, such as ``d.pop(key)`` and ``d.clear()``,
 rebuild it before each measured round. The rebuild happens outside the
 instrumented region, so it is not counted.
