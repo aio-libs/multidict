@@ -1,5 +1,5 @@
 The visitor callback of the public C API and Cython API
-``MultiDict_ForEach`` family now also receives the hash of the entry's
+``MultiDict_ForEach`` family gained the hash of the entry's
 identity, the one the mapping stores alongside the entry, so a visitor
 bucketing entries of its own does not have to hash the identity again
 -- by :user:`asvetlov`.
