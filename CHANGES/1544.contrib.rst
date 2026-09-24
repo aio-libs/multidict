@@ -1,0 +1,4 @@
+The public C API test harnesses gained a visitor that mutates the multidict
+it is walking, covering the reentrancy guard in ``MultiDict_ForEach()`` from
+both ``multidict._testcapi`` and ``multidict._testcyapi``
+-- by :user:`asvetlov`.

@@ -106,6 +106,7 @@ params
 performant
 pickable
 pickleable
+positionally
 postfix
 pre
 prebuilt
@@ -124,6 +125,7 @@ regex
 regexs
 repo
 reStructuredText
+resumable
 riscv
 riscv64
 runtime

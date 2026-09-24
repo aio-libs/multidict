@@ -268,6 +268,12 @@ typedef struct {
     Py_ssize_t limit;  // < 0 means no limit
 } visit_ctx;
 
+typedef struct {
+    void* capi;
+    PyObject* md;
+    PyObject* added;  // the key the visitor inserts, never the walked one
+} mutate_ctx;
+
 static int
 collect_pair(void* user_data, PyObject* key, PyObject* value)
 {
@@ -322,6 +328,38 @@ raising_visitor(void* user_data, PyObject* key, PyObject* value)
     (void)value;
     PyErr_SetString(PyExc_RuntimeError, "boom from visitor");
     return -1;
+}
+
+/* Mutates `md` from inside the walk, which the walk must refuse. */
+static int
+mutating_visitor(void* user_data, PyObject* key, PyObject* value)
+{
+    (void)key;
+    (void)value;
+    mutate_ctx* ctx = (mutate_ctx*)user_data;
+    if (MultiDict_Add(ctx->capi, ctx->md, ctx->added, ctx->added) < 0) {
+        return -1;
+    }
+    return 1;
+}
+
+static PyObject*
+md_foreach_mutates(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
+{
+    if (nargs != 3) {
+        PyErr_SetString(
+            PyExc_TypeError,
+            "md_foreach_mutates should be called with md, key and added");
+        return NULL;
+    }
+    mod_state* state = get_mod_state(self);
+    PyObject* key = args[1] == Py_None ? NULL : args[1];
+    mutate_ctx ctx = {state->capi, args[0], args[2]};
+    if (MultiDict_ForEach(state->capi, args[0], key, mutating_visitor, &ctx) <
+        0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -394,6 +432,7 @@ static PyMethodDef module_methods[] = {
     {"md_setdefault", (PyCFunction)md_setdefault, METH_FASTCALL},
     {"md_setitem", (PyCFunction)md_setitem, METH_FASTCALL},
     {"md_foreach", (PyCFunction)md_foreach, METH_FASTCALL},
+    {"md_foreach_mutates", (PyCFunction)md_foreach_mutates, METH_FASTCALL},
     {"md_foreach_raises", (PyCFunction)md_foreach_raises, METH_O},
     {"check_api_version", (PyCFunction)check_api_version, METH_O},
     {NULL, NULL} /* sentinel */

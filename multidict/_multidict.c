@@ -426,9 +426,9 @@ multidict_getall(MultiDictObject* self, PyObject* const* args,
                nargs,
                kwnames,
                1,
-               "key",
+               self->state->str_key,
                &key,
-               "default",
+               self->state->str_default,
                &_default) < 0) {
         return NULL;
     }
@@ -460,9 +460,9 @@ multidict_getone(MultiDictObject* self, PyObject* const* args,
                nargs,
                kwnames,
                1,
-               "key",
+               self->state->str_key,
                &key,
-               "default",
+               self->state->str_default,
                &_default) < 0) {
         return NULL;
     }
@@ -475,31 +475,30 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
 {
     PyObject* key = NULL;
     PyObject* _default = NULL;
-    bool decref_default = false;
 
     if (parse2("get",
                args,
                nargs,
                kwnames,
                1,
-               "key",
+               self->state->str_key,
                &key,
-               "default",
+               self->state->str_default,
                &_default) < 0) {
         return NULL;
     }
-    if (_default == NULL) {
-        _default = Py_GetConstant(Py_CONSTANT_NONE);
-        if (_default == NULL) {
-            return NULL;
-        }
-        decref_default = true;
+    PyObject* val = NULL;
+    if (md_get_one(self, key, &val) < 0) {
+        return NULL;
     }
-    PyObject* ret = _multidict_getone(self, key, _default);
-    if (decref_default) {
-        Py_CLEAR(_default);
+    if (val != NULL) {
+        return val;
     }
-    return ret;
+    if (_default != NULL) {
+        return Py_NewRef(_default);
+    }
+    // None is only needed when the key is missing.
+    return Py_GetConstant(Py_CONSTANT_NONE);
 }
 
 static PyObject*
@@ -799,8 +798,15 @@ multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
 {
     PyObject *key = NULL, *val = NULL;
 
-    if (parse2("add", args, nargs, kwnames, 2, "key", &key, "value", &val) <
-        0) {
+    if (parse2("add",
+               args,
+               nargs,
+               kwnames,
+               2,
+               self->state->str_key,
+               &key,
+               self->state->str_value,
+               &val) < 0) {
         return NULL;
     }
     if (md_add(self, key, val) < 0) {
@@ -900,9 +906,9 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
                nargs,
                kwnames,
                1,
-               "key",
+               self->state->str_key,
                &key,
-               "default",
+               self->state->str_default,
                &_default) < 0) {
         return NULL;
     }
@@ -933,9 +939,9 @@ multidict_popone(MultiDictObject* self, PyObject* const* args,
                nargs,
                kwnames,
                1,
-               "key",
+               self->state->str_key,
                &key,
-               "default",
+               self->state->str_default,
                &_default) < 0) {
         return NULL;
     }
@@ -967,9 +973,9 @@ multidict_pop(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
                nargs,
                kwnames,
                1,
-               "key",
+               self->state->str_key,
                &key,
-               "default",
+               self->state->str_default,
                &_default) < 0) {
         return NULL;
     }
@@ -1001,9 +1007,9 @@ multidict_popall(MultiDictObject* self, PyObject* const* args,
                nargs,
                kwnames,
                1,
-               "key",
+               self->state->str_key,
                &key,
-               "default",
+               self->state->str_default,
                &_default) < 0) {
         return NULL;
     }
@@ -1893,14 +1899,36 @@ module_traverse(PyObject* mod, visitproc visit, void* arg)
     Py_VISIT(state->str_canonical);
     Py_VISIT(state->str_lower);
     Py_VISIT(state->str_name);
+    Py_VISIT(state->str_key);
+    Py_VISIT(state->str_default);
+    Py_VISIT(state->str_value);
 
     return 0;
+}
+
+static void
+drain_pools(mod_state* state)
+{
+    htkeys_pools_clear(state->htkeys_pools);
+}
+
+/* A warm pool lets an operation run without calling the allocator at
+   all, which hides it from a test that injects an allocation failure to
+   check the recovery path. Draining first puts that path back in reach.
+   For tests only, like getversion(). */
+static PyObject*
+freelist_clear(PyObject* mod, PyObject* Py_UNUSED(ignored))
+{
+    drain_pools(get_mod_state(mod));
+    Py_RETURN_NONE;
 }
 
 static int
 module_clear(PyObject* mod)
 {
     mod_state* state = get_mod_state(mod);
+
+    drain_pools(state);
 
     Py_CLEAR(state->IStrType);
 
@@ -1920,6 +1948,9 @@ module_clear(PyObject* mod)
     Py_CLEAR(state->str_canonical);
     Py_CLEAR(state->str_lower);
     Py_CLEAR(state->str_name);
+    Py_CLEAR(state->str_key);
+    Py_CLEAR(state->str_default);
+    Py_CLEAR(state->str_value);
 
     return 0;
 }
@@ -1932,6 +1963,7 @@ module_free(void* mod)
 
 static PyMethodDef module_methods[] = {
     {"getversion", (PyCFunction)getversion, METH_O},
+    {"_freelist_clear", (PyCFunction)freelist_clear, METH_NOARGS},
     {NULL, NULL} /* sentinel */
 };
 
@@ -1941,6 +1973,8 @@ module_exec(PyObject* mod)
     mod_state* state = get_mod_state(mod);
     PyObject* tmp;
     PyObject* tpl = NULL;
+
+    htkeys_pools_init(state->htkeys_pools);
 
     state->str_lower = PyUnicode_InternFromString("lower");
     if (state->str_lower == NULL) {
@@ -1952,6 +1986,18 @@ module_exec(PyObject* mod)
     }
     state->str_name = PyUnicode_InternFromString("__name__");
     if (state->str_name == NULL) {
+        goto fail;
+    }
+    state->str_key = PyUnicode_InternFromString("key");
+    if (state->str_key == NULL) {
+        goto fail;
+    }
+    state->str_default = PyUnicode_InternFromString("default");
+    if (state->str_default == NULL) {
+        goto fail;
+    }
+    state->str_value = PyUnicode_InternFromString("value");
+    if (state->str_value == NULL) {
         goto fail;
     }
 

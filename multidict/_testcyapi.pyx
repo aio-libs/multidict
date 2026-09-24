@@ -4,7 +4,7 @@
 # part of the public API and not meant to be imported or relied on outside
 # tests. Mirrors _testcapi.c function-for-function.
 
-from cpython.exc cimport PyErr_SetString
+from cpython.exc cimport PyErr_SetObject, PyErr_SetString
 from cpython.object cimport PyObject
 
 from multidict cimport (
@@ -147,6 +147,41 @@ def md_foreach(md, key, Py_ssize_t limit):
         key_ptr = <PyObject*>key
     MultiDict_ForEach(_capi, md, key_ptr, _collect_pair, &ctx)
     return result
+
+
+cdef struct _MutateCtx:
+    PyObject *md      # borrowed: kept alive by md_foreach_mutates' argument
+    PyObject *added   # borrowed, likewise; never the walked key
+
+
+cdef int _mutating_visitor(void *user_data, PyObject *key, PyObject *value) noexcept:
+    # Mutates the multidict being walked, which the walk must refuse. A
+    # noexcept callback cannot let MultiDict_Add()'s `except -1` propagate,
+    # so report the failure through the return value (see docs/cyapi.rst).
+    cdef _MutateCtx *ctx = <_MutateCtx*>user_data
+    cdef object md = <object>ctx.md
+    cdef object added = <object>ctx.added
+    try:
+        MultiDict_Add(_capi, md, added, added)
+    except BaseException as exc:
+        # MultiDict_Add() is declared `except -1`, but this callback is
+        # noexcept, so its exception has to be caught here. Put it back
+        # before returning: leaving the except block clears it, and the
+        # negative return would then reach MultiDict_ForEach()'s caller
+        # with nothing set (see docs/cyapi.rst).
+        PyErr_SetObject(type(exc), exc)
+        return -1
+    return 1
+
+
+def md_foreach_mutates(md, key, added):
+    cdef _MutateCtx ctx
+    ctx.md = <PyObject*>md
+    ctx.added = <PyObject*>added
+    cdef PyObject *key_ptr = NULL
+    if key is not None:
+        key_ptr = <PyObject*>key
+    MultiDict_ForEach(_capi, md, key_ptr, _mutating_visitor, &ctx)
 
 
 cdef int _raising_visitor(void *user_data, PyObject *key, PyObject *value) noexcept:

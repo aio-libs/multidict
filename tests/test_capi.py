@@ -437,6 +437,13 @@ def test_md_foreach_key_early_stop(api: object) -> None:
     assert api.md_foreach(md, "a", 1) == [("a", "1")]
 
 
+@pytest.mark.parametrize("key", [None, "a"], ids=["all", "key"])
+def test_md_foreach_mutating_visitor(api: object, key: str | None) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2")])
+    with pytest.raises(RuntimeError, match="changed during iteration"):
+        api.md_foreach_mutates(md, key, "c")
+
+
 def test_md_foreach_raises(api: object) -> None:
     md: MultiDictStr = multidict.MultiDict([("a", "1"), ("b", "2")])
     with pytest.raises(RuntimeError, match="boom from visitor"):

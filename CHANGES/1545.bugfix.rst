@@ -1,0 +1,4 @@
+Fixed the C extension accepting an argument passed both positionally and
+by name instead of raising :exc:`TypeError`. ``md.add("a", key="k",
+value="v")`` stored a wrong value, and ``md.get("a", "b", key="c")``
+silently ignored the surplus arguments -- by :user:`asvetlov`.
