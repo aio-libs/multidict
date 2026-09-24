@@ -2003,6 +2003,14 @@ static inline int
 md_clear(MultiDictObject* md)
 {
     if (md->keys == NULL || md->keys == &empty_htkeys) {
+#ifdef Py_GIL_DISABLED
+        /* There is nothing to retire, but an earlier drain may have left a
+           table on md->retired for the next one to free, and this clear can
+           be the object's teardown, after which there is no next one. The
+           count is zero by then, since a lock-free reader reaches md through
+           a live reference, so this drain does free it. */
+        _md_drain_retired(md);
+#endif
         return 0;
     }
     store_version(md, next_version(md->state));

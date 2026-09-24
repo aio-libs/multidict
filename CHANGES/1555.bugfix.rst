@@ -1,0 +1,8 @@
+Fixed a memory leak in the free-threaded build of the C extension.
+:meth:`~multidict.MultiDict.clear` hands its hash table to a drain that
+frees it once no lock-free reader is in flight, and a drain that finds
+one leaves the table for the next drain to free. Deallocation ran no
+drain of its own, so a multidict dropped after such a clear, with no
+operation in between, never freed that table nor released the references
+its entries still held. Builds with the GIL enabled emit byte-identical
+code and are unaffected -- by :user:`asvetlov`.
