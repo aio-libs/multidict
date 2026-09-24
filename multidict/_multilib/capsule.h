@@ -114,8 +114,8 @@ static PyObject*
 MultiDict_New(void* state_, Py_ssize_t prealloc_size)
 {
     mod_state* state = (mod_state*)state_;
-    MultiDictObject* md = (MultiDictObject*)state->MultiDictType->tp_alloc(
-        state->MultiDictType, 0);
+    MultiDictObject* md =
+        (MultiDictObject*)_md_shell_alloc(state, state->MultiDictType);
     if (md == NULL) {
         return NULL;
     }
@@ -131,8 +131,8 @@ static PyObject*
 CIMultiDict_New(void* state_, Py_ssize_t prealloc_size)
 {
     mod_state* state = (mod_state*)state_;
-    MultiDictObject* md = (MultiDictObject*)state->CIMultiDictType->tp_alloc(
-        state->CIMultiDictType, 0);
+    MultiDictObject* md =
+        (MultiDictObject*)_md_shell_alloc(state, state->CIMultiDictType);
     if (md == NULL) {
         return NULL;
     }
@@ -156,9 +156,8 @@ MultiDictProxy_New(void* state_, PyObject* arg)
                      Py_TYPE(arg)->tp_name);
         return NULL;
     }
-    MultiDictProxyObject* self =
-        (MultiDictProxyObject*)state->MultiDictProxyType->tp_alloc(
-            state->MultiDictProxyType, 0);
+    MultiDictProxyObject* self = (MultiDictProxyObject*)_md_shell_alloc(
+        state, state->MultiDictProxyType);
     if (self == NULL) {
         return NULL;
     }
@@ -181,9 +180,8 @@ CIMultiDictProxy_New(void* state_, PyObject* arg)
                      Py_TYPE(arg)->tp_name);
         return NULL;
     }
-    MultiDictProxyObject* self =
-        (MultiDictProxyObject*)state->CIMultiDictProxyType->tp_alloc(
-            state->CIMultiDictProxyType, 0);
+    MultiDictProxyObject* self = (MultiDictProxyObject*)_md_shell_alloc(
+        state, state->CIMultiDictProxyType);
     if (self == NULL) {
         return NULL;
     }

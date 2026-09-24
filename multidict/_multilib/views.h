@@ -24,7 +24,12 @@ typedef struct {
 
 /* A pooled shell keeps the GC preheader it was allocated with, which
    PyObject_GC_UnTrack() left in the untracked state, so only the object
-   header has to be put back the way PyObject_GC_New() leaves it. */
+   header has to be put back the way PyObject_GC_New() leaves it.
+
+   Out of line on purpose: inlined into all three view constructors it
+   grows the translation unit enough that GCC stops inlining
+   md_calc_identity() into get(), which costs more on every lookup than
+   the call saves here. */
 NOINLINE static _Multidict_ViewObject*
 _multidict_view_alloc(MultiDictObject* md, PyTypeObject* tp)
 {
