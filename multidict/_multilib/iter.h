@@ -58,6 +58,12 @@ multidict_items_iter_new(MultiDictObject* md, int reverse)
     }
 
     _init_iter(it, md, reverse);
+    /* None placeholders, so the first reuse has something to release. */
+    it->result = PyTuple_Pack(2, Py_None, Py_None);
+    if (it->result == NULL) {
+        Py_DECREF(it);
+        return NULL;
+    }
 
     PyObject_GC_Track(it);
     return (PyObject*)it;
@@ -114,12 +120,14 @@ multidict_items_iter_iternext(MultidictIter* self)
         return NULL;
     }
 
-    /* Reuse the previous tuple when the caller has already dropped it,
-       as `for k, v in d.items()` does every step; dictiter does the
-       same. Otherwise hand out a fresh one and keep that instead, so a
-       tuple the caller holds on to does not block reuse for good. */
+    /* Reuse the iterator's own tuple when the caller has already
+       dropped it, as `for k, v in d.items()` does every step; dictiter
+       does the same. self->result is set once at creation and never
+       replaced: the uniqueness check is only ever true for the thread
+       that owns the tuple, so replacing the field from another thread
+       sharing the iterator could free it under that owner. */
     ret = self->result;
-    if (ret != NULL && PyUnstable_Object_IsUniquelyReferenced(ret)) {
+    if (PyUnstable_Object_IsUniquelyReferenced(ret)) {
         PyObject* old_key = PyTuple_GET_ITEM(ret, 0);
         PyObject* old_value = PyTuple_GET_ITEM(ret, 1);
         PyTuple_SET_ITEM(ret, 0, key);
@@ -146,7 +154,6 @@ multidict_items_iter_iternext(MultidictIter* self)
     }
     PyTuple_SET_ITEM(ret, 0, key);
     PyTuple_SET_ITEM(ret, 1, value);
-    Py_XSETREF(self->result, Py_NewRef(ret));
     return ret;
 }
 
