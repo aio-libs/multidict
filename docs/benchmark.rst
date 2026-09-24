@@ -54,6 +54,13 @@ equal their keys, except ``d.update(other)``, which merges a 100-item
 :class:`dict` whose keys are all already present, so it measures replacement
 rather than insertion.
 
+Three rows use a different size, because what they cost is dominated by an
+allocation rather than by the entries: ``cls()`` builds an empty mapping, and
+``cls(items)``, 20 items and ``d.copy()``, 20 items use a request's worth of
+headers. An allocation is a fixed cost, so at 200 entries it is divided across
+them and all but disappears; ``d.items()`` and ``iter(d)`` are listed for the
+same reason, since they allocate one object each however large the mapping is.
+
 Operations that destroy the mapping, such as ``d.pop(key)`` and ``d.clear()``,
 rebuild it before each measured round. The rebuild happens outside the
 instrumented region, so it is not counted.
@@ -78,12 +85,12 @@ Results
 
 .. code-block:: text
 
-   multidict   6.9.2.dev0 (f54176c)
+   multidict   6.9.2.dev0 (7e59fec)
    CPython     3.14.7, GIL and free-threaded builds
    valgrind    3.26.0, callgrind, client-request bracketing
    CPU         Intel(R) Core(TM) Ultra 7 155H
    platform    Linux-6.17.0-29-generic-x86_64-with-glibc2.43
-   collected   2026-09-23
+   collected   2026-09-24
 
 .. list-table:: Instructions per operation, ``CPython 3.14.7``, GIL build
    :header-rows: 1
@@ -95,80 +102,105 @@ Results
      - ``CIMultiDict``
      - ``CIMultiDict`` vs ``dict``
    * - ``cls(items)``
-     - 91,196
-     - 44,814
-     - 63,290
-     - 0.69x
+     - 91,347
+     - 44,285
+     - 62,365
+     - 0.68x
+   * - ``cls()``
+     - 569
+     - 590
+     - 730
+     - 1.28x
+   * - ``cls(items)``, 20 items
+     - 9,257
+     - 4,146
+     - 5,966
+     - 0.64x
    * - ``d.copy()``
-     - 9,666
-     - 25,638
-     - 26,031
-     - 2.69x
+     - 9,761
+     - 25,458
+     - 25,855
+     - 2.65x
+   * - ``d.copy()``, 20 items
+     - 1,452
+     - 1,885
+     - 2,282
+     - 1.57x
    * - ``d[key]``
      - 184
-     - 150
-     - 240
-     - 1.30x
+     - 148
+     - 238
+     - 1.29x
    * - ``d.get(key)``, miss
      - 358
-     - 377
-     - 646
-     - 1.80x
+     - 314
+     - 582
+     - 1.62x
    * - ``key in d``
      - 174
      - 134
-     - 226
+     - 225
      - 1.29x
    * - ``d[key] = v``, existing key
      - 252
-     - 336
-     - 422
-     - 1.67x
+     - 314
+     - 404
+     - 1.60x
    * - ``d[key] = v``, new key
+     - 389
      - 388
-     - 474
-     - 560
-     - 1.44x
+     - 478
+     - 1.23x
    * - ``d.setdefault(key, v)``, new key
-     - 584
-     - 635
-     - 912
-     - 1.56x
+     - 585
+     - 504
+     - 784
+     - 1.34x
    * - ``del d[key]``
      - 295
-     - 238
-     - 327
-     - 1.11x
+     - 236
+     - 326
+     - 1.10x
    * - ``d.pop(key)``
      - 476
-     - 428
-     - 712
-     - 1.50x
+     - 388
+     - 672
+     - 1.41x
    * - ``d.popitem()``
      - 447
-     - 1,111
-     - 2,400
-     - 5.37x
+     - 1,092
+     - 2,384
+     - 5.33x
    * - ``d.update(other)``, 100 existing keys
      - 30,692
-     - 38,528
-     - 47,492
-     - 1.55x
+     - 37,521
+     - 46,385
+     - 1.51x
    * - ``d.clear()``
-     - 4,821
-     - 7,207
-     - 7,464
+     - 4,818
+     - 7,212
+     - 7,469
      - 1.55x
    * - ``for k in d``
      - 53
-     - 63
-     - 66
-     - 1.24x
+     - 62
+     - 65
+     - 1.22x
    * - ``for k, v in d.items()``
      - 88
-     - 380
-     - 384
-     - 4.37x
+     - 378
+     - 382
+     - 4.35x
+   * - ``d.items()``
+     - 538
+     - 326
+     - 583
+     - 1.08x
+   * - ``iter(d)``
+     - 727
+     - 496
+     - 496
+     - 0.68x
 
 .. list-table:: Instructions per operation, ``CPython 3.14.7``, free-threaded build
    :header-rows: 1
@@ -180,25 +212,40 @@ Results
      - ``CIMultiDict``
      - ``CIMultiDict`` vs ``dict``
    * - ``cls(items)``
-     - 114,493
-     - 66,802
-     - 83,831
+     - 114,378
+     - 66,605
+     - 83,834
+     - 0.73x
+   * - ``cls()``
+     - 604
+     - 822
+     - 911
+     - 1.51x
+   * - ``cls(items)``, 20 items
+     - 11,674
+     - 6,828
+     - 8,517
      - 0.73x
    * - ``d.copy()``
      - 12,756
-     - 29,785
-     - 30,126
+     - 29,790
+     - 30,130
      - 2.36x
+   * - ``d.copy()``, 20 items
+     - 1,830
+     - 2,728
+     - 3,068
+     - 1.68x
    * - ``d[key]``
      - 224
-     - 292
+     - 291
      - 378
      - 1.69x
    * - ``d.get(key)``, miss
      - 392
-     - 474
-     - 725
-     - 1.85x
+     - 409
+     - 660
+     - 1.69x
    * - ``key in d``
      - 235
      - 253
@@ -211,14 +258,14 @@ Results
      - 1.75x
    * - ``d[key] = v``, new key
      - 525
-     - 667
-     - 754
-     - 1.43x
+     - 612
+     - 699
+     - 1.33x
    * - ``d.setdefault(key, v)``, new key
      - 730
-     - 804
-     - 1,067
-     - 1.46x
+     - 707
+     - 970
+     - 1.33x
    * - ``del d[key]``
      - 404
      - 396
@@ -226,23 +273,23 @@ Results
      - 1.19x
    * - ``d.pop(key)``
      - 587
-     - 548
-     - 811
-     - 1.38x
+     - 512
+     - 775
+     - 1.32x
    * - ``d.popitem()``
      - 482
      - 1,245
-     - 2,576
+     - 2,579
      - 5.34x
    * - ``d.update(other)``, 100 existing keys
-     - 38,335
-     - 49,315
-     - 57,595
-     - 1.50x
+     - 38,287
+     - 48,775
+     - 57,803
+     - 1.51x
    * - ``d.clear()``
      - 6,732
-     - 9,748
-     - 10,000
+     - 9,749
+     - 10,001
      - 1.49x
    * - ``for k in d``
      - 55
@@ -254,6 +301,16 @@ Results
      - 450
      - 453
      - 3.99x
+   * - ``d.items()``
+     - 446
+     - 518
+     - 769
+     - 1.73x
+   * - ``iter(d)``
+     - 647
+     - 782
+     - 782
+     - 1.21x
 
 .. list-table:: Free-threading overhead, ``3.14.7`` free-threaded versus GIL build
    :header-rows: 1
@@ -265,29 +322,29 @@ Results
      - Worst
      - Worst operation
    * - ``dict``
-     - 1.26x
-     - 1.02x
+     - 1.25x
+     - 0.83x
      - 1.40x
      - ``d.clear()``
    * - ``MultiDict``
-     - 1.35x
-     - 1.12x
-     - 1.94x
+     - 1.48x
+     - 1.14x
+     - 1.96x
      - ``d[key]``
    * - ``CIMultiDict``
-     - 1.32x
-     - 1.07x
-     - 1.58x
+     - 1.34x
+     - 1.08x
+     - 1.59x
      - ``d[key]``
    * - ``MultiDict`` (Python)
-     - 1.23x
+     - 1.22x
      - 0.94x
      - 2.96x
      - ``for k in d``
    * - ``CIMultiDict`` (Python)
-     - 1.22x
+     - 1.21x
      - 0.94x
-     - 2.08x
+     - 2.09x
      - ``for k in d``
 
 .. list-table:: Pure-Python backend, instructions per operation, ``CPython 3.14.7``, GIL build
@@ -299,65 +356,85 @@ Results
      - ``CIMultiDict``
      - ``MultiDict`` vs the C extension
    * - ``cls(items)``
-     - 2,488,658
-     - 2,729,436
-     - 55.53x
+     - 2,489,263
+     - 2,729,916
+     - 56.21x
+   * - ``cls()``
+     - 64,930
+     - 64,978
+     - 110.05x
+   * - ``cls(items)``, 20 items
+     - 330,688
+     - 354,019
+     - 79.76x
    * - ``d.copy()``
-     - 452,080
-     - 455,062
-     - 17.63x
+     - 450,210
+     - 456,754
+     - 17.68x
+   * - ``d.copy()``, 20 items
+     - 75,532
+     - 82,026
+     - 40.07x
    * - ``d[key]``
      - 7,478
      - 8,732
-     - 49.75x
+     - 50.42x
    * - ``d.get(key)``, miss
      - 7,733
      - 8,977
-     - 20.53x
+     - 24.66x
    * - ``key in d``
      - 7,756
      - 9,011
      - 57.84x
    * - ``d[key] = v``, existing key
-     - 26,209
-     - 27,511
-     - 78.12x
+     - 26,204
+     - 27,513
+     - 83.32x
    * - ``d[key] = v``, new key
-     - 27,135
-     - 28,149
-     - 57.28x
+     - 27,104
+     - 28,130
+     - 69.87x
    * - ``d.setdefault(key, v)``, new key
-     - 34,848
-     - 36,999
-     - 54.91x
+     - 34,798
+     - 36,982
+     - 69.00x
    * - ``del d[key]``
-     - 19,667
-     - 20,896
-     - 82.81x
+     - 19,689
+     - 20,897
+     - 83.25x
    * - ``d.pop(key)``
-     - 15,478
-     - 16,732
-     - 36.18x
+     - 15,500
+     - 16,733
+     - 39.97x
    * - ``d.popitem()``
      - 11,915
-     - 13,856
-     - 10.73x
+     - 13,851
+     - 10.91x
    * - ``d.update(other)``, 100 existing keys
-     - 2,051,961
-     - 2,168,306
-     - 53.26x
+     - 2,050,771
+     - 2,167,666
+     - 54.66x
    * - ``d.clear()``
-     - 114,196
-     - 114,171
-     - 15.85x
+     - 114,191
+     - 114,183
+     - 15.83x
    * - ``for k in d``
      - 2,190
-     - 4,071
-     - 34.60x
+     - 4,066
+     - 35.27x
    * - ``for k, v in d.items()``
      - 2,510
-     - 4,450
-     - 6.60x
+     - 4,445
+     - 6.64x
+   * - ``d.items()``
+     - 2,494
+     - 2,494
+     - 7.65x
+   * - ``iter(d)``
+     - 9,152
+     - 9,154
+     - 18.45x
 
 .. END GENERATED TABLES
 

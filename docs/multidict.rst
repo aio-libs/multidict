@@ -447,6 +447,45 @@ handled by :class:`CIMultiDict`, not by ``istr`` equality.
 For performance :class:`istr` strings should be created once and
 stored somewhere for the later usage, see :mod:`aiohttp:aiohttp.hdrs` for example.
 
+How much that is worth, as instruction counts on CPython 3.14 measured
+the way :ref:`benchmarking-reference` describes. ``d[key]`` and
+``d[key] = v`` run against a :class:`CIMultiDict` of 200 already
+lower-case keys; ``d.add()`` builds that mapping from empty. Its row
+reports the average cost per insertion across those 200 insertions:
+
+.. list-table:: :class:`CIMultiDict` keyed by ``str`` versus by :class:`istr`
+   :header-rows: 1
+   :widths: 28 14 14 14 14 16
+
+   * - Operation
+     - GIL, ``str``
+     - GIL, :class:`istr`
+     - Free-threaded, ``str``
+     - Free-threaded, :class:`istr`
+     - Saved
+   * - ``d[key]``
+     - 238
+     - 151
+     - 378
+     - 292
+     - 23% to 36%
+   * - ``d[key] = v``
+     - 422
+     - 336
+     - 602
+     - 516
+     - 14% to 21%
+   * - ``d.add(key, v)``
+     - 765
+     - 679
+     - 939
+     - 856
+     - 9% to 11%
+
+A key that is not already lower case saves more again: a :class:`str`
+key then has to be copied into a lower-cased string, and that copy has
+no cached hash, so every operation also hashes it afresh.
+
 .. class:: istr(object='')
            istr(bytes_or_buffer[, encoding[, errors]])
 

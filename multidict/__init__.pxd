@@ -160,7 +160,11 @@ cdef inline object MultiDict_Pop(MultiDict_CAPI *capi, object self, object key):
 
 
 cdef inline object MultiDict_SetDefault(MultiDict_CAPI *capi, object self, object key,
-                                        object default_value):
+                                        object default_value=None):
+    # `object default_value` cannot hold the C level NULL that means
+    # "use None", but passing None itself is what NULL is read as, so
+    # defaulting the argument here gives the same signature as the
+    # Python method.
     # Unlike GetItem/Pop, *result is always set on success here (the
     # existing value if found, the freshly inserted default_value
     # otherwise) -- a NULL *result would only ever follow the exception

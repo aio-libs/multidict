@@ -1,0 +1,7 @@
+Added benchmarks for the shapes where an allocation is most of the work:
+an empty mapping, a 20-item one built or copied, a view or an iterator
+taken on its own, and a proxy. The allocation an operation makes is a
+fixed cost, so at the existing 200-item size it was divided across 200
+entries and all but vanished; ``d.items()`` measured 1.7% faster where
+it is 46% faster. Regenerated the tables in the benchmarking reference
+-- by :user:`asvetlov`.

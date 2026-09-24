@@ -253,7 +253,7 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
 
     PyObject* arg = nargs == 1 ? args[0] : NULL;
 
-    MultiDictObject* self = (MultiDictObject*)tp->tp_alloc(tp, 0);
+    MultiDictObject* self = (MultiDictObject*)_md_shell_alloc(state, tp);
     if (self == NULL) {
         return NULL;
     }
@@ -342,7 +342,8 @@ _multidict_proxy_ctor_vectorcall(PyObject* type, PyObject* const* args,
     }
     mod_state* state = get_mod_state(mod);
 
-    MultiDictProxyObject* self = (MultiDictProxyObject*)tp->tp_alloc(tp, 0);
+    MultiDictProxyObject* self =
+        (MultiDictProxyObject*)_md_shell_alloc(state, tp);
     if (self == NULL) {
         return NULL;
     }
@@ -374,7 +375,7 @@ multidict_copy(MultiDictObject* self)
     PyTypeObject* tp = Py_TYPE(self);
     PyObject* ret = NULL;
 
-    ret = tp->tp_alloc(tp, 0);
+    ret = _md_shell_alloc(self->state, tp);
     if (ret == NULL) {
         goto fail;
     }
@@ -668,7 +669,9 @@ multidict_tp_dealloc(MultiDictObject* self)
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
         PyObject_ClearWeakRefs((PyObject*)self);
     md_clear(self);
-    tp->tp_free((PyObject*)self);
+    if (!_md_shell_recycle(self->state, (PyObject*)self)) {
+        tp->tp_free((PyObject*)self);
+    }
     Py_DECREF(tp);
     Py_TRASHCAN_END  // there should be no code after this
 }
@@ -802,7 +805,7 @@ multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         return NULL;
     }
     mod_state* state = get_mod_state(mod);
-    MultiDictObject* self = (MultiDictObject*)type->tp_alloc(type, 0);
+    MultiDictObject* self = (MultiDictObject*)_md_shell_alloc(state, type);
     if (self == NULL) {
         return NULL;
     }
@@ -937,7 +940,6 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
 {
     PyObject* key = NULL;
     PyObject* _default = NULL;
-    bool decref_none_default = false;
     PyObject* ret = NULL;
 
     if (parse2("setdefault",
@@ -951,18 +953,9 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
-    if (_default == NULL) {
-        _default = Py_GetConstant(Py_CONSTANT_NONE);
-        if (_default == NULL) {
-            return NULL;
-        }
-        decref_none_default = true;
-    }
+    // md_set_default() reads a NULL default as None.
     if (md_set_default(self, key, _default, &ret) < 0) {
         assert(ret == NULL);
-    }
-    if (decref_none_default) {
-        Py_CLEAR(_default);  // never raises exception
     }
     return ret;
 }
@@ -1715,8 +1708,14 @@ multidict_proxy_tp_dealloc(MultiDictProxyObject* self)
     PyTypeObject* tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
     PyObject_ClearWeakRefs((PyObject*)self);
-    Py_XDECREF(self->md);
-    tp->tp_free((PyObject*)self);
+    /* The pool is reached through the proxied multidict, so a proxy the
+       GC already cleared is freed rather than pooled. */
+    MultiDictObject* md = self->md;
+    bool pooled = md != NULL && _md_shell_recycle(md->state, (PyObject*)self);
+    Py_XDECREF(md);
+    if (!pooled) {
+        tp->tp_free((PyObject*)self);
+    }
     Py_DECREF(tp);
 }
 
@@ -1971,6 +1970,7 @@ module_traverse(PyObject* mod, visitproc visit, void* arg)
     Py_VISIT(state->str_key);
     Py_VISIT(state->str_default);
     Py_VISIT(state->str_value);
+    Py_VISIT(state->none);
 
     return 0;
 }
@@ -1983,6 +1983,8 @@ drain_pools(mod_state* state)
        reads a shell's type to find the start of its allocation. */
     pool_clear(&state->view_pool, PyObject_GC_Del);
     pool_clear(&state->iter_pool, PyObject_GC_Del);
+    pool_clear(&state->md_pool, PyObject_GC_Del);
+    pool_clear(&state->proxy_pool, PyObject_GC_Del);
 }
 
 /* A warm pool lets an operation run without calling the allocator at
@@ -2024,6 +2026,7 @@ module_clear(PyObject* mod)
     Py_CLEAR(state->str_key);
     Py_CLEAR(state->str_default);
     Py_CLEAR(state->str_value);
+    Py_CLEAR(state->none);
 
     /* Plain function and context pointers, so a memset rather than a
        decref loop. No live multidict can reach a freed slot table anyway:
@@ -2057,6 +2060,8 @@ module_exec(PyObject* mod)
     htkeys_pools_init(state->htkeys_pools);
     pool_init(&state->view_pool, POOL_MAX_DEPTH);
     pool_init(&state->iter_pool, POOL_MAX_DEPTH);
+    pool_init(&state->md_pool, POOL_MAX_DEPTH);
+    pool_init(&state->proxy_pool, POOL_MAX_DEPTH);
 
     state->str_lower = PyUnicode_InternFromString("lower");
     if (state->str_lower == NULL) {
@@ -2080,6 +2085,10 @@ module_exec(PyObject* mod)
     }
     state->str_value = PyUnicode_InternFromString("value");
     if (state->str_value == NULL) {
+        goto fail;
+    }
+    state->none = Py_GetConstant(Py_CONSTANT_NONE);
+    if (state->none == NULL) {
         goto fail;
     }
 

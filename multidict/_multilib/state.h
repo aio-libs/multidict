@@ -34,6 +34,10 @@ typedef struct {
     PyObject* str_default;
     PyObject* str_value;
 
+    // The implicit default of setdefault(), kept so the common call does
+    // not build one per invocation.
+    PyObject* none;
+
     uint64_t global_version;
 
     /* Watcher slots, indexed by the id MultiDict_AddWatcher() hands out.
@@ -47,11 +51,13 @@ typedef struct {
        nothing to visit; all of them are drained by module_clear().
 
        One pool serves all three view types and one all three iterator
-       types: within a family the types differ only in their methods, so
-       a shell fits any of them. */
+       types: within a family the types differ only in their methods,
+       so a shell fits any of them. */
     pool_t htkeys_pools[HTKEYS_POOL_CLASSES];
     pool_t view_pool;
     pool_t iter_pool;
+    pool_t md_pool;
+    pool_t proxy_pool;
 } mod_state;
 
 static inline mod_state*
