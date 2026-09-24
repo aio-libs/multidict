@@ -74,6 +74,26 @@ def test_build_and_drop_round_trips(
         del md
 
 
+@pytest.mark.parametrize("count", SIZE_CLASS_EDGES)
+def test_copies_interleaved_with_clears(
+    any_multidict_class: type[MultiDict[str]], count: int
+) -> None:
+    """A copy is built differently from a fresh table but shares the pool.
+
+    A clone is copied over byte for byte rather than initialised, so a
+    block passing between the two paths is where the two would disagree.
+    """
+    pairs = _pairs(count)
+    base = any_multidict_class(pairs)
+    for _ in range(ROUNDS):
+        clone = base.copy()
+        assert list(clone.items()) == pairs
+        clone.clear()
+        fresh = any_multidict_class(pairs)
+        assert list(fresh.items()) == pairs
+        del clone, fresh
+
+
 def test_growing_back_over_a_freed_table(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:

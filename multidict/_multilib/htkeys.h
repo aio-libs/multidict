@@ -73,8 +73,9 @@ htkeys_pools_clear(pool_t* pools)
 }
 
 /* NULL for a size class that isn't pooled. empty_htkeys never reaches
-   here: it is never allocated and every htkeys_free() call site guards
-   on it. */
+   here: it is never allocated, and every htkeys_free() call site guards
+   on it. A build with no pools folds the whole thing away, since
+   pool_pop() is then a bare NULL. */
 static inline pool_t*
 _htkeys_pool(pool_t* pools, uint8_t log2_size)
 {
@@ -373,59 +374,121 @@ htkeys_resume_slots_bytes(uint8_t log2_size)
     return sizeof(uint32_t) << log2_size;
 }
 
+/* Width of an index slot, see the indices[] comment above. */
+static inline uint8_t
+htkeys_log2_index_bytes(uint8_t log2_size)
+{
+    if (log2_size < 8) {
+        return log2_size;
+    }
+    if (log2_size < 16) {
+        return (uint8_t)(log2_size + 1);
+    }
+#if SIZEOF_VOID_P > 4
+    if (log2_size >= 32) {
+        return (uint8_t)(log2_size + 3);
+    }
+#endif
+    return (uint8_t)(log2_size + 2);
+}
+
+/* Everything about the allocation follows from log2_size, which is what
+   lets a pooled block be reused for any table of its own size class,
+   and lets md_clone_from_ht() copy a table byte for byte. */
+static inline size_t
+htkeys_alloc_size(uint8_t log2_size)
+{
+    size_t usable = (size_t)USABLE_FRACTION((size_t)1 << log2_size);
+    return (sizeof(htkeys_t) +
+            ((size_t)1 << htkeys_log2_index_bytes(log2_size)) +
+            sizeof(entry_t) * usable);
+}
+
+/* The same number as htkeys_alloc_size(keys->log2_size), read back off
+   the table rather than recomputed. */
 static inline Py_ssize_t
 htkeys_sizeof(htkeys_t* keys)
 {
     Py_ssize_t usable = USABLE_FRACTION((size_t)1 << keys->log2_size);
-    return (sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
-            sizeof(entry_t) * usable);
+    Py_ssize_t size =
+        (Py_ssize_t)(sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
+                     sizeof(entry_t) * usable);
+    assert(size == (Py_ssize_t)htkeys_alloc_size(keys->log2_size));
+    return size;
 }
 
+/* Uninitialized storage for a table of `log2_size`. The caller owns
+   every byte and must write the header before anything reads it.
+   `size` is the byte count, taken as an argument for the sake of a
+   caller that already has it off an existing table. */
 static inline htkeys_t*
-htkeys_new(pool_t* pools, uint8_t log2_size)
+_htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, size_t size)
 {
     assert(log2_size >= HT_LOG_MINSIZE);
-
-    Py_ssize_t usable = USABLE_FRACTION(((size_t)1) << log2_size);
-    uint8_t log2_bytes;
-
-    if (log2_size < 8) {
-        log2_bytes = log2_size;
-    } else if (log2_size < 16) {
-        log2_bytes = log2_size + 1;
-    }
-#if SIZEOF_VOID_P > 4
-    else if (log2_size >= 32) {
-        log2_bytes = log2_size + 3;
-    }
-#endif
-    else {
-        log2_bytes = log2_size + 2;
-    }
-
+    assert(size == htkeys_alloc_size(log2_size));
     pool_t* pool = _htkeys_pool(pools, log2_size);
     htkeys_t* keys = pool == NULL ? NULL : pool_pop(pool);
     if (keys == NULL) {
-        keys = PyMem_Malloc(sizeof(htkeys_t) + ((size_t)1 << log2_bytes) +
-                            sizeof(entry_t) * usable);
+        keys = PyMem_Malloc(size);
         if (keys == NULL) {
             PyErr_NoMemory();
             return NULL;
         }
+    }
+    return keys;
+}
+
+static inline htkeys_t*
+htkeys_alloc_raw(pool_t* pools, uint8_t log2_size)
+{
+    return _htkeys_alloc_sized(pools, log2_size, htkeys_alloc_size(log2_size));
+}
+
+/* Zeroes the entries from `from` on. A caller that fills the front of
+   the table itself needs this for the rest: ASSERT_CONSISTENT() reads
+   every entry a table has room for, not just the used prefix. */
+static inline void
+htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
+{
+    assert(from >= 0 && from <= keys->usable);
+    memset(htkeys_entries(keys) + from,
+           0,
+           (size_t)(keys->usable - from) * sizeof(entry_t));
+}
+
+/* An empty table whose entries are left as they came, for a caller that
+   writes the front of the array itself and calls htkeys_zero_entries()
+   for the rest. Nothing may read the table in between. */
+static inline htkeys_t*
+htkeys_new_unfilled(pool_t* pools, uint8_t log2_size)
+{
+    uint8_t log2_bytes = htkeys_log2_index_bytes(log2_size);
+
+    htkeys_t* keys = htkeys_alloc_raw(pools, log2_size);
+    if (keys == NULL) {
+        return NULL;
     }
 
     keys->log2_size = log2_size;
     keys->log2_index_bytes = log2_bytes;
     keys->resume_slots = NULL;
     keys->nentries = 0;
-    keys->usable = usable;
+    keys->usable = USABLE_FRACTION(((size_t)1) << log2_size);
 #ifdef Py_GIL_DISABLED
     keys->num_readers = 0;
     keys->retired_next = NULL;
 #endif
     memset(&keys->indices[0], 0xff, ((size_t)1 << log2_bytes));
-    memset(
-        &keys->indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
+    return keys;
+}
+
+static inline htkeys_t*
+htkeys_new(pool_t* pools, uint8_t log2_size)
+{
+    htkeys_t* keys = htkeys_new_unfilled(pools, log2_size);
+    if (keys != NULL) {
+        htkeys_zero_entries(keys, 0);
+    }
     return keys;
 }
 

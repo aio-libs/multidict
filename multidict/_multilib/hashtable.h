@@ -282,14 +282,19 @@ _md_drain_retired_slow(MultiDictObject* md)
 
 /* Every reader that brings num_active_readers back to zero drains, which
    without a second thread is every lookup, and the list is almost always
-   empty; the work it guards sits behind a call so that a lookup pays a
-   relaxed load instead. Nothing is stranded by the narrower window: a table
-   retired after this load reads the same as one retired just after the
-   exchange, and _md_retire() drains again once its push is visible. */
+   empty; the work it guards sits behind a call so that a lookup pays a load
+   instead. The load stays seq_cst, not relaxed: a writer that pushes and
+   then reads num_active_readers as nonzero leaves the table for whoever
+   brings that count to zero, so the reader doing so must not be able to
+   miss the push. Both are seq_cst, so the push precedes the writer's read,
+   which precedes this reader's decrement, which precedes this load in the
+   single total order -- a relaxed load here has no such guarantee, and the
+   table would be stranded until md's next operation. On x86-64 a seq_cst
+   load is a plain mov; the cost this removes is the exchange below it. */
 static inline void
 _md_drain_retired(MultiDictObject* md)
 {
-    if (atomic_load_ptr_relaxed((void* const*)&md->retired) == NULL) {
+    if (atomic_load_ptr((void* const*)&md->retired) == NULL) {
         return;
     }
     _md_drain_retired_slow(md);
@@ -326,7 +331,9 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     }
     assert(log2_newsize >= HT_LOG_MINSIZE);
 
-    htkeys_t* newkeys = htkeys_new(MD_POOLS(md), log2_newsize);
+    /* The copy below writes the front of the entries array, so only
+       what it leaves over has to be zeroed. */
+    htkeys_t* newkeys = htkeys_new_unfilled(MD_POOLS(md), log2_newsize);
     if (newkeys == NULL) {
         return -1;
     }
@@ -339,8 +346,10 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     Py_ssize_t numentries = md->used;
     entry_t* oldentries = htkeys_entries(oldkeys);
     entry_t* newentries = htkeys_entries(newkeys);
+    Py_ssize_t filled;
     if (oldkeys->nentries == numentries) {
         memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+        filled = numentries;
     } else {
         entry_t* new_ep = newentries;
         entry_t* old_ep = oldentries;
@@ -350,7 +359,13 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
                 *new_ep++ = *old_ep;
             }
         }
+        filled = new_ep - newentries;
     }
+    /* What the copy actually wrote, rather than md->used: the two agree,
+       but taking the count from the copy means a table can never be
+       published over entries nothing has written. */
+    assert(filled == numentries);
+    htkeys_zero_entries(newkeys, filled);
 
     htkeys_build_indices(newkeys, newentries, numentries);
 
@@ -514,10 +529,12 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     htkeys_t* keys = (htkeys_t*)&empty_htkeys;
     htkeys_t* src = other->keys;
     if (src != &empty_htkeys) {
-        size_t size = htkeys_sizeof(src);
-        keys = PyMem_Malloc(size);
+        /* The copy overwrites every byte, so this skips both of the
+           memsets htkeys_new() would do; the byte count is a function
+           of log2_size alone, which is also what the pool keys on. */
+        size_t size = (size_t)htkeys_sizeof(src);
+        keys = _htkeys_alloc_sized(MD_POOLS(md), src->log2_size, size);
         if (keys == NULL) {
-            PyErr_NoMemory();
             return -1;
         }
 

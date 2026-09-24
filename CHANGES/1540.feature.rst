@@ -1,0 +1,5 @@
+Sped up :meth:`~multidict.MultiDict.copy`, constructing a multidict from
+another one, and growing one past its current size in the C extension, by
+not zeroing the parts of a hash table that are about to be overwritten. A
+copied table is overwritten in full, and a resized one has the entries it
+carries over written straight onto it -- by :user:`asvetlov`.
