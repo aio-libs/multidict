@@ -100,6 +100,28 @@ class TestMutableMultiDict:
         assert d.getall("k2") == ["2"]
         assert d.getall("k4") == ["4"]
 
+    def test_non_interned_keyword_names(
+        self,
+        any_multidict_class: type[MultiDict[str]],
+    ) -> None:
+        # The C parser matches kwnames by identity first, which only settles
+        # names the compiler interned.  Names built at run time never reach
+        # the intern table, so they take the comparison fallback.
+        key = "".join(["k", "e", "y"])
+        value = "".join(["v", "a", "l", "u", "e"])
+        default = "".join(["d", "e", "f", "a", "u", "l", "t"])
+        assert key is not sys.intern("key")
+        assert value is not sys.intern("value")
+        assert default is not sys.intern("default")
+
+        d = any_multidict_class()
+        d.add(**{key: "k1", value: "v1"})
+        assert d.getall("k1") == ["v1"]
+        assert d.get("missing", **{default: "D"}) == "D"
+        assert d.getall("missing", **{default: ["D"]}) == ["D"]
+        with pytest.raises(TypeError, match="multiple values"):
+            d.get("k1", **{key: "other"})
+
     def test_extend(
         self,
         case_sensitive_multidict_class: type[MultiDict[str | int]],

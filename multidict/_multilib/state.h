@@ -28,6 +28,11 @@ typedef struct {
     PyObject* str_lower;
     PyObject* str_name;
 
+    // Parameter names, interned so parse2() can match kwnames by identity.
+    PyObject* str_key;
+    PyObject* str_default;
+    PyObject* str_value;
+
     uint64_t global_version;
 
     /* Raw blocks only, so module_traverse() has nothing to visit here;
