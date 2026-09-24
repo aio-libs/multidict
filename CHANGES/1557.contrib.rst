@@ -1,0 +1,4 @@
+Sorted ``docs/spelling_wordlist.txt`` case-insensitively, and documented
+in ``AGENTS.md`` that it is to be re-sorted rather than appended to. The
+list had grown in append order, which made a word hard to find and put
+every PR adding one on the same last line -- by :user:`asvetlov`.
