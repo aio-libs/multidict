@@ -125,17 +125,25 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                 if (bitmap_set(&marks->deleted, iter.index) < 0) {
                     goto fail;
                 }
-                md_watch_record(md,
-                                MultiDict_EVENT_DELETED,
-                                entry->identity,
-                                hash,
-                                entry->key,
-                                entry->value,
-                                NULL);
+                /* Read before the half-delete nulls them, recorded
+                   after it succeeds: its first reservation can fail with
+                   the entry still in place, and a DELETED event for an
+                   entry that is still there is worse than none. The
+                   objects stay alive in `defer` across the call. */
+                PyObject* gone_identity = entry->identity;
+                PyObject* gone_key = entry->key;
+                PyObject* gone_value = entry->value;
                 if (_md_del_at_for_upd_deferred(md, iter.slot, entry, defer) <
                     0) {
                     goto fail;
                 }
+                md_watch_record(md,
+                                MultiDict_EVENT_DELETED,
+                                gone_identity,
+                                hash,
+                                gone_key,
+                                gone_value,
+                                NULL);
             }
 #ifdef Py_GIL_DISABLED
             /* See _md_replace()'s comment on why both the pointer and
