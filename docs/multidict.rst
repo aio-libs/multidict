@@ -450,8 +450,8 @@ stored somewhere for the later usage, see :mod:`aiohttp:aiohttp.hdrs` for exampl
 How much that is worth, as instruction counts on CPython 3.14 measured
 the way :ref:`benchmarking-reference` describes. ``d[key]`` and
 ``d[key] = v`` run against a :class:`CIMultiDict` of 200 already
-lower-case keys; ``d.add()`` builds that mapping from empty, so its row
-carries the cost of 200 insertions rather than of one operation:
+lower-case keys; ``d.add()`` builds that mapping from empty. Its row
+reports the average cost per insertion across those 200 insertions:
 
 .. list-table:: :class:`CIMultiDict` keyed by ``str`` versus by :class:`istr`
    :header-rows: 1
