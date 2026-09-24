@@ -2813,13 +2813,20 @@ def test_collect_cycle_through_retired_entries_thread_safety() -> None:
     and md_traverse() used to report the entries of md->keys only, so the
     collector could not see a cycle that ran through one of them: it read
     the values as reachable from outside and kept the whole cycle alive.
-    Forcing a table to be left there needs an artificially widened drain
-    window (see the PR description), so this does not fail on an unfixed
-    build; what it drives, many times over, is the shape, a cycle through a
-    multidict cleared against continuous lock-free reads and then dropped.
-    This is a C-extension-only concern: the pure-Python implementation has
-    no retirement scheme, and its containers are traversed by the
-    interpreter itself."""
+    This does not fail on an unfixed build, as review pointed out: the last
+    reader's own exit drains the table and releases its entries before the
+    collection runs, so the walk this adds usually has an empty list to go
+    over. Catching a table there instead needs an artificially widened drain
+    window (see the PR description); measured against an ordinary build it
+    happens in roughly 1% of clears, which is too rare to assert on and too
+    machine-dependent to gate CI with. What this drives, many times over, is
+    the shape, a cycle through a multidict cleared against continuous
+    lock-free reads and then dropped, so the walk runs against a table a
+    reader may still be holding. The deterministic half of the pair is
+    test_get_referents_reports_each_entry_once() above, which fails if an
+    entry is ever reported twice. This is a C-extension-only concern: the
+    pure-Python implementation has no retirement scheme, and its containers
+    are traversed by the interpreter itself."""
 
     class Node:
         value: object
