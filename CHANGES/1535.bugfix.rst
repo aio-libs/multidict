@@ -1,0 +1,4 @@
+Ensured that canonical keys in pure-Python :class:`~multidict.MultiDict` and
+:class:`~multidict.CIMultiDict` are converted to exact :class:`str` instances
+without invoking :meth:`object.__str__` overrides, matching the C extension --
+by :user:`agustin18`.

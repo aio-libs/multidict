@@ -52,15 +52,6 @@ IStr_CheckExact(MultiDict_CAPI* capi, PyObject* op)
     return ret;
 }
 
-static inline int
-IStr_Check(MultiDict_CAPI* capi, PyObject* op)
-{
-    PyTypeObject* type = capi->IStr_GetType(capi->state);
-    int ret = Py_IS_TYPE(op, type) || PyObject_TypeCheck(op, type);
-    Py_DECREF(type);
-    return ret;
-}
-
 static inline PyObject*
 IStr_FromUnicode(MultiDict_CAPI* capi, PyObject* str)
 {

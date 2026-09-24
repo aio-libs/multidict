@@ -177,7 +177,7 @@ fail:
 static inline PyObject*
 _ci_key_to_identity(mod_state* state, PyObject* key)
 {
-    if (IStr_Check(state, key)) {
+    if (IStr_CheckExact(state, key)) {
         return Py_NewRef(((istrobject*)key)->canonical);
     }
     return _ci_str_to_identity(state, key);
@@ -198,7 +198,7 @@ _arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
 static inline PyObject*
 _ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
 {
-    if (IStr_Check(state, key)) {
+    if (IStr_CheckExact(state, key)) {
         return Py_NewRef(key);
     }
     if (PyUnicode_Check(key)) {
@@ -250,7 +250,7 @@ md_ensure_key(MultiDictObject* md, entry_t* entry)
 {
     assert(entry >= htkeys_entries(md->keys));
     assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
-    if (!md->is_ci || IStr_Check(md->state, entry->key)) {
+    if (!md->is_ci || IStr_CheckExact(md->state, entry->key)) {
         return md_calc_key(md, entry->key, entry->identity);
     }
     /* Building the istr can run Python code (a str subclass's __str__, a GC

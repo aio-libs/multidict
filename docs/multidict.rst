@@ -519,7 +519,7 @@ no cached hash, so every operation also hashes it afresh.
       lower-cased identity internally for lookups.
 
       The class is inherited from :class:`str` and has all regular
-      string methods.
+      string methods. The class is final and cannot be subclassed.
 
 .. versionchanged:: 2.0
 
