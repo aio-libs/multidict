@@ -40,9 +40,15 @@ extern "C" {
    cycles against pymalloc's 26-55 and libc malloc's 117-158. */
 
 /* MULTIDICT_NO_FREELIST=1 at build time turns every pool into a miss.
-   The ASan build needs it: a pooled block never reaches free(), so ASan
-   can neither poison it nor report a use-after-free on it. */
-#if defined(Py_GIL_DISABLED) || defined(MULTIDICT_NO_FREELIST)
+   The ASan build needs it: a pooled block never reaches free(), so ASan can
+   neither poison it nor report a use-after-free on it.
+
+   A --with-trace-refs interpreter is off for the same reason it can't
+   have freelists at all: an object shell is reused without ever being
+   freed, so it is never taken off the all-objects list that reusing it
+   would put it back on. */
+#if defined(Py_GIL_DISABLED) || defined(MULTIDICT_NO_FREELIST) || \
+    defined(Py_TRACE_REFS)
 #define POOL_ENABLED 0
 #else
 #define POOL_ENABLED 1
@@ -94,9 +100,11 @@ pool_push(pool_t* pool, void* block)
     return true;
 }
 
-/* `release` is whatever this pool's user frees a block with, which is
-   not the same call for every kind of block. Idempotent, because the GC
-   can run m_clear more than once. */
+/* `release` is whatever the pool's user frees a block with, since the
+   two kinds pooled here do not come from the same allocator: a raw
+   buffer from PyMem_Malloc(), an object shell from PyObject_GC_Del(),
+   which needs the shell's type to find the start of its allocation.
+   Idempotent, because the GC can run m_clear more than once. */
 static inline void
 pool_clear(pool_t* pool, void (*release)(void*))
 {

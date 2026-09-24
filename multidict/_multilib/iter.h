@@ -16,6 +16,21 @@ typedef struct multidict_iter {
     int reverse;
 } MultidictIter;
 
+/* See _multidict_view_alloc() on what a pooled shell still holds. */
+NOINLINE static MultidictIter*
+_multidict_iter_alloc(MultiDictObject* md, PyTypeObject* tp)
+{
+    MultidictIter* it = pool_pop(&md->state->iter_pool);
+    if (it == NULL) {
+        return PyObject_GC_New(MultidictIter, tp);
+    }
+    /* PyObject_Init() rather than setting the two fields by hand: it
+       also does the refcount-total bookkeeping a debug interpreter
+       expects of a newly live object. */
+    PyObject_Init((PyObject*)it, tp);
+    return it;
+}
+
 static inline void
 _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
 {
@@ -35,8 +50,7 @@ _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
 static inline PyObject*
 multidict_items_iter_new(MultiDictObject* md, int reverse)
 {
-    MultidictIter* it =
-        PyObject_GC_New(MultidictIter, md->state->ItemsIterType);
+    MultidictIter* it = _multidict_iter_alloc(md, md->state->ItemsIterType);
     if (it == NULL) {
         return NULL;
     }
@@ -50,8 +64,7 @@ multidict_items_iter_new(MultiDictObject* md, int reverse)
 static inline PyObject*
 multidict_keys_iter_new(MultiDictObject* md, int reverse)
 {
-    MultidictIter* it =
-        PyObject_GC_New(MultidictIter, md->state->KeysIterType);
+    MultidictIter* it = _multidict_iter_alloc(md, md->state->KeysIterType);
     if (it == NULL) {
         return NULL;
     }
@@ -65,8 +78,7 @@ multidict_keys_iter_new(MultiDictObject* md, int reverse)
 static inline PyObject*
 multidict_values_iter_new(MultiDictObject* md, int reverse)
 {
-    MultidictIter* it =
-        PyObject_GC_New(MultidictIter, md->state->ValuesIterType);
+    MultidictIter* it = _multidict_iter_alloc(md, md->state->ValuesIterType);
     if (it == NULL) {
         return NULL;
     }
@@ -158,8 +170,14 @@ multidict_iter_dealloc(MultidictIter* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
-    Py_XDECREF(self->md);
-    tp->tp_free(self);
+    /* See multidict_view_dealloc() on why a cleared iterator can't be
+       pooled. */
+    MultiDictObject* md = self->md;
+    bool pooled = md != NULL && pool_push(&md->state->iter_pool, self);
+    Py_XDECREF(md);
+    if (!pooled) {
+        tp->tp_free(self);
+    }
     Py_DECREF(tp);
 }
 
