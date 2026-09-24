@@ -12,6 +12,7 @@ extern "C" {
 
 #include "atomic_helpers.h"
 #include "compiler.h"
+#include "freelist.h"
 
 /* Implementation note.
 identity always has exact PyUnicode_Type type, not a subclass.
@@ -38,6 +39,52 @@ typedef struct entry {
 #define HT_LOG_MINSIZE 3
 #define HT_MINSIZE 8
 #define HT_PERTURB_SHIFT 5
+
+/* Tables are pooled by size class, since a block is reusable only for
+   its own log2_size: every other field of the allocation, down to the
+   width of an index slot, follows from it.
+
+   The ladder runs from the smallest table up to the one a 100-item
+   constructor pre-sizes to. Past that a table is big enough that the
+   allocation is a small part of filling it, and deep enough pools
+   would retain real memory. Depth falls as the class grows for the
+   same reason: the whole ladder full is about 109 KB per interpreter,
+   most of it in the three smallest classes, which are also the ones a
+   dict grown by repeated add() passes through and discards. */
+#define HTKEYS_POOL_MIN_LOG2 HT_LOG_MINSIZE
+#define HTKEYS_POOL_MAX_LOG2 8
+#define HTKEYS_POOL_CLASSES (HTKEYS_POOL_MAX_LOG2 - HTKEYS_POOL_MIN_LOG2 + 1)
+
+static inline void
+htkeys_pools_init(pool_t* pools)
+{
+    static const uint8_t depths[HTKEYS_POOL_CLASSES] = {32, 32, 32, 16, 8, 4};
+    for (int i = 0; i < HTKEYS_POOL_CLASSES; i++) {
+        pool_init(pools + i, depths[i]);
+    }
+}
+
+static inline void
+htkeys_pools_clear(pool_t* pools)
+{
+    for (int i = 0; i < HTKEYS_POOL_CLASSES; i++) {
+        pool_clear(pools + i, PyMem_Free);
+    }
+}
+
+/* NULL for a size class that isn't pooled. empty_htkeys never reaches
+   here: it is never allocated, and every htkeys_free() call site guards
+   on it. A build with no pools folds the whole thing away, since
+   pool_pop() is then a bare NULL. */
+static inline pool_t*
+_htkeys_pool(pool_t* pools, uint8_t log2_size)
+{
+    assert(log2_size >= HTKEYS_POOL_MIN_LOG2);
+    if (log2_size > HTKEYS_POOL_MAX_LOG2) {
+        return NULL;
+    }
+    return pools + (log2_size - HTKEYS_POOL_MIN_LOG2);
+}
 
 #define HT_LOG_RESUME_SLOTS_MINSIZE 10
 /* Probe steps after perturb is 0 before resume slots are allocated */
@@ -327,43 +374,98 @@ htkeys_resume_slots_bytes(uint8_t log2_size)
     return sizeof(uint32_t) << log2_size;
 }
 
+/* Width of an index slot, see the indices[] comment above. */
+static inline uint8_t
+htkeys_log2_index_bytes(uint8_t log2_size)
+{
+    if (log2_size < 8) {
+        return log2_size;
+    }
+    if (log2_size < 16) {
+        return (uint8_t)(log2_size + 1);
+    }
+#if SIZEOF_VOID_P > 4
+    if (log2_size >= 32) {
+        return (uint8_t)(log2_size + 3);
+    }
+#endif
+    return (uint8_t)(log2_size + 2);
+}
+
+/* Everything about the allocation follows from log2_size, which is what
+   lets a pooled block be reused for any table of its own size class,
+   and lets md_clone_from_ht() copy a table byte for byte. */
+static inline size_t
+htkeys_alloc_size(uint8_t log2_size)
+{
+    size_t usable = (size_t)USABLE_FRACTION((size_t)1 << log2_size);
+    return (sizeof(htkeys_t) +
+            ((size_t)1 << htkeys_log2_index_bytes(log2_size)) +
+            sizeof(entry_t) * usable);
+}
+
+/* The same number as htkeys_alloc_size(keys->log2_size), read back off
+   the table rather than recomputed. */
 static inline Py_ssize_t
 htkeys_sizeof(htkeys_t* keys)
 {
     Py_ssize_t usable = USABLE_FRACTION((size_t)1 << keys->log2_size);
-    return (sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
-            sizeof(entry_t) * usable);
+    Py_ssize_t size =
+        (Py_ssize_t)(sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
+                     sizeof(entry_t) * usable);
+    assert(size == (Py_ssize_t)htkeys_alloc_size(keys->log2_size));
+    return size;
+}
+
+/* Uninitialized storage for a table of `log2_size`. The caller owns
+   every byte and must write the header before anything reads it.
+   `size` is the byte count, taken as an argument for the sake of a
+   caller that already has it off an existing table. */
+static inline htkeys_t*
+_htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, size_t size)
+{
+    assert(log2_size >= HT_LOG_MINSIZE);
+    assert(size == htkeys_alloc_size(log2_size));
+    pool_t* pool = _htkeys_pool(pools, log2_size);
+    htkeys_t* keys = pool == NULL ? NULL : pool_pop(pool);
+    if (keys == NULL) {
+        keys = PyMem_Malloc(size);
+        if (keys == NULL) {
+            PyErr_NoMemory();
+            return NULL;
+        }
+    }
+    return keys;
 }
 
 static inline htkeys_t*
-htkeys_new(uint8_t log2_size)
+htkeys_alloc_raw(pool_t* pools, uint8_t log2_size)
 {
-    assert(log2_size >= HT_LOG_MINSIZE);
+    return _htkeys_alloc_sized(pools, log2_size, htkeys_alloc_size(log2_size));
+}
 
-    Py_ssize_t usable = USABLE_FRACTION(((size_t)1) << log2_size);
-    uint8_t log2_bytes;
+/* Zeroes the entries from `from` on. A caller that fills the front of
+   the table itself needs this for the rest: ASSERT_CONSISTENT() reads
+   every entry a table has room for, not just the used prefix. */
+static inline void
+htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
+{
+    assert(from >= 0 && from <= keys->usable);
+    memset(htkeys_entries(keys) + from,
+           0,
+           (size_t)(keys->usable - from) * sizeof(entry_t));
+}
 
-    if (log2_size < 8) {
-        log2_bytes = log2_size;
-    } else if (log2_size < 16) {
-        log2_bytes = log2_size + 1;
-    }
-#if SIZEOF_VOID_P > 4
-    else if (log2_size >= 32) {
-        log2_bytes = log2_size + 3;
-    }
-#endif
-    else {
-        log2_bytes = log2_size + 2;
-    }
+/* An empty table whose entries are left as they came, for a caller that
+   writes the front of the array itself and calls htkeys_zero_entries()
+   for the rest. Nothing may read the table in between. */
+static inline htkeys_t*
+htkeys_new_unfilled(pool_t* pools, uint8_t log2_size)
+{
+    uint8_t log2_bytes = htkeys_log2_index_bytes(log2_size);
 
-    htkeys_t* keys = NULL;
-    /* TODO: CPython uses freelist of key objects with unicode type
-       and log2_size == PyDict_LOG_MINSIZE */
-    keys = PyMem_Malloc(sizeof(htkeys_t) + ((size_t)1 << log2_bytes) +
-                        sizeof(entry_t) * usable);
+    htkeys_t* keys = htkeys_alloc_raw(pools, log2_size);
     if (keys == NULL) {
-        PyErr_NoMemory();
         return NULL;
     }
 
@@ -371,26 +473,38 @@ htkeys_new(uint8_t log2_size)
     keys->log2_index_bytes = log2_bytes;
     keys->resume_slots = NULL;
     keys->nentries = 0;
-    keys->usable = usable;
+    keys->usable = USABLE_FRACTION(((size_t)1) << log2_size);
 #ifdef Py_GIL_DISABLED
     keys->num_readers = 0;
     keys->retired_next = NULL;
 #endif
     memset(&keys->indices[0], 0xff, ((size_t)1 << log2_bytes));
-    memset(
-        &keys->indices[(size_t)1 << log2_bytes], 0, sizeof(entry_t) * usable);
+    return keys;
+}
+
+static inline htkeys_t*
+htkeys_new(pool_t* pools, uint8_t log2_size)
+{
+    htkeys_t* keys = htkeys_new_unfilled(pools, log2_size);
+    if (keys != NULL) {
+        htkeys_zero_entries(keys, 0);
+    }
     return keys;
 }
 
 static inline void
-htkeys_free(htkeys_t* dk)
+htkeys_free(pool_t* pools, htkeys_t* dk)
 {
-    /* TODO: CPython uses freelist of key objects with unicode type
-       and log2_size == PyDict_LOG_MINSIZE */
+    /* Always released, never pooled with the block: a pooled block must
+       come back the way htkeys_new() leaves one, and resume_slots is
+       only ever allocated well above the largest pooled class anyway. */
     if (dk->resume_slots != NULL) {
         PyMem_Free(dk->resume_slots);
     }
-    PyMem_Free(dk);
+    pool_t* pool = _htkeys_pool(pools, dk->log2_size);
+    if (pool == NULL || !pool_push(pool, dk)) {
+        PyMem_Free(dk);
+    }
 }
 
 /* Returns the identity's hash, or -1 if hashing raised. */
@@ -545,7 +659,9 @@ typedef struct _htkeysiter {
     Py_ssize_t index;
 } htkeysiter_t;
 
-static inline void
+/* Always inlined: left to itself GCC emits it out of line, and then
+   every probe in the extension opens with a call for five stores. */
+ALWAYS_INLINE static inline void
 htkeysiter_init(htkeysiter_t* iter, htkeys_t* keys, Py_hash_t hash)
 {
     iter->keys = keys;

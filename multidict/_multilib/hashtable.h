@@ -27,6 +27,8 @@ extern "C" {
 #include "walk.h"
 #include "watch.h"
 
+#define MD_POOLS(md) ((md)->state->htkeys_pools)
+
 typedef struct _md_pos {
     Py_ssize_t pos;
     uint64_t version;
@@ -124,7 +126,7 @@ reached its own D/E -- a reader can be preempted between C and D for
 an arbitrary stretch. So keys->num_readers (C/D) is the actual
 per-table authority on whether a specific table is safe to free, not
 a redundant check of what the coarse gate already guarantees.
-_md_drain_retired() treats it that way: a table whose own num_readers
+_md_drain_retired_slow() treats it that way: a table whose own num_readers
 is still nonzero is pushed back onto md->retired for a later attempt
 instead of freed.
 
@@ -138,7 +140,7 @@ release atomic_fetch_add_ssize_release(), so every ordinary read the
 reader performed while walking keys (in _md_get_one_lockfree() and
 friends) is ordered-before D becomes visible to another thread. The
 drain's own check, atomic_load_ssize_acquire(&t->num_readers) == 0 in
-_md_drain_retired(), pairs with that release: observing the
+_md_drain_retired_slow(), pairs with that release: observing the
 post-decrement value there means the drainer also observes everything
 the departing reader read before D, so freeing the table (via
 htkeys_free(), reached through _md_free_retired()) cannot race the
@@ -164,7 +166,7 @@ retiring into the same list at the same time).
 
 md->retired is a lock-free stack (Treiber-style), not a plain
 writer-owned list: with readers now able to drain it too, pushes
-(_md_retire()) and pop-alls (_md_drain_retired()) can run concurrently
+(_md_retire()) and pop-alls (_md_drain_retired_slow()) can run concurrently
 with each other, on different threads, with no lock in common. A
 pop-all is a single atomic_exchange_ptr() that swaps the whole chain
 out for NULL and hands the caller sole ownership of whatever it
@@ -213,7 +215,7 @@ _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 }
 
 static inline void
-_md_free_retired(htkeys_t* keys)
+_md_free_retired(pool_t* pools, htkeys_t* keys)
 {
     entry_t* entries = htkeys_entries(keys);
     /* Only md_clear()'s retired tables have live entries to release here:
@@ -225,11 +227,11 @@ _md_free_retired(htkeys_t* keys)
         Py_CLEAR(entries[i].key);
         Py_CLEAR(entries[i].value);
     }
-    htkeys_free(keys);
+    htkeys_free(pools, keys);
 }
 
-static inline void
-_md_drain_retired(MultiDictObject* md)
+NOINLINE static void
+_md_drain_retired_slow(MultiDictObject* md)
 {
     if (atomic_load_ssize(&md->num_active_readers) != 0) {
         return;
@@ -255,7 +257,7 @@ _md_drain_retired(MultiDictObject* md)
         htkeys_t* next = t->retired_next;
         if (!readers_active &&
             atomic_load_ssize_acquire(&t->num_readers) == 0) {
-            _md_free_retired(t);
+            _md_free_retired(MD_POOLS(md), t);
         } else {
             t->retired_next = pending_head;
             pending_head = t;
@@ -277,6 +279,26 @@ _md_drain_retired(MultiDictObject* md)
             }
         }
     }
+}
+
+/* Every reader that brings num_active_readers back to zero drains, which
+   without a second thread is every lookup, and the list is almost always
+   empty; the work it guards sits behind a call so that a lookup pays a load
+   instead. The load stays seq_cst, not relaxed: a writer that pushes and
+   then reads num_active_readers as nonzero leaves the table for whoever
+   brings that count to zero, so the reader doing so must not be able to
+   miss the push. Both are seq_cst, so the push precedes the writer's read,
+   which precedes this reader's decrement, which precedes this load in the
+   single total order -- a relaxed load here has no such guarantee, and the
+   table would be stranded until md's next operation. On x86-64 a seq_cst
+   load is a plain mov; the cost this removes is the exchange below it. */
+static inline void
+_md_drain_retired(MultiDictObject* md)
+{
+    if (atomic_load_ptr((void* const*)&md->retired) == NULL) {
+        return;
+    }
+    _md_drain_retired_slow(md);
 }
 
 static inline void
@@ -310,21 +332,25 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     }
     assert(log2_newsize >= HT_LOG_MINSIZE);
 
-    htkeys_t* newkeys = htkeys_new(log2_newsize);
+    /* The copy below writes the front of the entries array, so only
+       what it leaves over has to be zeroed. */
+    htkeys_t* newkeys = htkeys_new_unfilled(MD_POOLS(md), log2_newsize);
     if (newkeys == NULL) {
         return -1;
     }
 
     htkeys_t* oldkeys = md->keys;
     if (_update_marks_remap(marks, oldkeys, newkeys, newkeys->usable) < 0) {
-        htkeys_free(newkeys);
+        htkeys_free(MD_POOLS(md), newkeys);
         return -1;
     }
     Py_ssize_t numentries = md->used;
     entry_t* oldentries = htkeys_entries(oldkeys);
     entry_t* newentries = htkeys_entries(newkeys);
+    Py_ssize_t filled;
     if (oldkeys->nentries == numentries) {
         memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+        filled = numentries;
     } else {
         entry_t* new_ep = newentries;
         entry_t* old_ep = oldentries;
@@ -334,7 +360,13 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
                 *new_ep++ = *old_ep;
             }
         }
+        filled = new_ep - newentries;
     }
+    /* What the copy actually wrote, rather than md->used: the two agree,
+       but taking the count from the copy means a table can never be
+       published over entries nothing has written. */
+    assert(filled == numentries);
+    htkeys_zero_entries(newkeys, filled);
 
     htkeys_build_indices(newkeys, newentries, numentries);
 
@@ -364,7 +396,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     _md_retire(md, oldkeys);
 #else
     if (oldkeys != &empty_htkeys) {
-        htkeys_free(oldkeys);
+        htkeys_free(MD_POOLS(md), oldkeys);
     }
 #endif
 
@@ -477,7 +509,7 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
             log2_newsize = estimate_log2_keysize(minused);
         }
 
-        new_keys = htkeys_new(log2_newsize);
+        new_keys = htkeys_new(MD_POOLS(md), log2_newsize);
         if (new_keys == NULL) return -1;
     }
 
@@ -499,10 +531,12 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     htkeys_t* keys = (htkeys_t*)&empty_htkeys;
     htkeys_t* src = other->keys;
     if (src != &empty_htkeys) {
-        size_t size = htkeys_sizeof(src);
-        keys = PyMem_Malloc(size);
+        /* The copy overwrites every byte, so this skips both of the
+           memsets htkeys_new() would do; the byte count is a function
+           of log2_size alone, which is also what the pool keys on. */
+        size_t size = (size_t)htkeys_sizeof(src);
+        keys = _htkeys_alloc_sized(MD_POOLS(md), src->log2_size, size);
         if (keys == NULL) {
-            PyErr_NoMemory();
             return -1;
         }
 
@@ -1011,7 +1045,7 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     entry_t* entries = htkeys_entries(md->keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
+        if (UNLIKELY(iter.index < 0)) {
             continue;
         }
         entry_t* entry = entries + iter.index;
@@ -1046,7 +1080,7 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
 
     int result = 0;
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
+        if (UNLIKELY(iter.index < 0)) {
             continue;
         }
         entry_t* entry = entries + iter.index;
@@ -1131,7 +1165,7 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     entry_t* entries = htkeys_entries(md->keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
+        if (UNLIKELY(iter.index < 0)) {
             continue;
         }
         entry_t* entry = entries + iter.index;
@@ -1164,7 +1198,7 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
     int result = 0;
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-        if (iter.index < 0) {
+        if (UNLIKELY(iter.index < 0)) {
             continue;
         }
         entry_t* entry = entries + iter.index;
@@ -1457,8 +1491,10 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 }
 
 static int
-_md_getall_visit(void* user_data, PyObject* key, PyObject* value)
+_md_getall_visit(void* user_data, PyObject* identity, PyObject* key,
+                 PyObject* value)
 {
+    (void)identity;
     (void)key;  // value-only walk
     if (reflist_push((reflist_t*)user_data, Py_NewRef(value)) < 0) {
         return -1;
@@ -2065,7 +2101,7 @@ md_clear(MultiDictObject* md)
             Py_CLEAR(entry->value);
         }
     }
-    htkeys_free(old_keys);
+    htkeys_free(MD_POOLS(md), old_keys);
 #endif
     ASSERT_CONSISTENT(md, false);
     return 0;

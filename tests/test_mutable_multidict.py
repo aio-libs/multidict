@@ -100,6 +100,28 @@ class TestMutableMultiDict:
         assert d.getall("k2") == ["2"]
         assert d.getall("k4") == ["4"]
 
+    def test_non_interned_keyword_names(
+        self,
+        any_multidict_class: type[MultiDict[str]],
+    ) -> None:
+        # The C parser matches kwnames by identity first, which only settles
+        # names the compiler interned.  Names built at run time never reach
+        # the intern table, so they take the comparison fallback.
+        key = "".join(["k", "e", "y"])
+        value = "".join(["v", "a", "l", "u", "e"])
+        default = "".join(["d", "e", "f", "a", "u", "l", "t"])
+        assert key is not sys.intern("key")
+        assert value is not sys.intern("value")
+        assert default is not sys.intern("default")
+
+        d = any_multidict_class()
+        d.add(**{key: "k1", value: "v1"})
+        assert d.getall("k1") == ["v1"]
+        assert d.get("missing", **{default: "D"}) == "D"
+        assert d.getall("missing", **{default: ["D"]}) == ["D"]
+        with pytest.raises(TypeError, match="multiple values"):
+            d.get("k1", **{key: "other"})
+
     def test_extend(
         self,
         case_sensitive_multidict_class: type[MultiDict[str | int]],
@@ -1076,6 +1098,7 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
     pure-Python version has no manual refcounting, and failing allocations
     in interpreted code hits CPython's own unraisable-error paths."""
     testcapi = pytest.importorskip("_testcapi")
+    c_ext = pytest.importorskip("multidict._multidict")
     keys = [f"Key-{i}" for i in range(20)]
     values = [object() for _ in range(20)]
     pairs = list(zip(keys, values))
@@ -1090,6 +1113,9 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
             call = functools.partial(bound, map(tuple, pairs))
         else:
             call = functools.partial(deque, itertools.starmap(bound, pairs), 0)
+        # A pooled hash table would let the call allocate nothing at all,
+        # and the injected failure would never fire.
+        c_ext._freelist_clear()
         try:
             # One line, so no tracer line event can take the failure.
             testcapi.set_nomemory(n, n + 1), call(), testcapi.remove_mem_hooks()

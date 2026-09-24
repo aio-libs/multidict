@@ -536,6 +536,16 @@ Do not add `-I` (or `-E`) to that command. Both make Python ignore
 dropped and small allocations (most hash tables) come from pymalloc
 arenas, where ASan cannot see use-after-free.
 
+Run the suite a second time with `MULTIDICT_NO_FREELIST=1` added to
+the install. The extension keeps bounded pools of freed hash tables and
+object shells in its module state, and a pooled block never reaches
+`free()`, so ASan can neither poison it nor report a use-after-free on
+it. That flag makes every pool a miss, which puts those paths back under
+ASan's redzones and quarantine. Deselect
+`test_freed_blocks_are_reused` on that run, the way `test_leaks.py` is
+deselected above: it asserts that a pool hands a block back out, which
+is the very thing the flag turns off.
+
 `detect_leaks=0` and excluding `test_leaks.py` are required: CPython
 itself retains allocations at shutdown (interned strings, caches)
 that LeakSanitizer reports as leaks, and `test_leaks.py` asserts on

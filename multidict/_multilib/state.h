@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "../multidict_capi_struct.h"
+#include "htkeys.h"
 
 /* State of the _multidict module */
 typedef struct {
@@ -28,6 +29,11 @@ typedef struct {
     PyObject* str_lower;
     PyObject* str_name;
 
+    // Parameter names, interned so parse2() can match kwnames by identity.
+    PyObject* str_key;
+    PyObject* str_default;
+    PyObject* str_value;
+
     uint64_t global_version;
 
     /* Watcher slots, indexed by the id MultiDict_AddWatcher() hands out.
@@ -36,6 +42,16 @@ typedef struct {
        MultiDict_ClearWatcher() resolves to. */
     MultiDict_WatchCallback watchers[MULTIDICT_MAX_WATCHERS];
     void* watcher_data[MULTIDICT_MAX_WATCHERS];
+
+    /* Nothing pooled here holds a reference, so module_traverse() has
+       nothing to visit; all of them are drained by module_clear().
+
+       One pool serves all three view types and one all three iterator
+       types: within a family the types differ only in their methods, so
+       a shell fits any of them. */
+    pool_t htkeys_pools[HTKEYS_POOL_CLASSES];
+    pool_t view_pool;
+    pool_t iter_pool;
 } mod_state;
 
 static inline mod_state*

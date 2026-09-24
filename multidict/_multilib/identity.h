@@ -47,16 +47,19 @@ _str_cmp(PyObject* s1, PyObject* s2)
 static inline PyObject*
 _key_to_identity(mod_state* state, PyObject* key)
 {
-    if (PyUnicode_CheckExact(key)) {
-        return Py_NewRef(key);
+    /* Inverted so the exact-str case is the fallthrough: left as written,
+       GCC puts it out of line behind a taken branch and puts the subclass
+       call on the straight line. */
+    if (UNLIKELY(!PyUnicode_CheckExact(key))) {
+        if (PyUnicode_Check(key)) {
+            return PyUnicode_FromObject(key);
+        }
+        PyErr_SetString(PyExc_TypeError,
+                        "MultiDict keys should be either str "
+                        "or subclasses of str");
+        return NULL;
     }
-    if (PyUnicode_Check(key)) {
-        return PyUnicode_FromObject(key);
-    }
-    PyErr_SetString(PyExc_TypeError,
-                    "MultiDict keys should be either str "
-                    "or subclasses of str");
-    return NULL;
+    return Py_NewRef(key);
 }
 
 /* True if the eight bytes at p hold an ASCII uppercase one. */

@@ -22,6 +22,23 @@ typedef struct {
 
 /********** Base **********/
 
+/* A pooled shell keeps the GC preheader it was allocated with, which
+   PyObject_GC_UnTrack() left in the untracked state, so only the object
+   header has to be put back the way PyObject_GC_New() leaves it. */
+NOINLINE static _Multidict_ViewObject*
+_multidict_view_alloc(MultiDictObject* md, PyTypeObject* tp)
+{
+    _Multidict_ViewObject* mv = pool_pop(&md->state->view_pool);
+    if (mv == NULL) {
+        return PyObject_GC_New(_Multidict_ViewObject, tp);
+    }
+    /* PyObject_Init() rather than setting the two fields by hand: it
+       also does the refcount-total bookkeeping a debug interpreter
+       expects of a newly live object. */
+    PyObject_Init((PyObject*)mv, tp);
+    return mv;
+}
+
 static inline void
 _init_view(_Multidict_ViewObject* self, MultiDictObject* md)
 {
@@ -34,8 +51,14 @@ multidict_view_dealloc(_Multidict_ViewObject* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
-    Py_XDECREF(self->md);
-    tp->tp_free(self);
+    /* The pool is reached through md, so a view the GC already cleared
+       cannot be pooled; that only happens to one caught in a cycle. */
+    MultiDictObject* md = self->md;
+    bool pooled = md != NULL && pool_push(&md->state->view_pool, self);
+    Py_XDECREF(md);
+    if (!pooled) {
+        tp->tp_free(self);
+    }
     Py_DECREF(tp);
 }
 
@@ -161,7 +184,7 @@ static inline PyObject*
 multidict_itemsview_new(MultiDictObject* md)
 {
     _Multidict_ViewObject* mv =
-        PyObject_GC_New(_Multidict_ViewObject, md->state->ItemsViewType);
+        _multidict_view_alloc(md, md->state->ItemsViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -244,8 +267,10 @@ _set_add(PyObject* set, PyObject* key, PyObject* value)
 }
 
 static int
-_multidict_collect_visit(void* user_data, PyObject* key, PyObject* value)
+_multidict_collect_visit(void* user_data, PyObject* identity, PyObject* key,
+                         PyObject* value)
 {
+    (void)identity;
     PyObject* item;
     if (key != NULL) {
         item = PyTuple_Pack(2, key, value);
@@ -1212,7 +1237,7 @@ static inline PyObject*
 multidict_keysview_new(MultiDictObject* md)
 {
     _Multidict_ViewObject* mv =
-        PyObject_GC_New(_Multidict_ViewObject, md->state->KeysViewType);
+        _multidict_view_alloc(md, md->state->KeysViewType);
     if (mv == NULL) {
         return NULL;
     }
@@ -1854,7 +1879,7 @@ static inline PyObject*
 multidict_valuesview_new(MultiDictObject* md)
 {
     _Multidict_ViewObject* mv =
-        PyObject_GC_New(_Multidict_ViewObject, md->state->ValuesViewType);
+        _multidict_view_alloc(md, md->state->ValuesViewType);
     if (mv == NULL) {
         return NULL;
     }

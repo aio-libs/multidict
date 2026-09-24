@@ -142,7 +142,8 @@ ctypedef struct _ForeachCtx:
     Py_ssize_t limit  # < 0 means no limit
 
 
-cdef int _collect_pair(void *user_data, PyObject *key, PyObject *value) noexcept:
+cdef int _collect_pair(void *user_data, PyObject *identity, PyObject *key,
+                       PyObject *value) noexcept:
     cdef _ForeachCtx *ctx = <_ForeachCtx*>user_data
     # `ctx.list` is borrowed, not adopted: since this cast local isn't
     # returned, Cython's normal scope-exit cleanup decrefs it once, exactly
@@ -150,7 +151,7 @@ cdef int _collect_pair(void *user_data, PyObject *key, PyObject *value) noexcept
     # (unlike multidict/__init__.pxd's _steal(), which returns its local
     # and so needs one).
     cdef object result = <object>ctx.list
-    result.append((<object>key, <object>value))
+    result.append((<object>identity, <object>key, <object>value))
     if ctx.limit >= 0 and len(result) >= ctx.limit:
         return 0
     return 1
@@ -173,7 +174,8 @@ cdef struct _MutateCtx:
     PyObject *added   # borrowed, likewise; never the walked key
 
 
-cdef int _mutating_visitor(void *user_data, PyObject *key, PyObject *value) noexcept:
+cdef int _mutating_visitor(void *user_data, PyObject *identity, PyObject *key,
+                           PyObject *value) noexcept:
     # Mutates the multidict being walked, which the walk must refuse. A
     # noexcept callback cannot let MultiDict_Add()'s `except -1` propagate,
     # so report the failure through the return value (see docs/cyapi.rst).
@@ -203,7 +205,8 @@ def md_foreach_mutates(md, key, added):
     MultiDict_ForEach(_capi, md, key_ptr, _mutating_visitor, &ctx)
 
 
-cdef int _raising_visitor(void *user_data, PyObject *key, PyObject *value) noexcept:
+cdef int _raising_visitor(void *user_data, PyObject *identity, PyObject *key,
+                          PyObject *value) noexcept:
     # A noexcept callback can't just `raise`: Cython would treat that as an
     # unraisable exception here and clear it instead of propagating it. Set
     # the exception state directly and report the negative-return contract
@@ -216,10 +219,11 @@ def md_foreach_raises(md):
     MultiDict_ForEach(_capi, md, NULL, _raising_visitor, NULL)
 
 
-cdef int _collect_pair_cy(object key, object value, void *user_data) except -1:
+cdef int _collect_pair_cy(object identity, object key, object value,
+                          void *user_data) except -1:
     cdef _ForeachCtx *ctx = <_ForeachCtx*>user_data
     cdef object result = <object>ctx.list
-    result.append((key, value))
+    result.append((identity, key, value))
     if ctx.limit >= 0 and len(result) >= ctx.limit:
         return 0
     return 1
@@ -237,7 +241,8 @@ def md_foreach_cy(md, key, Py_ssize_t limit):
     return result
 
 
-cdef int _raising_visitor_cy(object key, object value, void *user_data) except -1:
+cdef int _raising_visitor_cy(object identity, object key, object value,
+                             void *user_data) except -1:
     raise RuntimeError("boom from cy visitor")
 
 

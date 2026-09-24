@@ -20,8 +20,8 @@ extern "C" {
    was built to expect). */
 #define MultiDict_CAPI_VERSION 1
 
-typedef int (*MultiDict_ItemVisitor)(void* user_data, PyObject* key,
-                                     PyObject* value);
+typedef int (*MultiDict_ItemVisitor)(void* user_data, PyObject* identity,
+                                     PyObject* key, PyObject* value);
 
 /* Watchers. Modelled on CPython's PyDict_AddWatcher() family, with two
    deliberate differences: the callback gets two context pointers (one fixed
