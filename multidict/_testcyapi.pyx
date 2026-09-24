@@ -381,6 +381,24 @@ def md_add_failing_watcher_cy(log):
 DEF MUTATING_WATCHER_ROUNDS = 3
 
 
+# See watching_event() in _testcapi.c.
+cdef int _watch_target_id = -1
+
+
+cdef int _watching_event(void *watcher_data, void *user_data,
+                         const MultiDict_WatchInfo *info) noexcept:
+    (<object>watcher_data).append(<int>info.event)
+    MultiDict_Watch(_capi, _watch_target_id, <object>info.md, watcher_data)
+    return 0
+
+
+def md_add_watching_watcher(log, int target_id):
+    global _watch_target_id
+    _watch_refs.append(log)
+    _watch_target_id = target_id
+    return MultiDict_AddWatcher(_capi, _watching_event, <void*>log)
+
+
 # See unwatching_event() in _testcapi.c.
 cdef int _unwatch_id = -1
 

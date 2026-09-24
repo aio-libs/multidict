@@ -9,6 +9,7 @@ typedef struct {
     MultiDict_CAPI* capi;
     PyObject* log;   // mutating_event()'s log; see mutating_ctx below
     int unwatch_id;  // unwatching_event()'s own watcher id
+    int watch_id;    // the watcher watching_event() attaches
     /* Keeps every object handed to the C API as a raw `void*` alive: the
        API stores those pointers without a reference, so the harness has
        to. Emptied by watch_release_refs(). */
@@ -514,6 +515,48 @@ md_add_unwatching_watcher(PyObject* self, PyObject* arg)
     return PyLong_FromLong(watcher_id);
 }
 
+/* Attaches another, already registered watcher from inside delivery.
+   Watching takes effect from the next event on, so that watcher joins
+   part-way through the burst; see docs/capi.rst on bracket pairing. */
+static int
+watching_event(void* watcher_data, void* user_data,
+               const MultiDict_WatchInfo* info)
+{
+    (void)user_data;
+    mod_state* state = (mod_state*)watcher_data;
+    PyObject* kind = PyLong_FromLong((long)info->event);
+    if (kind == NULL) {
+        return -1;
+    }
+    int appended = PyList_Append(state->log, kind);
+    Py_DECREF(kind);
+    if (appended < 0) {
+        return -1;
+    }
+    /* Its own log as the attached watcher's user_data: record_event()
+       puts user_data in the tuple, so it has to be a live object. */
+    return MultiDict_Watch(
+        state->capi, state->watch_id, info->self, state->log);
+}
+
+static PyObject*
+md_add_watching_watcher(PyObject* self, PyObject* args)
+{
+    PyObject* log;
+    int target_id;
+    if (!PyArg_ParseTuple(args, "Oi", &log, &target_id)) {
+        return NULL;
+    }
+    mod_state* state = get_mod_state(self);
+    Py_XSETREF(state->log, Py_NewRef(log));
+    state->watch_id = target_id;
+    int watcher_id = MultiDict_AddWatcher(state->capi, watching_event, state);
+    if (watcher_id < 0) {
+        return NULL;
+    }
+    return PyLong_FromLong(watcher_id);
+}
+
 static PyObject*
 md_add_mutating_watcher(PyObject* self, PyObject* arg)
 {
@@ -709,6 +752,9 @@ static PyMethodDef module_methods[] = {
     {"md_add_unwatching_watcher",
      (PyCFunction)md_add_unwatching_watcher,
      METH_O},
+    {"md_add_watching_watcher",
+     (PyCFunction)md_add_watching_watcher,
+     METH_VARARGS},
     {"md_add_null_watcher", (PyCFunction)md_add_null_watcher, METH_NOARGS},
     {"md_clear_watcher", (PyCFunction)md_clear_watcher, METH_O},
     {"md_watch", (PyCFunction)md_watch, METH_FASTCALL},

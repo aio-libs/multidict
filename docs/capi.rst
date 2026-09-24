@@ -505,10 +505,20 @@ time, matching CPython's limit.
       once per bracket instead of once per pair. There is no CPython
       analogue; :class:`dict` has no bulk operation that reports detail.
 
-      Brackets never nest, and they always come in pairs. ``del
-      self[key]`` and :meth:`~multidict.MultiDict.popall` emit one only
-      when they actually removed something; the rest emit one whether or
-      not anything changed.
+      Brackets never nest. An operation that emits one emits both, but
+      a watcher only ever sees the events delivered to *it*, and
+      :c:func:`MultiDict_Watch` and :c:func:`MultiDict_Unwatch` take
+      effect from the next event on, even when called from inside a
+      callback. A watcher that starts watching from within a bracket
+      therefore sees that bracket's ``BATCH_END`` with no
+      ``BATCH_BEGIN``, and one that unwatches from within a bracket sees
+      the ``BATCH_BEGIN`` with no ``BATCH_END``. Treat an unmatched end
+      as a signal to rebuild from *self*, or begin watching from outside
+      a callback, where no bracket can be open.
+
+      ``del self[key]`` and :meth:`~multidict.MultiDict.popall` emit a
+      bracket only when they actually removed something; the rest emit
+      one whether or not anything changed.
 
    .. c:enumerator:: MultiDict_EVENT_LOST
 
@@ -647,6 +657,12 @@ time, matching CPython's limit.
 
    Watching again with a different *user_data* replaces it.
 
+   The watch takes effect immediately, so calling this from inside a
+   callback starts delivery with the very next event, which may be one
+   the operation in progress has already recorded. See
+   :c:enumerator:`MultiDict_EVENT_BATCH_BEGIN` for what that means for
+   bracket pairing.
+
    *self* may be a :class:`~multidict.MultiDict`,
    :class:`~multidict.CIMultiDict`, :class:`~multidict.MultiDictProxy` or
    :class:`~multidict.CIMultiDictProxy` instance: watching is an
@@ -672,6 +688,11 @@ time, matching CPython's limit.
    *self* is resolved as in :c:func:`MultiDict_Watch`, so unwatching
    through a different proxy of the same multidict removes the same
    watch.
+
+   Like :c:func:`MultiDict_Watch`, this takes effect immediately: a
+   callback that unwatches receives nothing further, not even the
+   remaining events of the operation being delivered, so *user_data* can
+   be released as soon as it returns.
 
 Example
 =======

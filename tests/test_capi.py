@@ -502,6 +502,22 @@ def test_a_callback_that_unwatches_gets_no_further_events(api: object) -> None:
     assert list(md.items()) == [("key", "three")]
 
 
+def test_a_callback_that_watches_joins_mid_batch(api: object, watcher: Watcher) -> None:
+    # The other half of the same rule: watching also takes effect from
+    # the next event on, so a watcher attached from inside a bracket sees
+    # that bracket's end and not its beginning. Documented in capi.rst.
+    log: list[object] = []
+    watcher_id = api.md_add_watching_watcher(log, watcher.id)
+    md: MultiDictStr = multidict.MultiDict([("key", "one"), ("key", "two")])
+    api.md_watch(watcher_id, md, None)
+    md["key"] = "three"
+    api.md_unwatch(watcher_id, md)
+    api.md_clear_watcher(watcher_id)
+    assert log == [BATCH_BEGIN, REPLACED, DELETED, BATCH_END]
+    assert watcher.kinds() == [REPLACED, DELETED, BATCH_END]
+    api.watch_release_refs()
+
+
 @pytest.mark.skipif(
     _testcyapi is None,
     reason="multidict._testcyapi not built (Cython not available at build time)",
