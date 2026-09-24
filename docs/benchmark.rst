@@ -630,5 +630,10 @@ Collect both builds, then render:
 
 That prints the reStructuredText so the numbers can be read before they are
 committed. Add ``--write docs/benchmark.rst`` to replace the block between the
-two marker comments in this file, and commit the result together with the
-change that moved the numbers.
+two marker comments in this file.
+
+The tables are regenerated once per release rather than in every pull request
+that moves performance, since each run shifts every row a little and the churn
+buries the rows that actually changed. A pull request reports the operations it
+moved in its own description; the published tables are refreshed as a step of
+the release procedure, documented in :file:`RELEASE.md`.

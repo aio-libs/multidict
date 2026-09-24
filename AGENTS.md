@@ -71,6 +71,7 @@ Useful entry points:
 | `docs/cyapi.rst`                      | public Cython API reference docs                                  |
 | `tests/`                              | pytest suite, parametrised across both backends                 |
 | `CHANGES/`                            | towncrier news fragments, one per PR                            |
+| `RELEASE.md`                          | maintainer release procedure, including the benchmark refresh   |
 
 `MULTIDICT_NO_EXTENSIONS=1` forces the pure-Python build at install
 time; the default is the C extension. `MULTIDICT_DEBUG_BUILD=1` builds
@@ -601,20 +602,40 @@ pure-Python leg under `MULTIDICT_NO_EXTENSIONS=1`. Do not regress
 the benchmarks under `benchmarks/` without flagging the trade-off
 in the PR body.
 
-### Refresh the comparison tables when performance moves
+### The comparison tables are refreshed at release time
 
 [`docs/benchmark.rst`](docs/benchmark.rst) publishes per-operation
 instruction counts for `dict`, `MultiDict` and `CIMultiDict` on both
 the GIL and the free-threaded build. They are real measurements, not
-illustrations, so any change that significantly moves performance must
-regenerate them in the same PR and say in the PR body which rows moved
-and why:
+illustrations, but regenerating them in every PR that touches
+performance is too noisy to review: every row shifts a little on every
+run, so the table churns on changes that did not move it. Do not
+regenerate them in a feature or bugfix PR. They are refreshed once per
+release; see [RELEASE.md](RELEASE.md).
+
+What a performance change owes a reviewer instead is a measurement in
+the PR body: which operations moved, by how much, and how you measured
+it. Collect a before/after pair per interpreter build the change can
+reach, reinstalling the extension into each virtualenv in between.
+Anything touching atomics, locking or the free-threaded paths means
+both builds:
 
 ```bash
-.venv-gil/bin/python benchmarks/callgrind_driver.py -o gil.json
-.venv-ft/bin/python  benchmarks/callgrind_driver.py -o ft.json
-python benchmarks/render_tables.py gil.json ft.json --write docs/benchmark.rst
+.venv-gil/bin/python benchmarks/callgrind_driver.py -o gil-before.json
+.venv-ft/bin/python  benchmarks/callgrind_driver.py -o ft-before.json
+# apply the change, then per venv:
+#     <venv>/bin/pip install -e . --force-reinstall --no-deps
+.venv-gil/bin/python benchmarks/callgrind_driver.py -o gil-after.json
+.venv-ft/bin/python  benchmarks/callgrind_driver.py -o ft-after.json
 ```
+
+One run measures every operation in the table; the driver has no flag
+to pick a single one, so narrow the report rather than the run and
+quote the rows that moved. `--impl` restricts it to one
+implementation, and `--include-multidict-only` adds the operations
+`dict` has no counterpart for. Compare a GIL run against a GIL run and
+a free-threaded run against a free-threaded run; the two builds are
+separate baselines, and one is not a control for the other.
 
 The measurement is deterministic, so it does not need a quiet machine;
 it does need Valgrind and one virtualenv per interpreter build, both on
@@ -622,11 +643,9 @@ the same CPython patch release. `docs/benchmark.rst` has the setup and
 the traps. Adding or renaming a benchmarked operation means editing
 `benchmarks/operations.py`, which is the single registry all three
 entry points read; run `python benchmarks/callgrind_driver.py
---self-check` afterwards.
-
-"Significantly" means a row moves by more than a couple of percent.
-Leaving stale numbers in place is worse than having none, because a
-reviewer cannot tell the difference.
+--self-check` afterwards. Adding or renaming an operation does change
+the table's shape rather than just its numbers, so that is the one case
+where a regular PR regenerates it.
 
 ### Every line in a test must be covered
 
@@ -697,9 +716,11 @@ Design tests so every line runs:
   edited any `.rst` file (including `CHANGES/`). The docs build
   fails on unknown words and burns a CI run; see _Run the docs
   spell check before pushing_ above.
-- Do not land a performance change without refreshing the tables
-  in `docs/benchmark.rst`; see _Refresh the comparison tables when
-  performance moves_ above.
+- Do not regenerate the tables in `docs/benchmark.rst` in an
+  ordinary PR; they are refreshed per release (see
+  [RELEASE.md](RELEASE.md)). Report the numbers for the operations
+  you touched in the PR body instead; see _The comparison tables are
+  refreshed at release time_ above.
 - Do not skip the `CHANGES/` fragment "because the change is
   small". Even a one-line bugfix needs one.
 - Do not add `Co-Authored-By` trailers for LLM tools, in either
