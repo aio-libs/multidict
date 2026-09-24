@@ -55,6 +55,14 @@ Other C extensions can build against multidict's own :ref:`C API
 <multidict-capi>` to create and manipulate multidicts directly, or
 :ref:`from Cython <multidict-cyapi>`.
 
+Both the C extension and the pure-Python fallback are optimized for
+free-threaded (no-GIL) Python as well as the regular GIL build, and their
+performance is in the same ballpark as the built-in :class:`dict`, typically
+within 20-30% for common operations, since :class:`dict` itself benefits
+from per-version interpreter specializations that a third-party type cannot
+hook into. See :doc:`benchmark` for the full, per-operation breakdown on
+both builds.
+
 Library Installation
 --------------------
 
