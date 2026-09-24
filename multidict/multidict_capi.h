@@ -260,6 +260,32 @@ MultiDict_ForEach(MultiDict_CAPI* capi, PyObject* self, PyObject* key,
     return capi->MultiDict_ForEach(capi->state, self, key, visitor, user_data);
 }
 
+static inline int
+MultiDict_AddWatcher(MultiDict_CAPI* capi, MultiDict_WatchCallback callback,
+                     void* watcher_data)
+{
+    return capi->MultiDict_AddWatcher(capi->state, callback, watcher_data);
+}
+
+static inline int
+MultiDict_ClearWatcher(MultiDict_CAPI* capi, int watcher_id)
+{
+    return capi->MultiDict_ClearWatcher(capi->state, watcher_id);
+}
+
+static inline int
+MultiDict_Watch(MultiDict_CAPI* capi, int watcher_id, PyObject* self,
+                void* user_data)
+{
+    return capi->MultiDict_Watch(capi->state, watcher_id, self, user_data);
+}
+
+static inline int
+MultiDict_Unwatch(MultiDict_CAPI* capi, int watcher_id, PyObject* self)
+{
+    return capi->MultiDict_Unwatch(capi->state, watcher_id, self);
+}
+
 #ifdef __cplusplus
 }
 #endif

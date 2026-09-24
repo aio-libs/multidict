@@ -408,6 +408,292 @@ Iteration
    :exc:`RuntimeError` the moment a reentrant mutation changes it,
    rather than silently corrupting or hiding results.
 
+Watchers
+========
+
+A watcher is a callback ``multidict`` calls whenever a multidict it is
+watching changes. It is modeled on CPython's :c:func:`!PyDict_AddWatcher`
+family, with two deliberate differences.
+
+The first is why the API exists: the callback receives **two context
+pointers**. ``watcher_data`` is fixed when the callback is registered, and
+``user_data`` belongs to one watched multidict. One registered callback can
+therefore serve any number of multidicts and still know, on every event,
+what owns the one that changed -- a server response and its headers, say.
+
+The second is **when** events arrive. CPython calls a dict watcher in the
+middle of the mutation; ``multidict`` records the events instead and
+delivers them once the operation has finished and every internal lock on
+the multidict has been released. So a callback sees a fully consistent
+multidict and may read it freely, but it is called after the fact rather
+than at the moment of the change. Events are delivered in the order they
+happened, and everything delivered in one burst belongs to one operation.
+
+At most ``MULTIDICT_MAX_WATCHERS`` (8) watchers can be registered at a
+time, matching CPython's limit.
+
+.. versionadded:: 7.0
+
+.. c:macro:: MULTIDICT_MAX_WATCHERS
+
+   The number of watcher slots, ``8``.
+
+.. c:enum:: MultiDict_WatchEvent
+
+   What happened. ``multidict`` is a multi-value mapping, so CPython's
+   five dict events do not carry over unchanged: ``add()`` on a key that
+   is already present is an append rather than a modification, and a
+   single ``__setitem__`` can both replace one pair and delete several.
+
+   .. c:enumerator:: MultiDict_EVENT_ADDED
+
+      A ``(key, value)`` pair was appended. Fired by
+      :meth:`~multidict.MultiDict.add`, by each pair of
+      :meth:`~multidict.MultiDict.extend`, by the pairs
+      :meth:`~multidict.MultiDict.merge` actually adds, by
+      :meth:`~multidict.MultiDict.setdefault` when the key was absent,
+      and by ``self[key] = value`` when the key was absent.
+
+   .. c:enumerator:: MultiDict_EVENT_REPLACED
+
+      A pair's value was overwritten in place, keeping the pair's
+      position. Fired by ``self[key] = value`` and by
+      :meth:`~multidict.MultiDict.update` for the first match of a key
+      that is already present. ``old_value`` carries the displaced
+      value.
+
+   .. c:enumerator:: MultiDict_EVENT_DELETED
+
+      One pair was removed, with ``value`` carrying the removed value --
+      CPython passes ``NULL`` here, but a multi-value mapping's caller
+      usually needs to know which value went. Fired by ``del self[key]``
+      and :meth:`~multidict.MultiDict.popall` once per removed pair, by
+      :meth:`~multidict.MultiDict.popone`,
+      :meth:`~multidict.MultiDict.pop` and
+      :meth:`~multidict.MultiDict.popitem`, and for the further
+      occurrences ``self[key] = value`` and
+      :meth:`~multidict.MultiDict.update` drop.
+
+   .. c:enumerator:: MultiDict_EVENT_CLEARED
+
+      :meth:`~multidict.MultiDict.clear` emptied a non-empty multidict,
+      or ``__init__()`` was called again on a live one. One event, not
+      one per pair, the same choice CPython makes.
+
+   .. c:enumerator:: MultiDict_EVENT_CLONED
+
+      The contents were replaced wholesale by those of another
+      multidict of the same kind, by calling ``__init__()`` on a live
+      multidict. Means "resynchronize from scratch".
+
+   .. c:enumerator:: MultiDict_EVENT_DEALLOCATED
+
+      The multidict is being deallocated. ``self`` is at refcount zero:
+      use it as an identity and nothing else. Do not incref it and do
+      not pass it to any function on this page.
+
+   .. c:enumerator:: MultiDict_EVENT_BATCH_BEGIN
+   .. c:enumerator:: MultiDict_EVENT_BATCH_END
+
+      Bracket the events of one operation that can touch several pairs:
+      ``self[key] = value``, ``del self[key]``,
+      :meth:`~multidict.MultiDict.extend`,
+      :meth:`~multidict.MultiDict.update`,
+      :meth:`~multidict.MultiDict.merge`,
+      :meth:`~multidict.MultiDict.popall` and ``__init__()``. A watcher
+      maintaining something derived from the multidict can rebuild it
+      once per bracket instead of once per pair. There is no CPython
+      analogue; :class:`dict` has no bulk operation that reports detail.
+
+      Brackets never nest. An operation that emits one emits both, but
+      a watcher only ever sees the events delivered to *it*, and
+      :c:func:`MultiDict_Watch` and :c:func:`MultiDict_Unwatch` take
+      effect from the next event on, even when called from inside a
+      callback. A watcher that starts watching from within a bracket
+      therefore sees that bracket's ``BATCH_END`` with no
+      ``BATCH_BEGIN``, and one that unwatches from within a bracket sees
+      the ``BATCH_BEGIN`` with no ``BATCH_END``. Treat an unmatched end
+      as a signal to rebuild from *self*, or begin watching from outside
+      a callback, where no bracket can be open.
+
+      ``del self[key]`` and :meth:`~multidict.MultiDict.popall` emit a
+      bracket only when they actually removed something; the rest emit
+      one whether or not anything changed.
+
+   .. c:enumerator:: MultiDict_EVENT_LOST
+
+      Recording ran out of memory, so some events were dropped and the
+      stream no longer describes what changed. The mutation itself still
+      happened; resynchronize from the multidict. This replaces the
+      whole burst it belongs to, rather than being mixed into it.
+
+.. c:type:: MultiDict_WatchInfo
+
+   What an event carries. Fields are only ever appended to the end of
+   this struct, under the same rule as :c:type:`MultiDict_CAPI`, so a
+   client built against an older header keeps working.
+
+   .. c:member:: MultiDict_WatchEvent event
+
+      Which event this is.
+
+   .. c:member:: PyObject *self
+
+      The multidict that changed.
+
+   .. c:member:: PyObject *identity
+
+      The canonical form ``multidict`` looks keys up by: always an exact
+      :class:`str`, never an :class:`~multidict.istr`, and the lowercased
+      key for a :class:`~multidict.CIMultiDict`. This is the field to
+      compare against -- matching ``"content-length"`` needs no
+      :meth:`~str.lower` of your own. ``NULL`` for the events that do not
+      concern one key.
+
+   .. c:member:: Py_hash_t hash
+
+      The hash of :c:member:`~MultiDict_WatchInfo.identity`, the one
+      ``multidict`` looked the entry up by, so a watcher keeping its own
+      table can reuse it instead of hashing the key again. ``-1``, which
+      no Python hash ever is, for the events that carry no key.
+
+   .. c:member:: PyObject *key
+
+      The key as stored. On a :class:`~multidict.CIMultiDict` this may be
+      a plain :class:`str` where :meth:`~multidict.MultiDict.keys` would
+      yield an :class:`~multidict.istr`: building the
+      :class:`~multidict.istr` can run Python code, which recording an
+      event must not do. Branch on :c:member:`~MultiDict_WatchInfo.identity`,
+      not on this. ``NULL`` where *identity* is.
+
+   .. c:member:: PyObject *value
+
+      The new value for ``ADDED`` and ``REPLACED``, the removed value for
+      ``DELETED``, ``NULL`` otherwise.
+
+   .. c:member:: PyObject *old_value
+
+      The displaced value for ``REPLACED``, ``NULL`` otherwise.
+
+   Every :c:expr:`PyObject *` above is borrowed and valid only for the
+   duration of the call.
+
+.. c:type:: int (*MultiDict_WatchCallback)(void *watcher_data, void *user_data, const MultiDict_WatchInfo *info)
+
+   Callback type for :c:func:`MultiDict_AddWatcher`.
+
+   Return ``0`` on success, or ``-1`` with a Python exception set on
+   failure. There is deliberately no "stop early" value: unlike a
+   :c:type:`MultiDict_ItemVisitor`, the callback drives no walk.
+
+   A failure cannot be propagated, because the mutation it describes has
+   already happened and cannot be undone. ``multidict`` reports it with
+   `PyErr_WriteUnraisable()
+   <https://docs.python.org/3/c-api/exceptions.html#c.PyErr_WriteUnraisable>`_
+   and carries on delivering the remaining events. This is CPython's rule
+   for dict watchers too.
+
+   The callback runs with no lock on *self* held, so it **may** read
+   *self*: :c:func:`MultiDict_Size`, :c:func:`MultiDict_GetItem` and
+   :c:func:`MultiDict_ForEach` are all safe on it. This is the opposite
+   of the rule for a :c:type:`MultiDict_ItemVisitor`, which runs mid-walk
+   under the lock. The callback **may** also mutate *self* without
+   deadlocking, but should not as a matter of course: the events that
+   produces are queued and delivered to the same callback before the
+   current delivery returns, so a callback that mutates on every event
+   will not terminate.
+
+.. c:function:: int MultiDict_AddWatcher(MultiDict_CAPI *capi, MultiDict_WatchCallback callback, void *watcher_data)
+
+   **Thread safety:** not safe against a concurrent
+   :c:func:`MultiDict_AddWatcher` or :c:func:`MultiDict_ClearWatcher`.
+   Register during module initialization, before the watcher can fire.
+
+   Register *callback*, to be passed *watcher_data* on every event.
+   Return a watcher ID in ``[0, MULTIDICT_MAX_WATCHERS)``, or ``-1`` with
+   an exception set on failure -- :exc:`RuntimeError` when all slots are
+   taken, :exc:`ValueError` when *callback* is ``NULL``.
+
+   Watcher IDs are per-interpreter, like CPython's, so a client
+   supporting :pep:`684` per-interpreter GIL registers once per
+   interpreter.
+
+   ``multidict`` never increfs, decrefs or frees *watcher_data*; its
+   lifetime is entirely yours, and it must outlive the registration.
+
+.. c:function:: int MultiDict_ClearWatcher(MultiDict_CAPI *capi, int watcher_id)
+
+   **Thread safety:** see :c:func:`MultiDict_AddWatcher`.
+
+   Free the slot *watcher_id* occupies. Return ``0`` on success, ``-1``
+   with :exc:`ValueError` set when *watcher_id* was never registered or
+   is out of range.
+
+   Multidicts still being watched by *watcher_id* are **not** visited:
+   nothing enumerates them. Their watch bit stays set and resolves to the
+   now-empty slot, so nothing is delivered while that slot is free.
+   CPython's :c:func:`!PyDict_ClearWatcher` behaves the same way.
+
+   .. warning::
+
+      A later :c:func:`MultiDict_AddWatcher` hands the same ID out
+      again, and any multidict left carrying the bit then reports to the
+      **new** callback, carrying the **old** *user_data*. ``multidict``
+      does not own that pointer, so by then it may be freed.
+
+      Register once during module initialization and leave the watcher
+      registered for the life of the interpreter, which is what CPython
+      recommends for dict watchers too. If you do clear a watcher,
+      :c:func:`MultiDict_Unwatch` every multidict you watched first, or
+      be certain that none of them is still alive.
+
+.. c:function:: int MultiDict_Watch(MultiDict_CAPI *capi, int watcher_id, PyObject *self, void *user_data)
+
+   **Thread safety:** Safe for concurrent use on the same object.
+
+   Start reporting *self*'s changes to *watcher_id*'s callback, which
+   will be passed *user_data* on every one of *self*'s events. Return
+   ``0`` on success, ``-1`` with an exception set on failure.
+
+   Watching again with a different *user_data* replaces it.
+
+   The watch takes effect immediately, so calling this from inside a
+   callback starts delivery with the very next event, which may be one
+   the operation in progress has already recorded. See
+   :c:enumerator:`MultiDict_EVENT_BATCH_BEGIN` for what that means for
+   bracket pairing.
+
+   *self* may be a :class:`~multidict.MultiDict`,
+   :class:`~multidict.CIMultiDict`, :class:`~multidict.MultiDictProxy` or
+   :class:`~multidict.CIMultiDictProxy` instance: watching is an
+   observation, not a mutation. A proxy watches the multidict underneath
+   it, so changes made through the original object, or through any other
+   proxy of it, are reported too.
+
+   ``multidict`` never increfs, decrefs or frees *user_data*. It must
+   outlive the watch, so either unwatch before releasing it or treat
+   ``MultiDict_EVENT_DEALLOCATED`` as the signal to release it. Because
+   ``multidict`` holds no reference, a *user_data* that points at a
+   Python object is invisible to the cycle collector and creates no cycle
+   of its own.
+
+.. c:function:: int MultiDict_Unwatch(MultiDict_CAPI *capi, int watcher_id, PyObject *self)
+
+   **Thread safety:** Safe for concurrent use on the same object.
+
+   Stop reporting *self*'s changes to *watcher_id*. Return ``0`` on
+   success, ``-1`` with an exception set on failure. Unwatching a
+   multidict that is not being watched succeeds and does nothing.
+
+   *self* is resolved as in :c:func:`MultiDict_Watch`, so unwatching
+   through a different proxy of the same multidict removes the same
+   watch.
+
+   Like :c:func:`MultiDict_Watch`, this takes effect immediately: a
+   callback that unwatches receives nothing further, not even the
+   remaining events of the operation being delivered, so *user_data* can
+   be released as soon as it returns.
+
 Example
 =======
 
@@ -469,4 +755,68 @@ Example
        return MultiDict_ForEach(state->capi, md, key, print_pair, NULL) < 0
                   ? -1
                   : 0;
+   }
+
+Watching a multidict
+--------------------
+
+The shape the two context pointers are there for: one registered
+callback, many watched multidicts, each carrying whatever owns it.
+
+::
+
+   #include <multidict_capi.h>
+
+   typedef struct {
+       PyObject *headers;
+       Py_ssize_t content_length;
+   } response;
+
+   static int
+   on_header_change(void *watcher_data, void *user_data,
+                    const MultiDict_WatchInfo *info)
+   {
+       my_mod_state *state = (my_mod_state *)watcher_data;
+       response *resp = (response *)user_data;
+
+       if (info->event == MultiDict_EVENT_DEALLOCATED) {
+           /* `info->self` is at refcount 0 here: identity only. */
+           resp->headers = NULL;
+           return 0;
+       }
+       if (info->identity == NULL) {
+           /* CLEARED, CLONED, LOST or a batch bracket: recompute. */
+           return recompute(state, resp);
+       }
+       /* `identity` is already lowercased for a CIMultiDict. */
+       if (PyUnicode_CompareWithASCIIString(info->identity,
+                                            "content-length") == 0) {
+           return recompute(state, resp);
+       }
+       return 0;
+   }
+
+   static int
+   module_exec(PyObject *mod)
+   {
+       my_mod_state *state = PyModule_GetState(mod);
+       state->capi = MultiDict_GetCAPI();
+       if (state->capi == NULL) {
+           return -1;
+       }
+       state->watcher_id =
+           MultiDict_AddWatcher(state->capi, on_header_change, state);
+       return state->watcher_id < 0 ? -1 : 0;
+   }
+
+   static int
+   response_init(my_mod_state *state, response *resp)
+   {
+       resp->headers = CIMultiDict_New(state->capi, 8);
+       if (resp->headers == NULL) {
+           return -1;
+       }
+       /* Every change to *these* headers arrives with *this* response. */
+       return MultiDict_Watch(state->capi, state->watcher_id,
+                              resp->headers, resp);
    }

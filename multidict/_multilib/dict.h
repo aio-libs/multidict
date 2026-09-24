@@ -16,6 +16,10 @@ extern "C" {
 #define MANAGED_WEAKREFS
 #endif
 
+/* Defined in watch.h, which needs MultiDictObject itself. NULL on an
+   unwatched multidict, which is the only case the mutation paths test. */
+typedef struct _md_watch md_watch_t;
+
 typedef struct {
     PyObject_HEAD
 #ifndef MANAGED_WEAKREFS
@@ -28,6 +32,8 @@ typedef struct {
     bool is_ci;
 
     htkeys_t* keys;
+
+    md_watch_t* watch;
 
 #ifdef Py_GIL_DISABLED
     Py_ssize_t num_active_readers;

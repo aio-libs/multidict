@@ -34,8 +34,10 @@ css
 ctor
 Ctrl
 cython
+deallocated
 deallocation
 decref
+decrefs
 decrementation
 dependabot
 Deprecations
@@ -63,6 +65,7 @@ google
 Gunicorn
 gunicorn
 i686
+incref
 increfs
 Indices
 init
@@ -86,6 +89,7 @@ keepalives
 keepaliving
 lockfile
 lookups
+lowercased
 macOS
 manylinux
 middleware
@@ -126,6 +130,7 @@ regexs
 repo
 reStructuredText
 resumable
+resynchronize
 riscv
 riscv64
 RST
@@ -153,6 +158,9 @@ un
 uncompiled
 unparseable
 unraisable
+unwatch
+unwatches
+unwatching
 upstr
 url
 urlencoded
@@ -161,6 +169,8 @@ utf
 Valgrind
 vectorcall
 virtualenv
+watcher
+watchers
 websocket
 Websockets
 websockets
