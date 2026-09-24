@@ -1,0 +1,4 @@
+Renamed the C extension's internal helpers in the ``_multilib`` headers
+so that a leading underscore marks exactly the functions used only
+within their own header; type slots and method callbacks keep their
+names -- by :user:`asvetlov`.

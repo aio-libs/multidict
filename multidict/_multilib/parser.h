@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 static inline int
-raise_unexpected_kwarg(const char* fname, PyObject* argname)
+_raise_unexpected_kwarg(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() got an unexpected keyword argument '%.150U'",
@@ -18,7 +18,7 @@ raise_unexpected_kwarg(const char* fname, PyObject* argname)
 }
 
 static inline int
-raise_multiple_values(const char* fname, PyObject* argname)
+_raise_multiple_values(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() got multiple values for argument '%.150U'",
@@ -28,7 +28,7 @@ raise_multiple_values(const char* fname, PyObject* argname)
 }
 
 static inline int
-raise_missing_posarg(const char* fname, PyObject* argname)
+_raise_missing_posarg(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() missing 1 required positional argument: '%.150U'",
@@ -44,7 +44,7 @@ raise_missing_posarg(const char* fname, PyObject* argname)
    the ones f(**{"key": ...}) builds.  This is what CPython's own
    find_keyword() in Python/getargs.c does. */
 ALWAYS_INLINE static inline int
-name_is(PyObject* argname, PyObject* name)
+_name_is(PyObject* argname, PyObject* name)
 {
     return argname == name || PyUnicode_Compare(argname, name) == 0;
 }
@@ -62,9 +62,9 @@ offending one wins, then the positional count, then missing args.
 */
 
 static COLD int
-parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
-            PyObject* kwnames, Py_ssize_t minargs, PyObject* arg1name,
-            PyObject** arg1, PyObject* arg2name, PyObject** arg2)
+_parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
+             PyObject* kwnames, Py_ssize_t minargs, PyObject* arg1name,
+             PyObject** arg1, PyObject* arg2name, PyObject** arg2)
 {
     assert(minargs >= 1);
     assert(minargs <= 2);
@@ -80,22 +80,22 @@ parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
             /* The two names are distinct, so the comparison order is free.
                Try the one still unbound first: that keeps the common
                f(key, default=...) and f(key=...) forms at one comparison. */
-            if (*arg1 == NULL && name_is(argname, arg1name)) {
+            if (*arg1 == NULL && _name_is(argname, arg1name)) {
                 *arg1 = args[nargs + i];
                 continue;
             }
-            if (*arg2 == NULL && name_is(argname, arg2name)) {
+            if (*arg2 == NULL && _name_is(argname, arg2name)) {
                 *arg2 = args[nargs + i];
                 continue;
             }
             // Names a parameter that is already bound, or none of them.
-            if (name_is(argname, arg1name)) {
-                return raise_multiple_values(fname, arg1name);
+            if (_name_is(argname, arg1name)) {
+                return _raise_multiple_values(fname, arg1name);
             }
-            if (name_is(argname, arg2name)) {
-                return raise_multiple_values(fname, arg2name);
+            if (_name_is(argname, arg2name)) {
+                return _raise_multiple_values(fname, arg2name);
             }
-            return raise_unexpected_kwarg(fname, argname);
+            return _raise_unexpected_kwarg(fname, argname);
         }
     }
 
@@ -123,10 +123,10 @@ parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
                          arg2name);
             return -1;
         }
-        return raise_missing_posarg(fname, arg1name);
+        return _raise_missing_posarg(fname, arg1name);
     }
     if (minargs == 2 && *arg2 == NULL) {
-        return raise_missing_posarg(fname, arg2name);
+        return _raise_missing_posarg(fname, arg2name);
     }
     return 0;
 }
@@ -144,7 +144,7 @@ parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
         *arg2 = nargs == 2 ? args[1] : NULL;
         return 0;
     }
-    return parse2_slow(
+    return _parse2_slow(
         fname, args, nargs, kwnames, minargs, arg1name, arg1, arg2name, arg2);
 }
 

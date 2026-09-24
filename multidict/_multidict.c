@@ -248,7 +248,7 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
 
     PyObject* arg = nargs == 1 ? args[0] : NULL;
 
-    MultiDictObject* self = (MultiDictObject*)_md_shell_alloc(state, tp);
+    MultiDictObject* self = (MultiDictObject*)md_shell_alloc(state, tp);
     if (self == NULL) {
         return NULL;
     }
@@ -339,7 +339,7 @@ _multidict_proxy_ctor_vectorcall(PyObject* type, PyObject* const* args,
     mod_state* state = get_mod_state(mod);
 
     MultiDictProxyObject* self =
-        (MultiDictProxyObject*)_md_shell_alloc(state, tp);
+        (MultiDictProxyObject*)md_shell_alloc(state, tp);
     if (self == NULL) {
         return NULL;
     }
@@ -371,7 +371,7 @@ multidict_copy(MultiDictObject* self)
     PyTypeObject* tp = Py_TYPE(self);
     PyObject* ret = NULL;
 
-    ret = _md_shell_alloc(self->state, tp);
+    ret = md_shell_alloc(self->state, tp);
     if (ret == NULL) {
         goto fail;
     }
@@ -654,10 +654,10 @@ multidict_tp_dealloc(MultiDictObject* self)
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
         PyObject_ClearWeakRefs((PyObject*)self);
     md_clear(self);
-    /* Released last: md_clear() and _md_shell_recycle() both read
+    /* Released last: md_clear() and md_shell_recycle() both read
        self->state, which this reference is what keeps addressable. */
     PyObject* mod = self->mod;
-    if (!_md_shell_recycle(self->state, (PyObject*)self)) {
+    if (!md_shell_recycle(self->state, (PyObject*)self)) {
         tp->tp_free((PyObject*)self);
     }
     Py_XDECREF(mod);
@@ -784,7 +784,7 @@ multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         return NULL;
     }
     mod_state* state = get_mod_state(mod);
-    MultiDictObject* self = (MultiDictObject*)_md_shell_alloc(state, type);
+    MultiDictObject* self = (MultiDictObject*)md_shell_alloc(state, type);
     if (self == NULL) {
         return NULL;
     }
@@ -1649,7 +1649,7 @@ multidict_proxy_tp_dealloc(MultiDictProxyObject* self)
     /* The pool is reached through the proxied multidict, so a proxy the
        GC already cleared is freed rather than pooled. */
     MultiDictObject* md = self->md;
-    bool pooled = md != NULL && _md_shell_recycle(md->state, (PyObject*)self);
+    bool pooled = md != NULL && md_shell_recycle(md->state, (PyObject*)self);
     Py_XDECREF(md);
     if (!pooled) {
         tp->tp_free((PyObject*)self);
