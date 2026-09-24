@@ -1,0 +1,4 @@
+Fixed a crash during interpreter shutdown in the C extension: a
+multidict now keeps a reference to its own module, so the module state
+it reads while being torn down cannot be freed first
+-- by :user:`asvetlov`.
