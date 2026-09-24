@@ -23,6 +23,10 @@ from typing import Any
 
 SIZE = 200
 UPDATE_SIZE = 100
+#: A request's worth of headers.  The allocation an operation makes is a
+#: fixed cost, so at SIZE it is divided by 200 entries and disappears;
+#: these are the shapes where it is most of the work.
+SMALL = 20
 
 
 class Kind(enum.Flag):
@@ -47,6 +51,7 @@ class Impl:
     kind: Kind
     load: Callable[[], type]
     load_istr: Callable[[], type] | None = None
+    load_proxy: Callable[[], type] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +63,7 @@ class Operation:
     inner: int
     rounds: tuple[int, int]
     istr: bool = False
+    proxy: bool = False
     size: int = SIZE
 
 
@@ -76,6 +82,7 @@ IMPLEMENTATIONS = (
         Kind.MULTIDICT,
         _attr("multidict._multidict", "MultiDict"),
         _attr("multidict._multidict", "istr"),
+        _attr("multidict._multidict", "MultiDictProxy"),
     ),
     Impl(
         "cimultidict_c",
@@ -83,6 +90,7 @@ IMPLEMENTATIONS = (
         Kind.MULTIDICT,
         _attr("multidict._multidict", "CIMultiDict"),
         _attr("multidict._multidict", "istr"),
+        _attr("multidict._multidict", "CIMultiDictProxy"),
     ),
     Impl(
         "multidict_py",
@@ -90,6 +98,7 @@ IMPLEMENTATIONS = (
         Kind.MULTIDICT,
         _attr("multidict._multidict_py", "MultiDict"),
         _attr("multidict._multidict_py", "istr"),
+        _attr("multidict._multidict_py", "MultiDictProxy"),
     ),
     Impl(
         "cimultidict_py",
@@ -97,6 +106,7 @@ IMPLEMENTATIONS = (
         Kind.MULTIDICT,
         _attr("multidict._multidict_py", "CIMultiDict"),
         _attr("multidict._multidict_py", "istr"),
+        _attr("multidict._multidict_py", "CIMultiDictProxy"),
     ),
 )
 
@@ -121,6 +131,59 @@ def _make_ctor_items(cls: type, size: int) -> Case:
     def noop(it: Any) -> None:
         nonlocal sink
         sink = it
+
+    return Case(setup, run, noop)
+
+
+def _make_ctor_empty(cls: type, size: int) -> Case:
+    sink: Any = None
+
+    def setup() -> Any:
+        return None
+
+    def run(_: Any) -> None:
+        nonlocal sink
+        sink = cls()
+
+    def noop(_: Any) -> None:
+        nonlocal sink
+        sink = None
+
+    return Case(setup, run, noop)
+
+
+def _make_items_view(cls: type, size: int) -> Case:
+    target = cls((k, k) for k in _keys(size))
+    sink = None
+
+    def setup() -> Any:
+        return target
+
+    def run(d: Any) -> None:
+        nonlocal sink
+        sink = d.items()
+
+    def noop(d: Any) -> None:
+        nonlocal sink
+        sink = d
+
+    return Case(setup, run, noop)
+
+
+def _make_iter_new(cls: type, size: int) -> Case:
+    target = cls((k, k) for k in _keys(size))
+    sink = None
+
+    def setup() -> Any:
+        return target
+
+    def run(d: Any) -> None:
+        nonlocal sink
+        sink = iter(d)
+
+    def noop(d: Any) -> None:
+        nonlocal sink
+        sink = d
 
     return Case(setup, run, noop)
 
@@ -415,6 +478,25 @@ def _make_add(cls: type, size: int, istr_cls: type | None = None) -> Case:
     return Case(setup, run, noop)
 
 
+def _make_proxy_new(cls: type, size: int, proxy_cls: type | None = None) -> Case:
+    assert proxy_cls is not None
+    target = cls((k, k) for k in _keys(size))
+    sink = None
+
+    def setup() -> Any:
+        return target
+
+    def run(d: Any) -> None:
+        nonlocal sink
+        sink = proxy_cls(d)
+
+    def noop(d: Any) -> None:
+        nonlocal sink
+        sink = d
+
+    return Case(setup, run, noop)
+
+
 def _make_getall(cls: type, size: int, istr_cls: type | None = None) -> Case:
     wrap = istr_cls if istr_cls is not None else str
     keys = [wrap(k) for k in _keys(size)]
@@ -482,7 +564,26 @@ def _make_setitem_istr(cls: type, size: int, istr_cls: type | None = None) -> Ca
 #: rows of the comparison tables in ``docs/benchmark.rst``.
 SHARED_OPERATIONS = (
     Operation("ctor_items", "``cls(items)``", BOTH, _make_ctor_items, 1, (20, 60)),
+    Operation("ctor_empty", "``cls()``", BOTH, _make_ctor_empty, 1, (20, 60)),
+    Operation(
+        "ctor_small",
+        "``cls(items)``, 20 items",
+        BOTH,
+        _make_ctor_items,
+        1,
+        (20, 60),
+        size=SMALL,
+    ),
     Operation("copy", "``d.copy()``", BOTH, _make_copy, 1, (20, 60)),
+    Operation(
+        "copy_small",
+        "``d.copy()``, 20 items",
+        BOTH,
+        _make_copy,
+        1,
+        (20, 60),
+        size=SMALL,
+    ),
     Operation("getitem_hit", "``d[key]``", BOTH, _make_getitem_hit, SIZE, (2, 6)),
     Operation("get_miss", "``d.get(key)``, miss", BOTH, _make_get_miss, SIZE, (2, 6)),
     Operation("contains_hit", "``key in d``", BOTH, _make_contains_hit, SIZE, (2, 6)),
@@ -526,6 +627,8 @@ SHARED_OPERATIONS = (
     Operation(
         "iter_items", "``for k, v in d.items()``", BOTH, _make_iter_items, SIZE, (2, 6)
     ),
+    Operation("items_view", "``d.items()``", BOTH, _make_items_view, 1, (20, 60)),
+    Operation("iter_new", "``iter(d)``", BOTH, _make_iter_new, 1, (20, 60)),
 )
 
 #: Operations :class:`dict` has no counterpart for.  Available to the runners,
@@ -534,6 +637,16 @@ MULTIDICT_OPERATIONS = (
     Operation("add", "``d.add(key, v)``", Kind.MULTIDICT, _make_add, SIZE, (2, 6)),
     Operation(
         "getall", "``d.getall(key)``", Kind.MULTIDICT, _make_getall, SIZE, (2, 6)
+    ),
+    Operation(
+        "proxy_new",
+        "``Proxy(d)``",
+        Kind.MULTIDICT,
+        _make_proxy_new,
+        1,
+        (20, 60),
+        proxy=True,
+        size=SMALL,
     ),
     Operation(
         "getitem_istr",
@@ -575,6 +688,10 @@ def build(op: Operation, impl: Impl) -> Case:
         if impl.load_istr is None:
             raise ValueError(f"{impl.id} has no istr type")
         return op.make(cls, op.size, impl.load_istr())
+    if op.proxy:
+        if impl.load_proxy is None:
+            raise ValueError(f"{impl.id} has no proxy type")
+        return op.make(cls, op.size, impl.load_proxy())
     return op.make(cls, op.size)
 
 
