@@ -33,6 +33,10 @@ typedef struct {
     PyObject* str_default;
     PyObject* str_value;
 
+    // The implicit default of setdefault(), kept so the common call does
+    // not build one per invocation.
+    PyObject* none;
+
     uint64_t global_version;
 
     /* Nothing pooled here holds a reference, so module_traverse() has

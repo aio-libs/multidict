@@ -320,9 +320,10 @@ Item access
 
    **Thread safety:** Safe for concurrent use on the same object.
 
-   Equivalent to ``self.setdefault(key, default_value)``, except
-   *default_value* is required here (the Python method defaults it to
-   ``None``). If *key* is already in *self*, set ``*result`` to a new
+   Equivalent to ``self.setdefault(key, default_value)``.
+   *default_value* may be ``NULL``, which is read as ``None``, matching
+   the default of the Python method. If *key* is already in *self*, set
+   ``*result`` to a new
    reference to its *first* value and return ``1``, without touching
    *self*. Otherwise set ``self[key] = default_value``, set
    ``*result`` to a new reference to *default_value*, and return
