@@ -216,3 +216,44 @@ def test_race_condition_getversion_vs_mutation(
     # go backwards even though it can see stale values.
     assert not errors, f"Unexpected errors during concurrent execution: {errors}"
     assert seen
+
+
+@pytest.mark.c_extension
+def test_items_iterator_shared_between_threads(
+    any_multidict_class: type[CIMultiDict[str] | MultiDict[str]],
+) -> None:
+    """Two threads pulling from one items iterator at once.
+
+    The C items iterator recycles its result tuple; only the thread that
+    owns the tuple may reuse it, and the field itself is never replaced,
+    so a shared iterator hands out correct pairs and never a freed one.
+    """
+    if getattr(any_multidict_class, "__module__", "").endswith("_multidict_py"):
+        pytest.skip("Test is only applicable to the C extension")
+
+    md: MutableMultiMapping[str] = any_multidict_class()
+    for i in range(2000):
+        md.add(f"k{i}", f"v{i}")
+    expected = set(md.items())
+    errors: list[str] = []
+
+    for _ in range(20):
+        it = iter(md.items())
+        seen: list[set[tuple[str, str]]] = [set(), set()]
+
+        def puller(idx: int) -> None:
+            try:
+                for pair in it:
+                    seen[idx].add(pair)
+            except Exception as e:  # pragma: no cover
+                errors.append(f"{type(e).__name__}: {e}")
+
+        threads = [threading.Thread(target=puller, args=(i,)) for i in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=60)
+        assert not any(t.is_alive() for t in threads)
+        assert seen[0] | seen[1] == expected
+        assert seen[0] <= expected and seen[1] <= expected
+    assert not errors, errors

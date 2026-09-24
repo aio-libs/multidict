@@ -3833,3 +3833,34 @@ del multidict, MultiDict, md, cycle
 gc.collect()
 """
     subprocess.run([sys.executable, "-c", script], check=True, timeout=60)
+
+
+def test_items_iter_kept_tuples_stay_distinct(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    # The C items iterator recycles its tuple once the caller has dropped
+    # it; a tuple the caller still holds must keep its pair.
+    md = any_multidict_class([("a", "1"), ("b", "2"), ("c", "3")])
+    it = iter(md.items())
+    first = next(it)
+    second = next(it)
+    third = next(it)
+    assert first is not second and second is not third
+    assert (first, second, third) == (("a", "1"), ("b", "2"), ("c", "3"))
+    with pytest.raises(StopIteration):
+        next(it)
+    assert list(md.items()) == [("a", "1"), ("b", "2"), ("c", "3")]
+
+
+def test_items_iter_recycled_tuple_hash(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    # A recycled tuple must not keep the hash cached for its old pair.
+    md = any_multidict_class([("a", "1"), ("b", "2")])
+    it = iter(md.items())
+    first = next(it)
+    assert first in {("a", "1")}
+    del first
+    second = next(it)
+    assert hash(second) == hash(("b", "2"))
+    assert second in {("b", "2")}

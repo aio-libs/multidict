@@ -14,6 +14,7 @@ typedef struct multidict_iter {
     MultiDictObject* md;  // MultiDict or CIMultiDict
     md_pos_t current;
     int reverse;
+    PyObject* result;  // items iterator: the last tuple handed out
 } MultidictIter;
 
 /* See _multidict_view_alloc() on what a pooled shell still holds. */
@@ -38,6 +39,7 @@ _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
 
     it->md = md;
     it->reverse = reverse;
+    it->result = NULL;
     Py_BEGIN_CRITICAL_SECTION(md);
     if (reverse) {
         md_init_pos_reverse(md, &it->current);
@@ -56,6 +58,12 @@ multidict_items_iter_new(MultiDictObject* md, int reverse)
     }
 
     _init_iter(it, md, reverse);
+    /* None placeholders, so the first reuse has something to release. */
+    it->result = PyTuple_Pack(2, Py_None, Py_None);
+    if (it->result == NULL) {
+        Py_DECREF(it);
+        return NULL;
+    }
 
     PyObject_GC_Track(it);
     return (PyObject*)it;
@@ -112,13 +120,40 @@ multidict_items_iter_iternext(MultidictIter* self)
         return NULL;
     }
 
-    ret = PyTuple_Pack(2, key, value);
-    Py_CLEAR(key);
-    Py_CLEAR(value);
+    /* Reuse the iterator's own tuple when the caller has already
+       dropped it, as `for k, v in d.items()` does every step; dictiter
+       does the same. self->result is set once at creation and never
+       replaced: the uniqueness check is only ever true for the thread
+       that owns the tuple, so replacing the field from another thread
+       sharing the iterator could free it under that owner. */
+    ret = self->result;
+    if (PyUnstable_Object_IsUniquelyReferenced(ret)) {
+        PyObject* old_key = PyTuple_GET_ITEM(ret, 0);
+        PyObject* old_value = PyTuple_GET_ITEM(ret, 1);
+        PyTuple_SET_ITEM(ret, 0, key);
+        PyTuple_SET_ITEM(ret, 1, value);
+        Py_INCREF(ret);
+        Py_DECREF(old_key);
+        Py_DECREF(old_value);
+#if PY_VERSION_HEX >= 0x030e0000
+        /* 3.14 caches a tuple's hash in the object; the pair changed. */
+        ((PyTupleObject*)ret)->ob_hash = -1;
+#endif
+        /* The collector untracks a tuple of atomic items; it holds
+           arbitrary ones again now. */
+        if (!PyObject_GC_IsTracked(ret)) {
+            PyObject_GC_Track(ret);
+        }
+        return ret;
+    }
+    ret = PyTuple_New(2);
     if (ret == NULL) {
+        Py_DECREF(key);
+        Py_DECREF(value);
         return NULL;
     }
-
+    PyTuple_SET_ITEM(ret, 0, key);
+    PyTuple_SET_ITEM(ret, 1, value);
     return ret;
 }
 
@@ -172,6 +207,7 @@ multidict_iter_dealloc(MultidictIter* self)
     PyObject_GC_UnTrack(self);
     /* See multidict_view_dealloc() on why a cleared iterator can't be
        pooled. */
+    Py_CLEAR(self->result);
     MultiDictObject* md = self->md;
     bool pooled = md != NULL && pool_push(&md->state->iter_pool, self);
     Py_XDECREF(md);
@@ -186,6 +222,7 @@ multidict_iter_traverse(MultidictIter* self, visitproc visit, void* arg)
 {
     Py_VISIT(Py_TYPE(self));
     Py_VISIT(self->md);
+    Py_VISIT(self->result);
     return 0;
 }
 
@@ -193,6 +230,7 @@ static inline int
 multidict_iter_clear(MultidictIter* self)
 {
     Py_CLEAR(self->md);
+    Py_CLEAR(self->result);
     return 0;
 }
 
