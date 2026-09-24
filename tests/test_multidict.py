@@ -2656,9 +2656,9 @@ def test_drain_retired_retries_after_pushing_back_thread_safety() -> None:
     was dropped instead, its references were never released.  Rereading the
     gate after the push-back and retrying is what frees them. Forcing that
     interleaving needs an artificially widened drain window (see the PR
-    description); this drives the shape, a clear() against continuous
-    lock-free reads followed by teardown with no further operation, many
-    times over. This is a C-extension-only concern: the pure-Python
+    description), so this does not fail on an unfixed build; what it drives,
+    many times over, is the shape, a clear() against continuous lock-free
+    reads followed by teardown with no further operation. This is a C-extension-only concern: the pure-Python
     implementation has no retirement scheme to regress."""
 
     class Marker:
@@ -2685,14 +2685,20 @@ def test_drain_retired_retries_after_pushing_back_thread_safety() -> None:
                 for i in range(50):
                     str(i) in d
 
-        t = threading.Thread(target=reader)
-        t.start()
-        # clear() must not land before the reader has started, so that the
-        # gate is nonzero when the drain checks it.
-        ready.wait()
-        d.clear()
-        stop.set()
-        t.join()
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(reader)
+            try:
+                # clear() must not land before the reader has started, so
+                # that the gate is nonzero when the drain checks it; bounded
+                # so a reader that died instead fails the test here rather
+                # than blocking the run.
+                assert ready.wait(60)
+                d.clear()
+            finally:
+                # Whatever clear() did, the reader has to be let go, or
+                # leaving the executor's block waits for it forever.
+                stop.set()
+            future.result()
 
     # Every local of cycle(), the multidict included, dies on return, so
     # nothing is left to drain md->retired afterwards.
