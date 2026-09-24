@@ -39,7 +39,7 @@ headers and wraps it, and pass that with ``--probe``::
     probe(MultiDictObject* md, Py_hash_t h, PyObject* i, PyObject* k,
           PyObject* v)
     {
-        return _md_add_with_hash_steal_refs(md, h, i, k, v);
+        return md_add_with_hash_steal_refs(md, h, i, k, v);
     }
 
 That isolates the helper, but by construction it also hides the inlining
