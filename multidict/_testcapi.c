@@ -676,9 +676,6 @@ module_exec(PyObject* mod)
     if (state->refs == NULL) {
         return -1;
     }
-    if (PyModule_AddIntMacro(mod, MultiDict_CAPI_VERSION) < 0) {
-        return -1;
-    }
     if (PyModule_AddIntMacro(mod, MULTIDICT_MAX_WATCHERS) < 0) {
         return -1;
     }

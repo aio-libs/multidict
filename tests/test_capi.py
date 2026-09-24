@@ -573,13 +573,13 @@ def test_check_api_version_accepts_current_and_newer() -> None:
     # Not exercised through the `api` fixture: this checks the raw C
     # struct-versioning guard in multidict_capi.h directly, which has no
     # Cython-side counterpart to mirror.
-    _testcapi.check_api_version(_testcapi.MultiDict_CAPI_VERSION)
-    _testcapi.check_api_version(_testcapi.MultiDict_CAPI_VERSION + 1)
+    _testcapi.check_api_version(1)
+    _testcapi.check_api_version(2)
 
 
 def test_check_api_version_rejects_older() -> None:
     with pytest.raises(RuntimeError, match="C API version mismatch"):
-        _testcapi.check_api_version(_testcapi.MultiDict_CAPI_VERSION - 1)
+        _testcapi.check_api_version(0)
 
 
 # --------------------------- watchers ---------------------------

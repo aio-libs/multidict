@@ -18,7 +18,7 @@ extern "C" {
    multidict runtime; MultiDict_GetCAPI() uses this to refuse the
    other direction (an older runtime that predates a field the client
    was built to expect). */
-#define MultiDict_CAPI_VERSION 2
+#define MultiDict_CAPI_VERSION 1
 
 typedef int (*MultiDict_ItemVisitor)(void* user_data, PyObject* key,
                                      PyObject* value);
