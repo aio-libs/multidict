@@ -449,7 +449,8 @@ stored somewhere for the later usage, see :mod:`aiohttp:aiohttp.hdrs` for exampl
 
 How much that is worth, as instruction counts on CPython 3.14 measured
 the way :ref:`benchmarking-reference` describes, on a
-:class:`CIMultiDict` of 200 already-lower-case keys:
+:class:`CIMultiDict` of 200 already-lower-case keys (except ``d.add``,
+which starts with an empty mapping and inserts 200 keys):
 
 .. list-table:: :class:`CIMultiDict` keyed by ``str`` versus by :class:`istr`
    :header-rows: 1
