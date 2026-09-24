@@ -17,12 +17,56 @@ extern "C" {
    older version of this header keeps working against a newer
    multidict runtime; MultiDict_GetCAPI() uses this to refuse the
    other direction (an older runtime that predates a field the client
-   was built to expect). */
+   was built to expect).
+
+   The watcher entry points were appended without a bump on purpose:
+   version 1 has never shipped, so no client can hold a capsule that
+   lacks them. */
 #define MultiDict_CAPI_VERSION 1
 
 typedef int (*MultiDict_ItemVisitor)(void* user_data, PyObject* identity,
                                      Py_hash_t hash, PyObject* key,
                                      PyObject* value);
+
+/* Watchers. Modelled on CPython's PyDict_AddWatcher() family, with two
+   deliberate differences: the callback gets two context pointers (one fixed
+   per watcher, one per watched multidict), and events are delivered once the
+   operation that produced them has finished rather than mid-mutation. See
+   docs/capi.rst. */
+
+#define MULTIDICT_MAX_WATCHERS 8
+
+typedef enum {
+    MultiDict_EVENT_ADDED = 0,
+    MultiDict_EVENT_REPLACED,
+    MultiDict_EVENT_DELETED,
+    MultiDict_EVENT_CLEARED,
+    MultiDict_EVENT_CLONED,
+    MultiDict_EVENT_DEALLOCATED,
+    MultiDict_EVENT_BATCH_BEGIN,
+    MultiDict_EVENT_BATCH_END,
+    MultiDict_EVENT_LOST,
+} MultiDict_WatchEvent;
+
+/* Only ever grows at the end, like MultiDict_CAPI itself. multidict
+   allocates it and the client only reads it, so a client built against an
+   older header simply never looks at the newer fields and needs no size
+   field to stay safe. Every PyObject* is borrowed for the duration of the
+   call. */
+typedef struct {
+    MultiDict_WatchEvent event;
+    PyObject* self;
+    PyObject* identity;
+    /* hash of `identity`, the one multidict looked the entry up by; -1,
+       which no Python hash ever is, on an event that carries no key. */
+    Py_hash_t hash;
+    PyObject* key;
+    PyObject* value;
+    PyObject* old_value;
+} MultiDict_WatchInfo;
+
+typedef int (*MultiDict_WatchCallback)(void* watcher_data, void* user_data,
+                                       const MultiDict_WatchInfo* info);
 
 typedef struct {
     int api_version;
@@ -62,6 +106,13 @@ typedef struct {
     Py_ssize_t (*MultiDict_ForEach)(void* state, PyObject* self, PyObject* key,
                                     MultiDict_ItemVisitor visitor,
                                     void* user_data);
+
+    int (*MultiDict_AddWatcher)(void* state, MultiDict_WatchCallback callback,
+                                void* watcher_data);
+    int (*MultiDict_ClearWatcher)(void* state, int watcher_id);
+    int (*MultiDict_Watch)(void* state, int watcher_id, PyObject* self,
+                           void* user_data);
+    int (*MultiDict_Unwatch)(void* state, int watcher_id, PyObject* self);
 } MultiDict_CAPI;
 
 #ifdef __cplusplus

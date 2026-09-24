@@ -9,6 +9,7 @@ extern "C" {
 #include "dict.h"
 #include "hashtable.h"
 #include "state.h"
+#include "watch.h"
 
 #define __MULTIDICT_VALIDATION_CHECK(SELF, STATE, ON_FAIL)           \
     if (!MultiDict_Check(((mod_state*)STATE), (SELF))) {             \
@@ -242,9 +243,16 @@ MultiDict_Clear(void* state_, PyObject* self)
 {
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
     int ret;
+    bool flush;
     Py_BEGIN_CRITICAL_SECTION(self);
+    if (md_len((MultiDictObject*)self) != 0) {
+        md_watch_record_simple((MultiDictObject*)self,
+                               MultiDict_EVENT_CLEARED);
+    }
     ret = md_clear((MultiDictObject*)self);
+    flush = md_watch_pending((MultiDictObject*)self);
     Py_END_CRITICAL_SECTION();
+    md_watch_flush_if((MultiDictObject*)self, flush);
     return ret;
 }
 
@@ -339,6 +347,101 @@ MultiDict_ForEach(void* state_, PyObject* self, PyObject* key,
     return _md_foreach_key(md, key, visitor, user_data);
 }
 
+/* ================= Watchers ================= */
+
+/* Registration writes the module-wide slot table and is not thread safe
+ * against a concurrent MultiDict_AddWatcher() or MultiDict_ClearWatcher(),
+ * exactly like CPython's PyDict_AddWatcher(): register during module
+ * initialization, before the watcher can fire. MultiDict_Watch() and
+ * MultiDict_Unwatch() touch only the target multidict and do take its
+ * critical section, so those are safe from any thread.
+ */
+
+static int
+MultiDict_AddWatcher(void* state_, MultiDict_WatchCallback callback,
+                     void* watcher_data)
+{
+    mod_state* state = (mod_state*)state_;
+    if (callback == NULL) {
+        PyErr_SetString(PyExc_ValueError, "callback must not be NULL");
+        return -1;
+    }
+    for (int watcher_id = 0; watcher_id < MULTIDICT_MAX_WATCHERS;
+         watcher_id++) {
+        if (state->watchers[watcher_id] == NULL) {
+            state->watchers[watcher_id] = callback;
+            state->watcher_data[watcher_id] = watcher_data;
+            return watcher_id;
+        }
+    }
+    PyErr_SetString(PyExc_RuntimeError,
+                    "no more multidict watcher IDs available");
+    return -1;
+}
+
+static int
+_multidict_check_watcher_id(mod_state* state, int watcher_id)
+{
+    if (watcher_id < 0 || watcher_id >= MULTIDICT_MAX_WATCHERS ||
+        state->watchers[watcher_id] == NULL) {
+        PyErr_Format(PyExc_ValueError, "invalid watcher ID %d", watcher_id);
+        return -1;
+    }
+    return 0;
+}
+
+static int
+MultiDict_ClearWatcher(void* state_, int watcher_id)
+{
+    mod_state* state = (mod_state*)state_;
+    if (_multidict_check_watcher_id(state, watcher_id) < 0) {
+        return -1;
+    }
+    /* Multidicts still carrying the bit keep it: nothing enumerates them.
+       A stale bit resolves to this NULL slot and is skipped, same as
+       CPython's PyDict_ClearWatcher().
+
+       Only until the slot is handed out again, though: the next
+       AddWatcher() takes this ID, and those multidicts then report to
+       the new callback with the previous one's user_data. Left as the
+       documented contract (register at module init, unwatch before
+       clearing) rather than fixed, since closing it means a generation
+       counter per slot mirrored in every md_watch_t. See the warning
+       under MultiDict_ClearWatcher in docs/capi.rst. */
+    state->watchers[watcher_id] = NULL;
+    state->watcher_data[watcher_id] = NULL;
+    return 0;
+}
+
+static int
+MultiDict_Watch(void* state_, int watcher_id, PyObject* self, void* user_data)
+{
+    MultiDictObject* md;
+    __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
+    if (_multidict_check_watcher_id((mod_state*)state_, watcher_id) < 0) {
+        return -1;
+    }
+    int ret;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = md_watch_attach(md, watcher_id, user_data);
+    Py_END_CRITICAL_SECTION();
+    return ret;
+}
+
+static int
+MultiDict_Unwatch(void* state_, int watcher_id, PyObject* self)
+{
+    MultiDictObject* md;
+    __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
+    if (_multidict_check_watcher_id((mod_state*)state_, watcher_id) < 0) {
+        return -1;
+    }
+    Py_BEGIN_CRITICAL_SECTION(md);
+    md_watch_detach(md, watcher_id);
+    Py_END_CRITICAL_SECTION();
+    return 0;
+}
+
 /* =================== Capsule ==================== */
 
 static void
@@ -394,6 +497,11 @@ new_capsule(mod_state* state)
     capi->MultiDict_SetItem = MultiDict_SetItem;
 
     capi->MultiDict_ForEach = MultiDict_ForEach;
+
+    capi->MultiDict_AddWatcher = MultiDict_AddWatcher;
+    capi->MultiDict_ClearWatcher = MultiDict_ClearWatcher;
+    capi->MultiDict_Watch = MultiDict_Watch;
+    capi->MultiDict_Unwatch = MultiDict_Unwatch;
 
     PyObject* ret =
         PyCapsule_New(capi, MultiDict_CAPSULE_NAME, capsule_destructor);
