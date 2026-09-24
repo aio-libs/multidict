@@ -19,7 +19,7 @@ extern "C" {
    between the length check and the borrow. */
 #ifdef Py_GIL_DISABLED
 static inline PyObject*
-_list_getitem_ref(PyObject* list, Py_ssize_t i)
+list_getitem_ref(PyObject* list, Py_ssize_t i)
 {
     PyObject* item = PyList_GetItemRef(list, i);
     if (item == NULL && PyErr_ExceptionMatches(PyExc_IndexError)) {
@@ -31,7 +31,7 @@ _list_getitem_ref(PyObject* list, Py_ssize_t i)
 }
 #define _list_item_gone(item) ((item) == NULL)
 #else
-#define _list_getitem_ref(list, i) Py_NewRef(PyList_GET_ITEM((list), (i)))
+#define list_getitem_ref(list, i) Py_NewRef(PyList_GET_ITEM((list), (i)))
 #define _list_item_gone(item) (0)
 #endif
 
@@ -48,7 +48,7 @@ typedef enum {
    a foreign type means, so those are reported back rather than raised
    here. *plen is only written for UNPACK_LENGTH, which is an error path
    in both callers; the general path is not an option for an exact list,
-   whose items have to be read through _list_getitem_ref(). */
+   whose items have to be read through list_getitem_ref(). */
 static inline unpack_t
 unpack_pair(PyObject* obj, PyObject** pkey, PyObject** pvalue,
             Py_ssize_t* plen)
@@ -67,11 +67,11 @@ unpack_pair(PyObject* obj, PyObject** pkey, PyObject** pvalue,
             *plen = PyList_GET_SIZE(obj);
             return UNPACK_LENGTH;
         }
-        *pkey = _list_getitem_ref(obj, 0);
+        *pkey = list_getitem_ref(obj, 0);
         if (_list_item_gone(*pkey)) {
             return UNPACK_ERROR;
         }
-        *pvalue = _list_getitem_ref(obj, 1);
+        *pvalue = list_getitem_ref(obj, 1);
         if (_list_item_gone(*pvalue)) {
             Py_CLEAR(*pkey);
             return UNPACK_ERROR;

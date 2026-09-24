@@ -76,7 +76,7 @@ _md_pool_for(mod_state* state, PyTypeObject* tp)
 /* Out of line for the reason _multidict_view_alloc() gives: inlined,
    these two cost del d[key] its inlined md_calc_identity(). */
 NOINLINE static PyObject*
-_md_shell_alloc(mod_state* state, PyTypeObject* tp)
+md_shell_alloc(mod_state* state, PyTypeObject* tp)
 {
     pool_t* pool = _md_pool_for(state, tp);
     PyObject* obj = pool == NULL ? NULL : pool_pop(pool);
@@ -95,7 +95,7 @@ _md_shell_alloc(mod_state* state, PyTypeObject* tp)
 
 /* True once the shell is parked, false to leave the caller to free it. */
 NOINLINE static bool
-_md_shell_recycle(mod_state* state, PyObject* obj)
+md_shell_recycle(mod_state* state, PyObject* obj)
 {
     if (state == NULL) {
         return false;

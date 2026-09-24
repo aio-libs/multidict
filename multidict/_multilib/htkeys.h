@@ -144,7 +144,7 @@ htkeys_nslots(const htkeys_t* keys)
 #endif
 
 static inline Py_ssize_t
-htkeys_mask(const htkeys_t* keys)
+_htkeys_mask(const htkeys_t* keys)
 {
     return htkeys_nslots(keys) - 1;
 }
@@ -376,7 +376,7 @@ htkeys_resume_slots_bytes(uint8_t log2_size)
 
 /* Width of an index slot, see the indices[] comment above. */
 static inline uint8_t
-htkeys_log2_index_bytes(uint8_t log2_size)
+_htkeys_log2_index_bytes(uint8_t log2_size)
 {
     if (log2_size < 8) {
         return log2_size;
@@ -396,15 +396,15 @@ htkeys_log2_index_bytes(uint8_t log2_size)
    lets a pooled block be reused for any table of its own size class,
    and lets md_clone_from_ht() copy a table byte for byte. */
 static inline size_t
-htkeys_alloc_size(uint8_t log2_size)
+_htkeys_alloc_size(uint8_t log2_size)
 {
     size_t usable = (size_t)USABLE_FRACTION((size_t)1 << log2_size);
     return (sizeof(htkeys_t) +
-            ((size_t)1 << htkeys_log2_index_bytes(log2_size)) +
+            ((size_t)1 << _htkeys_log2_index_bytes(log2_size)) +
             sizeof(entry_t) * usable);
 }
 
-/* The same number as htkeys_alloc_size(keys->log2_size), read back off
+/* The same number as _htkeys_alloc_size(keys->log2_size), read back off
    the table rather than recomputed. */
 static inline Py_ssize_t
 htkeys_sizeof(htkeys_t* keys)
@@ -413,7 +413,7 @@ htkeys_sizeof(htkeys_t* keys)
     Py_ssize_t size =
         (Py_ssize_t)(sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
                      sizeof(entry_t) * usable);
-    assert(size == (Py_ssize_t)htkeys_alloc_size(keys->log2_size));
+    assert(size == (Py_ssize_t)_htkeys_alloc_size(keys->log2_size));
     return size;
 }
 
@@ -422,10 +422,10 @@ htkeys_sizeof(htkeys_t* keys)
    `size` is the byte count, taken as an argument for the sake of a
    caller that already has it off an existing table. */
 static inline htkeys_t*
-_htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, size_t size)
+htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, size_t size)
 {
     assert(log2_size >= HT_LOG_MINSIZE);
-    assert(size == htkeys_alloc_size(log2_size));
+    assert(size == _htkeys_alloc_size(log2_size));
     pool_t* pool = _htkeys_pool(pools, log2_size);
     htkeys_t* keys = pool == NULL ? NULL : pool_pop(pool);
     if (keys == NULL) {
@@ -439,9 +439,9 @@ _htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, size_t size)
 }
 
 static inline htkeys_t*
-htkeys_alloc_raw(pool_t* pools, uint8_t log2_size)
+_htkeys_alloc_raw(pool_t* pools, uint8_t log2_size)
 {
-    return _htkeys_alloc_sized(pools, log2_size, htkeys_alloc_size(log2_size));
+    return htkeys_alloc_sized(pools, log2_size, _htkeys_alloc_size(log2_size));
 }
 
 /* Zeroes the entries from `from` on. A caller that fills the front of
@@ -462,9 +462,9 @@ htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
 static inline htkeys_t*
 htkeys_new_unfilled(pool_t* pools, uint8_t log2_size)
 {
-    uint8_t log2_bytes = htkeys_log2_index_bytes(log2_size);
+    uint8_t log2_bytes = _htkeys_log2_index_bytes(log2_size);
 
-    htkeys_t* keys = htkeys_alloc_raw(pools, log2_size);
+    htkeys_t* keys = _htkeys_alloc_raw(pools, log2_size);
     if (keys == NULL) {
         return NULL;
     }
@@ -509,7 +509,7 @@ htkeys_free(pool_t* pools, htkeys_t* dk)
 
 /* Returns the identity's hash, or -1 if hashing raised. */
 static inline Py_hash_t
-_unicode_hash(PyObject* o)
+unicode_hash(PyObject* o)
 {
     assert(PyUnicode_CheckExact(o));
     PyASCIIObject* ascii = (PyASCIIObject*)o;
@@ -535,7 +535,7 @@ _unicode_hash(PyObject* o)
 COLD static Py_ssize_t
 _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 {
-    const size_t mask = htkeys_mask(keys);
+    const size_t mask = _htkeys_mask(keys);
     const size_t start = i;
     const bool small = keys->log2_size < 16;
     void* resume_slots = keys->resume_slots;
@@ -577,7 +577,7 @@ Internal routine used by ht_resize() to build a hashtable of entries.
 static inline void
 htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
 {
-    size_t mask = htkeys_mask(keys);
+    size_t mask = _htkeys_mask(keys);
     if (keys->resume_slots != NULL) {
         memset(
             keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
@@ -617,7 +617,7 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
 static inline Py_ssize_t
 htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
 {
-    const size_t mask = htkeys_mask(keys);
+    const size_t mask = _htkeys_mask(keys);
     size_t i = hash & mask;
     size_t perturb = (size_t)hash;
     uint8_t log2size = keys->log2_size;
@@ -653,7 +653,7 @@ htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
 
 typedef struct _htkeysiter {
     htkeys_t* keys;
-    size_t mask;  // htkeys_mask(keys)
+    size_t mask;  // _htkeys_mask(keys)
     size_t slot;  // masked hash, Py_hash_t h & mask;
     size_t perturb;
     Py_ssize_t index;
@@ -665,7 +665,7 @@ ALWAYS_INLINE static inline void
 htkeysiter_init(htkeysiter_t* iter, htkeys_t* keys, Py_hash_t hash)
 {
     iter->keys = keys;
-    iter->mask = htkeys_mask(keys);
+    iter->mask = _htkeys_mask(keys);
     iter->perturb = (size_t)hash;
     iter->slot = hash & iter->mask;
     iter->index = htkeys_get_index(iter->keys, iter->slot);

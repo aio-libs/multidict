@@ -78,7 +78,7 @@ _md_check_consistency(MultiDictObject* md, bool update)
 #endif
 
             CHECK(PyUnicode_CheckExact(identity));
-            CHECK(entry->hash == _unicode_hash(identity));
+            CHECK(entry->hash == unicode_hash(identity));
         }
     }
     return 1;

@@ -311,7 +311,7 @@ _multidict_collect_matches(MultiDictObject* md, PyObject* identity,
 }
 
 static inline PyObject*
-multidict_itemsview_and1_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_and1_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* identity = NULL;
     PyObject* key = NULL;
@@ -389,17 +389,17 @@ fail:
 }
 
 static inline PyObject*
-multidict_itemsview_and1(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_and1(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_itemsview_and1_impl(self, other);
+    ret = _multidict_itemsview_and1_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
 
 static inline PyObject*
-multidict_itemsview_and2_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_and2_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* identity = NULL;
     PyObject* key = NULL;
@@ -431,7 +431,7 @@ multidict_itemsview_and2_impl(_Multidict_ViewObject* self, PyObject* other)
             continue;
         }
 
-        /* See multidict_itemsview_and1_impl() for why matches are
+        /* See _multidict_itemsview_and1_impl() for why matches are
            materialized before running PyObject_RichCompareBool(). */
         matches = _multidict_collect_matches(self->md, identity, false);
         if (matches == NULL) {
@@ -474,11 +474,11 @@ fail:
 }
 
 static inline PyObject*
-multidict_itemsview_and2(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_and2(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_itemsview_and2_impl(self, other);
+    ret = _multidict_itemsview_and2_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
@@ -500,15 +500,15 @@ multidict_itemsview_and(PyObject* lft, PyObject* rht)
     }
     assert(state != NULL);
     if (Items_CheckExact(state, lft)) {
-        return multidict_itemsview_and1((_Multidict_ViewObject*)lft, rht);
+        return _multidict_itemsview_and1((_Multidict_ViewObject*)lft, rht);
     } else if (Items_CheckExact(state, rht)) {
-        return multidict_itemsview_and2((_Multidict_ViewObject*)rht, lft);
+        return _multidict_itemsview_and2((_Multidict_ViewObject*)rht, lft);
     }
     Py_RETURN_NOTIMPLEMENTED;
 }
 
 static inline PyObject*
-multidict_itemsview_or1_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_or1_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* identity = NULL;
     PyObject* key = NULL;
@@ -543,7 +543,7 @@ multidict_itemsview_or1_impl(_Multidict_ViewObject* self, PyObject* other)
             continue;
         }
 
-        /* See multidict_itemsview_and1_impl() for why matches are
+        /* See _multidict_itemsview_and1_impl() for why matches are
            materialized before running PyObject_RichCompareBool(). */
         matches = _multidict_collect_matches(self->md, identity, false);
         if (matches == NULL) {
@@ -591,17 +591,17 @@ fail:
 }
 
 static inline PyObject*
-multidict_itemsview_or1(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_or1(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_itemsview_or1_impl(self, other);
+    ret = _multidict_itemsview_or1_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
 
 static inline PyObject*
-multidict_itemsview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* identity = NULL;
     PyObject* iter = NULL;
@@ -690,11 +690,11 @@ fail:
 }
 
 static inline PyObject*
-multidict_itemsview_or2(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_or2(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_itemsview_or2_impl(self, other);
+    ret = _multidict_itemsview_or2_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
@@ -716,15 +716,15 @@ multidict_itemsview_or(PyObject* lft, PyObject* rht)
     }
     assert(state != NULL);
     if (Items_CheckExact(state, lft)) {
-        return multidict_itemsview_or1((_Multidict_ViewObject*)lft, rht);
+        return _multidict_itemsview_or1((_Multidict_ViewObject*)lft, rht);
     } else if (Items_CheckExact(state, rht)) {
-        return multidict_itemsview_or2((_Multidict_ViewObject*)rht, lft);
+        return _multidict_itemsview_or2((_Multidict_ViewObject*)rht, lft);
     }
     Py_RETURN_NOTIMPLEMENTED;
 }
 
 static inline PyObject*
-multidict_itemsview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* arg = NULL;
     PyObject* identity = NULL;
@@ -813,17 +813,17 @@ fail:
 }
 
 static inline PyObject*
-multidict_itemsview_sub1(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_sub1(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_itemsview_sub1_impl(self, other);
+    ret = _multidict_itemsview_sub1_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
 
 static inline PyObject*
-multidict_itemsview_sub2_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_sub2_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* arg = NULL;
     PyObject* identity = NULL;
@@ -858,7 +858,7 @@ multidict_itemsview_sub2_impl(_Multidict_ViewObject* self, PyObject* other)
             continue;
         }
 
-        /* See multidict_itemsview_and1_impl() for why matches are
+        /* See _multidict_itemsview_and1_impl() for why matches are
            materialized before running PyObject_RichCompareBool(). */
         matches = _multidict_collect_matches(self->md, identity, false);
         if (matches == NULL) {
@@ -906,11 +906,11 @@ fail:
 }
 
 static inline PyObject*
-multidict_itemsview_sub2(_Multidict_ViewObject* self, PyObject* other)
+_multidict_itemsview_sub2(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_itemsview_sub2_impl(self, other);
+    ret = _multidict_itemsview_sub2_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
@@ -932,9 +932,9 @@ multidict_itemsview_sub(PyObject* lft, PyObject* rht)
     }
     assert(state != NULL);
     if (Items_CheckExact(state, lft)) {
-        return multidict_itemsview_sub1((_Multidict_ViewObject*)lft, rht);
+        return _multidict_itemsview_sub1((_Multidict_ViewObject*)lft, rht);
     } else if (Items_CheckExact(state, rht)) {
-        return multidict_itemsview_sub2((_Multidict_ViewObject*)rht, lft);
+        return _multidict_itemsview_sub2((_Multidict_ViewObject*)rht, lft);
     }
     Py_RETURN_NOTIMPLEMENTED;
 }
@@ -1000,7 +1000,7 @@ fail:
 }
 
 static inline int
-multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
+_multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
 {
     PyObject* identity = NULL;
     PyObject* key = NULL;
@@ -1053,7 +1053,7 @@ multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
         goto done;
     }
 
-    /* See multidict_itemsview_and1_impl() for why matches are materialized
+    /* See _multidict_itemsview_and1_impl() for why matches are materialized
        before running PyObject_RichCompareBool(). */
     matches = _multidict_collect_matches(self->md, identity, false);
     if (matches == NULL) {
@@ -1089,14 +1089,14 @@ multidict_itemsview_contains(_Multidict_ViewObject* self, PyObject* obj)
 {
     int ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_itemsview_contains_impl(self, obj);
+    ret = _multidict_itemsview_contains_impl(self, obj);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
 
 static inline PyObject*
-multidict_itemsview_isdisjoint_impl(_Multidict_ViewObject* self,
-                                    PyObject* other)
+_multidict_itemsview_isdisjoint_impl(_Multidict_ViewObject* self,
+                                     PyObject* other)
 {
     PyObject* iter = PyObject_GetIter(other);
     if (iter == NULL) {
@@ -1118,7 +1118,7 @@ multidict_itemsview_isdisjoint_impl(_Multidict_ViewObject* self,
             continue;
         }
 
-        /* See multidict_itemsview_and1_impl() for why matches are
+        /* See _multidict_itemsview_and1_impl() for why matches are
            materialized before running PyObject_RichCompareBool(). */
         matches = _multidict_collect_matches(self->md, identity, false);
         if (matches == NULL) {
@@ -1167,7 +1167,7 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_itemsview_isdisjoint_impl(self, other);
+    ret = _multidict_itemsview_isdisjoint_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
@@ -1271,7 +1271,7 @@ multidict_keysview_repr(_Multidict_ViewObject* self)
 }
 
 static inline PyObject*
-multidict_keysview_and1_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_and1_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* key = NULL;
     PyObject* key2 = NULL;
@@ -1320,17 +1320,17 @@ fail:
 }
 
 static inline PyObject*
-multidict_keysview_and1(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_and1(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_keysview_and1_impl(self, other);
+    ret = _multidict_keysview_and1_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
 
 static inline PyObject*
-multidict_keysview_and2_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_and2_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* key = NULL;
     PyObject* ret = NULL;
@@ -1376,11 +1376,11 @@ fail:
 }
 
 static inline PyObject*
-multidict_keysview_and2(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_and2(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_keysview_and2_impl(self, other);
+    ret = _multidict_keysview_and2_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
@@ -1402,15 +1402,15 @@ multidict_keysview_and(PyObject* lft, PyObject* rht)
     }
     assert(state != NULL);
     if (Keys_CheckExact(state, lft)) {
-        return multidict_keysview_and1((_Multidict_ViewObject*)lft, rht);
+        return _multidict_keysview_and1((_Multidict_ViewObject*)lft, rht);
     } else if (Keys_CheckExact(state, rht)) {
-        return multidict_keysview_and2((_Multidict_ViewObject*)rht, lft);
+        return _multidict_keysview_and2((_Multidict_ViewObject*)rht, lft);
     }
     Py_RETURN_NOTIMPLEMENTED;
 }
 
 static inline PyObject*
-multidict_keysview_or1_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_or1_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* key = NULL;
     PyObject* ret = NULL;
@@ -1459,17 +1459,17 @@ fail:
 }
 
 static inline PyObject*
-multidict_keysview_or1(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_or1(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_keysview_or1_impl(self, other);
+    ret = _multidict_keysview_or1_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
 
 static inline PyObject*
-multidict_keysview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* iter = NULL;
     PyObject* identity = NULL;
@@ -1547,11 +1547,11 @@ fail:
 }
 
 static inline PyObject*
-multidict_keysview_or2(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_or2(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_keysview_or2_impl(self, other);
+    ret = _multidict_keysview_or2_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
@@ -1573,15 +1573,15 @@ multidict_keysview_or(PyObject* lft, PyObject* rht)
     }
     assert(state != NULL);
     if (Keys_CheckExact(state, lft)) {
-        return multidict_keysview_or1((_Multidict_ViewObject*)lft, rht);
+        return _multidict_keysview_or1((_Multidict_ViewObject*)lft, rht);
     } else if (Keys_CheckExact(state, rht)) {
-        return multidict_keysview_or2((_Multidict_ViewObject*)rht, lft);
+        return _multidict_keysview_or2((_Multidict_ViewObject*)rht, lft);
     }
     Py_RETURN_NOTIMPLEMENTED;
 }
 
 static inline PyObject*
-multidict_keysview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     int tmp;
     int st;
@@ -1631,17 +1631,17 @@ fail:
 }
 
 static inline PyObject*
-multidict_keysview_sub1(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_sub1(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_keysview_sub1_impl(self, other);
+    ret = _multidict_keysview_sub1_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
 
 static inline PyObject*
-multidict_keysview_sub2_impl(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_sub2_impl(_Multidict_ViewObject* self, PyObject* other)
 {
     int tmp;
     int st;
@@ -1688,11 +1688,11 @@ fail:
 }
 
 static inline PyObject*
-multidict_keysview_sub2(_Multidict_ViewObject* self, PyObject* other)
+_multidict_keysview_sub2(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_keysview_sub2_impl(self, other);
+    ret = _multidict_keysview_sub2_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }
@@ -1714,9 +1714,9 @@ multidict_keysview_sub(PyObject* lft, PyObject* rht)
     }
     assert(state != NULL);
     if (Keys_CheckExact(state, lft)) {
-        return multidict_keysview_sub1((_Multidict_ViewObject*)lft, rht);
+        return _multidict_keysview_sub1((_Multidict_ViewObject*)lft, rht);
     } else if (Keys_CheckExact(state, rht)) {
-        return multidict_keysview_sub2((_Multidict_ViewObject*)rht, lft);
+        return _multidict_keysview_sub2((_Multidict_ViewObject*)rht, lft);
     }
     Py_RETURN_NOTIMPLEMENTED;
 }
@@ -1788,8 +1788,8 @@ multidict_keysview_contains(_Multidict_ViewObject* self, PyObject* key)
 }
 
 static inline PyObject*
-multidict_keysview_isdisjoint_impl(_Multidict_ViewObject* self,
-                                   PyObject* other)
+_multidict_keysview_isdisjoint_impl(_Multidict_ViewObject* self,
+                                    PyObject* other)
 {
     PyObject* iter = PyObject_GetIter(other);
     if (iter == NULL) {
@@ -1821,7 +1821,7 @@ multidict_keysview_isdisjoint(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = multidict_keysview_isdisjoint_impl(self, other);
+    ret = _multidict_keysview_isdisjoint_impl(self, other);
     Py_END_CRITICAL_SECTION();
     return ret;
 }

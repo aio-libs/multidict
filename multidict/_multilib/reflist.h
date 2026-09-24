@@ -109,7 +109,7 @@ reflist_push(reflist_t* lst, PyObject* obj)
  * #1491 review. Guarantees only the next single push; call again before
  * each subsequent reserved push. */
 static inline int
-_reflist_reserve_one(reflist_t* lst)
+reflist_reserve_one(reflist_t* lst)
 {
     if (lst->count == lst->capacity) {
         return _reflist_grow(lst);
@@ -118,7 +118,7 @@ _reflist_reserve_one(reflist_t* lst)
 }
 
 /* Steals the reference like reflist_push(), but assumes capacity was
- * already reserved via _reflist_reserve_one() -- never fails, so it never
+ * already reserved via reflist_reserve_one() -- never fails, so it never
  * needs the immediate-decref fallback. `obj` may be NULL. */
 static inline void
 reflist_push_reserved(reflist_t* lst, PyObject* obj)

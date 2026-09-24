@@ -25,10 +25,10 @@ extern "C" {
 
    Unlike marks stored in the table, these are invisible to every other
    reader and writer. The price is that they describe one exact table
-   layout: our own resizes carry them over (see _update_marks_remap()),
+   layout: our own resizes carry them over (see update_marks_remap()),
    but a mutation made from outside the batch -- Python code run between
    items, or another thread while this one's critical section is
-   suspended -- invalidates them. _update_marks_sync() detects that,
+   suspended -- invalidates them. update_marks_sync() detects that,
    drops them, and `lost` tells md_post_update() to fall back to a
    full-table sweep. */
 typedef struct _update_marks {
@@ -39,7 +39,7 @@ typedef struct _update_marks {
 } update_marks_t;
 
 static inline Py_ssize_t
-_md_entries_capacity(htkeys_t* keys)
+md_entries_capacity(htkeys_t* keys)
 {
     return keys->nentries + keys->usable;
 }
@@ -47,7 +47,7 @@ _md_entries_capacity(htkeys_t* keys)
 static inline void
 update_marks_init(update_marks_t* marks, MultiDictObject* md)
 {
-    Py_ssize_t capacity = _md_entries_capacity(md->keys);
+    Py_ssize_t capacity = md_entries_capacity(md->keys);
     bitmap_init(&marks->updated, md->keys, capacity);
     bitmap_init(&marks->deleted, md->keys, capacity);
     marks->version = md->version;
@@ -62,7 +62,7 @@ update_marks_release(update_marks_t* marks)
 }
 
 static inline void
-_update_marks_sync(update_marks_t* marks, MultiDictObject* md)
+update_marks_sync(update_marks_t* marks, MultiDictObject* md)
 {
     if (UNLIKELY(md->keys != marks->updated.keys ||
                  md->version != marks->version)) {
@@ -102,8 +102,8 @@ _bitmap_remap(bitmap_t* bm, entry_t* oldentries, Py_ssize_t oldnentries,
 /* Must run before the resize moves any entry: it reads the old layout,
    and failing here leaves the table untouched. */
 static inline int
-_update_marks_remap(update_marks_t* marks, htkeys_t* oldkeys,
-                    htkeys_t* newkeys, Py_ssize_t newcapacity)
+update_marks_remap(update_marks_t* marks, htkeys_t* oldkeys, htkeys_t* newkeys,
+                   Py_ssize_t newcapacity)
 {
     if (marks == NULL) {
         return 0;

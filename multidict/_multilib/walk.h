@@ -125,7 +125,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
         PyObject* value = Py_NewRef(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
-            key = _md_ensure_key(md, entry);  // last entry access
+            key = md_ensure_key(md, entry);  // last entry access
             if (key == NULL) {
                 Py_DECREF(value);
                 Py_DECREF(identity);
@@ -141,7 +141,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
             assert(PyErr_Occurred());
             return -1;
         }
-        /* _md_ensure_key() and the visitor can both run Python code. */
+        /* md_ensure_key() and the visitor can both run Python code. */
         if (keys != md->keys || version != md->version) {
             PyErr_SetString(PyExc_RuntimeError,
                             "MultiDict is changed during iteration");
@@ -191,7 +191,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (entry->hash != hash) {
             continue;
         }
-        if (!_str_cmp(identity, entry->identity)) {
+        if (!str_cmp(identity, entry->identity)) {
             continue;
         }
 
@@ -208,7 +208,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         PyObject* value = Py_NewRef(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
-            key = _md_ensure_key(md, entry);  // last entry access
+            key = md_ensure_key(md, entry);  // last entry access
             if (key == NULL) {
                 Py_DECREF(value);
                 goto fail;
@@ -222,7 +222,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             assert(PyErr_Occurred());
             goto fail;
         }
-        /* _md_ensure_key() and the visitor can both run Python code. */
+        /* md_ensure_key() and the visitor can both run Python code. */
         if (keys != md->keys || version != md->version) {
             PyErr_SetString(PyExc_RuntimeError,
                             "MultiDict is changed during iteration");
@@ -244,7 +244,7 @@ ALWAYS_INLINE static inline Py_ssize_t
 md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
         md_item_visitor_t visitor, void* user_data)
 {
-    Py_hash_t hash = _unicode_hash(identity);
+    Py_hash_t hash = unicode_hash(identity);
     if (hash == -1) {
         return -1;
     }

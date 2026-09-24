@@ -116,7 +116,7 @@ MultiDict_New(void* state_, Py_ssize_t prealloc_size)
 {
     mod_state* state = (mod_state*)state_;
     MultiDictObject* md =
-        (MultiDictObject*)_md_shell_alloc(state, state->MultiDictType);
+        (MultiDictObject*)md_shell_alloc(state, state->MultiDictType);
     if (md == NULL) {
         return NULL;
     }
@@ -134,7 +134,7 @@ CIMultiDict_New(void* state_, Py_ssize_t prealloc_size)
 {
     mod_state* state = (mod_state*)state_;
     MultiDictObject* md =
-        (MultiDictObject*)_md_shell_alloc(state, state->CIMultiDictType);
+        (MultiDictObject*)md_shell_alloc(state, state->CIMultiDictType);
     if (md == NULL) {
         return NULL;
     }
@@ -159,7 +159,7 @@ MultiDictProxy_New(void* state_, PyObject* arg)
                      Py_TYPE(arg)->tp_name);
         return NULL;
     }
-    MultiDictProxyObject* self = (MultiDictProxyObject*)_md_shell_alloc(
+    MultiDictProxyObject* self = (MultiDictProxyObject*)md_shell_alloc(
         state, state->MultiDictProxyType);
     if (self == NULL) {
         return NULL;
@@ -183,7 +183,7 @@ CIMultiDictProxy_New(void* state_, PyObject* arg)
                      Py_TYPE(arg)->tp_name);
         return NULL;
     }
-    MultiDictProxyObject* self = (MultiDictProxyObject*)_md_shell_alloc(
+    MultiDictProxyObject* self = (MultiDictProxyObject*)md_shell_alloc(
         state, state->CIMultiDictProxyType);
     if (self == NULL) {
         return NULL;
@@ -445,17 +445,17 @@ MultiDict_Unwatch(void* state_, int watcher_id, PyObject* self)
 /* =================== Capsule ==================== */
 
 static void
-capsule_free(MultiDict_CAPI* capi)
+_capsule_free(MultiDict_CAPI* capi)
 {
     PyMem_Free(capi);
 }
 
 static void
-capsule_destructor(PyObject* o)
+_capsule_destructor(PyObject* o)
 {
     MultiDict_CAPI* capi =
         (MultiDict_CAPI*)PyCapsule_GetPointer(o, MultiDict_CAPSULE_NAME);
-    capsule_free(capi);
+    _capsule_free(capi);
 }
 
 static PyObject*
@@ -504,9 +504,9 @@ new_capsule(mod_state* state)
     capi->MultiDict_Unwatch = MultiDict_Unwatch;
 
     PyObject* ret =
-        PyCapsule_New(capi, MultiDict_CAPSULE_NAME, capsule_destructor);
+        PyCapsule_New(capi, MultiDict_CAPSULE_NAME, _capsule_destructor);
     if (ret == NULL) {
-        capsule_free(capi);
+        _capsule_free(capi);
     }
     return ret;
 }

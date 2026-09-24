@@ -37,7 +37,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
            update_marks_t* marks)
 {
     bool found = false;
-    _update_marks_sync(marks, md);
+    update_marks_sync(marks, md);
 
     // See _md_replace() on the retry/deferred-decref shape used here.
     for (;;) {
@@ -61,7 +61,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             entry_t* entry = entries + iter.index;
             if (hash != entry->hash ||
                 bitmap_test(&marks->updated, iter.index) ||
-                !_str_cmp(identity, entry->identity)) {
+                !str_cmp(identity, entry->identity)) {
                 continue;
             }
             if (skip_first) {
@@ -133,7 +133,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                 PyObject* gone_identity = entry->identity;
                 PyObject* gone_key = entry->key;
                 PyObject* gone_value = entry->value;
-                if (_md_del_at_for_upd_deferred(md, iter.slot, entry, defer) <
+                if (md_del_at_for_upd_deferred(md, iter.slot, entry, defer) <
                     0) {
                     goto fail;
                 }
@@ -156,14 +156,14 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         }
         if (stale) {
             /* Whatever moved the table also invalidated the marks. */
-            _update_marks_sync(marks, md);
+            update_marks_sync(marks, md);
             continue;
         }
         break;
     }
 
     if (!found) {
-        if (_md_add_for_upd(md, hash, identity, key, value, marks) < 0) {
+        if (md_add_for_upd(md, hash, identity, key, value, marks) < 0) {
             goto fail;
         }
     }
@@ -178,7 +178,7 @@ static inline int
 _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
           PyObject* key, PyObject* value, update_marks_t* marks)
 {
-    _update_marks_sync(marks, md);
+    update_marks_sync(marks, md);
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
@@ -192,12 +192,12 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         if (hash != entry->hash || bitmap_test(&marks->updated, iter.index)) {
             continue;
         }
-        if (_str_cmp(identity, entry->identity)) {
+        if (str_cmp(identity, entry->identity)) {
             return 0;
         }
     }
 
-    int ret = _md_add_for_upd(md, hash, identity, key, value, marks);
+    int ret = md_add_for_upd(md, hash, identity, key, value, marks);
     marks->version = md->version;
     return ret;
 }
@@ -254,7 +254,7 @@ static inline int
 _md_post_update_deleted(MultiDictObject* md, reflist_t* defer,
                         update_marks_t* marks)
 {
-    _update_marks_sync(marks, md);
+    update_marks_sync(marks, md);
     if (marks->lost) {
         return _md_post_update_sweep(md, defer);
     }
@@ -339,7 +339,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
        we iterate here, a use-after-free.  Reserving up front also lets us
        snapshot the entry count so self-extension does not reprocess the
        entries it just appended. */
-    if (_md_reserve(md, other->used, marks) < 0) {
+    if (md_reserve_for_upd(md, other->used, marks) < 0) {
         return -1;
     }
 
@@ -356,12 +356,12 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
             if (identity == NULL) {
                 goto fail;
             }
-            hash = _unicode_hash(identity);
+            hash = unicode_hash(identity);
             if (hash == -1) {
                 goto fail;
             }
             /* materialize key */
-            key = _md_calc_key(other, entry->key, identity);
+            key = md_calc_key(other, entry->key, identity);
             if (key == NULL) {
                 goto fail;
             }
@@ -379,7 +379,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                 }
                 break;
             case Extend:
-                if (_md_add_with_hash(md, hash, identity, key, entry->value) <
+                if (md_add_with_hash(md, hash, identity, key, entry->value) <
                     0) {
                     goto fail;
                 }
@@ -417,11 +417,11 @@ md_extend_self(MultiDictObject* md)
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         entry_t* entry = entries + pos;
         if (entry->identity != NULL) {
-            if (_md_add_with_hash(md,
-                                  entry->hash,
-                                  entry->identity,
-                                  entry->key,
-                                  entry->value) < 0) {
+            if (md_add_with_hash(md,
+                                 entry->hash,
+                                 entry->identity,
+                                 entry->key,
+                                 entry->value) < 0) {
                 return -1;
             }
         }
@@ -447,7 +447,7 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
         if (identity == NULL) {
             goto fail;
         }
-        Py_hash_t hash = _unicode_hash(identity);
+        Py_hash_t hash = unicode_hash(identity);
         if (hash == -1) {
             goto fail;
         }
@@ -462,7 +462,7 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                 break;
             }
             case Extend: {
-                int tmp = _md_add_with_hash_steal_refs(
+                int tmp = md_add_with_hash_steal_refs(
                     md, hash, identity, key, Py_NewRef(value));
                 if (tmp < 0) {
                     Py_DECREF(value);
@@ -508,14 +508,14 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
             Py_DECREF(key);
             return -1;
         }
-        Py_hash_t hash = _unicode_hash(identity);
+        Py_hash_t hash = unicode_hash(identity);
         if (hash == -1) {
             Py_DECREF(identity);
             Py_DECREF(key);
             return -1;
         }
         PyObject* value = args[nargs + i];  // borrowed
-        if (_md_add_with_hash_steal_refs(
+        if (md_add_with_hash_steal_refs(
                 md, hash, identity, key, Py_NewRef(value)) < 0) {
             Py_DECREF(value);
             Py_DECREF(identity);
@@ -661,7 +661,7 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                 if (i >= PyList_GET_SIZE(seq)) {
                     goto exit;
                 }
-                item = _list_getitem_ref(seq, i);
+                item = list_getitem_ref(seq, i);
                 if (_list_item_gone(item)) {
                     goto fail;
                 }
@@ -697,7 +697,7 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
             goto fail;
         }
 
-        Py_hash_t hash = _unicode_hash(identity);
+        Py_hash_t hash = unicode_hash(identity);
         if (hash == -1) {
             goto fail;
         }
@@ -713,7 +713,7 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                 Py_CLEAR(value);
                 break;
             case Extend:
-                if (_md_add_with_hash_steal_refs(
+                if (md_add_with_hash_steal_refs(
                         md, hash, identity, key, value) < 0) {
                     goto fail;
                 }

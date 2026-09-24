@@ -697,6 +697,15 @@ Design tests so every line runs:
   annotations` to files that do not already use it.
 - Do not add docstrings or comments that just restate the code.
   Match the existing terse style in `_multidict_py.py`.
+- In the `multidict/_multilib/` headers (except the vendored
+  `pythoncapi_compat.h`), a leading underscore on a function name
+  means it is used only within its own header. A function called
+  from another header or from `_multidict.c` has no underscore.
+  Type slots and method callbacks (anything referenced from a
+  `PyType_Slot`, `PyMethodDef` or `PyGetSetDef` table) never get
+  one, even when only their own header uses them. When a change
+  makes a helper cross-file, or leaves it header-local, rename it
+  in the same PR.
 
 ## Things not to do
 

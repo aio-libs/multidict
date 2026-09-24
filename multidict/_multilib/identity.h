@@ -19,7 +19,7 @@ extern "C" {
 #include "state.h"
 
 ALWAYS_INLINE static inline bool
-_str_cmp(PyObject* s1, PyObject* s2)
+str_cmp(PyObject* s1, PyObject* s2)
 {
     /* implementation is borrowed from PyUnicode_Equal() but without
        type checks, arguments are identities that are always strings */
@@ -146,7 +146,7 @@ _ci_str_to_identity(mod_state* state, PyObject* key)
         const Py_UCS1* data = (const Py_UCS1*)PyUnicode_DATA(key);
         if (!_ascii_has_upper(data, len)) {
             /* The key already is its own identity, so reuse it: no copy, and
-               _unicode_hash() gets the key's cached hash instead of hashing
+               unicode_hash() gets the key's cached hash instead of hashing
                a fresh string. */
             return Py_NewRef(key);
         }
@@ -228,7 +228,7 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
     if (identity == NULL) {
         return -1;
     }
-    Py_hash_t hash = _unicode_hash(identity);
+    Py_hash_t hash = unicode_hash(identity);
     if (hash == -1) {
         Py_DECREF(identity);
         return -1;
@@ -239,26 +239,26 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
 }
 
 static inline PyObject*
-_md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
+md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
 {
     if (md->is_ci) return _ci_arg_to_key(md->state, key, identity);
     return _arg_to_key(md->state, key, identity);
 }
 
 static inline PyObject*
-_md_ensure_key(MultiDictObject* md, entry_t* entry)
+md_ensure_key(MultiDictObject* md, entry_t* entry)
 {
     assert(entry >= htkeys_entries(md->keys));
     assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
     if (!md->is_ci || IStr_Check(md->state, entry->key)) {
-        return _md_calc_key(md, entry->key, entry->identity);
+        return md_calc_key(md, entry->key, entry->identity);
     }
     /* Building the istr can run Python code (a str subclass's __str__, a GC
        finalizer) that mutates md and frees entry, so hold our own refs. */
     uint64_t version = md->version;
     PyObject* old_key = Py_NewRef(entry->key);
     PyObject* identity = Py_NewRef(entry->identity);
-    PyObject* key = _md_calc_key(md, old_key, identity);
+    PyObject* key = md_calc_key(md, old_key, identity);
     if (key != NULL && md->version == version) {
         entry->key = Py_NewRef(key);
         Py_DECREF(old_key);
