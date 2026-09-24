@@ -135,10 +135,28 @@ again. It is written to be idempotent: the GitHub Release is only
 created when it does not already exist, PyPI uploads skip what is
 already published, and asset uploads skip files already attached.
 
-A tag that never reached PyPI at all is a different case. Fixing
-whatever broke and folding the fragments merged since into the
-existing changelog section, with the date updated, is how 6.9.1 was
-released; the alternative is burning the version number.
+A tag whose run never published anything at all is a different case,
+and a fix committed afterwards does not inherit the tag: the workflow
+builds what the tagged commit contains, so a branch push or a re-run
+of the old run still publishes the old tree. Land the fix on `master`,
+folding the fragments merged since into the existing changelog section
+and updating its date, then move the tag to the new commit:
+
+```bash
+gh release delete vX.Y.Z --repo aio-libs/multidict  # only if one exists
+git push upstream :refs/tags/vX.Y.Z
+git tag -d vX.Y.Z
+git tag -a vX.Y.Z -m "Release X.Y.Z" <new-commit-sha>
+git push upstream vX.Y.Z
+```
+
+The last push starts a fresh run, which waits for approval like any
+other. This is how 6.9.1 shipped: a second `Release 6.9.1` commit
+superseded the first, and the tag was re-pointed at it.
+
+Reuse a version this way only while it is genuinely absent from PyPI.
+PyPI refuses to replace a file it already has, so once anything is
+published under `X.Y.Z`, a correction costs the next version number.
 
 ## 6. Reopen the development cycle
 

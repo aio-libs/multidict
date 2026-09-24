@@ -615,13 +615,27 @@ release; see [RELEASE.md](RELEASE.md).
 
 What a performance change owes a reviewer instead is a measurement in
 the PR body: which operations moved, by how much, and how you measured
-it. Measure the operations you touched, not the whole table:
+it. Collect a before/after pair per interpreter build the change can
+reach, reinstalling the extension into each virtualenv in between.
+Anything touching atomics, locking or the free-threaded paths means
+both builds:
 
 ```bash
-.venv-gil/bin/python benchmarks/callgrind_driver.py -o before.json
-# apply the change, rebuild
-.venv-gil/bin/python benchmarks/callgrind_driver.py -o after.json
+.venv-gil/bin/python benchmarks/callgrind_driver.py -o gil-before.json
+.venv-ft/bin/python  benchmarks/callgrind_driver.py -o ft-before.json
+# apply the change, then per venv:
+#     <venv>/bin/pip install -e . --force-reinstall --no-deps
+.venv-gil/bin/python benchmarks/callgrind_driver.py -o gil-after.json
+.venv-ft/bin/python  benchmarks/callgrind_driver.py -o ft-after.json
 ```
+
+One run measures every operation in the table; the driver has no flag
+to pick a single one, so narrow the report rather than the run and
+quote the rows that moved. `--impl` restricts it to one
+implementation, and `--include-multidict-only` adds the operations
+`dict` has no counterpart for. Compare a GIL run against a GIL run and
+a free-threaded run against a free-threaded run; the two builds are
+separate baselines, and one is not a control for the other.
 
 The measurement is deterministic, so it does not need a quiet machine;
 it does need Valgrind and one virtualenv per interpreter build, both on
