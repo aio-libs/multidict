@@ -1,0 +1,4 @@
+Sped up lookups on the free-threaded build by comparing the hash before
+touching an entry's key and by matching a key that is the very same
+object as the one looked up without taking a reference to it, so the
+common hit costs two fewer atomic operations -- by :user:`asvetlov`.

@@ -1074,26 +1074,35 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
         }
         entry_t* entry = entries + iter.index;
 
-        PyObject* entry_identity = try_get_ref(&entry->identity);
-        if (entry_identity == NULL) {
-            if (load_identity(entry) == NULL) {
-                continue;  // not populated (or deleted); keep probing
-            }
-            result = 2;  // _MD_NEED_LOCK
-            break;
-        }
-
+        /* Hash first, so a mismatch costs no reference traffic; then a
+           pointer-equal identity is a match outright, since the probe's
+           own reference keeps that object alive and its address cannot
+           be reused. Only a different object needs the reference for
+           the string compare. */
         if (load_hash(entry) != hash) {
-            Py_DECREF(entry_identity);
             continue;
         }
-
-        bool matched = _str_cmp(identity, entry_identity);
-        Py_DECREF(entry_identity);
-        if (matched) {
-            result = 1;
-            break;
+        PyObject* entry_identity = load_identity(entry);
+        if (entry_identity == NULL) {
+            continue;  // not populated (or deleted); keep probing
         }
+        if (entry_identity != identity) {
+            entry_identity = try_get_ref(&entry->identity);
+            if (entry_identity == NULL) {
+                if (load_identity(entry) == NULL) {
+                    continue;
+                }
+                result = 2;  // _MD_NEED_LOCK
+                break;
+            }
+            bool matched = _str_cmp(identity, entry_identity);
+            Py_DECREF(entry_identity);
+            if (!matched) {
+                continue;
+            }
+        }
+        result = 1;
+        break;
     }
 
     _md_reader_exit(md, keys);
@@ -1192,24 +1201,28 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         }
         entry_t* entry = entries + iter.index;
 
-        PyObject* entry_identity = try_get_ref(&entry->identity);
-        if (entry_identity == NULL) {
-            if (load_identity(entry) == NULL) {
-                continue;  // not populated (or deleted); keep probing
-            }
-            result = _MD_NEED_LOCK;  // racing a concurrent change
-            break;
-        }
-
+        /* See _md_contains_lockfree() on the order. */
         if (load_hash(entry) != hash) {
-            Py_DECREF(entry_identity);
             continue;
         }
-
-        bool matched = _str_cmp(identity, entry_identity);
-        Py_DECREF(entry_identity);
-        if (!matched) {
-            continue;
+        PyObject* entry_identity = load_identity(entry);
+        if (entry_identity == NULL) {
+            continue;  // not populated (or deleted); keep probing
+        }
+        if (entry_identity != identity) {
+            entry_identity = try_get_ref(&entry->identity);
+            if (entry_identity == NULL) {
+                if (load_identity(entry) == NULL) {
+                    continue;
+                }
+                result = _MD_NEED_LOCK;  // racing a concurrent change
+                break;
+            }
+            bool matched = _str_cmp(identity, entry_identity);
+            Py_DECREF(entry_identity);
+            if (!matched) {
+                continue;
+            }
         }
 
         PyObject* value = try_get_ref(&entry->value);
