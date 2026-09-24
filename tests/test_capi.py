@@ -970,6 +970,11 @@ def test_a_callback_may_mutate_the_multidict_it_watches(api: object) -> None:
     assert len(md) == 3
 
 
+@pytest.mark.skipif(
+    "free-threading" in sys.version,
+    reason="set_nomemory() swaps the global allocator, which races the "
+    "runtime's own threads on a free-threaded build",
+)
 def test_recording_out_of_memory_reports_one_lost_event(
     watcher: Watcher, monkeypatch: pytest.MonkeyPatch
 ) -> None:
