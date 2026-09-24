@@ -60,8 +60,9 @@ free-threaded (no-GIL) Python as well as the regular GIL build, and their
 performance is in the same ballpark as the built-in :class:`dict`, typically
 within 20-30% for common operations, since :class:`dict` itself benefits
 from per-version interpreter specializations that a third-party type cannot
-hook into. See :doc:`benchmark` for the full, per-operation breakdown on
-both builds.
+hook into. See :doc:`benchmark` for the full per-operation breakdown of the
+C extension on both builds, and the free-threading overhead figures for the
+pure-Python fallback.
 
 Library Installation
 --------------------

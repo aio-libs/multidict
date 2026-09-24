@@ -81,8 +81,9 @@ performance is in the same ballpark as the built-in ``dict``, typically
 within 20-30% for common operations, since ``dict`` itself benefits from
 per-version interpreter specializations that a third-party type cannot hook
 into. See the `benchmarks page
-<https://multidict.aio-libs.org/en/latest/benchmark.html>`_ for the full,
-per-operation breakdown on both builds.
+<https://multidict.aio-libs.org/en/latest/benchmark.html>`_ for the full
+per-operation breakdown of the C extension on both builds, and the
+free-threading overhead figures for the pure-Python fallback.
 
 
 License
