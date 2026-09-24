@@ -68,8 +68,15 @@ CFLAGS = [
     "-DNDEBUG",
     "-std=c11",
     "-fno-strict-aliasing",
-    "-w",
 ]
+
+# A call to a helper that one tree does not declare, such as a --probe
+# written after a rename and compiled against an older --ref, must not
+# build: GCC 13 and older would emit a call to an implicit declaration
+# and report every function as changed.  This cannot be combined with
+# -w, which drops the warning before -Werror= can promote it; warnings
+# are captured instead and shown only when the build fails.
+ERROR_FLAGS = ["-Werror=implicit-function-declaration"]
 
 FUNC_RE = re.compile(r"^[0-9a-f]+ <(.+)>:$")
 CALL_RE = re.compile(r"<([A-Za-z_.][A-Za-z_.0-9]*)(?:\+OFF)?>")
@@ -93,8 +100,24 @@ SUBSTITUTIONS = (
 )
 
 
+class BuildError(Exception):
+    pass
+
+
 def run(cmd, text=True, **kwargs):
     return subprocess.run([str(part) for part in cmd], check=True, text=text, **kwargs)
+
+
+def gcc(args, **kwargs):
+    result = subprocess.run(
+        ["gcc", *ERROR_FLAGS, *(str(arg) for arg in args)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        **kwargs,
+    )
+    if result.returncode:
+        raise BuildError(result.stdout)
 
 
 def export_tree(ref, dest):
@@ -121,9 +144,8 @@ def build_object(tree, python, source, out, keep_static):
         flags.append("-fkeep-static-functions")
     # The package directory is on the include path so that a --probe file
     # kept outside the tree can still say #include "_multilib/....h".
-    run(
+    gcc(
         [
-            "gcc",
             *flags,
             "-I",
             include_dir(python),
@@ -240,11 +262,29 @@ def self_test():
                 path = tmp / f"{label}.c"
                 path.write_text(source + "\n")
                 obj = tmp / f"{label}.o"
-                run(["gcc", "-c", "-fPIC", "-O3", "-w", path, "-o", obj])
+                gcc(["-c", "-fPIC", "-O3", path, "-o", obj])
                 objects.append(obj)
             _, report = compare(*objects)
             expected = name != "unchanged"
             ok = bool(report) is expected
+            failures += not ok
+            print(f"{'ok  ' if ok else 'FAIL'}  {name}")
+
+        # -fpermissive gives GCC 14 and newer the older default, where an
+        # implicit declaration is only a warning, so this also checks
+        # nothing lets it through on a compiler that still accepts it.
+        path = tmp / "undeclared.c"
+        path.write_text("int f(int v) { return undeclared(v); }\n")
+        for name, extra in (
+            ("undeclared call", []),
+            ("undeclared call, -fpermissive", ["-fpermissive"]),
+        ):
+            try:
+                gcc(["-c", "-O3", *extra, path, "-o", tmp / "undeclared.o"])
+            except BuildError:
+                ok = True
+            else:
+                ok = False
             failures += not ok
             print(f"{'ok  ' if ok else 'FAIL'}  {name}")
     return 1 if failures else 0
@@ -335,7 +375,12 @@ def main():
                     source = scratch / probe.name
                     shutil.copyfile(probe, source)
                 objects[label] = tmp / f"{label}.o"
-                build_object(tree, python, source, objects[label], args.keep_static)
+                try:
+                    build_object(tree, python, source, objects[label], args.keep_static)
+                except BuildError as exc:
+                    side = f"--ref {args.ref}" if tree is baseline else "working tree"
+                    print(exc, end="", file=sys.stderr)
+                    sys.exit(f"{label} build ({side}) failed with {python}")
 
             total, report = compare(objects["before"], objects["after"])
             print(f"{python}: {len(report)} of {total} functions differ")

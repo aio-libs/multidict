@@ -1,0 +1,5 @@
+``tools/codegen_diff.py`` now fails with the name of the side that did not
+build when a compared tree does not declare a function the source calls,
+such as a ``--probe`` written after a rename and compiled against an older
+``--ref``; GCC 13 and older used to build it with an implicit declaration
+and report a meaningless difference -- by :user:`asvetlov`.
