@@ -1,0 +1,4 @@
+Made :meth:`~multidict.MultiDict.popitem` in the C extension drop the
+trailing deleted entries it walked over, so that popping every item
+out of a mapping costs linear time rather than quadratic; the
+pure-Python implementation already did this -- by :user:`asvetlov`.

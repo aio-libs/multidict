@@ -1627,6 +1627,13 @@ md_pop_item(MultiDictObject* md)
 
     for (; iter.index != pos; htkeysiter_next(&iter)) {
     }
+    /* The entry is the last live one, so everything from it on is
+       tombstones: drop them, or the next popitem() scans them again and
+       popping n items costs O(n^2). The index slots stay DKIX_DUMMY, as
+       after any delete, the same trim CPython's dict does. Trimmed before
+       the delete's decrefs, which can run a __del__ that suspends the
+       critical section; an add() slipping in then appends at pos. */
+    md->keys->nentries = pos;
     _md_del_at(md, iter.slot, entry);
     store_version(md, next_version(md->state));
     ASSERT_CONSISTENT(md, false);
