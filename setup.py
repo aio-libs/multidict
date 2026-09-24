@@ -8,12 +8,20 @@ NO_EXTENSIONS = bool(os.environ.get("MULTIDICT_NO_EXTENSIONS"))
 DEBUG_BUILD = bool(os.environ.get("MULTIDICT_DEBUG_BUILD"))
 ASAN_BUILD = bool(os.environ.get("MULTIDICT_ASAN_BUILD"))
 TSAN_BUILD = bool(os.environ.get("MULTIDICT_TSAN_BUILD"))
+NO_FREELIST = bool(os.environ.get("MULTIDICT_NO_FREELIST"))
 
 if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
 
 CFLAGS = ["-O0", "-g3", "-UNDEBUG"] if DEBUG_BUILD else ["-O3", "-DNDEBUG"]
 LDFLAGS = []
+
+if NO_FREELIST:
+    # Stops the C extension reusing freed blocks from its module-state
+    # pools. A pooled block never reaches free(), so AddressSanitizer
+    # can neither poison it nor report a use-after-free on it; an ASan
+    # run wants a pass with this set to keep that coverage.
+    CFLAGS.append("-DMULTIDICT_NO_FREELIST")
 
 if platform.system() != "Windows":
     CFLAGS.extend(

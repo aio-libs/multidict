@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include "htkeys.h"
+
 /* State of the _multidict module */
 typedef struct {
     PyTypeObject* IStrType;
@@ -27,6 +29,10 @@ typedef struct {
     PyObject* str_name;
 
     uint64_t global_version;
+
+    /* Raw blocks only, so module_traverse() has nothing to visit here;
+       drained by module_clear(). */
+    pool_t htkeys_pools[HTKEYS_POOL_CLASSES];
 } mod_state;
 
 static inline mod_state*

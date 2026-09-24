@@ -26,6 +26,8 @@ extern "C" {
 #include "update_marks.h"
 #include "walk.h"
 
+#define MD_POOLS(md) ((md)->state->htkeys_pools)
+
 typedef struct _md_pos {
     Py_ssize_t pos;
     uint64_t version;
@@ -212,7 +214,7 @@ _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 }
 
 static inline void
-_md_free_retired(htkeys_t* keys)
+_md_free_retired(pool_t* pools, htkeys_t* keys)
 {
     entry_t* entries = htkeys_entries(keys);
     /* Only md_clear()'s retired tables have live entries to release here:
@@ -224,7 +226,7 @@ _md_free_retired(htkeys_t* keys)
         Py_CLEAR(entries[i].key);
         Py_CLEAR(entries[i].value);
     }
-    htkeys_free(keys);
+    htkeys_free(pools, keys);
 }
 
 static inline void
@@ -254,7 +256,7 @@ _md_drain_retired(MultiDictObject* md)
         htkeys_t* next = t->retired_next;
         if (!readers_active &&
             atomic_load_ssize_acquire(&t->num_readers) == 0) {
-            _md_free_retired(t);
+            _md_free_retired(MD_POOLS(md), t);
         } else {
             t->retired_next = pending_head;
             pending_head = t;
@@ -309,14 +311,14 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     }
     assert(log2_newsize >= HT_LOG_MINSIZE);
 
-    htkeys_t* newkeys = htkeys_new(log2_newsize);
+    htkeys_t* newkeys = htkeys_new(MD_POOLS(md), log2_newsize);
     if (newkeys == NULL) {
         return -1;
     }
 
     htkeys_t* oldkeys = md->keys;
     if (_update_marks_remap(marks, oldkeys, newkeys, newkeys->usable) < 0) {
-        htkeys_free(newkeys);
+        htkeys_free(MD_POOLS(md), newkeys);
         return -1;
     }
     Py_ssize_t numentries = md->used;
@@ -363,7 +365,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     _md_retire(md, oldkeys);
 #else
     if (oldkeys != &empty_htkeys) {
-        htkeys_free(oldkeys);
+        htkeys_free(MD_POOLS(md), oldkeys);
     }
 #endif
 
@@ -476,7 +478,7 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
             log2_newsize = estimate_log2_keysize(minused);
         }
 
-        new_keys = htkeys_new(log2_newsize);
+        new_keys = htkeys_new(MD_POOLS(md), log2_newsize);
         if (new_keys == NULL) return -1;
     }
 
@@ -1991,7 +1993,7 @@ md_clear(MultiDictObject* md)
             Py_CLEAR(entry->value);
         }
     }
-    htkeys_free(old_keys);
+    htkeys_free(MD_POOLS(md), old_keys);
 #endif
     ASSERT_CONSISTENT(md, false);
     return 0;

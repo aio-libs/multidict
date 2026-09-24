@@ -12,6 +12,7 @@ extern "C" {
 
 #include "atomic_helpers.h"
 #include "compiler.h"
+#include "freelist.h"
 
 /* Implementation note.
 identity always has exact PyUnicode_Type type, not a subclass.
@@ -38,6 +39,51 @@ typedef struct entry {
 #define HT_LOG_MINSIZE 3
 #define HT_MINSIZE 8
 #define HT_PERTURB_SHIFT 5
+
+/* Tables are pooled by size class, since a block is reusable only for
+   its own log2_size: every other field of the allocation, down to the
+   width of an index slot, follows from it.
+
+   The ladder runs from the smallest table up to the one a 100-item
+   constructor pre-sizes to. Past that a table is big enough that the
+   allocation is a small part of filling it, and deep enough pools
+   would retain real memory. Depth falls as the class grows for the
+   same reason: the whole ladder full is about 109 KB per interpreter,
+   most of it in the three smallest classes, which are also the ones a
+   dict grown by repeated add() passes through and discards. */
+#define HTKEYS_POOL_MIN_LOG2 HT_LOG_MINSIZE
+#define HTKEYS_POOL_MAX_LOG2 8
+#define HTKEYS_POOL_CLASSES (HTKEYS_POOL_MAX_LOG2 - HTKEYS_POOL_MIN_LOG2 + 1)
+
+static inline void
+htkeys_pools_init(pool_t* pools)
+{
+    static const uint8_t depths[HTKEYS_POOL_CLASSES] = {32, 32, 32, 16, 8, 4};
+    for (int i = 0; i < HTKEYS_POOL_CLASSES; i++) {
+        pool_init(pools + i, depths[i]);
+    }
+}
+
+static inline void
+htkeys_pools_clear(pool_t* pools)
+{
+    for (int i = 0; i < HTKEYS_POOL_CLASSES; i++) {
+        pool_clear(pools + i, PyMem_Free);
+    }
+}
+
+/* NULL for a size class that isn't pooled. empty_htkeys never reaches
+   here: it is never allocated and every htkeys_free() call site guards
+   on it. */
+static inline pool_t*
+_htkeys_pool(pool_t* pools, uint8_t log2_size)
+{
+    assert(log2_size >= HTKEYS_POOL_MIN_LOG2);
+    if (log2_size > HTKEYS_POOL_MAX_LOG2) {
+        return NULL;
+    }
+    return pools + (log2_size - HTKEYS_POOL_MIN_LOG2);
+}
 
 #define HT_LOG_RESUME_SLOTS_MINSIZE 10
 /* Probe steps after perturb is 0 before resume slots are allocated */
@@ -336,7 +382,7 @@ htkeys_sizeof(htkeys_t* keys)
 }
 
 static inline htkeys_t*
-htkeys_new(uint8_t log2_size)
+htkeys_new(pool_t* pools, uint8_t log2_size)
 {
     assert(log2_size >= HT_LOG_MINSIZE);
 
@@ -357,14 +403,15 @@ htkeys_new(uint8_t log2_size)
         log2_bytes = log2_size + 2;
     }
 
-    htkeys_t* keys = NULL;
-    /* TODO: CPython uses freelist of key objects with unicode type
-       and log2_size == PyDict_LOG_MINSIZE */
-    keys = PyMem_Malloc(sizeof(htkeys_t) + ((size_t)1 << log2_bytes) +
-                        sizeof(entry_t) * usable);
+    pool_t* pool = _htkeys_pool(pools, log2_size);
+    htkeys_t* keys = pool == NULL ? NULL : pool_pop(pool);
     if (keys == NULL) {
-        PyErr_NoMemory();
-        return NULL;
+        keys = PyMem_Malloc(sizeof(htkeys_t) + ((size_t)1 << log2_bytes) +
+                            sizeof(entry_t) * usable);
+        if (keys == NULL) {
+            PyErr_NoMemory();
+            return NULL;
+        }
     }
 
     keys->log2_size = log2_size;
@@ -383,14 +430,18 @@ htkeys_new(uint8_t log2_size)
 }
 
 static inline void
-htkeys_free(htkeys_t* dk)
+htkeys_free(pool_t* pools, htkeys_t* dk)
 {
-    /* TODO: CPython uses freelist of key objects with unicode type
-       and log2_size == PyDict_LOG_MINSIZE */
+    /* Always released, never pooled with the block: a pooled block must
+       come back the way htkeys_new() leaves one, and resume_slots is
+       only ever allocated well above the largest pooled class anyway. */
     if (dk->resume_slots != NULL) {
         PyMem_Free(dk->resume_slots);
     }
-    PyMem_Free(dk);
+    pool_t* pool = _htkeys_pool(pools, dk->log2_size);
+    if (pool == NULL || !pool_push(pool, dk)) {
+        PyMem_Free(dk);
+    }
 }
 
 /* Returns the identity's hash, or -1 if hashing raised. */
