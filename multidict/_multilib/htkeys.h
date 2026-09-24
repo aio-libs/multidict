@@ -659,7 +659,9 @@ typedef struct _htkeysiter {
     Py_ssize_t index;
 } htkeysiter_t;
 
-static inline void
+/* Always inlined: left to itself GCC emits it out of line, and then
+   every probe in the extension opens with a call for five stores. */
+ALWAYS_INLINE static inline void
 htkeysiter_init(htkeysiter_t* iter, htkeys_t* keys, Py_hash_t hash)
 {
     iter->keys = keys;
