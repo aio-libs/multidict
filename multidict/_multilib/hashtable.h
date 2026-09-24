@@ -1475,10 +1475,11 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 }
 
 static int
-_md_getall_visit(void* user_data, PyObject* identity, PyObject* key,
-                 PyObject* value)
+_md_getall_visit(void* user_data, PyObject* identity, Py_hash_t hash,
+                 PyObject* key, PyObject* value)
 {
     (void)identity;
+    (void)hash;
     (void)key;  // value-only walk
     if (reflist_push((reflist_t*)user_data, Py_NewRef(value)) < 0) {
         return -1;
@@ -2012,6 +2013,14 @@ static inline int
 md_clear(MultiDictObject* md)
 {
     if (md->keys == NULL || md->keys == &empty_htkeys) {
+#ifdef Py_GIL_DISABLED
+        /* There is nothing to retire, but an earlier drain may have left a
+           table on md->retired for the next one to free, and this clear can
+           be the object's teardown, after which there is no next one. The
+           count is zero by then, since a lock-free reader reaches md through
+           a live reference, so this drain does free it. */
+        _md_drain_retired(md);
+#endif
         return 0;
     }
     store_version(md, next_version(md->state));

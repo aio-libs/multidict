@@ -4,6 +4,7 @@ import contextlib
 import gc
 import operator
 import platform
+import subprocess
 import sys
 import threading
 import time
@@ -28,6 +29,7 @@ from multidict import (
 
 _T = TypeVar("_T")
 IS_PYPY = platform.python_implementation() == "PyPy"
+_C_MODULE = "multidict._multidict"
 
 
 def chained_callable(
@@ -2643,6 +2645,75 @@ def test_reader_exit_drains_retired_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+def test_dealloc_after_clear_drains_retired_thread_safety() -> None:
+    """A multidict dropped right after a clear() that raced reader traffic
+    must still release what the cleared table held. Regression test for
+    aio-libs/multidict#1555.
+
+    md_clear() returned early once md->keys was &empty_htkeys, so a clear()
+    that left its table on md->retired (which the drain does whenever it
+    sees the active-readers gate go nonzero while it holds the list) and
+    was the object's last operation reached deallocation with that table,
+    and the entry references it still owned, never freed: dealloc calls
+    md_clear(), and the reader exits that would otherwise have drained it
+    have all happened by then. Forcing the interleaving needs an
+    artificially widened drain window (see the PR description), so this does
+    not fail on an unfixed build: the last reader's own exit ordinarily
+    drains the table before deallocation. What it does run, many times over,
+    is the shape, so that the drain added at teardown is exercised against a
+    table a reader may still be walking rather than only against an empty
+    list. This is a C-extension-only concern: the pure-Python implementation
+    has no retirement scheme to regress."""
+
+    class Marker:
+        pass
+
+    refs: list[weakref.ReferenceType[Marker]] = []
+
+    def cycle() -> None:
+        d: MultiDict[Marker] = MultiDict()
+        markers = [Marker() for _ in range(50)]
+        refs.extend(weakref.ref(m) for m in markers)
+        for i, m in enumerate(markers):
+            d.add(str(i), m)
+        del markers, i, m
+
+        ready = threading.Event()
+        stop = threading.Event()
+
+        def reader() -> None:
+            for i in range(200):
+                str(i % 50) in d
+            ready.set()
+            while not stop.is_set():
+                for i in range(50):
+                    str(i) in d
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(reader)
+            try:
+                # clear() must not land before the reader has actually
+                # started, so that the gate is nonzero when the drain checks
+                # it; bounded so a reader that died instead fails the test
+                # here rather than blocking the run.
+                assert ready.wait(60)
+                d.clear()
+            finally:
+                # Whatever clear() did, the reader has to be let go, or
+                # leaving the executor's block waits for it forever.
+                stop.set()
+            future.result()
+
+    # Every local of cycle(), the multidict included, dies on return, so
+    # nothing is left to drain md->retired afterwards.
+    for _ in range(50):
+        cycle()
+
+    gc.collect()
+    assert all(r() is None for r in refs)
+
+
+@pytest.mark.c_extension
 def test_drain_retired_retries_after_pushing_back_thread_safety() -> None:
     """A clear() racing reader traffic must release what its table held
     without waiting for another operation on the multidict.
@@ -2658,8 +2729,9 @@ def test_drain_retired_retries_after_pushing_back_thread_safety() -> None:
     interleaving needs an artificially widened drain window (see the PR
     description), so this does not fail on an unfixed build; what it drives,
     many times over, is the shape, a clear() against continuous lock-free
-    reads followed by teardown with no further operation. This is a C-extension-only concern: the pure-Python
-    implementation has no retirement scheme to regress."""
+    reads followed by teardown with no further operation. This is a
+    C-extension-only concern: the pure-Python implementation has no
+    retirement scheme to regress."""
 
     class Marker:
         pass
@@ -3630,3 +3702,40 @@ def test_items_iter_key_str_reinits(
         next(it)
     assert len(d) == 2
     assert d["b"] == "w"
+
+
+@pytest.mark.c_extension
+def test_multidict_refers_to_its_module() -> None:
+    """Every multidict holds a strong reference to ``multidict._multidict``.
+
+    A multidict caches the module state, which is freed with the module
+    object, and `type_clear()` drops the type's own reference to the module.
+    """
+    md: MultiDict[int] = MultiDict()
+    assert any(ref is md for ref in gc.get_referrers(sys.modules[_C_MODULE]))
+
+
+@pytest.mark.c_extension
+def test_multidict_torn_down_with_its_module() -> None:
+    """The final collection can reach the module and the multidicts at once.
+
+    `md_clear()` reads the module state, so a module freed first left it
+    reading freed memory; that crashed the interpreter on exit rather than
+    raising.
+    """
+    script = """
+import gc
+import sys
+
+import multidict
+from multidict import MultiDict
+
+md = MultiDict((f"k{i}", i) for i in range(64))
+cycle = [md, md.items(), iter(md)]
+cycle.append(cycle)
+for name in [n for n in sys.modules if n.startswith("multidict")]:
+    del sys.modules[name]
+del multidict, MultiDict, md, cycle
+gc.collect()
+"""
+    subprocess.run([sys.executable, "-c", script], check=True, timeout=60)

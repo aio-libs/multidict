@@ -34,6 +34,10 @@ typedef struct {
 
     htkeys_t* retired;
 #endif
+
+    /* Strong, and last so the hot fields stay in the first cache line.
+       Keeps `state` addressable through teardown; see mod_state.mod. */
+    PyObject* mod;
 } MultiDictObject;
 
 typedef struct {
@@ -92,6 +96,14 @@ _md_shell_recycle(mod_state* state, PyObject* obj)
     }
     pool_t* pool = _md_pool_for(state, Py_TYPE(obj));
     return pool != NULL && pool_push(pool, obj);
+}
+
+/* Out of line: inlined into a constructor it costs the insert loop more
+   than the call, by pushing the compiler off a better layout. */
+NOINLINE static void
+md_set_module(MultiDictObject* md, PyObject* mod)
+{
+    md->mod = Py_NewRef(mod);
 }
 
 #ifdef __cplusplus
