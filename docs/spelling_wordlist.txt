@@ -20,6 +20,7 @@ backend
 backends
 basename
 benchmarked
+benchmarking
 bugfixes
 bytecode
 Callgrind
