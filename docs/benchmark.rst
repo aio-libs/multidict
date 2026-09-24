@@ -85,7 +85,7 @@ Results
 
 .. code-block:: text
 
-   multidict   6.9.2.dev0 (7e59fec)
+   multidict   6.9.2.dev0 (6e6ac72)
    CPython     3.14.7, GIL and free-threaded builds
    valgrind    3.26.0, callgrind, client-request bracketing
    CPU         Intel(R) Core(TM) Ultra 7 155H
@@ -102,30 +102,30 @@ Results
      - ``CIMultiDict``
      - ``CIMultiDict`` vs ``dict``
    * - ``cls(items)``
-     - 91,347
-     - 44,285
-     - 62,365
+     - 91,427
+     - 44,450
+     - 62,530
      - 0.68x
    * - ``cls()``
      - 569
-     - 590
-     - 730
-     - 1.28x
+     - 609
+     - 749
+     - 1.32x
    * - ``cls(items)``, 20 items
      - 9,257
-     - 4,146
-     - 5,966
-     - 0.64x
+     - 4,163
+     - 5,983
+     - 0.65x
    * - ``d.copy()``
-     - 9,761
-     - 25,458
-     - 25,855
-     - 2.65x
+     - 9,810
+     - 25,462
+     - 25,859
+     - 2.64x
    * - ``d.copy()``, 20 items
      - 1,452
-     - 1,885
-     - 2,282
-     - 1.57x
+     - 1,903
+     - 2,300
+     - 1.58x
    * - ``d[key]``
      - 184
      - 148
@@ -147,13 +147,13 @@ Results
      - 404
      - 1.60x
    * - ``d[key] = v``, new key
-     - 389
+     - 388
      - 388
      - 478
      - 1.23x
    * - ``d.setdefault(key, v)``, new key
      - 585
-     - 504
+     - 505
      - 784
      - 1.34x
    * - ``del d[key]``
@@ -169,15 +169,15 @@ Results
    * - ``d.popitem()``
      - 447
      - 1,092
-     - 2,384
-     - 5.33x
+     - 2,395
+     - 5.36x
    * - ``d.update(other)``, 100 existing keys
-     - 30,692
-     - 37,521
-     - 46,385
+     - 30,716
+     - 37,529
+     - 46,393
      - 1.51x
    * - ``d.clear()``
-     - 4,818
+     - 4,821
      - 7,212
      - 7,469
      - 1.55x
@@ -213,29 +213,29 @@ Results
      - ``CIMultiDict`` vs ``dict``
    * - ``cls(items)``
      - 114,378
-     - 66,605
-     - 83,834
+     - 66,632
+     - 83,861
      - 0.73x
    * - ``cls()``
      - 604
-     - 822
-     - 911
-     - 1.51x
+     - 852
+     - 941
+     - 1.56x
    * - ``cls(items)``, 20 items
      - 11,674
-     - 6,828
-     - 8,517
+     - 6,855
+     - 8,544
      - 0.73x
    * - ``d.copy()``
      - 12,756
-     - 29,790
-     - 30,130
+     - 29,819
+     - 30,160
      - 2.36x
    * - ``d.copy()``, 20 items
      - 1,830
-     - 2,728
-     - 3,068
-     - 1.68x
+     - 2,757
+     - 3,097
+     - 1.69x
    * - ``d[key]``
      - 224
      - 291
@@ -279,12 +279,12 @@ Results
    * - ``d.popitem()``
      - 482
      - 1,245
-     - 2,579
+     - 2,577
      - 5.34x
    * - ``d.update(other)``, 100 existing keys
-     - 38,287
-     - 48,775
-     - 57,803
+     - 38,319
+     - 48,951
+     - 57,823
      - 1.51x
    * - ``d.clear()``
      - 6,732
@@ -327,7 +327,7 @@ Results
      - 1.40x
      - ``d.clear()``
    * - ``MultiDict``
-     - 1.48x
+     - 1.47x
      - 1.14x
      - 1.96x
      - ``d[key]``
@@ -356,65 +356,65 @@ Results
      - ``CIMultiDict``
      - ``MultiDict`` vs the C extension
    * - ``cls(items)``
-     - 2,489,263
-     - 2,729,916
-     - 56.21x
+     - 2,488,662
+     - 2,729,937
+     - 55.99x
    * - ``cls()``
-     - 64,930
-     - 64,978
-     - 110.05x
+     - 64,605
+     - 64,946
+     - 106.08x
    * - ``cls(items)``, 20 items
-     - 330,688
-     - 354,019
-     - 79.76x
+     - 330,310
+     - 353,961
+     - 79.34x
    * - ``d.copy()``
-     - 450,210
-     - 456,754
+     - 450,224
+     - 456,750
      - 17.68x
    * - ``d.copy()``, 20 items
-     - 75,532
+     - 75,510
      - 82,026
-     - 40.07x
+     - 39.68x
    * - ``d[key]``
-     - 7,478
-     - 8,732
-     - 50.42x
+     - 7,483
+     - 8,737
+     - 50.46x
    * - ``d.get(key)``, miss
-     - 7,733
+     - 7,741
      - 8,977
-     - 24.66x
+     - 24.68x
    * - ``key in d``
-     - 7,756
-     - 9,011
-     - 57.84x
+     - 7,762
+     - 9,016
+     - 57.89x
    * - ``d[key] = v``, existing key
-     - 26,204
-     - 27,513
-     - 83.32x
+     - 26,228
+     - 27,539
+     - 83.40x
    * - ``d[key] = v``, new key
-     - 27,104
-     - 28,130
-     - 69.87x
+     - 27,120
+     - 28,153
+     - 69.88x
    * - ``d.setdefault(key, v)``, new key
-     - 34,798
-     - 36,982
-     - 69.00x
+     - 34,833
+     - 37,029
+     - 69.03x
    * - ``del d[key]``
-     - 19,689
+     - 19,684
      - 20,897
-     - 83.25x
+     - 83.23x
    * - ``d.pop(key)``
-     - 15,500
-     - 16,733
-     - 39.97x
+     - 15,495
+     - 16,732
+     - 39.96x
    * - ``d.popitem()``
      - 11,915
      - 13,851
      - 10.91x
    * - ``d.update(other)``, 100 existing keys
-     - 2,050,771
-     - 2,167,666
-     - 54.66x
+     - 2,050,778
+     - 2,167,967
+     - 54.65x
    * - ``d.clear()``
      - 114,191
      - 114,183
@@ -432,9 +432,9 @@ Results
      - 2,494
      - 7.65x
    * - ``iter(d)``
+     - 9,143
      - 9,152
-     - 9,154
-     - 18.45x
+     - 18.43x
 
 .. END GENERATED TABLES
 
@@ -630,5 +630,10 @@ Collect both builds, then render:
 
 That prints the reStructuredText so the numbers can be read before they are
 committed. Add ``--write docs/benchmark.rst`` to replace the block between the
-two marker comments in this file, and commit the result together with the
-change that moved the numbers.
+two marker comments in this file.
+
+The tables are regenerated once per release rather than in every pull request
+that moves performance, since each run shifts every row a little and the churn
+buries the rows that actually changed. A pull request reports the operations it
+moved in its own description; the published tables are refreshed as a step of
+the release procedure, documented in :file:`RELEASE.md`.

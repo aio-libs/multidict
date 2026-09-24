@@ -121,6 +121,7 @@ MultiDict_New(void* state_, Py_ssize_t prealloc_size)
         return NULL;
     }
     md->state = state;
+    md_set_module(md, state->mod);
     if (md_init(md, false, prealloc_size) < 0) {
         Py_CLEAR(md);
         return NULL;
@@ -138,6 +139,7 @@ CIMultiDict_New(void* state_, Py_ssize_t prealloc_size)
         return NULL;
     }
     md->state = state;
+    md_set_module(md, state->mod);
     if (md_init(md, true, prealloc_size) < 0) {
         Py_CLEAR(md);
         return NULL;
@@ -291,9 +293,10 @@ MultiDict_SetItem(void* state_, PyObject* self, PyObject* key, PyObject* value)
 // of `identity`/`key`/`value` for the duration of the visitor call and
 // releases it right after, so none can be freed out from under the visitor
 // even under Py_GIL_DISABLED -- the critical section held for the whole walk
-// also blocks any other thread from mutating `md` in the meantime. The
-// foreach-key form passes the identity computed from `key`, which compares
-// equal to every visited entry's own identity.
+// also blocks any other thread from mutating `md` in the meantime. `hash` is
+// the identity's hash, the one the table stores for the entry. The
+// foreach-key form passes the identity computed from `key`, and its hash,
+// which compare equal to every visited entry's own.
 //
 // `visitor` must not call back into any method on the multidict
 // being walked: both walks compare a version stamped at

@@ -75,6 +75,16 @@ insensitive, e.g.
 
 The library has optional C Extensions for speed.
 
+Both the C extension and the pure-Python fallback are optimized for
+free-threaded (no-GIL) Python as well as the regular GIL build, and their
+performance is in the same ballpark as the built-in ``dict``, typically
+within 20-30% for common operations, since ``dict`` itself benefits from
+per-version interpreter specializations that a third-party type cannot hook
+into. See the `benchmarks page
+<https://multidict.aio-libs.org/en/latest/benchmark.html>`_ for the full
+per-operation breakdown of the C extension on both builds, and the
+free-threading overhead figures for the pure-Python fallback.
+
 
 License
 -------
@@ -102,8 +112,12 @@ e.g.:
 
    $ MULTIDICT_NO_EXTENSIONS=1 pip install multidict
 
-Please note, the pure Python (uncompiled) version is about 20-50 times slower depending on
-the usage scenario!!!
+Please note, the pure Python (uncompiled) version is dramatically slower: the
+`pure-Python backend table
+<https://multidict.aio-libs.org/en/latest/benchmark.html#results>`_ measures
+it at roughly 7 to 80 times more instructions than the C extension, depending
+on the operation. Unless the target platform genuinely cannot build the C
+extension, leave ``MULTIDICT_NO_EXTENSIONS`` unset and let it compile.
 
 For extension development, set the ``MULTIDICT_DEBUG_BUILD`` environment variable to compile
 the extensions in debug mode:

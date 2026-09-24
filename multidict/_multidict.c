@@ -258,6 +258,7 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
         return NULL;
     }
     self->state = state;
+    md_set_module(self, mod);
 
     int ret = _multidict_vectorcall_impl(
         state, self, is_ci, arg, args, nargs, kwnames);
@@ -382,6 +383,7 @@ multidict_copy(MultiDictObject* self)
 
     MultiDictObject* new_md = (MultiDictObject*)ret;
     new_md->state = self->state;
+    md_set_module(new_md, self->mod);
     int clone_ret;
     Py_BEGIN_CRITICAL_SECTION(self);
     clone_ret = md_clone_from_ht(new_md, self);
@@ -669,9 +671,13 @@ multidict_tp_dealloc(MultiDictObject* self)
     Py_TRASHCAN_BEGIN(self, multidict_tp_dealloc)
         PyObject_ClearWeakRefs((PyObject*)self);
     md_clear(self);
+    /* Released last: md_clear() and _md_shell_recycle() both read
+       self->state, which this reference is what keeps addressable. */
+    PyObject* mod = self->mod;
     if (!_md_shell_recycle(self->state, (PyObject*)self)) {
         tp->tp_free((PyObject*)self);
     }
+    Py_XDECREF(mod);
     Py_DECREF(tp);
     Py_TRASHCAN_END  // there should be no code after this
 }
@@ -680,6 +686,7 @@ static int
 multidict_tp_traverse(MultiDictObject* self, visitproc visit, void* arg)
 {
     Py_VISIT(Py_TYPE(self));
+    Py_VISIT(self->mod);
     return md_traverse(self, visit, arg);
 }
 
@@ -810,6 +817,7 @@ multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         return NULL;
     }
     self->state = state;
+    md_set_module(self, mod);
     if (md_init(self, false, 0) < 0) {
         Py_DECREF(self);
         return NULL;
@@ -1987,6 +1995,22 @@ drain_pools(mod_state* state)
     pool_clear(&state->proxy_pool, PyObject_GC_Del);
 }
 
+/* Capacity 0 turns every push into a miss, so nothing is parked after
+   the types are released: a shell parked then would outlive the type
+   the drain needs to free it, and objects still being torn down would
+   have their tables parked in a pool nothing drains again. */
+static void
+close_pools(mod_state* state)
+{
+    for (int i = 0; i < HTKEYS_POOL_CLASSES; i++) {
+        pool_init(state->htkeys_pools + i, 0);
+    }
+    pool_init(&state->view_pool, 0);
+    pool_init(&state->iter_pool, 0);
+    pool_init(&state->md_pool, 0);
+    pool_init(&state->proxy_pool, 0);
+}
+
 /* A warm pool lets an operation run without calling the allocator at
    all, which hides it from a test that injects an allocation failure to
    check the recovery path. Draining first puts that path back in reach.
@@ -2004,6 +2028,7 @@ module_clear(PyObject* mod)
     mod_state* state = get_mod_state(mod);
 
     drain_pools(state);
+    close_pools(state);
 
     Py_CLEAR(state->IStrType);
 
@@ -2056,6 +2081,8 @@ module_exec(PyObject* mod)
     mod_state* state = get_mod_state(mod);
     PyObject* tmp;
     PyObject* tpl = NULL;
+
+    state->mod = mod;
 
     htkeys_pools_init(state->htkeys_pools);
     pool_init(&state->view_pool, POOL_MAX_DEPTH);

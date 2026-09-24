@@ -233,6 +233,7 @@ _md_free_retired(pool_t* pools, htkeys_t* keys)
 NOINLINE static void
 _md_drain_retired_slow(MultiDictObject* md)
 {
+retry:
     if (atomic_load_ssize(&md->num_active_readers) != 0) {
         return;
     }
@@ -278,6 +279,15 @@ _md_drain_retired_slow(MultiDictObject* md)
                 break;
             }
         }
+        /* Pushing back leaves the tables to the reader the gate showed, but
+           that reader can have looked already, between the exchange above
+           and this push-back, and found the list empty. Rereading the gate
+           is what tells the two apart: nonzero means the reader it sees
+           decrements after this read, so after the push-back, and its own
+           drain observes them; zero means nothing else will. Each pass
+           either frees or leaves a reader for that read to find, so this
+           does not spin. */
+        goto retry;
     }
 }
 
@@ -1502,10 +1512,11 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 }
 
 static int
-_md_getall_visit(void* user_data, PyObject* identity, PyObject* key,
-                 PyObject* value)
+_md_getall_visit(void* user_data, PyObject* identity, Py_hash_t hash,
+                 PyObject* key, PyObject* value)
 {
     (void)identity;
+    (void)hash;
     (void)key;  // value-only walk
     if (reflist_push((reflist_t*)user_data, Py_NewRef(value)) < 0) {
         return -1;
@@ -1679,6 +1690,13 @@ md_pop_item(MultiDictObject* md)
                     entry->key,
                     entry->value,
                     NULL);
+    /* The entry is the last live one, so everything from it on is
+       tombstones: drop them, or the next popitem() scans them again and
+       popping n items costs O(n^2). The index slots stay DKIX_DUMMY, as
+       after any delete, the same trim CPython's dict does. Trimmed before
+       the delete's decrefs, which can run a __del__ that suspends the
+       critical section; an add() slipping in then appends at pos. */
+    md->keys->nentries = pos;
     _md_del_at(md, iter.slot, entry);
     store_version(md, next_version(md->state));
     ASSERT_CONSISTENT(md, false);
@@ -2064,6 +2082,29 @@ fail:
 static inline int
 md_traverse(MultiDictObject* md, visitproc visit, void* arg)
 {
+#ifdef Py_GIL_DISABLED
+    /* A table waiting on md->retired still owns its entries' references, so
+       a cycle running through them is invisible to the collector unless they
+       are reported here too. Only md_clear() retires a table with entries
+       left, since _md_resize() zeroes nentries once it has handed ownership
+       to the new table, so nothing is reported twice. Reading the list
+       without the lock is what the walk below already relies on: the
+       collector stops the world, and nothing may block here, since a
+       stopped thread can hold any lock this would take. */
+    for (htkeys_t* t = (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
+         t != NULL;
+         t = t->retired_next) {
+        entry_t* retired_entries = htkeys_entries(t);
+        for (Py_ssize_t pos = 0; pos < t->nentries; pos++) {
+            entry_t* entry = retired_entries + pos;
+            if (entry->identity != NULL) {
+                Py_VISIT(entry->key);
+                Py_VISIT(entry->value);
+            }
+        }
+    }
+#endif
+
     if (md->used == 0) {
         return 0;
     }
@@ -2084,6 +2125,14 @@ static inline int
 md_clear(MultiDictObject* md)
 {
     if (md->keys == NULL || md->keys == &empty_htkeys) {
+#ifdef Py_GIL_DISABLED
+        /* There is nothing to retire, but an earlier drain may have left a
+           table on md->retired for the next one to free, and this clear can
+           be the object's teardown, after which there is no next one. The
+           count is zero by then, since a lock-free reader reaches md through
+           a live reference, so this drain does free it. */
+        _md_drain_retired(md);
+#endif
         return 0;
     }
     store_version(md, next_version(md->state));

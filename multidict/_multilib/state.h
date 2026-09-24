@@ -10,6 +10,12 @@ extern "C" {
 
 /* State of the _multidict module */
 typedef struct {
+    /* The module owning this state, borrowed. Anything caching `state`
+       holds a strong reference to it: type_clear() drops the type's
+       module reference, so the type is no longer enough to keep the
+       state alive. */
+    PyObject* mod;
+
     PyTypeObject* IStrType;
 
     PyTypeObject* MultiDictType;

@@ -289,6 +289,23 @@ class TestMutableMultiDict:
         with pytest.raises(KeyError):
             d.popitem()
 
+    def test_popitem_then_add_reuses_the_tail(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[str]],
+    ) -> None:
+        d = case_sensitive_multidict_class()
+        for i in range(8):
+            d.add(f"key{i}", f"val{i}")
+        del d["key6"]
+        del d["key7"]
+        assert d.popitem() == ("key5", "val5")
+        d.add("new", "val8")
+        assert list(d.items()) == [(f"key{i}", f"val{i}") for i in range(5)] + [
+            ("new", "val8")
+        ]
+        assert d.popitem() == ("new", "val8")
+        assert len(d) == 5
+
     def test_pop(
         self,
         case_sensitive_multidict_class: type[MultiDict[str]],
@@ -787,6 +804,30 @@ class TestCIMutableMultiDict:
 
         with pytest.raises(KeyError):
             d.popitem()
+
+    @pytest.mark.skipif(
+        sys.implementation.name == "pypy",
+        reason="__del__ does not run promptly on PyPy",
+    )
+    def test_popitem_add_from_key_finalizer(
+        self,
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
+    ) -> None:
+        # The popped entry's key is released inside popitem() (the result
+        # carries a fresh istr), so its __del__ mutates the mapping while
+        # popitem() is still tidying up after itself.
+        d = case_insensitive_multidict_class()
+
+        class Key(str):
+            def __del__(self) -> None:
+                d.add("added", "late")
+
+        d.add("a", "1")
+        d.add(Key("b"), "2")
+        assert d.popitem() == ("b", "2")
+        assert list(d.items()) == [("a", "1"), ("added", "late")]
+        assert d.popitem() == ("added", "late")
+        assert list(d.items()) == [("a", "1")]
 
     def test_pop(
         self,

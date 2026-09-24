@@ -1,0 +1,7 @@
+Fixed retired hash tables lingering in the free-threaded build of the C
+extension. A drain that finds a lock-free reader in flight puts the tables
+it holds back for the next drain to run, and the reader it saw could
+already have looked, so nothing was left to free them: they stayed until
+the multidict was next used, and if it was dropped instead, the references
+their entries held were never released. Builds with the GIL enabled emit
+byte-identical code and are unaffected -- by :user:`asvetlov`.
