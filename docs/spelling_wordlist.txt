@@ -69,6 +69,8 @@ Gunicorn
 increfs
 Indices
 init
+initializer
+inlined
 inlining
 inplace
 installable
