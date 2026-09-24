@@ -535,6 +535,13 @@ time, matching CPython's limit.
       :meth:`~str.lower` of your own. ``NULL`` for the events that do not
       concern one key.
 
+   .. c:member:: Py_hash_t hash
+
+      The hash of :c:member:`~MultiDict_WatchInfo.identity`, the one
+      ``multidict`` looked the entry up by, so a watcher keeping its own
+      table can reuse it instead of hashing the key again. ``-1``, which
+      no Python hash ever is, for the events that carry no key.
+
    .. c:member:: PyObject *key
 
       The key as stored. On a :class:`~multidict.CIMultiDict` this may be

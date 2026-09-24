@@ -631,9 +631,9 @@ BATCH_BEGIN = _testcapi.MultiDict_EVENT_BATCH_BEGIN
 BATCH_END = _testcapi.MultiDict_EVENT_BATCH_END
 MAX_WATCHERS = _testcapi.MULTIDICT_MAX_WATCHERS
 
-# Each recorded event is (event, self, user_data, identity, key, value,
-# old_value); `self` is the object except on DEALLOCATED, where it is its
-# address. See record_event() in _testcapi.c.
+# Each recorded event is (event, self, user_data, identity, hash, key,
+# value, old_value); `self` is the object except on DEALLOCATED, where it
+# is its address. See record_event() in _testcapi.c.
 Event = tuple[object, ...]
 
 
@@ -679,7 +679,9 @@ def test_add_returns_the_added_pair(watcher: Watcher) -> None:
     md: MultiDictStr = multidict.MultiDict()
     watcher.watch(md, "ctx")
     md.add("key", "value")
-    assert watcher.drain() == [(ADDED, md, "ctx", "key", "key", "value", None)]
+    assert watcher.drain() == [
+        (ADDED, md, "ctx", "key", hash("key"), "key", "value", None)
+    ]
 
 
 def test_user_data_is_per_watched_multidict(watcher: Watcher) -> None:
@@ -691,7 +693,7 @@ def test_user_data_is_per_watched_multidict(watcher: Watcher) -> None:
     watcher.watch(second, "response-2")
     first.add("Content-Length", "10")
     second.add("Content-Length", "20")
-    assert [(event[2], event[5]) for event in watcher.drain()] == [
+    assert [(event[2], event[6]) for event in watcher.drain()] == [
         ("response-1", "10"),
         ("response-2", "20"),
     ]
@@ -721,7 +723,7 @@ def test_identity_of_a_case_insensitive_key(watcher: Watcher) -> None:
     watcher.watch(md, None)
     md.add("Content-Length", "10")
     (event,) = watcher.drain()
-    assert (event[3], event[4]) == ("content-length", "Content-Length")
+    assert (event[3], event[5]) == ("content-length", "Content-Length")
 
 
 def test_identity_of_a_case_sensitive_key(watcher: Watcher) -> None:
@@ -729,7 +731,25 @@ def test_identity_of_a_case_sensitive_key(watcher: Watcher) -> None:
     watcher.watch(md, None)
     md.add("Content-Length", "10")
     (event,) = watcher.drain()
-    assert (event[3], event[4]) == ("Content-Length", "Content-Length")
+    assert (event[3], event[5]) == ("Content-Length", "Content-Length")
+
+
+def test_hash_is_the_identity_hash(watcher: Watcher) -> None:
+    # The hash multidict looked the entry up by, so on a CIMultiDict it is
+    # the hash of the lowercased identity, not of the key as written.
+    md: CIMultiDictStr = multidict.CIMultiDict()
+    watcher.watch(md, None)
+    md.add("Content-Length", "10")
+    (event,) = watcher.drain()
+    assert (event[4], event[5]) == (hash("content-length"), "Content-Length")
+
+
+def test_an_event_without_a_key_reports_no_hash(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict([("key", "value")])
+    watcher.watch(md, None)
+    md.clear()
+    (event,) = watcher.drain()
+    assert (event[0], event[3], event[4]) == (CLEARED, None, -1)
 
 
 def test_setitem_on_a_new_key_adds(watcher: Watcher) -> None:
@@ -745,8 +765,8 @@ def test_setitem_replaces_the_first_and_deletes_the_rest(watcher: Watcher) -> No
     md["key"] = "three"
     begin, replaced, deleted, end = watcher.drain()
     assert (begin[0], end[0]) == (BATCH_BEGIN, BATCH_END)
-    assert (replaced[0], replaced[5], replaced[6]) == (REPLACED, "three", "one")
-    assert (deleted[0], deleted[5], deleted[6]) == (DELETED, "two", None)
+    assert (replaced[0], replaced[6], replaced[7]) == (REPLACED, "three", "one")
+    assert (deleted[0], deleted[6], deleted[7]) == (DELETED, "two", None)
 
 
 def test_delitem_removes_every_match(watcher: Watcher) -> None:
@@ -914,7 +934,9 @@ def test_dealloc_reports_the_address_not_the_object(watcher: Watcher) -> None:
     # each recorded event holds a reference to `md`, so drain first
     watcher.drain()
     del md
-    assert watcher.drain() == [(DEALLOCATED, address, "ctx", None, None, None, None)]
+    assert watcher.drain() == [
+        (DEALLOCATED, address, "ctx", None, -1, None, None, None)
+    ]
 
 
 def test_a_callback_may_read_the_multidict_it_watches(api: object) -> None:
@@ -1072,7 +1094,9 @@ def test_cython_trampoline_delivers_objects(cy_watcher: Watcher) -> None:
     md: CIMultiDictStr = multidict.CIMultiDict()
     cy_watcher.watch(md, "ctx")
     md.add("Key", "value")
-    assert cy_watcher.drain() == [(ADDED, md, "ctx", "key", "Key", "value", None)]
+    assert cy_watcher.drain() == [
+        (ADDED, md, "ctx", "key", hash("key"), "Key", "value", None)
+    ]
 
 
 def test_cython_trampoline_reports_a_raising_callback(

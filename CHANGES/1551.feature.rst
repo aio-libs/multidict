@@ -5,4 +5,5 @@ differences: the callback is passed two context pointers, one fixed per
 registered callback and one per watched multidict, and events are
 delivered once the operation that produced them has finished rather than
 mid-mutation. The events are multi-value aware, and each one that concerns
-a key carries the identity alongside it -- by :user:`asvetlov`.
+a key carries the identity and its hash alongside it -- by
+:user:`asvetlov`.

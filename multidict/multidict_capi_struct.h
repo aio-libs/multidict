@@ -52,6 +52,9 @@ typedef struct {
     MultiDict_WatchEvent event;
     PyObject* self;
     PyObject* identity;
+    /* hash of `identity`, the one multidict looked the entry up by; -1,
+       which no Python hash ever is, on an event that carries no key. */
+    Py_hash_t hash;
     PyObject* key;
     PyObject* value;
     PyObject* old_value;

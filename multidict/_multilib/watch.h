@@ -74,6 +74,7 @@ _md_watch_deliver(MultiDictObject* md, uint8_t bits, void* const* user_data,
         watchlog_drain(snapshot);
         info.event = MultiDict_EVENT_LOST;
         info.identity = NULL;
+        info.hash = -1;
         info.key = NULL;
         info.value = NULL;
         info.old_value = NULL;
@@ -85,6 +86,7 @@ _md_watch_deliver(MultiDictObject* md, uint8_t bits, void* const* user_data,
             watch_record_t* rec = &block->items[i];
             info.event = (MultiDict_WatchEvent)rec->event;
             info.identity = rec->identity;
+            info.hash = rec->hash;
             info.key = rec->key;
             info.value = rec->value;
             info.old_value = rec->old_value;
@@ -158,32 +160,33 @@ md_watch_flush_if(MultiDictObject* md, bool pending)
 
 COLD static void
 _md_watch_record(MultiDictObject* md, MultiDict_WatchEvent event,
-                 PyObject* identity, PyObject* key, PyObject* value,
-                 PyObject* old_value)
+                 PyObject* identity, Py_hash_t hash, PyObject* key,
+                 PyObject* value, PyObject* old_value)
 {
     if (md->watch->bits == 0) {
         // every watcher unwatched; the record itself lives until dealloc
         return;
     }
-    watchlog_append(&md->watch->log, event, identity, key, value, old_value);
+    watchlog_append(
+        &md->watch->log, event, identity, hash, key, value, old_value);
 }
 
 /* The only thing an unwatched multidict pays: one pointer test per
    mutation, off a field in the same cache line as `keys`. */
 static inline void
 md_watch_record(MultiDictObject* md, MultiDict_WatchEvent event,
-                PyObject* identity, PyObject* key, PyObject* value,
-                PyObject* old_value)
+                PyObject* identity, Py_hash_t hash, PyObject* key,
+                PyObject* value, PyObject* old_value)
 {
     if (UNLIKELY(md->watch != NULL)) {
-        _md_watch_record(md, event, identity, key, value, old_value);
+        _md_watch_record(md, event, identity, hash, key, value, old_value);
     }
 }
 
 static inline void
 md_watch_record_simple(MultiDictObject* md, MultiDict_WatchEvent event)
 {
-    md_watch_record(md, event, NULL, NULL, NULL, NULL);
+    md_watch_record(md, event, NULL, -1, NULL, NULL, NULL);
 }
 
 COLD static int
@@ -237,6 +240,7 @@ md_watch_on_dealloc(MultiDictObject* md)
         info.event = MultiDict_EVENT_DEALLOCATED;
         info.self = (PyObject*)md;
         info.identity = NULL;
+        info.hash = -1;
         info.key = NULL;
         info.value = NULL;
         info.old_value = NULL;

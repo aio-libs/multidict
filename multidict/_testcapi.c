@@ -405,11 +405,12 @@ record_event(void* watcher_data, void* user_data,
     if (self == NULL) {
         return -1;
     }
-    PyObject* item = Py_BuildValue("(iNOOOOO)",
+    PyObject* item = Py_BuildValue("(iNOOnOOO)",
                                    (int)info->event,
                                    self,
                                    (PyObject*)user_data,
                                    _or_none(info->identity),
+                                   (Py_ssize_t)info->hash,
                                    _or_none(info->key),
                                    _or_none(info->value),
                                    _or_none(info->old_value));

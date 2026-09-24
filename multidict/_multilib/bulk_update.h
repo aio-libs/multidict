@@ -85,8 +85,13 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     bitmap_clear(&marks->deleted, iter.index);
                     entry->key = Py_NewRef(key);
                     publish_value(entry, Py_NewRef(value));
-                    md_watch_record(
-                        md, MultiDict_EVENT_ADDED, identity, key, value, NULL);
+                    md_watch_record(md,
+                                    MultiDict_EVENT_ADDED,
+                                    identity,
+                                    hash,
+                                    key,
+                                    value,
+                                    NULL);
                 } else {
                     // old_key/old_value decref deferred: see reflist_t
                     PyObject* old_key = entry->key;
@@ -96,6 +101,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     md_watch_record(md,
                                     MultiDict_EVENT_REPLACED,
                                     identity,
+                                    hash,
                                     key,
                                     value,
                                     old_value);
@@ -122,6 +128,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                 md_watch_record(md,
                                 MultiDict_EVENT_DELETED,
                                 entry->identity,
+                                hash,
                                 entry->key,
                                 entry->value,
                                 NULL);

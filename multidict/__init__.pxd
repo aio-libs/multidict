@@ -30,6 +30,7 @@ cdef extern from "multidict_capi_struct.h":
         MultiDict_WatchEvent event
         PyObject *md "self"
         PyObject *identity
+        Py_hash_t hash
         PyObject *key
         PyObject *value
         PyObject *old_value
@@ -257,8 +258,9 @@ cdef inline Py_ssize_t MultiDict_ForEachKey(MultiDict_CAPI *capi, object self, o
 
 ctypedef int (*MultiDict_CyWatchCallback)(void *watcher_data, void *user_data,
                                           MultiDict_WatchEvent event, PyObject *md,
-                                          object identity, object key,
-                                          object value, object old_value) except -1
+                                          object identity, Py_hash_t hash,
+                                          object key, object value,
+                                          object old_value) except -1
 
 
 cdef struct MultiDict_CyWatcherCtx:
@@ -286,8 +288,9 @@ cdef inline int _cy_watch_trampoline(void *ctx_, void *user_data,
     cdef MultiDict_CyWatcherCtx *ctx = <MultiDict_CyWatcherCtx*>ctx_
     try:
         return ctx.callback(ctx.watcher_data, user_data, info.event,
-                            info.md, _opt(info.identity), _opt(info.key),
-                            _opt(info.value), _opt(info.old_value))
+                            info.md, _opt(info.identity), info.hash,
+                            _opt(info.key), _opt(info.value),
+                            _opt(info.old_value))
     except BaseException as exc:
         PyErr_SetObject(type(exc), exc)
         return -1

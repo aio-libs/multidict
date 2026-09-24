@@ -224,8 +224,8 @@ here::
 
    ctypedef int (*MultiDict_CyWatchCallback)(
        void *watcher_data, void *user_data, MultiDict_WatchEvent event,
-       PyObject *md, object identity, object key, object value,
-       object old_value) except -1
+       PyObject *md, object identity, Py_hash_t hash, object key,
+       object value, object old_value) except -1
 
    cdef struct MultiDict_CyWatcherCtx:
        MultiDict_CyWatchCallback callback
@@ -235,7 +235,9 @@ here::
                                    MultiDict_CyWatcherCtx *ctx) except -1
 
 *identity*, *key*, *value* and *old_value* arrive as ordinary objects,
-``None`` where the C API passes ``NULL``, and the callback may ``raise``:
+``None`` where the C API passes ``NULL``, while *hash* stays the plain
+``Py_hash_t`` the C API passes (``-1`` for an event with no key), and the
+callback may ``raise``:
 ``except -1`` carries the exception out to the trampoline, which hands it
 back for ``multidict`` to report as unraisable.
 
@@ -254,8 +256,8 @@ allocates nothing. A module-level ``cdef`` is the simple way::
 
    cdef int on_change(void *watcher_data, void *user_data,
                       MultiDict_WatchEvent event, PyObject *md,
-                      object identity, object key, object value,
-                      object old_value) except -1:
+                      object identity, Py_hash_t hash, object key,
+                      object value, object old_value) except -1:
        if event == MultiDict_EVENT_DEALLOCATED:
            return 0
        if identity == "content-length":

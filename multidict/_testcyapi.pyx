@@ -275,7 +275,8 @@ cdef int _record_event(void *watcher_data, void *user_data,
         md = <object>info.md
     (<object>watcher_data).append(
         (<int>info.event, md, <object>user_data, _opt_obj(info.identity),
-         _opt_obj(info.key), _opt_obj(info.value), _opt_obj(info.old_value))
+         info.hash, _opt_obj(info.key), _opt_obj(info.value),
+         _opt_obj(info.old_value))
     )
     return 0
 
@@ -329,8 +330,8 @@ cdef MultiDict_CyWatcherCtx _cy_watch_ctx
 
 cdef int _record_event_cy(void *watcher_data, void *user_data,
                           MultiDict_WatchEvent event, PyObject *md,
-                          object identity, object key, object value,
-                          object old_value) except -1:
+                          object identity, Py_hash_t hash, object key,
+                          object value, object old_value) except -1:
     # The one discrimination in here, same as record_event() in
     # _testcapi.c: on DEALLOCATED `md` is at refcount 0, so record its
     # address rather than casting it to an object.
@@ -340,7 +341,7 @@ cdef int _record_event_cy(void *watcher_data, void *user_data,
     else:
         self_ = <object>md
     (<object>watcher_data).append(
-        (<int>event, self_, <object>user_data, identity, key, value,
+        (<int>event, self_, <object>user_data, identity, hash, key, value,
          old_value)
     )
     return 0
@@ -355,8 +356,8 @@ def md_add_watcher_cy(log):
 
 cdef int _raising_event_cy(void *watcher_data, void *user_data,
                            MultiDict_WatchEvent event, PyObject *md,
-                           object identity, object key, object value,
-                           object old_value) except -1:
+                           object identity, Py_hash_t hash, object key,
+                           object value, object old_value) except -1:
     (<object>watcher_data).append(None)
     raise RuntimeError("boom from cy watcher")
 
@@ -377,8 +378,8 @@ DEF MUTATING_WATCHER_ROUNDS = 3
 
 cdef int _mutating_event_cy(void *watcher_data, void *user_data,
                             MultiDict_WatchEvent event, PyObject *md,
-                            object identity, object key, object value,
-                            object old_value) except -1:
+                            object identity, Py_hash_t hash, object key,
+                            object value, object old_value) except -1:
     cdef object log = <object>watcher_data
     log.append(<int>event)
     if event != MultiDict_EVENT_ADDED or len(log) >= MUTATING_WATCHER_ROUNDS:

@@ -31,6 +31,7 @@ typedef struct {
     PyObject* key;
     PyObject* value;
     PyObject* old_value;
+    Py_hash_t hash;
     uint8_t event;
 } watch_record_t;
 
@@ -85,8 +86,8 @@ _watchlog_grow(watchlog_t* log)
  * place of everything recorded. Mirrors update_marks_t's `lost` flag. */
 static inline void
 watchlog_append(watchlog_t* log, MultiDict_WatchEvent event,
-                PyObject* identity, PyObject* key, PyObject* value,
-                PyObject* old_value)
+                PyObject* identity, Py_hash_t hash, PyObject* key,
+                PyObject* value, PyObject* old_value)
 {
     if (UNLIKELY(log->overflowed)) {
         return;
@@ -99,6 +100,7 @@ watchlog_append(watchlog_t* log, MultiDict_WatchEvent event,
     }
     watch_record_t* rec = &log->tail->items[log->tail->count++];
     rec->identity = Py_XNewRef(identity);
+    rec->hash = hash;
     rec->key = Py_XNewRef(key);
     rec->value = Py_XNewRef(value);
     rec->old_value = Py_XNewRef(old_value);
