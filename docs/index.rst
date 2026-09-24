@@ -55,6 +55,15 @@ Other C extensions can build against multidict's own :ref:`C API
 <multidict-capi>` to create and manipulate multidicts directly, or
 :ref:`from Cython <multidict-cyapi>`.
 
+Both the C extension and the pure-Python fallback are optimized for
+free-threaded (no-GIL) Python as well as the regular GIL build, and their
+performance is in the same ballpark as the built-in :class:`dict`, typically
+within 20-30% for common operations, since :class:`dict` itself benefits
+from per-version interpreter specializations that a third-party type cannot
+hook into. See :doc:`benchmark` for the full per-operation breakdown of the
+C extension on both builds, and the free-threading overhead figures for the
+pure-Python fallback.
+
 Library Installation
 --------------------
 
@@ -76,8 +85,11 @@ environment variable, e.g.:
 
    $ MULTIDICT_NO_EXTENSIONS=1 pip install multidict
 
-Please note, Pure Python (uncompiled) version is about 20-50 times slower depending on
-the usage scenario!!!
+Please note, the pure Python (uncompiled) version is dramatically slower: the
+pure-Python backend table in :doc:`benchmark` measures it at roughly 7 to 80
+times more instructions than the C extension, depending on the operation.
+Unless the target platform genuinely cannot build the C extension, leave
+:envvar:`MULTIDICT_NO_EXTENSIONS` unset and let it compile.
 
 
 Source code
