@@ -305,10 +305,26 @@ make doc-spelling
 ```
 
 If it flags a word you actually meant to use, add it to
-`docs/spelling_wordlist.txt` (one word per line, roughly
-alphabetical) in the same commit as the fragment. If it flags
-a typo, fix the typo. Do not paper over real misspellings by
-adding them to the wordlist.
+`docs/spelling_wordlist.txt` (one word per line) in the same
+commit as the fragment. If it flags a typo, fix the typo. Do
+not paper over real misspellings by adding them to the
+wordlist.
+
+The file is kept sorted case-insensitively, so that a word is
+easy to look up and two PRs adding entries do not collide at
+the end of the file. After editing it, re-sort the whole file
+rather than appending:
+
+```bash
+LC_ALL=C sort -f -o docs/spelling_wordlist.txt docs/spelling_wordlist.txt
+```
+
+`-f` is what puts `CPython` next to `cchardet`; `LC_ALL=C`
+keeps the result the same on every machine. The list
+deliberately holds case variants of the same word
+(`Gunicorn` and `gunicorn`, `cChardet` and `cchardet`), since
+the checker matches case, so do not deduplicate with
+`sort -u`.
 
 ### 8. Commit hygiene
 
