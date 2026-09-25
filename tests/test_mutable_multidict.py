@@ -1171,3 +1171,22 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
             break
         n += 1
     assert n > 0
+
+
+@pytest.mark.parametrize("side", ("left", "right"))
+def test_eq_value_mutates_dict(
+    any_multidict_class: type[MultiDict[object]], side: str
+) -> None:
+    class Value:
+        def __eq__(self, other: object) -> bool:
+            target.clear()
+            target.extend((f"k{i}", i) for i in range(100))
+            return True
+
+        __hash__ = None  # type: ignore[assignment]
+
+    lft = any_multidict_class([("a", Value()), ("b", Value())])
+    rht = any_multidict_class([("a", Value()), ("b", Value())])
+    target = lft if side == "left" else rht
+    # The result is unspecified, as for dict; it must just not crash.
+    assert isinstance(lft == rht, bool)
