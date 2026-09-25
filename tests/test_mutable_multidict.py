@@ -1173,6 +1173,18 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
     assert n > 0
 
 
+@pytest.mark.parametrize("method", ["popone", "pop"])
+def test_pop_docstring_matches_behaviour(
+    any_multidict_class: type[MultiDict[str]], method: str
+) -> None:
+    md = any_multidict_class([("a", "1"), ("a", "2")])
+    assert getattr(md, method)("a") == "1"
+    assert list(md.items()) == [("a", "2")]
+    doc = getattr(any_multidict_class, method).__doc__
+    assert doc is not None
+    assert doc.startswith("Remove the first occurrence of key")
+
+
 @pytest.mark.parametrize("side", ("left", "right"))
 def test_eq_value_mutates_dict(
     any_multidict_class: type[MultiDict[object]], side: str

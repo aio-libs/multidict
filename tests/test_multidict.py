@@ -3618,6 +3618,55 @@ def test_unusable_length_hint_is_ignored(
     assert list(md.items()) == [("a", "1")]
 
 
+class _HugeHint:
+    def __init__(self, hint: int) -> None:
+        self.hint = hint
+
+    def __iter__(self) -> Iterator[tuple[str, str]]:
+        return iter([("a", "1")])
+
+    def __length_hint__(self) -> int:
+        return self.hint
+
+
+@pytest.mark.parametrize("method", ("extend", "update", "merge"))
+def test_overflowing_length_hint_is_ignored(
+    any_multidict_class: type[MultiDict[str]], method: str
+) -> None:
+    """A ``__length_hint__`` too large to reserve for without overflowing
+    the size arithmetic is ignored, as ``list.extend()`` ignores it."""
+    md = any_multidict_class([("z", "0")])
+    getattr(md, method)(_HugeHint(sys.maxsize))
+    assert list(md.items()) == [("z", "0"), ("a", "1")]
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize("method", ("extend", "update", "merge"))
+def test_overflowing_length_hint_plus_kwargs_is_ignored(method: str) -> None:
+    """The keyword count is added to the hint without wrapping around.
+
+    C extension only: the pure-Python backend hands the argument to
+    ``list()``, which raises :exc:`MemoryError` for such a hint itself."""
+    md: MultiDict[str] = multidict.MultiDict()
+    getattr(md, method)(_HugeHint(sys.maxsize), b="2")
+    assert list(md.items()) == [("a", "1"), ("b", "2")]
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize("method", ("extend", "update", "merge"))
+@pytest.mark.parametrize(
+    "hint", (sys.maxsize // 3 - 1, sys.maxsize // 8), ids=("largest", "eighth")
+)
+def test_unallocatable_length_hint_raises_memory_error(method: str, hint: int) -> None:
+    """A hint that survives the overflow check still asks for a table whose
+    byte size cannot be represented, which must fail before any shift or
+    sum past the width of ``size_t``."""
+    md = multidict.MultiDict(z="0")
+    with pytest.raises(MemoryError):
+        getattr(md, method)(_HugeHint(hint))
+    assert list(md.items()) == [("z", "0")]
+
+
 @pytest.mark.parametrize(
     "probe",
     ([], ["key"], ["key", "one", "extra"], ["nope", "one"], ["key", "nope"]),

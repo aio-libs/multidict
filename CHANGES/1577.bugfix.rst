@@ -1,0 +1,6 @@
+Fixed ``extend()``, ``update()`` and ``merge()`` of the C extension
+raising :exc:`SystemError` when given an object whose
+``__length_hint__()`` reported close to :data:`sys.maxsize` together
+with keyword arguments, and overflowing the table size computation for
+such a hint; a hint too large to reserve for is ignored, as
+:meth:`list.extend` does -- by :user:`asvetlov`.

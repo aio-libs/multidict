@@ -24,6 +24,20 @@ MultiDict
       >>> d
       <MultiDict ('a': 1, 'b': 2, 'a': 3)>
 
+   .. note::
+
+      ``d[key]``, :meth:`getone` and :meth:`get` silently return the
+      first value and ignore any others. When a key must carry exactly
+      one value, as with security-sensitive HTTP headers such as
+      ``Host``, ``Content-Length`` or ``Authorization``, fetch every value
+      with :meth:`getall` and reject the input unless there is exactly
+      one::
+
+         values = headers.getall('Host')
+         if len(values) != 1:
+             raise ValueError("expected exactly one Host header")
+         host = values[0]
+
    .. method:: len(d)
 
       Return the number of items in multidict *d*.
@@ -152,8 +166,8 @@ MultiDict
 
    .. method:: popone(key[, default])
 
-      If *key* is in the dictionary, remove it and return its the
-      **first** value, else return *default*.
+      If *key* is in the dictionary, remove its **first** occurrence and
+      return the corresponding value, else return *default*.
 
       If *default* is not given and *key* is not in the dictionary, a
       :exc:`KeyError` is raised.

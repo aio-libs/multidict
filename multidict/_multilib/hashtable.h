@@ -336,7 +336,7 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
 static inline int
 _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
 {
-    if (log2_newsize >= SIZEOF_SIZE_T * 8) {
+    if (!htkeys_size_fits(log2_newsize)) {
         PyErr_NoMemory();
         return -1;
     }
@@ -483,6 +483,11 @@ static inline int
 md_reserve_for_upd(MultiDictObject* md, Py_ssize_t extra_size,
                    update_marks_t* marks)
 {
+    if (extra_size > (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
+        /* Only a __length_hint__ can claim this much; ignore it, as
+           list.extend() does, rather than overflow the estimate. */
+        return 0;
+    }
     uint8_t new_size = estimate_log2_keysize(extra_size + md->used);
     if (new_size > md->keys->log2_size) {
         return _md_resize(md, new_size, marks);

@@ -115,7 +115,8 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
         if (s < 0) {
             return -1;
         }
-        size += s;
+        /* size may already hold an arbitrary __length_hint__. */
+        size = s > PY_SSIZE_T_MAX - size ? PY_SSIZE_T_MAX : size + s;
     }
 
     return size;
@@ -1269,13 +1270,13 @@ PyDoc_STRVAR(
 
 PyDoc_STRVAR(
     multidict_popone_doc,
-    "Remove the last occurrence of key and return the corresponding value.\n\n\
+    "Remove the first occurrence of key and return the corresponding value.\n\n\
 If key is not found, default is returned if given, otherwise KeyError is \
 raised.\n");
 
 PyDoc_STRVAR(
     multidict_pop_doc,
-    "Remove the last occurrence of key and return the corresponding value.\n\n\
+    "Remove the first occurrence of key and return the corresponding value.\n\n\
 If key is not found, default is returned if given, otherwise KeyError is \
 raised.\n");
 
