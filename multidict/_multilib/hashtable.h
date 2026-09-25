@@ -1887,8 +1887,24 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
             return 0;
         }
 
-        int cmp =
-            PyObject_RichCompareBool(entry1->value, entry2->value, Py_EQ);
+        PyObject* value1 = entry1->value;
+        PyObject* value2 = entry2->value;
+        int cmp;
+        if (value1 == value2) {
+            cmp = 1;
+        } else if (PyUnicode_CheckExact(value1) &&
+                   PyUnicode_CheckExact(value2)) {
+            cmp = str_cmp(value1, value2);
+        } else {
+            /* A value's __eq__ can mutate either dict and free its keys. */
+            Py_INCREF(value1);
+            Py_INCREF(value2);
+            cmp = PyObject_RichCompareBool(value1, value2, Py_EQ);
+            Py_DECREF(value1);
+            Py_DECREF(value2);
+            lft_entries = htkeys_entries(md->keys);
+            rht_entries = htkeys_entries(other->keys);
+        }
         if (cmp < 0) {
             return -1;
         };

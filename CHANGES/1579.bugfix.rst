@@ -1,0 +1,3 @@
+Fixed a use-after-free in the C extension's ``MultiDict.__eq__``
+when a value's ``__eq__`` mutated either multidict; comparing
+exact :class:`str` values also became faster -- by :user:`asvetlov`.
