@@ -429,14 +429,14 @@ multidict and may read it freely, but it is called after the fact rather
 than at the moment of the change. Events are delivered in the order they
 happened, and everything delivered in one burst belongs to one operation.
 
-At most ``MULTIDICT_MAX_WATCHERS`` (8) watchers can be registered at a
-time, matching CPython's limit.
+At most ``MULTIDICT_MAX_WATCHERS`` (32) watchers can be registered at a
+time.
 
 .. versionadded:: 7.0
 
 .. c:macro:: MULTIDICT_MAX_WATCHERS
 
-   The number of watcher slots, ``8``.
+   The number of watcher slots, ``32``.
 
 .. c:enum:: MultiDict_WatchEvent
 
