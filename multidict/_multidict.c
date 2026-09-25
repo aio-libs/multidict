@@ -1269,13 +1269,13 @@ PyDoc_STRVAR(
 
 PyDoc_STRVAR(
     multidict_popone_doc,
-    "Remove the last occurrence of key and return the corresponding value.\n\n\
+    "Remove the first occurrence of key and return the corresponding value.\n\n\
 If key is not found, default is returned if given, otherwise KeyError is \
 raised.\n");
 
 PyDoc_STRVAR(
     multidict_pop_doc,
-    "Remove the last occurrence of key and return the corresponding value.\n\n\
+    "Remove the first occurrence of key and return the corresponding value.\n\n\
 If key is not found, default is returned if given, otherwise KeyError is \
 raised.\n");
 
