@@ -10,7 +10,6 @@ extern "C" {
 #include <Python.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "../multidict_capi_struct.h"
 #include "compiler.h"
@@ -18,29 +17,57 @@ extern "C" {
 #include "state.h"
 #include "watchlog.h"
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 /* Per-multidict watcher state, allocated on the first MultiDict_Watch()
  * and freed at dealloc. Unwatching only clears the bit: freeing here would
  * mean draining the log, and draining decrefs, which must not happen under
  * the critical section MultiDict_Unwatch() holds.
  *
- * `bits` is the same 8-slot occupancy mask CPython keeps in
- * _ma_watcher_tag, moved in here because with the record heap-allocated it
- * is free here and an in-object copy would be redundant. */
+ * `bits` is the occupancy mask CPython keeps in _ma_watcher_tag, moved in
+ * here because with the record heap-allocated it is free here and an
+ * in-object copy would be redundant.
+ *
+ * `user_data` holds `size` slots, one past the highest watcher ID ever
+ * attached, so a multidict watched through ID 0 alone pays for one slot
+ * rather than MULTIDICT_MAX_WATCHERS. A slot is only meaningful while its
+ * bit is set, which also keeps every set bit below `size`. */
 struct _md_watch {
-    uint8_t bits;
-    void* user_data[MULTIDICT_MAX_WATCHERS];
+    uint32_t bits;
+    int size;
     watchlog_t log;
+    void* user_data[];
 };
+
+static inline int
+_watch_ctz(uint32_t bits)
+{
+    assert(bits != 0);
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_ctz(bits);
+#elif defined(_MSC_VER)
+    unsigned long idx;
+    _BitScanForward(&idx, bits);
+    return (int)idx;
+#else
+    int n = 0;
+    while (!(bits & 1)) {
+        bits >>= 1;
+        n++;
+    }
+    return n;
+#endif
+}
 
 /* Callbacks run here: after the operation finished, outside every lock. */
 static void
-_md_watch_call(mod_state* state, uint8_t bits, void* const* user_data,
+_md_watch_call(mod_state* state, uint32_t bits, void* const* user_data,
                const MultiDict_WatchInfo* info)
 {
-    for (int id = 0; bits != 0; id++, bits = (uint8_t)(bits >> 1)) {
-        if ((bits & 1) == 0) {
-            continue;
-        }
+    for (; bits != 0; bits &= bits - 1) {
+        int id = _watch_ctz(bits);
         MultiDict_WatchCallback callback = state->watchers[id];
         if (callback == NULL) {
             // MultiDict_ClearWatcher() left the bit behind; skip it
@@ -66,16 +93,18 @@ _md_watch_call(mod_state* state, uint8_t bits, void* const* user_data,
    part-way through a bulk operation, so BATCH_BEGIN/BATCH_END pair per
    operation but not per watcher; that is the accepted trade, documented
    under MultiDict_EVENT_BATCH_BEGIN in docs/capi.rst. */
-static uint8_t
+static uint32_t
 _md_watch_recipients(MultiDictObject* md, void** user_data)
 {
-    uint8_t bits = 0;
+    uint32_t bits = 0;
     Py_BEGIN_CRITICAL_SECTION(md);
     if (md->watch != NULL) {
         bits = md->watch->bits;
-        memcpy(user_data,
-               md->watch->user_data,
-               sizeof(void*) * MULTIDICT_MAX_WATCHERS);
+        // only the slots _md_watch_call() will read
+        for (uint32_t rest = bits; rest != 0; rest &= rest - 1) {
+            int id = _watch_ctz(rest);
+            user_data[id] = md->watch->user_data[id];
+        }
     }
     Py_END_CRITICAL_SECTION();
     return bits;
@@ -209,18 +238,27 @@ md_watch_record_simple(MultiDictObject* md, MultiDict_WatchEvent event)
 COLD static int
 md_watch_attach(MultiDictObject* md, int watcher_id, void* user_data)
 {
-    if (md->watch == NULL) {
-        md_watch_t* watch = PyMem_Malloc(sizeof(md_watch_t));
+    Py_BUILD_ASSERT(MULTIDICT_MAX_WATCHERS <= 32);
+    md_watch_t* watch = md->watch;
+    if (watch == NULL || watcher_id >= watch->size) {
+        /* Every access to the record happens under this critical section
+           or in dealloc, so nothing can be holding the old address. */
+        bool fresh = watch == NULL;
+        int size = watcher_id + 1;
+        watch = PyMem_Realloc(
+            watch, sizeof(md_watch_t) + sizeof(void*) * (size_t)size);
         if (watch == NULL) {
             PyErr_NoMemory();
             return -1;
         }
-        watch->bits = 0;
-        memset(watch->user_data, 0, sizeof(watch->user_data));
-        watchlog_init(&watch->log);
+        if (fresh) {
+            watch->bits = 0;
+            watchlog_init(&watch->log);
+        }
+        watch->size = size;
         md->watch = watch;
     }
-    md->watch->bits |= (uint8_t)(1u << watcher_id);
+    md->watch->bits |= 1u << watcher_id;
     md->watch->user_data[watcher_id] = user_data;
     return 0;
 }
@@ -228,10 +266,10 @@ md_watch_attach(MultiDictObject* md, int watcher_id, void* user_data)
 COLD static void
 md_watch_detach(MultiDictObject* md, int watcher_id)
 {
-    if (md->watch == NULL) {
+    if (md->watch == NULL || watcher_id >= md->watch->size) {
         return;
     }
-    md->watch->bits &= (uint8_t)~(1u << watcher_id);
+    md->watch->bits &= ~(1u << watcher_id);
     md->watch->user_data[watcher_id] = NULL;
 }
 

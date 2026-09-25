@@ -1,0 +1,4 @@
+Raised :c:macro:`MULTIDICT_MAX_WATCHERS` from 8 to 32. A watched
+multidict now only reserves room for the watcher IDs it is actually
+watched through, so the higher limit costs no memory until it is used
+-- by :user:`asvetlov`.

@@ -34,7 +34,7 @@ typedef int (*MultiDict_ItemVisitor)(void* user_data, PyObject* identity,
    operation that produced them has finished rather than mid-mutation. See
    docs/capi.rst. */
 
-#define MULTIDICT_MAX_WATCHERS 8
+#define MULTIDICT_MAX_WATCHERS 32
 
 typedef enum {
     MultiDict_EVENT_ADDED = 0,

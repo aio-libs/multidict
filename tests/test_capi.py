@@ -1041,6 +1041,37 @@ def test_add_watcher_runs_out_of_slots(api: object) -> None:
         api.watch_release_refs()
 
 
+def test_every_watcher_slot_gets_its_own_events(api: object) -> None:
+    logs: list[list[Event]] = [[] for _ in range(MAX_WATCHERS)]
+    ids = [api.md_add_watcher(log) for log in logs]
+    try:
+        md: MultiDictStr = multidict.MultiDict()
+        for watcher_id in ids:
+            api.md_watch(watcher_id, md, watcher_id)
+        api.md_unwatch(ids[-1], md)
+        md.add("key", "value")
+        assert [[event[2] for event in log] for log in logs] == [
+            [watcher_id] for watcher_id in ids[:-1]
+        ] + [[]]
+    finally:
+        for watcher_id in ids:
+            api.md_clear_watcher(watcher_id)
+        api.watch_release_refs()
+
+
+def test_unwatch_by_an_id_the_multidict_never_saw(
+    watcher: Watcher, other_watcher: Watcher
+) -> None:
+    # the record only has slots up to the highest ID attached so far
+    assert other_watcher.id > watcher.id
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, "ctx")
+    other_watcher.unwatch(md)
+    md.add("key", "value")
+    assert watcher.kinds() == [ADDED]
+    assert other_watcher.drain() == []
+
+
 @pytest.mark.parametrize("watcher_id", [-1, MAX_WATCHERS, 0])
 def test_unregistered_watcher_id_is_rejected(api: object, watcher_id: int) -> None:
     md: MultiDictStr = multidict.MultiDict()
