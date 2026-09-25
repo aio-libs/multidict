@@ -133,8 +133,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                 PyObject* gone_identity = entry->identity;
                 PyObject* gone_key = entry->key;
                 PyObject* gone_value = entry->value;
-                if (md_del_at_for_upd_deferred(md, iter.slot, entry, defer) <
-                    0) {
+                if (md_half_delete_for_upd(md, entry, defer) < 0) {
                     goto fail;
                 }
                 md_watch_record(md,

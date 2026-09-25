@@ -1235,7 +1235,7 @@ PyDoc_STRVAR(multidict_add_doc,
 
 PyDoc_STRVAR(multidict_copy_doc, "Return a copy of itself.");
 
-PyDoc_STRVAR(multdicit_method_extend_doc,
+PyDoc_STRVAR(multidict_extend_doc,
              "Extend current MultiDict with more values.\n\
 This method must be used instead of update.");
 
@@ -1321,7 +1321,7 @@ static PyMethodDef multidict_methods[] = {
     {"extend",
      (PyCFunction)multidict_extend,
      METH_VARARGS | METH_KEYWORDS,
-     multdicit_method_extend_doc},
+     multidict_extend_doc},
     {"clear", (PyCFunction)multidict_clear, METH_NOARGS, multidict_clear_doc},
     {"setdefault",
      (PyCFunction)multidict_setdefault,
@@ -1370,7 +1370,7 @@ static PyMethodDef multidict_methods[] = {
     {NULL, NULL} /* sentinel */
 };
 
-PyDoc_STRVAR(MultDict_doc, "Dictionary with the support for duplicate keys.");
+PyDoc_STRVAR(multidict_doc, "Dictionary with the support for duplicate keys.");
 
 #ifndef MANAGED_WEAKREFS
 static PyMemberDef multidict_members[] = {
@@ -1385,7 +1385,7 @@ static PyMemberDef multidict_members[] = {
 static PyType_Slot multidict_slots[] = {
     {Py_tp_dealloc, multidict_tp_dealloc},
     {Py_tp_repr, multidict_repr},
-    {Py_tp_doc, (void*)MultDict_doc},
+    {Py_tp_doc, (void*)multidict_doc},
 
     {Py_sq_contains, multidict_sq_contains},
     {Py_mp_length, multidict_mp_len},
@@ -1446,11 +1446,11 @@ cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
 }
 
 PyDoc_STRVAR(
-    CIMultDict_doc,
+    cimultidict_doc,
     "Dictionary with the support for duplicate case-insensitive keys.");
 
 static PyType_Slot cimultidict_slots[] = {
-    {Py_tp_doc, (void*)CIMultDict_doc},
+    {Py_tp_doc, (void*)cimultidict_doc},
     /* The same table as MultiDict, listed again so the descriptors are
        bound to CIMultiDict: CPython's CALL_METHOD_DESCRIPTOR_* guards
        on Py_IS_TYPE(self, descr->d_type) and deopts every call whose
@@ -1695,7 +1695,7 @@ static PyMethodDef multidict_proxy_methods[] = {
     {NULL, NULL} /* sentinel */
 };
 
-PyDoc_STRVAR(MultDictProxy_doc, "Read-only proxy for MultiDict instance.");
+PyDoc_STRVAR(multidict_proxy_doc, "Read-only proxy for MultiDict instance.");
 
 #ifndef MANAGED_WEAKREFS
 static PyMemberDef multidict_proxy_members[] = {
@@ -1710,7 +1710,7 @@ static PyMemberDef multidict_proxy_members[] = {
 static PyType_Slot multidict_proxy_slots[] = {
     {Py_tp_dealloc, multidict_proxy_tp_dealloc},
     {Py_tp_repr, multidict_proxy_repr},
-    {Py_tp_doc, (void*)MultDictProxy_doc},
+    {Py_tp_doc, (void*)multidict_proxy_doc},
 
     {Py_sq_contains, multidict_proxy_sq_contains},
     {Py_mp_length, multidict_proxy_mp_len},
@@ -1794,10 +1794,11 @@ cimultidict_proxy_tp_init(MultiDictProxyObject* self, PyObject* args,
     return 0;
 }
 
-PyDoc_STRVAR(CIMultDictProxy_doc, "Read-only proxy for CIMultiDict instance.");
+PyDoc_STRVAR(cimultidict_proxy_doc,
+             "Read-only proxy for CIMultiDict instance.");
 
 static PyType_Slot cimultidict_proxy_slots[] = {
-    {Py_tp_doc, (void*)CIMultDictProxy_doc},
+    {Py_tp_doc, (void*)cimultidict_proxy_doc},
     {Py_tp_methods, multidict_proxy_methods},  // see cimultidict_slots
     {Py_tp_init, cimultidict_proxy_tp_init},
 #if PY_VERSION_HEX >= 0x030e00f0
