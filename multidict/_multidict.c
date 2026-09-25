@@ -115,7 +115,8 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
         if (s < 0) {
             return -1;
         }
-        size += s;
+        /* size may already hold an arbitrary __length_hint__. */
+        size = s > PY_SSIZE_T_MAX - size ? PY_SSIZE_T_MAX : size + s;
     }
 
     return size;

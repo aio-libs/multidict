@@ -404,6 +404,22 @@ _htkeys_alloc_size(uint8_t log2_size)
             sizeof(entry_t) * usable);
 }
 
+/* Whether _htkeys_alloc_size(log2_size) can be computed without a shift
+   past the width of size_t or a sum past PY_SSIZE_T_MAX. */
+static inline bool
+htkeys_size_fits(uint8_t log2_size)
+{
+    uint8_t log2_bytes = _htkeys_log2_index_bytes(log2_size);
+    if (log2_bytes >= SIZEOF_SIZE_T * 8 - 1) {
+        return false;
+    }
+    size_t index_bytes = (size_t)1 << log2_bytes;
+    size_t usable = (size_t)USABLE_FRACTION((Py_ssize_t)1 << log2_size);
+    return usable <=
+           ((size_t)PY_SSIZE_T_MAX - sizeof(htkeys_t) - index_bytes) /
+               sizeof(entry_t);
+}
+
 /* The same number as _htkeys_alloc_size(keys->log2_size), read back off
    the table rather than recomputed. */
 static inline Py_ssize_t
