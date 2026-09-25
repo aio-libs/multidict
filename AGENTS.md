@@ -55,7 +55,7 @@ Useful entry points:
 | `multidict/_multilib/compiler.h`      | ``UNLIKELY``, ``COLD``, ``ALWAYS_INLINE`` portability macros |
 | `multidict/_multilib/reflist.h`       | ``reflist_t``, collects refs under a lock; drained into a list or decref'd after |
 | `multidict/_multilib/htkeys.h`        | key-storage layout, ``estimate_log2_keysize``                   |
-| `multidict/_multilib/md_debug.h`      | ``ASSERT_CONSISTENT``, ``_md_check_consistency``, ``_md_dump`` (debug only) |
+| `multidict/_multilib/debug.h`         | ``ASSERT_CONSISTENT``, ``_md_check_consistency``, ``_md_dump`` (debug only) |
 | `multidict/_multilib/istr.h`          | C ``istr`` (case-insensitive str)                               |
 | `multidict/_multilib/iter.h`          | views and iterators for the C impl                              |
 | `multidict/_multilib/unpack.h`        | reads a (key, value) pair out of a two-element tuple, list or sequence |
