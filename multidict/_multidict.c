@@ -677,20 +677,6 @@ multidict_tp_dealloc(MultiDictObject* self)
     Py_TRASHCAN_END  // there should be no code after this
 }
 
-static int
-multidict_tp_traverse(MultiDictObject* self, visitproc visit, void* arg)
-{
-    Py_VISIT(Py_TYPE(self));
-    Py_VISIT(self->state->mod);
-    return md_traverse(self, visit, arg);
-}
-
-static int
-multidict_tp_clear(MultiDictObject* self)
-{
-    return md_clear(self);
-}
-
 PyDoc_STRVAR(multidict_getall_doc,
              "Return a list of all values matching the key.");
 
@@ -1415,8 +1401,8 @@ static PyType_Slot multidict_slots[] = {
     {Py_mp_subscript, multidict_mp_subscript},
     {Py_mp_ass_subscript, multidict_mp_as_subscript},
 
-    {Py_tp_traverse, multidict_tp_traverse},
-    {Py_tp_clear, multidict_tp_clear},
+    {Py_tp_traverse, md_traverse},
+    {Py_tp_clear, md_clear},
     {Py_tp_richcompare, multidict_tp_richcompare},
     {Py_tp_iter, multidict_tp_iter},
     {Py_tp_methods, multidict_methods},
