@@ -19,9 +19,12 @@
 #define NOINLINE
 #endif
 
-/* Not initial-exec: it saves a few ns per access, but draws on the small
-   static TLS reserve glibc keeps for dlopen(), and once that is used up
-   the import fails and multidict silently falls back to pure Python. */
+/* Not initial-exec, the TLS model that reaches a variable at a fixed
+   offset from the thread pointer instead of calling __tls_get_addr()
+   (https://www.akkadia.org/drepper/tls.pdf, section 4.3). It saves a few
+   ns per access, but draws on the small static TLS reserve glibc keeps
+   for dlopen(), and once that is used up the import fails and multidict
+   silently falls back to pure Python. */
 #if defined(_MSC_VER)
 #define THREAD_LOCAL __declspec(thread)
 #else
