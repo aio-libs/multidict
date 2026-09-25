@@ -151,7 +151,12 @@ fragment in `CHANGES/`, named `<pr_number>.<category>.rst`. Categories
 Conventions for the fragment body:
 
 - Use the past tense (`Fixed`, `Added`, `Bumped`), since it is read as
-  a "what changed since the previous release" digest.
+  a "what changed since the previous release" digest. Every verb that
+  describes the change is past tense, and the fragment leads with one:
+  `Fixed`, `Added`, `Changed`, `Removed`, `Stopped`, `Deprecated`.
+  "X is now Y", "X now does Y" and "X will ..." are not past tense,
+  even though they describe a finished change; rewrite them around
+  the verb for what changed.
 - Use reStructuredText, not Markdown.
 - Do not include the issue or PR number in the body; towncrier adds
   it automatically from the filename.
@@ -162,8 +167,23 @@ Conventions for the fragment body:
 Example (`CHANGES/1310.bugfix.rst` style):
 
 ```rst
-A segmentation fault that could be triggered when getting an item
-is now fixed -- by :user:`Vizonex`.
+Fixed a segmentation fault that could be triggered when getting an
+item -- by :user:`Vizonex`.
+```
+
+Bad, present tense (an early draft of `CHANGES/1585.bugfix.rst`):
+
+```rst
+A failing watcher callback is now reported with a message naming the
+event, and the unraisable hook's ``object`` is now ``None``.
+```
+
+Good, past tense:
+
+```rst
+Changed the report of a failing watcher callback to name the event,
+and stopped passing the multidict itself to :func:`sys.unraisablehook`,
+whose ``object`` became ``None``.
 ```
 
 Pick the number for the fragment filename as follows:
@@ -732,6 +752,10 @@ Design tests so every line runs:
   refreshed at release time_ above.
 - Do not skip the `CHANGES/` fragment "because the change is
   small". Even a one-line bugfix needs one.
+- Do not write a `CHANGES/` fragment in the present or future
+  tense. Lead with a past-tense verb (`Fixed`, `Added`, `Changed`);
+  "X is now Y" and "X will ..." do not count. See _Add a CHANGES
+  fragment_ above.
 - Do not add `Co-Authored-By` trailers for LLM tools, in either
   commits or the PR body.
 - Do not mix agent-generated scan output, test summaries, or
