@@ -44,7 +44,9 @@ typedef struct {
     // not build one per invocation.
     PyObject* none;
 
+#ifndef Py_GIL_DISABLED
     uint64_t global_version;
+#endif
 
     /* Watcher slots, indexed by the id MultiDict_AddWatcher() hands out.
        Per-interpreter, like CPython's, since module state is. A NULL

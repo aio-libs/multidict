@@ -11,6 +11,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "atomic_helpers.h"
+#include "compiler.h"
 #include "dict.h"
 #include "htkeys.h"
 #include "state.h"
@@ -77,11 +78,34 @@ store_keys(MultiDictObject* md, htkeys_t* keys)
     atomic_store_ptr((void**)&md->keys, keys);
 }
 
-/* Shared across multidicts, so no two ever report the same version. */
+/* Shared across multidicts, so no two ever report the same version.
+   Process-wide rather than in mod_state, so a batch outliving its
+   module state cannot overlap a newer one. Each thread reserves
+   VERSION_BATCH at a time: a fetch-add per mutation bounced one cache
+   line between every mutating thread. Versions stay unique but are
+   unordered across threads, which getversion() never promised. */
+#define VERSION_BATCH 256
+
+static uint64_t global_version;
+static THREAD_LOCAL uint64_t version_next;
+static THREAD_LOCAL uint64_t version_end;
+
+static COLD void
+_refill_versions(void)
+{
+    version_next =
+        atomic_fetch_add_uint64_relaxed(&global_version, VERSION_BATCH);
+    version_end = version_next + VERSION_BATCH;
+}
+
 static inline uint64_t
 next_version(mod_state* state)
 {
-    return atomic_fetch_add_uint64_relaxed(&state->global_version, 1) + 1;
+    (void)state;
+    if (UNLIKELY(version_next == version_end)) {
+        _refill_versions();
+    }
+    return ++version_next;
 }
 
 static inline PyObject*

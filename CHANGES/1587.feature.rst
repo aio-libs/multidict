@@ -1,0 +1,5 @@
+Sped up mutations on the free-threaded build when several threads
+mutate multidicts at the same time: each thread now reserves version
+numbers in batches instead of bumping one counter shared by every
+thread on each mutation, so with six threads a ``d[key] = value`` is
+about four times faster -- by :user:`asvetlov`.

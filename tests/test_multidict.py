@@ -2548,10 +2548,11 @@ def test_version_thread_safety() -> None:
     the same version number twice.
 
     Regression test for a version-counter race: every mutation derives
-    its instance's version from ``state->global_version``, a counter
-    shared by every ``MultiDict``/``CIMultiDict`` instance in the process
-    (it lives on the module state, not the object), so unrelated
-    multidicts can be compared and always disagree. Bumping that shared
+    its instance's version from ``global_version``, a counter shared by
+    every ``MultiDict``/``CIMultiDict`` instance in the process (not the
+    object), so unrelated multidicts can be compared and always
+    disagree. On free-threaded builds each thread now reserves a batch
+    of versions from it, and batches must not overlap. Bumping that shared
     counter used to be a plain ``++`` with no synchronization of its own,
     relying entirely on each instance's own critical section; under a
     free-threaded build, two threads mutating two *different* instances
