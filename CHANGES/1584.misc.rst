@@ -1,0 +1,4 @@
+Reordered the fields of the C extension's multidict object so the ones a
+lookup reads share a cache line, and dropped its separate module
+reference in favor of the one the module state already holds, which
+made every multidict 16 bytes smaller -- by :user:`asvetlov`.
