@@ -14,12 +14,12 @@ extern "C" {
 
 #include "bitmap.h"
 #include "compiler.h"
+#include "debug.h"
 #include "dict.h"
 #include "freethreading.h"
 #include "hashtable.h"
 #include "htkeys.h"
 #include "identity.h"
-#include "md_debug.h"
 #include "reflist.h"
 #include "unpack.h"
 #include "update_marks.h"

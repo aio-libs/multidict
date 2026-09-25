@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
+#include "debug.h"
 #include "dict.h"
 #include "hashtable.h"
-#include "md_debug.h"
 #include "state.h"
 #include "unpack.h"
 
