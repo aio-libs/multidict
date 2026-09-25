@@ -818,3 +818,131 @@ callback, many watched multidicts, each carrying whatever owns it.
        return MultiDict_Watch(state->capi, state->watcher_id,
                               resp->headers, resp);
    }
+
+Invalidating a cache
+--------------------
+
+A watcher that guards something derived from a multidict only needs the
+first change after the cache was filled. Unwatch from inside the
+callback and watch again on the next rebuild, so mutations made while
+the cache is already empty cost nothing, and a multidict that keeps
+changing costs one event per rebuild. Counting rebuild attempts lets a
+cache that is thrown away every time stop trying, which is how
+CPython's JIT treats a module's globals once they have changed a few
+times.
+
+An event goes to whoever is watching when the operation finishes, not
+to whoever was watching when the change was made. So it can reach a
+rebuild that already saw its change, even under the GIL, since
+``parse()`` running Python code lets another thread mutate the
+multidict in the middle of it. The cache therefore records the version
+it was built from. The callback discards only a cache the multidict
+has moved past, and leaves the watch alone while a rebuild owns it, so
+a cached value always has a watch that will clear it.
+
+On the free-threaded build the callback also runs truly concurrently
+with the rebuild, so the fields need a lock of their own. Under the GIL
+nothing between the version check and the store runs Python code, so
+the GIL already makes that stretch atomic and the lock compiles away.
+One source serves both builds, the way a wheel for each is built.
+
+::
+
+   #define MAX_REBUILDS 8
+
+   #ifdef Py_GIL_DISABLED
+   #  define CACHE_LOCK(c) PyMutex_Lock(&(c)->lock)
+   #  define CACHE_UNLOCK(c) PyMutex_Unlock(&(c)->lock)
+   #else
+   #  define CACHE_LOCK(c) ((void)(c))
+   #  define CACHE_UNLOCK(c) ((void)(c))
+   #endif
+
+   typedef struct {
+       PyObject *headers;  /* strong; unwatched before it is released */
+   #ifdef Py_GIL_DISABLED
+       PyMutex lock;       /* guards the fields below */
+   #endif
+       PyObject *parsed;   /* derived from headers, or NULL */
+       uint64_t version;   /* the headers version parsed was built from */
+       int rebuilds;
+       bool rebuilding;
+   } cached;
+
+   static int
+   on_change(void *watcher_data, void *user_data,
+             const MultiDict_WatchInfo *info)
+   {
+       my_mod_state *state = (my_mod_state *)watcher_data;
+       cached *c = (cached *)user_data;
+       if (info->event == MultiDict_EVENT_BATCH_BEGIN ||
+           info->event == MultiDict_EVENT_BATCH_END) {
+           /* A bracket alone changes nothing: an empty update() sends one. */
+           return 0;
+       }
+       PyObject *old = NULL;
+       int ret = 0;
+       CACHE_LOCK(c);
+       if (c->parsed == NULL ||
+           MultiDict_GetVersion(state->capi, info->self) != c->version) {
+           old = c->parsed;
+           c->parsed = NULL;
+           if (!c->rebuilding) {
+               /* Takes effect at once: the rest of this operation never
+                  arrives. */
+               ret = MultiDict_Unwatch(state->capi, state->watcher_id,
+                                       info->self);
+           }
+       }
+       CACHE_UNLOCK(c);
+       Py_XDECREF(old);
+       return ret;
+   }
+
+   static PyObject *
+   get_parsed(my_mod_state *state, cached *c)
+   {
+       CACHE_LOCK(c);
+       PyObject *parsed = Py_XNewRef(c->parsed);
+       bool rebuild =
+           parsed == NULL && !c->rebuilding && c->rebuilds < MAX_REBUILDS;
+       if (rebuild) {
+           /* Counted whether or not the result ends up cached. */
+           c->rebuilds++;
+           c->rebuilding = true;
+       }
+       CACHE_UNLOCK(c);
+       if (parsed != NULL) {
+           return parsed;
+       }
+       if (!rebuild) {
+           /* Changing too often, or another thread is rebuilding. */
+           return parse(c->headers);
+       }
+
+       /* Read before watching, so any change the result misses moves the
+          version past it. */
+       uint64_t version = MultiDict_GetVersion(state->capi, c->headers);
+       if (MultiDict_Watch(state->capi, state->watcher_id, c->headers, c) == 0) {
+           parsed = parse(c->headers);
+       }
+       PyObject *exc_type = NULL, *exc_value = NULL, *exc_tb = NULL;
+       if (parsed == NULL) {
+           PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
+       }
+       CACHE_LOCK(c);
+       if (parsed == NULL) {
+           /* Nothing to invalidate, so stop listening. */
+           (void)MultiDict_Unwatch(state->capi, state->watcher_id,
+                                   c->headers);
+       } else if (MultiDict_GetVersion(state->capi, c->headers) == version) {
+           c->parsed = Py_NewRef(parsed);
+           c->version = version;
+       }
+       c->rebuilding = false;
+       CACHE_UNLOCK(c);
+       if (parsed == NULL) {
+           PyErr_Restore(exc_type, exc_value, exc_tb);
+       }
+       return parsed;
+   }
