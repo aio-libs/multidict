@@ -370,10 +370,6 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
             if (key == NULL) {
                 goto fail;
             }
-            entries = htkeys_entries(other->keys);
-            if (nentries > other->keys->nentries) {
-                nentries = other->keys->nentries;
-            }
         } else {
             identity = entry->identity;
             hash = entry->hash;
@@ -402,6 +398,12 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
             Py_CLEAR(identity);
             Py_CLEAR(key);
             Py_CLEAR(value);
+            /* Both lower() and a finalizer run by the decrefs above can
+               replace other's table. */
+            entries = htkeys_entries(other->keys);
+            if (nentries > other->keys->nentries) {
+                nentries = other->keys->nentries;
+            }
         }
     }
     return 0;
