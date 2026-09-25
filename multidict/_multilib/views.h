@@ -1196,17 +1196,7 @@ static PyMethodDef multidict_itemsview_methods[] = {
     {NULL, NULL} /* sentinel */
 };
 
-static inline PyObject*
-multidict_view_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwargs)
-{
-    PyErr_Format(PyExc_TypeError,
-                 "cannot create '%s' instances directly",
-                 type->tp_name);
-    return NULL;
-}
-
 static PyType_Slot multidict_itemsview_slots[] = {
-    {Py_tp_new, multidict_view_tp_new},
     {Py_tp_dealloc, multidict_view_tp_dealloc},
     {Py_tp_repr, multidict_itemsview_tp_repr},
 
@@ -1228,11 +1218,8 @@ static PyType_Slot multidict_itemsview_slots[] = {
 static PyType_Spec multidict_itemsview_spec = {
     .name = "multidict._multidict._ItemsView",
     .basicsize = sizeof(_Multidict_ViewObject),
-    .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a0000
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
-              | Py_TPFLAGS_HAVE_GC),
+    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE |
+              Py_TPFLAGS_DISALLOW_INSTANTIATION | Py_TPFLAGS_HAVE_GC),
     .slots = multidict_itemsview_slots,
 };
 
@@ -1848,7 +1835,6 @@ static PyMethodDef multidict_keysview_methods[] = {
 };
 
 static PyType_Slot multidict_keysview_slots[] = {
-    {Py_tp_new, multidict_view_tp_new},
     {Py_tp_dealloc, multidict_view_tp_dealloc},
     {Py_tp_repr, multidict_keysview_tp_repr},
 
@@ -1870,11 +1856,8 @@ static PyType_Slot multidict_keysview_slots[] = {
 static PyType_Spec multidict_keysview_spec = {
     .name = "multidict._multidict._KeysView",
     .basicsize = sizeof(_Multidict_ViewObject),
-    .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a0000
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
-              | Py_TPFLAGS_HAVE_GC),
+    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE |
+              Py_TPFLAGS_DISALLOW_INSTANTIATION | Py_TPFLAGS_HAVE_GC),
     .slots = multidict_keysview_slots,
 };
 
@@ -1927,7 +1910,6 @@ static PyMethodDef multidict_valuesview_methods[] = {
 };
 
 static PyType_Slot multidict_valuesview_slots[] = {
-    {Py_tp_new, multidict_view_tp_new},
     {Py_tp_dealloc, multidict_view_tp_dealloc},
     {Py_tp_repr, multidict_valuesview_tp_repr},
 
@@ -1943,11 +1925,8 @@ static PyType_Slot multidict_valuesview_slots[] = {
 static PyType_Spec multidict_valuesview_spec = {
     .name = "multidict._multidict._ValuesView",
     .basicsize = sizeof(_Multidict_ViewObject),
-    .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a0000
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
-              | Py_TPFLAGS_HAVE_GC),
+    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE |
+              Py_TPFLAGS_DISALLOW_INSTANTIATION | Py_TPFLAGS_HAVE_GC),
     .slots = multidict_valuesview_slots,
 };
 

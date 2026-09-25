@@ -3398,21 +3398,15 @@ def test_view_direct_instantiation_segfault() -> None:
     This test only applies to the C extension implementation.
     """
     # Test that _ItemsView cannot be instantiated directly
-    with pytest.raises(
-        TypeError, match="cannot create '.*_ItemsView' instances directly"
-    ):
+    with pytest.raises(TypeError, match="cannot create '.*_ItemsView' instances"):
         multidict._ItemsView()  # type: ignore[attr-defined]
 
     # Test that _KeysView cannot be instantiated directly
-    with pytest.raises(
-        TypeError, match="cannot create '.*_KeysView' instances directly"
-    ):
+    with pytest.raises(TypeError, match="cannot create '.*_KeysView' instances"):
         multidict._KeysView()  # type: ignore[attr-defined]
 
     # Test that _ValuesView cannot be instantiated directly
-    with pytest.raises(
-        TypeError, match="cannot create '.*_ValuesView' instances directly"
-    ):
+    with pytest.raises(TypeError, match="cannot create '.*_ValuesView' instances"):
         multidict._ValuesView()  # type: ignore[attr-defined]
 
 
@@ -3526,10 +3520,22 @@ def test_iter_direct_instantiation_segfault() -> None:
         ("values", "_valuesiter"),
     ):
         iter_type = type(iter(getattr(md, view_name)()))
-        with pytest.raises(
-            TypeError, match=f"cannot create '.*{iter_name}' instances directly"
-        ):
+        with pytest.raises(TypeError, match=f"cannot create '.*{iter_name}' instances"):
+            iter_type()
+        # 3.10 refuses this in object.__new__'s safety check instead
+        with pytest.raises(TypeError, match=iter_name):
             iter_type.__new__(iter_type)  # type: ignore[call-overload]
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize("view_name", ["keys", "items", "values"])
+@pytest.mark.parametrize("iterate", [False, True], ids=["view", "iter"])
+def test_view_and_iter_types_are_final(view_name: str, iterate: bool) -> None:
+    obj = getattr(multidict.MultiDict(), view_name)()
+    if iterate:
+        obj = iter(obj)
+    with pytest.raises(TypeError, match="is not an acceptable base type"):
+        type("Sub", (type(obj),), {})
 
 
 @pytest.mark.c_extension
