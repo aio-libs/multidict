@@ -1,0 +1,3 @@
+Spelled out in ``AGENTS.md`` that every verb in a news fragment is
+past tense, and added a bad and good example pair plus a matching
+"Things not to do" entry -- by :user:`asvetlov`.
