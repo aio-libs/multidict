@@ -1,0 +1,2 @@
+Merged the duplicated ``__init__()`` bodies of the C ``MultiDict`` and
+``CIMultiDict`` into one helper -- by :user:`asvetlov`.

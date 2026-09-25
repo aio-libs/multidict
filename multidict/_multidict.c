@@ -698,20 +698,21 @@ PyDoc_STRVAR(multidict_values_doc,
 
 /******************** MultiDict ********************/
 
-static int
-multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
+ALWAYS_INLINE static inline int
+_multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds,
+                   bool is_ci)
 {
     mod_state* state = self->state;
     PyObject* arg = NULL;
-    Py_ssize_t size =
-        _multidict_extend_parse_args(state, args, kwds, "MultiDict", &arg);
+    Py_ssize_t size = _multidict_extend_parse_args(
+        state, args, kwds, is_ci ? "CIMultiDict" : "MultiDict", &arg);
     if (size < 0) {
         goto fail;
     }
     if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
     }
-    int tmp = _multidict_clone_fast(state, self, false, arg, kwds);
+    int tmp = _multidict_clone_fast(state, self, is_ci, arg, kwds);
     if (tmp < 0) {
         goto fail;
     } else if (tmp == 1) {
@@ -724,7 +725,7 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_init(self, false, size);
+        ret = md_init(self, is_ci, size);
         if (ret == 0) {
             ret = md_update_from_ht(self, other, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
@@ -738,7 +739,7 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_init(self, false, size);
+        ret = md_init(self, is_ci, size);
         if (ret == 0) {
             ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
@@ -752,7 +753,7 @@ multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_init(self, false, size);
+        ret = md_init(self, is_ci, size);
         if (ret == 0) {
             if (other != NULL) {
                 ret = md_extend_self(self);
@@ -778,6 +779,12 @@ done:
 fail:
     Py_CLEAR(arg);
     return -1;
+}
+
+static int
+multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
+{
+    return _multidict_tp_init(self, args, kwds, false);
 }
 
 static PyObject*
@@ -1451,83 +1458,7 @@ cimultidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 static int
 cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
-    mod_state* state = self->state;
-    PyObject* arg = NULL;
-    Py_ssize_t size =
-        _multidict_extend_parse_args(state, args, kwds, "CIMultiDict", &arg);
-    if (size < 0) {
-        goto fail;
-    }
-    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
-        goto fail;
-    }
-    int tmp = _multidict_clone_fast(state, self, true, arg, kwds);
-    if (tmp < 0) {
-        goto fail;
-    } else if (tmp == 1) {
-        goto done;
-    }
-    MultiDictObject* other = _multidict_resolve_other(state, arg);
-    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
-    int ret;
-    bool flush;
-    if (other != NULL && other != self) {
-        Py_BEGIN_CRITICAL_SECTION2(self, other);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_init(self, true, size);
-        if (ret == 0) {
-            ret = md_update_from_ht(self, other, Extend, NULL, NULL);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
-            }
-            ASSERT_CONSISTENT(self, false);
-        }
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION2();
-    } else if (arg_is_dict) {
-        Py_BEGIN_CRITICAL_SECTION2(self, arg);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_init(self, true, size);
-        if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
-            }
-            ASSERT_CONSISTENT(self, false);
-        }
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION2();
-    } else {
-        Py_BEGIN_CRITICAL_SECTION(self);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_init(self, true, size);
-        if (ret == 0) {
-            if (other != NULL) {
-                ret = md_extend_self(self);
-            } else if (arg != NULL) {
-                ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
-            }
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
-            }
-            ASSERT_CONSISTENT(self, false);
-        }
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION();
-    }
-    md_watch_flush_if(self, flush);
-    if (ret < 0) {
-        goto fail;
-    }
-done:
-    Py_CLEAR(arg);
-    return 0;
-fail:
-    Py_CLEAR(arg);
-    return -1;
+    return _multidict_tp_init(self, args, kwds, true);
 }
 
 PyDoc_STRVAR(
