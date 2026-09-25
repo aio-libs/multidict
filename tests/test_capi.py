@@ -1112,7 +1112,35 @@ def test_a_failing_callback_is_reported_as_unraisable(
     api.watch_release_refs()
     assert md["a"] == "1"  # the mutation still happened
     assert log == [None]  # the callback did run
-    assert len(unraisable) == 1
+    [report] = unraisable
+    assert report.exc_type is RuntimeError
+    # named, not passed: the hook would repr() it, running arbitrary code
+    assert report.object is None
+    assert report.err_msg == (
+        "Exception ignored in MultiDict_EVENT_ADDED watcher callback for "
+        f"<multidict._multidict.MultiDict object at {id(md):#x}>"
+    )
+
+
+def test_a_failing_dealloc_callback_names_the_dead_multidict(
+    api: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unraisable: list[object] = []
+    monkeypatch.setattr(sys, "unraisablehook", unraisable.append)
+    log: list[Event] = []
+    watcher_id = api.md_add_failing_watcher(log)
+    md: CIMultiDictStr = multidict.CIMultiDict()
+    api.md_watch(watcher_id, md, None)
+    address = id(md)
+    del md
+    api.md_clear_watcher(watcher_id)
+    api.watch_release_refs()
+    [report] = unraisable
+    assert report.object is None
+    assert report.err_msg == (
+        "Exception ignored in MultiDict_EVENT_DEALLOCATED watcher callback for "
+        f"<multidict._multidict.CIMultiDict object at {address:#x}>"
+    )
 
 
 def test_a_callback_that_unwatches_gets_no_further_events(api: object) -> None:

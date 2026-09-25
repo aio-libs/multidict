@@ -587,11 +587,12 @@ time.
    :c:type:`MultiDict_ItemVisitor`, the callback drives no walk.
 
    A failure cannot be propagated, because the mutation it describes has
-   already happened and cannot be undone. ``multidict`` reports it with
-   `PyErr_WriteUnraisable()
-   <https://docs.python.org/3/c-api/exceptions.html#c.PyErr_WriteUnraisable>`_
-   and carries on delivering the remaining events. This is CPython's rule
-   for dict watchers too.
+   already happened and cannot be undone. ``multidict`` reports it to
+   :func:`sys.unraisablehook` and carries on delivering the remaining
+   events. This is CPython's rule for dict watchers too, and so is the
+   report's shape: the message names the event and *self*'s type and
+   address, and the hook's ``object`` is ``None``, since formatting
+   *self* could run arbitrary code.
 
    The callback runs with no lock on *self* held, so it **may** read
    *self*: :c:func:`MultiDict_Size`, :c:func:`MultiDict_GetItem` and

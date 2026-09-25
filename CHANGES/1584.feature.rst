@@ -1,0 +1,5 @@
+A failing watcher callback is now reported with a message naming the
+event and the multidict's type and address, as CPython does for dict
+watchers, instead of passing the multidict itself to
+:func:`sys.unraisablehook`, whose ``object`` is now ``None`` -- by
+:user:`asvetlov`.
