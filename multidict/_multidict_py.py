@@ -1326,7 +1326,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                         e.value = entry.value
                         e.hash = hash_ | HASH_MARK
                     else:
-                        self._del_at_for_upd(e)
+                        self._half_delete_for_upd(e)
             if not found:
                 self._add_with_hash_for_upd(entry)
 
@@ -1433,7 +1433,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self._keys.indices[slot] = -2
         self._used -= 1
 
-    def _del_at_for_upd(self, entry: _Entry[_V]) -> None:
+    def _half_delete_for_upd(self, entry: _Entry[_V]) -> None:
         entry.key = None  # type: ignore[assignment]
         entry.value = None  # type: ignore[assignment]
 

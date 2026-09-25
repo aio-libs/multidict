@@ -470,7 +470,7 @@ _md_resize_for_insert(MultiDictObject* md)
 }
 
 static inline int
-_md_resize_for_update(MultiDictObject* md, update_marks_t* marks)
+_md_resize_for_upd(MultiDictObject* md, update_marks_t* marks)
 {
     if (md->used < md->keys->nentries) {
         return _md_shrink(md, marks);
@@ -657,7 +657,7 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     htkeys_t* keys = md->keys;
     if (keys->usable <= 0 || keys == &empty_htkeys) {
         /* Need to resize. */
-        if (_md_resize_for_update(md, marks) < 0) {
+        if (_md_resize_for_upd(md, marks) < 0) {
             return -1;
         }
         keys = md->keys;  // updated by resizing
@@ -809,11 +809,9 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
  * fallback would otherwise decref a field's old value immediately while
  * the entry sits in that half-deleted, still-reachable state. */
 static inline int
-md_del_at_for_upd_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
-                           reflist_t* defer)
+md_half_delete_for_upd(MultiDictObject* md, entry_t* entry, reflist_t* defer)
 {
     (void)md;
-    (void)slot;
     assert(md->keys != &empty_htkeys);
     if (reflist_reserve_one(defer) < 0) {
         return -1;

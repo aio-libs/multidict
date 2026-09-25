@@ -1,0 +1,3 @@
+Renamed internal helpers whose names no longer matched what they did,
+and fixed misspelled docstring identifiers in the C extension
+-- by :user:`asvetlov`.
