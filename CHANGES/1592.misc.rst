@@ -1,0 +1,2 @@
+Replaced the allocate, set state and take the module reference sequence
+repeated across the C constructors with one helper -- by :user:`asvetlov`.
