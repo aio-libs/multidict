@@ -1,6 +1,7 @@
 import importlib
 import os
 import sys
+import threading
 import types
 
 import pytest
@@ -995,6 +996,57 @@ def test_clear_watcher_stops_events(api: object, watcher: Watcher) -> None:
     assert watcher.drain() == []
     # re-registering so the fixture's own clear has a live slot to clear
     watcher.id = api.md_add_watcher(watcher.log)
+
+
+def test_a_reused_watcher_id_does_not_inherit_old_watches(
+    api: object, watcher: Watcher
+) -> None:
+    # The cleared registration's bit stays on the multidict, but ClearWatcher()
+    # bumped the slot's generation, so the bit stays silent once the same ID
+    # is handed out again.
+    md: MultiDictStr = multidict.MultiDict()
+    watcher.watch(md, "old")
+    old_id = watcher.id
+    api.md_clear_watcher(old_id)
+    watcher.id = api.md_add_watcher(watcher.log)
+    assert watcher.id == old_id
+    md.add("a", "1")
+    assert watcher.drain() == []
+    watcher.watch(md, "new")
+    md.add("b", "2")
+    assert [event[2] for event in watcher.drain()] == ["new"]
+
+
+def test_registration_churn_races_delivery(api: object) -> None:
+    # Delivery reads the slot table without watcher_mutex, so it must
+    # never pair a registration with a stale bit while another thread
+    # clears and re-adds the same ID.
+    first_log: list[Event] = []
+    watcher_id = api.md_add_watcher(first_log)
+    md: MultiDictStr = multidict.MultiDict()
+    api.md_watch(watcher_id, md, None)
+    later_logs: list[list[Event]] = []
+    stop = threading.Event()
+
+    def mutate() -> None:
+        while not stop.is_set():
+            md["key"] = "value"
+
+    mutator = threading.Thread(target=mutate)
+    mutator.start()
+    try:
+        for _ in range(2000):
+            api.md_clear_watcher(watcher_id)
+            later_logs.append([])
+            watcher_id = api.md_add_watcher(later_logs[-1])
+    finally:
+        stop.set()
+        mutator.join(timeout=60)
+        api.md_clear_watcher(watcher_id)
+        api.watch_release_refs()
+    assert not mutator.is_alive()
+    assert all(event[2] is None for event in first_log)
+    assert not any(later_logs)
 
 
 def test_dealloc_reports_the_address_not_the_object(watcher: Watcher) -> None:

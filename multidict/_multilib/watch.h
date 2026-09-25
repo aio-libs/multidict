@@ -14,6 +14,7 @@ extern "C" {
 #include "../multidict_capi_struct.h"
 #include "compiler.h"
 #include "dict.h"
+#include "freethreading.h"
 #include "state.h"
 #include "watchlog.h"
 
@@ -30,15 +31,21 @@ extern "C" {
  * here because with the record heap-allocated it is free here and an
  * in-object copy would be redundant.
  *
- * `user_data` holds `size` slots, one past the highest watcher ID ever
+ * `slots` holds `size` entries, one past the highest watcher ID ever
  * attached, so a multidict watched through ID 0 alone pays for one slot
  * rather than MULTIDICT_MAX_WATCHERS. A slot is only meaningful while its
  * bit is set, which also keeps every set bit below `size`. */
+typedef struct {
+    void* user_data;
+    // the registration this was attached under; see watcher_generation
+    uint64_t generation;
+} watch_slot_t;
+
 struct _md_watch {
     uint32_t bits;
     int size;
     watchlog_t log;
-    void* user_data[];
+    watch_slot_t slots[];
 };
 
 static inline int
@@ -63,17 +70,23 @@ _watch_ctz(uint32_t bits)
 
 /* Callbacks run here: after the operation finished, outside every lock. */
 static void
-_md_watch_call(mod_state* state, uint32_t bits, void* const* user_data,
+_md_watch_call(mod_state* state, uint32_t bits, const watch_slot_t* slots,
                const MultiDict_WatchInfo* info)
 {
     for (; bits != 0; bits &= bits - 1) {
         int id = _watch_ctz(bits);
-        MultiDict_WatchCallback callback = state->watchers[id];
+        MultiDict_WatchCallback callback = load_watcher(state, id);
         if (callback == NULL) {
             // MultiDict_ClearWatcher() left the bit behind; skip it
             continue;
         }
-        if (callback(state->watcher_data[id], user_data[id], info) < 0 ||
+        void* watcher_data = load_watcher_data(state, id);
+        if (load_watcher_generation(state, id) != slots[id].generation) {
+            /* Left behind by a cleared registration and since handed out
+               again, or being cleared right now. */
+            continue;
+        }
+        if (callback(watcher_data, slots[id].user_data, info) < 0 ||
             PyErr_Occurred()) {
             /* The mutation already happened and cannot be undone, so a
                failing callback can only be reported, never propagated.
@@ -94,7 +107,7 @@ _md_watch_call(mod_state* state, uint32_t bits, void* const* user_data,
    operation but not per watcher; that is the accepted trade, documented
    under MultiDict_EVENT_BATCH_BEGIN in docs/capi.rst. */
 static uint32_t
-_md_watch_recipients(MultiDictObject* md, void** user_data)
+_md_watch_recipients(MultiDictObject* md, watch_slot_t* slots)
 {
     uint32_t bits = 0;
     Py_BEGIN_CRITICAL_SECTION(md);
@@ -103,7 +116,7 @@ _md_watch_recipients(MultiDictObject* md, void** user_data)
         // only the slots _md_watch_call() will read
         for (uint32_t rest = bits; rest != 0; rest &= rest - 1) {
             int id = _watch_ctz(rest);
-            user_data[id] = md->watch->user_data[id];
+            slots[id] = md->watch->slots[id];
         }
     }
     Py_END_CRITICAL_SECTION();
@@ -114,7 +127,7 @@ COLD static void
 _md_watch_deliver(MultiDictObject* md, watchlog_t* snapshot)
 {
     mod_state* state = md->state;
-    void* user_data[MULTIDICT_MAX_WATCHERS];
+    watch_slot_t slots[MULTIDICT_MAX_WATCHERS];
     MultiDict_WatchInfo info;
     info.self = (PyObject*)md;
     if (UNLIKELY(snapshot->overflowed)) {
@@ -128,8 +141,7 @@ _md_watch_deliver(MultiDictObject* md, watchlog_t* snapshot)
         info.key = NULL;
         info.value = NULL;
         info.old_value = NULL;
-        _md_watch_call(
-            state, _md_watch_recipients(md, user_data), user_data, &info);
+        _md_watch_call(state, _md_watch_recipients(md, slots), slots, &info);
         return;
     }
     for (watchlog_block_t* block = snapshot->head; block != NULL;) {
@@ -142,7 +154,7 @@ _md_watch_deliver(MultiDictObject* md, watchlog_t* snapshot)
             info.value = rec->value;
             info.old_value = rec->old_value;
             _md_watch_call(
-                state, _md_watch_recipients(md, user_data), user_data, &info);
+                state, _md_watch_recipients(md, slots), slots, &info);
             Py_XDECREF(rec->identity);
             Py_XDECREF(rec->key);
             Py_XDECREF(rec->value);
@@ -236,7 +248,8 @@ md_watch_record_simple(MultiDictObject* md, MultiDict_WatchEvent event)
 }
 
 COLD static int
-md_watch_attach(MultiDictObject* md, int watcher_id, void* user_data)
+md_watch_attach(MultiDictObject* md, int watcher_id, void* user_data,
+                uint64_t generation)
 {
     Py_BUILD_ASSERT(MULTIDICT_MAX_WATCHERS <= 32);
     md_watch_t* watch = md->watch;
@@ -246,7 +259,7 @@ md_watch_attach(MultiDictObject* md, int watcher_id, void* user_data)
         bool fresh = watch == NULL;
         int size = watcher_id + 1;
         watch = PyMem_Realloc(
-            watch, sizeof(md_watch_t) + sizeof(void*) * (size_t)size);
+            watch, sizeof(md_watch_t) + sizeof(watch_slot_t) * (size_t)size);
         if (watch == NULL) {
             PyErr_NoMemory();
             return -1;
@@ -259,7 +272,8 @@ md_watch_attach(MultiDictObject* md, int watcher_id, void* user_data)
         md->watch = watch;
     }
     md->watch->bits |= 1u << watcher_id;
-    md->watch->user_data[watcher_id] = user_data;
+    md->watch->slots[watcher_id].user_data = user_data;
+    md->watch->slots[watcher_id].generation = generation;
     return 0;
 }
 
@@ -270,7 +284,7 @@ md_watch_detach(MultiDictObject* md, int watcher_id)
         return;
     }
     md->watch->bits &= ~(1u << watcher_id);
-    md->watch->user_data[watcher_id] = NULL;
+    md->watch->slots[watcher_id].user_data = NULL;
 }
 
 /* Runs from tp_dealloc, where `md` is at refcount 0 and unreachable by
@@ -299,7 +313,7 @@ md_watch_on_dealloc(MultiDictObject* md)
         info.key = NULL;
         info.value = NULL;
         info.old_value = NULL;
-        _md_watch_call(md->state, watch->bits, watch->user_data, &info);
+        _md_watch_call(md->state, watch->bits, watch->slots, &info);
     }
     PyMem_Free(watch);
 
