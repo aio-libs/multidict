@@ -1,0 +1,3 @@
+Dropped the C extension's ``multidict_tp_traverse()`` and
+``multidict_tp_clear()`` wrappers; ``md_traverse()`` and ``md_clear()``
+now serve as the type's GC slots directly -- by :user:`asvetlov`.
