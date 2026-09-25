@@ -19,13 +19,11 @@
 #define NOINLINE
 #endif
 
-/* initial-exec skips the __tls_get_addr() call the default model for a
-   shared object makes on every access. Only glibc reserves static TLS
-   for a dlopen()ed module to use it. */
+/* Not initial-exec: it saves a few ns per access, but draws on the small
+   static TLS reserve glibc keeps for dlopen(), and once that is used up
+   the import fails and multidict silently falls back to pure Python. */
 #if defined(_MSC_VER)
 #define THREAD_LOCAL __declspec(thread)
-#elif defined(__GLIBC__)
-#define THREAD_LOCAL _Thread_local __attribute__((tls_model("initial-exec")))
 #else
 #define THREAD_LOCAL _Thread_local
 #endif

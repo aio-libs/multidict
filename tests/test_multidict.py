@@ -2557,8 +2557,9 @@ def test_version_thread_safety() -> None:
     relying entirely on each instance's own critical section; under a
     free-threaded build, two threads mutating two *different* instances
     could bump it at the same time and step on each other's update,
-    handing out one version number to two objects, or a smaller one to a
-    later mutation than an earlier one already got. This is a
+    handing out one version number to two objects. Only a duplicate
+    signals that race: with per-thread batches a later mutation may get a
+    smaller version than an earlier one on another thread. This is a
     C-extension-only concern: the pure-Python implementation has the
     same shared-counter shape but no locking of its own to regress.
     """
