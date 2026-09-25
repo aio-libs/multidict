@@ -47,7 +47,6 @@ cdef extern from "multidict_capi.h":
     # istr
     PyTypeObject *_IStr_GetType "IStr_GetType" (MultiDict_CAPI *capi)
     bint IStr_CheckExact(MultiDict_CAPI *capi, object op)
-    bint IStr_Check(MultiDict_CAPI *capi, object op)
     object IStr_FromUnicode(MultiDict_CAPI *capi, object s)
 
     # version

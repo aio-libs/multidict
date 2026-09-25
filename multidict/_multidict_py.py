@@ -22,6 +22,7 @@ from typing import (
     NoReturn,
     TypeVar,
     cast,
+    final,
     overload,
 )
 
@@ -43,8 +44,12 @@ _LOG_RESUME_SLOTS_MINSIZE = 10
 _RESUME_SLOTS_MIN_STEPS = 32
 
 
+@final
 class istr(str):
     """Case insensitive str."""
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        raise TypeError(f"type '{istr.__module__}.istr' is not an acceptable base type")
 
     # Implementation note:
     # The class doesn't use __slots__ because slot-based memory model
@@ -644,10 +649,11 @@ class _CSMixin:
         return key
 
     def _identity(self, key: str) -> str:
-        if isinstance(key, str):
+        if type(key) is str:
             return key
-        else:
-            raise TypeError("MultiDict keys should be either str or subclasses of str")
+        if isinstance(key, str):
+            return str.__str__(key)
+        raise TypeError("MultiDict keys should be either str or subclasses of str")
 
 
 class _CIMixin:
@@ -667,7 +673,10 @@ class _CIMixin:
                 key.__istr_identity__ = ret
             return ret
         if isinstance(key, str):
-            return key.lower()
+            ret = key.lower()
+            if type(ret) is not str:
+                return str.__str__(ret)
+            return ret
         else:
             raise TypeError("MultiDict keys should be either str or subclasses of str")
 

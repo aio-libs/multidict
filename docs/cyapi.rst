@@ -49,8 +49,8 @@ istr
 
 - ``IStr_GetType(capi)`` -- returns the :class:`~multidict.istr` type, as
   a plain ``object``.
-- ``IStr_CheckExact(capi, op) -> bint`` and ``IStr_Check(capi, op) -> bint``
-  -- type checks, mirroring :c:func:`IStr_CheckExact` / :c:func:`IStr_Check`.
+- ``IStr_CheckExact(capi, op) -> bint`` -- type check, mirroring
+  :c:func:`IStr_CheckExact`.
 - ``IStr_FromUnicode(capi, s) -> object`` -- builds an
   :class:`~multidict.istr` from a :class:`str`.
 

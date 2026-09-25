@@ -14,8 +14,6 @@ typedef struct {
 } istrobject;
 
 #define IStr_CheckExact(state, obj) Py_IS_TYPE(obj, state->IStrType)
-#define IStr_Check(state, obj) \
-    (IStr_CheckExact(state, obj) || PyObject_TypeCheck(obj, state->IStrType))
 
 PyDoc_STRVAR(istr__doc__, "istr class implementation");
 
@@ -60,7 +58,7 @@ istr_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
             args, kwds, "|OOO:str", kwlist, &x, &encoding, &errors)) {
         return NULL;
     }
-    if (x != NULL && IStr_Check(state, x)) {
+    if (x != NULL && IStr_CheckExact(state, x)) {
         Py_INCREF(x);
         return x;
     }
@@ -76,7 +74,7 @@ istr_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 static inline PyObject*
 _istr_from_object(PyTypeObject* type, mod_state* state, PyObject* x)
 {
-    if (IStr_Check(state, x)) {
+    if (IStr_CheckExact(state, x)) {
         return Py_NewRef(x);
     }
     PyObject* args = PyTuple_Pack(1, x);
@@ -184,7 +182,7 @@ static PyType_Slot istr_slots[] = {
 static PyType_Spec istr_spec = {
     .name = "multidict._multidict.istr",
     .basicsize = sizeof(istrobject),
-    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE
+    .flags = (Py_TPFLAGS_DEFAULT
 #if PY_VERSION_HEX >= 0x030a00f0
               | Py_TPFLAGS_IMMUTABLETYPE
 #endif

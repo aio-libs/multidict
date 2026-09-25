@@ -70,14 +70,19 @@ def test_ctor_encoding_rejects_str(case_insensitive_str_class: type[str]) -> Non
         case_insensitive_str_class("aBc", "utf-8")  # type: ignore[call-overload]
 
 
-def test_subclass_ctor(case_insensitive_str_class: type[str]) -> None:
-    class Sub(case_insensitive_str_class):  # type: ignore[valid-type, misc]
+def test_subclass_rejected(case_insensitive_str_class: type[str]) -> None:
+    with pytest.raises(TypeError, match="is not an acceptable base type"):
+        type("Sub", (case_insensitive_str_class,), {})
+
+
+def test_multiple_inheritance_subclass_rejected(
+    case_insensitive_str_class: type[str],
+) -> None:
+    class Mixin:
         pass
 
-    s = Sub("aBcD")
-    assert type(s) is Sub
-    assert "aBcD" == s
-    assert "abcd" == s.lower()
+    with pytest.raises(TypeError, match="is not an acceptable base type"):
+        type("Sub", (Mixin, case_insensitive_str_class), {})
 
 
 def test_str(case_insensitive_str_class: type[str]) -> None:

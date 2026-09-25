@@ -118,13 +118,12 @@ istr
 
    Return a new reference to the :class:`~multidict.istr` type object.
 
-.. c:function:: int IStr_Check(MultiDict_CAPI *capi, PyObject *op)
-                 int IStr_CheckExact(MultiDict_CAPI *capi, PyObject *op)
+.. c:function:: int IStr_CheckExact(MultiDict_CAPI *capi, PyObject *op)
 
    **Thread safety:** Atomic.
 
-   Like :c:func:`MultiDict_Check` / :c:func:`MultiDict_CheckExact`, but
-   for :class:`~multidict.istr`.
+   Return non-zero if *op* is an instance of :class:`~multidict.istr`,
+   and zero otherwise.
 
 .. c:function:: PyObject *IStr_FromUnicode(MultiDict_CAPI *capi, PyObject *str)
 

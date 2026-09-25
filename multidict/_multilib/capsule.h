@@ -57,7 +57,7 @@ IStr_FromUnicode(void* state_, PyObject* str)
         return NULL;
     }
     // Matches istr(existing_istr): return the same object, not a copy.
-    if (IStr_Check(state, str)) {
+    if (IStr_CheckExact(state, str)) {
         return Py_NewRef(str);
     }
     PyObject* canonical = PyObject_CallMethodNoArgs(str, state->str_lower);

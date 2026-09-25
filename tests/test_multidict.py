@@ -3915,3 +3915,82 @@ def test_items_iter_recycled_tuple_hash(
     second = next(it)
     assert hash(second) == hash(("b", "2"))
     assert second in {("b", "2")}
+
+
+class _CustomStr(str):
+    """Custom str subclass to verify exactness invariant."""
+
+
+def test_str_subclass_overriding_str_dunder_lookup(
+    any_multidict_class: type[MultiDict[int]],
+) -> None:
+    # A key whose __str__() returns a spoofed value must still be looked
+    # up under its underlying unicode string value on both backends.
+    class Token(str):
+        def __str__(self) -> str:
+            return "spoof"
+
+    md = any_multidict_class()
+    token = Token("Token")
+    assert str(token) == "spoof"
+    md[token] = 1
+    assert md["Token"] == 1
+    assert md[token] == 1
+    with pytest.raises(KeyError):
+        _ = md["spoof"]
+
+
+def test_plain_str_subclass_lower_returns_subclass(
+    case_insensitive_multidict_class: type[CIMultiDict[object]],
+) -> None:
+    class SubclassLower(str):
+        def lower(self) -> _CustomStr:
+            return _CustomStr(super().lower())
+
+    key = SubclassLower("AbC_Key")
+    md = case_insensitive_multidict_class()
+
+    md[key] = "val1"
+    assert md[key] == "val1"
+    assert md["abc_key"] == "val1"
+    assert md["ABC_KEY"] == "val1"
+
+    md.add(key, "val2")
+    assert md.getall("abc_key") == ["val1", "val2"]
+
+    res = md.setdefault(key, "val3")
+    assert res == "val1"
+
+    assert key in md
+    assert md.getall(key) == ["val1", "val2"]
+
+    del md[key]
+    assert "abc_key" not in md
+
+
+def test_pure_python_identity_exactness() -> None:
+    # Verify that pure-Python _identity() always returns exact str,
+    # even when keys or lower() results are str subclasses.
+    class SubclassLower(str):
+        def lower(self) -> _CustomStr:
+            return _CustomStr(super().lower())
+
+    class Token(str):
+        def __str__(self) -> str:
+            return "spoof"
+
+    cs: _pure.MultiDict[object] = _pure.MultiDict()
+    ci: _pure.CIMultiDict[object] = _pure.CIMultiDict()
+
+    token = Token("Token")
+    assert str(token) == "spoof"
+    assert type(cs._identity(token)) is str
+    assert cs._identity(token) == "Token"
+
+    custom = _CustomStr("Key")
+    assert type(cs._identity(custom)) is str
+    assert cs._identity(custom) == "Key"
+
+    sub_lower = SubclassLower("AbC")
+    assert type(ci._identity(sub_lower)) is str
+    assert ci._identity(sub_lower) == "abc"
