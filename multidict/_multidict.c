@@ -384,7 +384,7 @@ multidict_copy(MultiDictObject* self)
 
     MultiDictObject* new_md = (MultiDictObject*)ret;
     new_md->state = self->state;
-    md_set_module(new_md, self->mod);
+    md_set_module(new_md, self->state->mod);
     int clone_ret;
     Py_BEGIN_CRITICAL_SECTION(self);
     clone_ret = md_clone_from_ht(new_md, self);
@@ -668,11 +668,11 @@ multidict_tp_dealloc(MultiDictObject* self)
     md_clear(self);
     /* Released last: md_clear() and md_shell_recycle() both read
        self->state, which this reference is what keeps addressable. */
-    PyObject* mod = self->mod;
+    PyObject* mod = self->state->mod;
     if (!md_shell_recycle(self->state, (PyObject*)self)) {
         tp->tp_free((PyObject*)self);
     }
-    Py_XDECREF(mod);
+    Py_DECREF(mod);
     Py_DECREF(tp);
     Py_TRASHCAN_END  // there should be no code after this
 }

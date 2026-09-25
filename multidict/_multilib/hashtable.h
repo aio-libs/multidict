@@ -2116,7 +2116,7 @@ static inline int
 md_traverse(MultiDictObject* md, visitproc visit, void* arg)
 {
     Py_VISIT(Py_TYPE(md));
-    Py_VISIT(md->mod);
+    Py_VISIT(md->state->mod);
 
 #ifdef Py_GIL_DISABLED
     /* A table waiting on md->retired still owns its entries' references, so

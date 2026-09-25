@@ -287,9 +287,9 @@ cdef inline object _opt(PyObject *ptr):
 # assigned to a `noexcept` C function pointer, so an escaping exception
 # would be printed and cleared instead of propagated. PyErr_SetObject
 # reinstates it as the current exception without going through that, and
-# multidict then reports it with PyErr_WriteUnraisable -- a watch callback
-# runs after the mutation it describes, so a failure can only ever be
-# reported, never propagated back into the operation.
+# multidict then reports it as unraisable -- a watch callback runs after
+# the mutation it describes, so a failure can only ever be reported,
+# never propagated back into the operation.
 
 cdef inline int _cy_watch_trampoline(void *ctx_, void *user_data,
                                      const MultiDict_WatchInfo *info) noexcept:
