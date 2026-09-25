@@ -320,6 +320,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     Py_hash_t hash;
     PyObject* identity = NULL;
     PyObject* key = NULL;
+    PyObject* value = NULL;
     bool recalc_identity = md->is_ci != other->is_ci;
 
     if (other->used == 0) {
@@ -352,7 +353,11 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
             continue;
         }
         if (recalc_identity) {
-            identity = md_calc_identity(md, entry->key);
+            /* lower() on a str subclass key runs Python code that can mutate
+               other and free entry, so hold our own refs. */
+            key = Py_NewRef(entry->key);
+            value = Py_NewRef(entry->value);
+            identity = md_calc_identity(md, key);
             if (identity == NULL) {
                 goto fail;
             }
@@ -361,32 +366,34 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                 goto fail;
             }
             /* materialize key */
-            key = md_calc_key(other, entry->key, identity);
+            Py_SETREF(key, md_calc_key(other, key, identity));
             if (key == NULL) {
                 goto fail;
+            }
+            entries = htkeys_entries(other->keys);
+            if (nentries > other->keys->nentries) {
+                nentries = other->keys->nentries;
             }
         } else {
             identity = entry->identity;
             hash = entry->hash;
             key = entry->key;
+            value = entry->value;
         }
         switch (op) {
             case Update:
-                if (_md_update(
-                        md, hash, identity, key, entry->value, defer, marks) <
+                if (_md_update(md, hash, identity, key, value, defer, marks) <
                     0) {
                     goto fail;
                 }
                 break;
             case Extend:
-                if (md_add_with_hash(md, hash, identity, key, entry->value) <
-                    0) {
+                if (md_add_with_hash(md, hash, identity, key, value) < 0) {
                     goto fail;
                 }
                 break;
             case Merge:
-                if (_md_merge(md, hash, identity, key, entry->value, marks) <
-                    0) {
+                if (_md_merge(md, hash, identity, key, value, marks) < 0) {
                     goto fail;
                 }
                 break;
@@ -394,6 +401,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         if (recalc_identity) {
             Py_CLEAR(identity);
             Py_CLEAR(key);
+            Py_CLEAR(value);
         }
     }
     return 0;
@@ -401,6 +409,7 @@ fail:
     if (recalc_identity) {
         Py_CLEAR(identity);
         Py_CLEAR(key);
+        Py_CLEAR(value);
     }
     return -1;
 }
@@ -442,7 +451,9 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
 
     // PyDict_Next returns borrowed refs
     while (PyDict_Next(kwds, &pos, &key, &value)) {
+        /* lower() on a str subclass key can clear kwds and free both. */
         Py_INCREF(key);
+        Py_INCREF(value);
         identity = md_calc_identity(md, key);
         if (identity == NULL) {
             goto fail;
@@ -459,13 +470,12 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                 }
                 Py_CLEAR(identity);
                 Py_CLEAR(key);
+                Py_CLEAR(value);
                 break;
             }
             case Extend: {
-                int tmp = md_add_with_hash_steal_refs(
-                    md, hash, identity, key, Py_NewRef(value));
-                if (tmp < 0) {
-                    Py_DECREF(value);
+                if (md_add_with_hash_steal_refs(
+                        md, hash, identity, key, value) < 0) {
                     goto fail;
                 }
 
@@ -480,6 +490,7 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                 }
                 Py_CLEAR(identity);
                 Py_CLEAR(key);
+                Py_CLEAR(value);
                 break;
             }
         }
@@ -488,6 +499,7 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
 fail:
     Py_CLEAR(identity);
     Py_CLEAR(key);
+    Py_CLEAR(value);
     return -1;
 }
 
