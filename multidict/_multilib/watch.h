@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #include <Python.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -68,6 +69,62 @@ _watch_ctz(uint32_t bits)
 #endif
 }
 
+static const char*
+_md_watch_event_name(MultiDict_WatchEvent event)
+{
+    switch (event) {
+        case MultiDict_EVENT_ADDED:
+            return "MultiDict_EVENT_ADDED";
+        case MultiDict_EVENT_REPLACED:
+            return "MultiDict_EVENT_REPLACED";
+        case MultiDict_EVENT_DELETED:
+            return "MultiDict_EVENT_DELETED";
+        case MultiDict_EVENT_CLEARED:
+            return "MultiDict_EVENT_CLEARED";
+        case MultiDict_EVENT_CLONED:
+            return "MultiDict_EVENT_CLONED";
+        case MultiDict_EVENT_DEALLOCATED:
+            return "MultiDict_EVENT_DEALLOCATED";
+        case MultiDict_EVENT_BATCH_BEGIN:
+            return "MultiDict_EVENT_BATCH_BEGIN";
+        case MultiDict_EVENT_BATCH_END:
+            return "MultiDict_EVENT_BATCH_END";
+        case MultiDict_EVENT_LOST:
+            return "MultiDict_EVENT_LOST";
+    }
+    Py_UNREACHABLE();
+}
+
+/* Names the multidict by type and address rather than passing it along:
+   the hook would repr() it, which can run arbitrary code, and `self` is
+   at refcount 0 on a DEALLOCATED event. Same as CPython's
+   _PyDict_SendEvent(). */
+COLD static void
+_md_watch_report(const MultiDict_WatchInfo* info)
+{
+    const char* event = _md_watch_event_name(info->event);
+    const char* type = Py_TYPE(info->self)->tp_name;
+#if PY_VERSION_HEX >= 0x030d0000
+    PyErr_FormatUnraisable(
+        "Exception ignored in %s watcher callback for <%.200s object at %p>",
+        event,
+        type,
+        (void*)info->self);
+#else
+    /* This one prefixes "Exception ignored ". Not %p: MSVC prints that
+       without a 0x, which PyErr_FormatUnraisable() adds above. */
+    char msg[320];
+    PyOS_snprintf(msg,
+                  sizeof(msg),
+                  "in %s watcher callback for <%.200s object at 0x%" PRIxPTR
+                  ">",
+                  event,
+                  type,
+                  (uintptr_t)info->self);
+    _PyErr_WriteUnraisableMsg(msg, NULL);
+#endif
+}
+
 /* Callbacks run here: after the operation finished, outside every lock. */
 static void
 _md_watch_call(mod_state* state, uint32_t bits, const watch_slot_t* slots,
@@ -90,12 +147,8 @@ _md_watch_call(mod_state* state, uint32_t bits, const watch_slot_t* slots,
             PyErr_Occurred()) {
             /* The mutation already happened and cannot be undone, so a
                failing callback can only be reported, never propagated.
-               Same rule as CPython's _PyDict_SendEvent(). `self` is at
-               refcount 0 on a DEALLOCATED event and WriteUnraisable()
-               increfs what it is given, so pass nothing there. */
-            PyErr_WriteUnraisable(info->event == MultiDict_EVENT_DEALLOCATED
-                                      ? NULL
-                                      : info->self);
+               Same rule as CPython's _PyDict_SendEvent(). */
+            _md_watch_report(info);
         }
     }
 }
