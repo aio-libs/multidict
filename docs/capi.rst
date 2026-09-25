@@ -645,7 +645,12 @@ time.
 
    Start reporting *self*'s changes to *watcher_id*'s callback, which
    will be passed *user_data* on every one of *self*'s events. Return
-   ``0`` on success, ``-1`` with an exception set on failure.
+   ``0`` on success, ``-1`` with an exception set on failure, including
+   :exc:`ValueError` when *watcher_id* is not registered. A
+   :c:func:`MultiDict_ClearWatcher` of *watcher_id* racing this call on
+   another thread either retires the finished watch or makes this call
+   fail that way; it never overwrites a watch made under the ID's next
+   registration.
 
    Watching again with a different *user_data* replaces it.
 

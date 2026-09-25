@@ -452,7 +452,17 @@ MultiDict_Watch(void* state_, int watcher_id, PyObject* self, void* user_data)
     }
     int ret;
     Py_BEGIN_CRITICAL_SECTION(md);
-    ret = md_watch_attach(md, watcher_id, user_data, generation);
+    /* Checked again under md's lock: a clear and re-registration of this
+       ID can land after the check above, together with the new owner's
+       own watch of md, which this one must not overwrite with a retired
+       generation. Rejected as if it had come after the clear. */
+    if (load_watcher_generation((mod_state*)state_, watcher_id) !=
+        generation) {
+        PyErr_Format(PyExc_ValueError, "invalid watcher ID %d", watcher_id);
+        ret = -1;
+    } else {
+        ret = md_watch_attach(md, watcher_id, user_data, generation);
+    }
     Py_END_CRITICAL_SECTION();
     return ret;
 }
