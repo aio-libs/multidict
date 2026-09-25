@@ -820,3 +820,61 @@ callback, many watched multidicts, each carrying whatever owns it.
        return MultiDict_Watch(state->capi, state->watcher_id,
                               resp->headers, resp);
    }
+
+Invalidating a cache
+--------------------
+
+A watcher that guards something derived from a multidict only needs the
+first change after the cache was filled. Unwatch from inside the
+callback and watch again on the next rebuild, so mutations made while
+the cache is already empty cost nothing, and a multidict that keeps
+changing costs one event per rebuild. Counting rebuilds lets a cache
+that is thrown away every time stop trying, which is how CPython's JIT
+treats a module's globals once they have changed a few times.
+
+::
+
+   #define MAX_REBUILDS 8
+
+   typedef struct {
+       PyObject *headers;  /* strong; unwatched before it is released */
+       PyObject *parsed;   /* derived from headers, or NULL */
+       int rebuilds;
+   } cached;
+
+   static int
+   on_change(void *watcher_data, void *user_data,
+             const MultiDict_WatchInfo *info)
+   {
+       my_mod_state *state = (my_mod_state *)watcher_data;
+       cached *c = (cached *)user_data;
+       Py_CLEAR(c->parsed);
+       /* Takes effect at once: the rest of this burst never arrives. */
+       return MultiDict_Unwatch(state->capi, state->watcher_id, info->self);
+   }
+
+   static PyObject *
+   get_parsed(my_mod_state *state, cached *c)
+   {
+       if (c->parsed != NULL) {
+           return Py_NewRef(c->parsed);
+       }
+       if (c->rebuilds == MAX_REBUILDS) {
+           /* Changes too often to be worth caching. */
+           return parse(c->headers);
+       }
+       /* Watch before reading, so no change can slip in between. */
+       if (MultiDict_Watch(state->capi, state->watcher_id, c->headers, c) < 0) {
+           return NULL;
+       }
+       uint64_t version = MultiDict_GetVersion(state->capi, c->headers);
+       PyObject *parsed = parse(c->headers);
+       /* parse() may have let another thread in; keep only what is
+          still current. */
+       if (parsed != NULL &&
+           MultiDict_GetVersion(state->capi, c->headers) == version) {
+           c->rebuilds++;
+           c->parsed = Py_NewRef(parsed);
+       }
+       return parsed;
+   }

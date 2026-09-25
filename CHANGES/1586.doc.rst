@@ -1,0 +1,3 @@
+Added a C API example of a watcher that invalidates a cache: it unwatches
+from its own callback, watches again on the next rebuild, and gives up
+on a multidict that keeps changing -- by :user:`asvetlov`.
