@@ -111,40 +111,33 @@ CIMultiDictProxy_GetType(void* state_)
 
 /* ================= Constructors ================= */
 
-static PyObject*
-MultiDict_New(void* state_, Py_ssize_t prealloc_size)
+static inline PyObject*
+_md_new(mod_state* state, PyTypeObject* tp, bool is_ci,
+        Py_ssize_t prealloc_size)
 {
-    mod_state* state = (mod_state*)state_;
-    MultiDictObject* md =
-        (MultiDictObject*)md_shell_alloc(state, state->MultiDictType);
+    MultiDictObject* md = md_shell_new(state, tp);
     if (md == NULL) {
         return NULL;
     }
-    md->state = state;
-    md_set_module(md, state->mod);
-    if (md_init(md, false, prealloc_size) < 0) {
-        Py_CLEAR(md);
+    if (md_init(md, is_ci, prealloc_size) < 0) {
+        Py_DECREF(md);
         return NULL;
     }
     return (PyObject*)md;
 }
 
 static PyObject*
+MultiDict_New(void* state_, Py_ssize_t prealloc_size)
+{
+    mod_state* state = (mod_state*)state_;
+    return _md_new(state, state->MultiDictType, false, prealloc_size);
+}
+
+static PyObject*
 CIMultiDict_New(void* state_, Py_ssize_t prealloc_size)
 {
     mod_state* state = (mod_state*)state_;
-    MultiDictObject* md =
-        (MultiDictObject*)md_shell_alloc(state, state->CIMultiDictType);
-    if (md == NULL) {
-        return NULL;
-    }
-    md->state = state;
-    md_set_module(md, state->mod);
-    if (md_init(md, true, prealloc_size) < 0) {
-        Py_CLEAR(md);
-        return NULL;
-    }
-    return (PyObject*)md;
+    return _md_new(state, state->CIMultiDictType, true, prealloc_size);
 }
 
 static PyObject*

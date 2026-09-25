@@ -254,12 +254,10 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
 
     PyObject* arg = nargs == 1 ? args[0] : NULL;
 
-    MultiDictObject* self = (MultiDictObject*)md_shell_alloc(state, tp);
+    MultiDictObject* self = md_shell_new(state, tp);
     if (self == NULL) {
         return NULL;
     }
-    self->state = state;
-    md_set_module(self, mod);
 
     int ret = _multidict_vectorcall_impl(
         state, self, is_ci, arg, args, nargs, kwnames);
@@ -374,28 +372,19 @@ cimultidict_proxy_vectorcall(PyObject* type, PyObject* const* args,
 static inline PyObject*
 multidict_copy(MultiDictObject* self)
 {
-    PyTypeObject* tp = Py_TYPE(self);
-    PyObject* ret = NULL;
-
-    ret = md_shell_alloc(self->state, tp);
-    if (ret == NULL) {
-        goto fail;
+    MultiDictObject* new_md = md_shell_new(self->state, Py_TYPE(self));
+    if (new_md == NULL) {
+        return NULL;
     }
-
-    MultiDictObject* new_md = (MultiDictObject*)ret;
-    new_md->state = self->state;
-    md_set_module(new_md, self->state->mod);
     int clone_ret;
     Py_BEGIN_CRITICAL_SECTION(self);
     clone_ret = md_clone_from_ht(new_md, self);
     Py_END_CRITICAL_SECTION();
     if (clone_ret < 0) {
-        goto fail;
+        Py_DECREF(new_md);
+        return NULL;
     }
-    return ret;
-fail:
-    Py_XDECREF(ret);
-    return NULL;
+    return (PyObject*)new_md;
 }
 
 PyDoc_STRVAR(multidict_to_dict_doc,
@@ -793,12 +782,10 @@ multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         return NULL;
     }
     mod_state* state = get_mod_state(mod);
-    MultiDictObject* self = (MultiDictObject*)md_shell_alloc(state, type);
+    MultiDictObject* self = md_shell_new(state, type);
     if (self == NULL) {
         return NULL;
     }
-    self->state = state;
-    md_set_module(self, mod);
     if (md_init(self, false, 0) < 0) {
         Py_DECREF(self);
         return NULL;

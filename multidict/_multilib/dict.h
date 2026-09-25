@@ -103,15 +103,21 @@ md_shell_recycle(mod_state* state, PyObject* obj)
     return pool != NULL && pool_push(pool, obj);
 }
 
-/* Out of line: inlined into a constructor it costs the insert loop more
-   than the call, by pushing the compiler off a better layout. */
-NOINLINE static void
-md_set_module(MultiDictObject* md, PyObject* mod)
+/* A MultiDictObject shell with its state set and its strong reference
+   to state->mod taken, which keeps `state` addressable through teardown;
+   see mod_state.mod. The caller still has to md_init() it. Out of line:
+   inlined into a constructor it costs the insert loop more than the
+   call, by pushing the compiler off a better layout. */
+NOINLINE static MultiDictObject*
+md_shell_new(mod_state* state, PyTypeObject* tp)
 {
-    /* A multidict owns a strong reference to state->mod, which keeps
-       `state` addressable through teardown; see mod_state.mod. */
-    assert(md->state != NULL && md->state->mod == mod);
-    Py_INCREF(mod);
+    MultiDictObject* md = (MultiDictObject*)md_shell_alloc(state, tp);
+    if (md == NULL) {
+        return NULL;
+    }
+    md->state = state;
+    Py_INCREF(state->mod);
+    return md;
 }
 
 #ifdef __cplusplus
