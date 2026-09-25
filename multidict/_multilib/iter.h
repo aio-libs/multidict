@@ -98,7 +98,7 @@ multidict_values_iter_new(MultiDictObject* md, int reverse)
 }
 
 static inline PyObject*
-multidict_items_iter_iternext(MultidictIter* self)
+multidict_items_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;
     PyObject* value = NULL;
@@ -158,7 +158,7 @@ multidict_items_iter_iternext(MultidictIter* self)
 }
 
 static inline PyObject*
-multidict_values_iter_iternext(MultidictIter* self)
+multidict_values_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* value = NULL;
 
@@ -180,7 +180,7 @@ multidict_values_iter_iternext(MultidictIter* self)
 }
 
 static inline PyObject*
-multidict_keys_iter_iternext(MultidictIter* self)
+multidict_keys_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;
 
@@ -201,11 +201,11 @@ multidict_keys_iter_iternext(MultidictIter* self)
 }
 
 static inline void
-multidict_iter_dealloc(MultidictIter* self)
+multidict_iter_tp_dealloc(MultidictIter* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
     PyObject_GC_UnTrack(self);
-    /* See multidict_view_dealloc() on why a cleared iterator can't be
+    /* See multidict_view_tp_dealloc() on why a cleared iterator can't be
        pooled. */
     Py_CLEAR(self->result);
     MultiDictObject* md = self->md;
@@ -218,7 +218,7 @@ multidict_iter_dealloc(MultidictIter* self)
 }
 
 static inline int
-multidict_iter_traverse(MultidictIter* self, visitproc visit, void* arg)
+multidict_iter_tp_traverse(MultidictIter* self, visitproc visit, void* arg)
 {
     Py_VISIT(Py_TYPE(self));
     Py_VISIT(self->md);
@@ -227,7 +227,7 @@ multidict_iter_traverse(MultidictIter* self, visitproc visit, void* arg)
 }
 
 static inline int
-multidict_iter_clear(MultidictIter* self)
+multidict_iter_tp_clear(MultidictIter* self)
 {
     Py_CLEAR(self->md);
     Py_CLEAR(self->result);
@@ -254,8 +254,7 @@ static PyMethodDef multidict_iter_methods[] = {
 /***********************************************************************/
 
 static PyObject*
-multidict_iter_forbidden_new(PyTypeObject* type, PyObject* args,
-                             PyObject* kwargs)
+multidict_iter_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwargs)
 {
     PyErr_Format(PyExc_TypeError,
                  "cannot create '%s' instances directly",
@@ -264,13 +263,13 @@ multidict_iter_forbidden_new(PyTypeObject* type, PyObject* args,
 }
 
 static PyType_Slot multidict_items_iter_slots[] = {
-    {Py_tp_new, multidict_iter_forbidden_new},
-    {Py_tp_dealloc, multidict_iter_dealloc},
+    {Py_tp_new, multidict_iter_tp_new},
+    {Py_tp_dealloc, multidict_iter_tp_dealloc},
     {Py_tp_methods, multidict_iter_methods},
-    {Py_tp_traverse, multidict_iter_traverse},
-    {Py_tp_clear, multidict_iter_clear},
+    {Py_tp_traverse, multidict_iter_tp_traverse},
+    {Py_tp_clear, multidict_iter_tp_clear},
     {Py_tp_iter, PyObject_SelfIter},
-    {Py_tp_iternext, multidict_items_iter_iternext},
+    {Py_tp_iternext, multidict_items_iter_tp_iternext},
     {0, NULL},
 };
 
@@ -286,13 +285,13 @@ static PyType_Spec multidict_items_iter_spec = {
 };
 
 static PyType_Slot multidict_values_iter_slots[] = {
-    {Py_tp_new, multidict_iter_forbidden_new},
-    {Py_tp_dealloc, multidict_iter_dealloc},
+    {Py_tp_new, multidict_iter_tp_new},
+    {Py_tp_dealloc, multidict_iter_tp_dealloc},
     {Py_tp_methods, multidict_iter_methods},
-    {Py_tp_traverse, multidict_iter_traverse},
-    {Py_tp_clear, multidict_iter_clear},
+    {Py_tp_traverse, multidict_iter_tp_traverse},
+    {Py_tp_clear, multidict_iter_tp_clear},
     {Py_tp_iter, PyObject_SelfIter},
-    {Py_tp_iternext, multidict_values_iter_iternext},
+    {Py_tp_iternext, multidict_values_iter_tp_iternext},
     {0, NULL},
 };
 
@@ -308,13 +307,13 @@ static PyType_Spec multidict_values_iter_spec = {
 };
 
 static PyType_Slot multidict_keys_iter_slots[] = {
-    {Py_tp_new, multidict_iter_forbidden_new},
-    {Py_tp_dealloc, multidict_iter_dealloc},
+    {Py_tp_new, multidict_iter_tp_new},
+    {Py_tp_dealloc, multidict_iter_tp_dealloc},
     {Py_tp_methods, multidict_iter_methods},
-    {Py_tp_traverse, multidict_iter_traverse},
-    {Py_tp_clear, multidict_iter_clear},
+    {Py_tp_traverse, multidict_iter_tp_traverse},
+    {Py_tp_clear, multidict_iter_tp_clear},
     {Py_tp_iter, PyObject_SelfIter},
-    {Py_tp_iternext, multidict_keys_iter_iternext},
+    {Py_tp_iternext, multidict_keys_iter_tp_iternext},
     {0, NULL},
 };
 

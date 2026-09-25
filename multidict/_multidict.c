@@ -266,15 +266,15 @@ _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
 }
 
 static PyObject*
-multidict_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
-                     PyObject* kwnames)
+multidict_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
+                        PyObject* kwnames)
 {
     return _multidict_ctor_vectorcall(type, args, nargsf, kwnames, false);
 }
 
 static PyObject*
-cimultidict_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
-                       PyObject* kwnames)
+cimultidict_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
+                          PyObject* kwnames)
 {
     return _multidict_ctor_vectorcall(type, args, nargsf, kwnames, true);
 }
@@ -352,16 +352,16 @@ _multidict_proxy_ctor_vectorcall(PyObject* type, PyObject* const* args,
 }
 
 static PyObject*
-multidict_proxy_vectorcall(PyObject* type, PyObject* const* args,
-                           size_t nargsf, PyObject* kwnames)
+multidict_proxy_tp_vectorcall(PyObject* type, PyObject* const* args,
+                              size_t nargsf, PyObject* kwnames)
 {
     return _multidict_proxy_ctor_vectorcall(
         type, args, nargsf, kwnames, false);
 }
 
 static PyObject*
-cimultidict_proxy_vectorcall(PyObject* type, PyObject* const* args,
-                             size_t nargsf, PyObject* kwnames)
+cimultidict_proxy_tp_vectorcall(PyObject* type, PyObject* const* args,
+                                size_t nargsf, PyObject* kwnames)
 {
     return _multidict_proxy_ctor_vectorcall(type, args, nargsf, kwnames, true);
 }
@@ -538,7 +538,7 @@ ret:
 }
 
 static PyObject*
-multidict_repr(MultiDictObject* self)
+multidict_tp_repr(MultiDictObject* self)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self);
@@ -548,7 +548,7 @@ multidict_repr(MultiDictObject* self)
 }
 
 static Py_ssize_t
-multidict_mp_len(MultiDictObject* self)
+multidict_mp_length(MultiDictObject* self)
 {
     return md_len(self);
 }
@@ -560,7 +560,7 @@ multidict_mp_subscript(MultiDictObject* self, PyObject* key)
 }
 
 static int
-multidict_mp_as_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
+multidict_mp_ass_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
 {
     if (val == NULL) {
         return md_del(self, key);
@@ -1384,15 +1384,15 @@ static PyMemberDef multidict_members[] = {
 
 static PyType_Slot multidict_slots[] = {
     {Py_tp_dealloc, multidict_tp_dealloc},
-    {Py_tp_repr, multidict_repr},
+    {Py_tp_repr, multidict_tp_repr},
     {Py_tp_doc, (void*)multidict_doc},
 
     {Py_sq_contains, multidict_sq_contains},
-    {Py_mp_length, multidict_mp_len},
+    {Py_mp_length, multidict_mp_length},
     {Py_mp_subscript, multidict_mp_subscript},
-    {Py_mp_ass_subscript, multidict_mp_as_subscript},
+    {Py_mp_ass_subscript, multidict_mp_ass_subscript},
 
-    {Py_tp_traverse, md_traverse},
+    {Py_tp_traverse, multidict_tp_traverse},
     {Py_tp_clear, md_clear},
     {Py_tp_richcompare, multidict_tp_richcompare},
     {Py_tp_iter, multidict_tp_iter},
@@ -1403,7 +1403,7 @@ static PyType_Slot multidict_slots[] = {
     {Py_tp_free, PyObject_GC_Del},
 
 #if PY_VERSION_HEX >= 0x030e00f0
-    {Py_tp_vectorcall, multidict_vectorcall},
+    {Py_tp_vectorcall, multidict_tp_vectorcall},
 #endif
 #ifndef MANAGED_WEAKREFS
     {Py_tp_members, multidict_members},
@@ -1459,7 +1459,7 @@ static PyType_Slot cimultidict_slots[] = {
     {Py_tp_init, cimultidict_tp_init},
     {Py_tp_new, cimultidict_tp_new},
 #if PY_VERSION_HEX >= 0x030e00f0
-    {Py_tp_vectorcall, cimultidict_vectorcall},
+    {Py_tp_vectorcall, cimultidict_tp_vectorcall},
 #endif
     {0, NULL},
 };
@@ -1581,7 +1581,7 @@ multidict_proxy_to_dict(MultiDictProxyObject* self)
 }
 
 static Py_ssize_t
-multidict_proxy_mp_len(MultiDictProxyObject* self)
+multidict_proxy_mp_length(MultiDictProxyObject* self)
 {
     return md_len(self->md);
 }
@@ -1645,7 +1645,7 @@ multidict_proxy_tp_clear(MultiDictProxyObject* self)
 }
 
 static PyObject*
-multidict_proxy_repr(MultiDictProxyObject* self)
+multidict_proxy_tp_repr(MultiDictProxyObject* self)
 {
     PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(self->md);
@@ -1709,11 +1709,11 @@ static PyMemberDef multidict_proxy_members[] = {
 
 static PyType_Slot multidict_proxy_slots[] = {
     {Py_tp_dealloc, multidict_proxy_tp_dealloc},
-    {Py_tp_repr, multidict_proxy_repr},
+    {Py_tp_repr, multidict_proxy_tp_repr},
     {Py_tp_doc, (void*)multidict_proxy_doc},
 
     {Py_sq_contains, multidict_proxy_sq_contains},
-    {Py_mp_length, multidict_proxy_mp_len},
+    {Py_mp_length, multidict_proxy_mp_length},
     {Py_mp_subscript, multidict_proxy_mp_subscript},
 
     {Py_tp_traverse, multidict_proxy_tp_traverse},
@@ -1727,7 +1727,7 @@ static PyType_Slot multidict_proxy_slots[] = {
     {Py_tp_free, PyObject_GC_Del},
 
 #if PY_VERSION_HEX >= 0x030e00f0
-    {Py_tp_vectorcall, multidict_proxy_vectorcall},
+    {Py_tp_vectorcall, multidict_proxy_tp_vectorcall},
 #endif
 #ifndef MANAGED_WEAKREFS
     {Py_tp_members, multidict_proxy_members},
@@ -1802,7 +1802,7 @@ static PyType_Slot cimultidict_proxy_slots[] = {
     {Py_tp_methods, multidict_proxy_methods},  // see cimultidict_slots
     {Py_tp_init, cimultidict_proxy_tp_init},
 #if PY_VERSION_HEX >= 0x030e00f0
-    {Py_tp_vectorcall, cimultidict_proxy_vectorcall},
+    {Py_tp_vectorcall, cimultidict_proxy_tp_vectorcall},
 #endif
     {0, NULL},
 };
@@ -2028,7 +2028,7 @@ module_exec(PyObject* mod)
        construction behaves like tp_new + tp_init, but reads its arguments
        directly off the vectorcall stack instead of requiring type_call()
        to first pack them into an args tuple and a kwargs dict. */
-    state->MultiDictType->tp_vectorcall = multidict_vectorcall;
+    state->MultiDictType->tp_vectorcall = multidict_tp_vectorcall;
 #endif
 
     tpl = PyTuple_Pack(1, (PyObject*)state->MultiDictType);
@@ -2041,7 +2041,7 @@ module_exec(PyObject* mod)
     }
     state->CIMultiDictType = (PyTypeObject*)tmp;
 #if PY_VERSION_HEX < 0x030e00f0
-    state->CIMultiDictType->tp_vectorcall = cimultidict_vectorcall;
+    state->CIMultiDictType->tp_vectorcall = cimultidict_tp_vectorcall;
 #endif
     Py_CLEAR(tpl);
 
@@ -2051,7 +2051,7 @@ module_exec(PyObject* mod)
     }
     state->MultiDictProxyType = (PyTypeObject*)tmp;
 #if PY_VERSION_HEX < 0x030e00f0
-    state->MultiDictProxyType->tp_vectorcall = multidict_proxy_vectorcall;
+    state->MultiDictProxyType->tp_vectorcall = multidict_proxy_tp_vectorcall;
 #endif
 
     tpl = PyTuple_Pack(1, (PyObject*)state->MultiDictProxyType);
@@ -2064,7 +2064,8 @@ module_exec(PyObject* mod)
     }
     state->CIMultiDictProxyType = (PyTypeObject*)tmp;
 #if PY_VERSION_HEX < 0x030e00f0
-    state->CIMultiDictProxyType->tp_vectorcall = cimultidict_proxy_vectorcall;
+    state->CIMultiDictProxyType->tp_vectorcall =
+        cimultidict_proxy_tp_vectorcall;
 #endif
     Py_CLEAR(tpl);
 

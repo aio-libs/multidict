@@ -2111,7 +2111,7 @@ fail:
 /***********************************************************************/
 
 static inline int
-md_traverse(MultiDictObject* md, visitproc visit, void* arg)
+multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
 {
     Py_VISIT(Py_TYPE(md));
     Py_VISIT(md->state->mod);

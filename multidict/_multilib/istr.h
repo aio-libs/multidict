@@ -18,7 +18,7 @@ typedef struct {
 PyDoc_STRVAR(istr__doc__, "istr class implementation");
 
 static inline void
-istr_dealloc(istrobject* self)
+istr_tp_dealloc(istrobject* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
     Py_XDECREF(self->canonical);
@@ -125,8 +125,8 @@ done:
 }
 
 static PyObject*
-istr_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
-                PyObject* kwnames)
+istr_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
+                   PyObject* kwnames)
 {
     PyTypeObject* tp = (PyTypeObject*)type;
     Py_ssize_t nargs = PyVectorcall_NARGS(nargsf);
@@ -169,12 +169,12 @@ static PyMethodDef istr_methods[] = {
 };
 
 static PyType_Slot istr_slots[] = {
-    {Py_tp_dealloc, istr_dealloc},
+    {Py_tp_dealloc, istr_tp_dealloc},
     {Py_tp_doc, (void*)istr__doc__},
     {Py_tp_methods, istr_methods},
     {Py_tp_new, istr_new},
 #if PY_VERSION_HEX >= 0x030e00f0
-    {Py_tp_vectorcall, istr_vectorcall},
+    {Py_tp_vectorcall, istr_tp_vectorcall},
 #endif
     {0, NULL},
 };
@@ -225,7 +225,7 @@ istr_init(PyObject* module, mod_state* state)
     state->IStrType = (PyTypeObject*)tmp;
 #if PY_VERSION_HEX < 0x030e00f0
     /* 3.14+ sets this via the Py_tp_vectorcall slot instead. */
-    state->IStrType->tp_vectorcall = istr_vectorcall;
+    state->IStrType->tp_vectorcall = istr_tp_vectorcall;
 #endif
     return 0;
 }
