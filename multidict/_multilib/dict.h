@@ -22,36 +22,38 @@ typedef struct _md_watch md_watch_t;
 
 typedef struct {
     PyObject_HEAD
-#ifndef MANAGED_WEAKREFS
-    PyObject* weaklist;
-#endif
+    /* The fields a lookup reads come first, then the ones a mutation
+       writes, then the cold ones. */
     mod_state* state;
-    Py_ssize_t used;
-
-    uint64_t version;
+    htkeys_t* keys;
+#ifdef Py_GIL_DISABLED
+    Py_ssize_t num_active_readers;
+#endif
     bool is_ci;
 
-    htkeys_t* keys;
+    Py_ssize_t used;
+    uint64_t version;
 
     md_watch_t* watch;
 
 #ifdef Py_GIL_DISABLED
-    Py_ssize_t num_active_readers;
-
     htkeys_t* retired;
 #endif
 
-    /* Strong, and last so the hot fields stay in the first cache line.
-       Keeps `state` addressable through teardown; see mod_state.mod. */
+    /* Strong. Keeps `state` addressable through teardown; see
+       mod_state.mod. */
     PyObject* mod;
+#ifndef MANAGED_WEAKREFS
+    PyObject* weaklist;
+#endif
 } MultiDictObject;
 
 typedef struct {
     PyObject_HEAD
+    MultiDictObject* md;
 #ifndef MANAGED_WEAKREFS
     PyObject* weaklist;
 #endif
-    MultiDictObject* md;
 } MultiDictProxyObject;
 
 /* Shells for the exact MultiDict, CIMultiDict and proxy types come from
