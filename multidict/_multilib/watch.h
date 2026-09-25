@@ -105,7 +105,7 @@ _md_watch_report(const MultiDict_WatchInfo* info)
         (void*)info->self);
 #else
     /* This one prefixes "Exception ignored ". Not %p: MSVC prints that
-       without the 0x the 3.13+ branch guarantees. */
+       without a 0x, which PyErr_FormatUnraisable() adds above. */
     char msg[320];
     PyOS_snprintf(msg,
                   sizeof(msg),

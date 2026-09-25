@@ -1096,6 +1096,13 @@ def test_watch_wrong_type(api: object, watcher: Watcher, name: str) -> None:
         getattr(api, name)(*args)
 
 
+def _reported_address(err_msg: str, prefix: str) -> int:
+    # %p is the platform's: Windows zero-pads it and prints it uppercase
+    assert err_msg.startswith(prefix)
+    assert err_msg.endswith(">")
+    return int(err_msg[len(prefix) : -1], 16)
+
+
 def test_a_failing_callback_is_reported_as_unraisable(
     api: object, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1116,10 +1123,11 @@ def test_a_failing_callback_is_reported_as_unraisable(
     assert report.exc_type is RuntimeError
     # named, not passed: the hook would repr() it, running arbitrary code
     assert report.object is None
-    assert report.err_msg == (
+    assert _reported_address(
+        report.err_msg,
         "Exception ignored in MultiDict_EVENT_ADDED watcher callback for "
-        f"<multidict._multidict.MultiDict object at {id(md):#x}>"
-    )
+        "<multidict._multidict.MultiDict object at ",
+    ) == id(md)
 
 
 def test_a_failing_dealloc_callback_names_the_dead_multidict(
@@ -1137,9 +1145,13 @@ def test_a_failing_dealloc_callback_names_the_dead_multidict(
     api.watch_release_refs()
     [report] = unraisable
     assert report.object is None
-    assert report.err_msg == (
-        "Exception ignored in MultiDict_EVENT_DEALLOCATED watcher callback for "
-        f"<multidict._multidict.CIMultiDict object at {address:#x}>"
+    assert (
+        _reported_address(
+            report.err_msg,
+            "Exception ignored in MultiDict_EVENT_DEALLOCATED watcher callback "
+            "for <multidict._multidict.CIMultiDict object at ",
+        )
+        == address
     )
 
 
