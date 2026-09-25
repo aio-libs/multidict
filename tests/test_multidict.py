@@ -2787,7 +2787,7 @@ def test_drain_retired_retries_after_pushing_back_thread_safety() -> None:
 def test_get_referents_reports_each_entry_once() -> None:
     """The collector must be told about every key and value exactly once.
 
-    md_traverse() reports the entries of the tables waiting on md->retired
+    multidict_tp_traverse() reports the entries of the tables waiting on md->retired
     as well as those of md->keys, which is only sound because the two never
     hold the same entry: _md_resize() zeroes the old table's nentries when
     it hands ownership to the new one, so only md_clear() retires a table
@@ -2812,7 +2812,7 @@ def test_collect_cycle_through_retired_entries_thread_safety() -> None:
     traffic must still be collectable.
 
     A table the drain leaves on md->retired keeps its entries' references,
-    and md_traverse() used to report the entries of md->keys only, so the
+    and multidict_tp_traverse() used to report the entries of md->keys only, so the
     collector could not see a cycle that ran through one of them: it read
     the values as reachable from outside and kept the whole cycle alive.
     This does not fail on an unfixed build, as review pointed out: the last

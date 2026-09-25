@@ -17,7 +17,7 @@ if __name__ == "__main__":
     md = MultiDict([("a", "1"), ("b", "2")])
 
     # items() / values() iterators each have their own PyType_Spec
-    # sharing multidict_iter_dealloc; test them independently so a
+    # sharing multidict_iter_tp_dealloc; test them independently so a
     # regression in just one spec's slot table is still caught.
     for view_name in ("items", "values"):
         get_view = getattr(md, view_name)
@@ -35,7 +35,7 @@ if __name__ == "__main__":
         )
 
     # items() / values() views each have their own PyType_Spec
-    # sharing multidict_view_dealloc; same rationale as above.
+    # sharing multidict_view_tp_dealloc; same rationale as above.
     for view_name in ("items", "values"):
         get_view = getattr(md, view_name)
         view_type = type(get_view())
