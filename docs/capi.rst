@@ -833,22 +833,38 @@ cache that is thrown away every time stop trying, which is how
 CPython's JIT treats a module's globals once they have changed a few
 times.
 
-The callback runs on whichever thread mutated the multidict, and an
-event goes to whoever is watching when the operation finishes, so it
-can reach a rebuild that already saw its change. The cache therefore
-keeps a lock of its own (:c:type:`!PyMutex` needs Python 3.13; any lock
-will do) and the version it was built from. The callback discards only
-a cache the multidict has moved past, and leaves the watch alone while
-a rebuild owns it, so a cached value always has a watch that will clear
-it.
+An event goes to whoever is watching when the operation finishes, not
+to whoever was watching when the change was made. So it can reach a
+rebuild that already saw its change, even under the GIL, since
+``parse()`` running Python code lets another thread mutate the
+multidict in the middle of it. The cache therefore records the version
+it was built from. The callback discards only a cache the multidict
+has moved past, and leaves the watch alone while a rebuild owns it, so
+a cached value always has a watch that will clear it.
+
+On the free-threaded build the callback also runs truly concurrently
+with the rebuild, so the fields need a lock of their own. Under the GIL
+nothing between the version check and the store runs Python code, so
+the GIL already makes that stretch atomic and the lock compiles away.
+One source serves both builds, the way a wheel for each is built.
 
 ::
 
    #define MAX_REBUILDS 8
 
+   #ifdef Py_GIL_DISABLED
+   #  define CACHE_LOCK(c) PyMutex_Lock(&(c)->lock)
+   #  define CACHE_UNLOCK(c) PyMutex_Unlock(&(c)->lock)
+   #else
+   #  define CACHE_LOCK(c) ((void)(c))
+   #  define CACHE_UNLOCK(c) ((void)(c))
+   #endif
+
    typedef struct {
        PyObject *headers;  /* strong; unwatched before it is released */
+   #ifdef Py_GIL_DISABLED
        PyMutex lock;       /* guards the fields below */
+   #endif
        PyObject *parsed;   /* derived from headers, or NULL */
        uint64_t version;   /* the headers version parsed was built from */
        int rebuilds;
@@ -868,7 +884,7 @@ it.
        }
        PyObject *old = NULL;
        int ret = 0;
-       PyMutex_Lock(&c->lock);
+       CACHE_LOCK(c);
        if (c->parsed == NULL ||
            MultiDict_GetVersion(state->capi, info->self) != c->version) {
            old = c->parsed;
@@ -880,7 +896,7 @@ it.
                                        info->self);
            }
        }
-       PyMutex_Unlock(&c->lock);
+       CACHE_UNLOCK(c);
        Py_XDECREF(old);
        return ret;
    }
@@ -888,7 +904,7 @@ it.
    static PyObject *
    get_parsed(my_mod_state *state, cached *c)
    {
-       PyMutex_Lock(&c->lock);
+       CACHE_LOCK(c);
        PyObject *parsed = Py_XNewRef(c->parsed);
        bool rebuild =
            parsed == NULL && !c->rebuilding && c->rebuilds < MAX_REBUILDS;
@@ -897,7 +913,7 @@ it.
            c->rebuilds++;
            c->rebuilding = true;
        }
-       PyMutex_Unlock(&c->lock);
+       CACHE_UNLOCK(c);
        if (parsed != NULL) {
            return parsed;
        }
@@ -912,8 +928,11 @@ it.
        if (MultiDict_Watch(state->capi, state->watcher_id, c->headers, c) == 0) {
            parsed = parse(c->headers);
        }
-       PyObject *exc = parsed == NULL ? PyErr_GetRaisedException() : NULL;
-       PyMutex_Lock(&c->lock);
+       PyObject *exc_type = NULL, *exc_value = NULL, *exc_tb = NULL;
+       if (parsed == NULL) {
+           PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
+       }
+       CACHE_LOCK(c);
        if (parsed == NULL) {
            /* Nothing to invalidate, so stop listening. */
            (void)MultiDict_Unwatch(state->capi, state->watcher_id,
@@ -923,9 +942,9 @@ it.
            c->version = version;
        }
        c->rebuilding = false;
-       PyMutex_Unlock(&c->lock);
-       if (exc != NULL) {
-           PyErr_SetRaisedException(exc);
+       CACHE_UNLOCK(c);
+       if (parsed == NULL) {
+           PyErr_Restore(exc_type, exc_value, exc_tb);
        }
        return parsed;
    }
