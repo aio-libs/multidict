@@ -253,17 +253,7 @@ static PyMethodDef multidict_iter_methods[] = {
 
 /***********************************************************************/
 
-static PyObject*
-multidict_iter_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwargs)
-{
-    PyErr_Format(PyExc_TypeError,
-                 "cannot create '%s' instances directly",
-                 type->tp_name);
-    return NULL;
-}
-
 static PyType_Slot multidict_items_iter_slots[] = {
-    {Py_tp_new, multidict_iter_tp_new},
     {Py_tp_dealloc, multidict_iter_tp_dealloc},
     {Py_tp_methods, multidict_iter_methods},
     {Py_tp_traverse, multidict_iter_tp_traverse},
@@ -276,16 +266,12 @@ static PyType_Slot multidict_items_iter_slots[] = {
 static PyType_Spec multidict_items_iter_spec = {
     .name = "multidict._multidict._itemsiter",
     .basicsize = sizeof(MultidictIter),
-    .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a00f0
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
-              | Py_TPFLAGS_HAVE_GC),
+    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE |
+              Py_TPFLAGS_DISALLOW_INSTANTIATION | Py_TPFLAGS_HAVE_GC),
     .slots = multidict_items_iter_slots,
 };
 
 static PyType_Slot multidict_values_iter_slots[] = {
-    {Py_tp_new, multidict_iter_tp_new},
     {Py_tp_dealloc, multidict_iter_tp_dealloc},
     {Py_tp_methods, multidict_iter_methods},
     {Py_tp_traverse, multidict_iter_tp_traverse},
@@ -298,16 +284,12 @@ static PyType_Slot multidict_values_iter_slots[] = {
 static PyType_Spec multidict_values_iter_spec = {
     .name = "multidict._multidict._valuesiter",
     .basicsize = sizeof(MultidictIter),
-    .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a00f0
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
-              | Py_TPFLAGS_HAVE_GC),
+    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE |
+              Py_TPFLAGS_DISALLOW_INSTANTIATION | Py_TPFLAGS_HAVE_GC),
     .slots = multidict_values_iter_slots,
 };
 
 static PyType_Slot multidict_keys_iter_slots[] = {
-    {Py_tp_new, multidict_iter_tp_new},
     {Py_tp_dealloc, multidict_iter_tp_dealloc},
     {Py_tp_methods, multidict_iter_methods},
     {Py_tp_traverse, multidict_iter_tp_traverse},
@@ -320,11 +302,8 @@ static PyType_Slot multidict_keys_iter_slots[] = {
 static PyType_Spec multidict_keys_iter_spec = {
     .name = "multidict._multidict._keysiter",
     .basicsize = sizeof(MultidictIter),
-    .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a00f0
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
-              | Py_TPFLAGS_HAVE_GC),
+    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE |
+              Py_TPFLAGS_DISALLOW_INSTANTIATION | Py_TPFLAGS_HAVE_GC),
     .slots = multidict_keys_iter_slots,
 };
 
