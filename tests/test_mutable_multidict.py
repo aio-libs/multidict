@@ -1020,6 +1020,72 @@ class TestCIMutableMultiDict:
 
         assert [("a", "a2"), ("b", "b"), ("c", "c")] == list(d.items())
 
+    @pytest.mark.parametrize("op", ["init", "extend", "update", "merge"])
+    @pytest.mark.parametrize("source", ["multidict", "dict"])
+    def test_key_lower_mutates_source(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[object]],
+        case_insensitive_multidict_class: type[CIMultiDict[object]],
+        op: str,
+        source: str,
+    ) -> None:
+        """The source's entries must stay alive across a key's lower()."""
+
+        class Key(str):
+            def lower(self) -> str:
+                src.clear()
+                for i in range(100):
+                    src[f"x{i}"] = object()
+                return str.lower(self)
+
+        # Built at runtime so that only the source owns a reference.
+        pairs = [(Key("A"), "".join(["val", "ue"])), (Key("B"), object())]
+        src: MultiDict[object] | dict[str, object]
+        if source == "multidict":
+            src = case_sensitive_multidict_class(pairs)
+        else:
+            src = dict(pairs)
+        del pairs
+        if op == "init":
+            d = case_insensitive_multidict_class(src)
+        else:
+            d = case_insensitive_multidict_class()
+            getattr(d, op)(src)
+
+        assert d.getone("a") == "value"
+
+    @pytest.mark.parametrize("source", ["multidict", "dict"])
+    def test_value_finalizer_mutates_source(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[object]],
+        case_insensitive_multidict_class: type[CIMultiDict[object]],
+        source: str,
+    ) -> None:
+        """merge() drops a value for a present key, whose __del__ runs."""
+
+        class Key(str):
+            def lower(self) -> str:
+                src.clear()
+                src["y0"] = src["y1"] = object()
+                return str.lower(self)
+
+        class Value:
+            def __del__(self) -> None:
+                for i in range(100):
+                    src[f"x{i}"] = object()
+
+        pairs = [(Key("A"), Value()), (Key("B"), object())]
+        src: MultiDict[object] | dict[str, object]
+        if source == "multidict":
+            src = case_sensitive_multidict_class(pairs)
+        else:
+            src = dict(pairs)
+        del pairs
+        d = case_insensitive_multidict_class(a="kept")
+        d.merge(src)
+
+        assert d.getone("a") == "kept"
+
 
 def test_multidict_shrink_regression() -> None:
     """
