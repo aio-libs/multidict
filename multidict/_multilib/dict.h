@@ -40,9 +40,6 @@ typedef struct {
     htkeys_t* retired;
 #endif
 
-    /* Strong. Keeps `state` addressable through teardown; see
-       mod_state.mod. */
-    PyObject* mod;
 #ifndef MANAGED_WEAKREFS
     PyObject* weaklist;
 #endif
@@ -111,7 +108,10 @@ md_shell_recycle(mod_state* state, PyObject* obj)
 NOINLINE static void
 md_set_module(MultiDictObject* md, PyObject* mod)
 {
-    md->mod = Py_NewRef(mod);
+    /* A multidict owns a strong reference to state->mod, which keeps
+       `state` addressable through teardown; see mod_state.mod. */
+    assert(md->state != NULL && md->state->mod == mod);
+    Py_INCREF(mod);
 }
 
 #ifdef __cplusplus
