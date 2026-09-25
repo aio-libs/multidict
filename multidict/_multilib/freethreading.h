@@ -161,6 +161,48 @@ try_get_ref(PyObject** addr)
     return value;
 }
 
+/* A registration is written under watcher_mutex and read lock-free by
+   delivery. Clearing bumps the generation before it empties the slot, and
+   registering stores the data before the callback, so a reader that loads
+   the callback, then the data, then finds the generation it expects has a
+   pair from one registration: anything newer would have shown it the
+   bump. */
+static inline MultiDict_WatchCallback
+load_watcher(mod_state* state, int watcher_id)
+{
+    return (MultiDict_WatchCallback)atomic_load_ptr(
+        (void* const*)&state->watchers[watcher_id]);
+}
+
+static inline void*
+load_watcher_data(mod_state* state, int watcher_id)
+{
+    return atomic_load_ptr(&state->watcher_data[watcher_id]);
+}
+
+static inline uint64_t
+load_watcher_generation(mod_state* state, int watcher_id)
+{
+    return atomic_load_uint64_relaxed(&state->watcher_generation[watcher_id]);
+}
+
+static inline void
+publish_watcher(mod_state* state, int watcher_id,
+                MultiDict_WatchCallback callback, void* watcher_data)
+{
+    atomic_store_ptr(&state->watcher_data[watcher_id], watcher_data);
+    atomic_store_ptr((void**)&state->watchers[watcher_id], (void*)callback);
+}
+
+static inline void
+retire_watcher(mod_state* state, int watcher_id)
+{
+    atomic_store_uint64_relaxed(&state->watcher_generation[watcher_id],
+                                state->watcher_generation[watcher_id] + 1);
+    atomic_store_ptr((void**)&state->watchers[watcher_id], NULL);
+    atomic_store_ptr(&state->watcher_data[watcher_id], NULL);
+}
+
 #else /* Py_GIL_DISABLED */
 
 static inline uint64_t
@@ -251,6 +293,40 @@ static inline void
 store_hash(entry_t* entry, Py_hash_t hash)
 {
     entry->hash = hash;
+}
+
+static inline MultiDict_WatchCallback
+load_watcher(mod_state* state, int watcher_id)
+{
+    return state->watchers[watcher_id];
+}
+
+static inline void*
+load_watcher_data(mod_state* state, int watcher_id)
+{
+    return state->watcher_data[watcher_id];
+}
+
+static inline uint64_t
+load_watcher_generation(mod_state* state, int watcher_id)
+{
+    return state->watcher_generation[watcher_id];
+}
+
+static inline void
+publish_watcher(mod_state* state, int watcher_id,
+                MultiDict_WatchCallback callback, void* watcher_data)
+{
+    state->watcher_data[watcher_id] = watcher_data;
+    state->watchers[watcher_id] = callback;
+}
+
+static inline void
+retire_watcher(mod_state* state, int watcher_id)
+{
+    state->watcher_generation[watcher_id]++;
+    state->watchers[watcher_id] = NULL;
+    state->watcher_data[watcher_id] = NULL;
 }
 
 #endif /* Py_GIL_DISABLED */

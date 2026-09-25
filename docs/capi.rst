@@ -605,9 +605,8 @@ time.
 
 .. c:function:: int MultiDict_AddWatcher(MultiDict_CAPI *capi, MultiDict_WatchCallback callback, void *watcher_data)
 
-   **Thread safety:** not safe against a concurrent
-   :c:func:`MultiDict_AddWatcher` or :c:func:`MultiDict_ClearWatcher`.
-   Register during module initialization, before the watcher can fire.
+   **Thread safety:** Safe to call from any thread, concurrently with
+   :c:func:`MultiDict_ClearWatcher` and with events being delivered.
 
    Register *callback*, to be passed *watcher_data* on every event.
    Return a watcher ID in ``[0, MULTIDICT_MAX_WATCHERS)``, or ``-1`` with
@@ -630,22 +629,15 @@ time.
    is out of range.
 
    Multidicts still being watched by *watcher_id* are **not** visited:
-   nothing enumerates them. Their watch bit stays set and resolves to the
-   now-empty slot, so nothing is delivered while that slot is free.
-   CPython's :c:func:`!PyDict_ClearWatcher` behaves the same way.
+   nothing enumerates them. Their watch stays behind but is retired with
+   the registration, so it reports to nobody, not even to a later
+   :c:func:`MultiDict_AddWatcher` that hands out the same ID. Only a
+   fresh :c:func:`MultiDict_Watch` under the new registration reports
+   that multidict again.
 
-   .. warning::
-
-      A later :c:func:`MultiDict_AddWatcher` hands the same ID out
-      again, and any multidict left carrying the bit then reports to the
-      **new** callback, carrying the **old** *user_data*. ``multidict``
-      does not own that pointer, so by then it may be freed.
-
-      Register once during module initialization and leave the watcher
-      registered for the life of the interpreter, which is what CPython
-      recommends for dict watchers too. If you do clear a watcher,
-      :c:func:`MultiDict_Unwatch` every multidict you watched first, or
-      be certain that none of them is still alive.
+   An event already being delivered on another thread can still reach
+   the callback after this returns, so keep *watcher_data* and every
+   *user_data* alive until no delivery can be in flight.
 
 .. c:function:: int MultiDict_Watch(MultiDict_CAPI *capi, int watcher_id, PyObject *self, void *user_data)
 

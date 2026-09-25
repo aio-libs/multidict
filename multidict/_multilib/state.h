@@ -52,6 +52,14 @@ typedef struct {
        MultiDict_ClearWatcher() resolves to. */
     MultiDict_WatchCallback watchers[MULTIDICT_MAX_WATCHERS];
     void* watcher_data[MULTIDICT_MAX_WATCHERS];
+    /* Bumped by every MultiDict_ClearWatcher(), so a watch bit attached
+       under an earlier registration of the same ID no longer matches once
+       AddWatcher() hands the ID out again. */
+    uint64_t watcher_generation[MULTIDICT_MAX_WATCHERS];
+#ifdef Py_GIL_DISABLED
+    // serializes AddWatcher() and ClearWatcher(); delivery reads lock-free
+    PyMutex watcher_mutex;
+#endif
 
     /* Nothing pooled here holds a reference, so module_traverse() has
        nothing to visit; all of them are drained by module_clear().

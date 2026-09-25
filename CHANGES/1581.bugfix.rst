@@ -1,0 +1,5 @@
+Fixed :c:func:`MultiDict_AddWatcher` and :c:func:`MultiDict_ClearWatcher`
+racing event delivery on the free-threaded build, and a multidict still
+watched through a cleared watcher ID reporting to whichever watcher was
+next registered under that ID, with the previous watcher's
+``user_data`` -- by :user:`asvetlov`.

@@ -2043,6 +2043,7 @@ module_clear(PyObject* mod)
        one to its type, so the state outlives them all. */
     memset(state->watchers, 0, sizeof(state->watchers));
     memset(state->watcher_data, 0, sizeof(state->watcher_data));
+    memset(state->watcher_generation, 0, sizeof(state->watcher_generation));
 
     return 0;
 }
