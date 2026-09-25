@@ -67,8 +67,7 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
                 PyExc_TypeError,
                 "%s takes from 1 to 2 positional arguments but %zd were given",
                 name,
-                s + 1,
-                NULL);
+                s + 1);
             *parg = NULL;
             return -1;
         }
@@ -211,9 +210,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
 
             ret = md_init(self, is_ci, nkwargs + extra);
             if (ret == 0) {
-                if (arg != NULL) {
-                    ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
-                }
+                ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
                 ASSERT_CONSISTENT(self, false);
             }
         }
