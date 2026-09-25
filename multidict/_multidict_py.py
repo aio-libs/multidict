@@ -1217,9 +1217,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def popone(self, key: str, default: _T) -> _V | _T: ...
     @_locked_always
     def popone(self, key: str, default: _T | _SENTINEL = sentinel) -> _V | _T:
-        """Remove specified key and return the corresponding value.
+        """Remove the first occurrence of key and return the corresponding value.
 
-        If key is not found, d is returned if given, otherwise
+        If key is not found, default is returned if given, otherwise
         KeyError is raised.
 
         """
