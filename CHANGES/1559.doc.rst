@@ -1,4 +1,0 @@
-Mentioned in the README and docs index that ``multidict`` is optimized for
-both the GIL and free-threaded builds, and that its performance is typically
-within 20-30% of :class:`dict` for common operations, with a link to the
-benchmarks page for the full breakdown -- by :user:`asvetlov`.

@@ -1,4 +1,0 @@
-Documented how to run the Hypothesis property tests, which a default
-``pytest`` run excludes via the ``-m "not hypothesis"`` marker
-expression in ``pytest.ini`` and whose pin ``make install-dev`` does
-not install -- by :user:`asvetlov`.

@@ -1,8 +1,0 @@
-Sped up every method call on :class:`~multidict.CIMultiDict` and
-:class:`~multidict.CIMultiDictProxy` in the C extension by binding
-their method descriptors to the class itself instead of inheriting
-them from :class:`~multidict.MultiDict` and
-:class:`~multidict.MultiDictProxy`; CPython only specializes a
-method call when the descriptor belongs to the exact type of the
-receiver, so every such call was taking the generic path
--- by :user:`asvetlov`.

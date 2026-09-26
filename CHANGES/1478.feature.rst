@@ -1,5 +1,0 @@
-Added a public C and Cython API for third-party extensions. Its
-``MultiDict_ForEach()`` family hands a visitor each entry's key, value,
-identity (the canonical key the mapping looks entries up by, lower-cased
-on a :class:`~multidict.CIMultiDict`) and the identity's hash
--- by :user:`Vizonex` and :user:`asvetlov`.

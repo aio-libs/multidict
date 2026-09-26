@@ -1,4 +1,0 @@
-Moved the debug-only ``ASSERT_CONSISTENT`` macro and the
-``_md_check_consistency()`` and ``_md_dump()`` helpers used by the C
-extension out of ``hashtable.h`` into their own ``debug.h`` header
--- by :user:`asvetlov`.

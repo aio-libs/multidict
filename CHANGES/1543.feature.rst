@@ -1,4 +1,0 @@
-Sped up :meth:`~multidict.MultiDict.getall` in the C extension, by
-shrinking the scratch buffer the walk carries on the stack from 4 KB to
-1 KB. The buffer was large enough to stop the compiler inlining the walk
-into its callers, which cost more than it saved -- by :user:`asvetlov`.

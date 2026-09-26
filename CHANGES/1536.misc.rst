@@ -1,8 +1,0 @@
-Dropped two module state lookups in the C extension that had already been
-answered elsewhere. ``MultiDict.__init__()`` and ``CIMultiDict.__init__()``
-switched to reading the state pointer that ``tp_new()`` stored on the object instead
-of resolving it from the type a second time, and an ``istr`` stopped
-carrying a state pointer of its own, which was written on every creation
-and never read. Constructing a subclass of either container got about 1%
-cheaper, and every ``istr`` is eight bytes smaller
--- by :user:`asvetlov`.

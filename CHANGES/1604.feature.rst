@@ -1,0 +1,5 @@
+Stopped a multidict with no watchers from testing for them on every
+record made by ``del d[key]``, ``d[key] = value`` and ``pop()``: each
+operation checked once and ran a copy without the watcher code, which
+recovered most of the cost the watchers C API had added to them
+-- by :user:`asvetlov`.

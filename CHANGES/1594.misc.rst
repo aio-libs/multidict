@@ -1,3 +1,0 @@
-Renamed the C extension's functions that are used only as type slots
-after the slot they fill, as ``<type>_tp_<slot>``, ``<type>_nb_<slot>``,
-``<type>_sq_<slot>`` or ``<type>_mp_<slot>`` -- by :user:`asvetlov`.

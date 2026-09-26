@@ -1,5 +1,0 @@
-Documented why ``md_clear()`` keeps clearing entry fields with
-``Py_CLEAR()`` on the GIL build rather than routing them through
-``_multilib/freethreading.h``: ``Py_CLEAR()`` skips the store when a
-field is already ``NULL``, so no accessor there is a substitute for it
--- by :user:`asvetlov`.

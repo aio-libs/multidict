@@ -221,7 +221,7 @@ htkeys_get_index(const htkeys_t* keys, Py_ssize_t i)
 }
 
 /* write to indices. */
-static inline void
+ALWAYS_INLINE static inline void
 htkeys_set_index(htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)
 {
     uint8_t log2size = keys->log2_size;

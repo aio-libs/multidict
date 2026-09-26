@@ -1,2 +1,0 @@
-Made :class:`~multidict.istr` a final class to disallow subclassing in both
-the C extension and pure-Python implementations -- by :user:`agustin18`.

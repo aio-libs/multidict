@@ -1,5 +1,0 @@
-Rewrote the benchmark scripts around a single registry of benchmarked
-operations, and added a Callgrind driver that records deterministic
-instruction counts per operation. The measurements of destructive
-operations such as ``pop()`` and ``clear()`` stopped counting the cost
-of rebuilding the mapping -- by :user:`asvetlov`.

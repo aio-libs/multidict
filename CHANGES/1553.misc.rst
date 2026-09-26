@@ -1,3 +1,0 @@
-Stopped building the implicit :data:`None` default of
-``MultiDict.setdefault()`` on every call in the C extension -- by
-:user:`asvetlov`.

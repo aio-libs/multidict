@@ -25,7 +25,7 @@ __all__ = (
     "upstr",
 )
 
-__version__ = "6.9.2.dev0"
+__version__ = "7.0.0"
 
 
 if TYPE_CHECKING or not USE_EXTENSIONS:

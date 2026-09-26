@@ -1,5 +1,0 @@
-Collapsed the two ``#ifdef Py_GIL_DISABLED`` arms that fill in a freshly
-inserted hash table entry in the C extension into one. Both builds started
-writing the entry's fields in the order the free-threaded build needs, and
-publishing the value without first loading and releasing the one already
-there, since a fresh entry holds none -- by :user:`asvetlov`.

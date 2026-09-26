@@ -1,5 +1,0 @@
-Stopped asking every performance pull request to regenerate the tables in
-the benchmarking reference, since each run shifts every row slightly and the
-churn hides the rows that moved, and moved the refresh to once per release.
-Added :file:`RELEASE.md`, which documents the release procedure, including
-that refresh -- by :user:`asvetlov`.

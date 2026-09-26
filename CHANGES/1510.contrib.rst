@@ -1,3 +1,0 @@
-Moved the compiler hint macros used by the C extension out of
-``htkeys.h`` into ``compiler.h`` and dropped the ``HT_`` prefix from
-their names -- by :user:`asvetlov`.

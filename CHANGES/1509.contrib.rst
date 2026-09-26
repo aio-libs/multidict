@@ -1,3 +1,0 @@
-Added CodSpeed benchmarks for ``getall()`` on keys with many values, both
-in a small table and in a table large enough to need a heap allocated
-bitmap -- by :user:`asvetlov`.
