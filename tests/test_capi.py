@@ -855,6 +855,24 @@ def test_delitem_of_a_missing_key_records_nothing(watcher: Watcher) -> None:
     assert watcher.drain() == []
 
 
+def test_delitem_ignores_a_watcher_attached_part_way(watcher: Watcher) -> None:
+    # Watched-ness is sampled once per operation, so a watcher attached by
+    # a __del__ the delete runs sees none of it rather than an unpaired
+    # DELETED and BATCH_END.
+    md: multidict.MultiDict[object] = multidict.MultiDict()
+
+    class WatchOnDel:
+        def __del__(self) -> None:
+            watcher.watch(md, None)
+
+    md.add("key", WatchOnDel())
+    md.add("key", "two")
+    del md["key"]
+    assert watcher.drain() == []
+    md["other"] = "value"
+    assert watcher.kinds() == [BATCH_BEGIN, ADDED, BATCH_END]
+
+
 def test_extend_batches_one_added_per_pair(watcher: Watcher) -> None:
     md: MultiDictStr = multidict.MultiDict()
     watcher.watch(md, None)

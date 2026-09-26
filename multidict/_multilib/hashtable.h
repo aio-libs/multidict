@@ -736,7 +736,7 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
     return ret;
 }
 
-static inline void
+ALWAYS_INLINE static inline void
 _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
 {
     htkeys_t* keys = md->keys;
@@ -831,9 +831,13 @@ md_half_delete_for_upd(MultiDictObject* md, entry_t* entry, reflist_t* defer)
 }
 
 /* Caller holds md's critical section. Reports whether anything was removed;
- * md_del() raises the KeyError outside the section. */
-static inline bool
-_md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
+ * md_del() raises the KeyError outside the section. `watched` is a
+ * constant at both call sites, so the unwatched copy carries no watch
+ * code at all: testing md->watch inside the loop costs a reload per
+ * record, since every decref and store may alias it. */
+ALWAYS_INLINE static inline bool
+_md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+               bool watched)
 {
     bool found = false;
 
@@ -857,17 +861,19 @@ restart:;
             continue;
         }
 
-        if (!found) {
-            found = true;
-            md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
+        if (watched) {
+            if (!found) {
+                md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
+            }
+            md_watch_record(md,
+                            MultiDict_EVENT_DELETED,
+                            entry->identity,
+                            hash,
+                            entry->key,
+                            entry->value,
+                            NULL);
         }
-        md_watch_record(md,
-                        MultiDict_EVENT_DELETED,
-                        entry->identity,
-                        hash,
-                        entry->key,
-                        entry->value,
-                        NULL);
+        found = true;
         _md_del_at(md, iter.slot, entry);
         // the decref can run a __del__ that lets another thread resize
         if (UNLIKELY(md->keys != keys || md->version != version)) {
@@ -877,10 +883,18 @@ restart:;
 
     if (found) {
         store_version(md, next_version(md->state));
-        md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+        if (watched) {
+            md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+        }
     }
     ASSERT_CONSISTENT(md, false);
     return found;
+}
+
+COLD static bool
+_md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
+{
+    return _md_del_locked(md, identity, hash, true);
 }
 
 NOINLINE static int
@@ -892,10 +906,17 @@ md_del(MultiDictObject* md, PyObject* key)
         return -1;
     }
     bool found;
-    bool flush;
+    /* Unwatched on entry means nothing gets recorded, even if a __del__
+       run by the delete attaches a watcher, so there is nothing to
+       flush; a mutation that __del__ makes flushes its own records. */
+    bool flush = false;
     Py_BEGIN_CRITICAL_SECTION(md);
-    found = _md_del_locked(md, identity, hash);
-    flush = md_watch_pending(md);
+    if (UNLIKELY(md->watch != NULL)) {
+        found = _md_del_locked_watched(md, identity, hash);
+        flush = md_watch_pending(md);
+    } else {
+        found = _md_del_locked(md, identity, hash, false);
+    }
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
     md_watch_flush_if(md, flush);
@@ -1470,10 +1491,11 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
     return ret;
 }
 
-// Caller holds md's critical section
-static inline int
+/* Caller holds md's critical section. `watched` is a constant at both
+ * call sites; see _md_del_locked(). */
+ALWAYS_INLINE static inline int
 _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                   PyObject** ret)
+                   PyObject** ret, bool watched)
 {
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
@@ -1490,13 +1512,15 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         }
         if (str_cmp(identity, entry->identity)) {
             PyObject* value = Py_NewRef(entry->value);
-            md_watch_record(md,
-                            MultiDict_EVENT_DELETED,
-                            identity,
-                            hash,
-                            entry->key,
-                            value,
-                            NULL);
+            if (watched) {
+                md_watch_record(md,
+                                MultiDict_EVENT_DELETED,
+                                identity,
+                                hash,
+                                entry->key,
+                                value,
+                                NULL);
+            }
             _md_del_at(md, iter.slot, entry);
             *ret = value;
             store_version(md, next_version(md->state));
@@ -1508,6 +1532,13 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return 0;
 }
 
+COLD static int
+_md_pop_one_locked_watched(MultiDictObject* md, PyObject* identity,
+                           Py_hash_t hash, PyObject** ret)
+{
+    return _md_pop_one_locked(md, identity, hash, ret, true);
+}
+
 static inline int
 md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
@@ -1517,10 +1548,15 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
         return -1;
     }
     int result;
-    bool flush;
+    // see md_del()
+    bool flush = false;
     Py_BEGIN_CRITICAL_SECTION(md);
-    result = _md_pop_one_locked(md, identity, hash, ret);
-    flush = md_watch_pending(md);
+    if (UNLIKELY(md->watch != NULL)) {
+        result = _md_pop_one_locked_watched(md, identity, hash, ret);
+        flush = md_watch_pending(md);
+    } else {
+        result = _md_pop_one_locked(md, identity, hash, ret, false);
+    }
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
     md_watch_flush_if(md, flush);
@@ -1719,9 +1755,11 @@ md_pop_item(MultiDictObject* md)
     return ret;
 }
 
-static inline int
+/* Returns 1 when `key` isn't there, leaving the add to the caller.
+ * `watched` is a constant at both call sites; see _md_del_locked(). */
+ALWAYS_INLINE static inline int
 _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
-            PyObject* identity, Py_hash_t hash, reflist_t* defer)
+            PyObject* identity, Py_hash_t hash, reflist_t* defer, bool watched)
 {
     bool found = false;
 
@@ -1766,13 +1804,15 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                 PyObject* old_value = load_value(entry);
                 entry->key = Py_NewRef(key);
                 publish_value(entry, Py_NewRef(value));
-                md_watch_record(md,
-                                MultiDict_EVENT_REPLACED,
-                                identity,
-                                hash,
-                                key,
-                                value,
-                                old_value);
+                if (watched) {
+                    md_watch_record(md,
+                                    MultiDict_EVENT_REPLACED,
+                                    identity,
+                                    hash,
+                                    key,
+                                    value,
+                                    old_value);
+                }
                 /* Push both unconditionally, not with `||`: a failed
                    first push already decref'd old_key itself (see
                    reflist_push()'s doc comment), but short-circuiting
@@ -1786,13 +1826,15 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                     return -1;
                 }
             } else {
-                md_watch_record(md,
-                                MultiDict_EVENT_DELETED,
-                                entry->identity,
-                                hash,
-                                entry->key,
-                                entry->value,
-                                NULL);
+                if (watched) {
+                    md_watch_record(md,
+                                    MultiDict_EVENT_DELETED,
+                                    entry->identity,
+                                    hash,
+                                    entry->key,
+                                    entry->value,
+                                    NULL);
+                }
                 if (_md_del_at_deferred(md, iter.slot, entry, defer) < 0) {
                     return -1;
                 }
@@ -1815,11 +1857,24 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
         }
 
         if (!found) {
-            return md_add_with_hash(md, hash, identity, key, value);
+            return 1;
         }
         store_version(md, next_version(md->state));
         return 0;
     }
+}
+
+COLD static int
+_md_replace_watched(MultiDictObject* md, PyObject* key, PyObject* value,
+                    PyObject* identity, Py_hash_t hash, reflist_t* defer)
+{
+    md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
+    int ret = _md_replace(md, key, value, identity, hash, defer, true);
+    if (ret > 0) {
+        ret = md_add_with_hash(md, hash, identity, key, value);
+    }
+    md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+    return ret;
 }
 
 NOINLINE static int
@@ -1833,13 +1888,19 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     reflist_t defer;
     reflist_init(&defer);
     int ret;
-    bool flush;
+    // see md_del()
+    bool flush = false;
     Py_BEGIN_CRITICAL_SECTION(md);
-    md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
-    ret = _md_replace(md, key, value, identity, hash, &defer);
-    md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+    if (UNLIKELY(md->watch != NULL)) {
+        ret = _md_replace_watched(md, key, value, identity, hash, &defer);
+        flush = md_watch_pending(md);
+    } else {
+        ret = _md_replace(md, key, value, identity, hash, &defer, false);
+        if (ret > 0) {
+            ret = md_add_with_hash(md, hash, identity, key, value);
+        }
+    }
     ASSERT_CONSISTENT(md, false);
-    flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
     reflist_clear(&defer);
     Py_DECREF(identity);
