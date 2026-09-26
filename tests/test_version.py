@@ -389,6 +389,7 @@ def test_versions_unique_across_threads(
     assert len(set(seen)) == len(seen)
 
 
+@pytest.mark.c_extension
 @pytest.mark.parametrize("version", [2**32 + 1, 2**63 + 1])
 def test_getversion_keeps_all_64_bits(version: int) -> None:
     # unsigned long is 32 bits on Windows and 32-bit platforms, where a
