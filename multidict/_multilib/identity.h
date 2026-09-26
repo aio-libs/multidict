@@ -131,6 +131,26 @@ _ascii_lower(const Py_UCS1* data, Py_ssize_t len)
     return ret;
 }
 
+/* Anything but an ASCII exact str: rare enough in keys to keep off the
+   straight line. */
+COLD static PyObject*
+_ci_str_call_lower(mod_state* state, PyObject* key)
+{
+    if (!PyUnicode_Check(key)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "CIMultiDict keys should be either str "
+                        "or subclasses of str");
+        return NULL;
+    }
+    PyObject* ret = PyObject_CallMethodNoArgs(key, state->str_lower);
+    if (ret == NULL || PyUnicode_CheckExact(ret)) {
+        return ret;
+    }
+    PyObject* tmp = PyUnicode_FromObject(ret);
+    Py_DECREF(ret);
+    return tmp;
+}
+
 /* Out of line on purpose.  md_calc_identity() carries this whole function
    into every md_*() that takes a key, and inlining it there costs more than
    it saves: the extra size pushes md_contains() and md_next() past the
@@ -152,26 +172,7 @@ _ci_str_to_identity(mod_state* state, PyObject* key)
         }
         return _ascii_lower(data, len);
     }
-    if (PyUnicode_Check(key)) {
-        PyObject* ret = PyObject_CallMethodNoArgs(key, state->str_lower);
-        if (ret == NULL) {
-            goto fail;
-        }
-        if (!PyUnicode_CheckExact(ret)) {
-            PyObject* tmp = PyUnicode_FromObject(ret);
-            Py_CLEAR(ret);
-            if (tmp == NULL) {
-                return NULL;
-            }
-            ret = tmp;
-        }
-        return ret;
-    }
-    PyErr_SetString(PyExc_TypeError,
-                    "CIMultiDict keys should be either str "
-                    "or subclasses of str");
-fail:
-    return NULL;
+    return _ci_str_call_lower(state, key);
 }
 
 static inline PyObject*
