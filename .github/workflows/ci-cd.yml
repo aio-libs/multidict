@@ -463,29 +463,40 @@ jobs:
 
 
   benchmark:
-    name: Benchmark (${{ matrix.name }})
+    name: Benchmark ${{ matrix.build }} ${{ matrix.shard }}
     needs:
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Sharded to shorten the wall clock; CodSpeed merges the shards'
-    # uploads for one commit into a single report.
+    # Sharded to shorten the wall clock; CodSpeed merges every job's upload
+    # for one commit into a single report. FT benchmark IDs get an `ft`
+    # suffix from tests/conftest.py, so the two builds never collide.
     strategy:
       fail-fast: false
       matrix:
+        build:
+        - GIL
+        - FT
+        shard:
+        - 1
+        - 2
         include:
-        - name: shard 1
+        - build: GIL
+          python-version: '3.14'
+        - build: FT
+          python-version: 3.14t
+        - shard: 1
           marks: not benchmark_shard_2
-        - name: shard 2
+        - shard: 2
           marks: benchmark_shard_2
     steps:
     - name: Checkout project
       uses: actions/checkout@v7
-    - name: Setup Python 3.14
+    - name: Setup Python ${{ matrix.python-version }}
       id: python-install
       uses: actions/setup-python@v7
       with:
-        python-version: 3.14
+        python-version: ${{ matrix.python-version }}
         cache: pip
         cache-dependency-path: requirements/*.txt
     - name: Install dependencies

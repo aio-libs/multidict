@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import pickle
+import sysconfig
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
@@ -19,6 +20,8 @@ from multidict import (
 )
 
 C_EXT_MARK = pytest.mark.c_extension
+
+FT_BUILD = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
 try:
     from hypothesis import HealthCheck, settings
@@ -228,7 +231,16 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
+@pytest.fixture(autouse=True)
+def interpreter_build() -> str:
+    return "ft" if FT_BUILD else "gil"
+
+
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    if FT_BUILD and "benchmark" in metafunc.fixturenames:
+        # CodSpeed keys a result by node ID alone, so FT benchmark IDs must
+        # differ from GIL ones; GIL IDs stay unchanged to keep their history.
+        metafunc.parametrize("interpreter_build", ["ft"])
     if "pickle_protocol" in metafunc.fixturenames:
         metafunc.parametrize(
             "pickle_protocol", list(range(pickle.HIGHEST_PROTOCOL + 1)), scope="session"

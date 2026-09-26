@@ -1,4 +1,5 @@
 Added CodSpeed benchmarks for mutating a multidict that a watcher is
-attached to, and split the benchmark CI job into two parallel shards of
+attached to, started benchmarking the FT build alongside the GIL one,
+and split each build's benchmark CI job into two parallel shards of
 similar length, selected by a new ``benchmark_shard_2`` pytest mark
 -- by :user:`asvetlov`.
