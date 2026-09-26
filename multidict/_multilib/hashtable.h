@@ -883,7 +883,7 @@ restart:;
     return found;
 }
 
-static inline int
+NOINLINE static int
 md_del(MultiDictObject* md, PyObject* key)
 {
     PyObject* identity;
@@ -1822,7 +1822,7 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
     }
 }
 
-static inline int
+NOINLINE static int
 md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
 {
     PyObject* identity;
@@ -1975,7 +1975,7 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
     return 1;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
 {
     int reprenter = Py_ReprEnter(obj);

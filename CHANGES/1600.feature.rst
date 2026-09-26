@@ -1,0 +1,4 @@
+Sped up key lookups on the free-threaded build of the C extension by
+keeping the operations behind Python slots out of line, so they stopped
+crowding the lookup paths out of the compiler's inlining budget -- by
+:user:`asvetlov`.

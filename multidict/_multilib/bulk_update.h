@@ -311,7 +311,7 @@ md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
     return ret;
 }
 
-static inline int
+NOINLINE static int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                   reflist_t* defer, update_marks_t* marks)
 {
@@ -415,7 +415,7 @@ fail:
     return -1;
 }
 
-static inline int
+NOINLINE static int
 md_extend_self(MultiDictObject* md)
 {
     if (md_reserve(md, md->keys->nentries) < 0) {
@@ -439,7 +439,7 @@ md_extend_self(MultiDictObject* md)
     return 0;
 }
 
-static inline int
+NOINLINE static int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                     reflist_t* defer, update_marks_t* marks)
 {
@@ -620,7 +620,7 @@ fail:
     return -1;
 }
 
-static inline int
+NOINLINE static int
 md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                    reflist_t* defer, update_marks_t* marks)
 {
