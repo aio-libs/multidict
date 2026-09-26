@@ -1,5 +1,0 @@
-Sped up :meth:`~multidict.MultiDict.update` and
-:meth:`~multidict.MultiDict.merge` from a :class:`dict` by taking a
-reference to each key and value only when the key's ``lower()`` could
-run Python code, and moved that ``lower()`` call off the straight line
-of :class:`~multidict.CIMultiDict` key lookups -- by :user:`asvetlov`.

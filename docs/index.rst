@@ -86,8 +86,8 @@ environment variable, e.g.:
    $ MULTIDICT_NO_EXTENSIONS=1 pip install multidict
 
 Please note, the pure Python (uncompiled) version is dramatically slower: the
-pure-Python backend table in :doc:`benchmark` measures it at roughly 7 to 80
-times more instructions than the C extension, depending on the operation.
+pure-Python backend table in :doc:`benchmark` measures it at about 40 times
+more instructions than the C extension, averaged over the measured operations.
 Unless the target platform genuinely cannot build the C extension, leave
 :envvar:`MULTIDICT_NO_EXTENSIONS` unset and let it compile.
 

@@ -1,3 +1,0 @@
-Cut the per-thread version batches on the free-threaded build down to a
-single thread-local counter, which halved the thread-local lookups each
-mutation made -- by :user:`asvetlov`.
