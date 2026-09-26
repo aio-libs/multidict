@@ -2,4 +2,6 @@ Fixed a use-after-free in the C extension when a :class:`str` subclass
 key's ``lower()`` mutated the source while a
 :class:`~multidict.CIMultiDict` was built from, extended, updated or
 merged with a :class:`dict` or a multidict of the other case
-sensitivity -- by :user:`asvetlov`.
+sensitivity. The extra references this takes are limited to the keys
+whose ``lower()`` can run Python code, so other updates do not pay for
+them -- by :user:`asvetlov`.
