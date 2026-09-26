@@ -1,0 +1,4 @@
+Changed free-threaded builds to reserve versions for each multidict in
+blocks of 256, so a mutation advanced a counter in the object itself
+instead of looking up a thread-local one, which cut 2 to 5 percent of
+the instructions of every mutation -- by :user:`asvetlov`.

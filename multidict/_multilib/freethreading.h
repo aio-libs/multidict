@@ -80,36 +80,53 @@ store_keys(MultiDictObject* md, htkeys_t* keys)
 
 /* Shared across multidicts, so no two ever report the same version.
    Process-wide rather than in mod_state, so a batch outliving its
-   module state cannot overlap a newer one. Each thread reserves
-   VERSION_BATCH at a time: a fetch-add per mutation bounced one cache
-   line between every mutating thread. Versions stay unique but are
-   unordered across threads, which getversion() never promised. */
-#define VERSION_BATCH 256
+   module state cannot overlap a newer one. A fetch-add per mutation
+   bounced one cache line between every mutating thread, so each thread
+   reserves VERSION_BATCH at a time and hands it out VERSION_BLOCK at a
+   time, one block per multidict. Versions stay unique but are unordered
+   across threads, which getversion() never promised. */
+#define VERSION_BATCH 65536
+#define VERSION_BLOCK 256
 
 static uint64_t global_version;
-/* The last version this thread handed out. A batch never hands out its
-   own base, a multiple of VERSION_BATCH, so reaching one means the batch
-   is spent; starting one short of it makes the first call refill. One
-   variable, read and advanced by one increment, is one TLS lookup. */
-static THREAD_LOCAL uint64_t version_last = VERSION_BATCH - 1;
+/* The last block this thread handed out. No block starts at a multiple
+   of VERSION_BATCH, so reaching one means the batch is spent; starting
+   one block short of it makes the first call refill. */
+static THREAD_LOCAL uint64_t version_block = VERSION_BATCH - VERSION_BLOCK;
 
 static COLD uint64_t
-_refill_versions(void)
+_refill_version_batch(void)
 {
     uint64_t base =
         atomic_fetch_add_uint64_relaxed(&global_version, VERSION_BATCH);
-    version_last = base + 1;
-    return version_last;
+    version_block = base + VERSION_BLOCK;
+    return version_block;
 }
 
-static inline uint64_t
-next_version(mod_state* state)
+/* One read-modify-write, so one TLS lookup. */
+static COLD uint64_t
+_new_version_block(void)
 {
-    (void)state;
-    uint64_t version = ++version_last;
-    if (UNLIKELY((version & (VERSION_BATCH - 1)) == 0)) {
-        version = _refill_versions();
+    uint64_t block = version_block += VERSION_BLOCK;
+    if (UNLIKELY((block & (VERSION_BATCH - 1)) == 0)) {
+        block = _refill_version_batch();
     }
+    return block;
+}
+
+/* md->version is the cursor into md's own block, advanced under md's
+   critical section, so a mutation touches neither thread-local storage
+   nor a shared counter. A block's own base is never handed out: low
+   bits of 0 after the increment mean the block is spent, and low bits
+   of 1 mean md never had one (a new multidict starts at version 0). */
+static inline uint64_t
+bump_version(MultiDictObject* md)
+{
+    uint64_t version = md->version + 1;
+    if (UNLIKELY((version & (VERSION_BLOCK - 1)) <= 1)) {
+        version = _new_version_block() + 1;
+    }
+    store_version(md, version);
     return version;
 }
 
@@ -271,9 +288,11 @@ store_keys(MultiDictObject* md, htkeys_t* keys)
 }
 
 static inline uint64_t
-next_version(mod_state* state)
+bump_version(MultiDictObject* md)
 {
-    return ++state->global_version;
+    uint64_t version = ++md->state->global_version;
+    md->version = version;
+    return version;
 }
 
 static inline PyObject*
