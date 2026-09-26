@@ -1,0 +1,8 @@
+Sped up inserting into a :class:`~multidict.MultiDict` in the C extension
+on GIL builds by keeping the table resize out of line. The compiler had
+been inlining the compaction of deleted slots into every insert path,
+which made each insert save more registers for a branch it almost never
+takes. Building a multidict from 200 pairs got about 4% faster in
+instruction count, and :meth:`~multidict.MultiDict.add` and item
+assignment of a new key about 2% faster. Free-threaded builds are
+unchanged -- by :user:`asvetlov`.

@@ -459,7 +459,8 @@ _md_shrink(MultiDictObject* md, update_marks_t* marks)
 #endif
 }
 
-static inline int
+// Out of line so _md_shrink() is not inlined into every insert path
+NOINLINE static int
 _md_resize_for_insert(MultiDictObject* md)
 {
     if (md->used < md->keys->nentries) {
