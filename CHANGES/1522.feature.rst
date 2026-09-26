@@ -1,7 +1,7 @@
 Replaced the C extension's per-key finder object with a single
 callback-driven walk in a new ``_multilib/walk.h`` header. The entries a
-walk has already reported are now tracked by the walk itself rather than
-by every caller, and the walk keeps its position in registers instead of
+walk has already reported were tracked by the walk itself rather than
+by every caller, and the walk kept its position in registers instead of
 reloading it from a struct on each step, so
 :meth:`~multidict.MultiDict.getall` and the items and keys view set
 operations got faster on keys with many values -- by :user:`asvetlov`.

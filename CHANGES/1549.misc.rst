@@ -1,3 +1,3 @@
-``MultiDict.get()`` no longer builds the implicit :data:`None` default on
-every call in the C extension; it is now produced only when the key is
+Stopped building the implicit :data:`None` default of ``MultiDict.get()``
+on every call in the C extension, and produced it only when the key is
 actually missing -- by :user:`asvetlov`.

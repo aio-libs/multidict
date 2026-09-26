@@ -5,5 +5,8 @@ differences: the callback is passed two context pointers, one fixed per
 registered callback and one per watched multidict, and events are
 delivered once the operation that produced them has finished rather than
 mid-mutation. The events are multi-value aware, and each one that concerns
-a key carries the identity and its hash alongside it -- by
-:user:`asvetlov`.
+a key carries the identity and its hash alongside it. Up to
+:c:macro:`MULTIDICT_MAX_WATCHERS` (32) watchers can be registered, and a
+failing callback is reported through :func:`sys.unraisablehook` with the
+event and the multidict's type and address, as CPython does for dict
+watchers -- by :user:`asvetlov`.

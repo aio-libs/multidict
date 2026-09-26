@@ -1,4 +1,3 @@
-``MultiDict.setdefault()`` no longer builds the implicit :data:`None`
-default on every call in the C extension. ``MultiDict_SetDefault()`` in
-the public C API now accepts ``NULL`` for *default_value* and reads it
-as :data:`None`, matching the Python method -- by :user:`asvetlov`.
+Stopped building the implicit :data:`None` default of
+``MultiDict.setdefault()`` on every call in the C extension -- by
+:user:`asvetlov`.

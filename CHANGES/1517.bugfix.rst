@@ -1,6 +1,6 @@
 Fixed the C extension discarding a :exc:`MemoryError` or
 :exc:`KeyboardInterrupt` raised by a positional argument's ``__len__``
 while the size of an update was estimated. ``extend()``, ``update()``,
-``merge()`` and subclass construction now propagate it, matching the
+``merge()`` and subclass construction started propagating it, matching the
 pure-Python backend; only the :exc:`TypeError` from an unusable
-``__length_hint__`` is still ignored -- by :user:`asvetlov`.
+``__length_hint__`` stayed ignored -- by :user:`asvetlov`.
