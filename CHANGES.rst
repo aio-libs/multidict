@@ -60,8 +60,8 @@ C-extension benchmarks got faster and none got slower. Rough figures:
 
 The pure-Python backend is unchanged in speed.
 
-**Robustness.** This release fixes several crashes and leaks in the C
-extension. There are use-after-free bugs when a key's ``lower()`` or a
+**Robustness.** This release fixed several crashes and leaks in the C
+extension, including use-after-free bugs when a key's ``lower()`` or a
 value's ``__eq__`` mutated a multidict, a crash at interpreter shutdown,
 and table and reference leaks on the free-threaded build.
 
