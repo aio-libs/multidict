@@ -447,14 +447,21 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
     PyObject* identity = NULL;
     PyObject* key = NULL;
     PyObject* value = NULL;
+    bool owned = false;
 
     assert(PyDict_CheckExact(kwds));
 
     // PyDict_Next returns borrowed refs
     while (PyDict_Next(kwds, &pos, &key, &value)) {
-        /* lower() on a str subclass key can clear kwds and free both. */
-        Py_INCREF(key);
-        Py_INCREF(value);
+        /* Only lower() on a str subclass key runs Python code here, and it
+           can clear kwds and free both; any other key keeps them alive
+           through kwds. */
+        owned = md->is_ci && !PyUnicode_CheckExact(key) &&
+                !IStr_CheckExact(md->state, key);
+        if (UNLIKELY(owned)) {
+            Py_INCREF(key);
+            Py_INCREF(value);
+        }
         identity = md_calc_identity(md, key);
         if (identity == NULL) {
             goto fail;
@@ -464,43 +471,44 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
             goto fail;
         }
         switch (op) {
-            case Update: {
+            case Update:
                 if (_md_update(md, hash, identity, key, value, defer, marks) <
                     0) {
                     goto fail;
                 }
-                Py_CLEAR(identity);
-                Py_CLEAR(key);
-                Py_CLEAR(value);
                 break;
-            }
-            case Extend: {
+            case Extend:
+                if (!owned) {
+                    Py_INCREF(key);
+                    Py_INCREF(value);
+                    owned = true;
+                }
                 if (md_add_with_hash_steal_refs(
                         md, hash, identity, key, value) < 0) {
                     goto fail;
                 }
-
                 identity = NULL;
-                key = NULL;
-                value = NULL;
+                owned = false;
                 break;
-            }
-            case Merge: {
+            case Merge:
                 if (_md_merge(md, hash, identity, key, value, marks) < 0) {
                     goto fail;
                 }
-                Py_CLEAR(identity);
-                Py_CLEAR(key);
-                Py_CLEAR(value);
                 break;
-            }
+        }
+        Py_CLEAR(identity);
+        if (owned) {
+            Py_DECREF(key);
+            Py_DECREF(value);
         }
     }
     return 0;
 fail:
     Py_CLEAR(identity);
-    Py_CLEAR(key);
-    Py_CLEAR(value);
+    if (owned) {
+        Py_DECREF(key);
+        Py_DECREF(value);
+    }
     return -1;
 }
 
