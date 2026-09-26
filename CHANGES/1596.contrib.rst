@@ -1,5 +1,0 @@
-Changed the release workflow to rewrite the Sphinx roles of the changelog
-section as Markdown before publishing it as the GitHub Release body, so
-that class, method and exception references, contributor handles and
-documentation links render there instead of showing as raw markup
--- by :user:`asvetlov`.

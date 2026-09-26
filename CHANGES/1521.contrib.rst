@@ -1,3 +1,0 @@
-Added CodSpeed benchmarks for ``CIMultiDict`` keyed by plain ``str`` instead
-of ``istr``, covering already-lowercase, mixed-case and non-ASCII keys
--- by :user:`asvetlov`.

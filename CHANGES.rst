@@ -14,6 +14,835 @@ Changelog
 
 .. towncrier release notes start
 
+7.0.0
+=====
+
+*(2026-09-26)*
+
+7.0.0 is a major release. It makes :class:`~multidict.istr` final, adds a
+public C API for third-party extensions, and makes the C extension
+substantially faster across the board.
+
+**Breaking change.** :class:`~multidict.istr` can no longer be subclassed,
+on either backend. Code that subclassed it has to wrap or convert instead.
+The C extension also started rejecting an argument passed both
+positionally and by name with :exc:`TypeError`, where it used to silently
+misbehave.
+
+**Public C and Cython API.** Other C extensions and Cython modules can now
+create, read and mutate multidicts through a capsule, without going through
+the Python-level API. The capsule comes with ``multidict_capi.h``, a
+``cimport``-able ``multidict/__init__.pxd`` and
+:func:`multidict.get_include`. The API includes ``MultiDict_ForEach()`` and
+a watchers API modeled on CPython's dict watchers. See the :doc:`C API <capi>` and
+:doc:`Cython API <cyapi>` references.
+
+**Performance.** On CodSpeed's GIL-build benchmarks against 6.9.1, 82
+C-extension benchmarks got faster and none got slower. Rough figures:
+
+- :class:`~multidict.CIMultiDict` keyed by plain :class:`str`: construction,
+  ``add()``, ``extend()``, ``update()`` and item assignment got 2 to 3.8
+  times faster, and lookups about 2 times faster.
+- :class:`~multidict.CIMultiDict` keyed by :class:`~multidict.istr`, and
+  case-sensitive :class:`~multidict.MultiDict`: lookups, insertion and
+  deletion got 10% to 70% faster.
+- :meth:`~multidict.MultiDict.getall` and iterating
+  :meth:`~multidict.MultiDict.items` got about 35% faster, and the view set
+  operations 10% to 85% faster.
+- :meth:`~multidict.MultiDict.popitem` on a whole mapping went from
+  quadratic to linear time.
+- On the free-threaded build, measured in instructions against 6.9.1,
+  lookups got 24% to 33% cheaper on :class:`~multidict.MultiDict` and 4 to 5
+  times cheaper on :class:`~multidict.CIMultiDict` with lowercase :class:`str`
+  keys, and item assignment 15% to 19% cheaper. Construction and deletion on
+  :class:`~multidict.MultiDict` cost 2% to 7% more. With several threads
+  mutating at once, a ``d[key] = value`` got about four times faster.
+
+The pure-Python backend is unchanged in speed.
+
+**Robustness.** This release fixes several crashes and leaks in the C
+extension. There are use-after-free bugs when a key's ``lower()`` or a
+value's ``__eq__`` mutated a multidict, a crash at interpreter shutdown,
+and table and reference leaks on the free-threaded build.
+
+
+Bug fixes
+---------
+
+- Fixed a segmentation fault in the C extension when a finalizer let the
+  same multidict be resized while ``del md[key]`` or
+  :meth:`~multidict.MultiDict.popall` was still scanning the table, and a
+  spurious :exc:`RuntimeError` from :meth:`~multidict.MultiDict.getall`
+  when a garbage collection triggered while building its result mutated
+  the multidict -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1492`, :issue:`1512`.
+
+- Fixed a reference leak of the key and value in the C extension when
+  growing the hash table fails with :exc:`MemoryError` during
+  :meth:`~multidict.MultiDict.add`, :meth:`~multidict.MultiDict.update`,
+  :meth:`~multidict.MultiDict.merge`, :meth:`~multidict.MultiDict.setdefault`
+  or item assignment -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1507`.
+
+- Fixed a data race on the free-threaded build of the C extension where a
+  ``MultiDict``'s own version counter was read by
+  :func:`~multidict.getversion` and written on every mutation with a plain,
+  non-atomic load and store. Both sides switched to a relaxed atomic
+  load/store, matching the pattern already used for the object's item
+  count -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1514`.
+
+- Fixed the C extension discarding a :exc:`MemoryError` or
+  :exc:`KeyboardInterrupt` raised by a positional argument's ``__len__``
+  while the size of an update was estimated. ``extend()``, ``update()``,
+  ``merge()`` and subclass construction started propagating it, matching the
+  pure-Python backend; only the :exc:`TypeError` from an unusable
+  ``__length_hint__`` stayed ignored -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1517`.
+
+- Ensured that canonical keys in pure-Python :class:`~multidict.MultiDict` and
+  :class:`~multidict.CIMultiDict` are converted to exact :class:`str` instances
+  without invoking :meth:`object.__str__` overrides, matching the C extension --
+  by :user:`agustin18`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1535`.
+
+- Fixed the argument counts reported by the C extension when a method is
+  called with too many positional arguments; methods with an optional
+  second argument claimed to take exactly one, and methods requiring two
+  claimed to take a range. A method called with none of its two required
+  arguments now reports both as missing -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1545`.
+
+- Fixed the C extension accepting an argument passed both positionally and
+  by name instead of raising :exc:`TypeError`. ``md.add("a", key="k",
+  value="v")`` stored a wrong value, and ``md.get("a", "b", key="c")``
+  silently ignored the surplus arguments -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1545`.
+
+- Fixed a memory leak in the free-threaded build of the C extension.
+  :meth:`~multidict.MultiDict.clear` hands its hash table to a drain that
+  frees it once no lock-free reader is in flight, and a drain that finds
+  one leaves the table for the next drain to free. Deallocation ran no
+  drain of its own, so a multidict dropped after such a clear, with no
+  operation in between, never freed that table nor released the references
+  its entries still held. Builds with the GIL enabled emit byte-identical
+  code and are unaffected -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1555`, :issue:`1562`.
+
+- Fixed a crash during interpreter shutdown in the C extension: a
+  multidict started keeping a reference to its own module, so the module
+  state it reads while being torn down could not be freed first
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1563`.
+
+- Fixed retired hash tables lingering in the free-threaded build of the C
+  extension. A drain that finds a lock-free reader in flight puts the tables
+  it holds back for the next drain to run, and the reader it saw could
+  already have looked, so nothing was left to free them: they stayed until
+  the multidict was next used, and if it was dropped instead, the references
+  their entries held were never released. Builds with the GIL enabled emit
+  byte-identical code and are unaffected -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1565`.
+
+- Fixed reference cycles through a multidict going uncollected in the
+  free-threaded build of the C extension. A hash table waiting to be freed
+  still owns the references of the entries left in it, and those were not
+  reported to the garbage collector, which then read the values as reachable
+  from outside the cycle and kept it alive. Builds with the GIL enabled emit
+  byte-identical code and are unaffected -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1566`.
+
+- Fixed ``extend()``, ``update()`` and ``merge()`` of the C extension
+  raising :exc:`SystemError` when given an object whose
+  ``__length_hint__()`` reported close to :data:`sys.maxsize` together
+  with keyword arguments, and overflowing the table size computation for
+  such a hint; a hint too large to reserve for is ignored, as
+  :meth:`list.extend` does -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1577`.
+
+- Fixed a use-after-free in the C extension's ``MultiDict.__eq__``
+  when a value's ``__eq__`` mutated either multidict; comparing
+  exact :class:`str` values also became faster -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1579`.
+
+- Fixed a use-after-free in the C extension when a :class:`str` subclass
+  key's ``lower()`` mutated the source while a
+  :class:`~multidict.CIMultiDict` was built from, extended, updated or
+  merged with a :class:`dict` or a multidict of the other case
+  sensitivity. The extra references this takes are limited to the keys
+  whose ``lower()`` can run Python code, so other updates do not pay for
+  them -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1581`, :issue:`1598`.
+
+
+Features
+--------
+
+- Added a public C and Cython API for third-party extensions. Its
+  ``MultiDict_ForEach()`` family hands a visitor each entry's key, value,
+  identity (the canonical key the mapping looks entries up by, lower-cased
+  on a :class:`~multidict.CIMultiDict`) and the identity's hash
+  -- by :user:`Vizonex` and :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1478`.
+
+- Changed the C extension to track the entries that
+  :meth:`~multidict.MultiDict.getall`, item assignment,
+  :meth:`~multidict.MultiDict.update`, :meth:`~multidict.MultiDict.merge`
+  and :meth:`~multidict.MultiDict.to_dict` have visited in a bitmap private
+  to the call, instead of temporarily marking entry hashes in the table
+  itself. Concurrent readers on free-threaded builds no longer have to
+  tolerate marked entries. Item assignment,
+  :meth:`~multidict.MultiDict.to_dict` and lookups of keys with many values
+  got faster, while :meth:`~multidict.MultiDict.update` with many repeated
+  keys got somewhat slower
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1505`.
+
+- Replaced the C extension's per-key finder object with a single
+  callback-driven walk in a new ``_multilib/walk.h`` header. The entries a
+  walk has already reported were tracked by the walk itself rather than
+  by every caller, and the walk kept its position in registers instead of
+  reloading it from a struct on each step, so
+  :meth:`~multidict.MultiDict.getall` and the items and keys view set
+  operations got faster on keys with many values -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1522`.
+
+- Sped up ``CIMultiDict`` operations keyed by a plain ``str`` in the C
+  extension. An all-ASCII key was lowered directly instead of through a
+  ``str.lower()`` call, and a key that is already lowercase became its own
+  identity, which saved both a copy and a rehash. Looking up a lowercase key
+  got about three times faster and inserting one about twice as fast, keys
+  that do carry uppercase gained 20% to 35%, and bulk operations on
+  already-lowercase keys, such as :meth:`~multidict.MultiDict.extend` and
+  construction from a :class:`dict`, got up to three times faster
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1527`.
+
+- Sped up building an ``istr`` in the C extension. The class gained its own
+  vectorcall, so the one-argument form stopped packing its argument into a
+  tuple for :c:func:`!type_call` only to unpack it again with
+  :c:func:`PyArg_ParseTupleAndKeywords`. Building an ``istr`` from a
+  :class:`str` got about 19% faster, and building one from an ``istr``,
+  which hands back the original, about three times faster. In exchange
+  :meth:`~multidict.MultiDict.getall` costs nine more instructions per
+  call, since the added code moves where the compiler draws its inlining
+  line -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1537`.
+
+- Sped up building and dropping multidicts in the C extension by reusing
+  freed hash tables instead of returning them to the allocator. Small
+  tables are kept in a bounded per-size-class pool held in the module
+  state, the way CPython reuses key objects for :class:`dict`. Only on
+  builds with the GIL: a shared pool needs an atomic exchange to take a
+  table and another to put one back, which measured slower than the
+  per-thread allocator a free-threaded build already has
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1539`.
+
+- Sped up :meth:`~multidict.MultiDict.copy`, constructing a multidict from
+  another one, and growing one past its current size in the C extension, by
+  not zeroing the parts of a hash table that are about to be overwritten. A
+  copied table is overwritten in full, and a resized one has the entries it
+  carries over written straight onto it -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1540`.
+
+- Sped up :meth:`~multidict.MultiDict.items`,
+  :meth:`~multidict.MultiDict.keys`, :meth:`~multidict.MultiDict.values`
+  and iterating a multidict in the C extension, by reusing the view and
+  iterator objects they allocate instead of returning them to the
+  allocator -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1541`.
+
+- Sped up constructing a :class:`~multidict.MultiDict`,
+  :class:`~multidict.CIMultiDict`, :class:`~multidict.MultiDictProxy` or
+  :class:`~multidict.CIMultiDictProxy` in the C extension, by reusing the
+  object itself as well as its hash table. Subclasses are unaffected and
+  keep allocating as before -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1542`.
+
+- Sped up :meth:`~multidict.MultiDict.getall` in the C extension, by
+  shrinking the scratch buffer the walk carries on the stack from 4 KB to
+  1 KB. The buffer was large enough to stop the compiler inlining the walk
+  into its callers, which cost more than it saved -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1543`.
+
+- Sped up lock-free reads on the free-threaded build of the C extension.
+  Every reader that leaves a :class:`~multidict.MultiDict` last used to
+  call into the retired-table drain, whose first act is a sequentially
+  consistent read-modify-write, even though the retired list is empty
+  almost every time; a plain load took over that case and the drain
+  itself moved out of line. ``key in md`` got about 10% cheaper,
+  ``md[key]`` about 8% and a missing ``md.get(key)`` about 5%, measured as
+  instruction counts on CPython 3.14. Builds with the GIL enabled emit
+  byte-identical code and are unaffected -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1546`.
+
+- Added a watchers C API, so another C extension can be notified when a
+  :class:`~multidict.MultiDict` or :class:`~multidict.CIMultiDict` changes.
+  It follows CPython's :c:func:`!PyDict_AddWatcher` family, with two
+  differences: the callback is passed two context pointers, one fixed per
+  registered callback and one per watched multidict, and events are
+  delivered once the operation that produced them has finished rather than
+  mid-mutation. The events are multi-value aware, and each one that concerns
+  a key carries the identity and its hash alongside it. Up to
+  :c:macro:`MULTIDICT_MAX_WATCHERS` (32) watchers can be registered, and a
+  failing callback is reported through :func:`sys.unraisablehook` with the
+  event and the multidict's type and address, as CPython does for dict
+  watchers -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1551`.
+
+- Sped up lookups, insertions and deletions in the C extension by always
+  inlining the hash-table probe's initializer. Left to itself the compiler
+  emitted it out of line, so every probe opened with a call for five
+  stores. Free-threaded builds already inlined it and are unchanged
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1554`.
+
+- Sped up every method call on :class:`~multidict.CIMultiDict` and
+  :class:`~multidict.CIMultiDictProxy` in the C extension by binding
+  their method descriptors to the class itself instead of inheriting
+  them from :class:`~multidict.MultiDict` and
+  :class:`~multidict.MultiDictProxy`; CPython only specializes a
+  method call when the descriptor belongs to the exact type of the
+  receiver, so every such call was taking the generic path
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1567`.
+
+- Made :meth:`~multidict.MultiDict.popitem` in the C extension drop the
+  trailing deleted entries it walked over, so that popping every item
+  out of a mapping costs linear time rather than quadratic; the
+  pure-Python implementation already did this -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1568`.
+
+- Sped up iterating over :meth:`~multidict.MultiDict.items` in the C
+  extension by handing out the same ``(key, value)`` tuple again when
+  the caller has already let go of it, as ``for key, value in
+  d.items()`` does on every step; a tuple the caller keeps is left
+  alone and a new one is used from then on -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1569`.
+
+- Sped up lookups on the free-threaded build by comparing the hash before
+  touching an entry's key and by matching a key that is the very same
+  object as the one looked up without taking a reference to it, so the
+  common hit costs two fewer atomic operations -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1570`.
+
+- Sped up mutations on the free-threaded build when several threads
+  mutated multidicts at the same time: each thread reserved version
+  numbers in batches instead of bumping one counter shared by every
+  thread on each mutation, so with six threads a ``d[key] = value`` was
+  about four times faster -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1587`, :issue:`1599`.
+
+- Sped up the C extension by keeping the table resize on the insert path and
+  the operations behind Python slots out of line, so they stopped crowding the
+  hot paths out of the compiler's inlining budget. On GIL builds, building a
+  multidict from 200 pairs got about 4% faster in instruction count and
+  inserting a new key about 2%; on free-threaded builds, key lookups got up to
+  5% faster -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1600`, :issue:`1601`.
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Made :class:`~multidict.istr` a final class to disallow subclassing in both
+  the C extension and pure-Python implementations -- by :user:`agustin18`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1535`.
+
+
+Improved documentation
+----------------------
+
+- Documented how :class:`~multidict.MultiDict` and
+  :class:`~multidict.CIMultiDict` compare with :class:`dict` on both the
+  default and the free-threaded builds, with per-operation measurements,
+  and how to run the benchmarks in a stable environment
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1532`.
+
+- Documented what :class:`~multidict.istr` keys are worth on a
+  :class:`~multidict.CIMultiDict`, as instruction counts next to the
+  equivalent plain :class:`str` keys. The advice to create them once and
+  reuse them was already there; the numbers behind it were not
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1547`.
+
+- Documented that a few rows of the benchmarking reference are measured on
+  an empty or 20-item mapping rather than the 200-item one the section
+  describes -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1558`.
+
+- Mentioned in the README and docs index that ``multidict`` is optimized for
+  both the GIL and free-threaded builds, and that its performance is typically
+  within 20-30% of :class:`dict` for common operations, with a link to the
+  benchmarks page for the full breakdown -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1559`.
+
+- Fixed the C extension's ``popone()`` and ``pop()`` docstrings, which
+  claimed the last occurrence of the key was removed; the first one is,
+  as on the pure-Python backend. Added a note on rejecting duplicate
+  values for keys that must carry exactly one, such as security-sensitive
+  HTTP headers -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1578`.
+
+- Added a C API example of a watcher that invalidates a cache: it unwatches
+  from its own callback, watches again on the next rebuild, and gives up
+  on a multidict that keeps changing -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1586`.
+
+- Refreshed the tables in the benchmarking reference for the 7.0.0 release,
+  and replaced the range quoted for the pure-Python backend with its average
+  slowdown -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1602`.
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Removed the C extension code path that existed only for free-threaded
+  Python 3.13, whose support was dropped in v6.8.0. The free-threaded
+  build started requiring CPython 3.14 or newer and failing with a clear
+  compiler error on older free-threaded interpreters; builds with the GIL
+  enabled were unaffected and still go down to Python 3.10
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1524`.
+
+
+Contributor-facing changes
+--------------------------
+
+- Added CodSpeed benchmarks for ``getall()`` on a large table, ``update()``
+  with duplicate keys, ``merge()``, ``to_dict()`` and items view containment
+  with duplicate keys -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1506`.
+
+- Added CodSpeed benchmarks for ``getall()`` on keys with many values, both
+  in a small table and in a table large enough to need a heap allocated
+  bitmap -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1509`.
+
+- Moved the compiler hint macros used by the C extension out of
+  ``htkeys.h`` into ``compiler.h`` and dropped the ``HT_`` prefix from
+  their names -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1510`.
+
+- Moved the debug-only ``ASSERT_CONSISTENT`` macro and the
+  ``_md_check_consistency()`` and ``_md_dump()`` helpers used by the C
+  extension out of ``hashtable.h`` into their own ``debug.h`` header
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1513`.
+
+- Added CodSpeed benchmarks for ``CIMultiDict`` keyed by plain ``str`` instead
+  of ``istr``, covering already-lowercase, mixed-case and non-ASCII keys
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1521`.
+
+- Documented that the pure-Python test leg needs ``--no-c-extensions``
+  alongside ``MULTIDICT_NO_EXTENSIONS=1``; the environment variable picks
+  the backend that gets imported, but only the flag deselects the
+  C-extension half of the test matrix -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1523`.
+
+- Documented how to run the Hypothesis property tests, which a default
+  ``pytest`` run excludes via the ``-m "not hypothesis"`` marker
+  expression in ``pytest.ini`` and whose pin ``make install-dev`` does
+  not install -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1525`.
+
+- Added ``tools/codegen_diff.py``, which reports the functions GCC emits
+  differently before and after a change to the C extension. Addresses,
+  RIP-relative displacements and branch offsets inside a symbol are
+  normalized away first, so a single instruction-length change no longer
+  makes every later function look modified, while constants and structure
+  offsets are left alone so that a real change is not folded away. A tree
+  that fails to build is reported by name rather than compared
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1529`.
+
+- Fixed ``benchmarks/istr.py`` to import ``pyperf`` under its current
+  name; it had been failing to start since the package was renamed from
+  ``perf`` -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1531`.
+
+- Rewrote the benchmark scripts around a single registry of benchmarked
+  operations, and added a Callgrind driver that records deterministic
+  instruction counts per operation. The measurements of destructive
+  operations such as ``pop()`` and ``clear()`` stopped counting the cost
+  of rebuilding the mapping -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1532`.
+
+- Moved the bulk ``extend()``, ``update()`` and ``merge()`` paths of the C
+  extension out of ``hashtable.h`` into their own ``bulk_update.h``
+  header, leaving ``hashtable.h`` to the table itself and the single-key
+  operations -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1533`.
+
+- Moved the two list-reading helpers behind ``itemsview.__contains__()`` and
+  the ``extend()``/``update()``/``merge()`` sequence parser out of
+  ``hashtable.h`` and into a new ``multidict/_multilib/unpack.h``, together with
+  a shared ``unpack_pair()`` that both call to read a ``(key, value)``
+  pair out of an exact two-element tuple or list. C extension only; the pure
+  Python implementation has no header layout to mirror
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1534`.
+
+- Added a ``MULTIDICT_NO_FREELIST=1`` build option that stops the C
+  extension reusing freed blocks. A reused block never reaches ``free()``,
+  so AddressSanitizer can neither poison it nor report a use-after-free on
+  it; an instrumented run wants a second pass with this set, as
+  ``AGENTS.md`` describes.
+
+  Also added a private ``_freelist_clear()`` to the C extension, for tests
+  that inject an allocation failure: a reused block lets an operation run
+  without calling the allocator at all, which would put the recovery path
+  out of reach -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1539`.
+
+- Added a visitor to the public C API test harnesses that mutates the multidict
+  it is walking, covering the reentrancy guard in ``MultiDict_ForEach()`` from
+  both ``multidict._testcapi`` and ``multidict._testcyapi``
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1544`.
+
+- Added benchmarks for the shapes where an allocation is most of the work:
+  an empty mapping, a 20-item one built or copied, a view or an iterator
+  taken on its own, and a proxy. The allocation an operation makes is a
+  fixed cost, so at the existing 200-item size it was divided across 200
+  entries and all but vanished; ``d.items()`` measured 1.7% faster where
+  it is 46% faster -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1556`.
+
+- Sorted ``docs/spelling_wordlist.txt`` case-insensitively, and documented
+  in ``AGENTS.md`` that it is to be re-sorted rather than appended to. The
+  list had grown in append order, which made a word hard to find and put
+  every PR adding one on the same last line -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1557`.
+
+- Stopped asking every performance pull request to regenerate the tables in
+  the benchmarking reference, since each run shifts every row slightly and the
+  churn hides the rows that moved, and moved the refresh to once per release.
+  Added :file:`RELEASE.md`, which documents the release procedure, including
+  that refresh -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1564`.
+
+- Renamed the C extension's internal helpers in the ``_multilib`` headers
+  so that a leading underscore marks exactly the functions used only
+  within their own header; type slots and method callbacks keep their
+  names -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1571`.
+
+- Spelled out in ``AGENTS.md`` that every verb in a news fragment is
+  past tense, and added a bad and good example pair plus a matching
+  "Things not to do" entry -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1588`.
+
+- Changed the release workflow to rewrite the Sphinx roles of the changelog
+  section as Markdown before publishing it as the GitHub Release body, so
+  that class, method and exception references, contributor handles and
+  documentation links render there instead of showing as raw markup
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1596`.
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Changed the internal ``htkeys_build_indices()`` helper in the C
+  extension to return ``void``; it cannot fail, so both callers were
+  checking for an error that never occurred -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1516`.
+
+- Routed every field of the C extension's hash table that more than one
+  thread can reach through a named accessor in the new
+  ``_multilib/freethreading.h`` header, instead of each call site choosing
+  between an atomic and a plain access behind ``#ifdef Py_GIL_DISABLED``.
+  Each accessor kept the operation and memory ordering its call sites
+  already used, so neither build changed behavior -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1518`.
+
+- Removed ``get_mod_state_by_cls()``, an unused helper in the C extension
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1520`.
+
+- Documented why ``md_clear()`` keeps clearing entry fields with
+  ``Py_CLEAR()`` on the GIL build rather than routing them through
+  ``_multilib/freethreading.h``: ``Py_CLEAR()`` skips the store when a
+  field is already ``NULL``, so no accessor there is a substitute for it
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1526`.
+
+- Collapsed the two ``#ifdef Py_GIL_DISABLED`` arms that fill in a freshly
+  inserted hash table entry in the C extension into one. Both builds started
+  writing the entry's fields in the order the free-threaded build needs, and
+  publishing the value without first loading and releasing the one already
+  there, since a fresh entry holds none -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1528`.
+
+- Merged the C extension's deferred-decref accumulator into ``reflist_t``,
+  so one collector of strong references, in the ``_multilib/reflist.h``
+  header, came to serve both the callers that build a result list and the
+  ones that postpone a decref until a mutation finishes. Its storage became an
+  inline array that spills into a chain of heap blocks, which also made
+  :meth:`~multidict.MultiDict.getall` a little faster on keys with many
+  values, since the collected values stopped being copied to a bigger
+  buffer as they accumulate -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1530`.
+
+- Dropped two module state lookups in the C extension that had already been
+  answered elsewhere. ``MultiDict.__init__()`` and ``CIMultiDict.__init__()``
+  switched to reading the state pointer that ``tp_new()`` stored on the object instead
+  of resolving it from the type a second time, and an ``istr`` stopped
+  carrying a state pointer of its own, which was written on every creation
+  and never read. Constructing a subclass of either container got about 1%
+  cheaper, and every ``istr`` is eight bytes smaller
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1536`.
+
+- Narrowed the critical section of the single-key methods (``add()``,
+  ``__setitem__()``, ``__delitem__()``, ``setdefault()``, ``pop()``,
+  ``popone()``, ``popall()`` and ``getall()``): a key is converted to its
+  identity and hashed before the lock is taken, rather than while a
+  free-threaded build holds the multidict locked -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1538`.
+
+- Changed ``MultiDict_ForEach()`` to walk every entry with a linear scan
+  instead of the resumable iterator cursor, which its caller does not need while
+  it holds the critical section for the whole walk -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1544`.
+
+- Sped up the argument parsing of the C extension. The all-positional form
+  of every method taking ``key`` started binding its arguments inline instead of
+  calling into the keyword machinery, and keyword names were matched against
+  interned parameter names by identity before falling back to a string
+  comparison -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1549`.
+
+- Stopped building the implicit :data:`None` default of ``MultiDict.get()``
+  on every call in the C extension, and produced it only when the key is
+  actually missing -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1549`.
+
+- Laid out the common branch in line in the single-key lookup probe loop and in
+  the key to identity conversion: the deleted-slot check and the ``str``
+  subclass check were marked as the rare cases, so the compiler stopped putting
+  the frequent path behind a taken branch -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1550`.
+
+- Stopped building the implicit :data:`None` default of
+  ``MultiDict.setdefault()`` on every call in the C extension -- by
+  :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1553`.
+
+- Reordered the fields of the C extension's multidict object so the ones a
+  lookup reads share a cache line, and dropped its separate module
+  reference in favor of the one the module state already holds, which
+  made every multidict 16 bytes smaller -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1584`.
+
+- Dropped the C extension's ``multidict_tp_traverse()`` and
+  ``multidict_tp_clear()`` wrappers; ``md_traverse()`` and ``md_clear()``
+  now serve as the type's GC slots directly -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1589`.
+
+- Removed a redundant ``NULL`` check and a stray ``PyErr_Format()``
+  argument from the C constructors, and an always true condition from the
+  pure Python ``getall()`` -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1590`.
+
+- Merged the duplicated ``__init__()`` bodies of the C ``MultiDict`` and
+  ``CIMultiDict`` into one helper -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1591`.
+
+- Replaced the allocate, set state and take the module reference sequence
+  repeated across the C constructors with one helper -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1592`.
+
+- Renamed internal helpers whose names no longer matched what they did,
+  and fixed misspelled docstring identifiers in the C extension
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1593`.
+
+- Renamed the C extension's functions that are used only as type slots
+  after the slot they fill, as ``<type>_tp_<slot>``, ``<type>_nb_<slot>``,
+  ``<type>_sq_<slot>`` or ``<type>_mp_<slot>`` -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1594`.
+
+- Replaced the custom ``tp_new`` slots that blocked direct instantiation of
+  the C view and iterator types with ``Py_TPFLAGS_DISALLOW_INSTANTIATION``
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1595`.
+
+
+----
+
+
 6.9.1
 =====
 

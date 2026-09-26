@@ -1,3 +1,0 @@
-Replaced the custom ``tp_new`` slots that blocked direct instantiation of
-the C view and iterator types with ``Py_TPFLAGS_DISALLOW_INSTANTIATION``
--- by :user:`asvetlov`.

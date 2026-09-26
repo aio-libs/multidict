@@ -1,5 +1,0 @@
-Sped up iterating over :meth:`~multidict.MultiDict.items` in the C
-extension by handing out the same ``(key, value)`` tuple again when
-the caller has already let go of it, as ``for key, value in
-d.items()`` does on every step; a tuple the caller keeps is left
-alone and a new one is used from then on -- by :user:`asvetlov`.

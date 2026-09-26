@@ -1,5 +1,0 @@
-Sped up constructing a :class:`~multidict.MultiDict`,
-:class:`~multidict.CIMultiDict`, :class:`~multidict.MultiDictProxy` or
-:class:`~multidict.CIMultiDictProxy` in the C extension, by reusing the
-object itself as well as its hash table. Subclasses are unaffected and
-keep allocating as before -- by :user:`asvetlov`.

@@ -1,6 +1,0 @@
-Sped up the C extension by keeping the table resize on the insert path and
-the operations behind Python slots out of line, so they stopped crowding the
-hot paths out of the compiler's inlining budget. On GIL builds, building a
-multidict from 200 pairs got about 4% faster in instruction count and
-inserting a new key about 2%; on free-threaded builds, key lookups got up to
-5% faster -- by :user:`asvetlov`.

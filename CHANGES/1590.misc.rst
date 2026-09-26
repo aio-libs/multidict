@@ -1,3 +1,0 @@
-Removed a redundant ``NULL`` check and a stray ``PyErr_Format()``
-argument from the C constructors, and an always true condition from the
-pure Python ``getall()`` -- by :user:`asvetlov`.
