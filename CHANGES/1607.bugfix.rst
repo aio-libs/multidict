@@ -1,0 +1,3 @@
+Fixed :func:`~multidict.getversion` returning only the low 32 bits of
+the version on Windows and on 32-bit platforms, where two different
+versions could compare equal -- by :user:`asvetlov`.

@@ -326,3 +326,14 @@ def test_clone_gets_new_version(
     m2 = any_multidict_class()
     m2.__init__(m)  # type: ignore[misc]
     assert multidict_getversion_callable(m2) > v
+
+
+@pytest.mark.parametrize("version", [2**32 + 1, 2**63 + 1])
+def test_getversion_keeps_all_64_bits(version: int) -> None:
+    # unsigned long is 32 bits on Windows and 32-bit platforms, where a
+    # version above 2**32 used to come back truncated.
+    c_ext = pytest.importorskip("multidict._multidict")
+    md: MultiDict[str] = c_ext.MultiDict()
+    c_ext._setversion(md, version)
+    assert c_ext.getversion(md) == version
+    assert c_ext.getversion(c_ext.MultiDictProxy(md)) == version

@@ -1833,7 +1833,7 @@ getversion(PyObject* self, PyObject* arg)
         PyErr_Format(PyExc_TypeError, "unexpected type");
         return NULL;
     }
-    return PyLong_FromUnsignedLong(load_version(md));
+    return PyLong_FromUnsignedLongLong(load_version(md));
 }
 
 /******************** Module ********************/
@@ -1908,6 +1908,27 @@ freelist_clear(PyObject* mod, PyObject* Py_UNUSED(ignored))
     Py_RETURN_NONE;
 }
 
+/* Lets a test put a version above 2**32 without 2**32 mutations. For
+   tests only, like getversion(). */
+static PyObject*
+setversion(PyObject* mod, PyObject* args)
+{
+    PyObject* arg;
+    unsigned long long version;
+    if (!PyArg_ParseTuple(args, "OK", &arg, &version)) {
+        return NULL;
+    }
+    if (!AnyMultiDict_Check(get_mod_state(mod), arg)) {
+        PyErr_Format(PyExc_TypeError, "unexpected type");
+        return NULL;
+    }
+    MultiDictObject* md = (MultiDictObject*)arg;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    store_version(md, (uint64_t)version);
+    Py_END_CRITICAL_SECTION();
+    Py_RETURN_NONE;
+}
+
 static int
 module_clear(PyObject* mod)
 {
@@ -1959,6 +1980,7 @@ module_free(void* mod)
 static PyMethodDef module_methods[] = {
     {"getversion", (PyCFunction)getversion, METH_O},
     {"_freelist_clear", (PyCFunction)freelist_clear, METH_NOARGS},
+    {"_setversion", (PyCFunction)setversion, METH_VARARGS},
     {NULL, NULL} /* sentinel */
 };
 
