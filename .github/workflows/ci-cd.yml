@@ -474,12 +474,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - name: multidict
-          tests: tests/test_multidict_benchmarks.py
-        - name: watched
-          tests: tests/test_watched_benchmarks.py
-        - name: views
-          tests: tests/test_views_benchmarks.py
+        - name: shard 1
+          marks: not benchmark_shard_2
+        - name: shard 2
+          marks: benchmark_shard_2
     steps:
     - name: Checkout project
       uses: actions/checkout@v7
@@ -505,7 +503,10 @@ jobs:
         # Note: -I is missed, otherwise PYTHONHASHSEED is ignored
         run: >-
           python -m pytest --no-cov -vvvvv --codspeed
-          ${{ matrix.tests }}
+          -m '${{ matrix.marks }}'
+          tests/test_multidict_benchmarks.py
+          tests/test_views_benchmarks.py
+          tests/test_watched_benchmarks.py
         mode: simulation
 
   hypothesis-gil:
