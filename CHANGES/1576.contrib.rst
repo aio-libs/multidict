@@ -1,2 +1,0 @@
-Renamed the C extension's debug-only ``md_debug.h`` header to
-``debug.h`` -- by :user:`asvetlov`.

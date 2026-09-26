@@ -1,8 +1,8 @@
 Merged the C extension's deferred-decref accumulator into ``reflist_t``,
 so one collector of strong references, in the ``_multilib/reflist.h``
-header, now serves both the callers that build a result list and the
-ones that postpone a decref until a mutation finishes. Its storage is an
-inline array that spills into a chain of heap blocks, which also makes
+header, came to serve both the callers that build a result list and the
+ones that postpone a decref until a mutation finishes. Its storage became an
+inline array that spills into a chain of heap blocks, which also made
 :meth:`~multidict.MultiDict.getall` a little faster on keys with many
-values, since the collected values no longer get copied to a bigger
+values, since the collected values stopped being copied to a bigger
 buffer as they accumulate -- by :user:`asvetlov`.

@@ -1,5 +1,5 @@
-Sped up building an ``istr`` in the C extension. The class now has its own
-vectorcall, so the one-argument form no longer packs its argument into a
+Sped up building an ``istr`` in the C extension. The class gained its own
+vectorcall, so the one-argument form stopped packing its argument into a
 tuple for :c:func:`!type_call` only to unpack it again with
 :c:func:`PyArg_ParseTupleAndKeywords`. Building an ``istr`` from a
 :class:`str` got about 19% faster, and building one from an ``istr``,

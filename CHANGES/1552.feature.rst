@@ -1,6 +1,0 @@
-The visitor callback of the public C API and Cython API
-``MultiDict_ForEach`` family now also receives the entry's identity,
-the canonical key the mapping looks entries up by. On a
-:class:`~multidict.CIMultiDict` that is the internal lower-cased key,
-so a visitor can group or compare entries by it without deriving that
-form itself -- by :user:`asvetlov`.

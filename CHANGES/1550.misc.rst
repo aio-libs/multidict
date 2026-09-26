@@ -1,4 +1,4 @@
 Laid out the common branch in line in the single-key lookup probe loop and in
 the key to identity conversion: the deleted-slot check and the ``str``
-subclass check are now marked as the rare cases, so the compiler stops putting
+subclass check were marked as the rare cases, so the compiler stopped putting
 the frequent path behind a taken branch -- by :user:`asvetlov`.

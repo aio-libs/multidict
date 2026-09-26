@@ -1,5 +1,5 @@
 Sped up the argument parsing of the C extension. The all-positional form
-of every method taking ``key`` now binds its arguments inline instead of
-calling into the keyword machinery, and keyword names are matched against
+of every method taking ``key`` started binding its arguments inline instead of
+calling into the keyword machinery, and keyword names were matched against
 interned parameter names by identity before falling back to a string
 comparison -- by :user:`asvetlov`.
