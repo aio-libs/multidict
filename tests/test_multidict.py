@@ -3285,13 +3285,12 @@ def test_pure_python_reciprocal_raw_iterator_ops_no_deadlock() -> None:
     assert not t2.is_alive(), "worker2 still running: deadlock"
 
 
-@_gil_build_race_skip
 def test_pure_python_version_thread_safety() -> None:
     """Concurrently mutating independent multidicts must never hand out the
-    same version number twice: `_pure._version` is a single counter shared
-    by every instance in the process (see `_pure.MultiDict._incr_version`)."""
+    same version number twice: the version counter is shared by every
+    instance in the process (see `_pure.MultiDict._incr_version`)."""
     n_threads = 16
-    n_iters = 2000
+    n_iters = 500
     all_versions: list[list[int]] = []
     lock = threading.Lock()
 
@@ -3304,8 +3303,14 @@ def test_pure_python_version_thread_safety() -> None:
         with lock:
             all_versions.append(versions)
 
-    with ThreadPoolExecutor(max_workers=n_threads) as executor:
-        list(executor.map(worker, range(n_threads)))
+    # Switching threads every few bytecodes makes the race reachable on GIL builds.
+    old_interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-4)
+    try:
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            list(executor.map(worker, range(n_threads)))
+    finally:
+        sys.setswitchinterval(old_interval)
 
     flat_versions = [v for versions in all_versions for v in versions]
     assert len(set(flat_versions)) == len(flat_versions)
