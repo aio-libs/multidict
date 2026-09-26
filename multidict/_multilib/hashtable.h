@@ -459,19 +459,12 @@ _md_shrink(MultiDictObject* md, update_marks_t* marks)
 #endif
 }
 
-/* Rare, and inlined into md_add_with_hash_steal_refs() it makes every
-   insert save five more callee-saved registers. */
+// Out of line so _md_shrink() is not inlined into every insert path
 NOINLINE static int
-_md_shrink_for_insert(MultiDictObject* md)
-{
-    return _md_shrink(md, NULL);
-}
-
-static inline int
 _md_resize_for_insert(MultiDictObject* md)
 {
     if (md->used < md->keys->nentries) {
-        return _md_shrink_for_insert(md);
+        return _md_shrink(md, NULL);
     } else {
         return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), NULL);
     }

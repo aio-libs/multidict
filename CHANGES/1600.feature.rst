@@ -1,4 +1,4 @@
-Sped up construction, insertion and lookups in the C extension by
-keeping the operations behind Python slots and the rare table
-compaction out of line, so they stopped crowding the hot paths out of
-the compiler's inlining budget -- by :user:`asvetlov`.
+Sped up key lookups on the free-threaded build of the C extension by
+keeping the operations behind Python slots out of line, so they stopped
+crowding the lookup paths out of the compiler's inlining budget -- by
+:user:`asvetlov`.
