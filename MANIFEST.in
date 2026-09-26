@@ -5,6 +5,7 @@ include LICENSE
 include CHANGES.rst
 include README.rst
 include Makefile
+include tools/release_notes_md.py
 graft multidict
 graft docs
 graft CHANGES

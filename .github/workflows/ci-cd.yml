@@ -1047,11 +1047,15 @@ jobs:
           cat err >&2
           exit 1
         fi
+    - name: Convert the changelog roles to Markdown for the release body
+      if: steps.gh-release.outputs.exists != 'true'
+      run: |
+        python3 tools/release_notes_md.py CHANGES.rst CHANGES.md
     - name: Make Release
       if: steps.gh-release.outputs.exists != 'true'
       uses: aio-libs/create-release@v1.6.6
       with:
-        changes_file: CHANGES.rst
+        changes_file: CHANGES.md
         name: ${{ env.PROJECT_NAME }}
         version_file: ${{ env.PROJECT_NAME }}/__init__.py
         github_token: ${{ secrets.GITHUB_TOKEN }}
