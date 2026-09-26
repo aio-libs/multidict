@@ -550,7 +550,7 @@ jobs:
       uses: aio-libs/prepare-coverage@v24.9.2
 
   hypothesis-ft:
-    name: Hypothesis FT
+    name: Hypothesis (FT)
     needs:
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
