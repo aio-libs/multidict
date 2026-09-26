@@ -19,7 +19,10 @@ def convert() -> Callable[[str], str]:
     [
         (":issue:`1437`", "#1437"),
         (":pr:`1587`", "#1587"),
-        (":commit:`8aee2a5`", "8aee2a5"),
+        (
+            ":commit:`8aee2a5`",
+            "[8aee2a5](https://github.com/aio-libs/multidict/commit/8aee2a5)",
+        ),
         (":user:`asvetlov`", "[@asvetlov](https://github.com/asvetlov)"),
         (
             ":gh:`GHSA-1 <aio-libs/multidict/security/advisories/GHSA-1>`",

@@ -27,7 +27,7 @@ def _convert(match: re.Match[str]) -> str:
     if role in ("issue", "pr"):
         return f"#{body}"
     if role == "commit":
-        return body
+        return f"[{body}]({REPO}/commit/{body})"
     if role == "user":
         return f"[@{body}]({GITHUB}/{body})"
     if role == "gh":
