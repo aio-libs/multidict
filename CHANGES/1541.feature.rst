@@ -1,5 +1,0 @@
-Sped up :meth:`~multidict.MultiDict.items`,
-:meth:`~multidict.MultiDict.keys`, :meth:`~multidict.MultiDict.values`
-and iterating a multidict in the C extension, by reusing the view and
-iterator objects they allocate instead of returning them to the
-allocator -- by :user:`asvetlov`.

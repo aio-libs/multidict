@@ -1,5 +1,0 @@
-Sped up lookups, insertions and deletions in the C extension by always
-inlining the hash-table probe's initializer. Left to itself the compiler
-emitted it out of line, so every probe opened with a call for five
-stores. Free-threaded builds already inlined it and are unchanged
--- by :user:`asvetlov`.

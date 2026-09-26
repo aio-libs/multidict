@@ -1,3 +1,0 @@
-Changed ``MultiDict_ForEach()`` to walk every entry with a linear scan
-instead of the resumable iterator cursor, which its caller does not need while
-it holds the critical section for the whole walk -- by :user:`asvetlov`.

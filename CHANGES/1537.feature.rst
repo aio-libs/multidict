@@ -1,9 +1,0 @@
-Sped up building an ``istr`` in the C extension. The class gained its own
-vectorcall, so the one-argument form stopped packing its argument into a
-tuple for :c:func:`!type_call` only to unpack it again with
-:c:func:`PyArg_ParseTupleAndKeywords`. Building an ``istr`` from a
-:class:`str` got about 19% faster, and building one from an ``istr``,
-which hands back the original, about three times faster. In exchange
-:meth:`~multidict.MultiDict.getall` costs nine more instructions per
-call, since the added code moves where the compiler draws its inlining
-line -- by :user:`asvetlov`.

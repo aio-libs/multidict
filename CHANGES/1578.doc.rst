@@ -1,5 +1,0 @@
-Fixed the C extension's ``popone()`` and ``pop()`` docstrings, which
-claimed the last occurrence of the key was removed; the first one is,
-as on the pure-Python backend. Added a note on rejecting duplicate
-values for keys that must carry exactly one, such as security-sensitive
-HTTP headers -- by :user:`asvetlov`.

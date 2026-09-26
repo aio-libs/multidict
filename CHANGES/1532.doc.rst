@@ -1,5 +1,0 @@
-Documented how :class:`~multidict.MultiDict` and
-:class:`~multidict.CIMultiDict` compare with :class:`dict` on both the
-default and the free-threaded builds, with per-operation measurements,
-and how to run the benchmarks in a stable environment
--- by :user:`asvetlov`.
