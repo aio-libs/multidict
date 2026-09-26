@@ -87,25 +87,30 @@ store_keys(MultiDictObject* md, htkeys_t* keys)
 #define VERSION_BATCH 256
 
 static uint64_t global_version;
-static THREAD_LOCAL uint64_t version_next;
-static THREAD_LOCAL uint64_t version_end;
+/* The last version this thread handed out. A batch never hands out its
+   own base, a multiple of VERSION_BATCH, so reaching one means the batch
+   is spent; starting one short of it makes the first call refill. One
+   variable, read and advanced by one increment, is one TLS lookup. */
+static THREAD_LOCAL uint64_t version_last = VERSION_BATCH - 1;
 
-static COLD void
+static COLD uint64_t
 _refill_versions(void)
 {
-    version_next =
+    uint64_t base =
         atomic_fetch_add_uint64_relaxed(&global_version, VERSION_BATCH);
-    version_end = version_next + VERSION_BATCH;
+    version_last = base + 1;
+    return version_last;
 }
 
 static inline uint64_t
 next_version(mod_state* state)
 {
     (void)state;
-    if (UNLIKELY(version_next == version_end)) {
-        _refill_versions();
+    uint64_t version = ++version_last;
+    if (UNLIKELY((version & (VERSION_BATCH - 1)) == 0)) {
+        version = _refill_versions();
     }
-    return ++version_next;
+    return version;
 }
 
 static inline PyObject*
