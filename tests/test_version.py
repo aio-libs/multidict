@@ -328,6 +328,7 @@ def test_clone_gets_new_version(
     assert multidict_getversion_callable(m2) > v
 
 
+@pytest.mark.c_extension
 @pytest.mark.parametrize("version", [2**32 + 1, 2**63 + 1])
 def test_getversion_keeps_all_64_bits(version: int) -> None:
     # unsigned long is 32 bits on Windows and 32-bit platforms, where a
