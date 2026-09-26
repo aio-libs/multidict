@@ -4,6 +4,7 @@ from typing import TypeVar
 
 import pytest
 
+import multidict._multidict_py as _pure
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 _T = TypeVar("_T")
@@ -365,6 +366,11 @@ def test_versions_unique_across_threads(
     any_multidict_class: type[MultiDict[str]],
     multidict_getversion_callable: GetVersion[str],
 ) -> None:
+    if any_multidict_class.__module__ == _pure.__name__ and not _pure._FREE_THREADED:
+        # Same pre-existing race as _gil_build_race_skip in test_multidict.py:
+        # the pure-Python version counter is unlocked on GIL builds.
+        pytest.skip("pure-Python _incr_version() is unlocked on GIL builds")
+
     def work() -> list[int]:
         alive = []
         seen = []
