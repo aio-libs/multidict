@@ -1,6 +1,16 @@
 #include <Python.h>
 #include <structmember.h>
 
+#include "_multilib/compiler.h"
+
+#ifdef Py_GIL_DISABLED
+/* Free-threaded refcounting is too big to fit the inliner's budget for
+   the whole module, and a call per reference costs more than the growth.
+   Redeclared before any use of ours, so the attribute applies to all. */
+ALWAYS_INLINE static inline void(Py_DECREF)(PyObject* op);
+ALWAYS_INLINE static inline PyObject*(_Py_NewRef)(PyObject * obj);
+#endif
+
 #include "_multilib/bulk_update.h"
 #include "_multilib/capsule.h"
 #include "_multilib/debug.h"

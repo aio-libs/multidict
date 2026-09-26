@@ -459,11 +459,19 @@ _md_shrink(MultiDictObject* md, update_marks_t* marks)
 #endif
 }
 
+/* Rare, and inlined into md_add_with_hash_steal_refs() it makes every
+   insert save five more callee-saved registers. */
+NOINLINE static int
+_md_shrink_for_insert(MultiDictObject* md)
+{
+    return _md_shrink(md, NULL);
+}
+
 static inline int
 _md_resize_for_insert(MultiDictObject* md)
 {
     if (md->used < md->keys->nentries) {
-        return _md_shrink(md, NULL);
+        return _md_shrink_for_insert(md);
     } else {
         return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), NULL);
     }
@@ -882,7 +890,7 @@ restart:;
     return found;
 }
 
-static inline int
+NOINLINE static int
 md_del(MultiDictObject* md, PyObject* key)
 {
     PyObject* identity;
@@ -1821,7 +1829,7 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
     }
 }
 
-static inline int
+NOINLINE static int
 md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
 {
     PyObject* identity;
@@ -1974,7 +1982,7 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
     return 1;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
 {
     int reprenter = Py_ReprEnter(obj);
