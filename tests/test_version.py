@@ -1,8 +1,10 @@
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from typing import TypeVar
 
 import pytest
 
+import multidict._multidict_py as _pure
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 
 _T = TypeVar("_T")
@@ -326,6 +328,65 @@ def test_clone_gets_new_version(
     m2 = any_multidict_class()
     m2.__init__(m)  # type: ignore[misc]
     assert multidict_getversion_callable(m2) > v
+
+
+# Free-threaded builds hand each multidict a block of 256 versions and each
+# thread a batch of 256 blocks; these cross both boundaries several times.
+
+
+def test_every_mutation_changes_version_across_blocks(
+    any_multidict_class: type[MultiDict[str]],
+    multidict_getversion_callable: GetVersion[str],
+) -> None:
+    m = any_multidict_class()
+    seen = [multidict_getversion_callable(m)]
+    for i in range(1000):
+        m["key"] = str(i)
+        seen.append(multidict_getversion_callable(m))
+    assert len(set(seen)) == len(seen)
+
+
+def test_versions_unique_across_many_multidicts(
+    any_multidict_class: type[MultiDict[str]],
+    multidict_getversion_callable: GetVersion[str],
+) -> None:
+    alive = []
+    seen = []
+    for i in range(1000):
+        m = any_multidict_class()
+        seen.append(multidict_getversion_callable(m))
+        for j in range(3):
+            m[str(j)] = str(i)
+            seen.append(multidict_getversion_callable(m))
+        alive.append(m)
+    assert len(set(seen)) == len(seen)
+
+
+def test_versions_unique_across_threads(
+    any_multidict_class: type[MultiDict[str]],
+    multidict_getversion_callable: GetVersion[str],
+) -> None:
+    if any_multidict_class.__module__ == _pure.__name__ and not _pure._FREE_THREADED:
+        # Same pre-existing race as _gil_build_race_skip in test_multidict.py:
+        # the pure-Python version counter is unlocked on GIL builds.
+        pytest.skip("pure-Python _incr_version() is unlocked on GIL builds")
+
+    def work() -> list[int]:
+        alive = []
+        seen = []
+        for i in range(300):
+            m = any_multidict_class()
+            for j in range(300 if i == 0 else 2):
+                m["key"] = str(j)
+                seen.append(multidict_getversion_callable(m))
+            alive.append(m)
+        return seen
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(work) for _ in range(4)]
+        results = [f.result(timeout=60) for f in futures]
+    seen = [v for r in results for v in r]
+    assert len(set(seen)) == len(seen)
 
 
 @pytest.mark.parametrize("version", [2**32 + 1, 2**63 + 1])

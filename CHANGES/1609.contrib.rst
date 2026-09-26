@@ -1,0 +1,2 @@
+Renamed the ``hypothesis-freethreading`` CI job to ``hypothesis-ft`` (Hypothesis FT), on a par with the GIL one
+-- by :user:`asvetlov`.

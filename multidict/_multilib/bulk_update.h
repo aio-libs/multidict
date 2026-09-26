@@ -305,7 +305,7 @@ md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
     if (defer != NULL) {
         ret = _md_post_update_deleted(md, defer, marks);
     }
-    store_version(md, next_version(md->state));
+    bump_version(md);
     md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
     ASSERT_CONSISTENT(md, false);
     return ret;

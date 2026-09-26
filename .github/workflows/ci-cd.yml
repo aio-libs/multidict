@@ -549,8 +549,8 @@ jobs:
     - name: Prepare coverage artifact
       uses: aio-libs/prepare-coverage@v24.9.2
 
-  hypothesis-freethreading:
-    name: Hypothesis (free-threading)
+  hypothesis-ft:
+    name: Hypothesis (FT)
     needs:
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
@@ -828,7 +828,7 @@ jobs:
     - test-cython-capi
     - benchmark
     - hypothesis-gil
-    - hypothesis-freethreading
+    - hypothesis-ft
     - asan
     - tsan
     steps:

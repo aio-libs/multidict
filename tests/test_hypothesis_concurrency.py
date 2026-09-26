@@ -35,7 +35,7 @@ if sys.version_info >= (3, 11):
     from typing import assert_never
 else:  # pragma: no cover
     # This file only ever runs under >=3.11 (the hypothesis-gil/
-    # hypothesis-freethreading CI jobs pin 3.13/3.14t), unlike the
+    # hypothesis-ft CI jobs pin 3.13/3.14t), unlike the
     # multidict package itself, which is tested down to 3.10.
     from typing_extensions import assert_never
 
