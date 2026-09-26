@@ -1,0 +1,3 @@
+Added CodSpeed benchmarks for mutating a multidict that a watcher is
+attached to, and split the benchmark CI job into three parallel shards:
+plain multidict operations, watched mutations, and views -- by :user:`asvetlov`.

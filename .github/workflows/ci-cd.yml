@@ -463,11 +463,23 @@ jobs:
 
 
   benchmark:
-    name: Benchmark
+    name: Benchmark (${{ matrix.name }})
     needs:
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Sharded to shorten the wall clock; CodSpeed merges the shards'
+    # uploads for one commit into a single report.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: multidict
+          tests: tests/test_multidict_benchmarks.py
+        - name: watched
+          tests: tests/test_watched_benchmarks.py
+        - name: views
+          tests: tests/test_views_benchmarks.py
     steps:
     - name: Checkout project
       uses: actions/checkout@v7
@@ -491,7 +503,9 @@ jobs:
       with:
         token: ${{ secrets.CODSPEED_TOKEN }}
         # Note: -I is missed, otherwise PYTHONHASHSEED is ignored
-        run: python -m pytest --no-cov -vvvvv --codspeed
+        run: >-
+          python -m pytest --no-cov -vvvvv --codspeed
+          ${{ matrix.tests }}
         mode: simulation
 
   hypothesis-gil:
@@ -791,7 +805,8 @@ jobs:
           -m pytest tests -q --no-cov --capture=no \
           -k "not test_leak" \
           --ignore=tests/test_multidict_benchmarks.py \
-          --ignore=tests/test_views_benchmarks.py
+          --ignore=tests/test_views_benchmarks.py \
+          --ignore=tests/test_watched_benchmarks.py
       shell: bash
     - name: Check for a core dump
       id: check-core
