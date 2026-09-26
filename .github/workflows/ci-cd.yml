@@ -187,6 +187,8 @@ jobs:
     - build-pure-python-dists  # transitive, for accessing settings
     - build-wheels-for-tested-arches
     - pre-setup  # transitive, for accessing settings
+    # macOS and Windows wheels are tested by `cibuildwheel` itself, on the
+    # same suite; only the ubuntu ones are re-tested here, for coverage.
     strategy:
       matrix:
         pyver:
@@ -198,23 +200,10 @@ jobs:
         - 3.11
         - "3.10"
         no-extensions: ['', 'Y']
-        os: [ubuntu, macos, windows]
+        os: [ubuntu]
         debug: ['', 'Y']
         exclude:
         - no-extensions: Y
-          debug: Y
-        - os: macos
-          no-extensions: Y
-        - os: windows
-          no-extensions: Y
-        # Debug builds verify Py_DEBUG refcount/bounds checks against the
-        # C extension. The extension source is platform-portable, so the
-        # ubuntu debug matrix already covers the same code paths. Dropping
-        # debug on macOS and Windows removes 12 jobs (the two slowest
-        # runner pools) from every CI run.
-        - os: macos
-          debug: Y
-        - os: windows
           debug: Y
         include:
         - pyver: pypy-3.10
@@ -407,9 +396,6 @@ jobs:
         && exit 1
       shell: bash
     - name: Prepare coverage artifact
-      # combining Linux and Windows paths is tricky, left this exercise for
-      # others multidict has no Windows or macOS specific code paths anyway
-      if: ${{ matrix.os == 'ubuntu' }}
       uses: aio-libs/prepare-coverage@v24.9.2
 
 
