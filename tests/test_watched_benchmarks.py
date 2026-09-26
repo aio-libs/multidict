@@ -33,7 +33,11 @@ def watch() -> Iterator[Watch]:
     _testcapi.md_clear_watcher(watcher_id)
 
 
-@pytest.fixture(scope="module", params=("MultiDict", "CIMultiDict"))
+# The IDs follow test_multidict_benchmarks.py's `cs`/`ci` plus implementation
+# scheme; watching is C-only, so the implementation is always `c`.
+@pytest.fixture(
+    scope="module", params=("MultiDict", "CIMultiDict"), ids=("cs-c", "ci-c")
+)
 def watched_class(request: pytest.FixtureRequest) -> type[MultiDict[str]]:
     return getattr(_multidict, request.param)  # type: ignore[no-any-return]
 
