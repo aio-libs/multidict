@@ -1,1 +1,1 @@
-Shortened CI job names for wheels building, now they fit web UI without truncation -- by :user:`asvetlov`
+Shortened CI job names for wheel builds to fit the web UI without truncation -- by :user:`asvetlov`
