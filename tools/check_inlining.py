@@ -193,12 +193,16 @@ def interpreter_config(python):
         [
             python,
             "-c",
-            "import sysconfig as s; "
-            "print(s.get_config_var('CC')); "
-            "print(s.get_config_var('CFLAGS') or ''); "
-            "print(s.get_config_var('CCSHARED') or ''); "
-            "print(s.get_path('include')); "
-            "print(int(bool(s.get_config_var('Py_GIL_DISABLED'))))",
+            "; ".join(
+                (
+                    "import sysconfig as s",
+                    "print(s.get_config_var('CC'))",
+                    "print(s.get_config_var('CFLAGS') or '')",
+                    "print(s.get_config_var('CCSHARED') or '')",
+                    "print(s.get_path('include'))",
+                    "print(int(bool(s.get_config_var('Py_GIL_DISABLED'))))",
+                )
+            ),
         ]
     ).splitlines()
     cc, cflags, ccshared, include, ft = out
