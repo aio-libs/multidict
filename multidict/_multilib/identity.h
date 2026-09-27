@@ -41,7 +41,7 @@ str_cmp(PyObject* s1, PyObject* s2)
 
     const void* data1 = PyUnicode_DATA(s1);
     const void* data2 = PyUnicode_DATA(s2);
-    return (memcmp(data1, data2, len * kind) == 0);
+    return (memcmp(data1, data2, (size_t)(len * kind)) == 0);
 }
 
 static inline PyObject*
@@ -211,7 +211,7 @@ _ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
     return NULL;
 }
 
-static inline PyObject*
+ALWAYS_INLINE static inline PyObject*
 md_calc_identity(MultiDictObject* md, PyObject* key)
 {
     if (md->is_ci) return _ci_key_to_identity(md->state, key);

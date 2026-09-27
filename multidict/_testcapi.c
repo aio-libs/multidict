@@ -649,6 +649,50 @@ md_watch(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
     Py_RETURN_NONE;
 }
 
+/* For the watched-mode benchmarks: delivery with nothing done inside the
+   callback, and watching with no user_data to keep alive. */
+static int
+noop_event(void* watcher_data, void* user_data,
+           const MultiDict_WatchInfo* info)
+{
+    (void)watcher_data;
+    (void)user_data;
+    (void)info;
+    return 0;
+}
+
+static PyObject*
+md_add_noop_watcher(PyObject* self, PyObject* unused)
+{
+    (void)unused;
+    mod_state* state = get_mod_state(self);
+    int watcher_id = MultiDict_AddWatcher(state->capi, noop_event, NULL);
+    if (watcher_id < 0) {
+        return NULL;
+    }
+    return PyLong_FromLong(watcher_id);
+}
+
+static PyObject*
+md_watch_noop(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
+{
+    if (nargs != 2) {
+        PyErr_SetString(
+            PyExc_TypeError,
+            "md_watch_noop should be called with watcher_id and md");
+        return NULL;
+    }
+    mod_state* state = get_mod_state(self);
+    int watcher_id = (int)PyLong_AsLong(args[0]);
+    if (watcher_id == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    if (MultiDict_Watch(state->capi, watcher_id, args[1], NULL) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 md_unwatch(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
 {
@@ -756,8 +800,10 @@ static PyMethodDef module_methods[] = {
      (PyCFunction)md_add_watching_watcher,
      METH_VARARGS},
     {"md_add_null_watcher", (PyCFunction)md_add_null_watcher, METH_NOARGS},
+    {"md_add_noop_watcher", (PyCFunction)md_add_noop_watcher, METH_NOARGS},
     {"md_clear_watcher", (PyCFunction)md_clear_watcher, METH_O},
     {"md_watch", (PyCFunction)md_watch, METH_FASTCALL},
+    {"md_watch_noop", (PyCFunction)md_watch_noop, METH_FASTCALL},
     {"md_unwatch", (PyCFunction)md_unwatch, METH_FASTCALL},
     {"watch_release_refs", (PyCFunction)watch_release_refs, METH_NOARGS},
     {"check_api_version", (PyCFunction)check_api_version, METH_O},

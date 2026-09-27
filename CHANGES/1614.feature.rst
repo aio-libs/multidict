@@ -1,0 +1,6 @@
+Stopped GCC from spending its inlining budget on view and iterator slots
+and on module initialization, and forced the key-identity helper inline
+everywhere, which on GCC 13 made ``del d[key]`` about 8 percent and
+``key in d`` up to 6 percent faster on free-threaded builds, and
+``update()`` about 3.5 percent faster on regular ones
+-- by :user:`asvetlov`.

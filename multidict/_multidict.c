@@ -571,7 +571,7 @@ multidict_mp_ass_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
 static int
 multidict_sq_contains(MultiDictObject* self, PyObject* key)
 {
-    return md_contains(self, key, NULL);
+    return md_contains(self, key);
 }
 
 static PyObject*

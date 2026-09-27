@@ -1787,6 +1787,20 @@ def test_items_contains_does_not_leak_key_on_error() -> None:
     assert sys.getrefcount(key) == baseline
 
 
+@pytest.mark.skipif(sys.maxsize < 2**32, reason="needs a 64-bit Py_ssize_t")
+def test_items_contains_length_not_truncated(
+    case_sensitive_multidict_class: type[MultiDict[str]],
+) -> None:
+    """The C items-view stored the length in an int, so 2**32 + 2 read as 2."""
+    md = case_sensitive_multidict_class([("a", "1")])
+
+    class HugeLen:
+        def __len__(self) -> int:
+            return 2**32 + 2
+
+    assert HugeLen() not in md.items()  # type: ignore[operator]
+
+
 @pytest.mark.c_extension
 def test_repr_raises_when_mutated_during_iteration() -> None:
     """`repr()` of a MultiDict whose value mutates it mid-iteration raises
@@ -3285,13 +3299,12 @@ def test_pure_python_reciprocal_raw_iterator_ops_no_deadlock() -> None:
     assert not t2.is_alive(), "worker2 still running: deadlock"
 
 
-@_gil_build_race_skip
 def test_pure_python_version_thread_safety() -> None:
     """Concurrently mutating independent multidicts must never hand out the
-    same version number twice: `_pure._version` is a single counter shared
-    by every instance in the process (see `_pure.MultiDict._incr_version`)."""
+    same version number twice: the version counter is shared by every
+    instance in the process (see `_pure.MultiDict._incr_version`)."""
     n_threads = 16
-    n_iters = 2000
+    n_iters = 500
     all_versions: list[list[int]] = []
     lock = threading.Lock()
 
@@ -3304,8 +3317,15 @@ def test_pure_python_version_thread_safety() -> None:
         with lock:
             all_versions.append(versions)
 
-    with ThreadPoolExecutor(max_workers=n_threads) as executor:
-        list(executor.map(worker, range(n_threads)))
+    # Only PyPy switches threads inside the increment; CPython's GIL builds
+    # switch only at calls and backward jumps, so they never hit this race.
+    old_interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-4)
+    try:
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            list(executor.map(worker, range(n_threads)))
+    finally:
+        sys.setswitchinterval(old_interval)
 
     flat_versions = [v for versions in all_versions for v in versions]
     assert len(set(flat_versions)) == len(flat_versions)

@@ -71,7 +71,7 @@ typedef struct _pool {
 /* `capacity` is clamped rather than asserted: it is a tuning knob, and
    a caller asking for more than the array holds wants "as deep as
    possible", not a crash. */
-static inline void
+NOINLINE static void
 pool_init(pool_t* pool, uint8_t capacity)
 {
     pool->used = 0;
@@ -115,7 +115,7 @@ pool_clear(pool_t* pool, void (*release)(void*))
 
 #else
 
-static inline void
+NOINLINE static void
 pool_init(pool_t* pool, uint8_t capacity)
 {
     (void)pool;

@@ -1,0 +1,3 @@
+Stopped passing ``-Wno-conversion`` to the C extension build, which
+had silently turned ``-Wconversion`` off, and added the explicit casts
+it then required -- by :user:`asvetlov`.

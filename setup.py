@@ -31,7 +31,6 @@ if platform.system() != "Windows":
             "-Wsign-compare",
             "-Wconversion",
             "-fno-strict-aliasing",
-            "-Wno-conversion",
             "-Werror",
         ]
     )
@@ -85,7 +84,9 @@ if not NO_EXTENSIONS:
                 Extension(
                     "multidict._testcyapi",
                     ["multidict/_testcyapi.pyx"],
-                    extra_compile_args=CFLAGS,
+                    # Cython's generated code includes CPython's internal
+                    # headers, which are not -Wconversion clean.
+                    extra_compile_args=[f for f in CFLAGS if f != "-Wconversion"],
                     extra_link_args=LDFLAGS,
                 ),
             ],
