@@ -121,7 +121,7 @@ def test_race_condition_extend_vs_source_mutation(
     def mutator(tag: str) -> None:
         # A private key namespace per thread, so every delete succeeds and the
         # loop needs no exception handling. Growing well past the load factor
-        # and shrinking back forces repeated _md_resize() calls on the source,
+        # and shrinking back forces repeated _md_rebuild() calls on the source,
         # which is what frees the array being walked.
         ready.wait()
         while not stop.is_set():
