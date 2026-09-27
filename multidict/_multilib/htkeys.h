@@ -399,7 +399,8 @@ _htkeys_log2_index_bytes(uint8_t log2_size)
 static inline size_t
 _htkeys_alloc_size(uint8_t log2_size)
 {
-    size_t usable = (size_t)USABLE_FRACTION((size_t)1 << log2_size);
+    size_t usable =
+        (size_t)USABLE_FRACTION((Py_ssize_t)((size_t)1 << log2_size));
     return (sizeof(htkeys_t) +
             ((size_t)1 << _htkeys_log2_index_bytes(log2_size)) +
             sizeof(entry_t) * usable);
@@ -426,7 +427,8 @@ htkeys_size_fits(uint8_t log2_size)
 static inline Py_ssize_t
 htkeys_sizeof(htkeys_t* keys)
 {
-    Py_ssize_t usable = USABLE_FRACTION((size_t)1 << keys->log2_size);
+    Py_ssize_t usable =
+        USABLE_FRACTION((Py_ssize_t)((size_t)1 << keys->log2_size));
     Py_ssize_t size =
         (Py_ssize_t)(sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
                      sizeof(entry_t) * (size_t)usable);
@@ -490,7 +492,7 @@ htkeys_new_unfilled(pool_t* pools, uint8_t log2_size)
     keys->log2_index_bytes = log2_bytes;
     keys->resume_slots = NULL;
     keys->nentries = 0;
-    keys->usable = USABLE_FRACTION(((size_t)1) << log2_size);
+    keys->usable = USABLE_FRACTION((Py_ssize_t)((size_t)1 << log2_size));
 #ifdef Py_GIL_DISABLED
     keys->num_readers = 0;
     keys->retired_next = NULL;
