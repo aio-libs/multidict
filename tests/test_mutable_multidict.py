@@ -1212,7 +1212,10 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
     baseline = [sys.getrefcount(obj) for obj in keys + values]
 
     # Fail the n-th allocation, for each n, until the call gets through.
+    # Some failures are swallowed inside CPython (3.10's length hint
+    # lookup, for one), so only a success after a failure ends the loop.
     n = 0
+    failures = 0
     while True:
         md = cls()
         bound = getattr(md, method)
@@ -1233,10 +1236,11 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
             failed = False
         del md, bound, call
         assert [sys.getrefcount(obj) for obj in keys + values] == baseline
-        if not failed:
+        if failed:
+            failures += 1
+        elif failures:
             break
         n += 1
-    assert n > 0
 
 
 @pytest.mark.parametrize("method", ["popone", "pop"])
@@ -1316,3 +1320,25 @@ def test_table_shrinks_after_deletions_once_adds_resume(
         md.add(str(i), i)
         del md[str(i)]
     assert sys.getsizeof(md) < big_size // 4
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="getsizeof() is not implemented on PyPy",
+)
+@pytest.mark.parametrize("method", ["extend", "update", "merge"])
+def test_bulk_add_does_not_grow_table_short_of_room_from_deletions(
+    any_multidict_class: type[MultiDict[int]], method: str
+) -> None:
+    # The table fits the live entries plus the new ones, but deletions
+    # used up its room: the reservation compacts it, where letting the
+    # adds run out of room grew it by three times the live entries.
+    md = any_multidict_class()
+    for i in range(1000):
+        md.add(str(i), i)
+    big_size = sys.getsizeof(md)
+    for i in range(400, 1000):
+        del md[str(i)]
+    getattr(md, method)([(f"new{i}", i) for i in range(400)])
+    assert len(md) == 800
+    assert sys.getsizeof(md) <= big_size

@@ -1084,8 +1084,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         This method must be used instead of update.
         """
         it = self._parse_args(arg, kwargs)
-        newsize = self._used + cast(int, next(it))
-        self._resize(estimate_log2_keysize(newsize), False)
+        self._reserve(cast(int, next(it)))
         self._extend_items(cast(Iterator[_Entry[_V]], it))
 
     def _parse_args(
@@ -1310,14 +1309,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Update the dictionary, overwriting existing keys."""
         it = self._parse_args(arg, kwargs)
-        newsize = self._used + cast(int, next(it))
-        log2_size = estimate_log2_keysize(newsize)
-        if log2_size > 17:  # pragma: no cover
-            # Don't overallocate really huge keys space in update,
-            # duplicate keys could reduce the resulting amount of entries
-            log2_size = 17
-        if log2_size > self._keys.log2_size:
-            self._resize(log2_size, False)
+        self._reserve(cast(int, next(it)))
         try:
             self._update_items(cast(Iterator[_Entry[_V]], it))
         finally:
@@ -1363,14 +1355,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def merge(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Merge into the dictionary, adding non-existing keys."""
         it = self._parse_args(arg, kwargs)
-        newsize = self._used + cast(int, next(it))
-        log2_size = estimate_log2_keysize(newsize)
-        if log2_size > 17:  # pragma: no cover
-            # Don't overallocate really huge keys space in update,
-            # duplicate keys could reduce the resulting amount of entries
-            log2_size = 17
-        if log2_size > self._keys.log2_size:
-            self._resize(log2_size, False)
+        self._reserve(cast(int, next(it)))
         try:
             self._merge_items(cast(Iterator[_Entry[_V]], it))
         finally:
@@ -1397,6 +1382,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # One C call, so the GIL cannot switch threads in the middle of it.
         def _incr_version(self) -> None:
             self._version = next(_version)
+
+    def _reserve(self, extra: int) -> None:
+        if self._keys.usable < extra:
+            self._resize(estimate_log2_keysize(self._used + extra), False)
 
     def _resize(self, log2_newsize: int, update: bool) -> None:
         oldkeys = self._keys

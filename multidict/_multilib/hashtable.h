@@ -430,11 +430,13 @@ md_reserve_for_upd(MultiDictObject* md, Py_ssize_t extra_size,
            list.extend() does, rather than overflow the estimate. */
         return 0;
     }
-    uint8_t new_size = estimate_log2_keysize(extra_size + md->used);
-    if (new_size > md->keys->log2_size) {
-        return _md_rebuild(md, new_size, marks);
+    if (md->keys->usable >= extra_size) {
+        return 0;
     }
-    return 0;
+    /* Sized by live entries, so a table short of room only because of
+       deleted ones is compacted, or even shrunk, rather than grown. */
+    return _md_rebuild(
+        md, estimate_log2_keysize(extra_size + md->used), marks);
 }
 
 static inline int
