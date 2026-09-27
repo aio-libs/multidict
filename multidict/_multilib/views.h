@@ -1018,8 +1018,8 @@ _multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
         case UNPACK_ERROR:
             return -1;
         case UNPACK_OTHER:
-            tmp = PyObject_Length(obj);
-            if (tmp < 0) {
+            len = PyObject_Length(obj);
+            if (len < 0) {
                 if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
                     // propagate MemoryError / KeyboardInterrupt / etc.
                     return -1;
@@ -1027,7 +1027,7 @@ _multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
                 PyErr_Clear();
                 return 0;
             }
-            if (tmp != 2) {
+            if (len != 2) {
                 return 0;
             }
             key = PySequence_GetItem(obj, 0);

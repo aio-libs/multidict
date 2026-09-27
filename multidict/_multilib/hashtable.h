@@ -333,7 +333,7 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
 
 #endif /* Py_GIL_DISABLED */
 
-static inline int
+NOINLINE static int
 _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
 {
     if (!htkeys_size_fits(log2_newsize)) {
@@ -359,7 +359,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     entry_t* newentries = htkeys_entries(newkeys);
     Py_ssize_t filled;
     if (oldkeys->nentries == numentries) {
-        memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+        memcpy(newentries, oldentries, (size_t)numentries * sizeof(entry_t));
         filled = numentries;
     } else {
         entry_t* new_ep = newentries;
@@ -414,22 +414,10 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     return 0;
 }
 
-static inline int
-_md_shrink(MultiDictObject* md, update_marks_t* marks)
+#ifndef Py_GIL_DISABLED
+NOINLINE static int
+_md_shrink_impl(MultiDictObject* md, update_marks_t* marks)
 {
-#ifdef Py_GIL_DISABLED
-    /* The in-place compaction below rewrites the currently-published
-       table's entries and indices while md->keys keeps pointing at it
-       the whole time -- safe when every reader holds the critical
-       section (mutually exclusive with this function), not safe
-       against a lock-free reader concurrently walking the very memory
-       being rewritten. _md_resize() already has the build-a-new-table,
-       swap, retire-the-old-one shape lock-free reads need; reusing it
-       at the *current* size does exactly what shrinking means here
-       (drop the dummy-slot gaps) without a second, duplicate
-       implementation of that shape. */
-    return _md_resize(md, md->keys->log2_size, marks);
-#else
     htkeys_t* keys = md->keys;
     if (update_marks_remap(marks, keys, keys, md_entries_capacity(keys)) < 0) {
         return -1;
@@ -456,22 +444,32 @@ _md_shrink(MultiDictObject* md, update_marks_t* marks)
     htkeys_build_indices(keys, entries, newnentries);
     ASSERT_CONSISTENT(md, marks != NULL);
     return 0;
+}
+#endif
+
+ALWAYS_INLINE static inline int
+_md_shrink(MultiDictObject* md, update_marks_t* marks)
+{
+#ifdef Py_GIL_DISABLED
+    /* _md_shrink_impl()'s in-place compaction rewrites the
+       currently-published table's entries and indices while md->keys
+       keeps pointing at it the whole time -- safe when every reader
+       holds the critical section (mutually exclusive with this
+       function), not safe against a lock-free reader concurrently
+       walking the very memory being rewritten. _md_resize() already
+       has the build-a-new-table, swap, retire-the-old-one shape
+       lock-free reads need; reusing it at the *current* size does
+       exactly what shrinking means here (drop the dummy-slot gaps)
+       without a second, duplicate implementation of that shape. */
+    return _md_resize(md, md->keys->log2_size, marks);
+#else
+    return _md_shrink_impl(md, marks);
 #endif
 }
 
-// Out of line so _md_shrink() is not inlined into every insert path
+// Out of line: inlined, the dispatch costs every add two register saves
 NOINLINE static int
-_md_resize_for_insert(MultiDictObject* md)
-{
-    if (md->used < md->keys->nentries) {
-        return _md_shrink(md, NULL);
-    } else {
-        return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), NULL);
-    }
-}
-
-static inline int
-_md_resize_for_upd(MultiDictObject* md, update_marks_t* marks)
+_md_resize_for_add(MultiDictObject* md, update_marks_t* marks)
 {
     if (md->used < md->keys->nentries) {
         return _md_shrink(md, marks);
@@ -599,7 +597,7 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
     htkeys_t* keys = md->keys;
     if (keys->usable <= 0 || keys == &empty_htkeys) {
         /* Need to resize. */
-        if (_md_resize_for_insert(md) < 0) {
+        if (_md_resize_for_add(md, NULL) < 0) {
             return -1;
         }
         keys = md->keys;  // updated by resizing
@@ -658,7 +656,7 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     htkeys_t* keys = md->keys;
     if (keys->usable <= 0 || keys == &empty_htkeys) {
         /* Need to resize. */
-        if (_md_resize_for_upd(md, marks) < 0) {
+        if (_md_resize_for_add(md, marks) < 0) {
             return -1;
         }
         keys = md->keys;  // updated by resizing
@@ -766,7 +764,7 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
     reset_identity(entry);
     entry->key = NULL;
     reset_value(entry);
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 
     Py_XDECREF(identity);
@@ -789,7 +787,7 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     reset_identity(entry);
     entry->key = NULL;
     reset_value(entry);
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 
     int ret = reflist_push(defer, identity);
