@@ -13,13 +13,21 @@ out of ``keys().isdisjoint()`` when the ASCII identity path landed, and
 This script compiles ``_multidict.c`` the way ``pip install`` does, with
 the interpreter's own compiler flags plus the release flags from
 ``setup.py``, disassembles the object, and checks every rule in
-``RULES`` below.  A rule names a helper and the functions that must not
-contain a call or tail call to it, under any clone GCC makes of either
-(``.isra.0``, ``.part.0``, ``.constprop.0``).  A call made from a
-``.cold`` partition does not count, since that code is off the hot path
-by definition.  A caller that GCC inlined everywhere passes, since it
-has no copy of its own left to make the call from.  ``"*"`` in place of
-the callers means no out-of-line copy of the helper may exist at all.
+``RULES`` below.  A rule names a helper and the entry points that must
+not reach it through an out-of-line call or tail call, under any clone
+GCC makes (``.isra.0``, ``.part.0``, ``.constprop.0``).  The check is
+transitive: if ``multidict_get()`` calls ``md_get_one()`` out of line and
+``md_get_one()`` calls ``md_calc_identity()`` out of line, a rule
+forbidding ``md_calc_identity`` from ``multidict_get`` fails, and the
+report shows the chain.  Calls from a ``.cold`` partition are not
+followed, since that code is off the hot path by definition.  ``"*"`` in
+place of the entry points means no out-of-line copy of the helper may
+exist at all.
+
+Entry points are the functions Python or a C API client calls through a
+pointer: type slots, methods and ``MultiDict_*`` C API functions.  GCC
+always keeps a copy of those, so a rule naming anything else fails the
+moment GCC inlines it into its callers, rather than going quiet.
 
 Typical use, against both builds::
 
@@ -30,17 +38,13 @@ Typical use, against both builds::
 To see what a function calls out of line today, when writing a rule or
 reading a failure, pass ``--show``::
 
-    tools/check_inlining.py --show multidict_get --show md_get_one
+    tools/check_inlining.py --show multidict_get --show MultiDict_GetItem
 
-Rules are about direct calls only.  If ``multidict_get()`` calls
-``md_get_one()`` out of line and ``md_get_one()`` has
-``md_calc_identity()`` inlined, a rule forbidding ``md_calc_identity``
-in ``multidict_get`` passes; name ``md_get_one`` as a caller too where
-that matters.  Rules describe what the current code achieves on the
-compilers CI uses.  A fix for a new inlining regression, or a helper
-pinned with ``ALWAYS_INLINE`` or ``NOINLINE`` for speed, adds a rule in
-the same change; a regression that is accepted on purpose edits its rule
-there too, with the measurement that justified it.
+Rules describe what the current code achieves on the compilers CI uses.
+A fix for a new inlining regression, or a helper pinned with
+``ALWAYS_INLINE`` or ``NOINLINE`` for speed, adds a rule in the same
+change; a regression that is accepted on purpose edits its rule there
+too, with the measurement that justified it.
 """
 
 import argparse
@@ -69,6 +73,32 @@ GETITEM_ENTRIES = (
     "multidict_proxy_get",
     "multidict_proxy_getone",
     "multidict_proxy_mp_subscript",
+    "MultiDict_GetItem",
+)
+
+GETALL_ENTRIES = ("multidict_getall", "multidict_proxy_getall")
+
+# Every entry point that takes a key.
+KEY_ENTRIES = (
+    *GETITEM_ENTRIES,
+    *GETALL_ENTRIES,
+    "multidict_sq_contains",
+    "multidict_proxy_sq_contains",
+    "multidict_mp_ass_subscript",
+    "multidict_add",
+    "multidict_setdefault",
+    "multidict_pop",
+    "multidict_popone",
+    "multidict_popall",
+    "multidict_update",
+    "multidict_extend",
+    "multidict_tp_init",
+    "MultiDict_Contains",
+    "MultiDict_Add",
+    "MultiDict_SetItem",
+    "MultiDict_SetDefault",
+    "MultiDict_DelItem",
+    "MultiDict_Pop",
 )
 
 ITERNEXT_ENTRIES = (
@@ -89,26 +119,10 @@ class Rule:
 RULES = (
     Rule(
         "md_calc_identity",
-        (
-            *GETITEM_ENTRIES,
-            "multidict_getall",
-            "multidict_add",
-            "multidict_setdefault",
-            "md_del",
-            "md_replace",
-            "md_pop_one",
-            "md_update_from_dict",
-            "md_update_from_seq",
-            "multidict_keysview_isdisjoint",
-        ),
+        KEY_ENTRIES,
         BOTH,
-        "#1541/#1542: out of line in get and delitem cost 3.6% and 4%",
-    ),
-    Rule(
-        "md_calc_identity",
-        ("md_get_one", "md_contains"),
-        (FT,),
-        "#1541/#1542: md_get_one and md_contains stay out of line on FT",
+        "#1541/#1542: out of line in get and delitem cost 3.6% and 4%; "
+        "#1614: out of line in getall on FT with GCC 13",
     ),
     Rule(
         "md_get_one",
@@ -118,19 +132,13 @@ RULES = (
     ),
     Rule(
         "md_get_all",
-        ("multidict_getall",),
+        GETALL_ENTRIES,
         BOTH,
         "#1530: a stack buffer over 256 bytes cost getall 2%",
     ),
     Rule(
-        "md_contains",
-        ("multidict_keysview_isdisjoint",),
-        (GIL,),
-        "#1527: keys().isdisjoint() +31% on a case-sensitive MultiDict",
-    ),
-    Rule(
         "md_next",
-        (*ITERNEXT_ENTRIES, "multidict_keysview_isdisjoint"),
+        ITERNEXT_ENTRIES,
         BOTH,
         "#1601 prototype: items iteration +19% on FT",
     ),
@@ -256,17 +264,32 @@ def call_graph(obj):
     return graph
 
 
-def out_of_line_callees(graph, caller):
-    """Callees of every non-cold clone of ``caller``, by base name."""
-    clones = [s for s in graph if base_name(s) == caller and not is_cold(s)]
-    if not clones:
+def reachable(graph, caller):
+    """Map each function ``caller`` reaches through out-of-line calls to
+    the shortest chain of calls that gets there, by base name.
+
+    Cold partitions are not followed, since the code in them is off the
+    hot path by definition.  Returns None when ``caller`` has no copy of
+    its own in the object.
+    """
+    frontier = [s for s in graph if base_name(s) == caller and not is_cold(s)]
+    if not frontier:
         return None
-    callees = {}
-    for clone in clones:
-        for target in graph[clone]:
-            if base_name(target) != caller:
-                callees.setdefault(base_name(target), set()).add(target)
-    return callees
+    paths = {caller: [caller]}
+    while frontier:
+        next_frontier = []
+        for symbol in frontier:
+            for target in sorted(graph[symbol]):
+                name = base_name(target)
+                if target not in graph or is_cold(target) or name in paths:
+                    continue
+                paths[name] = [*paths[base_name(symbol)], target]
+                next_frontier.extend(
+                    s for s in graph if base_name(s) == name and not is_cold(s)
+                )
+        frontier = next_frontier
+    del paths[caller]
+    return paths
 
 
 def defined_in_source(root, name):
@@ -296,29 +319,38 @@ def check(root, graph, build):
                 )
             continue
         for caller in rule.callers:
-            callees = out_of_line_callees(graph, caller)
-            if callees is None:
-                # Inlined into every caller of its own, which leaves no
-                # copy to call the helper from.
-                if not defined_in_source(root, caller):
+            paths = reachable(graph, caller)
+            if paths is None:
+                # A slot, method or C API function is referenced by address
+                # and always keeps a copy, so a caller that has none is not
+                # an entry point: its calls now live in functions the rule
+                # does not name.
+                if defined_in_source(root, caller):
+                    failures.append(
+                        f"{caller}: inlined into its callers; name the entry "
+                        f"points that reach it instead"
+                    )
+                else:
                     failures.append(
                         f"{caller}: not defined in the sources; stale rule?"
                     )
-            elif rule.helper in callees:
+            elif rule.helper in paths:
                 failures.append(
-                    f"{caller} calls {', '.join(sorted(callees[rule.helper]))}"
-                    f"\n      ({rule.why})"
+                    f"{' -> '.join(paths[rule.helper])}\n      ({rule.why})"
                 )
     return failures
 
 
 def show(graph, name):
-    callees = out_of_line_callees(graph, name)
-    if callees is None:
-        print(f"  {name}: not found (inlined everywhere?)")
+    paths = reachable(graph, name)
+    if paths is None:
+        print(f"  {name}: no copy of its own (inlined everywhere?)")
         return
-    local = sorted(c for c in callees if any(base_name(s) == c for s in graph))
-    print(f"  {name} -> {', '.join(local) or '(no local calls)'}")
+    print(f"  {name} reaches:")
+    for callee in sorted(paths):
+        print(f"      {' -> '.join(paths[callee][1:])}")
+    if not paths:
+        print("      (no local calls)")
 
 
 def main():
@@ -343,8 +375,8 @@ def main():
         "--show",
         action="append",
         metavar="FUNCTION",
-        help="print the local functions FUNCTION calls out of line, "
-        "instead of checking the rules",
+        help="print every local function FUNCTION reaches through "
+        "out-of-line calls, instead of checking the rules",
     )
     args = parser.parse_args()
 

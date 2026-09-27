@@ -675,8 +675,10 @@ budget, so a change anywhere in it can push a helper out of line in
 code the change never touched, and a benchmark regresses for no
 visible reason. [`tools/check_inlining.py`](tools/check_inlining.py)
 builds the extension with release flags, reads the disassembly and
-checks its `RULES` table: each rule names a helper and the hot
-functions that must not call it out of line. CI runs it as the
+checks its `RULES` table: each rule names a helper and the entry
+points (slots, methods, `MultiDict_*` C API functions) that must not
+reach it through an out-of-line call, directly or through other
+out-of-line functions. CI runs it as the
 `Inlining` job on 3.14 and 3.14t. Run it before pushing any change to
 the C code:
 
@@ -700,9 +702,10 @@ The rules are yours to maintain, not only to obey:
   `ALWAYS_INLINE` or `NOINLINE` for speed, add a rule for it in the
   same PR, with the PR number and the measured cost in its `why`, so
   the next change cannot undo it silently.
-- When you rename a helper or one of the callers a rule lists,
-  update the rule. The script fails on a name it cannot find rather
-  than passing forever.
+- When you rename a helper or an entry point a rule lists, update
+  the rule. The script fails on a name it cannot find rather than
+  passing forever, and on a listed function that is not an entry
+  point once GCC inlines it away.
 
 ### Every line in a test must be covered
 
