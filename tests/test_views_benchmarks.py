@@ -1,8 +1,11 @@
 """codspeed benchmarks for multidict views."""
 
+import pytest
 from pytest_codspeed import BenchmarkFixture
 
 from multidict import MultiDict
+
+pytestmark = pytest.mark.benchmark_shard_2
 
 
 def test_keys_view_equals(
