@@ -359,7 +359,7 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     entry_t* newentries = htkeys_entries(newkeys);
     Py_ssize_t filled;
     if (oldkeys->nentries == numentries) {
-        memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+        memcpy(newentries, oldentries, (size_t)numentries * sizeof(entry_t));
         filled = numentries;
     } else {
         entry_t* new_ep = newentries;
@@ -707,7 +707,7 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
     reset_identity(entry);
     entry->key = NULL;
     reset_value(entry);
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 
     Py_XDECREF(identity);
@@ -730,7 +730,7 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     reset_identity(entry);
     entry->key = NULL;
     reset_value(entry);
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 
     int ret = reflist_push(defer, identity);
@@ -1101,44 +1101,56 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
 #endif /* Py_GIL_DISABLED */
 
 static inline int
-md_contains(MultiDictObject* md, PyObject* key, PyObject** pret)
+md_contains(MultiDictObject* md, PyObject* key)
 {
     if (!PyUnicode_Check(key)) {
         return 0;
     }
 
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        if (pret != NULL) {
-            *pret = NULL;
-        }
-        return -1;
-    }
-
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash == -1) {
-        Py_DECREF(identity);
-        if (pret != NULL) {
-            *pret = NULL;
-        }
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
         return -1;
     }
 
     int result;
 #ifdef Py_GIL_DISABLED
-    if (pret == NULL) {
-        result = _md_contains_lockfree(md, identity, hash);
-        if (result != 2 /* _MD_NEED_LOCK */) {
-            Py_DECREF(identity);
-            return result;
-        }
+    result = _md_contains_lockfree(md, identity, hash);
+    if (result != 2 /* _MD_NEED_LOCK */) {
+        Py_DECREF(identity);
+        return result;
     }
+    Py_BEGIN_CRITICAL_SECTION(md);
+    result = _md_contains_locked(md, identity, hash, NULL);
+    Py_END_CRITICAL_SECTION();
+#else
+    result = _md_contains_locked(md, identity, hash, NULL);
+#endif
+    Py_DECREF(identity);
+    return result;
+}
+
+/* md_contains() that also returns the stored key in *pret.  Only the view
+   set operations need it, so it stays out of line and off md_contains()'s
+   inlining budget. */
+NOINLINE static int
+md_find_key(MultiDictObject* md, PyObject* key, PyObject** pret)
+{
+    *pret = NULL;
+    if (!PyUnicode_Check(key)) {
+        return 0;
+    }
+
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
+    }
+
+    int result;
     Py_BEGIN_CRITICAL_SECTION(md);
     result = _md_contains_locked(md, identity, hash, pret);
     Py_END_CRITICAL_SECTION();
-#else
-    result = _md_contains_locked(md, identity, hash, pret);
-#endif
     Py_DECREF(identity);
     return result;
 }

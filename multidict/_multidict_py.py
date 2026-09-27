@@ -1,5 +1,6 @@
 import enum
 import functools
+import itertools
 import reprlib
 import sys
 import threading
@@ -66,7 +67,7 @@ _T = TypeVar("_T")
 _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
 
-_version = array("Q", [0])
+_version = itertools.count(1)
 
 _FREE_THREADED = hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled()
 
@@ -1389,16 +1390,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # `_version` is shared by every instance, so it needs its own lock.
         def _incr_version(self) -> None:
             with _VERSION_LOCK:
-                v = _version[0] + 1
-                _version[0] = v
+                v = next(_version)
             self._version = v
 
     else:
-
+        # One C call, so the GIL cannot switch threads in the middle of it.
         def _incr_version(self) -> None:
-            v = _version
-            v[0] += 1
-            self._version = v[0]
+            self._version = next(_version)
 
     def _resize(self, log2_newsize: int, update: bool) -> None:
         oldkeys = self._keys

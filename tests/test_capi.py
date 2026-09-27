@@ -1317,6 +1317,21 @@ def test_a_failing_operation_keeps_its_own_exception(watcher: Watcher) -> None:
     assert ADDED in watcher.kinds()
 
 
+def test_noop_watcher_for_benchmarks() -> None:
+    # C harness only: tests/test_watched_benchmarks.py drives it.
+    watcher_id = _testcapi.md_add_noop_watcher()
+    md: MultiDictStr = multidict.MultiDict()
+    _testcapi.md_watch_noop(watcher_id, md)
+    md.add("k", "v")
+    md.extend([("k", "w")])
+    del md["k"]
+    _testcapi.md_clear_watcher(watcher_id)
+    with pytest.raises(ValueError, match="invalid watcher ID"):
+        _testcapi.md_watch_noop(watcher_id, md)
+    with pytest.raises(TypeError, match="watcher_id and md"):
+        _testcapi.md_watch_noop(watcher_id)
+
+
 @pytest.fixture(params=[_CYTHON_PARAM])
 def cy_watcher(request: pytest.FixtureRequest) -> object:
     # The Cython trampoline in multidict/__init__.pxd, which hands the

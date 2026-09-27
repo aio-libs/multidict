@@ -463,19 +463,40 @@ jobs:
 
 
   benchmark:
-    name: Benchmark
+    name: Benchmark ${{ matrix.build }} ${{ matrix.shard }}
     needs:
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Sharded to shorten the wall clock; CodSpeed merges every job's upload
+    # for one commit into a single report. FT benchmark IDs get an `ft`
+    # suffix from tests/conftest.py, so the two builds never collide.
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+        - GIL
+        - FT
+        shard:
+        - 1
+        - 2
+        include:
+        - build: GIL
+          python-version: '3.14'
+        - build: FT
+          python-version: 3.14t
+        - shard: 1
+          marks: not benchmark_shard_2
+        - shard: 2
+          marks: benchmark_shard_2
     steps:
     - name: Checkout project
       uses: actions/checkout@v7
-    - name: Setup Python 3.14
+    - name: Setup Python ${{ matrix.python-version }}
       id: python-install
       uses: actions/setup-python@v7
       with:
-        python-version: 3.14
+        python-version: ${{ matrix.python-version }}
         cache: pip
         cache-dependency-path: requirements/*.txt
     - name: Install dependencies
@@ -491,7 +512,12 @@ jobs:
       with:
         token: ${{ secrets.CODSPEED_TOKEN }}
         # Note: -I is missed, otherwise PYTHONHASHSEED is ignored
-        run: python -m pytest --no-cov -vvvvv --codspeed
+        run: >-
+          python -m pytest --no-cov -vvvvv --codspeed
+          -m '${{ matrix.marks }}'
+          tests/test_multidict_benchmarks.py
+          tests/test_views_benchmarks.py
+          tests/test_watched_benchmarks.py
         mode: simulation
 
   hypothesis-gil:
@@ -791,7 +817,8 @@ jobs:
           -m pytest tests -q --no-cov --capture=no \
           -k "not test_leak" \
           --ignore=tests/test_multidict_benchmarks.py \
-          --ignore=tests/test_views_benchmarks.py
+          --ignore=tests/test_views_benchmarks.py \
+          --ignore=tests/test_watched_benchmarks.py
       shell: bash
     - name: Check for a core dump
       id: check-core
