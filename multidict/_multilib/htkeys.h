@@ -305,7 +305,8 @@ calculate_log2_keysize(Py_ssize_t minsize)
 {
 #if SIZEOF_LONG == SIZEOF_SIZE_T
     minsize = (minsize | HT_MINSIZE) - 1;
-    return _ht_bit_length(minsize | (HT_MINSIZE - 1));
+    return (uint8_t)_ht_bit_length(
+        (unsigned long)(minsize | (HT_MINSIZE - 1)));
 #elif defined(_MSC_VER)
     // On 64bit Windows, sizeof(long) == 4.
     minsize = (minsize | HT_MINSIZE) - 1;
@@ -428,7 +429,7 @@ htkeys_sizeof(htkeys_t* keys)
     Py_ssize_t usable = USABLE_FRACTION((size_t)1 << keys->log2_size);
     Py_ssize_t size =
         (Py_ssize_t)(sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
-                     sizeof(entry_t) * usable);
+                     sizeof(entry_t) * (size_t)usable);
     assert(size == (Py_ssize_t)_htkeys_alloc_size(keys->log2_size));
     return size;
 }
@@ -551,7 +552,7 @@ unicode_hash(PyObject* o)
 COLD static Py_ssize_t
 _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 {
-    const size_t mask = _htkeys_mask(keys);
+    const size_t mask = (size_t)_htkeys_mask(keys);
     const size_t start = i;
     const bool small = keys->log2_size < 16;
     void* resume_slots = keys->resume_slots;
@@ -564,7 +565,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
         }
     }
     size_t steps = 0;
-    while (htkeys_get_index(keys, i) != DKIX_EMPTY) {
+    while (htkeys_get_index(keys, (Py_ssize_t)i) != DKIX_EMPTY) {
         i = (i * 5 + 1) & mask;
         steps++;
     }
@@ -593,15 +594,16 @@ Internal routine used by ht_resize() to build a hashtable of entries.
 static inline void
 htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
 {
-    size_t mask = _htkeys_mask(keys);
+    size_t mask = (size_t)_htkeys_mask(keys);
     if (keys->resume_slots != NULL) {
         memset(
             keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
     }
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
         Py_hash_t hash = ep->hash;
-        size_t i = hash & mask;
-        for (size_t perturb = hash; htkeys_get_index(keys, i) != DKIX_EMPTY;) {
+        size_t i = (size_t)hash & mask;
+        for (size_t perturb = (size_t)hash;
+             htkeys_get_index(keys, (Py_ssize_t)i) != DKIX_EMPTY;) {
             perturb >>= HT_PERTURB_SHIFT;
             i = mask & (i * 5 + perturb + 1);
             if (UNLIKELY(perturb == 0)) {
@@ -609,7 +611,7 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
                 break;
             }
         }
-        htkeys_set_index(keys, i, ix);
+        htkeys_set_index(keys, (Py_ssize_t)i, ix);
     }
 }
 
@@ -633,8 +635,8 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
 static inline Py_ssize_t
 htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
 {
-    const size_t mask = _htkeys_mask(keys);
-    size_t i = hash & mask;
+    const size_t mask = (size_t)_htkeys_mask(keys);
+    size_t i = (size_t)hash & mask;
     size_t perturb = (size_t)hash;
     uint8_t log2size = keys->log2_size;
     if (log2size < 8) {
@@ -681,10 +683,10 @@ ALWAYS_INLINE static inline void
 htkeysiter_init(htkeysiter_t* iter, htkeys_t* keys, Py_hash_t hash)
 {
     iter->keys = keys;
-    iter->mask = _htkeys_mask(keys);
+    iter->mask = (size_t)_htkeys_mask(keys);
     iter->perturb = (size_t)hash;
-    iter->slot = hash & iter->mask;
-    iter->index = htkeys_get_index(iter->keys, iter->slot);
+    iter->slot = (size_t)hash & iter->mask;
+    iter->index = htkeys_get_index(iter->keys, (Py_ssize_t)iter->slot);
 }
 
 static inline void
@@ -692,7 +694,7 @@ htkeysiter_next(htkeysiter_t* iter)
 {
     iter->perturb >>= HT_PERTURB_SHIFT;
     iter->slot = (iter->slot * 5 + iter->perturb + 1) & iter->mask;
-    iter->index = htkeys_get_index(iter->keys, iter->slot);
+    iter->index = htkeys_get_index(iter->keys, (Py_ssize_t)iter->slot);
 }
 
 #ifdef __cplusplus

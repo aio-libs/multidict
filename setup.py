@@ -31,7 +31,6 @@ if platform.system() != "Windows":
             "-Wsign-compare",
             "-Wconversion",
             "-fno-strict-aliasing",
-            "-Wno-conversion",
             "-Werror",
         ]
     )
