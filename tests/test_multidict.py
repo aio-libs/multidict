@@ -3303,7 +3303,8 @@ def test_pure_python_version_thread_safety() -> None:
         with lock:
             all_versions.append(versions)
 
-    # Switching threads every few bytecodes makes the race reachable on GIL builds.
+    # Only PyPy switches threads inside the increment; CPython's GIL builds
+    # switch only at calls and backward jumps, so they never hit this race.
     old_interval = sys.getswitchinterval()
     sys.setswitchinterval(1e-4)
     try:
