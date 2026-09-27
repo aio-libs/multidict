@@ -55,7 +55,7 @@ typedef struct entry {
 #define HTKEYS_POOL_MAX_LOG2 8
 #define HTKEYS_POOL_CLASSES (HTKEYS_POOL_MAX_LOG2 - HTKEYS_POOL_MIN_LOG2 + 1)
 
-static inline void
+NOINLINE static void
 htkeys_pools_init(pool_t* pools)
 {
     static const uint8_t depths[HTKEYS_POOL_CLASSES] = {32, 32, 32, 16, 8, 4};
