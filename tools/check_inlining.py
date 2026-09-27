@@ -17,8 +17,9 @@ the interpreter's own compiler flags plus the release flags from
 contain a call or tail call to it, under any clone GCC makes of either
 (``.isra.0``, ``.part.0``, ``.constprop.0``).  A call made from a
 ``.cold`` partition does not count, since that code is off the hot path
-by definition.  ``"*"`` in place of the callers means no out-of-line copy
-of the helper may exist at all.
+by definition.  A caller that GCC inlined everywhere passes, since it
+has no copy of its own left to make the call from.  ``"*"`` in place of
+the callers means no out-of-line copy of the helper may exist at all.
 
 Typical use, against both builds::
 
@@ -297,10 +298,12 @@ def check(root, graph, build):
         for caller in rule.callers:
             callees = out_of_line_callees(graph, caller)
             if callees is None:
-                failures.append(
-                    f"{caller}: not found in the object; renamed, or itself "
-                    f"inlined into its own caller?"
-                )
+                # Inlined into every caller of its own, which leaves no
+                # copy to call the helper from.
+                if not defined_in_source(root, caller):
+                    failures.append(
+                        f"{caller}: not defined in the sources; stale rule?"
+                    )
             elif rule.helper in callees:
                 failures.append(
                     f"{caller} calls {', '.join(sorted(callees[rule.helper]))}"
