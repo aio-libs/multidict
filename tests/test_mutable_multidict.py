@@ -1268,3 +1268,51 @@ def test_eq_value_mutates_dict(
     target = lft if side == "left" else rht
     # The result is unspecified, as for dict; it must just not crash.
     assert isinstance(lft == rht, bool)
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="getsizeof() is not implemented on PyPy",
+)
+def test_add_to_full_table_with_a_hole_grows(
+    any_multidict_class: type[MultiDict[int]],
+) -> None:
+    # Compacting a full table in place regained one slot per deleted
+    # entry, so a delete-then-add churn rebuilt the table on every add.
+    probe = any_multidict_class()
+    for i in range(1000):
+        probe.add(str(i), i)
+    size = sys.getsizeof(probe)
+    count = 1000
+    while sys.getsizeof(probe) == size:
+        probe.add(str(count), count)
+        count += 1
+    # The last add grew the table, so it was full just before.
+    full = count - 1
+
+    md = any_multidict_class()
+    for i in range(full):
+        md.add(str(i), i)
+    full_size = sys.getsizeof(md)
+    del md["0"]
+    md.add(str(full), full)
+    assert sys.getsizeof(md) > full_size
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="getsizeof() is not implemented on PyPy",
+)
+def test_table_shrinks_after_deletions_once_adds_resume(
+    any_multidict_class: type[MultiDict[int]],
+) -> None:
+    md = any_multidict_class()
+    for i in range(1000):
+        md.add(str(i), i)
+    big_size = sys.getsizeof(md)
+    for i in range(10, 1000):
+        del md[str(i)]
+    for i in range(1000, 3000):
+        md.add(str(i), i)
+        del md[str(i)]
+    assert sys.getsizeof(md) < big_size // 4

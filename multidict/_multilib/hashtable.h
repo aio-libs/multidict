@@ -219,7 +219,7 @@ _md_free_retired(pool_t* pools, htkeys_t* keys)
 {
     entry_t* entries = htkeys_entries(keys);
     /* Only md_clear()'s retired tables have live entries to release here:
-   _md_resize()'s old table has its ownership already transferred to
+   _md_rebuild()'s old table has its ownership already transferred to
    the new table via memcpy, so its nentries is reset to 0 before
    retirement, making this loop a no-op for that case. */
     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
@@ -334,7 +334,7 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
 #endif /* Py_GIL_DISABLED */
 
 NOINLINE static int
-_md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
+_md_rebuild(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
 {
     if (!htkeys_size_fits(log2_newsize)) {
         PyErr_NoMemory();
@@ -414,68 +414,11 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     return 0;
 }
 
-#ifndef Py_GIL_DISABLED
-NOINLINE static int
-_md_shrink_impl(MultiDictObject* md, update_marks_t* marks)
-{
-    htkeys_t* keys = md->keys;
-    if (update_marks_remap(marks, keys, keys, md_entries_capacity(keys)) < 0) {
-        return -1;
-    }
-    Py_ssize_t nentries = keys->nentries;
-    entry_t* entries = htkeys_entries(keys);
-    entry_t* new_ep = entries;
-    entry_t* old_ep = entries;
-    Py_ssize_t newnentries = nentries;
-    for (Py_ssize_t i = 0; i < nentries; ++i, ++old_ep) {
-        if (old_ep->identity != NULL) {
-            if (new_ep != old_ep) {
-                *new_ep = *old_ep;
-            }
-            new_ep++;
-        } else {
-            newnentries -= 1;
-        }
-    }
-    keys->nentries = newnentries;
-    keys->usable += nentries - newnentries;
-    memset(&keys->indices[0], 0xff, ((size_t)1 << keys->log2_index_bytes));
-    memset(new_ep, 0, sizeof(entry_t) * (size_t)(nentries - newnentries));
-    htkeys_build_indices(keys, entries, newnentries);
-    ASSERT_CONSISTENT(md, marks != NULL);
-    return 0;
-}
-#endif
-
-ALWAYS_INLINE static inline int
-_md_shrink(MultiDictObject* md, update_marks_t* marks)
-{
-#ifdef Py_GIL_DISABLED
-    /* _md_shrink_impl()'s in-place compaction rewrites the
-       currently-published table's entries and indices while md->keys
-       keeps pointing at it the whole time -- safe when every reader
-       holds the critical section (mutually exclusive with this
-       function), not safe against a lock-free reader concurrently
-       walking the very memory being rewritten. _md_resize() already
-       has the build-a-new-table, swap, retire-the-old-one shape
-       lock-free reads need; reusing it at the *current* size does
-       exactly what shrinking means here (drop the dummy-slot gaps)
-       without a second, duplicate implementation of that shape. */
-    return _md_resize(md, md->keys->log2_size, marks);
-#else
-    return _md_shrink_impl(md, marks);
-#endif
-}
-
-// Out of line: inlined, the dispatch costs every add two register saves
+// Out of line: inlined, it slows construction and update() on GIL builds
 NOINLINE static int
 _md_resize_for_add(MultiDictObject* md, update_marks_t* marks)
 {
-    if (md->used < md->keys->nentries) {
-        return _md_shrink(md, marks);
-    } else {
-        return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), marks);
-    }
+    return _md_rebuild(md, calculate_log2_keysize(GROWTH_RATE(md)), marks);
 }
 
 static inline int
@@ -489,7 +432,7 @@ md_reserve_for_upd(MultiDictObject* md, Py_ssize_t extra_size,
     }
     uint8_t new_size = estimate_log2_keysize(extra_size + md->used);
     if (new_size > md->keys->log2_size) {
-        return _md_resize(md, new_size, marks);
+        return _md_rebuild(md, new_size, marks);
     }
     return 0;
 }
@@ -2179,7 +2122,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
     /* A table waiting on md->retired still owns its entries' references, so
        a cycle running through them is invisible to the collector unless they
        are reported here too. Only md_clear() retires a table with entries
-       left, since _md_resize() zeroes nentries once it has handed ownership
+       left, since _md_rebuild() zeroes nentries once it has handed ownership
        to the new table, so nothing is reported twice. Reading the list
        without the lock is what the walk below already relies on: the
        collector stops the world, and nothing may block here, since a

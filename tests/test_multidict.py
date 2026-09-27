@@ -2789,7 +2789,7 @@ def test_get_referents_reports_each_entry_once() -> None:
 
     multidict_tp_traverse() reports the entries of the tables waiting on md->retired
     as well as those of md->keys, which is only sound because the two never
-    hold the same entry: _md_resize() zeroes the old table's nentries when
+    hold the same entry: _md_rebuild() zeroes the old table's nentries when
     it hands ownership to the new one, so only md_clear() retires a table
     with entries left in it. Reporting a reference twice would make the
     collector believe an object has fewer references than it does, and free
@@ -2891,7 +2891,7 @@ def test_setitem_update_thread_safety() -> None:
     progress across a scan that can span more than one match, mutates the
     entry, then restores the mark once done -- and every step of that can
     transiently suspend the critical section, exactly like the read-path
-    and _md_resize() races fixed earlier. A concurrent resize triggered by
+    and _md_rebuild() races fixed earlier. A concurrent resize triggered by
     an entirely different thread's add()/pop() could then observe or
     mishandle that temporarily-marked state, corrupting the table (wrong
     bucket placement, a different key's mark overwritten, a stale
