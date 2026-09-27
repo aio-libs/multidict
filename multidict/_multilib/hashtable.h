@@ -83,6 +83,21 @@ GROWTH_RATE(MultiDictObject* md)
     return md->used * 3;
 }
 
+/* Frees a table no longer published, releasing the references its
+   entries still hold: only md_clear()'s tables have any, since
+   _md_rebuild() moves its old table's entries and zeroes nentries. */
+NOINLINE static void
+_htkeys_dispose(pool_t* pools, htkeys_t* keys)
+{
+    entry_t* entries = htkeys_entries(keys);
+    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
+        Py_CLEAR(entries[i].identity);
+        Py_CLEAR(entries[i].key);
+        Py_CLEAR(entries[i].value);
+    }
+    htkeys_free(pools, keys);
+}
+
 #ifdef Py_GIL_DISABLED
 
 /*
@@ -143,7 +158,7 @@ drain's own check, atomic_load_ssize_acquire(&t->num_readers) == 0 in
 _md_drain_retired_slow(), pairs with that release: observing the
 post-decrement value there means the drainer also observes everything
 the departing reader read before D, so freeing the table (via
-htkeys_free(), reached through _md_free_retired()) cannot race the
+htkeys_free(), reached through _htkeys_dispose()) cannot race the
 reader's now-finished walk. C itself (the increment in
 _md_reader_enter()) stays a plain relaxed
 atomic_fetch_add_ssize_relaxed(): no other thread's correctness
@@ -214,22 +229,6 @@ _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
     }
 }
 
-static inline void
-_md_free_retired(pool_t* pools, htkeys_t* keys)
-{
-    entry_t* entries = htkeys_entries(keys);
-    /* Only md_clear()'s retired tables have live entries to release here:
-   _md_rebuild()'s old table has its ownership already transferred to
-   the new table via memcpy, so its nentries is reset to 0 before
-   retirement, making this loop a no-op for that case. */
-    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-        Py_CLEAR(entries[i].identity);
-        Py_CLEAR(entries[i].key);
-        Py_CLEAR(entries[i].value);
-    }
-    htkeys_free(pools, keys);
-}
-
 NOINLINE static void
 _md_drain_retired_slow(MultiDictObject* md)
 {
@@ -258,7 +257,7 @@ retry:
         htkeys_t* next = t->retired_next;
         if (!readers_active &&
             atomic_load_ssize_acquire(&t->num_readers) == 0) {
-            _md_free_retired(MD_POOLS(md), t);
+            _htkeys_dispose(MD_POOLS(md), t);
         } else {
             t->retired_next = pending_head;
             pending_head = t;
@@ -333,6 +332,20 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
 
 #endif /* Py_GIL_DISABLED */
 
+/* Drops a table md no longer publishes: at once on GIL builds, once no
+   lock-free reader can still reach it on free-threaded ones. */
+static inline void
+_md_release_keys(MultiDictObject* md, htkeys_t* keys)
+{
+#ifdef Py_GIL_DISABLED
+    _md_retire(md, keys);
+#else
+    if (keys != &empty_htkeys) {
+        _htkeys_dispose(MD_POOLS(md), keys);
+    }
+#endif
+}
+
 NOINLINE static int
 _md_rebuild(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
 {
@@ -395,20 +408,16 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
        _md_update()'s comments, the latter in bulk_update.h) needs a
        companion signal that can't coincidentally repeat. */
     bump_version(md);
+#endif
 
     /* Ownership of oldkeys's entries has already moved to newkeys via
        the memcpy/copy loop above; zeroing nentries tells
-       _md_retire()'s cleanup there is nothing left to decref, only
-       memory to free. */
+       _htkeys_dispose() there is nothing left to decref, only memory
+       to free. */
     if (oldkeys != &empty_htkeys) {
         oldkeys->nentries = 0;
     }
-    _md_retire(md, oldkeys);
-#else
-    if (oldkeys != &empty_htkeys) {
-        htkeys_free(MD_POOLS(md), oldkeys);
-    }
-#endif
+    _md_release_keys(md, oldkeys);
 
     ASSERT_CONSISTENT(md, marks != NULL);
     return 0;
@@ -2197,26 +2206,7 @@ md_clear(MultiDictObject* md)
     htkeys_t* old_keys = md->keys;
     store_used(md, 0);
     store_keys(md, (htkeys_t*)&empty_htkeys);
-
-#ifdef Py_GIL_DISABLED
-    _md_retire(md, old_keys);
-#else
-    entry_t* entries = htkeys_entries(old_keys);
-    Py_ssize_t nentries = old_keys->nentries;
-    for (Py_ssize_t pos = 0; pos < nentries; pos++) {
-        entry_t* entry = entries + pos;
-        if (entry->identity != NULL) {
-            /* Py_CLEAR rather than freethreading.h's reset_identity() and
-               reset_value(): it skips the store when a field is already
-               NULL, which they cannot express, and this arm is GIL-only,
-               so there is no ordering left for an accessor to carry. */
-            Py_CLEAR(entry->identity);
-            Py_CLEAR(entry->key);
-            Py_CLEAR(entry->value);
-        }
-    }
-    htkeys_free(MD_POOLS(md), old_keys);
-#endif
+    _md_release_keys(md, old_keys);
     ASSERT_CONSISTENT(md, false);
     return 0;
 }

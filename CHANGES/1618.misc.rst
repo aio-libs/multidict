@@ -1,0 +1,4 @@
+Merged the C extension's two ways of dropping a hash table it no longer
+used, freeing it at once on GIL builds and retiring it on free-threaded
+ones, into one helper, and shared the loop that released a dropped
+table's entries between them -- by :user:`asvetlov`.
