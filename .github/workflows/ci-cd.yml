@@ -114,9 +114,9 @@ jobs:
   lint:
     uses: ./.github/workflows/reusable-linters.yml
 
-  build-wheels-for-tested-arches:
+  build-basic-wheels:
     name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
-      📦 Build wheels for tested arches${{ '' }}
+      📦 Build basic wheels${{ '' }}
     needs:
     - build-pure-python-dists
     - pre-setup  # transitive, for accessing settings
@@ -156,7 +156,7 @@ jobs:
     uses: ./.github/workflows/reusable-cibuildwheel.yml
     with:
       check-name: >-
-        Build ${{ matrix.tag }} wheels on ${{ matrix.runner-vm-os }}
+        ${{ matrix.tag }} on ${{ matrix.runner-vm-os }}
       runner-vm-os: ${{ matrix.runner-vm-os }}
       timeout-minutes: 25
       source-tarball-name: >-
@@ -185,7 +185,7 @@ jobs:
       ${{ matrix.debug == 'Y' && 'debug' || '' }}
     needs:
     - build-pure-python-dists  # transitive, for accessing settings
-    - build-wheels-for-tested-arches
+    - build-basic-wheels
     - pre-setup  # transitive, for accessing settings
     strategy:
       matrix:
@@ -912,7 +912,7 @@ jobs:
 
   build-wheels-for-odd-archs:
     name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
-      📦 Build wheels for odd arches${{ '' }}
+      📦 Build rare wheels${{ '' }}
     needs:
     - build-pure-python-dists
     - pre-deploy
@@ -957,7 +957,7 @@ jobs:
     uses: ./.github/workflows/reusable-cibuildwheel.yml
     with:
       check-name: >-
-        Build ${{ matrix.tag }} wheels for ${{ matrix.qemu }}
+        ${{ matrix.tag }} for ${{ matrix.qemu }}
       qemu: ${{ ! matrix.native-arch }}
       runner-vm-os: ${{ matrix.runner-vm-os || 'ubuntu-latest' }}
       timeout-minutes: 120
@@ -982,7 +982,7 @@ jobs:
 
   build-wheels-for-mobile-archs:
     name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
-      📦 Build wheels for mobile arches${{ '' }}
+      📦 Build mobile wheels${{ '' }}
     needs:
     - build-pure-python-dists
     - pre-deploy
@@ -998,7 +998,7 @@ jobs:
     uses: ./.github/workflows/reusable-cibuildwheel.yml
     with:
       check-name: >-
-        Build ${{ matrix.platform }} wheels on ${{ matrix.runner-vm-os }}
+        ${{ matrix.platform }} for ${{ matrix.runner-vm-os }}
       runner-vm-os: ${{ matrix.runner-vm-os }}
       timeout-minutes: 60
       source-tarball-name: >-
@@ -1018,7 +1018,7 @@ jobs:
     - build-pure-python-dists
     - build-wheels-for-mobile-archs
     - build-wheels-for-odd-archs
-    - build-wheels-for-tested-arches
+    - build-basic-wheels
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     # Sequential release asset uploads plus their retry pauses need
