@@ -209,7 +209,7 @@ _md_post_update_del(MultiDictObject* md, htkeys_t* keys, size_t slot,
     assert(entry->key == NULL);
     PyObject* old_identity = load_identity(entry);
     reset_identity(entry);
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
     return reflist_push(defer, old_identity);
 }
@@ -225,11 +225,11 @@ _md_post_update_sweep(MultiDictObject* md, reflist_t* defer)
 #ifdef Py_GIL_DISABLED
         uint64_t version_before = md->version;
 #endif
-        size_t num_slots = htkeys_nslots(keys);
+        size_t num_slots = (size_t)htkeys_nslots(keys);
         entry_t* entries = htkeys_entries(keys);
         bool stale = false;
         for (size_t slot = 0; slot < num_slots; slot++) {
-            Py_ssize_t index = htkeys_get_index(keys, slot);
+            Py_ssize_t index = htkeys_get_index(keys, (Py_ssize_t)slot);
             if (index >= 0 && entries[index].key == NULL) {
                 if (_md_post_update_del(
                         md, keys, slot, entries + index, defer) < 0) {

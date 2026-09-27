@@ -1787,6 +1787,20 @@ def test_items_contains_does_not_leak_key_on_error() -> None:
     assert sys.getrefcount(key) == baseline
 
 
+@pytest.mark.skipif(sys.maxsize < 2**32, reason="needs a 64-bit Py_ssize_t")
+def test_items_contains_length_not_truncated(
+    case_sensitive_multidict_class: type[MultiDict[str]],
+) -> None:
+    """The C items-view stored the length in an int, so 2**32 + 2 read as 2."""
+    md = case_sensitive_multidict_class([("a", "1")])
+
+    class HugeLen:
+        def __len__(self) -> int:
+            return 2**32 + 2
+
+    assert HugeLen() not in md.items()  # type: ignore[operator]
+
+
 @pytest.mark.c_extension
 def test_repr_raises_when_mutated_during_iteration() -> None:
     """`repr()` of a MultiDict whose value mutates it mid-iteration raises

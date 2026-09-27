@@ -359,7 +359,7 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     entry_t* newentries = htkeys_entries(newkeys);
     Py_ssize_t filled;
     if (oldkeys->nentries == numentries) {
-        memcpy(newentries, oldentries, numentries * sizeof(entry_t));
+        memcpy(newentries, oldentries, (size_t)numentries * sizeof(entry_t));
         filled = numentries;
     } else {
         entry_t* new_ep = newentries;
@@ -766,7 +766,7 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
     reset_identity(entry);
     entry->key = NULL;
     reset_value(entry);
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 
     Py_XDECREF(identity);
@@ -789,7 +789,7 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     reset_identity(entry);
     entry->key = NULL;
     reset_value(entry);
-    htkeys_set_index(keys, slot, DKIX_DUMMY);
+    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 
     int ret = reflist_push(defer, identity);
