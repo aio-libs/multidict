@@ -97,7 +97,7 @@ multidict_values_iter_new(MultiDictObject* md, int reverse)
     return (PyObject*)it;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 multidict_items_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;
@@ -157,7 +157,7 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
     return ret;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 multidict_values_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* value = NULL;
@@ -179,7 +179,7 @@ multidict_values_iter_tp_iternext(MultidictIter* self)
     return value;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 multidict_keys_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;
@@ -200,7 +200,7 @@ multidict_keys_iter_tp_iternext(MultidictIter* self)
     return key;
 }
 
-static inline void
+NOINLINE static void
 multidict_iter_tp_dealloc(MultidictIter* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
@@ -217,7 +217,7 @@ multidict_iter_tp_dealloc(MultidictIter* self)
     Py_DECREF(tp);
 }
 
-static inline int
+NOINLINE static int
 multidict_iter_tp_traverse(MultidictIter* self, visitproc visit, void* arg)
 {
     Py_VISIT(Py_TYPE(self));
@@ -226,7 +226,7 @@ multidict_iter_tp_traverse(MultidictIter* self, visitproc visit, void* arg)
     return 0;
 }
 
-static inline int
+NOINLINE static int
 multidict_iter_tp_clear(MultidictIter* self)
 {
     Py_CLEAR(self->md);
@@ -234,7 +234,7 @@ multidict_iter_tp_clear(MultidictIter* self)
     return 0;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 multidict_iter_len(MultidictIter* self)
 {
     return PyLong_FromLong(md_len(self->md));
@@ -307,7 +307,7 @@ static PyType_Spec multidict_keys_iter_spec = {
     .slots = multidict_keys_iter_slots,
 };
 
-static inline int
+NOINLINE static int
 multidict_iter_init(PyObject* module, mod_state* state)
 {
     PyObject* tmp;

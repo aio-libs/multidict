@@ -211,7 +211,7 @@ _ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
     return NULL;
 }
 
-static inline PyObject*
+ALWAYS_INLINE static inline PyObject*
 md_calc_identity(MultiDictObject* md, PyObject* key)
 {
     if (md->is_ci) return _ci_key_to_identity(md->state, key);

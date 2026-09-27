@@ -210,7 +210,7 @@ ret:
     return res;
 }
 
-static inline int
+NOINLINE static int
 istr_init(PyObject* module, mod_state* state)
 {
     PyObject* tpl = PyTuple_Pack(1, (PyObject*)&PyUnicode_Type);

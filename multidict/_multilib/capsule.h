@@ -203,7 +203,7 @@ MultiDict_Contains(void* state_, PyObject* self, PyObject* key)
 {
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
-    return md_contains(md, key, NULL);
+    return md_contains(md, key);
 }
 
 static int
@@ -491,7 +491,7 @@ _capsule_destructor(PyObject* o)
     _capsule_free(capi);
 }
 
-static PyObject*
+NOINLINE static PyObject*
 new_capsule(mod_state* state)
 {
     MultiDict_CAPI* capi =
