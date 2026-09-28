@@ -567,7 +567,9 @@ The driver checks itself before reporting: it refuses a wrapper script, it
 requires the counts to grow with the round count, and it re-measures one cell
 and requires a bit-identical result. ``--self-check`` runs every operation once
 without Valgrind and asserts the resulting state, which is the quick way to
-check a new operation.
+check a new operation. A measuring run does the same first, but only for the
+cells ``--impl`` and ``--include-multidict-only`` select, so ``--impl
+multidict_py`` works on a pure-Python install.
 
 Wall-clock measurements with pyperf
 ```````````````````````````````````
