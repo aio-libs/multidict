@@ -6,6 +6,7 @@ include CHANGES.rst
 include README.rst
 include Makefile
 include tools/release_notes_md.py
+include benchmarks/*.py
 graft multidict
 graft docs
 graft CHANGES

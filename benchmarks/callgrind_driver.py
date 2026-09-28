@@ -244,10 +244,16 @@ def measure(
     return int(found[0].replace(b",", b""))
 
 
-def self_check() -> None:
-    """Run every cell once without Valgrind and assert the end state."""
-    for op, impl in operations.selected():
-        case = operations.build(op, impl)
+def self_check(cells: list[tuple[operations.Operation, operations.Impl]]) -> None:
+    """Run each cell once without Valgrind and assert the end state."""
+    for op, impl in cells:
+        try:
+            case = operations.build(op, impl)
+        except ImportError as exc:
+            raise DriverError(
+                f"{impl.id} cannot be imported ({exc}); build the C extension "
+                "or pick an importable implementation with --impl"
+            ) from None
         for body in (case.run, case.noop):
             target = case.setup()
             body(target)
@@ -268,7 +274,7 @@ def self_check() -> None:
             assert len(target) == op.size, f"{op.id}/{impl.id} has {len(target)} items"
         elif op.id == "update":
             assert len(target) == op.size, f"{op.id}/{impl.id} has {len(target)} items"
-    print(f"self-check passed: {len(operations.selected())} cells")
+    print(f"self-check passed: {len(cells)} cells")
 
 
 def metadata(
@@ -351,7 +357,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.self_check:
-        self_check()
+        self_check(operations.selected())
         return 0
 
     python = sys.executable
@@ -361,18 +367,23 @@ def main() -> int:
     # The children run from the stage, without the caller's PATH.
     args.valgrind = os.path.abspath(valgrind)
 
-    self_check()
+    cells = operations.selected(
+        impl_id=args.impl, shared_only=not args.include_multidict_only
+    )
+    self_check(cells)
     stage_dir = make_stage_dir()
     try:
-        return collect(args, python, stage_dir)
+        return collect(args, python, stage_dir, cells)
     finally:
         shutil.rmtree(stage_dir)
 
 
-def collect(args: argparse.Namespace, python: str, stage_dir: str) -> int:
-    cells = operations.selected(
-        impl_id=args.impl, shared_only=not args.include_multidict_only
-    )
+def collect(
+    args: argparse.Namespace,
+    python: str,
+    stage_dir: str,
+    cells: list[tuple[operations.Operation, operations.Impl]],
+) -> int:
     stage = Stage(stage_dir, sorted({impl.id for _, impl in cells}))
     is_bracketed = stage.bracketed
     if not is_bracketed and not args.whole_process:
