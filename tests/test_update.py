@@ -327,3 +327,33 @@ def test_update_marks_outgrow_the_table(
     items = [("a", 1)] + [(f"k{i}", i) for i in range(100)] + [("a", 2)]
     d.update(iter(items))
     assert list(d.items()) == [("a", 1), ("a", 2)] + items[1:-1]
+
+
+@pytest.mark.parametrize("nested", ["update", "setitem", "merge", "read"])
+def test_update_keeps_what_code_between_items_wrote(
+    any_multidict_class: type[MultiDict[object]], nested: str
+) -> None:
+    # The outer call dooms the second "a"; code run between its items then
+    # writes to that very entry. The write stands; a read, which can swap a
+    # CIMultiDict's stored key for its istr, is no write.
+    d = any_multidict_class([("a", 0), ("a", 0), ("b", 0)])
+    writes: dict[str, Callable[[], object]] = {
+        "update": lambda: d.update([("a", 2), ("a", 3)]),
+        "setitem": lambda: d.__setitem__("a", 2),
+        "merge": lambda: d.merge([("a", 2)]),
+        "read": lambda: list(d.items()),
+    }
+    expected = {
+        "update": [("a", 2), ("a", 3), ("b", 0)],
+        "setitem": [("a", 2), ("b", 0)],
+        "merge": [("a", 1), ("b", 0)],
+        "read": [("a", 1), ("b", 0)],
+    }
+
+    def items() -> Iterator[tuple[str, object]]:
+        yield ("a", 1)
+        writes[nested]()
+
+    d.update(items())
+    assert list(d.items()) == expected[nested]
+    assert len(d) == len(expected[nested])
