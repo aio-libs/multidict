@@ -1,0 +1,4 @@
+Changed the benchmark driver's check before measuring to cover only the
+implementations selected with ``--impl``, so a pure-Python install can be
+measured, and made an implementation that cannot be imported fail with a
+clear error -- by :user:`asvetlov`.
