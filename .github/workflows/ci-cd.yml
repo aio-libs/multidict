@@ -462,6 +462,34 @@ jobs:
       uses: aio-libs/prepare-coverage@v24.9.2
 
 
+  inlining:
+    name: Inlining
+    needs:
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v7
+    - name: Setup Python 3.14
+      id: python-gil
+      uses: actions/setup-python@v7
+      with:
+        python-version: 3.14
+    - name: Setup Python 3.14t
+      id: python-ft
+      uses: actions/setup-python@v7
+      with:
+        python-version: 3.14t
+        allow-prereleases: true
+    - name: Show the compiler version
+      run: gcc --version
+    - name: Check that the hot paths keep their helpers inlined
+      run: >-
+        python tools/check_inlining.py
+        --python '${{ steps.python-gil.outputs.python-path }}'
+        --python '${{ steps.python-ft.outputs.python-path }}'
+
   benchmark:
     name: Benchmark ${{ matrix.build }} ${{ matrix.shard }}
     needs:
@@ -854,6 +882,7 @@ jobs:
     - test
     - test-cython-capi
     - benchmark
+    - inlining
     - hypothesis-gil
     - hypothesis-ft
     - asan

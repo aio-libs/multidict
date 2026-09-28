@@ -1,0 +1,4 @@
+Added ``tools/check_inlining.py`` and an ``Inlining`` CI job, which
+fail when GCC stops inlining a helper that a hot path depends on, since
+each time that happened a benchmark regressed on code the change never
+touched -- by :user:`asvetlov`.

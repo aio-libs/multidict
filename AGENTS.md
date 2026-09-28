@@ -72,6 +72,7 @@ Useful entry points:
 | `tests/`                              | pytest suite, parametrised across both backends                 |
 | `CHANGES/`                            | towncrier news fragments, one per PR                            |
 | `RELEASE.md`                          | maintainer release procedure, including the benchmark refresh   |
+| `tools/check_inlining.py`             | checks GCC still inlines the helpers hot paths depend on (``RULES``) |
 
 `MULTIDICT_NO_EXTENSIONS=1` forces the pure-Python build at install
 time; the default is the C extension. `MULTIDICT_DEBUG_BUILD=1` builds
@@ -667,6 +668,45 @@ entry points read; run `python benchmarks/callgrind_driver.py
 the table's shape rather than just its numbers, so that is the one case
 where a regular PR regenerates it.
 
+### Keep the inlining rules green, and extend them
+
+`_multidict.c` is one translation unit that sits at GCC's inlining
+budget, so a change anywhere in it can push a helper out of line in
+code the change never touched, and a benchmark regresses for no
+visible reason. [`tools/check_inlining.py`](tools/check_inlining.py)
+builds the extension with release flags, reads the disassembly and
+checks its `RULES` table: each rule names a helper and the entry
+points (slots, methods, `MultiDict_*` C API functions) that must not
+reach it through an out-of-line call, directly or through other
+out-of-line functions. CI runs it as the
+`Inlining` job on 3.14 and 3.14t. Run it before pushing any change to
+the C code:
+
+```bash
+tools/check_inlining.py \
+    --python ~/.pyenv/versions/3.14.7/bin/python3 \
+    --python ~/.pyenv/versions/3.14.7t/bin/python3.14t
+```
+
+`--show FUNCTION` prints what a function calls out of line today.
+
+The rules are yours to maintain, not only to obey:
+
+- When it fails, fix the code, usually with `NOINLINE` on the code
+  you added or `ALWAYS_INLINE` on the helper that fell out, and
+  measure the result with the callgrind driver. If the new
+  behaviour is the better trade, edit the rule in the same PR and
+  put the measurement that justifies it in the PR body. Never
+  delete or weaken a rule just to get CI green.
+- When you fix an inlining regression, or pin a helper with
+  `ALWAYS_INLINE` or `NOINLINE` for speed, add a rule for it in the
+  same PR, with the PR number and the measured cost in its `why`, so
+  the next change cannot undo it silently.
+- When you rename a helper or an entry point a rule lists, update
+  the rule. The script fails on a name it cannot find rather than
+  passing forever, and on a listed function that is not an entry
+  point once GCC inlines it away.
+
 ### Every line in a test must be covered
 
 Coverage in this repo is collected over `source = .` (see
@@ -763,6 +803,10 @@ Design tests so every line runs:
   collapsed `<details>` footer below the PR summary instead.
 - Do not use em-dashes or sentence-separating dashes in PR prose
   or commit messages.
+- Do not push a C change without running `tools/check_inlining.py`,
+  and do not delete or weaken one of its rules to make it pass. Fix
+  the code, or change the rule with a measurement; see _Keep the
+  inlining rules green, and extend them_ above.
 - Do not edit `multidict/_multilib/pythoncapi_compat.h`; it is
   vendored upstream.
 - Do not commit build artefacts (`*.so`, `__pycache__`,
