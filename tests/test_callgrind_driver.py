@@ -18,7 +18,7 @@ def test_self_check_selected_cells(
     driver: ModuleType, capsys: pytest.CaptureFixture[str]
 ) -> None:
     cells = driver.operations.selected(impl_id="multidict_py")
-    driver.self_check(cells)
+    driver.self_check(cells, "unused")
     assert capsys.readouterr().out == f"self-check passed: {len(cells)} cells\n"
 
 
@@ -31,8 +31,10 @@ def test_self_check_unimportable_impl(driver: ModuleType) -> None:
         operations._attr("multidict._no_such_module", "MultiDict"),
     )
     cells = [(operations.OPERATIONS_BY_ID["copy"], broken)]
-    with pytest.raises(driver.DriverError, match="^broken cannot be imported"):
-        driver.self_check(cells)
+    with pytest.raises(
+        driver.DriverError, match=r"^broken cannot be imported \(.*\); remedy$"
+    ):
+        driver.self_check(cells, "remedy")
 
 
 @pytest.mark.parametrize("multidict_only", [False, True])
@@ -42,7 +44,7 @@ def test_main_checks_only_selected_cells(
     tmp_path: pathlib.Path,
     multidict_only: bool,
 ) -> None:
-    checked: list[object] = []
+    checked: list[tuple[object, str]] = []
     collected: list[object] = []
 
     def collect(args: object, python: str, stage_dir: str, cells: object) -> int:
@@ -51,7 +53,7 @@ def test_main_checks_only_selected_cells(
 
     stage_dir = tmp_path / "stage"
     stage_dir.mkdir()
-    monkeypatch.setattr(driver, "self_check", checked.append)
+    monkeypatch.setattr(driver, "self_check", lambda *args: checked.append(args))
     monkeypatch.setattr(driver, "make_stage_dir", lambda: str(stage_dir))
     monkeypatch.setattr(driver, "collect", collect)
     argv = ["callgrind_driver.py", "--impl", "multidict_py"]
@@ -63,7 +65,9 @@ def test_main_checks_only_selected_cells(
     expected = driver.operations.selected(
         impl_id="multidict_py", shared_only=not multidict_only
     )
-    assert checked == collected == [expected]
+    [(cells, remedy)] = checked
+    assert [cells] == collected == [expected]
+    assert "--impl" in remedy
     assert {impl.id for _, impl in expected} == {"multidict_py"}
     assert not stage_dir.exists()
 
@@ -71,8 +75,11 @@ def test_main_checks_only_selected_cells(
 def test_main_self_check_checks_every_cell(
     driver: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    checked: list[object] = []
-    monkeypatch.setattr(driver, "self_check", checked.append)
-    monkeypatch.setattr(sys, "argv", ["callgrind_driver.py", "--self-check"])
+    checked: list[tuple[object, str]] = []
+    monkeypatch.setattr(driver, "self_check", lambda *args: checked.append(args))
+    argv = ["callgrind_driver.py", "--self-check", "--impl", "multidict_py"]
+    monkeypatch.setattr(sys, "argv", argv)
     assert driver.main() == 0
-    assert checked == [driver.operations.selected()]
+    [(cells, remedy)] = checked
+    assert cells == driver.operations.selected()
+    assert "--impl" not in remedy

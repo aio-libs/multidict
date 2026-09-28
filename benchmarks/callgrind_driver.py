@@ -244,15 +244,16 @@ def measure(
     return int(found[0].replace(b",", b""))
 
 
-def self_check(cells: list[tuple[operations.Operation, operations.Impl]]) -> None:
+def self_check(
+    cells: list[tuple[operations.Operation, operations.Impl]], remedy: str
+) -> None:
     """Run each cell once without Valgrind and assert the end state."""
     for op, impl in cells:
         try:
             case = operations.build(op, impl)
         except ImportError as exc:
             raise DriverError(
-                f"{impl.id} cannot be imported ({exc}); build the C extension "
-                "or pick an importable implementation with --impl"
+                f"{impl.id} cannot be imported ({exc}); {remedy}"
             ) from None
         for body in (case.run, case.noop):
             target = case.setup()
@@ -357,7 +358,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.self_check:
-        self_check(operations.selected())
+        self_check(
+            operations.selected(),
+            "--self-check covers every implementation, so build the C extension",
+        )
         return 0
 
     python = sys.executable
@@ -370,7 +374,10 @@ def main() -> int:
     cells = operations.selected(
         impl_id=args.impl, shared_only=not args.include_multidict_only
     )
-    self_check(cells)
+    self_check(
+        cells,
+        "build the C extension or pick an importable implementation with --impl",
+    )
     stage_dir = make_stage_dir()
     try:
         return collect(args, python, stage_dir, cells)
