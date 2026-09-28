@@ -1,0 +1,8 @@
+Changed ``benchmarks/callgrind_driver.py`` to run its Callgrind children from a
+fixed-length staging directory holding only the modules they import, so that
+two checkouts of one commit at different paths no longer measure up to 3%
+apart on allocating operations, and pinned mimalloc's arena address and purge
+timer, which had moved free-threaded counts between two runs of one tree.
+Also stopped the driver from collecting whole-process counts, which cannot be
+compared with bracketed ones, unless it is given ``--whole-process``
+-- by :user:`asvetlov`.
