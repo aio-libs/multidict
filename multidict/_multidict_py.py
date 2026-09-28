@@ -1323,7 +1323,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # out of the table, they survive whatever runs between items. They
         # and `replaced` also hold the dropped pairs until the call ends.
         updated: dict[int, _Entry[_V]] = {}
-        deleted: dict[int, _Entry[_V]] = {}
+        deleted: dict[int, tuple[_Entry[_V], str, _V]] = {}
         replaced: list[tuple[str, _V]] = []
         try:
             self._update_items(
@@ -1336,7 +1336,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self,
         items: Iterator[_Entry[_V]],
         updated: dict[int, _Entry[_V]],
-        deleted: dict[int, _Entry[_V]],
+        deleted: dict[int, tuple[_Entry[_V], str, _V]],
         replaced: list[tuple[str, _V]],
     ) -> None:
         for entry in items:
@@ -1357,23 +1357,29 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     replaced.append((e.key, e.value))
                     e.key = entry.key
                     e.value = entry.value
-                else:
-                    deleted[eid] = e
+                elif eid not in deleted:
+                    # with what it holds now: a write since is kept
+                    deleted[eid] = (e, e.key, e.value)
             if not found:
                 self._add_with_hash(entry)
                 updated[id(entry)] = entry
 
-    def _post_update(self, deleted: dict[int, _Entry[_V]]) -> None:
+    def _post_update(self, deleted: dict[int, tuple[_Entry[_V], str, _V]]) -> None:
         if deleted:
             keys = self._keys
             indices = keys.indices
             entries = keys.entries
             for slot in range(keys.nslots):
                 idx = indices[slot]
-                if idx >= 0 and id(entries[idx]) in deleted:
-                    entries[idx] = None
-                    indices[slot] = -2
-                    self._used -= 1
+                if idx < 0:
+                    continue
+                doomed = deleted.get(id(entries[idx]))
+                if doomed is not None:
+                    e, key, value = doomed
+                    if e.key is key and e.value is value:
+                        entries[idx] = None
+                        indices[slot] = -2
+                        self._used -= 1
         self._incr_version()
 
     @_locked_pair_always
