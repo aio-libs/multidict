@@ -74,7 +74,9 @@ remove the attribute lookup and call of method-based operations such as
 
 Operations :class:`dict` has no counterpart for, including ``add()``,
 ``getall()`` and everything keyed by :class:`~multidict.istr`, are excluded
-from the tables. They are still available to both runners; pass
+from the tables. So is re-initializing a populated mapping with
+``d.__init__(...)``, which replaces a multidict's contents but only updates a
+:class:`dict`. They are still available to both runners; pass
 ``--include-multidict-only`` to the Callgrind driver, or use
 ``benchmarks/benchmark.py`` directly.
 
