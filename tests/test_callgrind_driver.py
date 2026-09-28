@@ -1,4 +1,3 @@
-import importlib
 import pathlib
 import sys
 from types import ModuleType
@@ -15,7 +14,9 @@ class Stop(Exception):
 @pytest.fixture
 def driver(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.syspath_prepend(str(BENCHMARKS))
-    return importlib.import_module("callgrind_driver")
+    # The sdist the wheel jobs test from does not ship benchmarks/.
+    module: ModuleType = pytest.importorskip("callgrind_driver")
+    return module
 
 
 def test_self_check_selected_cells(
