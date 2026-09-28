@@ -1,0 +1,3 @@
+The macOS and Windows legs of the CI test matrix have been dropped;
+``cibuildwheel`` already runs the same test suite against the very
+wheels those jobs installed -- by :user:`asvetlov`.

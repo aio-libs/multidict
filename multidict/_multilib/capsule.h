@@ -305,7 +305,7 @@ _md_foreach_all(MultiDictObject* md, MultiDict_ItemVisitor visitor,
     Py_ssize_t count;
     Py_BEGIN_CRITICAL_SECTION(md);
     count = md_walk_all(md, true, visitor, user_data);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     Py_END_CRITICAL_SECTION();
     return count;
 }
@@ -322,7 +322,7 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
     Py_ssize_t count;
     Py_BEGIN_CRITICAL_SECTION(md);
     count = md_walk_with_hash(md, identity, hash, true, visitor, user_data);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
     return count;
