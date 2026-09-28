@@ -14,6 +14,7 @@ extern "C" {
 #include "bitmap.h"
 #include "compiler.h"
 #include "dict.h"
+#include "freethreading.h"
 #include "htkeys.h"
 
 /* Per-batch bookkeeping for update() and merge(), keyed by entry index.
@@ -32,10 +33,26 @@ extern "C" {
    it is instead of compacting, popitem() leaves the holes at the end of
    the table, and a clear or re-init starts the new table with a hole for
    every old entry. Any new table bumps md->layout_gen, which tells a batch
-   to widen its marks to the new room. */
+   to widen its marks to the new room.
+
+   An entry stays doomed only while it holds what it held when doomed: code
+   run between items may write to it since (a nested update(), say), and
+   that write stands. Every write stores a new value, so each doomed entry
+   is recorded with its value, referenced to keep the address from being
+   reused meanwhile, and md_post_update() removes only the entries that
+   still hold it. The key is no guide: reading a CIMultiDict's key swaps
+   the stored str for its istr. */
+typedef struct _doomed_entry {
+    Py_ssize_t index;
+    PyObject* value;
+} doomed_entry_t;
+
 typedef struct _update_marks {
     bitmap_t updated;
     bitmap_t deleted;
+    doomed_entry_t* doomed;
+    Py_ssize_t ndoomed;
+    Py_ssize_t doomed_capacity;
     uint32_t layout_gen;
 } update_marks_t;
 
@@ -53,6 +70,9 @@ update_marks_init(update_marks_t* marks, MultiDictObject* md)
     Py_ssize_t capacity = md_entries_capacity(md->keys);
     bitmap_init(&marks->updated, md->keys, capacity);
     bitmap_init(&marks->deleted, md->keys, capacity);
+    marks->doomed = NULL;
+    marks->ndoomed = 0;
+    marks->doomed_capacity = 0;
     marks->layout_gen = md->layout_gen;
     assert(md->batches < UINT16_MAX);
     md->batches++;
@@ -65,11 +85,58 @@ update_marks_end(MultiDictObject* md)
     md->batches--;
 }
 
+/* Called once the critical section is over: the references it drops can
+   run a finalizer. */
 static inline void
 update_marks_release(update_marks_t* marks)
 {
     bitmap_release(&marks->updated);
     bitmap_release(&marks->deleted);
+    for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {
+        Py_DECREF(marks->doomed[i].value);
+    }
+    PyMem_Free(marks->doomed);
+    marks->doomed = NULL;
+    marks->ndoomed = 0;
+}
+
+COLD static int
+_update_marks_grow_doomed(update_marks_t* marks)
+{
+    Py_ssize_t capacity =
+        marks->doomed_capacity == 0 ? 64 : marks->doomed_capacity * 2;
+    if ((size_t)capacity > PY_SSIZE_T_MAX / sizeof(doomed_entry_t)) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    doomed_entry_t* doomed = PyMem_Realloc(
+        marks->doomed, (size_t)capacity * sizeof(doomed_entry_t));
+    if (doomed == NULL) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    marks->doomed = doomed;
+    marks->doomed_capacity = capacity;
+    return 0;
+}
+
+/* Dooms `entry`, at `index`; a no-op if the batch already has. */
+static inline int
+update_marks_doom(update_marks_t* marks, Py_ssize_t index, entry_t* entry)
+{
+    int seen = bitmap_test_and_set(&marks->deleted, index);
+    if (seen != 0) {
+        return seen < 0 ? -1 : 0;
+    }
+    if (marks->ndoomed == marks->doomed_capacity &&
+        _update_marks_grow_doomed(marks) < 0) {
+        bitmap_clear(&marks->deleted, index);
+        return -1;
+    }
+    doomed_entry_t* doomed = marks->doomed + marks->ndoomed++;
+    doomed->index = index;
+    doomed->value = Py_NewRef(load_value(entry));
+    return 0;
 }
 
 COLD static int
