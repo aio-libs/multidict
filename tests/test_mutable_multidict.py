@@ -1453,6 +1453,7 @@ def test_reinit_finalizer_sees_and_keeps_new_contents(
     else:
         assert seen == []
         assert list(d.items()) == [late, ("x", "1")]
+    assert len(d) == 2
     del late
     d.clear()
     assert ref() is None
