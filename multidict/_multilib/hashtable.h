@@ -946,34 +946,6 @@ _md_del_at_held(MultiDictObject* md, size_t slot, entry_t* entry,
     return _removed_pairs_spill(removed, key, value);
 }
 
-/* Deferred half-deletion: entry may be replaced later or finished off by
- * md_post_update() (identity=NULL, used -= 1, slot -> DKIX_DUMMY). Unlike
- * _md_del_at_deferred(), this leaves identity/hash/index live -- a reader's
- * hash-chain scan can still reach this slot -- so each field is reserved
- * and pushed before it's nulled, one at a time: reflist_push()'s OOM
- * fallback would otherwise decref a field's old value immediately while
- * the entry sits in that half-deleted, still-reachable state. */
-static inline int
-md_half_delete_for_upd(MultiDictObject* md, entry_t* entry, reflist_t* defer)
-{
-    (void)md;
-    assert(md->keys != &empty_htkeys);
-    if (reflist_reserve_one(defer) < 0) {
-        return -1;
-    }
-    PyObject* old_key = entry->key;
-    entry->key = NULL;
-    reflist_push_reserved(defer, old_key);
-
-    if (reflist_reserve_one(defer) < 0) {
-        return -1;
-    }
-    PyObject* old_value = load_value(entry);
-    reset_value(entry);
-    reflist_push_reserved(defer, old_value);
-    return 0;
-}
-
 /* Caller holds md's critical section. Returns 1 if anything was removed,
  * 0 if not, -1 on error; md_del() raises the KeyError outside the section.
  * The removed pairs go to `removed`, so their finalizers run only once
