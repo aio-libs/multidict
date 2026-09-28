@@ -17,11 +17,15 @@ four children are used rather than two.
 Without bracketing the untimed setup falls inside the counted region, and it
 only cancels where both arms leave the mapping in the same state; a destructive
 operation such as ``d.clear()`` then reads far too cheap, because the run arm
-hands the round a mapping that is cheaper to deallocate.  Numbers published in
+hands the round a mapping that is cheaper to deallocate.  The driver refuses to
+collect such numbers without ``--whole-process``, and numbers published in
 the documentation must come from a bracketed run.
 
 Instruction counts do not depend on scheduling, so the children are safe to run
-in parallel on a loaded machine.
+in parallel on a loaded machine.  They do depend on the heap layout, which the
+paths and directory listings the interpreter allocates at startup shift, so the
+children run from a staging directory of a fixed length instead of from the
+tree; see ``Stage``.
 """
 
 import argparse
@@ -34,6 +38,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import tempfile
 import time
 
 import operations
@@ -49,23 +54,142 @@ except ImportError:  # pragma: no cover - depends on how multidict was built
 
 I_REFS = re.compile(rb"^==\d+== I\s+refs:\s+([\d,]+)\s*$", re.M)
 
-CHILD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "callgrind_child.py")
+HERE = os.path.dirname(os.path.abspath(__file__))
+CHILD_FILES = ("callgrind_child.py", "operations.py")
+
+# Long enough for any usual temporary directory plus mkdtemp()'s random suffix.
+STAGE_LENGTH = 64
 
 
 class DriverError(RuntimeError):
     pass
 
 
-def child_env() -> dict[str, str]:
-    env = dict(os.environ)
-    env.update(
-        PYTHONHASHSEED="0",
-        PYTHONDONTWRITEBYTECODE="1",
-        LC_ALL="C",
-        TZ="UTC",
-    )
-    env.pop("PYTHONSTARTUP", None)
-    return env
+class Stage:
+    """Hide every path of the tree, the virtualenv and the caller from a child.
+
+    CPython allocates each path it knows at startup, and the listing of each
+    directory it imports from, so two checkouts of one commit at paths of
+    different lengths, or with different build products lying around, hand the
+    measured loop a different heap.  An allocating operation such as an
+    ``istr`` lookup can then take a pymalloc slow path on every iteration in
+    one and never in the other.  The child runs under ``-S``, which keeps out
+    ``pyvenv.cfg`` and the ``.pth`` files whose editable-install finder carries
+    the tree's path, from a directory of a fixed length holding a copy of its
+    own scripts (``sys.path[0]`` is resolved through symbolic links) and one
+    import root with a link to each module it imports.  Its bytecode cache and
+    a reduced environment keep the tree's ``__pycache__`` and the caller's
+    ``PWD`` out as well.
+    """
+
+    def __init__(self, root: str, impl_ids: list[str]) -> None:
+        self.root = root
+        self.python = os.path.realpath(
+            getattr(sys, "_base_executable", None) or sys.executable
+        )
+        check_interpreter(self.python)
+        os.symlink(self.python, os.path.join(root, "python"))
+        for name in CHILD_FILES:
+            shutil.copy(os.path.join(HERE, name), root)
+        self.child = os.path.join(root, CHILD_FILES[0])
+        self.env = {
+            key: value
+            for key, value in os.environ.items()
+            if key.startswith(("PYTHON", "MULTIDICT_", "VALGRIND_"))
+            or key == "LD_LIBRARY_PATH"
+        }
+        self.env.pop("PYTHONSTARTUP", None)
+        self.env.update(
+            PYTHONHASHSEED="0",
+            PYTHONPYCACHEPREFIX=os.path.join(root, "pycache"),
+            # mimalloc places a reservation of up to 1 GiB at a random address
+            # and purges on a timer, and either moves free-threaded counts
+            # between two runs of one tree.  A larger reservation is placed by
+            # the kernel, which under Valgrind means always at one address.
+            MIMALLOC_ARENA_RESERVE="2GiB",
+            MIMALLOC_PURGE_DELAY="-1",
+            LC_ALL="C",
+            TZ="UTC",
+        )
+
+        # Find what the child imports through every import root the driver has,
+        # then give it only those modules.
+        scan = os.path.join(root, "scan")
+        os.mkdir(scan)
+        links = []
+        for i, entry in enumerate(self._import_roots()):
+            links.append(os.path.join(scan, f"p{i:02d}"))
+            os.symlink(entry, links[-1])
+        self.env["PYTHONPATH"] = os.pathsep.join(links)
+        found = json.loads(self.run("--probe", *impl_ids))
+        shutil.rmtree(scan)
+
+        lib = os.path.join(root, "lib")
+        os.mkdir(lib)
+        self.modules = found["modules"]
+        for path in self.modules.values():
+            os.symlink(path, os.path.join(lib, os.path.basename(path)))
+        # Build products for other interpreters collect in a checkout, so the
+        # package under test holds only the files the child imports from it.
+        package = os.path.join(lib, "multidict")
+        os.unlink(package)
+        os.mkdir(package)
+        for path in found["multidict_files"]:
+            os.symlink(path, os.path.join(package, os.path.basename(path)))
+        self.env["PYTHONPATH"] = lib
+
+        found = json.loads(self.run("--probe", *impl_ids, write_bytecode=True))
+        if found["multidict_file"] != os.path.realpath(multidict.__file__):
+            raise DriverError(
+                f"the staged child imports {found['multidict_file']}, not "
+                f"{multidict.__file__}"
+            )
+        self.bracketed: bool = found["bracketed"]
+
+    def _import_roots(self) -> list[str]:
+        no_site = subprocess.run(
+            [self.python, "-S", "-c", "import json, sys; print(json.dumps(sys.path))"],
+            capture_output=True,
+            text=True,
+            env={},
+            check=True,
+        ).stdout
+        stdlib = {os.path.realpath(entry) for entry in json.loads(no_site)[1:]}
+        roots = [os.path.dirname(os.path.dirname(os.path.realpath(multidict.__file__)))]
+        # sys.path[0] is this directory; the child has its own copy instead.
+        for entry in sys.path[1:]:
+            entry = os.path.realpath(entry or os.curdir)
+            if entry not in roots and entry not in stdlib and os.path.isdir(entry):
+                roots.append(entry)
+        return roots
+
+    def command(self, *args: str) -> list[str]:
+        return [os.path.join(self.root, "python"), "-S", self.child, *args]
+
+    def run(self, *args: str, write_bytecode: bool = False) -> str:
+        env = dict(self.env)
+        if not write_bytecode:
+            env["PYTHONDONTWRITEBYTECODE"] = "1"
+        proc = subprocess.run(
+            self.command(*args),
+            capture_output=True,
+            text=True,
+            cwd=self.root,
+            env=env,
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise DriverError(
+                f"the staged child exited {proc.returncode}:\n{proc.stderr[-2000:]}"
+            )
+        return proc.stdout
+
+
+def make_stage_dir() -> str:
+    tmp = tempfile.gettempdir()
+    # mkdtemp() appends eight random characters; only the length matters.
+    pad = STAGE_LENGTH - len(tmp) - len(os.sep) - 8 - len("mdcg-")
+    return tempfile.mkdtemp(prefix="mdcg-" + "x" * max(pad, 0), dir=tmp)
 
 
 def check_interpreter(python: str) -> None:
@@ -83,7 +207,7 @@ def check_interpreter(python: str) -> None:
 
 def measure(
     valgrind: str,
-    python: str,
+    stage: Stage,
     impl_id: str,
     op_id: str,
     variant: str,
@@ -99,15 +223,11 @@ def measure(
             # every count would come back zero.
             f"--instr-atstart={'no' if is_bracketed else 'yes'}",
             "--callgrind-out-file=/dev/null",
-            python,
-            CHILD,
-            impl_id,
-            op_id,
-            variant,
-            str(rounds),
+            *stage.command(impl_id, op_id, variant, str(rounds)),
         ],
         capture_output=True,
-        env=child_env(),
+        cwd=stage.root,
+        env={**stage.env, "PYTHONDONTWRITEBYTECODE": "1"},
         check=False,
     )
     if proc.returncode != 0:
@@ -122,13 +242,6 @@ def measure(
             f"got {len(found)}"
         )
     return int(found[0].replace(b",", b""))
-
-
-def bracketed(python: str) -> bool:
-    proc = subprocess.run(
-        [python, CHILD, "--bracketed"], capture_output=True, text=True, check=True
-    )
-    return proc.stdout.strip() == "yes"
 
 
 def self_check() -> None:
@@ -158,7 +271,9 @@ def self_check() -> None:
     print(f"self-check passed: {len(operations.selected())} cells")
 
 
-def metadata(python: str, valgrind: str, is_bracketed: bool) -> dict[str, object]:
+def metadata(
+    python: str, valgrind: str, is_bracketed: bool, stage: Stage
+) -> dict[str, object]:
     def git(*args: str) -> str:
         try:
             return subprocess.run(
@@ -197,6 +312,11 @@ def metadata(python: str, valgrind: str, is_bracketed: bool) -> dict[str, object
         "cpu_model": cpu_model,
         "platform": platform.platform(),
         "bracketed": is_bracketed,
+        "stage": {
+            "root_length": len(stage.root),
+            "python": stage.python,
+            "modules": stage.modules,
+        },
     }
 
 
@@ -222,6 +342,12 @@ def main() -> int:
         action="store_true",
         help="run every cell once without Valgrind and exit",
     )
+    parser.add_argument(
+        "--whole-process",
+        action="store_true",
+        help="measure even without the Valgrind client requests; the numbers "
+        "are not comparable with a bracketed run",
+    )
     args = parser.parse_args()
 
     if args.self_check:
@@ -229,16 +355,34 @@ def main() -> int:
         return 0
 
     python = sys.executable
-    check_interpreter(python)
-    if not shutil.which(args.valgrind) and not os.path.exists(args.valgrind):
+    valgrind = shutil.which(args.valgrind)
+    if valgrind is None:
         raise DriverError(f"valgrind not found at {args.valgrind}")
+    # The children run from the stage, without the caller's PATH.
+    args.valgrind = os.path.abspath(valgrind)
 
     self_check()
-    is_bracketed = bracketed(python)
+    stage_dir = make_stage_dir()
+    try:
+        return collect(args, python, stage_dir)
+    finally:
+        shutil.rmtree(stage_dir)
 
+
+def collect(args: argparse.Namespace, python: str, stage_dir: str) -> int:
     cells = operations.selected(
         impl_id=args.impl, shared_only=not args.include_multidict_only
     )
+    stage = Stage(stage_dir, sorted({impl.id for _, impl in cells}))
+    is_bracketed = stage.bracketed
+    if not is_bracketed and not args.whole_process:
+        raise DriverError(
+            "the Valgrind client requests are unavailable, so the whole "
+            "process would be counted: the untimed setup lands in every "
+            "number and destructive operations read too cheap. Install "
+            "requirements/pytest.txt, which brings pytest-codspeed, or pass "
+            "--whole-process to measure anyway."
+        )
     jobs = [
         (op, impl, variant, rounds)
         for op, impl in cells
@@ -255,7 +399,7 @@ def main() -> int:
         print(
             "warning: the Valgrind client requests are unavailable, so the "
             "untimed setup is counted too and destructive operations read too "
-            "cheap. Install pytest-codspeed before publishing these numbers.",
+            "cheap. Do not compare these numbers with a bracketed run.",
             file=sys.stderr,
             flush=True,
         )
@@ -267,7 +411,7 @@ def main() -> int:
             pool.submit(
                 measure,
                 args.valgrind,
-                python,
+                stage,
                 impl.id,
                 op.id,
                 variant,
@@ -298,7 +442,7 @@ def main() -> int:
             "the usual cause."
         )
 
-    repeat = measure(args.valgrind, python, impl.id, op.id, "run", r1, is_bracketed)
+    repeat = measure(args.valgrind, stage, impl.id, op.id, "run", r1, is_bracketed)
     drift = repeat - points[(op.id, impl.id, "run", r1)]
     tolerance = 0 if is_bracketed else scaling // 100
     if abs(drift) > tolerance:
@@ -336,7 +480,7 @@ def main() -> int:
         "schema": 1,
         "mode": "callgrind",
         "metadata": {
-            **metadata(python, args.valgrind, is_bracketed),
+            **metadata(python, args.valgrind, is_bracketed, stage),
             "drift_ir": drift,
         },
         "operations": {op.id: op.label for op, _ in cells},
