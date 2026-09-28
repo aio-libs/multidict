@@ -131,10 +131,16 @@ def bracketed(python: str) -> bool:
     return proc.stdout.strip() == "yes"
 
 
-def self_check() -> None:
-    """Run every cell once without Valgrind and assert the end state."""
-    for op, impl in operations.selected():
-        case = operations.build(op, impl)
+def self_check(cells: list[tuple[operations.Operation, operations.Impl]]) -> None:
+    """Run each cell once without Valgrind and assert the end state."""
+    for op, impl in cells:
+        try:
+            case = operations.build(op, impl)
+        except ImportError as exc:
+            raise DriverError(
+                f"{impl.id} cannot be imported ({exc}); build the C extension "
+                "or pick an importable implementation with --impl"
+            ) from None
         for body in (case.run, case.noop):
             target = case.setup()
             body(target)
@@ -155,7 +161,7 @@ def self_check() -> None:
             assert len(target) == op.size, f"{op.id}/{impl.id} has {len(target)} items"
         elif op.id == "update":
             assert len(target) == op.size, f"{op.id}/{impl.id} has {len(target)} items"
-    print(f"self-check passed: {len(operations.selected())} cells")
+    print(f"self-check passed: {len(cells)} cells")
 
 
 def metadata(python: str, valgrind: str, is_bracketed: bool) -> dict[str, object]:
@@ -225,7 +231,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.self_check:
-        self_check()
+        self_check(operations.selected())
         return 0
 
     python = sys.executable
@@ -233,12 +239,11 @@ def main() -> int:
     if not shutil.which(args.valgrind) and not os.path.exists(args.valgrind):
         raise DriverError(f"valgrind not found at {args.valgrind}")
 
-    self_check()
-    is_bracketed = bracketed(python)
-
     cells = operations.selected(
         impl_id=args.impl, shared_only=not args.include_multidict_only
     )
+    self_check(cells)
+    is_bracketed = bracketed(python)
     jobs = [
         (op, impl, variant, rounds)
         for op, impl in cells
