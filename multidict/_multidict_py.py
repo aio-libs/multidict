@@ -1332,28 +1332,37 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             found = False
             identity = entry.identity
             for slot, idx, e in self._keys.iter_hash(entry.hash):
-                if e.identity != identity or id(e) in updated:
+                if e.identity != identity:
+                    continue
+                eid = id(e)
+                if eid in updated:
                     continue
                 if not found:
                     found = True
-                    updated[id(e)] = e
-                    # one an earlier item doomed keeps its position
-                    deleted.pop(id(e), None)
+                    updated[eid] = e
+                    if deleted:
+                        # one an earlier item doomed keeps its position
+                        deleted.pop(eid, None)
                     replaced.append((e.key, e.value))
                     e.key = entry.key
                     e.value = entry.value
                 else:
-                    deleted[id(e)] = e
+                    deleted[eid] = e
             if not found:
                 self._add_with_hash(entry)
                 updated[id(entry)] = entry
 
     def _post_update(self, deleted: dict[int, _Entry[_V]]) -> None:
-        for entry in deleted.values():
-            for slot, idx, e in self._keys.iter_hash(entry.hash):
-                if e is entry:
-                    self._del_at(slot, idx)
-                    break
+        if deleted:
+            keys = self._keys
+            indices = keys.indices
+            entries = keys.entries
+            for slot in range(keys.nslots):
+                idx = indices[slot]
+                if idx >= 0 and id(entries[idx]) in deleted:
+                    entries[idx] = None
+                    indices[slot] = -2
+                    self._used -= 1
         self._incr_version()
 
     @_locked_pair_always
