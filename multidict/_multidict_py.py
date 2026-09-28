@@ -1305,11 +1305,14 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # the end of the (now shorter) entries list.
         self._keys.del_idx(entry.hash, pos)
         del entries[pos:]
-
-        ret = self._key(entry.key), entry.value
+        # Not held past here: the pop can run a finalizer that replaces the
+        # table, whose entries then go at once, as they do in C.
+        del entries
         self._used -= 1
         self._incr_version()
-        return ret
+
+        # istr() runs a str subclass's __str__, which may mutate self.
+        return self._key(entry.key), entry.value
 
     @_locked_pair_always
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
