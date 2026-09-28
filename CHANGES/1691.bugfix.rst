@@ -1,0 +1,5 @@
+Fixed the pure-Python ``__init__()`` miscounting :func:`len` when called
+again on a live multidict with another multidict of the same kind and a
+finalizer of an old value added to it, by setting the new size before
+releasing the old pairs, as :pr:`1619` did for the C implementation
+-- by :user:`asvetlov`.
