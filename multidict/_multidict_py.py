@@ -1340,10 +1340,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             found = False
             identity = entry.identity
             for slot, idx, e in self._keys.iter_hash(entry.hash):
-                if e.identity != identity:
-                    continue
                 eid = id(e)
-                if eid in updated:
+                if e.identity != identity or eid in updated:
                     continue
                 if not found:
                     found = True

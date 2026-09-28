@@ -1,0 +1,3 @@
+Folded the pure-Python ``update()`` match test back into one condition,
+leaving no line that only a hash collision reaches
+-- by :user:`asvetlov`.
