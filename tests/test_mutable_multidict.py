@@ -2,7 +2,9 @@ import functools
 import itertools
 import string
 import sys
+import weakref
 from collections import deque
+from types import ModuleType
 
 import pytest
 
@@ -1342,3 +1344,76 @@ def test_bulk_add_does_not_grow_table_short_of_room_from_deletions(
     getattr(md, method)([(f"new{i}", i) for i in range(400)])
     assert len(md) == 800
     assert sys.getsizeof(md) <= big_size
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="__del__ does not run promptly on PyPy",
+)
+@pytest.mark.parametrize(
+    ("source", "cloned"),
+    [
+        ("pairs", False),
+        ("dict", False),
+        ("kwargs", False),
+        ("other_kind", False),
+        ("same_kind", True),
+        ("proxy", True),
+    ],
+)
+def test_reinit_finalizer_sees_and_keeps_new_contents(
+    any_multidict_class: type[MultiDict[object]],
+    multidict_module: ModuleType,
+    source: str,
+    cloned: bool,
+) -> None:
+    # __init__() on a live multidict releases the old pairs after it
+    # installs the new ones, so a value's __del__ finds the new contents
+    # and what it adds stays, rather than being lost and leaked.
+    class Token:
+        pass
+
+    class Value:
+        def __init__(self, token: Token) -> None:
+            self.token = token
+
+        def __del__(self) -> None:
+            seen.extend(d.items())
+            d.add("late", self.token)
+
+    d = any_multidict_class()
+    seen: list[tuple[str, object]] = []
+    token = Token()
+    ref = weakref.ref(token)
+    d.add("old", Value(token))
+    del token
+
+    is_ci = any_multidict_class is multidict_module.CIMultiDict
+    kinds = (multidict_module.MultiDict, multidict_module.CIMultiDict)
+    if source == "pairs":
+        d.__init__([("x", "1")])  # type: ignore[misc]
+    elif source == "dict":
+        d.__init__({"x": "1"})  # type: ignore[misc]
+    elif source == "kwargs":
+        d.__init__(x="1")  # type: ignore[misc]
+    elif source == "other_kind":
+        d.__init__(kinds[not is_ci]([("x", "1")]))  # type: ignore[misc]
+    elif source == "same_kind":
+        d.__init__(kinds[is_ci]([("x", "1")]))  # type: ignore[misc]
+    else:
+        proxies = (
+            multidict_module.MultiDictProxy,
+            multidict_module.CIMultiDictProxy,
+        )
+        d.__init__(proxies[is_ci](kinds[is_ci]([("x", "1")])))  # type: ignore[misc]
+
+    late = ("late", ref())
+    if cloned:
+        assert seen == [("x", "1")]
+        assert list(d.items()) == [("x", "1"), late]
+    else:
+        assert seen == []
+        assert list(d.items()) == [late, ("x", "1")]
+    del late
+    d.clear()
+    assert ref() is None
