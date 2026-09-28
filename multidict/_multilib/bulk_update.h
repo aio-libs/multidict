@@ -87,7 +87,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             if (push_ret < 0) {
                 return -1;
             }
-        } else if (bitmap_set(&marks->deleted, iter.index) < 0) {
+        } else if (update_marks_doom(marks, iter.index, entry) < 0) {
             return -1;
         }
     }
@@ -126,9 +126,10 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return md_add_for_upd(md, hash, identity, key, value, marks);
 }
 
-/* Removes the entries update() doomed. Only an out-of-memory fallback
-   decref in _md_del_at_deferred() can run Python here; the walk then
-   starts over, which each entry leaving the set as it goes makes safe. */
+/* Removes the entries update() doomed and nothing has written since. Only
+   an out-of-memory fallback decref in _md_del_at_deferred() can run Python
+   here; the walk then starts over, which each record leaving the set as it
+   goes makes safe. */
 static inline int
 _md_post_update_deleted(MultiDictObject* md, reflist_t* defer,
                         update_marks_t* marks)
@@ -141,13 +142,19 @@ restart:
     htkeys_t* keys = md->keys;
     uint64_t version = md->version;
     entry_t* entries = htkeys_entries(keys);
-    for (Py_ssize_t pos = bitmap_next(&marks->deleted, 0); pos >= 0;
-         pos = bitmap_next(&marks->deleted, pos + 1)) {
+    for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {
+        doomed_entry_t* doomed = marks->doomed + i;
+        Py_ssize_t pos = doomed->index;
+        // revived by a later item of this batch, or handled before a restart
+        if (!bitmap_test(&marks->deleted, pos)) {
+            continue;
+        }
         assert(pos < keys->nentries);
         bitmap_clear(&marks->deleted, pos);
         entry_t* entry = entries + pos;
-        // Python code run between items may have removed it already
-        if (entry->identity == NULL) {
+        // Python code run between items may have removed or rewritten it
+        if (entry->identity == NULL || entry->key != doomed->key ||
+            load_value(entry) != doomed->value) {
             continue;
         }
         htkeysiter_t iter;
