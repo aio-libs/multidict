@@ -1417,3 +1417,15 @@ def test_reinit_finalizer_sees_and_keeps_new_contents(
     del late
     d.clear()
     assert ref() is None
+
+
+@pytest.mark.parametrize("is_ci", [False, True])
+def test_base_init_keeps_case_mode(multidict_module: ModuleType, is_ci: bool) -> None:
+    # __init__() is looked up on the instance's class, but also callable
+    # through the other class: either way the instance keeps its own mode.
+    kinds = (multidict_module.MultiDict, multidict_module.CIMultiDict)
+    d = kinds[is_ci]()
+    kinds[not is_ci].__init__(d, [("Key", "1")])
+    assert type(d) is kinds[is_ci]
+    assert ("key" in d) is is_ci
+    assert "Key" in d

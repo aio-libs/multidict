@@ -685,10 +685,13 @@ PyDoc_STRVAR(multidict_values_doc,
 /******************** MultiDict ********************/
 
 ALWAYS_INLINE static inline int
-_multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds,
-                   bool is_ci)
+_multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
     mod_state* state = self->state;
+    /* The instance's own mode, not the class whose __init__() was called:
+       MultiDict.__init__() on a CIMultiDict must not make it
+       case-sensitive. */
+    bool is_ci = self->is_ci;
     PyObject* arg = NULL;
     Py_ssize_t size = _multidict_extend_parse_args(
         state, args, kwds, is_ci ? "CIMultiDict" : "MultiDict", &arg);
@@ -770,7 +773,7 @@ fail:
 static int
 multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
-    return _multidict_tp_init(self, args, kwds, false);
+    return _multidict_tp_init(self, args, kwds);
 }
 
 static PyObject*
@@ -1439,12 +1442,6 @@ cimultidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-static int
-cimultidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
-{
-    return _multidict_tp_init(self, args, kwds, true);
-}
-
 PyDoc_STRVAR(
     cimultidict_doc,
     "Dictionary with the support for duplicate case-insensitive keys.");
@@ -1456,7 +1453,6 @@ static PyType_Slot cimultidict_slots[] = {
        on Py_IS_TYPE(self, descr->d_type) and deopts every call whose
        descriptor was inherited from a base type. */
     {Py_tp_methods, multidict_methods},
-    {Py_tp_init, cimultidict_tp_init},
     {Py_tp_new, cimultidict_tp_new},
 #if PY_VERSION_HEX >= 0x030e00f0
     {Py_tp_vectorcall, cimultidict_tp_vectorcall},
