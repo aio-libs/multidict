@@ -1,5 +1,8 @@
 """Test to_dict functionality for all multidict types."""
 
+import contextlib
+import gc
+import sys
 from collections.abc import Iterator
 
 import pytest
@@ -259,3 +262,46 @@ def test_to_dict_refuses_mutation_from_key_hash(
     assert md.getall("a") == ["1", "2"]
     assert md.getall("b") == ["3"]
     assert md.to_dict()["a"] == ["1", "2"]
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="__del__ does not run promptly on PyPy",
+)
+@pytest.mark.parametrize("delay", range(12))
+def test_to_dict_refuses_mutation_from_a_collection(
+    any_multidict_class: type[MultiDict[object]], delay: int
+) -> None:
+    """On 3.10 and 3.11, allocating the result's lists can run a collection
+    whose finalizers mutate the multidict; that is refused too. `delay`
+    moves the collection across the allocations to_dict() makes."""
+    old = [(f"k{i}", [i]) for i in range(10)]
+    new = [(f"z{i}", [i]) for i in range(50)]
+    md = any_multidict_class(old)
+
+    class Cycle:
+        def __init__(self) -> None:
+            self.me = self
+
+        def __del__(self) -> None:
+            md.clear()
+            md.extend(new)
+
+    to_dict = md.to_dict
+    result = None
+    threshold = gc.get_threshold()
+    was_enabled = gc.isenabled()
+    gc.collect()
+    gc.disable()
+    try:
+        Cycle()
+        gc.set_threshold(gc.get_count()[0] + delay)
+        gc.enable()
+        with contextlib.suppress(RuntimeError):
+            result = to_dict()
+    finally:
+        gc.set_threshold(*threshold)
+        (gc.enable if was_enabled else gc.disable)()
+    gc.collect()
+    assert result in (None, {k: [v] for k, v in old}, {k: [v] for k, v in new})
+    assert list(md.items()) == new

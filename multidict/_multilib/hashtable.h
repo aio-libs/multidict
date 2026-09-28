@@ -1510,8 +1510,8 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
             continue;  // collected already under its first key
         }
 
-        /* Equal keys sit on one hash chain in insertion order. Nothing in
-           this walk runs Python. */
+        /* Equal keys sit on one hash chain in insertion order. Only the
+           list allocation below can run Python in this walk. */
         Py_hash_t hash = entry->hash;
         htkeysiter_t iter;
         htkeysiter_init(&iter, md->keys, hash);
@@ -1533,6 +1533,14 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
             if (lst == NULL) {
                 lst = PyList_New(1);
                 if (lst == NULL) {
+                    goto fail;
+                }
+                /* On 3.10 and 3.11, allocating a tracked object can run a
+                   collection whose finalizers mutate md: refused as below,
+                   before `e` is read again. */
+                if (md->version != version) {
+                    PyErr_SetString(PyExc_RuntimeError,
+                                    "MultiDict is changed during iteration");
                     goto fail;
                 }
                 PyList_SET_ITEM(lst, 0, Py_NewRef(e->value));
