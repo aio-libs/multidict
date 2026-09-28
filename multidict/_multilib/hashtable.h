@@ -374,7 +374,7 @@ _md_publish_rebuilt(MultiDictObject* md, htkeys_t* oldkeys, htkeys_t* newkeys)
     }
     _md_release_keys(md, oldkeys);
 
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
 }
 
 /* _md_rebuild() while an update() or merge() is in flight: every entry
@@ -534,7 +534,7 @@ _md_install_keys(MultiDictObject* md, htkeys_t* keys, Py_ssize_t used,
     }
     store_keys(md, keys);
     md_watch_record_simple(md, event);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     if (old_keys != NULL) {
         update_marks_moved(md);
         _md_release_keys(md, old_keys);
@@ -607,7 +607,7 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
 static inline int
 md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 {
-    ASSERT_CONSISTENT(other, false);
+    ASSERT_CONSISTENT(other);
     if (UNLIKELY(md->batches != 0)) {
         return _md_clone_after_holes(md, other);
     }
@@ -786,7 +786,7 @@ _md_add_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                PyObject* key, PyObject* value)
 {
     int ret = md_add_with_hash(md, hash, identity, key, value);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return ret;
 }
 
@@ -932,7 +932,7 @@ restart:;
             md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
         }
     }
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return found;
 }
 
@@ -1491,7 +1491,7 @@ static inline int
 _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                        PyObject* key, PyObject* value, PyObject** result)
 {
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
 
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
@@ -1507,7 +1507,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
         if (str_cmp(identity, entry->identity)) {
-            ASSERT_CONSISTENT(md, false);
+            ASSERT_CONSISTENT(md);
             *result = Py_NewRef(entry->value);
             return 1;
         }
@@ -1517,7 +1517,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         return -1;
     }
 
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     *result = Py_NewRef(value);
     return 0;
 }
@@ -1583,11 +1583,11 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             _md_del_at(md, iter.slot, entry);
             *ret = value;
             bump_version(md);
-            ASSERT_CONSISTENT(md, false);
+            ASSERT_CONSISTENT(md);
             return 1;
         }
     }
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return 0;
 }
 
@@ -1727,7 +1727,7 @@ restart:;
     if (batched) {
         md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
     }
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return 0;
 }
 
@@ -1813,7 +1813,7 @@ md_pop_item(MultiDictObject* md)
     }
     _md_del_at(md, iter.slot, entry);
     bump_version(md);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return ret;
 }
 
@@ -1962,7 +1962,7 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
             ret = md_add_with_hash(md, hash, identity, key, value);
         }
     }
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     Py_END_CRITICAL_SECTION();
     reflist_clear(&defer);
     Py_DECREF(identity);
@@ -2315,7 +2315,7 @@ md_clear(MultiDictObject* md)
     store_keys(md, new_keys);
     update_marks_moved(md);
     _md_release_keys(md, old_keys);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return 0;
 }
 

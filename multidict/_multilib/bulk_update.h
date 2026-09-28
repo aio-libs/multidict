@@ -185,7 +185,7 @@ md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
     update_marks_end(md);
     bump_version(md);
     md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return ret;
 }
 
