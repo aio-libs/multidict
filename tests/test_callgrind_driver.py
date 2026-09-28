@@ -45,11 +45,11 @@ def test_main_checks_only_selected_cells(
 ) -> None:
     checked: list[object] = []
 
-    def bracketed(python: str) -> bool:
+    def make_stage_dir() -> str:
         raise Stop
 
     monkeypatch.setattr(driver, "self_check", checked.append)
-    monkeypatch.setattr(driver, "bracketed", bracketed)
+    monkeypatch.setattr(driver, "make_stage_dir", make_stage_dir)
     argv = ["callgrind_driver.py", "--impl", "multidict_py"]
     argv += ["--valgrind", sys.executable]
     if multidict_only:
