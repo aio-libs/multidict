@@ -8,10 +8,6 @@ import pytest
 BENCHMARKS = pathlib.Path(__file__).parent.parent / "benchmarks"
 
 
-class Stop(Exception):
-    pass
-
-
 @pytest.fixture
 def driver(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.syspath_prepend(str(BENCHMARKS))
@@ -41,24 +37,42 @@ def test_self_check_unimportable_impl(driver: ModuleType) -> None:
 
 @pytest.mark.parametrize("multidict_only", [False, True])
 def test_main_checks_only_selected_cells(
-    driver: ModuleType, monkeypatch: pytest.MonkeyPatch, multidict_only: bool
+    driver: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    multidict_only: bool,
 ) -> None:
     checked: list[object] = []
+    collected: list[object] = []
 
-    def make_stage_dir() -> str:
-        raise Stop
+    def collect(args: object, python: str, stage_dir: str, cells: object) -> int:
+        collected.append(cells)
+        return 0
 
+    stage_dir = tmp_path / "stage"
+    stage_dir.mkdir()
     monkeypatch.setattr(driver, "self_check", checked.append)
-    monkeypatch.setattr(driver, "make_stage_dir", make_stage_dir)
+    monkeypatch.setattr(driver, "make_stage_dir", lambda: str(stage_dir))
+    monkeypatch.setattr(driver, "collect", collect)
     argv = ["callgrind_driver.py", "--impl", "multidict_py"]
     argv += ["--valgrind", sys.executable]
     if multidict_only:
         argv.append("--include-multidict-only")
     monkeypatch.setattr(sys, "argv", argv)
-    with pytest.raises(Stop):
-        driver.main()
+    assert driver.main() == 0
     expected = driver.operations.selected(
         impl_id="multidict_py", shared_only=not multidict_only
     )
-    assert checked == [expected]
+    assert checked == collected == [expected]
     assert {impl.id for _, impl in expected} == {"multidict_py"}
+    assert not stage_dir.exists()
+
+
+def test_main_self_check_checks_every_cell(
+    driver: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    checked: list[object] = []
+    monkeypatch.setattr(driver, "self_check", checked.append)
+    monkeypatch.setattr(sys, "argv", ["callgrind_driver.py", "--self-check"])
+    assert driver.main() == 0
+    assert checked == [driver.operations.selected()]
