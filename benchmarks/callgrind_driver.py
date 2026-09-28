@@ -346,8 +346,11 @@ def main() -> int:
         return 0
 
     python = sys.executable
-    if not shutil.which(args.valgrind) and not os.path.exists(args.valgrind):
+    valgrind = shutil.which(args.valgrind)
+    if valgrind is None:
         raise DriverError(f"valgrind not found at {args.valgrind}")
+    # The children run from the stage, without the caller's PATH.
+    args.valgrind = os.path.abspath(valgrind)
 
     self_check()
     stage_dir = make_stage_dir()
