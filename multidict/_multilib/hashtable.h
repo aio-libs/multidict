@@ -347,9 +347,104 @@ _md_release_keys(MultiDictObject* md, htkeys_t* keys)
 #endif
 }
 
-NOINLINE static int
-_md_rebuild(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
+/* Publishes a rebuilt table: the old one's entries have all moved over. */
+ALWAYS_INLINE static inline void
+_md_publish_rebuilt(MultiDictObject* md, htkeys_t* oldkeys, htkeys_t* newkeys)
 {
+    store_keys(md, newkeys);
+    update_marks_moved(md);
+
+#ifdef Py_GIL_DISABLED
+    /* Bump the version on every resize, not just when a caller's
+       own insert/delete/replace would bump it anyway: a freed
+       htkeys_t can get reallocated at the very same address by a
+       later resize (same size class, common in practice), so code
+       elsewhere that detects "did md->keys change under me" by
+       comparing the raw pointer alone (see _md_replace()'s
+       comment) needs a companion signal that can't coincidentally
+       repeat. */
+    bump_version(md);
+#endif
+
+    /* Ownership of oldkeys's entries has already moved to newkeys;
+       zeroing nentries tells _htkeys_dispose() there is nothing left to
+       decref, only memory to free. */
+    if (oldkeys != &empty_htkeys) {
+        oldkeys->nentries = 0;
+    }
+    _md_release_keys(md, oldkeys);
+
+    ASSERT_CONSISTENT(md);
+}
+
+/* _md_rebuild() while an update() or merge() is in flight: every entry
+   keeps its index, holes and all, since the batch's marks name entries by
+   index; see update_marks.h. */
+COLD NOINLINE static int
+_md_rebuild_keeping_indices(MultiDictObject* md, uint8_t log2_newsize)
+{
+    htkeys_t* oldkeys = md->keys;
+    Py_ssize_t nentries = oldkeys->nentries;
+    if (!htkeys_size_fits(log2_newsize)) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    // the room the caller asked for, on top of the holes
+    Py_ssize_t want =
+        USABLE_FRACTION((Py_ssize_t)1 << log2_newsize) - md->used + nentries;
+    while (USABLE_FRACTION((Py_ssize_t)1 << log2_newsize) < want) {
+        log2_newsize++;
+        if (!htkeys_size_fits(log2_newsize)) {
+            PyErr_NoMemory();
+            return -1;
+        }
+    }
+
+    htkeys_t* newkeys = htkeys_new_unfilled(MD_POOLS(md), log2_newsize);
+    if (newkeys == NULL) {
+        return -1;
+    }
+    entry_t* newentries = htkeys_entries(newkeys);
+    memcpy(newentries,
+           htkeys_entries(oldkeys),
+           (size_t)nentries * sizeof(entry_t));
+    htkeys_zero_entries(newkeys, nentries);
+    htkeys_build_indices_with_holes(newkeys, newentries, nentries);
+    newkeys->usable -= nentries;
+    newkeys->nentries = nentries;
+
+    _md_publish_rebuilt(md, oldkeys, newkeys);
+    return 0;
+}
+
+/* A table for md's new contents while an update() or merge() is in
+   flight: it starts with as many holes as md has entries now, so the new
+   entries take indices none of the batch's marks name. Holds `extra` more.
+   */
+COLD NOINLINE static htkeys_t*
+_md_new_keys_after_holes(MultiDictObject* md, Py_ssize_t extra)
+{
+    Py_ssize_t nholes = md->keys->nentries;
+    uint8_t log2_size = estimate_log2_keysize(nholes + extra);
+    if (!htkeys_size_fits(log2_size)) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    htkeys_t* keys = htkeys_new(MD_POOLS(md), log2_size);
+    if (keys == NULL) {
+        return NULL;
+    }
+    keys->usable -= nholes;
+    keys->nentries = nholes;
+    return keys;
+}
+
+NOINLINE static int
+_md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
+{
+    if (UNLIKELY(md->batches != 0)) {
+        return _md_rebuild_keeping_indices(md, log2_newsize);
+    }
     if (!htkeys_size_fits(log2_newsize)) {
         PyErr_NoMemory();
         return -1;
@@ -364,10 +459,6 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     }
 
     htkeys_t* oldkeys = md->keys;
-    if (update_marks_remap(marks, oldkeys, newkeys, newkeys->usable) < 0) {
-        htkeys_free(MD_POOLS(md), newkeys);
-        return -1;
-    }
     Py_ssize_t numentries = md->used;
     entry_t* oldentries = htkeys_entries(oldkeys);
     entry_t* newentries = htkeys_entries(newkeys);
@@ -397,43 +488,19 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
     newkeys->usable = newkeys->usable - numentries;
     newkeys->nentries = numentries;
 
-    store_keys(md, newkeys);
-
-#ifdef Py_GIL_DISABLED
-    /* Bump the version on every resize, not just when a caller's
-       own insert/delete/replace would bump it anyway: a freed
-       htkeys_t can get reallocated at the very same address by a
-       later resize (same size class, common in practice), so code
-       elsewhere that detects "did md->keys change under me" by
-       comparing the raw pointer alone (see _md_replace()'s and
-       _md_update()'s comments, the latter in bulk_update.h) needs a
-       companion signal that can't coincidentally repeat. */
-    bump_version(md);
-#endif
-
-    /* Ownership of oldkeys's entries has already moved to newkeys via
-       the memcpy/copy loop above; zeroing nentries tells
-       _htkeys_dispose() there is nothing left to decref, only memory
-       to free. */
-    if (oldkeys != &empty_htkeys) {
-        oldkeys->nentries = 0;
-    }
-    _md_release_keys(md, oldkeys);
-
-    ASSERT_CONSISTENT(md, marks != NULL);
+    _md_publish_rebuilt(md, oldkeys, newkeys);
     return 0;
 }
 
 // Out of line: inlined, it slows construction and update() on GIL builds
 NOINLINE static int
-_md_resize_for_add(MultiDictObject* md, update_marks_t* marks)
+_md_resize_for_add(MultiDictObject* md)
 {
-    return _md_rebuild(md, calculate_log2_keysize(GROWTH_RATE(md)), marks);
+    return _md_rebuild(md, calculate_log2_keysize(GROWTH_RATE(md)));
 }
 
 static inline int
-md_reserve_for_upd(MultiDictObject* md, Py_ssize_t extra_size,
-                   update_marks_t* marks)
+md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 {
     if (extra_size > (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
         /* Only a __length_hint__ can claim this much; ignore it, as
@@ -445,14 +512,7 @@ md_reserve_for_upd(MultiDictObject* md, Py_ssize_t extra_size,
     }
     /* Sized by live entries, so a table short of room only because of
        deleted ones is compacted, or even shrunk, rather than grown. */
-    return _md_rebuild(
-        md, estimate_log2_keysize(extra_size + md->used), marks);
-}
-
-static inline int
-md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
-{
-    return md_reserve_for_upd(md, extra_size, NULL);
+    return _md_rebuild(md, estimate_log2_keysize(extra_size + md->used));
 }
 
 /* Publishes md's replacement table, then drops the one it replaced,
@@ -474,8 +534,9 @@ _md_install_keys(MultiDictObject* md, htkeys_t* keys, Py_ssize_t used,
     }
     store_keys(md, keys);
     md_watch_record_simple(md, event);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     if (old_keys != NULL) {
+        update_marks_moved(md);
         _md_release_keys(md, old_keys);
     }
 }
@@ -486,7 +547,12 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
     assert(md->state != NULL);
     htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
 
-    if (minused > USABLE_FRACTION(HT_MINSIZE)) {
+    if (UNLIKELY(md->batches != 0)) {
+        new_keys = _md_new_keys_after_holes(md, minused);
+        if (new_keys == NULL) {
+            return -1;
+        }
+    } else if (minused > USABLE_FRACTION(HT_MINSIZE)) {
         const uint8_t log2_max_presize = 17;
         const Py_ssize_t max_presize = ((Py_ssize_t)1) << log2_max_presize;
         uint8_t log2_newsize;
@@ -508,10 +574,43 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
     return 0;
 }
 
+/* md_clone_from_ht() while an update() or merge() on md is in flight:
+   other's entries go after the holes _md_new_keys_after_holes() leaves. */
+COLD NOINLINE static int
+_md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
+{
+    htkeys_t* keys = _md_new_keys_after_holes(md, other->used);
+    if (keys == NULL) {
+        return -1;
+    }
+    entry_t* entries = htkeys_entries(keys);
+    entry_t* dst = entries + keys->nentries;
+    entry_t* src = htkeys_entries(other->keys);
+    for (Py_ssize_t i = 0; i < other->keys->nentries; i++, src++) {
+        if (src->identity != NULL) {
+            dst->identity = Py_NewRef(src->identity);
+            dst->key = Py_NewRef(src->key);
+            dst->value = Py_NewRef(src->value);
+            dst->hash = src->hash;
+            dst++;
+        }
+    }
+    Py_ssize_t nentries = dst - entries;
+    keys->usable -= nentries - keys->nentries;
+    keys->nentries = nentries;
+    htkeys_build_indices_with_holes(keys, entries, nentries);
+    _md_install_keys(
+        md, keys, other->used, other->is_ci, MultiDict_EVENT_CLONED);
+    return 0;
+}
+
 static inline int
 md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 {
-    ASSERT_CONSISTENT(other, false);
+    ASSERT_CONSISTENT(other);
+    if (UNLIKELY(md->batches != 0)) {
+        return _md_clone_after_holes(md, other);
+    }
 
     htkeys_t* keys = (htkeys_t*)&empty_htkeys;
     htkeys_t* src = other->keys;
@@ -570,7 +669,7 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
     htkeys_t* keys = md->keys;
     if (keys->usable <= 0 || keys == &empty_htkeys) {
         /* Need to resize. */
-        if (_md_resize_for_add(md, NULL) < 0) {
+        if (_md_resize_for_add(md) < 0) {
             return -1;
         }
         keys = md->keys;  // updated by resizing
@@ -629,10 +728,13 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     htkeys_t* keys = md->keys;
     if (keys->usable <= 0 || keys == &empty_htkeys) {
         /* Need to resize. */
-        if (_md_resize_for_add(md, marks) < 0) {
+        if (_md_resize_for_add(md) < 0) {
             return -1;
         }
         keys = md->keys;  // updated by resizing
+        if (update_marks_sync(marks, md) < 0) {
+            return -1;
+        }
     }
     if (bitmap_set(&marks->updated, keys->nentries) < 0) {
         return -1;
@@ -684,7 +786,7 @@ _md_add_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                PyObject* key, PyObject* value)
 {
     int ret = md_add_with_hash(md, hash, identity, key, value);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return ret;
 }
 
@@ -707,11 +809,27 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
     return ret;
 }
 
+/* Removes entry, whose index is at `slot`, and hands its references to the
+   caller; see _md_del_at() on the order. */
+ALWAYS_INLINE static inline void
+_md_unlink_at(MultiDictObject* md, size_t slot, entry_t* entry,
+              PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
+{
+    *pidentity = load_identity(entry);
+    *pkey = entry->key;
+    *pvalue = load_value(entry);
+
+    reset_identity(entry);
+    entry->key = NULL;
+    reset_value(entry);
+    htkeys_set_index(md->keys, (Py_ssize_t)slot, DKIX_DUMMY);
+    add_used(md, -1);
+}
+
 ALWAYS_INLINE static inline void
 _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
 {
-    htkeys_t* keys = md->keys;
-    assert(keys != &empty_htkeys);
+    assert(md->keys != &empty_htkeys);
     /* Null out every field and finish md's bookkeeping (index, used)
        before dropping any reference. Freeing an object below can run
        a finalizer or weakref callback, which can hit a safepoint and
@@ -730,15 +848,10 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
        half-deleted entry -- see #1489. entry->key is read/written as
        a plain pointer: unlike identity/value, no lock-free reader
        ever touches it (see the comment above load_identity()). */
-    PyObject* identity = load_identity(entry);
-    PyObject* key = entry->key;
-    PyObject* value = load_value(entry);
-
-    reset_identity(entry);
-    entry->key = NULL;
-    reset_value(entry);
-    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
-    add_used(md, -1);
+    PyObject* identity;
+    PyObject* key;
+    PyObject* value;
+    _md_unlink_at(md, slot, entry, &identity, &key, &value);
 
     Py_XDECREF(identity);
     Py_XDECREF(key);
@@ -844,34 +957,6 @@ _md_del_at_held(MultiDictObject* md, size_t slot, entry_t* entry,
     return _removed_pairs_spill(removed, key, value);
 }
 
-/* Deferred half-deletion: entry may be replaced later or finished off by
- * md_post_update() (identity=NULL, used -= 1, slot -> DKIX_DUMMY). Unlike
- * _md_del_at_deferred(), this leaves identity/hash/index live -- a reader's
- * hash-chain scan can still reach this slot -- so each field is reserved
- * and pushed before it's nulled, one at a time: reflist_push()'s OOM
- * fallback would otherwise decref a field's old value immediately while
- * the entry sits in that half-deleted, still-reachable state. */
-static inline int
-md_half_delete_for_upd(MultiDictObject* md, entry_t* entry, reflist_t* defer)
-{
-    (void)md;
-    assert(md->keys != &empty_htkeys);
-    if (reflist_reserve_one(defer) < 0) {
-        return -1;
-    }
-    PyObject* old_key = entry->key;
-    entry->key = NULL;
-    reflist_push_reserved(defer, old_key);
-
-    if (reflist_reserve_one(defer) < 0) {
-        return -1;
-    }
-    PyObject* old_value = load_value(entry);
-    reset_value(entry);
-    reflist_push_reserved(defer, old_value);
-    return 0;
-}
-
 /* Caller holds md's critical section. Returns 1 if anything was removed,
  * 0 if not, -1 on error; md_del() raises the KeyError outside the section.
  * The removed pairs go to `removed`, so their finalizers run only once
@@ -931,7 +1016,7 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             ret = 1;
         }
     }
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return ret;
 }
 
@@ -1502,7 +1587,7 @@ static inline int
 _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                        PyObject* key, PyObject* value, PyObject** result)
 {
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
 
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
@@ -1518,7 +1603,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
         if (str_cmp(identity, entry->identity)) {
-            ASSERT_CONSISTENT(md, false);
+            ASSERT_CONSISTENT(md);
             *result = Py_NewRef(entry->value);
             return 1;
         }
@@ -1528,7 +1613,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         return -1;
     }
 
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     *result = Py_NewRef(value);
     return 0;
 }
@@ -1594,11 +1679,11 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             _md_del_at(md, iter.slot, entry);
             *ret = value;
             bump_version(md);
-            ASSERT_CONSISTENT(md, false);
+            ASSERT_CONSISTENT(md);
             return 1;
         }
     }
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return 0;
 }
 
@@ -1736,7 +1821,7 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     if (batched) {
         md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
     }
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return ret;
 }
 
@@ -1790,16 +1875,6 @@ md_pop_item(MultiDictObject* md)
     }
     assert(pos >= 0);
 
-    PyObject* key = md_calc_key(md, entry->key, entry->identity);
-    if (key == NULL) {
-        return NULL;
-    }
-    PyObject* ret = PyTuple_Pack(2, key, entry->value);
-    Py_CLEAR(key);
-    if (ret == NULL) {
-        return NULL;
-    }
-
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, entry->hash);
 
@@ -1817,11 +1892,37 @@ md_pop_item(MultiDictObject* md)
        popping n items costs O(n^2). The index slots stay DKIX_DUMMY, as
        after any delete, the same trim CPython's dict does. Trimmed before
        the delete's decrefs, which can run a __del__ that suspends the
-       critical section; an add() slipping in then appends at pos. */
-    md->keys->nentries = pos;
-    _md_del_at(md, iter.slot, entry);
+       critical section; an add() slipping in then appends at pos. Not
+       while an update() is in flight, whose marks would then name the
+       entries that reuse the trimmed indices; see update_marks.h. */
+    if (md->batches == 0) {
+        md->keys->nentries = pos;
+    }
+    /* The entry's refs, taken over: building the result below can run
+       Python code that mutates md (an istr key's __str__, or on 3.10 and
+       3.11 a collection the tuple triggers), so it runs once the pair is
+       gone. */
+    PyObject* identity;
+    PyObject* key;
+    PyObject* value;
+    _md_unlink_at(md, iter.slot, entry, &identity, &key, &value);
     bump_version(md);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
+
+    Py_SETREF(key, md_calc_key(md, key, identity));
+    Py_DECREF(identity);
+    if (key == NULL) {
+        Py_DECREF(value);
+        return NULL;
+    }
+    PyObject* ret = PyTuple_New(2);
+    if (ret == NULL) {
+        Py_DECREF(key);
+        Py_DECREF(value);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(ret, 0, key);
+    PyTuple_SET_ITEM(ret, 1, value);
     return ret;
 }
 
@@ -1970,7 +2071,7 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
             ret = md_add_with_hash(md, hash, identity, key, value);
         }
     }
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     Py_END_CRITICAL_SECTION();
     reflist_clear(&defer);
     Py_DECREF(identity);
@@ -2312,10 +2413,18 @@ md_clear(MultiDictObject* md)
     // not yet). Swapping first means a suspended thread only ever sees
     // either the fully-populated old table or the fully-empty one.
     htkeys_t* old_keys = md->keys;
+    htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
+    if (UNLIKELY(md->batches != 0)) {
+        new_keys = _md_new_keys_after_holes(md, 0);
+        if (new_keys == NULL) {
+            return -1;
+        }
+    }
     store_used(md, 0);
-    store_keys(md, (htkeys_t*)&empty_htkeys);
+    store_keys(md, new_keys);
+    update_marks_moved(md);
     _md_release_keys(md, old_keys);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return 0;
 }
 

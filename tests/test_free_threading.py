@@ -2,6 +2,7 @@ import contextlib
 import importlib
 import sys
 import threading
+import time
 import traceback
 import weakref
 from concurrent.futures import ThreadPoolExecutor
@@ -354,12 +355,18 @@ def test_reinit_finalizer_vs_lock_free_readers(
 
     with ThreadPoolExecutor(max_workers=n_readers + 1) as executor:
         futures = [executor.submit(reader) for _ in range(n_readers)]
+        # Generous, but inside the CI job's 15 minutes: under coverage's C
+        # tracer (3.10 to 3.12) every traced line takes a lock the threads
+        # share, and the readers still run the finalizers of generations
+        # their snapshots outlived after the writer is done. Windows runners
+        # have needed over three minutes.
         try:
-            executor.submit(writer).result(timeout=120)
+            executor.submit(writer).result(timeout=300)
         finally:
             stop.set()
+        deadline = time.monotonic() + 300
         for f in futures:
-            f.result(timeout=60)
+            f.result(timeout=max(0.0, deadline - time.monotonic()))
 
     # Clearing drops the last generation, whose finalizers add their
     # tokens back; the second clear drops those.

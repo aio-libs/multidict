@@ -17,7 +17,7 @@ extern "C" {
 #ifndef NDEBUG
 
 static inline int
-_md_check_consistency(MultiDictObject* md, bool update)
+_md_check_consistency(MultiDictObject* md)
 {
     //    ASSERT_WORLD_STOPPED_OR_DICT_LOCKED(op);
 
@@ -47,36 +47,8 @@ _md_check_consistency(MultiDictObject* md, bool update)
         PyObject* identity = entry->identity;
 
         if (identity != NULL) {
-#ifdef Py_GIL_DISABLED
-            /* `update` describes only this call's own operation, not
-               whether some entirely different, concurrently-suspended
-               thread's _md_update() (on some other key) currently has
-               an entry of its own half-deleted (key == NULL, identity
-               kept) pending that
-               thread's own cleanup -- critical section suspension
-               means that can be true regardless of what this call's
-               update flag says. So always use the tolerant checks
-               here; the strict !update ones remain meaningful only
-               where nothing else can be concurrently mid-operation,
-               i.e. the GIL build below. */
-            if (entry->key == NULL) {
-                CHECK(entry->value == NULL);
-            } else {
-                CHECK(entry->value != NULL);
-            }
-#else
-            if (!update) {
-                CHECK(entry->key != NULL);
-                CHECK(entry->value != NULL);
-            } else {
-                if (entry->key == NULL) {
-                    CHECK(entry->value == NULL);
-                } else {
-                    CHECK(entry->value != NULL);
-                }
-            }
-#endif
-
+            CHECK(entry->key != NULL);
+            CHECK(entry->value != NULL);
             CHECK(PyUnicode_CheckExact(identity));
             CHECK(entry->hash == unicode_hash(identity));
         }
@@ -122,9 +94,9 @@ _md_dump(MultiDictObject* md)
     return 1;
 }
 
-#define ASSERT_CONSISTENT(md, update) assert(_md_check_consistency(md, update))
+#define ASSERT_CONSISTENT(md) assert(_md_check_consistency(md))
 #else
-#define ASSERT_CONSISTENT(md, update) assert(1)
+#define ASSERT_CONSISTENT(md) assert(1)
 #endif  // NDEBUG
 
 #ifdef __cplusplus

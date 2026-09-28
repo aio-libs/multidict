@@ -179,14 +179,14 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             if (other->is_ci == is_ci) {
                 Py_BEGIN_CRITICAL_SECTION(other);
                 ret = md_clone_from_ht(self, other);
-                ASSERT_CONSISTENT(self, false);
+                ASSERT_CONSISTENT(self);
                 Py_END_CRITICAL_SECTION();
             } else {
                 Py_BEGIN_CRITICAL_SECTION(other);
                 ret = md_init(self, is_ci, md_len(other) + nkwargs);
                 if (ret == 0) {
                     ret = md_update_from_ht(self, other, Extend, NULL, NULL);
-                    ASSERT_CONSISTENT(self, false);
+                    ASSERT_CONSISTENT(self);
                 }
                 Py_END_CRITICAL_SECTION();
             }
@@ -195,7 +195,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             ret = md_init(self, is_ci, PyDict_GET_SIZE(arg) + nkwargs);
             if (ret == 0) {
                 ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
-                ASSERT_CONSISTENT(self, false);
+                ASSERT_CONSISTENT(self);
             }
             Py_END_CRITICAL_SECTION();
         } else {
@@ -211,7 +211,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             ret = md_init(self, is_ci, nkwargs + extra);
             if (ret == 0) {
                 ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
-                ASSERT_CONSISTENT(self, false);
+                ASSERT_CONSISTENT(self);
             }
         }
     } else {
@@ -394,7 +394,7 @@ multidict_to_dict(MultiDictObject* self)
     int tmp;
     Py_BEGIN_CRITICAL_SECTION(self);
     tmp = md_to_dict(self, &result);
-    ASSERT_CONSISTENT(self, false);
+    ASSERT_CONSISTENT(self);
     Py_END_CRITICAL_SECTION();
     if (tmp < 0) {
         return NULL;
@@ -720,7 +720,7 @@ _multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
-            ASSERT_CONSISTENT(self, false);
+            ASSERT_CONSISTENT(self);
         }
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
         flush = md_watch_pending(self);
@@ -734,7 +734,7 @@ _multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
-            ASSERT_CONSISTENT(self, false);
+            ASSERT_CONSISTENT(self);
         }
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
         flush = md_watch_pending(self);
@@ -752,7 +752,7 @@ _multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
-            ASSERT_CONSISTENT(self, false);
+            ASSERT_CONSISTENT(self);
         }
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
         flush = md_watch_pending(self);
@@ -848,7 +848,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
-            ASSERT_CONSISTENT(self, false);
+            ASSERT_CONSISTENT(self);
         }
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
         flush = md_watch_pending(self);
@@ -862,7 +862,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
-            ASSERT_CONSISTENT(self, false);
+            ASSERT_CONSISTENT(self);
         }
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
         flush = md_watch_pending(self);
@@ -880,7 +880,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }
-            ASSERT_CONSISTENT(self, false);
+            ASSERT_CONSISTENT(self);
         }
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
         flush = md_watch_pending(self);
@@ -1087,7 +1087,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Update, &defer, &marks);
             }
-            ASSERT_CONSISTENT(self, true);
+            ASSERT_CONSISTENT(self);
         }
         if (md_post_update(self, &defer, &marks) < 0 && ret == 0) {
             ret = -1;
@@ -1104,7 +1104,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Update, &defer, &marks);
             }
-            ASSERT_CONSISTENT(self, true);
+            ASSERT_CONSISTENT(self);
         }
         if (md_post_update(self, &defer, &marks) < 0 && ret == 0) {
             ret = -1;
@@ -1124,7 +1124,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Update, &defer, &marks);
             }
-            ASSERT_CONSISTENT(self, true);
+            ASSERT_CONSISTENT(self);
         }
         if (md_post_update(self, &defer, &marks) < 0 && ret == 0) {
             ret = -1;
@@ -1176,7 +1176,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Merge, NULL, &marks);
             }
-            ASSERT_CONSISTENT(self, true);
+            ASSERT_CONSISTENT(self);
         }
         if (md_post_update(self, NULL, &marks) < 0 && ret == 0) {
             ret = -1;
@@ -1193,7 +1193,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Merge, NULL, &marks);
             }
-            ASSERT_CONSISTENT(self, true);
+            ASSERT_CONSISTENT(self);
         }
         if (md_post_update(self, NULL, &marks) < 0 && ret == 0) {
             ret = -1;
@@ -1213,7 +1213,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Merge, NULL, &marks);
             }
-            ASSERT_CONSISTENT(self, true);
+            ASSERT_CONSISTENT(self);
         }
         if (md_post_update(self, NULL, &marks) < 0 && ret == 0) {
             ret = -1;
