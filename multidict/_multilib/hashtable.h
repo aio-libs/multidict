@@ -707,11 +707,27 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
     return ret;
 }
 
+/* Removes entry, whose index is at `slot`, and hands its references to the
+   caller; see _md_del_at() on the order. */
+ALWAYS_INLINE static inline void
+_md_unlink_at(MultiDictObject* md, size_t slot, entry_t* entry,
+              PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
+{
+    *pidentity = load_identity(entry);
+    *pkey = entry->key;
+    *pvalue = load_value(entry);
+
+    reset_identity(entry);
+    entry->key = NULL;
+    reset_value(entry);
+    htkeys_set_index(md->keys, (Py_ssize_t)slot, DKIX_DUMMY);
+    add_used(md, -1);
+}
+
 ALWAYS_INLINE static inline void
 _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
 {
-    htkeys_t* keys = md->keys;
-    assert(keys != &empty_htkeys);
+    assert(md->keys != &empty_htkeys);
     /* Null out every field and finish md's bookkeeping (index, used)
        before dropping any reference. Freeing an object below can run
        a finalizer or weakref callback, which can hit a safepoint and
@@ -730,15 +746,10 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
        half-deleted entry -- see #1489. entry->key is read/written as
        a plain pointer: unlike identity/value, no lock-free reader
        ever touches it (see the comment above load_identity()). */
-    PyObject* identity = load_identity(entry);
-    PyObject* key = entry->key;
-    PyObject* value = load_value(entry);
-
-    reset_identity(entry);
-    entry->key = NULL;
-    reset_value(entry);
-    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
-    add_used(md, -1);
+    PyObject* identity;
+    PyObject* key;
+    PyObject* value;
+    _md_unlink_at(md, slot, entry, &identity, &key, &value);
 
     Py_XDECREF(identity);
     Py_XDECREF(key);
@@ -905,7 +916,9 @@ md_init_pos(MultiDictObject* md, md_pos_t* pos)
     pos->version = md->version;
 }
 
-static inline int
+/* Forced: the FT items iterator needs it inline (#1601), and this unit
+   sits so close to GCC's budget that unrelated changes push it out. */
+ALWAYS_INLINE static inline int
 md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         PyObject** pkey, PyObject** pvalue)
 {
@@ -1702,16 +1715,6 @@ md_pop_item(MultiDictObject* md)
     }
     assert(pos >= 0);
 
-    PyObject* key = md_calc_key(md, entry->key, entry->identity);
-    if (key == NULL) {
-        return NULL;
-    }
-    PyObject* ret = PyTuple_Pack(2, key, entry->value);
-    Py_CLEAR(key);
-    if (ret == NULL) {
-        return NULL;
-    }
-
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, entry->hash);
 
@@ -1731,9 +1734,31 @@ md_pop_item(MultiDictObject* md)
        the delete's decrefs, which can run a __del__ that suspends the
        critical section; an add() slipping in then appends at pos. */
     md->keys->nentries = pos;
-    _md_del_at(md, iter.slot, entry);
+    /* The entry's refs, taken over: building the result below can run
+       Python code that mutates md (an istr key's __str__, or on 3.10 and
+       3.11 a collection the tuple triggers), so it runs once the pair is
+       gone. */
+    PyObject* identity;
+    PyObject* key;
+    PyObject* value;
+    _md_unlink_at(md, iter.slot, entry, &identity, &key, &value);
     bump_version(md);
     ASSERT_CONSISTENT(md, false);
+
+    Py_SETREF(key, md_calc_key(md, key, identity));
+    Py_DECREF(identity);
+    if (key == NULL) {
+        Py_DECREF(value);
+        return NULL;
+    }
+    PyObject* ret = PyTuple_New(2);
+    if (ret == NULL) {
+        Py_DECREF(key);
+        Py_DECREF(value);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(ret, 0, key);
+    PyTuple_SET_ITEM(ret, 1, value);
     return ret;
 }
 
