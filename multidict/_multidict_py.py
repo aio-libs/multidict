@@ -1172,10 +1172,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
         found = False
+        # See __delitem__()
+        removed: list[object] = []
 
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 if not found:
+                    removed.append((e.key, e.value))
                     e.key = key
                     e.value = value
                     e.hash = hash_ | HASH_MARK
@@ -1183,6 +1186,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     self._incr_version()
                 elif not (e.hash & HASH_MARK):  # pragma: no branch
                     self._del_at(slot, idx)
+                    removed.append(e)
 
         if not found:
             self._add_with_hash(_Entry(hash_, identity, key, value))
@@ -1191,14 +1195,16 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     @_locked_always
     def __delitem__(self, key: str) -> None:
-        found = False
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
+        # Holds the removed pairs until every match is gone: their
+        # finalizers must not run, and add a match, mid-scan.
+        removed = []
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 self._del_at(slot, idx)
-                found = True
-        if not found:
+                removed.append(e)
+        if not removed:
             raise KeyError(key)
         else:
             self._incr_version()
@@ -1262,24 +1268,23 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         KeyError is raised.
 
         """
-        found = False
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
-        ret = []
+        # See __delitem__()
+        removed = []
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
-                found = True
-                ret.append(e.value)
+                removed.append(e)
                 self._del_at(slot, idx)
                 self._incr_version()
 
-        if not found:
+        if not removed:
             if default is sentinel:
                 raise KeyError(key)
             else:
                 return default
         else:
-            return ret
+            return [e.value for e in removed]
 
     @_locked_always
     def popitem(self) -> tuple[str, _V]:
