@@ -1,0 +1,7 @@
+Fixed a crash when Python code run between the items of
+:meth:`~multidict.MultiDict.update` (the argument's own iterator, a key's
+``lower()`` or a finalizer) read the multidict, where the pure-Python
+implementation returned ``None`` for the pairs the call was about to
+remove, and fixed ``update()`` and :meth:`~multidict.MultiDict.merge`
+overwriting or losing pairs when that code changed the multidict
+-- by :user:`asvetlov`.
