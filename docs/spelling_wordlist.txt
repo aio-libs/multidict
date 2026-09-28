@@ -95,6 +95,7 @@ macOS
 manylinux
 middleware
 middlewares
+mimalloc
 multidict
 Multidicts
 multidicts
