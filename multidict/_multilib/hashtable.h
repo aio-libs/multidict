@@ -84,8 +84,9 @@ GROWTH_RATE(MultiDictObject* md)
 }
 
 /* Frees a table no longer published, releasing the references its
-   entries still hold: only md_clear()'s tables have any, since
-   _md_rebuild() moves its old table's entries and zeroes nentries. */
+   entries still hold: only md_clear()'s and _md_install_keys()'s
+   tables have any, since _md_rebuild() moves its old table's entries
+   and zeroes nentries. */
 NOINLINE static void
 _htkeys_dispose(pool_t* pools, htkeys_t* keys)
 {
@@ -454,8 +455,26 @@ md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
     return md_reserve_for_upd(md, extra_size, NULL);
 }
 
-static inline int
-md_clear(MultiDictObject* md);
+/* Publishes md's replacement table, then drops the one it replaced,
+   which a fresh shell does not have. The drop comes last because its
+   decrefs can run a __del__ that reads or mutates md: publishing first
+   means that code finds md already holding its new contents, and what
+   it adds stays in md rather than being overwritten. */
+static inline void
+_md_install_keys(MultiDictObject* md, htkeys_t* keys, Py_ssize_t used,
+                 bool is_ci, MultiDict_WatchEvent event)
+{
+    htkeys_t* old_keys = md->keys;
+    store_used(md, used);
+    bump_version(md);
+    md->is_ci = is_ci;
+    store_keys(md, keys);
+    md_watch_record_simple(md, event);
+    ASSERT_CONSISTENT(md, false);
+    if (old_keys != NULL) {
+        _md_release_keys(md, old_keys);
+    }
+}
 
 static inline int
 md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
@@ -481,13 +500,7 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
         if (new_keys == NULL) return -1;
     }
 
-    md_clear(md);
-    md->is_ci = is_ci;
-    store_used(md, 0);
-    bump_version(md);
-    store_keys(md, new_keys);
-    md_watch_record_simple(md, MultiDict_EVENT_CLEARED);
-    ASSERT_CONSISTENT(md, false);
+    _md_install_keys(md, new_keys, 0, is_ci, MultiDict_EVENT_CLEARED);
     return 0;
 }
 
@@ -528,13 +541,8 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     Py_ssize_t used = other->used;
     bool is_ci = other->is_ci;
 
-    md_clear(md);
-    store_used(md, used);
-    bump_version(md);  // never reuse other's version
-    md->is_ci = is_ci;
-    store_keys(md, keys);
-    md_watch_record_simple(md, MultiDict_EVENT_CLONED);
-    ASSERT_CONSISTENT(md, false);
+    // Bumps md's own version: never reuse other's
+    _md_install_keys(md, keys, used, is_ci, MultiDict_EVENT_CLONED);
     return 0;
 }
 
@@ -2144,12 +2152,13 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
 #ifdef Py_GIL_DISABLED
     /* A table waiting on md->retired still owns its entries' references, so
        a cycle running through them is invisible to the collector unless they
-       are reported here too. Only md_clear() retires a table with entries
-       left, since _md_rebuild() zeroes nentries once it has handed ownership
-       to the new table, so nothing is reported twice. Reading the list
-       without the lock is what the walk below already relies on: the
-       collector stops the world, and nothing may block here, since a
-       stopped thread can hold any lock this would take. */
+       are reported here too. Only md_clear() and _md_install_keys() retire
+       a table with entries left, since _md_rebuild() zeroes nentries once
+       it has handed ownership to the new table, so nothing is reported
+       twice. Reading the list without the lock is what the walk below
+       already relies on: the collector stops the world, and nothing may
+       block here, since a stopped thread can hold any lock this would
+       take. */
     for (htkeys_t* t = (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
          t != NULL;
          t = t->retired_next) {

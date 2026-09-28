@@ -485,6 +485,11 @@ time.
       multidict of the same kind, by calling ``__init__()`` on a live
       multidict. Means "resynchronize from scratch".
 
+      For both this event and :c:enumerator:`MultiDict_EVENT_CLEARED`
+      from ``__init__()``, the old pairs are released after the event is
+      recorded, so what a finalizer does to the multidict is reported
+      after it too, and kept.
+
    .. c:enumerator:: MultiDict_EVENT_DEALLOCATED
 
       The multidict is being deallocated. ``self`` is at refcount zero:
