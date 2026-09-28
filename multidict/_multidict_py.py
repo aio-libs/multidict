@@ -887,7 +887,6 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     @_locked_pair_always
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
-        self._used = 0
         self._incr_version()
         if not kwargs:
             md = None
@@ -904,14 +903,18 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         if log2_size > 17:  # pragma: no cover
             # Don't overallocate really huge keys space in init
             log2_size = 17
+        # Replacing the keys drops the old pairs, whose finalizers must
+        # find the new state complete rather than have it written over.
+        self._used = 0
         self._keys: _HtKeys[_V] = _HtKeys.new(log2_size, [])
         self._extend_items(cast(Iterator[_Entry[_V]], it))
 
     def _from_md(self, md: "MultiDict[_V]") -> None:
         # Copy everything as-is without compacting the new multidict,
         # otherwise it requires reindexing
-        self._keys = md._keys.clone()
+        keys = md._keys.clone()
         self._used = md._used
+        self._keys = keys
 
     @overload
     def getall(self, key: str) -> list[_V]: ...
