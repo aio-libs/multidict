@@ -593,8 +593,9 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 /*
 Internal routine used by ht_resize() to build a hashtable of entries.
 */
-static inline void
-htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
+ALWAYS_INLINE static inline void
+_htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n,
+                      bool skip_holes)
 {
     size_t mask = (size_t)_htkeys_mask(keys);
     if (keys->resume_slots != NULL) {
@@ -602,6 +603,9 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
             keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
     }
     for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
+        if (skip_holes && ep->identity == NULL) {
+            continue;
+        }
         Py_hash_t hash = ep->hash;
         size_t i = (size_t)hash & mask;
         for (size_t perturb = (size_t)hash;
@@ -615,6 +619,19 @@ htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
         }
         htkeys_set_index(keys, (Py_ssize_t)i, ix);
     }
+}
+
+static inline void
+htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
+{
+    _htkeys_build_indices(keys, ep, n, false);
+}
+
+/* Leaves the deleted entries among `ep` (a NULL identity) unindexed. */
+static inline void
+htkeys_build_indices_with_holes(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
+{
+    _htkeys_build_indices(keys, ep, n, true);
 }
 
 /* Uses keys, mask, i and perturb from the caller and returns. */

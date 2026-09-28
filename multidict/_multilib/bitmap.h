@@ -226,6 +226,14 @@ bitmap_move(bitmap_t* dst, bitmap_t* src)
     src->summary = NULL;
 }
 
+/* How many indices `bm` has room for: at least the `nbits` it was built
+   for. */
+static inline Py_ssize_t
+bitmap_nbits(const bitmap_t* bm)
+{
+    return bm->nwords << BITMAP_WORD_SHIFT;
+}
+
 ALWAYS_INLINE static inline bool
 bitmap_test(const bitmap_t* bm, Py_ssize_t i)
 {
@@ -353,6 +361,24 @@ bitmap_next(const bitmap_t* bm, Py_ssize_t start)
         }
         w = bm->words[wi];
     }
+}
+
+/* Widens `bm` to `nbits`, keeping its marks. */
+COLD static int
+bitmap_grow(bitmap_t* bm, Py_ssize_t nbits)
+{
+    assert(nbits > bitmap_nbits(bm));
+    bitmap_t fresh;
+    bitmap_init(&fresh, bm->keys, nbits);
+    for (Py_ssize_t i = bitmap_next(bm, 0); i >= 0;
+         i = bitmap_next(bm, i + 1)) {
+        if (bitmap_set(&fresh, i) < 0) {
+            bitmap_release(&fresh);
+            return -1;
+        }
+    }
+    bitmap_move(bm, &fresh);
+    return 0;
 }
 
 #ifdef __cplusplus

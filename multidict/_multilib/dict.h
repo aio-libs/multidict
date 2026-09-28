@@ -30,6 +30,10 @@ typedef struct {
     Py_ssize_t num_active_readers;
 #endif
     bool is_ci;
+    /* In is_ci's padding: the update() and merge() calls in flight, and
+       a count of the tables md got while they were; see update_marks.h. */
+    uint16_t batches;
+    uint32_t layout_gen;
 
     Py_ssize_t used;
     uint64_t version;
