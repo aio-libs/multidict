@@ -885,7 +885,6 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     @_locked_pair_always
     def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
-        self._used = 0
         self._incr_version()
         if not kwargs:
             md = None
@@ -902,14 +901,18 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         if log2_size > 17:  # pragma: no cover
             # Don't overallocate really huge keys space in init
             log2_size = 17
+        # Replacing the keys drops the old pairs, whose finalizers must
+        # find the new state complete rather than have it written over.
+        self._used = 0
         self._keys: _HtKeys[_V] = _HtKeys.new(log2_size, [])
         self._extend_items(cast(Iterator[_Entry[_V]], it))
 
     def _from_md(self, md: "MultiDict[_V]") -> None:
         # Copy everything as-is without compacting the new multidict,
         # otherwise it requires reindexing
-        self._keys = md._keys.clone()
+        keys = md._keys.clone()
         self._used = md._used
+        self._keys = keys
 
     @overload
     def getall(self, key: str) -> list[_V]: ...
@@ -1170,10 +1173,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
         found = False
+        # See __delitem__()
+        removed: list[object] = []
 
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 if not found:
+                    removed.append((e.key, e.value))
                     e.key = key
                     e.value = value
                     e.hash = hash_ | HASH_MARK
@@ -1181,6 +1187,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     self._incr_version()
                 elif not (e.hash & HASH_MARK):  # pragma: no branch
                     self._del_at(slot, idx)
+                    removed.append(e)
 
         if not found:
             self._add_with_hash(_Entry(hash_, identity, key, value))
@@ -1189,14 +1196,16 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     @_locked_always
     def __delitem__(self, key: str) -> None:
-        found = False
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
+        # Holds the removed pairs until every match is gone: their
+        # finalizers must not run, and add a match, mid-scan.
+        removed = []
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
                 self._del_at(slot, idx)
-                found = True
-        if not found:
+                removed.append(e)
+        if not removed:
             raise KeyError(key)
         else:
             self._incr_version()
@@ -1260,24 +1269,23 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         KeyError is raised.
 
         """
-        found = False
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
-        ret = []
+        # See __delitem__()
+        removed = []
         for slot, idx, e in self._keys.iter_hash(hash_):
             if e.identity == identity:  # pragma: no branch
-                found = True
-                ret.append(e.value)
+                removed.append(e)
                 self._del_at(slot, idx)
                 self._incr_version()
 
-        if not found:
+        if not removed:
             if default is sentinel:
                 raise KeyError(key)
             else:
                 return default
         else:
-            return ret
+            return [e.value for e in removed]
 
     @_locked_always
     def popitem(self) -> tuple[str, _V]:

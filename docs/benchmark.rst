@@ -474,7 +474,7 @@ Create one virtualenv per build, from the resolved interpreter:
     >     $venv/bin/python -m pip install -e . -r requirements/dev.txt
     > done
 
-Three things to watch:
+Four things to watch:
 
 * **Do not share a virtualenv between checkouts.** Two working trees installing
   into the same environment swap which extension module resolves, and the
@@ -486,6 +486,15 @@ Three things to watch:
   that does not change when the round count does. A virtualenv's
   ``bin/python`` is a symbolic link to a real binary and is fine; a ``pyenv``
   shim is not. The driver refuses a wrapper rather than reporting a number.
+
+* **Install** ``requirements/pytest.txt``, which brings ``pytest-codspeed``.
+  The children bracket the measured loop with the Valgrind client requests it
+  ships; without them they count the whole process, so the unmeasured setup lands
+  in every number, destructive operations read too cheap, and the raw counts
+  are dominated by interpreter startup. Those numbers cannot be compared with a
+  bracketed run, so the driver refuses to collect them unless it is given
+  ``--whole-process``, and ``render_tables.py`` refuses to render them. A fresh
+  virtualenv with only ``pip install -e .`` is the usual way to hit this.
 
 * **Use the same patch release for both builds.** Otherwise the free-threading
   table attributes unrelated interpreter changes to free-threading.
@@ -519,6 +528,37 @@ children set ``PYTHONHASHSEED=0``, because string hash randomization changes
 the hash table's probe sequences from process to process and moves the counts
 by about 4%, which looks exactly like a real regression.
 
+The children also run from a staging directory of a fixed length under the
+temporary directory rather than from the tree. CPython allocates every path it
+knows at startup, including the interpreter, the virtualenv, ``sys.path`` and
+the path an editable install maps ``multidict`` to, and it caches the listing
+of every directory it imports from. Two copies of one commit whose paths differ
+in length, or whose trees hold different build products, therefore hand the
+measured loop a different heap, and an operation that allocates, such as an
+``istr`` lookup that copies its key, can take the allocator's slow path on every
+iteration in one tree and never in the other: identical code measured 3% apart
+on ``getitem_istr``, and a few dozen instructions apart on ``copy`` and
+``update``. The driver first asks a child which modules it imports, then stages
+a link to the base interpreter, a copy of the child's own scripts, one import
+directory holding a link to each of those modules (and, for ``multidict``, to
+each of its imported files only), and a bytecode cache of its own. The children
+run with ``-S`` and a reduced environment, so neither ``pyvenv.cfg``, ``.pth``
+files, the tree's ``__pycache__`` nor the caller's working directory reaches
+them, and the result records what was staged under ``stage`` in its metadata.
+
+The same layout effect remains for anything the change itself allocates at
+import time, so treat a delta of a few instructions per operation on an
+allocating row with suspicion, and confirm it against a base-to-base control:
+the base commit measured from two checkouts should agree exactly.
+
+The free-threaded build allocates through mimalloc, which draws the address of
+its first memory reservation from ``getrandom()`` and returns memory to the
+system on a timer. Either moves allocating rows between two runs of one tree,
+by about 20% on ``getitem_istr``. The children set
+``MIMALLOC_ARENA_RESERVE=2GiB``, a reservation mimalloc leaves the kernel to
+place, which Valgrind does at the same address every time, and
+``MIMALLOC_PURGE_DELAY=-1``.
+
 Because instruction counts do not depend on scheduling, the children run in
 parallel by default and the result is correct even on a busy machine. Use
 ``-j1`` to run them one at a time.
@@ -527,7 +567,9 @@ The driver checks itself before reporting: it refuses a wrapper script, it
 requires the counts to grow with the round count, and it re-measures one cell
 and requires a bit-identical result. ``--self-check`` runs every operation once
 without Valgrind and asserts the resulting state, which is the quick way to
-check a new operation.
+check a new operation. A measuring run does the same first, but only for the
+cells ``--impl`` and ``--include-multidict-only`` select, so ``--impl
+multidict_py`` works on a pure-Python install.
 
 Wall-clock measurements with pyperf
 ```````````````````````````````````
