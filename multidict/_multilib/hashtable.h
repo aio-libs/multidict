@@ -83,6 +83,22 @@ GROWTH_RATE(MultiDictObject* md)
     return md->used * 3;
 }
 
+/* Frees a table no longer published, releasing the references its
+   entries still hold: only md_clear()'s and _md_install_keys()'s
+   tables have any, since _md_rebuild() moves its old table's entries
+   and zeroes nentries. */
+NOINLINE static void
+_htkeys_dispose(pool_t* pools, htkeys_t* keys)
+{
+    entry_t* entries = htkeys_entries(keys);
+    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
+        Py_CLEAR(entries[i].identity);
+        Py_CLEAR(entries[i].key);
+        Py_CLEAR(entries[i].value);
+    }
+    htkeys_free(pools, keys);
+}
+
 #ifdef Py_GIL_DISABLED
 
 /*
@@ -143,7 +159,7 @@ drain's own check, atomic_load_ssize_acquire(&t->num_readers) == 0 in
 _md_drain_retired_slow(), pairs with that release: observing the
 post-decrement value there means the drainer also observes everything
 the departing reader read before D, so freeing the table (via
-htkeys_free(), reached through _md_free_retired()) cannot race the
+htkeys_free(), reached through _htkeys_dispose()) cannot race the
 reader's now-finished walk. C itself (the increment in
 _md_reader_enter()) stays a plain relaxed
 atomic_fetch_add_ssize_relaxed(): no other thread's correctness
@@ -214,22 +230,6 @@ _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
     }
 }
 
-static inline void
-_md_free_retired(pool_t* pools, htkeys_t* keys)
-{
-    entry_t* entries = htkeys_entries(keys);
-    /* Only md_clear()'s retired tables have live entries to release here:
-   _md_resize()'s old table has its ownership already transferred to
-   the new table via memcpy, so its nentries is reset to 0 before
-   retirement, making this loop a no-op for that case. */
-    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-        Py_CLEAR(entries[i].identity);
-        Py_CLEAR(entries[i].key);
-        Py_CLEAR(entries[i].value);
-    }
-    htkeys_free(pools, keys);
-}
-
 NOINLINE static void
 _md_drain_retired_slow(MultiDictObject* md)
 {
@@ -258,7 +258,7 @@ retry:
         htkeys_t* next = t->retired_next;
         if (!readers_active &&
             atomic_load_ssize_acquire(&t->num_readers) == 0) {
-            _md_free_retired(MD_POOLS(md), t);
+            _htkeys_dispose(MD_POOLS(md), t);
         } else {
             t->retired_next = pending_head;
             pending_head = t;
@@ -333,8 +333,22 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
 
 #endif /* Py_GIL_DISABLED */
 
+/* Drops a table md no longer publishes: at once on GIL builds, once no
+   lock-free reader can still reach it on free-threaded ones. */
+static inline void
+_md_release_keys(MultiDictObject* md, htkeys_t* keys)
+{
+#ifdef Py_GIL_DISABLED
+    _md_retire(md, keys);
+#else
+    if (keys != &empty_htkeys) {
+        _htkeys_dispose(MD_POOLS(md), keys);
+    }
+#endif
+}
+
 NOINLINE static int
-_md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
+_md_rebuild(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
 {
     if (!htkeys_size_fits(log2_newsize)) {
         PyErr_NoMemory();
@@ -395,87 +409,26 @@ _md_resize(MultiDictObject* md, uint8_t log2_newsize, update_marks_t* marks)
        _md_update()'s comments, the latter in bulk_update.h) needs a
        companion signal that can't coincidentally repeat. */
     bump_version(md);
+#endif
 
     /* Ownership of oldkeys's entries has already moved to newkeys via
        the memcpy/copy loop above; zeroing nentries tells
-       _md_retire()'s cleanup there is nothing left to decref, only
-       memory to free. */
+       _htkeys_dispose() there is nothing left to decref, only memory
+       to free. */
     if (oldkeys != &empty_htkeys) {
         oldkeys->nentries = 0;
     }
-    _md_retire(md, oldkeys);
-#else
-    if (oldkeys != &empty_htkeys) {
-        htkeys_free(MD_POOLS(md), oldkeys);
-    }
-#endif
+    _md_release_keys(md, oldkeys);
 
     ASSERT_CONSISTENT(md, marks != NULL);
     return 0;
 }
 
-#ifndef Py_GIL_DISABLED
-NOINLINE static int
-_md_shrink_impl(MultiDictObject* md, update_marks_t* marks)
-{
-    htkeys_t* keys = md->keys;
-    if (update_marks_remap(marks, keys, keys, md_entries_capacity(keys)) < 0) {
-        return -1;
-    }
-    Py_ssize_t nentries = keys->nentries;
-    entry_t* entries = htkeys_entries(keys);
-    entry_t* new_ep = entries;
-    entry_t* old_ep = entries;
-    Py_ssize_t newnentries = nentries;
-    for (Py_ssize_t i = 0; i < nentries; ++i, ++old_ep) {
-        if (old_ep->identity != NULL) {
-            if (new_ep != old_ep) {
-                *new_ep = *old_ep;
-            }
-            new_ep++;
-        } else {
-            newnentries -= 1;
-        }
-    }
-    keys->nentries = newnentries;
-    keys->usable += nentries - newnentries;
-    memset(&keys->indices[0], 0xff, ((size_t)1 << keys->log2_index_bytes));
-    memset(new_ep, 0, sizeof(entry_t) * (size_t)(nentries - newnentries));
-    htkeys_build_indices(keys, entries, newnentries);
-    ASSERT_CONSISTENT(md, marks != NULL);
-    return 0;
-}
-#endif
-
-ALWAYS_INLINE static inline int
-_md_shrink(MultiDictObject* md, update_marks_t* marks)
-{
-#ifdef Py_GIL_DISABLED
-    /* _md_shrink_impl()'s in-place compaction rewrites the
-       currently-published table's entries and indices while md->keys
-       keeps pointing at it the whole time -- safe when every reader
-       holds the critical section (mutually exclusive with this
-       function), not safe against a lock-free reader concurrently
-       walking the very memory being rewritten. _md_resize() already
-       has the build-a-new-table, swap, retire-the-old-one shape
-       lock-free reads need; reusing it at the *current* size does
-       exactly what shrinking means here (drop the dummy-slot gaps)
-       without a second, duplicate implementation of that shape. */
-    return _md_resize(md, md->keys->log2_size, marks);
-#else
-    return _md_shrink_impl(md, marks);
-#endif
-}
-
-// Out of line: inlined, the dispatch costs every add two register saves
+// Out of line: inlined, it slows construction and update() on GIL builds
 NOINLINE static int
 _md_resize_for_add(MultiDictObject* md, update_marks_t* marks)
 {
-    if (md->used < md->keys->nentries) {
-        return _md_shrink(md, marks);
-    } else {
-        return _md_resize(md, calculate_log2_keysize(GROWTH_RATE(md)), marks);
-    }
+    return _md_rebuild(md, calculate_log2_keysize(GROWTH_RATE(md)), marks);
 }
 
 static inline int
@@ -487,11 +440,13 @@ md_reserve_for_upd(MultiDictObject* md, Py_ssize_t extra_size,
            list.extend() does, rather than overflow the estimate. */
         return 0;
     }
-    uint8_t new_size = estimate_log2_keysize(extra_size + md->used);
-    if (new_size > md->keys->log2_size) {
-        return _md_resize(md, new_size, marks);
+    if (md->keys->usable >= extra_size) {
+        return 0;
     }
-    return 0;
+    /* Sized by live entries, so a table short of room only because of
+       deleted ones is compacted, or even shrunk, rather than grown. */
+    return _md_rebuild(
+        md, estimate_log2_keysize(extra_size + md->used), marks);
 }
 
 static inline int
@@ -500,8 +455,26 @@ md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
     return md_reserve_for_upd(md, extra_size, NULL);
 }
 
-static inline int
-md_clear(MultiDictObject* md);
+/* Publishes md's replacement table, then drops the one it replaced,
+   which a fresh shell does not have. The drop comes last because its
+   decrefs can run a __del__ that reads or mutates md: publishing first
+   means that code finds md already holding its new contents, and what
+   it adds stays in md rather than being overwritten. */
+static inline void
+_md_install_keys(MultiDictObject* md, htkeys_t* keys, Py_ssize_t used,
+                 bool is_ci, MultiDict_WatchEvent event)
+{
+    htkeys_t* old_keys = md->keys;
+    store_used(md, used);
+    bump_version(md);
+    md->is_ci = is_ci;
+    store_keys(md, keys);
+    md_watch_record_simple(md, event);
+    ASSERT_CONSISTENT(md, false);
+    if (old_keys != NULL) {
+        _md_release_keys(md, old_keys);
+    }
+}
 
 static inline int
 md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
@@ -527,13 +500,7 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
         if (new_keys == NULL) return -1;
     }
 
-    md_clear(md);
-    md->is_ci = is_ci;
-    store_used(md, 0);
-    bump_version(md);
-    store_keys(md, new_keys);
-    md_watch_record_simple(md, MultiDict_EVENT_CLEARED);
-    ASSERT_CONSISTENT(md, false);
+    _md_install_keys(md, new_keys, 0, is_ci, MultiDict_EVENT_CLEARED);
     return 0;
 }
 
@@ -574,13 +541,8 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     Py_ssize_t used = other->used;
     bool is_ci = other->is_ci;
 
-    md_clear(md);
-    store_used(md, used);
-    bump_version(md);  // never reuse other's version
-    md->is_ci = is_ci;
-    store_keys(md, keys);
-    md_watch_record_simple(md, MultiDict_EVENT_CLONED);
-    ASSERT_CONSISTENT(md, false);
+    // Bumps md's own version: never reuse other's
+    _md_install_keys(md, keys, used, is_ci, MultiDict_EVENT_CLONED);
     return 0;
 }
 
@@ -2190,12 +2152,13 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
 #ifdef Py_GIL_DISABLED
     /* A table waiting on md->retired still owns its entries' references, so
        a cycle running through them is invisible to the collector unless they
-       are reported here too. Only md_clear() retires a table with entries
-       left, since _md_resize() zeroes nentries once it has handed ownership
-       to the new table, so nothing is reported twice. Reading the list
-       without the lock is what the walk below already relies on: the
-       collector stops the world, and nothing may block here, since a
-       stopped thread can hold any lock this would take. */
+       are reported here too. Only md_clear() and _md_install_keys() retire
+       a table with entries left, since _md_rebuild() zeroes nentries once
+       it has handed ownership to the new table, so nothing is reported
+       twice. Reading the list without the lock is what the walk below
+       already relies on: the collector stops the world, and nothing may
+       block here, since a stopped thread can hold any lock this would
+       take. */
     for (htkeys_t* t = (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
          t != NULL;
          t = t->retired_next) {
@@ -2252,26 +2215,7 @@ md_clear(MultiDictObject* md)
     htkeys_t* old_keys = md->keys;
     store_used(md, 0);
     store_keys(md, (htkeys_t*)&empty_htkeys);
-
-#ifdef Py_GIL_DISABLED
-    _md_retire(md, old_keys);
-#else
-    entry_t* entries = htkeys_entries(old_keys);
-    Py_ssize_t nentries = old_keys->nentries;
-    for (Py_ssize_t pos = 0; pos < nentries; pos++) {
-        entry_t* entry = entries + pos;
-        if (entry->identity != NULL) {
-            /* Py_CLEAR rather than freethreading.h's reset_identity() and
-               reset_value(): it skips the store when a field is already
-               NULL, which they cannot express, and this arm is GIL-only,
-               so there is no ordering left for an accessor to carry. */
-            Py_CLEAR(entry->identity);
-            Py_CLEAR(entry->key);
-            Py_CLEAR(entry->value);
-        }
-    }
-    htkeys_free(MD_POOLS(md), old_keys);
-#endif
+    _md_release_keys(md, old_keys);
     ASSERT_CONSISTENT(md, false);
     return 0;
 }

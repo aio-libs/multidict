@@ -951,6 +951,45 @@ def test_init_from_the_same_type_clones(watcher: Watcher) -> None:
     assert watcher.kinds() == [CLONED]
 
 
+class _AddsLate:
+    def __init__(self, md: MultiDictStr) -> None:
+        self.md = md
+
+    def __del__(self) -> None:
+        self.md.add("late", "z")
+
+
+def test_init_again_records_a_finalizer_add_after_clearing(
+    watcher: Watcher,
+) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    md.add("a", _AddsLate(md))  # type: ignore[arg-type]
+    watcher.watch(md, None)
+    md.__init__([("b", "2")])  # type: ignore[misc]
+    events = watcher.drain()
+    assert [(event[0], event[5]) for event in events] == [
+        (BATCH_BEGIN, None),
+        (CLEARED, None),
+        (ADDED, "late"),
+        (ADDED, "b"),
+        (BATCH_END, None),
+    ]
+    assert list(md.items()) == [("late", "z"), ("b", "2")]
+
+
+def test_clone_records_a_finalizer_add_after_cloning(watcher: Watcher) -> None:
+    md: MultiDictStr = multidict.MultiDict()
+    md.add("a", _AddsLate(md))  # type: ignore[arg-type]
+    watcher.watch(md, None)
+    md.__init__(multidict.MultiDict([("b", "2")]))  # type: ignore[misc]
+    events = watcher.drain()
+    assert [(event[0], event[5]) for event in events] == [
+        (CLONED, None),
+        (ADDED, "late"),
+    ]
+    assert list(md.items()) == [("b", "2"), ("late", "z")]
+
+
 def test_copy_records_nothing(watcher: Watcher) -> None:
     # The copy is a brand-new object, so it cannot be watched, and the
     # source is not modified.

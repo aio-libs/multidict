@@ -2,7 +2,9 @@ import functools
 import itertools
 import string
 import sys
+import weakref
 from collections import deque
+from types import ModuleType
 
 import pytest
 
@@ -1212,7 +1214,10 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
     baseline = [sys.getrefcount(obj) for obj in keys + values]
 
     # Fail the n-th allocation, for each n, until the call gets through.
+    # Some failures are swallowed inside CPython (3.10's length hint
+    # lookup, for one), so only a success after a failure ends the loop.
     n = 0
+    failures = 0
     while True:
         md = cls()
         bound = getattr(md, method)
@@ -1233,10 +1238,11 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
             failed = False
         del md, bound, call
         assert [sys.getrefcount(obj) for obj in keys + values] == baseline
-        if not failed:
+        if failed:
+            failures += 1
+        elif failures:
             break
         n += 1
-    assert n > 0
 
 
 @pytest.mark.parametrize("method", ["popone", "pop"])
@@ -1268,3 +1274,146 @@ def test_eq_value_mutates_dict(
     target = lft if side == "left" else rht
     # The result is unspecified, as for dict; it must just not crash.
     assert isinstance(lft == rht, bool)
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="getsizeof() is not implemented on PyPy",
+)
+def test_add_to_full_table_with_a_hole_grows(
+    any_multidict_class: type[MultiDict[int]],
+) -> None:
+    # Compacting a full table in place regained one slot per deleted
+    # entry, so a delete-then-add churn rebuilt the table on every add.
+    probe = any_multidict_class()
+    for i in range(1000):
+        probe.add(str(i), i)
+    size = sys.getsizeof(probe)
+    count = 1000
+    while sys.getsizeof(probe) == size:
+        probe.add(str(count), count)
+        count += 1
+    # The last add grew the table, so it was full just before.
+    full = count - 1
+
+    md = any_multidict_class()
+    for i in range(full):
+        md.add(str(i), i)
+    full_size = sys.getsizeof(md)
+    del md["0"]
+    md.add(str(full), full)
+    assert sys.getsizeof(md) > full_size
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="getsizeof() is not implemented on PyPy",
+)
+def test_table_shrinks_after_deletions_once_adds_resume(
+    any_multidict_class: type[MultiDict[int]],
+) -> None:
+    md = any_multidict_class()
+    for i in range(1000):
+        md.add(str(i), i)
+    big_size = sys.getsizeof(md)
+    for i in range(10, 1000):
+        del md[str(i)]
+    for i in range(1000, 3000):
+        md.add(str(i), i)
+        del md[str(i)]
+    assert sys.getsizeof(md) < big_size // 4
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="getsizeof() is not implemented on PyPy",
+)
+@pytest.mark.parametrize("method", ["extend", "update", "merge"])
+def test_bulk_add_does_not_grow_table_short_of_room_from_deletions(
+    any_multidict_class: type[MultiDict[int]], method: str
+) -> None:
+    # The table fits the live entries plus the new ones, but deletions
+    # used up its room: the reservation compacts it, where letting the
+    # adds run out of room grew it by three times the live entries.
+    md = any_multidict_class()
+    for i in range(1000):
+        md.add(str(i), i)
+    big_size = sys.getsizeof(md)
+    for i in range(400, 1000):
+        del md[str(i)]
+    getattr(md, method)([(f"new{i}", i) for i in range(400)])
+    assert len(md) == 800
+    assert sys.getsizeof(md) <= big_size
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="__del__ does not run promptly on PyPy",
+)
+@pytest.mark.parametrize(
+    ("source", "cloned"),
+    [
+        ("pairs", False),
+        ("dict", False),
+        ("kwargs", False),
+        ("other_kind", False),
+        ("same_kind", True),
+        ("proxy", True),
+    ],
+)
+def test_reinit_finalizer_sees_and_keeps_new_contents(
+    any_multidict_class: type[MultiDict[object]],
+    multidict_module: ModuleType,
+    source: str,
+    cloned: bool,
+) -> None:
+    # __init__() on a live multidict releases the old pairs after it
+    # installs the new ones, so a value's __del__ finds the new contents
+    # and what it adds stays, rather than being lost and leaked.
+    class Token:
+        pass
+
+    class Value:
+        def __init__(self, token: Token) -> None:
+            self.token = token
+
+        def __del__(self) -> None:
+            seen.extend(d.items())
+            d.add("late", self.token)
+
+    d = any_multidict_class()
+    seen: list[tuple[str, object]] = []
+    token = Token()
+    ref = weakref.ref(token)
+    d.add("old", Value(token))
+    del token
+
+    is_ci = any_multidict_class is multidict_module.CIMultiDict
+    kinds = (multidict_module.MultiDict, multidict_module.CIMultiDict)
+    if source == "pairs":
+        d.__init__([("x", "1")])  # type: ignore[misc]
+    elif source == "dict":
+        d.__init__({"x": "1"})  # type: ignore[misc]
+    elif source == "kwargs":
+        d.__init__(x="1")  # type: ignore[misc]
+    elif source == "other_kind":
+        d.__init__(kinds[not is_ci]([("x", "1")]))  # type: ignore[misc]
+    elif source == "same_kind":
+        d.__init__(kinds[is_ci]([("x", "1")]))  # type: ignore[misc]
+    else:
+        proxies = (
+            multidict_module.MultiDictProxy,
+            multidict_module.CIMultiDictProxy,
+        )
+        d.__init__(proxies[is_ci](kinds[is_ci]([("x", "1")])))  # type: ignore[misc]
+
+    late = ("late", ref())
+    if cloned:
+        assert seen == [("x", "1")]
+        assert list(d.items()) == [("x", "1"), late]
+    else:
+        assert seen == []
+        assert list(d.items()) == [late, ("x", "1")]
+    del late
+    d.clear()
+    assert ref() is None
