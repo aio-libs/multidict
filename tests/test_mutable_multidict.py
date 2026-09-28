@@ -1515,6 +1515,10 @@ def test_popitem_collection_mutates(
     )
 
 
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="__del__ does not run promptly on PyPy",
+)
 @pytest.mark.parametrize("method", ["delitem", "popall", "setitem"])
 @pytest.mark.parametrize("side", ["key", "value"])
 def test_remove_all_keeps_what_a_finalizer_adds(
