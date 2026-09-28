@@ -1,0 +1,3 @@
+Stopped the benchmark driver from suggesting ``--impl`` when a standalone
+``--self-check`` fails to import an implementation, since that mode checks
+every implementation regardless of the option -- by :user:`asvetlov`.
