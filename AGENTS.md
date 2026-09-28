@@ -659,8 +659,16 @@ a free-threaded run against a free-threaded run; the two builds are
 separate baselines, and one is not a control for the other.
 
 The measurement is deterministic, so it does not need a quiet machine;
-it does need Valgrind and one virtualenv per interpreter build, both on
-the same CPython patch release. `docs/benchmark.rst` has the setup and
+it does need Valgrind, `requirements/pytest.txt` (for the
+`pytest-codspeed` client requests; the driver refuses to run without
+them unless given `--whole-process`, whose numbers are not comparable)
+and one virtualenv per interpreter build, both on the same CPython
+patch release. Before and after trees may live at different paths; the
+driver runs its children from a fixed-length staging directory so
+neither the path length nor stray build products shift the heap, but a
+few instructions of delta on an allocating row still deserves a
+base-to-base control.
+`docs/benchmark.rst` has the setup and
 the traps. Adding or renaming a benchmarked operation means editing
 `benchmarks/operations.py`, which is the single registry all three
 entry points read; run `python benchmarks/callgrind_driver.py
