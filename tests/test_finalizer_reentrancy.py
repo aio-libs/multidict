@@ -32,6 +32,7 @@ _ACTIONS: dict[str, Callable[[Any], object]] = {
     "add": lambda d: d.add("new", "N"),
     "add_same": lambda d: d.add("a", "A2"),
     "set_same": lambda d: d.__setitem__("a", "A3"),
+    "update_same": lambda d: d.update([("a", "A4"), ("a", "A5")]),
     "del_other": lambda d: d.popall("b", None),
     "clear": lambda d: d.clear(),
     "reinit": lambda d: d.__init__([("r", "R")]),
