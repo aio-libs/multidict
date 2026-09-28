@@ -152,6 +152,38 @@ def _make_ctor_empty(cls: type, size: int) -> Case:
     return Case(setup, run, noop)
 
 
+def _make_reinit_items(cls: type, size: int) -> Case:
+    items = [(k, k) for k in _keys(size)]
+    target = cls(items)
+
+    def setup() -> Any:
+        return target
+
+    def run(d: Any) -> None:
+        d.__init__(items)
+
+    def noop(d: Any) -> None:
+        pass
+
+    return Case(setup, run, noop)
+
+
+def _make_reinit_clone(cls: type, size: int) -> Case:
+    other = cls((k, k) for k in _keys(size))
+    target = other.copy()
+
+    def setup() -> Any:
+        return target
+
+    def run(d: Any) -> None:
+        d.__init__(other)
+
+    def noop(d: Any) -> None:
+        pass
+
+    return Case(setup, run, noop)
+
+
 def _make_items_view(cls: type, size: int) -> Case:
     target = cls((k, k) for k in _keys(size))
     sink = None
@@ -646,6 +678,40 @@ MULTIDICT_OPERATIONS = (
         1,
         (20, 60),
         proxy=True,
+        size=SMALL,
+    ),
+    Operation(
+        "reinit_items",
+        "``d.__init__(items)``",
+        Kind.MULTIDICT,
+        _make_reinit_items,
+        1,
+        (20, 60),
+    ),
+    Operation(
+        "reinit_items_small",
+        "``d.__init__(items)``, 20 items",
+        Kind.MULTIDICT,
+        _make_reinit_items,
+        1,
+        (20, 60),
+        size=SMALL,
+    ),
+    Operation(
+        "reinit_clone",
+        "``d.__init__(other)``, same kind",
+        Kind.MULTIDICT,
+        _make_reinit_clone,
+        1,
+        (20, 60),
+    ),
+    Operation(
+        "reinit_clone_small",
+        "``d.__init__(other)``, same kind, 20 items",
+        Kind.MULTIDICT,
+        _make_reinit_clone,
+        1,
+        (20, 60),
         size=SMALL,
     ),
     Operation(

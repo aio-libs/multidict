@@ -830,6 +830,50 @@ def test_copy_from_existing_cimultidict(
         existing.copy()
 
 
+def test_reinit_multidict_with_items(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    items = [(str(i), str(i)) for i in range(200)]
+    md = any_multidict_class(items)
+
+    @benchmark
+    def _run() -> None:
+        md.__init__(items)  # type: ignore[misc]
+
+
+def test_reinit_multidict_with_items_small(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    items = [(str(i), str(i)) for i in range(20)]
+    md = any_multidict_class(items)
+
+    @benchmark
+    def _run() -> None:
+        md.__init__(items)  # type: ignore[misc]
+
+
+def test_reinit_multidict_from_same_kind(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    other = any_multidict_class((str(i), str(i)) for i in range(200))
+    md = other.copy()
+
+    @benchmark
+    def _run() -> None:
+        md.__init__(other)  # type: ignore[misc]
+
+
+def test_reinit_multidict_from_same_kind_small(
+    benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
+) -> None:
+    other = any_multidict_class((str(i), str(i)) for i in range(20))
+    md = other.copy()
+
+    @benchmark
+    def _run() -> None:
+        md.__init__(other)  # type: ignore[misc]
+
+
 def test_iterate_multidict(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:

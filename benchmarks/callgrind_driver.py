@@ -142,7 +142,16 @@ def self_check() -> None:
         case.run(target)
         if op.id in {"delitem", "pop", "popitem", "clear"}:
             assert len(target) == 0, f"{op.id}/{impl.id} left {len(target)} items"
-        elif op.id in {"setitem_insert", "setdefault_new", "add", "add_istr"}:
+        elif op.id in {
+            "setitem_insert",
+            "setdefault_new",
+            "add",
+            "add_istr",
+            "reinit_items",
+            "reinit_items_small",
+            "reinit_clone",
+            "reinit_clone_small",
+        }:
             assert len(target) == op.size, f"{op.id}/{impl.id} has {len(target)} items"
         elif op.id == "update":
             assert len(target) == op.size, f"{op.id}/{impl.id} has {len(target)} items"
