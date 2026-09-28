@@ -1,0 +1,4 @@
+Added a threaded stress test that re-initializes a shared multidict
+whose old values each have a finalizer that reads and adds to it, while
+other threads run lock-free lookups and iterate it -- by
+:user:`asvetlov`.

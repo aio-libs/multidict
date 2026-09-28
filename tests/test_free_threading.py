@@ -1,6 +1,11 @@
+import contextlib
+import importlib
+import sys
 import threading
 import traceback
-from typing import cast
+import weakref
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, cast
 
 import pytest
 
@@ -257,3 +262,111 @@ def test_items_iterator_shared_between_threads(
         assert seen[0] | seen[1] == expected
         assert seen[0] <= expected and seen[1] <= expected
     assert not errors, errors
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize("cls_name", ["MultiDict", "CIMultiDict"])
+def test_reinit_finalizer_vs_lock_free_readers(
+    cls_name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Re-initialize a shared multidict whose old values have a __del__
+    that reads and adds to it, while other threads read it.
+
+    On free-threaded builds __init__() retires the old table, so those
+    finalizers run in whichever thread drains it, a lock-free reader
+    included. Under TSan this caught the clone's memcpy() racing readers
+    of the source, and the re-init's store to is_ci racing lookups.
+    """
+    cls = getattr(importlib.import_module("multidict._multidict"), cls_name)
+    keys = [f"k{i}" for i in range(16)]
+    n_readers = 4
+
+    class Token:
+        pass
+
+    refs: list[weakref.ref[Token]] = []
+    unraisable: list[Any] = []
+    monkeypatch.setattr(sys, "unraisablehook", unraisable.append)
+
+    class Value:
+        def __init__(self, gen: int, index: int) -> None:
+            self.gen = gen
+            self.index = index
+            self.token = Token()
+            refs.append(weakref.ref(self.token))
+
+        def __del__(self) -> None:
+            probe()
+            d.add("late", self.token)
+
+    def check_items(items: list[tuple[str, object]]) -> None:
+        # Only __init__() writes the keys, in order, and only __del__()
+        # adds "late", so any snapshot holds a prefix of one generation.
+        fresh = [(k, v) for k, v in items if k != "late"]
+        assert all(type(v) is Token for k, v in items if k == "late")
+        assert [k for k, v in fresh] == keys[: len(fresh)]
+        gens = {cast(Value, v).gen for k, v in fresh}
+        assert len(gens) <= 1
+        assert all(cast(Value, v).index == i for i, (k, v) in enumerate(fresh))
+
+    def check_value(value: object, index: int) -> None:
+        assert type(value) is Value and value.index == index
+
+    def probe() -> None:
+        assert len(d) >= 0
+        assert "missing" not in d
+        assert sum(k in d for k in keys) <= len(keys)
+        v = d.get("k1")
+        assert v is None or cast(Value, v).index == 1
+        with contextlib.suppress(KeyError):
+            check_value(d.getone("k2"), 2)
+        with contextlib.suppress(KeyError):
+            check_value(d["k3"], 3)
+        with contextlib.suppress(RuntimeError):
+            check_items(list(d.items()))
+        with contextlib.suppress(RuntimeError):
+            fresh_keys = [k for k in d.keys() if k != "late"]
+            assert fresh_keys == keys[: len(fresh_keys)]
+        with contextlib.suppress(RuntimeError):
+            assert all(type(v) in (Value, Token) for v in d.values())
+        snap = d.copy()
+        check_items(list(snap.items()))
+        assert len(snap) == len(snap.items())
+
+    def pairs(gen: int) -> list[tuple[str, Value]]:
+        return [(k, Value(gen, i)) for i, k in enumerate(keys)]
+
+    d = cls(pairs(0))
+    stop = threading.Event()
+    ready = threading.Barrier(n_readers + 1, timeout=60)
+
+    def writer() -> None:
+        ready.wait()
+        for gen in range(1, 201):
+            # Both __init__() paths: md_init() then extend, and the
+            # same-kind clone, md_clone_from_ht().
+            d.__init__(pairs(gen) if gen % 2 else cls(pairs(gen)))
+
+    def reader() -> None:
+        ready.wait()
+        while not stop.is_set():
+            probe()
+
+    with ThreadPoolExecutor(max_workers=n_readers + 1) as executor:
+        futures = [executor.submit(reader) for _ in range(n_readers)]
+        try:
+            executor.submit(writer).result(timeout=120)
+        finally:
+            stop.set()
+        for f in futures:
+            f.result(timeout=60)
+
+    # Clearing drops the last generation, whose finalizers add their
+    # tokens back; the second clear drops those.
+    d.clear()
+    check_items(list(d.items()))
+    assert set(d) == {"late"}
+    d.clear()
+    assert len(d) == 0 and not d
+    assert not unraisable
+    assert refs and all(r() is None for r in refs)

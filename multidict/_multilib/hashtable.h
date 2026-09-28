@@ -467,7 +467,11 @@ _md_install_keys(MultiDictObject* md, htkeys_t* keys, Py_ssize_t used,
     htkeys_t* old_keys = md->keys;
     store_used(md, used);
     bump_version(md);
-    md->is_ci = is_ci;
+    /* Lock-free readers of a live md read is_ci, so a re-init that
+       keeps it must not store it. */
+    if (md->is_ci != is_ci) {
+        md->is_ci = is_ci;
+    }
     store_keys(md, keys);
     md_watch_record_simple(md, event);
     ASSERT_CONSISTENT(md, false);
@@ -521,12 +525,19 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
             return -1;
         }
 
-        memcpy(keys, src, size);
-        keys->resume_slots = NULL;
 #ifdef Py_GIL_DISABLED
+        /* Lock-free readers of other update src->num_readers while this
+           runs, so the copy skips the reader fields instead of racing
+           them. */
+        memcpy(keys, src, offsetof(htkeys_t, num_readers));
         keys->num_readers = 0;
         keys->retired_next = NULL;
+        memcpy(
+            keys->indices, src->indices, size - offsetof(htkeys_t, indices));
+#else
+        memcpy(keys, src, size);
 #endif
+        keys->resume_slots = NULL;
         entry_t* entry = htkeys_entries(keys);
         for (Py_ssize_t idx = 0; idx < keys->nentries; idx++, entry++) {
             Py_XINCREF(entry->identity);

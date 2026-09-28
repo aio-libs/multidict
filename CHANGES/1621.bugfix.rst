@@ -1,0 +1,5 @@
+Fixed two data races on free-threaded builds against lock-free readers:
+``copy()`` and ``__init__()`` from a multidict of the same kind read the
+source's reader count while its readers updated it, and ``__init__()``
+on a live multidict rewrote the case-insensitivity flag its lookups
+read -- by :user:`asvetlov`.
