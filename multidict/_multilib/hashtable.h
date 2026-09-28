@@ -773,6 +773,77 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     return ret;
 }
 
+/* The keys and values of the pairs one call removes, held until it is
+   done with md: releasing them can run a finalizer that mutates md. The
+   first pair is held in place, which covers the usual call; any more go
+   to `more`, set up on first use. */
+typedef struct _removed_pairs {
+    PyObject* key;
+    PyObject* value;
+    bool spilled;
+    reflist_t more;
+} removed_pairs_t;
+
+static inline void
+removed_pairs_init(removed_pairs_t* removed)
+{
+    removed->key = NULL;
+    removed->value = NULL;
+    removed->spilled = false;
+}
+
+// Out of line: inlined twice, it pushes md_next() out of the FT items iterator
+NOINLINE static void
+removed_pairs_release(removed_pairs_t* removed)
+{
+    Py_XDECREF(removed->key);
+    Py_XDECREF(removed->value);
+    if (UNLIKELY(removed->spilled)) {
+        reflist_clear(&removed->more);
+    }
+}
+
+COLD static int
+_removed_pairs_spill(removed_pairs_t* removed, PyObject* key, PyObject* value)
+{
+    if (!removed->spilled) {
+        reflist_init(&removed->more);
+        removed->spilled = true;
+    }
+    int ret = reflist_push(&removed->more, key);
+    if (reflist_push(&removed->more, value) < 0) {
+        ret = -1;
+    }
+    return ret;
+}
+
+/* _md_del_at() variant that hands the key and value to `removed`. */
+ALWAYS_INLINE static inline int
+_md_del_at_held(MultiDictObject* md, size_t slot, entry_t* entry,
+                removed_pairs_t* removed)
+{
+    htkeys_t* keys = md->keys;
+    assert(keys != &empty_htkeys);
+    PyObject* identity = load_identity(entry);
+    PyObject* key = entry->key;
+    PyObject* value = load_value(entry);
+
+    reset_identity(entry);
+    entry->key = NULL;
+    reset_value(entry);
+    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
+    add_used(md, -1);
+
+    // An exact str: freeing it runs no code
+    Py_DECREF(identity);
+    if (removed->key == NULL) {
+        removed->key = key;
+        removed->value = value;
+        return 0;
+    }
+    return _removed_pairs_spill(removed, key, value);
+}
+
 /* Deferred half-deletion: entry may be replaced later or finished off by
  * md_post_update() (identity=NULL, used -= 1, slot -> DKIX_DUMMY). Unlike
  * _md_del_at_deferred(), this leaves identity/hash/index live -- a reader's
@@ -801,24 +872,24 @@ md_half_delete_for_upd(MultiDictObject* md, entry_t* entry, reflist_t* defer)
     return 0;
 }
 
-/* Caller holds md's critical section. Reports whether anything was removed;
- * md_del() raises the KeyError outside the section. `watched` is a
- * constant at both call sites, so the unwatched copy carries no watch
- * code at all: testing md->watch inside the loop costs a reload per
- * record, since every decref and store may alias it. */
-ALWAYS_INLINE static inline bool
+/* Caller holds md's critical section. Returns 1 if anything was removed,
+ * 0 if not, -1 on error; md_del() raises the KeyError outside the section.
+ * The removed pairs go to `removed`, so their finalizers run only once
+ * every match is gone and cannot add one this call then removes.
+ * `watched` is a constant at both call sites, so the unwatched copy
+ * carries no watch code at all: testing md->watch inside the loop costs a
+ * reload per record, since every decref and store may alias it. */
+ALWAYS_INLINE static inline int
 _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-               bool watched)
+               removed_pairs_t* removed, bool watched)
 {
     bool found = false;
+    int ret = 0;
 
-restart:;
-    htkeys_t* keys = md->keys;
-    uint64_t version = md->version;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, keys, hash);
+    htkeysiter_init(&iter, md->keys, hash);
 
-    entry_t* entries = htkeys_entries(keys);
+    entry_t* entries = htkeys_entries(md->keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -845,10 +916,9 @@ restart:;
                             NULL);
         }
         found = true;
-        _md_del_at(md, iter.slot, entry);
-        // the decref can run a __del__ that lets another thread resize
-        if (UNLIKELY(md->keys != keys || md->version != version)) {
-            goto restart;
+        if (_md_del_at_held(md, iter.slot, entry, removed) < 0) {
+            ret = -1;
+            break;
         }
     }
 
@@ -857,15 +927,19 @@ restart:;
         if (watched) {
             md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
         }
+        if (ret == 0) {
+            ret = 1;
+        }
     }
     ASSERT_CONSISTENT(md, false);
-    return found;
+    return ret;
 }
 
-COLD static bool
-_md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
+COLD static int
+_md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                       removed_pairs_t* removed)
 {
-    return _md_del_locked(md, identity, hash, true);
+    return _md_del_locked(md, identity, hash, removed, true);
 }
 
 NOINLINE static int
@@ -876,26 +950,29 @@ md_del(MultiDictObject* md, PyObject* key)
     if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
         return -1;
     }
-    bool found;
+    int found;
+    removed_pairs_t removed;
+    removed_pairs_init(&removed);
     /* Unwatched on entry means nothing gets recorded, even if a __del__
        run by the delete attaches a watcher, so there is nothing to
        flush; a mutation that __del__ makes flushes its own records. */
     bool flush = false;
     Py_BEGIN_CRITICAL_SECTION(md);
     if (UNLIKELY(md->watch != NULL)) {
-        found = _md_del_locked_watched(md, identity, hash);
+        found = _md_del_locked_watched(md, identity, hash, &removed);
         flush = md_watch_pending(md);
     } else {
-        found = _md_del_locked(md, identity, hash, false);
+        found = _md_del_locked(md, identity, hash, &removed, false);
     }
     Py_END_CRITICAL_SECTION();
+    removed_pairs_release(&removed);
     Py_DECREF(identity);
     md_watch_flush_if(md, flush);
-    if (!found) {
+    if (found == 0) {
         PyErr_SetObject(PyExc_KeyError, key);
         return -1;
     }
-    return 0;
+    return found < 0 ? -1 : 0;
 }
 
 static inline void
@@ -905,7 +982,9 @@ md_init_pos(MultiDictObject* md, md_pos_t* pos)
     pos->version = md->version;
 }
 
-static inline int
+/* Forced: the FT items iterator needs it inline (#1601), and this unit
+   sits so close to GCC's budget that unrelated changes push it out. */
+ALWAYS_INLINE static inline int
 md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         PyObject** pkey, PyObject** pvalue)
 {
@@ -1596,22 +1675,22 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
-// Caller holds md's critical section
+/* Caller holds md's critical section. The removed pairs go to `removed`,
+ * as in _md_del_locked(); `values` collects the result. */
 static inline int
 _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                   reflist_t* values)
+                   reflist_t* values, removed_pairs_t* removed)
 {
     if (md_len(md) == 0) {
         return 0;
     }
 
     bool batched = false;
+    int ret = 0;
 
-restart:;
-    htkeys_t* keys = md->keys;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, keys, hash);
-    entry_t* entries = htkeys_entries(keys);
+    htkeysiter_init(&iter, md->keys, hash);
+    entry_t* entries = htkeys_entries(md->keys);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1624,9 +1703,10 @@ restart:;
         }
         if (str_cmp(identity, entry->identity)) {
             if (reflist_push(values, Py_NewRef(entry->value)) < 0) {
-                return -1;
+                ret = -1;
+                break;
             }
-            uint64_t version = bump_version(md);
+            bump_version(md);
             if (!batched) {
                 batched = true;
                 md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
@@ -1638,12 +1718,9 @@ restart:;
                             entry->key,
                             entry->value,
                             NULL);
-            _md_del_at(md, iter.slot, entry);
-            // the decref can run a __del__ that lets another thread resize
-            // and bump the version through the atomic store above, so this
-            // side of the comparison must be an atomic load too
-            if (UNLIKELY(md->keys != keys || load_version(md) != version)) {
-                goto restart;
+            if (_md_del_at_held(md, iter.slot, entry, removed) < 0) {
+                ret = -1;
+                break;
             }
         }
     }
@@ -1652,7 +1729,7 @@ restart:;
         md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
     }
     ASSERT_CONSISTENT(md, false);
-    return 0;
+    return ret;
 }
 
 static inline int
@@ -1665,12 +1742,15 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     }
     reflist_t values;
     reflist_init(&values);
+    removed_pairs_t removed;
+    removed_pairs_init(&removed);
     int tmp;
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
-    tmp = _md_pop_all_locked(md, identity, hash, &values);
+    tmp = _md_pop_all_locked(md, identity, hash, &values, &removed);
     flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
+    removed_pairs_release(&removed);
     Py_DECREF(identity);
     md_watch_flush_if(md, flush);
     if (tmp < 0) {

@@ -1,0 +1,7 @@
+Fixed ``del md[key]`` and :meth:`~multidict.MultiDict.popall` also
+removing, and ``popall()`` also returning, the pairs a finalizer of a
+removed key or value added while the call was still running, by
+releasing the removed pairs only once every match is gone, and fixed the
+pure-Python implementation raising :exc:`IndexError` or miscounting
+:func:`len` in the same case, for ``md[key] = value`` too
+-- by :user:`asvetlov`.

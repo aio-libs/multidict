@@ -1430,3 +1430,47 @@ def test_base_init_keeps_case_mode(multidict_module: ModuleType, is_ci: bool) ->
     assert type(d) is kinds[is_ci]
     assert ("key" in d) is is_ci
     assert "Key" in d
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="__del__ does not run promptly on PyPy",
+)
+@pytest.mark.parametrize("method", ["delitem", "popall", "setitem"])
+@pytest.mark.parametrize("side", ["key", "value"])
+def test_remove_all_keeps_what_a_finalizer_adds(
+    any_multidict_class: type[MultiDict[object]],
+    method: str,
+    side: str,
+) -> None:
+    # The pairs a removed key or value adds back from its __del__ are new,
+    # not among the ones the call was asked to remove.
+    class Key(str):
+        def __del__(self) -> None:
+            d.add("a", "late")
+
+    class Value:
+        def __del__(self) -> None:
+            d.add("a", "late")
+
+    d = any_multidict_class()
+    d.add("b", "b")
+    for _ in range(2):
+        if side == "key":
+            d.add(Key("a"), "old")
+        else:
+            d.add("a", Value())
+
+    expected = [("b", "b"), ("a", "late"), ("a", "late")]
+    if method == "delitem":
+        del d["a"]
+    elif method == "popall":
+        popped = d.popall("a")
+        assert len(popped) == 2
+        assert "late" not in popped
+        del popped
+    else:
+        d["a"] = "new"
+        expected.insert(1, ("a", "new"))
+    assert list(d.items()) == expected
+    assert len(d) == len(expected)
