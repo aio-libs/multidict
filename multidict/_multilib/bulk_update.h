@@ -153,8 +153,7 @@ restart:
         bitmap_clear(&marks->deleted, pos);
         entry_t* entry = entries + pos;
         // Python code run between items may have removed or rewritten it
-        if (entry->identity == NULL || entry->key != doomed->key ||
-            load_value(entry) != doomed->value) {
+        if (entry->identity == NULL || load_value(entry) != doomed->value) {
             continue;
         }
         htkeysiter_t iter;

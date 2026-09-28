@@ -1305,14 +1305,11 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # the end of the (now shorter) entries list.
         self._keys.del_idx(entry.hash, pos)
         del entries[pos:]
-        # Not held past here: the pop can run a finalizer that replaces the
-        # table, whose entries then go at once, as they do in C.
-        del entries
+
+        ret = self._key(entry.key), entry.value
         self._used -= 1
         self._incr_version()
-
-        # istr() runs a str subclass's __str__, which may mutate self.
-        return self._key(entry.key), entry.value
+        return ret
 
     @_locked_pair_always
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
@@ -1323,7 +1320,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # out of the table, they survive whatever runs between items. They
         # and `replaced` also hold the dropped pairs until the call ends.
         updated: dict[int, _Entry[_V]] = {}
-        deleted: dict[int, tuple[_Entry[_V], str, _V]] = {}
+        deleted: dict[int, tuple[_Entry[_V], _V]] = {}
         replaced: list[tuple[str, _V]] = []
         try:
             self._update_items(
@@ -1336,7 +1333,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self,
         items: Iterator[_Entry[_V]],
         updated: dict[int, _Entry[_V]],
-        deleted: dict[int, tuple[_Entry[_V], str, _V]],
+        deleted: dict[int, tuple[_Entry[_V], _V]],
         replaced: list[tuple[str, _V]],
     ) -> None:
         for entry in items:
@@ -1359,12 +1356,12 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     e.value = entry.value
                 elif eid not in deleted:
                     # with what it holds now: a write since is kept
-                    deleted[eid] = (e, e.key, e.value)
+                    deleted[eid] = (e, e.value)
             if not found:
                 self._add_with_hash(entry)
                 updated[id(entry)] = entry
 
-    def _post_update(self, deleted: dict[int, tuple[_Entry[_V], str, _V]]) -> None:
+    def _post_update(self, deleted: dict[int, tuple[_Entry[_V], _V]]) -> None:
         if deleted:
             keys = self._keys
             indices = keys.indices
@@ -1375,8 +1372,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     continue
                 doomed = deleted.get(id(entries[idx]))
                 if doomed is not None:
-                    e, key, value = doomed
-                    if e.key is key and e.value is value:
+                    e, value = doomed
+                    if e.value is value:
                         entries[idx] = None
                         indices[slot] = -2
                         self._used -= 1

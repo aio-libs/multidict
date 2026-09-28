@@ -37,12 +37,13 @@ extern "C" {
 
    An entry stays doomed only while it holds what it held when doomed: code
    run between items may write to it since (a nested update(), say), and
-   that write stands. So each doomed entry is recorded with its key and
-   value, referenced to keep either address from being reused meanwhile,
-   and md_post_update() removes only the entries that still hold both. */
+   that write stands. Every write stores a new value, so each doomed entry
+   is recorded with its value, referenced to keep the address from being
+   reused meanwhile, and md_post_update() removes only the entries that
+   still hold it. The key is no guide: reading a CIMultiDict's key swaps
+   the stored str for its istr. */
 typedef struct _doomed_entry {
     Py_ssize_t index;
-    PyObject* key;
     PyObject* value;
 } doomed_entry_t;
 
@@ -92,7 +93,6 @@ update_marks_release(update_marks_t* marks)
     bitmap_release(&marks->updated);
     bitmap_release(&marks->deleted);
     for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {
-        Py_DECREF(marks->doomed[i].key);
         Py_DECREF(marks->doomed[i].value);
     }
     PyMem_Free(marks->doomed);
@@ -104,7 +104,7 @@ COLD static int
 _update_marks_grow_doomed(update_marks_t* marks)
 {
     Py_ssize_t capacity =
-        marks->doomed_capacity == 0 ? 8 : marks->doomed_capacity * 2;
+        marks->doomed_capacity == 0 ? 64 : marks->doomed_capacity * 2;
     if ((size_t)capacity > PY_SSIZE_T_MAX / sizeof(doomed_entry_t)) {
         PyErr_NoMemory();
         return -1;
@@ -135,7 +135,6 @@ update_marks_doom(update_marks_t* marks, Py_ssize_t index, entry_t* entry)
     }
     doomed_entry_t* doomed = marks->doomed + marks->ndoomed++;
     doomed->index = index;
-    doomed->key = Py_NewRef(entry->key);
     doomed->value = Py_NewRef(load_value(entry));
     return 0;
 }
