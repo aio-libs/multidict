@@ -140,7 +140,8 @@ RULES = (
         "md_next",
         ITERNEXT_ENTRIES,
         BOTH,
-        "#1601 prototype: items iteration +19% on FT",
+        "#1601 prototype: items iteration +19% on FT; ALWAYS_INLINE since "
+        "#1627/#1628, where GCC 15 on FT dropped it again (+19%)",
     ),
     Rule(
         "md_clear",

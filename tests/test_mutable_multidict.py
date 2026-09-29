@@ -1,4 +1,5 @@
 import functools
+import gc
 import itertools
 import string
 import sys
@@ -831,6 +832,44 @@ class TestCIMutableMultiDict:
         assert d.popitem() == ("added", "late")
         assert list(d.items()) == [("a", "1")]
 
+    def test_popitem_key_str_mutates(
+        self,
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
+    ) -> None:
+        # Building the popped key's istr runs a str subclass's __str__,
+        # which here replaces the table the popped entry lived in.
+        d = case_insensitive_multidict_class()
+
+        class Key(str):
+            def __str__(self) -> str:
+                d.clear()
+                d.extend((f"k{i}", str(i)) for i in range(20))
+                return "b"
+
+        d.add("a", "1")
+        d.add(Key("b"), "2")
+        assert d.popitem() == ("b", "2")
+        expected = [(f"k{i}", str(i)) for i in range(20)]
+        assert list(d.items()) == expected
+        assert len(d) == len(expected)
+
+    def test_popitem_key_str_raises(
+        self,
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
+    ) -> None:
+        d = case_insensitive_multidict_class()
+
+        class Key(str):
+            def __str__(self) -> str:
+                raise ZeroDivisionError
+
+        d.add("a", "1")
+        d.add(Key("b"), "2")
+        with pytest.raises(ZeroDivisionError):
+            d.popitem()
+        assert list(d.items()) == [("a", "1")]
+        assert len(d) == 1
+
     def test_pop(
         self,
         case_insensitive_multidict_class: type[CIMultiDict[str]],
@@ -1430,6 +1469,50 @@ def test_base_init_keeps_case_mode(multidict_module: ModuleType, is_ci: bool) ->
     assert type(d) is kinds[is_ci]
     assert ("key" in d) is is_ci
     assert "Key" in d
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="__del__ does not run promptly on PyPy",
+)
+@pytest.mark.parametrize("delay", range(12))
+def test_popitem_collection_mutates(
+    any_multidict_class: type[MultiDict[object]], delay: int
+) -> None:
+    """On 3.10 and 3.11, building popitem()'s result can run a collection
+    whose finalizers mutate the multidict. `delay` moves the collection
+    across the allocations popitem() makes."""
+    old = [(f"k{i}", [i]) for i in range(10)]
+    new = [(f"z{i}", [i]) for i in range(50)]
+    md = any_multidict_class(old)
+
+    class Cycle:
+        def __init__(self) -> None:
+            self.me = self
+
+        def __del__(self) -> None:
+            md.clear()
+            md.extend(new)
+
+    popitem = md.popitem
+    threshold = gc.get_threshold()
+    was_enabled = gc.isenabled()
+    gc.collect()
+    gc.disable()
+    try:
+        Cycle()
+        gc.set_threshold(gc.get_count()[0] + delay)
+        gc.enable()
+        result = popitem()
+    finally:
+        gc.set_threshold(*threshold)
+        (gc.enable if was_enabled else gc.disable)()
+    gc.collect()
+    # the pure-Python popitem() can let the collection run before its pop
+    assert (result, list(md.items())) in (
+        (("k9", [9]), new),
+        (("z49", [49]), new[:-1]),
+    )
 
 
 @pytest.mark.skipif(

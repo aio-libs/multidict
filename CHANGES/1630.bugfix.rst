@@ -1,0 +1,5 @@
+Fixed a use-after-free in :meth:`~multidict.MultiDict.to_dict` on Python
+3.10 and 3.11, where allocating a value list can run a garbage collection
+whose finalizers mutate the multidict, by refusing that mutation with
+:exc:`RuntimeError` as it is refused from a key's ``__hash__()``
+-- by :user:`asvetlov`.

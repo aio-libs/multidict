@@ -96,39 +96,6 @@ reflist_push(reflist_t* lst, PyObject* obj)
     return 0;
 }
 
-/* Grows `lst` only when its current storage is exactly full, so the very
- * next reflist_push_reserved() call can't fail. Only ever grows at that
- * exact boundary -- never early -- so it can't strand a block short of
- * REFLIST_BLOCK items, which draining assumes every block but the newest
- * has. PyMem_Malloc() itself never suspends a critical section (#1469),
- * so this is always safe to call before mutating an entry; a failure here
- * leaves `lst` untouched. Callers that must null out an entry's field
- * before pushing it (a half-deletion mid-mutation) need this: pushing the
- * normal way risks reflist_push()'s OOM fallback decref'ing while the
- * entry sits half torn down, exposing it to a concurrent reader -- see
- * #1491 review. Guarantees only the next single push; call again before
- * each subsequent reserved push. */
-static inline int
-reflist_reserve_one(reflist_t* lst)
-{
-    if (lst->count == lst->capacity) {
-        return _reflist_grow(lst);
-    }
-    return 0;
-}
-
-/* Steals the reference like reflist_push(), but assumes capacity was
- * already reserved via reflist_reserve_one() -- never fails, so it never
- * needs the immediate-decref fallback. `obj` may be NULL. */
-static inline void
-reflist_push_reserved(reflist_t* lst, PyObject* obj)
-{
-    if (obj != NULL) {
-        assert(lst->count < lst->capacity);
-        lst->slots[lst->count++] = obj;
-    }
-}
-
 static inline bool
 reflist_empty(reflist_t* lst)
 {

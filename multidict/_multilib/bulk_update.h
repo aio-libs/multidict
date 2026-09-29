@@ -31,153 +31,80 @@ typedef enum _UpdateOp {
     Merge,
 } UpdateOp;
 
+/* Nothing here runs Python code or suspends the critical section: the
+ * replaced key and value go to `defer`. */
 static inline int
 _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
            PyObject* key, PyObject* value, reflist_t* defer,
            update_marks_t* marks)
 {
     bool found = false;
-    update_marks_sync(marks, md);
+    if (update_marks_sync(marks, md) < 0) {
+        return -1;
+    }
+    htkeysiter_t iter;
+    htkeysiter_init(&iter, md->keys, hash);
+    entry_t* entries = htkeys_entries(md->keys);
 
-    // See _md_replace() on the retry/deferred-decref shape used here.
-    for (;;) {
-        htkeysiter_t iter;
-        htkeysiter_init(&iter, md->keys, hash);
-        /* A retry may have lost the mark on the entry this call already
-           wrote; equal keys sit on their chain in insertion order, so it
-           is the first unmarked match. */
-        bool skip_first = found;
-        bool stale = false;
-
-        for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
-            if (iter.index < 0) {
-                continue;
-            }
-#ifdef Py_GIL_DISABLED
-            htkeys_t* keys_before = md->keys;
-            uint64_t version_before = md->version;
-#endif
-            entry_t* entries = htkeys_entries(md->keys);
-            entry_t* entry = entries + iter.index;
-            if (hash != entry->hash ||
-                bitmap_test(&marks->updated, iter.index) ||
-                !str_cmp(identity, entry->identity)) {
-                continue;
-            }
-            if (skip_first) {
-                skip_first = false;
-                if (bitmap_set(&marks->updated, iter.index) < 0) {
-                    goto fail;
-                }
-                continue;
-            }
-            if (!found) {
-                found = true;
-                /* Marked first: nothing below can fail half-way after
-                   the entry has changed. */
-                if (bitmap_set(&marks->updated, iter.index) < 0) {
-                    goto fail;
-                }
-                if (entry->key == NULL) {
-                    /* Half-deleted by an earlier item of this batch; reusing
-                       it keeps the key at its original position. */
-                    assert(entry->value == NULL);
-                    bitmap_clear(&marks->deleted, iter.index);
-                    entry->key = Py_NewRef(key);
-                    publish_value(entry, Py_NewRef(value));
-                    md_watch_record(md,
-                                    MultiDict_EVENT_ADDED,
-                                    identity,
-                                    hash,
-                                    key,
-                                    value,
-                                    NULL);
-                } else {
-                    // old_key/old_value decref deferred: see reflist_t
-                    PyObject* old_key = entry->key;
-                    PyObject* old_value = load_value(entry);
-                    entry->key = Py_NewRef(key);
-                    publish_value(entry, Py_NewRef(value));
-                    md_watch_record(md,
-                                    MultiDict_EVENT_REPLACED,
-                                    identity,
-                                    hash,
-                                    key,
-                                    value,
-                                    old_value);
-                    /* Push both unconditionally, not with `||`: a
-                       failed first push already decref'd old_key itself
-                       (see reflist_push()'s doc comment), but
-                       short-circuiting past the second push would leak
-                       old_value -- neither deferred nor decref'd. */
-                    int push_ret = reflist_push(defer, old_key);
-                    if (reflist_push(defer, old_value) < 0) {
-                        push_ret = -1;
-                    }
-                    if (push_ret < 0) {
-                        goto fail;
-                    }
-                }
-            } else {
-                if (bitmap_test(&marks->deleted, iter.index)) {
-                    continue;
-                }
-                if (bitmap_set(&marks->deleted, iter.index) < 0) {
-                    goto fail;
-                }
-                /* Read before the half-delete nulls them, recorded
-                   after it succeeds: its first reservation can fail with
-                   the entry still in place, and a DELETED event for an
-                   entry that is still there is worse than none. The
-                   objects stay alive in `defer` across the call. */
-                PyObject* gone_identity = entry->identity;
-                PyObject* gone_key = entry->key;
-                PyObject* gone_value = entry->value;
-                if (md_half_delete_for_upd(md, entry, defer) < 0) {
-                    goto fail;
-                }
-                md_watch_record(md,
-                                MultiDict_EVENT_DELETED,
-                                gone_identity,
-                                hash,
-                                gone_key,
-                                gone_value,
-                                NULL);
-            }
-#ifdef Py_GIL_DISABLED
-            /* See _md_replace()'s comment on why both the pointer and
-               the version are checked. */
-            if (md->keys != keys_before || md->version != version_before) {
-                stale = true;
-                break;
-            }
-#endif
-        }
-        if (stale) {
-            /* Whatever moved the table also invalidated the marks. */
-            update_marks_sync(marks, md);
+    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        if (iter.index < 0) {
             continue;
         }
-        break;
+        entry_t* entry = entries + iter.index;
+        if (hash != entry->hash || bitmap_test(&marks->updated, iter.index) ||
+            !str_cmp(identity, entry->identity)) {
+            continue;
+        }
+        if (!found) {
+            found = true;
+            /* Marked first: nothing below can fail half-way after the
+               entry has changed. An entry an earlier item of this batch
+               doomed is reused, which keeps the key at its position. */
+            if (bitmap_set(&marks->updated, iter.index) < 0) {
+                return -1;
+            }
+            bitmap_clear(&marks->deleted, iter.index);
+            // old_key/old_value decref deferred: see reflist_t
+            PyObject* old_key = entry->key;
+            PyObject* old_value = load_value(entry);
+            entry->key = Py_NewRef(key);
+            publish_value(entry, Py_NewRef(value));
+            md_watch_record(md,
+                            MultiDict_EVENT_REPLACED,
+                            identity,
+                            hash,
+                            key,
+                            value,
+                            old_value);
+            /* Push both unconditionally, not with `||`: a failed first
+               push already decref'd old_key itself (see reflist_push()'s
+               doc comment), but short-circuiting past the second push
+               would leak old_value -- neither deferred nor decref'd. */
+            int push_ret = reflist_push(defer, old_key);
+            if (reflist_push(defer, old_value) < 0) {
+                push_ret = -1;
+            }
+            if (push_ret < 0) {
+                return -1;
+            }
+        } else if (update_marks_doom(marks, iter.index, entry) < 0) {
+            return -1;
+        }
     }
 
     if (!found) {
-        if (md_add_for_upd(md, hash, identity, key, value, marks) < 0) {
-            goto fail;
-        }
+        return md_add_for_upd(md, hash, identity, key, value, marks);
     }
-    marks->version = md->version;
     return 0;
-fail:
-    marks->version = md->version;
-    return -1;
 }
 
 static inline int
 _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
           PyObject* key, PyObject* value, update_marks_t* marks)
 {
-    update_marks_sync(marks, md);
+    if (update_marks_sync(marks, md) < 0) {
+        return -1;
+    }
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
@@ -196,118 +123,75 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         }
     }
 
-    int ret = md_add_for_upd(md, hash, identity, key, value, marks);
-    marks->version = md->version;
-    return ret;
+    return md_add_for_upd(md, hash, identity, key, value, marks);
 }
 
-/* Finishes off one half-deleted entry: `slot` must index it. */
-static inline int
-_md_post_update_del(MultiDictObject* md, htkeys_t* keys, size_t slot,
-                    entry_t* entry, reflist_t* defer)
-{
-    assert(entry->key == NULL);
-    PyObject* old_identity = load_identity(entry);
-    reset_identity(entry);
-    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
-    add_used(md, -1);
-    return reflist_push(defer, old_identity);
-}
-
-/* The fallback when the `deleted` marks can't be trusted: every half-deleted
-   entry still has a NULL key, so a full sweep finds them all. */
-COLD static int
-_md_post_update_sweep(MultiDictObject* md, reflist_t* defer)
-{
-    int ret = 0;
-    for (;;) {
-        htkeys_t* keys = md->keys;
-#ifdef Py_GIL_DISABLED
-        uint64_t version_before = md->version;
-#endif
-        size_t num_slots = (size_t)htkeys_nslots(keys);
-        entry_t* entries = htkeys_entries(keys);
-        bool stale = false;
-        for (size_t slot = 0; slot < num_slots; slot++) {
-            Py_ssize_t index = htkeys_get_index(keys, (Py_ssize_t)slot);
-            if (index >= 0 && entries[index].key == NULL) {
-                if (_md_post_update_del(
-                        md, keys, slot, entries + index, defer) < 0) {
-                    ret = -1;
-                }
-#ifdef Py_GIL_DISABLED
-                if (md->keys != keys || md->version != version_before) {
-                    stale = true;
-                    break;
-                }
-#endif
-            }
-        }
-        if (!stale) {
-            return ret;
-        }
-    }
-}
-
+/* Removes the entries update() doomed and nothing has written since. Only
+   an out-of-memory fallback decref in _md_del_at_deferred() can run Python
+   here; the walk then starts over, which each record leaving the set as it
+   goes makes safe. */
 static inline int
 _md_post_update_deleted(MultiDictObject* md, reflist_t* defer,
                         update_marks_t* marks)
 {
-    update_marks_sync(marks, md);
-    if (marks->lost) {
-        return _md_post_update_sweep(md, defer);
-    }
     int ret = 0;
+restart:
+    if (update_marks_sync(marks, md) < 0) {
+        return -1;
+    }
     htkeys_t* keys = md->keys;
-#ifdef Py_GIL_DISABLED
-    uint64_t version_before = md->version;
-#endif
+    uint64_t version = md->version;
     entry_t* entries = htkeys_entries(keys);
-    for (Py_ssize_t pos = bitmap_next(&marks->deleted, 0); pos >= 0;
-         pos = bitmap_next(&marks->deleted, pos + 1)) {
+    for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {
+        doomed_entry_t* doomed = marks->doomed + i;
+        Py_ssize_t pos = doomed->index;
+        // revived by a later item of this batch, or handled before a restart
+        if (!bitmap_test(&marks->deleted, pos)) {
+            continue;
+        }
+        assert(pos < keys->nentries);
+        bitmap_clear(&marks->deleted, pos);
         entry_t* entry = entries + pos;
-        /* Another thread's update(), run while this one's critical section
-           was suspended, can revive or finish off one of these in place
-           without moving anything. */
-        if (entry->identity == NULL || entry->key != NULL) {
+        // Python code run between items may have removed or rewritten it
+        if (entry->identity == NULL || load_value(entry) != doomed->value) {
             continue;
         }
         htkeysiter_t iter;
         htkeysiter_init(&iter, keys, entry->hash);
-        while (iter.index != pos && iter.index != DKIX_EMPTY) {
+        while (iter.index != pos) {
+            assert(iter.index != DKIX_EMPTY);
             htkeysiter_next(&iter);
         }
-        assert(iter.index == pos);
-        if (iter.index != pos) {
-            continue;
-        }
-        if (_md_post_update_del(md, keys, iter.slot, entry, defer) < 0) {
+        md_watch_record(md,
+                        MultiDict_EVENT_DELETED,
+                        entry->identity,
+                        entry->hash,
+                        entry->key,
+                        entry->value,
+                        NULL);
+        if (_md_del_at_deferred(md, iter.slot, entry, defer) < 0) {
             ret = -1;
-        }
-#ifdef Py_GIL_DISABLED
-        /* Only an out-of-memory fallback decref above can run Python. */
-        if (md->keys != keys || md->version != version_before) {
-            if (_md_post_update_sweep(md, defer) < 0) {
-                ret = -1;
+            if (md->keys != keys || md->version != version) {
+                goto restart;
             }
-            break;
         }
-#endif
     }
     return ret;
 }
 
+/* Ends the batch; the caller holds md's critical section. */
 static inline int
 md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
 {
     int ret = 0;
-    /* `defer` is NULL only for merge(), which never half-deletes. */
+    /* `defer` is NULL only for merge(), which never deletes. */
     if (defer != NULL) {
         ret = _md_post_update_deleted(md, defer, marks);
     }
+    update_marks_end(md);
     bump_version(md);
     md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
-    ASSERT_CONSISTENT(md, false);
+    ASSERT_CONSISTENT(md);
     return ret;
 }
 
@@ -339,7 +223,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
        we iterate here, a use-after-free.  Reserving up front also lets us
        snapshot the entry count so self-extension does not reprocess the
        entries it just appended. */
-    if (md_reserve_for_upd(md, other->used, marks) < 0) {
+    if (md_reserve(md, other->used) < 0) {
         return -1;
     }
 

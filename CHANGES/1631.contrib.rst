@@ -1,0 +1,5 @@
+Added a test that runs every mutating method of both multidict classes
+with keys, values and argument items whose finalizers mutate the
+multidict, and checks the C implementation against the pure-Python one,
+along with reusable helpers for writing such tests
+-- by :user:`asvetlov`.

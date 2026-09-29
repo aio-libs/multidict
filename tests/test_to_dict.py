@@ -1,5 +1,8 @@
 """Test to_dict functionality for all multidict types."""
 
+import contextlib
+import gc
+import sys
 from collections.abc import Iterator
 
 import pytest
@@ -259,3 +262,67 @@ def test_to_dict_refuses_mutation_from_key_hash(
     assert md.getall("a") == ["1", "2"]
     assert md.getall("b") == ["3"]
     assert md.to_dict()["a"] == ["1", "2"]
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="__del__ does not run promptly on PyPy",
+)
+@pytest.mark.skipif(
+    sys.version_info >= (3, 12),
+    reason="3.12 and later collect only from the eval loop, never mid-call",
+)
+def test_to_dict_refuses_mutation_from_a_collection(
+    any_multidict_class: type[MultiDict[object]],
+) -> None:
+    """On 3.10 and 3.11, allocating the result's lists can run a collection
+    whose finalizers mutate the multidict; that is refused. Each round
+    arms the collection one allocation later, so some land inside the
+    call and some after it."""
+    old = [(f"k{i}", [i]) for i in range(10)]
+    new = [(f"z{i}", [i]) for i in range(50)]
+    old_dict = {k: [v] for k, v in old}
+    new_dict = {k: [v] for k, v in new}
+    assert gc.isenabled()
+    threshold = gc.get_threshold()
+    outcomes: list[tuple[bool, object]] = []
+    for delay in range(12):
+        md = any_multidict_class(old)
+        calling: list[bool] = []
+        inside: list[bool] = []
+
+        class Cycle:
+            def __init__(self) -> None:
+                self.me = self
+
+            def __del__(self) -> None:
+                inside.append(bool(calling))
+                md.clear()
+                md.extend(new)
+
+        to_dict = md.to_dict
+        result = None
+        gc.collect()
+        gc.disable()
+        try:
+            Cycle()
+            gc.set_threshold(gc.get_count()[0] + delay)
+            gc.enable()
+            with contextlib.suppress(RuntimeError):
+                # Nothing between these three allocates a tracked object.
+                calling.append(True)
+                result = to_dict()
+                calling.clear()
+            calling.clear()
+        finally:
+            gc.set_threshold(*threshold)
+            gc.enable()
+        gc.collect()
+        assert list(md.items()) == new
+        outcomes.append((inside[0], result))
+
+    assert any(ran_inside for ran_inside, _ in outcomes)
+    # The pure-Python call can be collected in before it takes its version,
+    # and then converts the new contents.
+    assert all(result in (None, new_dict) for ran, result in outcomes if ran)
+    assert all(result in (old_dict, new_dict) for ran, result in outcomes if not ran)
