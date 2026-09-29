@@ -832,44 +832,6 @@ class TestCIMutableMultiDict:
         assert d.popitem() == ("added", "late")
         assert list(d.items()) == [("a", "1")]
 
-    def test_popitem_key_str_mutates(
-        self,
-        case_insensitive_multidict_class: type[CIMultiDict[str]],
-    ) -> None:
-        # Building the popped key's istr runs a str subclass's __str__,
-        # which here replaces the table the popped entry lived in.
-        d = case_insensitive_multidict_class()
-
-        class Key(str):
-            def __str__(self) -> str:
-                d.clear()
-                d.extend((f"k{i}", str(i)) for i in range(20))
-                return "b"
-
-        d.add("a", "1")
-        d.add(Key("b"), "2")
-        assert d.popitem() == ("b", "2")
-        expected = [(f"k{i}", str(i)) for i in range(20)]
-        assert list(d.items()) == expected
-        assert len(d) == len(expected)
-
-    def test_popitem_key_str_raises(
-        self,
-        case_insensitive_multidict_class: type[CIMultiDict[str]],
-    ) -> None:
-        d = case_insensitive_multidict_class()
-
-        class Key(str):
-            def __str__(self) -> str:
-                raise ZeroDivisionError
-
-        d.add("a", "1")
-        d.add(Key("b"), "2")
-        with pytest.raises(ZeroDivisionError):
-            d.popitem()
-        assert list(d.items()) == [("a", "1")]
-        assert len(d) == 1
-
     def test_pop(
         self,
         case_insensitive_multidict_class: type[CIMultiDict[str]],
@@ -1012,20 +974,16 @@ class TestCIMutableMultiDict:
                 ("KEY", "one"),
             ]
         )
-        d["k2"] = "2"
+        d[case_insensitive_str_class("k2")] = "2"
         d.extend(k3="3")
+        expected = [str, case_insensitive_str_class, str]
 
-        for k in d:
-            assert type(k) is case_insensitive_str_class
-
-        for k in d.keys():
-            assert type(k) is case_insensitive_str_class
-
-        for k, v in d.items():
-            assert type(k) is case_insensitive_str_class
+        assert [type(k) for k in d] == expected
+        assert [type(k) for k in d.keys()] == expected
+        assert [type(k) for k, v in d.items()] == expected
 
         k, v = d.popitem()
-        assert type(k) is case_insensitive_str_class
+        assert type(k) is str
 
     def test_issue_1195(
         self, case_insensitive_multidict_class: type[CIMultiDict[bytes]]

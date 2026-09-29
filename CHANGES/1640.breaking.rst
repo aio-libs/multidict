@@ -1,0 +1,6 @@
+Changed :class:`~multidict.CIMultiDict` and
+:class:`~multidict.CIMultiDictProxy` to return every key exactly as it was
+stored: a key added as :class:`str` came back as that :class:`str` instead
+of an :class:`~multidict.istr`, and reading a key no longer replaced the
+stored one in the C extension. Documented that keys are kept as given
+-- by :user:`asvetlov`.

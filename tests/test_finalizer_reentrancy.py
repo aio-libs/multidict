@@ -67,13 +67,13 @@ _QUIET = {"add", "setdefault", "copy"}
 _RETURN_VALUE = {"pop", "popone", "popall", "popitem"}
 
 
-def _fires(cls_name: str, side: str, method: str) -> bool:
+def _fires(side: str, method: str) -> bool:
     """Whether the call itself drops a finalizer-bearing object."""
     return not (
         method in _QUIET
         or (side == "value" and method in _RETURN_VALUE)
-        # a MultiDict hands back the popped key itself, a CIMultiDict a copy
-        or (side == "key" and method == "popitem" and cls_name == "MultiDict")
+        # popitem() hands back the popped key itself
+        or (side == "key" and method == "popitem")
     )
 
 
@@ -129,4 +129,4 @@ def test_finalizer_mutation_matches_pure_python(
     assert c_outcome == py_outcome
     _, items, length, fired = py_outcome
     assert length == len(items)  # type: ignore[arg-type]
-    assert (fired > 0) == _fires(cls_name, side, method)
+    assert (fired > 0) == _fires(side, method)

@@ -334,8 +334,7 @@ def test_update_keeps_what_code_between_items_wrote(
     any_multidict_class: type[MultiDict[object]], nested: str
 ) -> None:
     # The outer call dooms the second "a"; code run between its items then
-    # writes to that very entry. The write stands; a read, which can swap a
-    # CIMultiDict's stored key for its istr, is no write.
+    # writes to that very entry. The write stands; a read is no write.
     d = any_multidict_class([("a", 0), ("a", 0), ("b", 0)])
     writes: dict[str, Callable[[], object]] = {
         "update": lambda: d.update([("a", 2), ("a", 3)]),
