@@ -114,9 +114,39 @@ jobs:
   lint:
     uses: ./.github/workflows/reusable-linters.yml
 
-  build-wheels-for-tested-arches:
+  build-linux-wheels:
     name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
-      📦 Build wheels for tested arches${{ '' }}
+      📦 Build Linux wheels for testing${{ '' }}
+    needs:
+    - build-pure-python-dists
+    - pre-setup  # transitive, for accessing settings
+    uses: ./.github/workflows/reusable-cibuildwheel.yml
+    with:
+      check-name: Build manylinux wheels
+      runner-vm-os: ubuntu-latest
+      timeout-minutes: 25
+      source-tarball-name: >-
+        ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+      dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+      # The `test` job installs these wheels and runs the suite against
+      # them with coverage, so `cibuildwheel` doesn't test them again.
+      # The i686 ones, built at release time only, have no other test
+      # run, so they keep theirs.
+      environment-variables: |-
+        CIBW_TEST_SKIP=*-manylinux_x86_64
+
+        CIBW_SKIP<<EOF
+        ${{
+          (github.event_name == 'push' && contains(github.ref, 'refs/tags/'))
+          && '*-musllinux_*'
+          || '*_i686
+          *-musllinux_*'
+        }}
+        EOF
+
+  build-wheels-for-other-platforms:
+    name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
+      📦 Build wheels for other platforms${{ '' }}
     needs:
     - build-pure-python-dists
     - pre-setup  # transitive, for accessing settings
@@ -137,21 +167,28 @@ jobs:
           tag: 'musllinux'
         - runner-vm-os: macos-latest
           tag: 'musllinux'
+        # manylinux wheels are built by ``build-linux-wheels`` instead.
+        - runner-vm-os: ubuntu-latest
+          tag: ''
         # Skip windows-11-arm wheel build on PRs/pushes — tests run on
         # windows-latest only, so the arm64 wheel is build-only and adds
         # ~6 minutes of runner time per CI run. It is rebuilt at release
         # time via ``build-wheels-for-odd-archs``.
+        #
+        # NOTE: The non-excluding branch of these two ternaries must be
+        # NOTE: the one carrying a non-empty value: `x && '' || 'none'`
+        # NOTE: always yields `'none'`, since `''` is falsy.
         - runner-vm-os: windows-11-arm
           tag: >-
            ${{
-           (github.event_name != 'push' || github.ref_type != 'tag')
-           && '' || 'none'
+           (github.event_name == 'push' && github.ref_type == 'tag')
+           && 'none' || ''
            }}
         - runner-vm-os: ubuntu-latest
           tag: >-
            ${{
-           (github.event_name != 'push' || github.ref_type != 'tag')
-           && 'musllinux' || 'none'
+           (github.event_name == 'push' && github.ref_type == 'tag')
+           && 'none' || 'musllinux'
            }}
     uses: ./.github/workflows/reusable-cibuildwheel.yml
     with:
@@ -162,8 +199,19 @@ jobs:
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
       dists-artifact-name: ${{ needs.pre-setup.outputs.dists-artifact-name }}
+      # CIBW_TEST_SKIP: x86_64 macOS wheels are tested under Rosetta at
+      # about twice the arm64 cost. Pull requests build them but leave
+      # the testing to the master, merge queue and tag runs.
       environment-variables: |-
         CIBW_ARCHS_MACOS=x86_64 arm64 universal2
+
+        CIBW_TEST_SKIP<<EOF
+        ${{
+          (github.event_name == 'pull_request')
+          && '*-macosx_x86_64'
+          || ''
+        }}
+        EOF
 
         CIBW_SKIP<<EOF
         ${{
@@ -179,16 +227,15 @@ jobs:
 
   test:
     name: >-
-      Test ${{ matrix.os }}
-      ${{ matrix.pyver }}
+      Test ${{ matrix.pyver }}
       ${{ matrix.no-extensions == 'Y' && ' ' || 'ext' }}
       ${{ matrix.debug == 'Y' && 'debug' || '' }}
     needs:
+    - build-linux-wheels
     - build-pure-python-dists  # transitive, for accessing settings
-    - build-wheels-for-tested-arches
     - pre-setup  # transitive, for accessing settings
     # macOS and Windows wheels are tested by `cibuildwheel` itself, on the
-    # same suite; only the ubuntu ones are re-tested here, for coverage.
+    # same suite; only the Linux ones are re-tested here, for coverage.
     strategy:
       matrix:
         pyver:
@@ -200,7 +247,6 @@ jobs:
         - 3.11
         - "3.10"
         no-extensions: ['', 'Y']
-        os: [ubuntu]
         debug: ['', 'Y']
         exclude:
         - no-extensions: Y
@@ -208,10 +254,9 @@ jobs:
         include:
         - pyver: pypy-3.10
           no-extensions: Y
-          os: ubuntu
           debug: ''
       fail-fast: false
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     continue-on-error: >-
@@ -402,12 +447,18 @@ jobs:
   test-cython-capi:
     name: Test the optional Cython C API binding
     needs:
+    - build-pure-python-dists  # for the sdist to build and test from
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - name: Checkout project
-      uses: actions/checkout@v7
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v2
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Setup Python 3.13
       uses: actions/setup-python@v7
       with:
@@ -451,12 +502,18 @@ jobs:
   inlining:
     name: Inlining
     needs:
+    - build-pure-python-dists  # for the sdist to build and test from
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-    - name: Checkout project
-      uses: actions/checkout@v7
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v2
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Setup Python 3.14
       id: python-gil
       uses: actions/setup-python@v7
@@ -479,6 +536,7 @@ jobs:
   benchmark:
     name: Benchmark ${{ matrix.build }} ${{ matrix.shard }}
     needs:
+    - build-pure-python-dists  # for the sdist to build and test from
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -504,8 +562,13 @@ jobs:
         - shard: 2
           marks: benchmark_shard_2
     steps:
-    - name: Checkout project
-      uses: actions/checkout@v7
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v2
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Setup Python ${{ matrix.python-version }}
       id: python-install
       uses: actions/setup-python@v7
@@ -537,12 +600,18 @@ jobs:
   hypothesis-gil:
     name: Hypothesis (GIL)
     needs:
+    - build-pure-python-dists  # for the sdist to build and test from
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-    - name: Checkout project
-      uses: actions/checkout@v7
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v2
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Setup Python 3.13
       uses: actions/setup-python@v7
       with:
@@ -592,12 +661,18 @@ jobs:
   hypothesis-ft:
     name: Hypothesis (FT)
     needs:
+    - build-pure-python-dists  # for the sdist to build and test from
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-    - name: Checkout project
-      uses: actions/checkout@v7
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v2
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Setup Python 3.14t
       uses: actions/setup-python@v7
       with:
@@ -644,12 +719,18 @@ jobs:
   asan:
     name: AddressSanitizer
     needs:
+    - build-pure-python-dists  # for the sdist to build and test from
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-    - name: Checkout project
-      uses: actions/checkout@v7
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v2
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Setup Python 3.13
       uses: actions/setup-python@v7
       with:
@@ -732,6 +813,7 @@ jobs:
   tsan:
     name: ThreadSanitizer
     needs:
+    - build-pure-python-dists  # for the sdist to build and test from
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -746,8 +828,13 @@ jobs:
         3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81
       TSAN_CPYTHON_PREFIX: /home/runner/tsan-cpython
     steps:
-    - name: Checkout project
-      uses: actions/checkout@v7
+    - name: Retrieve the project source from an sdist inside the GHA artifact
+      uses: re-actors/checkout-python-sdist@release/v2
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: >-
+          ${{ needs.pre-setup.outputs.dists-artifact-name }}
     - name: Cache the TSan-instrumented free-threaded CPython build
       id: tsan-cpython-cache
       uses: actions/cache@v6
@@ -863,6 +950,7 @@ jobs:
     timeout-minutes: 1
     needs:
     - build-pure-python-dists  # transitive, for accessing settings
+    - build-wheels-for-other-platforms
     - lint
     - pre-setup  # transitive, for accessing settings
     - test
@@ -1030,10 +1118,11 @@ jobs:
   deploy:
     name: Deploy
     needs:
+    - build-linux-wheels
     - build-pure-python-dists
     - build-wheels-for-mobile-archs
     - build-wheels-for-odd-archs
-    - build-wheels-for-tested-arches
+    - build-wheels-for-other-platforms
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     # Sequential release asset uploads plus their retry pauses need
