@@ -346,7 +346,7 @@ def main() -> int:
     parser.add_argument(
         "--self-check",
         action="store_true",
-        help="run every cell once without Valgrind and exit",
+        help="run every cell (of --impl, if given) once without Valgrind and exit",
     )
     parser.add_argument(
         "--whole-process",
@@ -357,7 +357,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.self_check:
-        self_check(operations.selected())
+        self_check(operations.selected(impl_id=args.impl))
         return 0
 
     python = sys.executable
