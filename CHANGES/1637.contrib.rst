@@ -1,0 +1,4 @@
+Made ``benchmarks/callgrind_driver.py --self-check`` honor ``--impl``,
+so that the hint its import error gives, to pick an importable
+implementation with ``--impl``, works on a pure-Python install
+-- by :user:`asvetlov`.
