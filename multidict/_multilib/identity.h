@@ -184,6 +184,33 @@ _ci_key_to_identity(mod_state* state, PyObject* key)
     return _ci_str_to_identity(state, key);
 }
 
+static inline PyObject*
+_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
+{
+    if (PyUnicode_Check(key)) {
+        return Py_NewRef(key);
+    }
+    PyErr_SetString(PyExc_TypeError,
+                    "MultiDict keys should be either str "
+                    "or subclasses of str");
+    return NULL;
+}
+
+static inline PyObject*
+_ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
+{
+    if (IStr_CheckExact(state, key)) {
+        return Py_NewRef(key);
+    }
+    if (PyUnicode_Check(key)) {
+        return IStr_New(state, key, identity);
+    }
+    PyErr_SetString(PyExc_TypeError,
+                    "CIMultiDict keys should be either str "
+                    "or subclasses of str");
+    return NULL;
+}
+
 ALWAYS_INLINE static inline PyObject*
 md_calc_identity(MultiDictObject* md, PyObject* key)
 {
@@ -210,6 +237,38 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
     *pidentity = identity;
     *phash = hash;
     return 0;
+}
+
+static inline PyObject*
+md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
+{
+    if (md->is_ci) return _ci_arg_to_key(md->state, key, identity);
+    return _arg_to_key(md->state, key, identity);
+}
+
+static inline PyObject*
+md_ensure_key(MultiDictObject* md, entry_t* entry)
+{
+    assert(entry >= htkeys_entries(md->keys));
+    assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
+    if (!md->is_ci || IStr_CheckExact(md->state, entry->key)) {
+        return md_calc_key(md, entry->key, entry->identity);
+    }
+    /* Building the istr can run Python code (a str subclass's __str__, a GC
+       finalizer) that mutates md and frees entry, so hold our own refs. */
+    uint64_t version = md->version;
+    PyObject* old_key = Py_NewRef(entry->key);
+    PyObject* identity = Py_NewRef(entry->identity);
+    PyObject* key = md_calc_key(md, old_key, identity);
+    if (key != NULL && md->version == version) {
+        entry->key = Py_NewRef(key);
+        Py_DECREF(old_key);
+    }
+    /* These can run __del__ or suspend the critical section, so the caller
+       must not touch entry after this returns. */
+    Py_DECREF(identity);
+    Py_DECREF(old_key);
+    return key;
 }
 
 #ifdef __cplusplus

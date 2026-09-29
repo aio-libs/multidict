@@ -1460,14 +1460,16 @@ class TestCIMultiDict(BaseMultiDictTest):
         assert d["CONTENT-TYPE"] == "text/html"
 
     def test_mixed_case_ascii_key_keeps_its_spelling(
-        self, cls: type[CIMultiDict[str]]
+        self,
+        cls: type[CIMultiDict[str]],
+        case_insensitive_str_class: type[istr],
     ) -> None:
         d = cls([("Content-Type", "text/html")])
 
         assert d["content-type"] == "text/html"
         (key,) = d.keys()
-        assert key == "Content-Type"
-        assert type(key) is str
+        assert str(key) == "Content-Type"
+        assert type(key) is case_insensitive_str_class
 
     def test_empty_str_key(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("", "value")])
@@ -1612,6 +1614,7 @@ def test_create_multidict_from_existing_multidict_new_pairs() -> None:
 def test_convert_multidict_to_cimultidict_and_back(
     case_sensitive_multidict_class: type[MultiDict[str]],
     case_insensitive_multidict_class: type[CIMultiDict[str]],
+    case_insensitive_str_class: type[istr],
 ) -> None:
     """Test conversion from MultiDict to CIMultiDict."""
     start_as_md = case_sensitive_multidict_class(
@@ -1634,8 +1637,7 @@ def test_convert_multidict_to_cimultidict_and_back(
     assert converted_to_ci.get("key2") == "value2"
     assert converted_to_ci["key2"] == "value2"
     converted_to_md = case_sensitive_multidict_class(converted_to_ci)
-    assert all(type(k) is str for k in converted_to_ci.keys())
-    assert all(type(k) is str for k in converted_to_md.keys())
+    assert all(type(k) is case_insensitive_str_class for k in converted_to_ci.keys())
     assert converted_to_md.get("KEY") == "value1"
     assert converted_to_md["KEY"] == "value1"
     assert converted_to_md.get("key2") == "value2"
@@ -3811,8 +3813,8 @@ def test_items_contains_list_shrunk_by_another_thread() -> None:
 def test_items_iter_key_finalizer_mutates(
     case_insensitive_multidict_class: type[CIMultiDict[str]],
 ) -> None:
-    """A str key whose __del__ mutates the multidict; the C iterator used to
-    read the freed entry after caching the istr dropped that key."""
+    """Caching the istr drops the stored str key, whose __del__ can mutate
+    the multidict; the C iterator used to read the freed entry after it."""
 
     class Key(str):
         def __del__(self) -> None:
@@ -3829,36 +3831,48 @@ def test_items_iter_key_finalizer_mutates(
     assert not d
 
 
-class _StrKey(str):
-    pass
-
-
-@pytest.mark.parametrize(
-    "read",
-    [
-        lambda d: next(iter(d)),
-        lambda d: next(iter(d.keys())),
-        lambda d: next(iter(d.items()))[0],
-        lambda d: d.popitem()[0],
-    ],
-    ids=["iter", "keys", "items", "popitem"],
-)
-@pytest.mark.parametrize("key_type", ["str", "subclass", "istr"])
-def test_read_returns_stored_key(
-    any_multidict_class: type[MultiDict[str]],
-    case_insensitive_str_class: type[str],
-    read: Callable[[MultiDict[str]], str],
-    key_type: str,
+def test_items_iter_key_str_mutates(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
 ) -> None:
-    """A key reads back as the very object that was inserted."""
-    makers: dict[str, Callable[[str], str]] = {
-        "str": str,
-        "subclass": _StrKey,
-        "istr": case_insensitive_str_class,
-    }
-    key = makers[key_type]("Content-Type")
-    d = any_multidict_class([(key, "v")])
-    assert read(d) is key
+    """Building the istr calls a str subclass's __str__, which can mutate the
+    multidict and free the entry the C iterator is still converting."""
+
+    class Key(str):
+        def __str__(self) -> str:
+            d.clear()
+            return str.__str__(self)
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with pytest.raises(RuntimeError, match="changed during iteration"):
+        next(it)
+    assert not d
+
+
+def test_items_iter_key_str_reinits(
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+) -> None:
+    """A __str__ re-initializing the multidict from a copy frees the entry
+    being converted; the C clone used to restore the version checked after."""
+
+    class Key(str):
+        def __str__(self) -> str:
+            d.__init__(other)  # type: ignore[misc]
+            return str.__str__(self)
+
+    d = case_insensitive_multidict_class()
+    d[Key("a")] = "v"
+    d["b"] = "w"
+    other = d.copy()
+    it = iter(d.items())
+    assert next(it) == ("a", "v")
+    with contextlib.suppress(RuntimeError):
+        next(it)
+    assert len(d) == 2
+    assert d["b"] == "w"
 
 
 @pytest.mark.c_extension

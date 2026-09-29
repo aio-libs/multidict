@@ -271,7 +271,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 e = next(entries)
             except StopIteration:
                 return
-            yield e.key, e.value
+            yield self._md._key(e.key), e.value
 
     @reprlib.recursive_repr()
     @_locked_md
@@ -513,7 +513,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 e = next(entries)
             except StopIteration:
                 return
-            yield e.key
+            yield self._md._key(e.key)
 
     @reprlib.recursive_repr()
     @_locked_md
@@ -646,6 +646,9 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 class _CSMixin:
     _ci: ClassVar[bool] = False
 
+    def _key(self, key: str) -> str:
+        return key
+
     def _identity(self, key: str) -> str:
         if type(key) is str:
             return key
@@ -656,6 +659,12 @@ class _CSMixin:
 
 class _CIMixin:
     _ci: ClassVar[bool] = True
+
+    def _key(self, key: str) -> str:
+        if type(key) is istr:
+            return key
+        else:
+            return istr(key)
 
     def _identity(self, key: str) -> str:
         if isinstance(key, istr):
@@ -1046,7 +1055,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             values = seen.get(e.identity)
             if values is None:
                 values = seen[e.identity] = [e.value]
-                result[e.key] = values
+                result[self._key(e.key)] = values
             else:
                 values.append(e.value)
             if self._version != version:
@@ -1302,7 +1311,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self._used -= 1
         self._incr_version()
 
-        return entry.key, entry.value
+        # istr() runs a str subclass's __str__, which may mutate self.
+        return self._key(entry.key), entry.value
 
     @_locked_pair_always
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:

@@ -1106,7 +1106,18 @@ md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
     }
     if (pkey) {
         assert(entry->key != NULL);
-        *pkey = Py_NewRef(entry->key);
+        *pkey = md_ensure_key(md, entry);  // last entry access
+        if (*pkey == NULL) {
+            assert(PyErr_Occurred());
+            if (pidentity) {
+                Py_CLEAR(*pidentity);
+            }
+            if (pvalue) {
+                Py_CLEAR(*pvalue);
+            }
+            ret = -1;
+            goto cleanup;
+        }
     }
 
     ++pos->pos;
@@ -1168,7 +1179,18 @@ md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
     }
     if (pkey) {
         assert(entry->key != NULL);
-        *pkey = Py_NewRef(entry->key);
+        *pkey = md_ensure_key(md, entry);  // last entry access
+        if (*pkey == NULL) {
+            assert(PyErr_Occurred());
+            if (pidentity) {
+                Py_CLEAR(*pidentity);
+            }
+            if (pvalue) {
+                Py_CLEAR(*pvalue);
+            }
+            ret = -1;
+            goto cleanup;
+        }
     }
 
     --pos->pos;
@@ -1204,7 +1226,10 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         }
         if (str_cmp(identity, entry->identity)) {
             if (pret != NULL) {
-                *pret = Py_NewRef(entry->key);
+                *pret = md_ensure_key(md, entry);
+                if (*pret == NULL) {
+                    return -1;
+                }
             }
             return 1;
         }
@@ -1527,11 +1552,14 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
             continue;  // not reachable from its own hash chain
         }
 
-        /* PyDict_SetItem() can run a str subclass's own __hash__, __eq__
+        /* Both calls below can run a str subclass's own __hash__, __eq__
            or __del__, which may mutate this multidict. That is refused the
            way md_next() refuses one, before `entry` or `collected` is
            trusted again. */
-        key = Py_NewRef(entry->key);
+        key = md_ensure_key(md, entry);
+        if (key == NULL) {
+            goto fail;
+        }
         if (PyDict_SetItem(*ret, key, lst) < 0) {
             goto fail;
         }
@@ -1871,8 +1899,9 @@ md_pop_item(MultiDictObject* md)
         md->keys->nentries = pos;
     }
     /* The entry's refs, taken over: building the result below can run
-       Python code that mutates md (on 3.10 and 3.11, a collection the tuple
-       triggers), so it runs once the pair is gone. */
+       Python code that mutates md (an istr key's __str__, or on 3.10 and
+       3.11 a collection the tuple triggers), so it runs once the pair is
+       gone. */
     PyObject* identity;
     PyObject* key;
     PyObject* value;
@@ -1880,7 +1909,12 @@ md_pop_item(MultiDictObject* md)
     bump_version(md);
     ASSERT_CONSISTENT(md);
 
+    Py_SETREF(key, md_calc_key(md, key, identity));
     Py_DECREF(identity);
+    if (key == NULL) {
+        Py_DECREF(value);
+        return NULL;
+    }
     PyObject* ret = PyTuple_New(2);
     if (ret == NULL) {
         Py_DECREF(key);

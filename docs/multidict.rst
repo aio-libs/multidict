@@ -38,12 +38,6 @@ MultiDict
              raise ValueError("expected exactly one Host header")
          host = values[0]
 
-   Keys are kept as given: iteration, :meth:`keys`, :meth:`items`,
-   :meth:`popitem` and every other method that returns a key hand back the
-   very object that was stored with the pair, never a copy or a converted
-   string. A stored key changes only when a write replaces it:
-   ``d[key] = value`` and :meth:`update` store the *key* they were given.
-
    .. method:: len(d)
 
       Return the number of items in multidict *d*.
@@ -310,20 +304,6 @@ CIMultiDict
 
    The class is inherited from :class:`MultiDict`.
 
-   Keys read back are the objects that were stored, as for
-   :class:`MultiDict`: a key added as :class:`str` comes back as that
-   :class:`str`, a key added as :class:`istr` as that :class:`istr`. Only
-   comparisons are case insensitive; the key's spelling and type are kept::
-
-      >>> dct = CIMultiDict([('Content-Type', 'text/html')])
-      >>> [type(key) for key in dct]
-      [<class 'str'>]
-
-   .. versionchanged:: 7.0.1
-
-      Keys are returned as stored. Previously every key read back was an
-      :class:`istr`, built from a :class:`str` key on its first read.
-
    .. seealso::
 
       :class:`CIMultiDictProxy` can be used to create a read-only view
@@ -480,9 +460,6 @@ handled by :class:`CIMultiDict`, not by ``istr`` equality.
 
 For performance :class:`istr` strings should be created once and
 stored somewhere for the later usage, see :mod:`aiohttp:aiohttp.hdrs` for example.
-A :class:`CIMultiDict` returns its keys as they were stored, so a
-:class:`str` key read from one and used with another is folded again
-there; insert :class:`istr` keys when they travel between mappings.
 
 How much that is worth, as instruction counts on CPython 3.14 measured
 the way :ref:`benchmarking-reference` describes. ``d[key]`` and

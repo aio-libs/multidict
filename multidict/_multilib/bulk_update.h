@@ -248,6 +248,11 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
             if (hash == -1) {
                 goto fail;
             }
+            /* materialize key */
+            Py_SETREF(key, md_calc_key(other, key, identity));
+            if (key == NULL) {
+                goto fail;
+            }
         } else {
             identity = entry->identity;
             hash = entry->hash;

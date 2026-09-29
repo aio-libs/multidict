@@ -40,8 +40,8 @@ extern "C" {
    that write stands. Every write stores a new value, so each doomed entry
    is recorded with its value, referenced to keep the address from being
    reused meanwhile, and md_post_update() removes only the entries that
-   still hold it. The key is no better a guide: a write may store the very
-   key object it replaces. */
+   still hold it. The key is no guide: reading a CIMultiDict's key swaps
+   the stored str for its istr. */
 typedef struct _doomed_entry {
     Py_ssize_t index;
     PyObject* value;
