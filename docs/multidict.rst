@@ -319,7 +319,7 @@ CIMultiDict
       >>> [type(key) for key in dct]
       [<class 'str'>]
 
-   .. versionchanged:: 7.1.0
+   .. versionchanged:: 7.0.1
 
       Keys are returned as stored. Previously every key read back was an
       :class:`istr`, built from a :class:`str` key on its first read.
