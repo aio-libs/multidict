@@ -661,10 +661,12 @@ class _CIMixin:
     _ci: ClassVar[bool] = True
 
     def _key(self, key: str) -> str:
+        if type(key) is str:
+            return istr(key)
         if type(key) is istr:
             return key
-        # str.__str__(), not istr(key): a str subclass's own __str__ may
-        # spell a different string than the key
+        # istr(key) would call a subclass's own __str__, which may spell a
+        # different string than the key
         return istr(str.__str__(key))
 
     def _identity(self, key: str) -> str:
