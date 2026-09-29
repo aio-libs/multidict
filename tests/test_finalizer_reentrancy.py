@@ -60,6 +60,22 @@ _METHODS: dict[str, Callable[[Any, Callable[..., object]], object]] = {
     "copy": lambda d, pairs: d.copy(),
 }
 
+# Methods that only store or read, so no finalizer can run inside them;
+# they are here to show that, and that the backends agree on the result.
+_QUIET = {"add", "setdefault", "copy"}
+# Methods that hand a removed value back to the caller, which keeps it.
+_RETURN_VALUE = {"pop", "popone", "popall", "popitem"}
+
+
+def _fires(cls_name: str, side: str, method: str) -> bool:
+    """Whether the call itself drops a finalizer-bearing object."""
+    return not (
+        method in _QUIET
+        or (side == "value" and method in _RETURN_VALUE)
+        # a MultiDict hands back the popped key itself, a CIMultiDict a copy
+        or (side == "key" and method == "popitem" and cls_name == "MultiDict")
+    )
+
 
 def _plain(obj: object) -> object:
     """What a result looks like with the finalizer objects' types removed."""
@@ -111,5 +127,6 @@ def test_finalizer_mutation_matches_pure_python(
     c_outcome = _run(c_module, cls_name, method, side, action)
     py_outcome = _run(py_module, cls_name, method, side, action)
     assert c_outcome == py_outcome
-    _, items, length, _ = py_outcome
+    _, items, length, fired = py_outcome
     assert length == len(items)  # type: ignore[arg-type]
+    assert (fired > 0) == _fires(cls_name, side, method)
