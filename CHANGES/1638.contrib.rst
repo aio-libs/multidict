@@ -1,7 +1,8 @@
-CI now builds every tested artifact in one first stage, the source
-distribution together with the pure-Python and Linux binary wheels, and
-the remaining test jobs run against that source distribution instead of
-a repository checkout. The wheel builds for the other platforms no
-longer gate the test matrix, the ``windows-11-arm`` wheel build is again
-limited to release tags, and x86_64 macOS wheels are tested under
-Rosetta outside pull requests only -- by :user:`asvetlov`.
+Moved every artifact the CI test jobs consume into one first stage, the
+source distribution together with the pure-Python and Linux binary
+wheels, and switched the remaining test jobs to that source distribution
+instead of a repository checkout. The wheel builds for the other
+platforms no longer gate the test matrix, the ``windows-11-arm`` wheel
+build got limited to release tags again, and x86_64 macOS wheels are now
+tested under Rosetta outside pull requests only
+-- by :user:`asvetlov`.
