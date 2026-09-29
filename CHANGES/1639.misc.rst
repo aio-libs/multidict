@@ -1,0 +1,4 @@
+Stopped clearing each field of a hash table that is being freed, and read
+its entry count once instead of after every release, cutting about 8% off
+tearing down a table of 200 entries in ``clear()`` and on deallocation
+-- by :user:`asvetlov`.

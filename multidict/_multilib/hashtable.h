@@ -90,11 +90,15 @@ GROWTH_RATE(MultiDictObject* md)
 NOINLINE static void
 _htkeys_dispose(pool_t* pools, htkeys_t* keys)
 {
+    /* Nothing can reach the table any more, so a finalizer run by a decref
+       cannot see the stale pointers: no need to clear them, nor to reload
+       nentries after each call. */
     entry_t* entries = htkeys_entries(keys);
-    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-        Py_CLEAR(entries[i].identity);
-        Py_CLEAR(entries[i].key);
-        Py_CLEAR(entries[i].value);
+    Py_ssize_t nentries = keys->nentries;
+    for (Py_ssize_t i = 0; i < nentries; i++) {
+        Py_XDECREF(entries[i].identity);
+        Py_XDECREF(entries[i].key);
+        Py_XDECREF(entries[i].value);
     }
     htkeys_free(pools, keys);
 }
