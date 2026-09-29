@@ -17,10 +17,9 @@ extern "C" {
 #ifndef NDEBUG
 
 static inline int
-_md_check_consistency(MultiDictObject* md, bool update)
+_md_check_consistency(MultiDictObject* md)
 {
     //    ASSERT_WORLD_STOPPED_OR_DICT_LOCKED(op);
-    (void)update;
 
 #define CHECK(expr) assert(expr)
     //    do { if (!(expr)) { assert(0 && Py_STRINGIFY(expr)); } } while (0)
@@ -95,9 +94,9 @@ _md_dump(MultiDictObject* md)
     return 1;
 }
 
-#define ASSERT_CONSISTENT(md, update) assert(_md_check_consistency(md, update))
+#define ASSERT_CONSISTENT(md) assert(_md_check_consistency(md))
 #else
-#define ASSERT_CONSISTENT(md, update) assert(1)
+#define ASSERT_CONSISTENT(md) assert(1)
 #endif  // NDEBUG
 
 #ifdef __cplusplus

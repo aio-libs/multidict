@@ -1080,7 +1080,7 @@ done:
     Py_CLEAR(identity);
     Py_CLEAR(key);
     Py_CLEAR(value);
-    ASSERT_CONSISTENT(self->md, false);
+    ASSERT_CONSISTENT(self->md);
     return ret;
 }
 
@@ -1138,7 +1138,7 @@ _multidict_itemsview_isdisjoint_impl(_Multidict_ViewObject* self,
                 Py_CLEAR(arg);
                 Py_CLEAR(identity);
                 Py_CLEAR(value);
-                ASSERT_CONSISTENT(self->md, false);
+                ASSERT_CONSISTENT(self->md);
                 Py_RETURN_FALSE;
             }
         }
@@ -1151,7 +1151,7 @@ _multidict_itemsview_isdisjoint_impl(_Multidict_ViewObject* self,
     if (st < 0) {
         return NULL;
     }
-    ASSERT_CONSISTENT(self->md, false);
+    ASSERT_CONSISTENT(self->md);
     Py_RETURN_TRUE;
 fail:
     Py_CLEAR(matches);
