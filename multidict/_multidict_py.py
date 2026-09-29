@@ -663,8 +663,9 @@ class _CIMixin:
     def _key(self, key: str) -> str:
         if type(key) is istr:
             return key
-        else:
-            return istr(key)
+        # str.__str__(), not istr(key): a str subclass's own __str__ may
+        # spell a different string than the key
+        return istr(str.__str__(key))
 
     def _identity(self, key: str) -> str:
         if isinstance(key, istr):

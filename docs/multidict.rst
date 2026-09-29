@@ -304,6 +304,13 @@ CIMultiDict
 
    The class is inherited from :class:`MultiDict`.
 
+   Keys are converted to :class:`istr`::
+
+      >>> dct = CIMultiDict([('Content-Type', 'text/html')])
+      >>> key = next(iter(dct))
+      >>> isinstance(key, istr), key
+      (True, 'Content-Type')
+
    .. seealso::
 
       :class:`CIMultiDictProxy` can be used to create a read-only view

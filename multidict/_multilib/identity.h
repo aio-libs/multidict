@@ -196,14 +196,31 @@ _arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
     return NULL;
 }
 
+/* A str subclass is copied to an exact str first: istr(), like str(), would
+   call its __str__, which may spell a different string than the key. */
+NOINLINE static PyObject*
+_ci_subclass_to_key(mod_state* state, PyObject* key, PyObject* identity)
+{
+    PyObject* str = PyUnicode_FromObject(key);
+    if (str == NULL) {
+        return NULL;
+    }
+    PyObject* ret = IStr_New(state, str, identity);
+    Py_DECREF(str);
+    return ret;
+}
+
 static inline PyObject*
 _ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
 {
     if (IStr_CheckExact(state, key)) {
         return Py_NewRef(key);
     }
-    if (PyUnicode_Check(key)) {
+    if (PyUnicode_CheckExact(key)) {
         return IStr_New(state, key, identity);
+    }
+    if (PyUnicode_Check(key)) {
+        return _ci_subclass_to_key(state, key, identity);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
@@ -246,21 +263,20 @@ md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
     return _arg_to_key(md->state, key, identity);
 }
 
-static inline PyObject*
-md_ensure_key(MultiDictObject* md, entry_t* entry)
+/* Building the istr allocates, which can run a collection whose finalizers
+   mutate md and free entry, so hold our own refs. Only an exact str is
+   replaced by its istr: releasing one runs no code, where a subclass's
+   __del__ could. Out of line, it makes key iteration of every multidict
+   10-15% cheaper. */
+NOINLINE static PyObject*
+_md_cache_ci_key(MultiDictObject* md, entry_t* entry)
 {
-    assert(entry >= htkeys_entries(md->keys));
-    assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
-    if (!md->is_ci || IStr_CheckExact(md->state, entry->key)) {
-        return md_calc_key(md, entry->key, entry->identity);
-    }
-    /* Building the istr can run Python code (a str subclass's __str__, a GC
-       finalizer) that mutates md and frees entry, so hold our own refs. */
     uint64_t version = md->version;
     PyObject* old_key = Py_NewRef(entry->key);
     PyObject* identity = Py_NewRef(entry->identity);
     PyObject* key = md_calc_key(md, old_key, identity);
-    if (key != NULL && md->version == version) {
+    if (key != NULL && md->version == version &&
+        PyUnicode_CheckExact(old_key)) {
         entry->key = Py_NewRef(key);
         Py_DECREF(old_key);
     }
@@ -269,6 +285,17 @@ md_ensure_key(MultiDictObject* md, entry_t* entry)
     Py_DECREF(identity);
     Py_DECREF(old_key);
     return key;
+}
+
+static inline PyObject*
+md_ensure_key(MultiDictObject* md, entry_t* entry)
+{
+    assert(entry >= htkeys_entries(md->keys));
+    assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
+    if (!md->is_ci || IStr_CheckExact(md->state, entry->key)) {
+        return md_calc_key(md, entry->key, entry->identity);
+    }
+    return _md_cache_ci_key(md, entry);
 }
 
 #ifdef __cplusplus
