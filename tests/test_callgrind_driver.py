@@ -68,11 +68,16 @@ def test_main_checks_only_selected_cells(
     assert not stage_dir.exists()
 
 
+@pytest.mark.parametrize("impl_id", [None, "multidict_py"])
 def test_main_self_check_checks_every_cell(
-    driver: ModuleType, monkeypatch: pytest.MonkeyPatch
+    driver: ModuleType, monkeypatch: pytest.MonkeyPatch, impl_id: str | None
 ) -> None:
+    # Every operation, of the one implementation --impl names if given: the
+    # hint self_check() gives for an unimportable one has to work here too.
     checked: list[object] = []
     monkeypatch.setattr(driver, "self_check", checked.append)
-    monkeypatch.setattr(sys, "argv", ["callgrind_driver.py", "--self-check"])
+    argv = ["callgrind_driver.py", "--self-check"]
+    argv += [] if impl_id is None else ["--impl", impl_id]
+    monkeypatch.setattr(sys, "argv", argv)
     assert driver.main() == 0
-    assert checked == [driver.operations.selected()]
+    assert checked == [driver.operations.selected(impl_id=impl_id)]
