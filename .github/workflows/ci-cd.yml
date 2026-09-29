@@ -536,7 +536,6 @@ jobs:
   benchmark:
     name: Benchmark ${{ matrix.build }} ${{ matrix.shard }}
     needs:
-    - build-pure-python-dists  # for the sdist to build and test from
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -562,13 +561,11 @@ jobs:
         - shard: 2
           marks: benchmark_shard_2
     steps:
-    - name: Retrieve the project source from an sdist inside the GHA artifact
-      uses: re-actors/checkout-python-sdist@release/v2
-      with:
-        source-tarball-name: >-
-          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
-        workflow-artifact-name: >-
-          ${{ needs.pre-setup.outputs.dists-artifact-name }}
+    # The only test job still on a repository checkout: the CodSpeed
+    # runner opens the workspace as a git repository and fails without
+    # one, so it can't work from an unpacked sdist.
+    - name: Checkout project
+      uses: actions/checkout@v7
     - name: Setup Python ${{ matrix.python-version }}
       id: python-install
       uses: actions/setup-python@v7
