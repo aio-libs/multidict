@@ -1,0 +1,6 @@
+Sped up building an :class:`~multidict.istr` from a :class:`str` in the C
+extension by copying the string directly instead of going through
+``str.__new__()``; reading a :class:`str` key of a
+:class:`~multidict.CIMultiDict` for the first time and
+:meth:`~multidict.MultiDict.popitem` became about 30% cheaper in
+instructions -- by :user:`asvetlov`.
