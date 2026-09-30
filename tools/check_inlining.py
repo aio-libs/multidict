@@ -147,14 +147,14 @@ RULES = (
         "_md_parse_item",
         "*",
         BOTH,
-        "#1642: six copies of the bulk update took it out of line, "
+        "#1644: six copies of the bulk update took it out of line, "
         "37 Ir per constructor item",
     ),
     Rule(
         "md_add_with_hash_steal_refs",
         "*",
         BOTH,
-        "#1642: per-kind layouts pushed it out of the constructor's loop, "
+        "#1644: per-kind layouts pushed it out of the constructor's loop, "
         "CIMultiDict(items) +10%",
     ),
     Rule(
