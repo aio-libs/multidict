@@ -1,6 +1,6 @@
 * @asvetlov
 setup.py @webknjaz @asvetlov
-setup.cfg @webknjaz @asvetlov
+pyproject.toml @webknjaz @asvetlov
 *.yml @webknjaz @asvetlov
 *.rst @webknjaz @asvetlov
 /multidict/*.c @iemelyanov @asvetlov

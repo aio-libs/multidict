@@ -140,6 +140,7 @@ runtime
 runtimes
 s390x
 sdist
+SPDX
 stateful
 str
 subclassable
