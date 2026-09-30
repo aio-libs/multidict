@@ -418,7 +418,8 @@ retire_watcher(mod_state* state, int watcher_id)
 
 #endif /* Py_GIL_DISABLED */
 
-// A new key for a live entry; see entry_init_key_k().
+/* A new key for a live entry. A KIND_STR key doubles as the identity, the
+   field lock-free readers check first, so it is published like one. */
 static inline void
 replace_key_k(uint8_t kind, entry_t* entry, PyObject* key)
 {

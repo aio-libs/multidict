@@ -266,36 +266,16 @@ entry_set_hash_k(uint8_t kind, entry_t* entry, Py_hash_t hash)
     }
 }
 
-// A KIND_STR entry's identity is its key, under the key's one reference.
-static inline bool
-entry_owns_identity_k(uint8_t kind)
-{
-    return kind != KIND_STR;
-}
+/* What a caller knows of a table's kind before reading it: a CIMultiDict
+   entry point passes KIND_ANYSTR, since its tables never take another,
+   and every test on the kind then folds away at compile time. */
+#define KIND_UNKNOWN 0xff
 
-/* A KIND_STR key doubles as the identity, the field lock-free readers
-   check first, so there it is written only by publish_identity() and
-   cleared only by reset_identity(). */
-static inline void
-entry_init_key_k(uint8_t kind, entry_t* entry, PyObject* key)
+ALWAYS_INLINE static inline uint8_t
+htkeys_kind(const htkeys_t* keys, uint8_t known)
 {
-#ifdef Py_GIL_DISABLED
-    if (kind != KIND_STR) {
-        entry->key = key;
-    }
-#else
-    // no reader to order against: publish_identity() stores it again
-    (void)kind;
-    entry->key = key;
-#endif
-}
-
-static inline void
-entry_clear_key_k(uint8_t kind, entry_t* entry)
-{
-    if (kind != KIND_STR) {
-        entry->key = NULL;
-    }
+    assert(known == KIND_UNKNOWN || known == keys->kind);
+    return known == KIND_UNKNOWN ? keys->kind : known;
 }
 
 static inline size_t
