@@ -3813,8 +3813,8 @@ def test_items_contains_list_shrunk_by_another_thread() -> None:
 def test_items_iter_key_finalizer_mutates(
     case_insensitive_multidict_class: type[CIMultiDict[str]],
 ) -> None:
-    """Caching the istr drops the stored str key, whose __del__ can mutate
-    the multidict; the C iterator used to read the freed entry after it."""
+    """A str subclass key whose __del__ mutates the multidict; the C iterator
+    used to release it when caching the istr, then read the freed entry."""
 
     class Key(str):
         def __del__(self) -> None:
@@ -3831,48 +3831,59 @@ def test_items_iter_key_finalizer_mutates(
     assert not d
 
 
-def test_items_iter_key_str_mutates(
-    case_insensitive_multidict_class: type[CIMultiDict[str]],
+@pytest.mark.parametrize(
+    "read",
+    [
+        lambda d: next(iter(d)),
+        lambda d: next(iter(d.keys())),
+        lambda d: next(iter(d.items()))[0],
+        lambda d: next(iter(d.to_dict())),
+        lambda d: d.popitem()[0],
+    ],
+    ids=["iter", "keys", "items", "to_dict", "popitem"],
+)
+def test_ci_key_ignores_str_subclass_dunder_str(
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    case_insensitive_str_class: type[str],
+    read: Callable[[CIMultiDict[int]], str],
 ) -> None:
-    """Building the istr calls a str subclass's __str__, which can mutate the
-    multidict and free the entry the C iterator is still converting."""
+    """The istr a str subclass key reads back as spells the key's own string,
+    not what the subclass's __str__ returns."""
+
+    class Token(str):
+        def __str__(self) -> str:
+            return "spoof"
+
+    token = Token("Token")
+    assert str(token) == "spoof"
+    d = case_insensitive_multidict_class([(token, 1)])
+    key = read(d)
+    assert type(key) is case_insensitive_str_class
+    assert key == "Token"
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="__del__ does not run promptly on PyPy",
+)
+def test_ci_read_keeps_str_subclass_key(
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+) -> None:
+    """Reading a str subclass key never releases it, so its __del__ cannot
+    run inside the read."""
+    released: list[bool] = []
 
     class Key(str):
-        def __str__(self) -> str:
-            d.clear()
-            return str.__str__(self)
+        def __del__(self) -> None:
+            released.append(True)
 
-    d = case_insensitive_multidict_class()
-    d[Key("a")] = "v"
-    d["b"] = "w"
-    it = iter(d.items())
-    assert next(it) == ("a", "v")
-    with pytest.raises(RuntimeError, match="changed during iteration"):
-        next(it)
-    assert not d
-
-
-def test_items_iter_key_str_reinits(
-    case_insensitive_multidict_class: type[CIMultiDict[str]],
-) -> None:
-    """A __str__ re-initializing the multidict from a copy frees the entry
-    being converted; the C clone used to restore the version checked after."""
-
-    class Key(str):
-        def __str__(self) -> str:
-            d.__init__(other)  # type: ignore[misc]
-            return str.__str__(self)
-
-    d = case_insensitive_multidict_class()
-    d[Key("a")] = "v"
-    d["b"] = "w"
-    other = d.copy()
-    it = iter(d.items())
-    assert next(it) == ("a", "v")
-    with contextlib.suppress(RuntimeError):
-        next(it)
-    assert len(d) == 2
-    assert d["b"] == "w"
+    d = case_insensitive_multidict_class([(Key("a"), 1)])
+    assert list(d) == ["a"]
+    assert list(d.items()) == [("a", 1)]
+    assert d.to_dict() == {"a": [1]}
+    assert not released
+    d.clear()
+    assert released == [True]
 
 
 @pytest.mark.c_extension
