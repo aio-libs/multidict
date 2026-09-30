@@ -13,7 +13,8 @@ Contributor-facing rules live in [AGENTS.md](AGENTS.md) and
 ## Versioning
 
 `multidict/__init__.py`'s `__version__` is the single source of
-truth; `setup.cfg` reads it through `version = attr:` and the
+truth; `pyproject.toml` reads it through
+`[tool.setuptools.dynamic]`'s `version = { attr = ... }` and the
 release workflow reads it to name the GitHub Release. Between
 releases it carries a `.dev0` suffix, so `6.9.2.dev0` means "6.9.2
 is not out yet".

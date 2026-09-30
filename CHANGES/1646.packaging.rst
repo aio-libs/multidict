@@ -1,0 +1,3 @@
+Moved the project metadata from ``setup.cfg`` to ``pyproject.toml`` per
+:pep:`621`, and removed the now-empty ``setup.cfg`` along with its obsolete
+``[bdist_wheel] universal`` flag -- by :user:`aiolibsbot`.

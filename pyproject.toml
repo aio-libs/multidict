@@ -1,8 +1,76 @@
 [build-system]
 requires = [
-  "setuptools >= 47",  # Minimum required for `version = attr:`
+  # setuptools >= 61.0 reads `[project]` from this file; >= 67.0 is
+  # required for Python 3.12+ support.
+  # Next step should be >= 77.0 for PEP 639 support.
+  # Don't bump too early to give distributors time to update
+  # their setuptools version.
+  "setuptools >= 67.0",
 ]
 build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "multidict"
+description = "multidict implementation"
+authors = [{ name = "Andrew Svetlov", email = "andrew.svetlov@gmail.com" }]
+license = { text = "Apache License 2.0" }
+requires-python = ">= 3.10"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+
+  "Intended Audience :: Developers",
+
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "typing-extensions >= 4.1.0; python_version < '3.11'",
+]
+dynamic = ["version", "readme"]
+
+[project.urls]
+"Homepage" = "https://github.com/aio-libs/multidict"
+"Chat: Matrix" = "https://matrix.to/#/#aio-libs:matrix.org"
+"Chat: Matrix Space" = "https://matrix.to/#/#aio-libs-space:matrix.org"
+"CI: GitHub" = "https://github.com/aio-libs/multidict/actions"
+"Code of Conduct" = "https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md"
+"Coverage: codecov" = "https://codecov.io/github/aio-libs/multidict"
+"Docs: Changelog" = "https://multidict.aio-libs.org/en/latest/changes/"
+"Docs: RTD" = "https://multidict.aio-libs.org"
+"GitHub: issues" = "https://github.com/aio-libs/multidict/issues"
+"GitHub: repo" = "https://github.com/aio-libs/multidict"
+
+
+[tool.setuptools]
+packages = ["multidict"]
+license-files = ["LICENSE"]
+# setuptools defaults this to true for a `[project]`-configured build,
+# unlike the `setup.cfg` default it replaces. Left on, every file
+# `MANIFEST.in` pulls into the sdist also lands in the wheel, including
+# the internal `_multilib/*.h` headers and the C sources. Only the
+# `package-data` entries below belong in a wheel.
+include-package-data = false
+
+[tool.setuptools.dynamic]
+version = { attr = "multidict.__version__" }
+readme = { file = "README.rst", content-type = "text/x-rst" }
+
+[tool.setuptools.package-data]
+# Ship just the public capsule headers in wheels, not the internal
+# _multilib/*.h ones: third-party C extensions build against these two.
+# __init__.pxd is the Cython equivalent, letting third-party Cython code
+# `cimport multidict`.
+multidict = [
+  "multidict_capi.h",
+  "multidict_capi_struct.h",
+  "__init__.pxd",
+]
 
 
 [tool.ruff]
