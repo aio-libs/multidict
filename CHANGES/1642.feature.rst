@@ -1,0 +1,7 @@
+Made :class:`~multidict.MultiDict` in the C extension store a mapping whose
+keys are all exact :class:`str` in half the space, keeping no separate
+identity or hash per entry, which made :meth:`~multidict.MultiDict.copy`
+about 58% and :meth:`~multidict.MultiDict.clear` about 27% cheaper in
+instructions for 200 keys; any other key moves the mapping to the full
+layout, and :meth:`~multidict.MultiDict.clear` lets it start compact again
+-- by :user:`asvetlov`.

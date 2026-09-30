@@ -1884,7 +1884,7 @@ drain_pools(mod_state* state)
 static void
 close_pools(mod_state* state)
 {
-    for (int i = 0; i < HTKEYS_POOL_CLASSES; i++) {
+    for (int i = 0; i < HTKEYS_POOLS; i++) {
         pool_init(state->htkeys_pools + i, 0);
     }
     pool_init(&state->view_pool, 0);

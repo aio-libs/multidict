@@ -112,16 +112,17 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
 
     Py_ssize_t count = 0;
     for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
-        entry_t* entry = htkeys_entry_at(keys, entries, pos);
-        if (entry_identity(keys, entry) == NULL) {
+        entry_t* entry = entry_at_k(kind, entries, pos);
+        if (entry_identity_k(kind, entry) == NULL) {
             continue;
         }
 
-        PyObject* identity = Py_NewRef(entry_identity(keys, entry));
-        Py_hash_t hash = entry_hash(keys, entry);
+        PyObject* identity = Py_NewRef(entry_identity_k(kind, entry));
+        Py_hash_t hash = entry_hash_k(kind, entry);
         PyObject* value = Py_NewRef(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
@@ -174,6 +175,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
     htkeysiter_t iter;
     htkeysiter_init(&iter, keys, hash);
 
@@ -187,11 +189,11 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = htkeys_entry_at(keys, entries, iter.index);
-        if (entry_hash(keys, entry) != hash) {
+        entry_t* entry = entry_at_k(kind, entries, iter.index);
+        if (entry_hash_k(kind, entry) != hash) {
             continue;
         }
-        if (!str_cmp(identity, entry_identity(keys, entry))) {
+        if (!str_cmp(identity, entry_identity_k(kind, entry))) {
             continue;
         }
 

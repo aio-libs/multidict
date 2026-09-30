@@ -39,21 +39,26 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
            update_marks_t* marks)
 {
     bool found = false;
+    if (md->keys->kind == KIND_STR && UNLIKELY(key != identity) &&
+        md_to_anystr(md) < 0) {
+        return -1;
+    }
     if (update_marks_sync(marks, md) < 0) {
         return -1;
     }
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
+    uint8_t kind = md->keys->kind;
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
-        if (hash != entry_hash(md->keys, entry) ||
+        entry_t* entry = entry_at_k(kind, entries, iter.index);
+        if (hash != entry_hash_k(kind, entry) ||
             bitmap_test(&marks->updated, iter.index) ||
-            !str_cmp(identity, entry_identity(md->keys, entry))) {
+            !str_cmp(identity, entry_identity_k(kind, entry))) {
             continue;
         }
         if (!found) {
@@ -68,7 +73,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             // old_key/old_value decref deferred: see reflist_t
             PyObject* old_key = entry->key;
             PyObject* old_value = load_value(entry);
-            entry->key = Py_NewRef(key);
+            replace_key_k(kind, entry, Py_NewRef(key));
             publish_value(entry, Py_NewRef(value));
             md_watch_record(md,
                             MultiDict_EVENT_REPLACED,
@@ -109,18 +114,19 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
+    uint8_t kind = md->keys->kind;
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
+        entry_t* entry = entry_at_k(kind, entries, iter.index);
         /* An entry this batch added doesn't count as already present. */
-        if (hash != entry_hash(md->keys, entry) ||
+        if (hash != entry_hash_k(kind, entry) ||
             bitmap_test(&marks->updated, iter.index)) {
             continue;
         }
-        if (str_cmp(identity, entry_identity(md->keys, entry))) {
+        if (str_cmp(identity, entry_identity_k(kind, entry))) {
             return 0;
         }
     }
@@ -144,6 +150,7 @@ restart:
     htkeys_t* keys = md->keys;
     uint64_t version = md->version;
     entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
     for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {
         doomed_entry_t* doomed = marks->doomed + i;
         Py_ssize_t pos = doomed->index;
@@ -153,22 +160,22 @@ restart:
         }
         assert(pos < keys->nentries);
         bitmap_clear(&marks->deleted, pos);
-        entry_t* entry = htkeys_entry_at(keys, entries, pos);
+        entry_t* entry = entry_at_k(kind, entries, pos);
         // Python code run between items may have removed or rewritten it
-        if (entry_identity(keys, entry) == NULL ||
+        if (entry_identity_k(kind, entry) == NULL ||
             load_value(entry) != doomed->value) {
             continue;
         }
         htkeysiter_t iter;
-        htkeysiter_init(&iter, keys, entry_hash(keys, entry));
+        htkeysiter_init(&iter, keys, entry_hash_k(kind, entry));
         while (iter.index != pos) {
             assert(iter.index != DKIX_EMPTY);
             htkeysiter_next(&iter);
         }
         md_watch_record(md,
                         MultiDict_EVENT_DELETED,
-                        entry_identity(keys, entry),
-                        entry_hash(keys, entry),
+                        entry_identity_k(kind, entry),
+                        entry_hash_k(kind, entry),
                         entry->key,
                         entry->value,
                         NULL);
@@ -231,11 +238,12 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     }
 
     entry_t* entries = htkeys_entries(other->keys);
+    uint8_t kind = other->keys->kind;
     Py_ssize_t nentries = other->keys->nentries;
 
     for (pos = 0; pos < nentries; pos++) {
-        entry_t* entry = htkeys_entry_at(other->keys, entries, pos);
-        if (entry_identity(other->keys, entry) == NULL) {
+        entry_t* entry = entry_at_k(kind, entries, pos);
+        if (entry_identity_k(kind, entry) == NULL) {
             continue;
         }
         if (recalc_identity) {
@@ -257,8 +265,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                 goto fail;
             }
         } else {
-            identity = entry_identity(other->keys, entry);
-            hash = entry_hash(other->keys, entry);
+            identity = entry_identity_k(kind, entry);
+            hash = entry_hash_k(kind, entry);
             key = entry->key;
             value = entry->value;
         }
@@ -287,6 +295,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
             /* Both lower() and a finalizer run by the decrefs above can
                replace other's table. */
             entries = htkeys_entries(other->keys);
+            kind = other->keys->kind;
             if (nentries > other->keys->nentries) {
                 nentries = other->keys->nentries;
             }
@@ -311,12 +320,13 @@ md_extend_self(MultiDictObject* md)
 
     Py_ssize_t nentries = md->keys->nentries;
     entry_t* entries = htkeys_entries(md->keys);
+    uint8_t kind = md->keys->kind;
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
-        entry_t* entry = htkeys_entry_at(md->keys, entries, pos);
-        if (entry_identity(md->keys, entry) != NULL) {
+        entry_t* entry = entry_at_k(kind, entries, pos);
+        if (entry_identity_k(kind, entry) != NULL) {
             if (md_add_with_hash(md,
-                                 entry_hash(md->keys, entry),
-                                 entry_identity(md->keys, entry),
+                                 entry_hash_k(kind, entry),
+                                 entry_identity_k(kind, entry),
                                  entry->key,
                                  entry->value) < 0) {
                 return -1;

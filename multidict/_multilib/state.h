@@ -69,7 +69,7 @@ typedef struct {
        One pool serves all three view types and one all three iterator
        types: within a family the types differ only in their methods,
        so a shell fits any of them. */
-    pool_t htkeys_pools[HTKEYS_POOL_CLASSES];
+    pool_t htkeys_pools[HTKEYS_POOLS];
     pool_t view_pool;
     pool_t iter_pool;
     pool_t md_pool;
