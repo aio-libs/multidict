@@ -115,13 +115,13 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
 
     Py_ssize_t count = 0;
     for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
-        entry_t* entry = entries + pos;
-        if (entry->identity == NULL) {
+        entry_t* entry = htkeys_entry_at(keys, entries, pos);
+        if (entry_identity(keys, entry) == NULL) {
             continue;
         }
 
-        PyObject* identity = Py_NewRef(entry->identity);
-        Py_hash_t hash = entry->hash;
+        PyObject* identity = Py_NewRef(entry_identity(keys, entry));
+        Py_hash_t hash = entry_hash(keys, entry);
         PyObject* value = Py_NewRef(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
@@ -187,11 +187,11 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
-        if (entry->hash != hash) {
+        entry_t* entry = htkeys_entry_at(keys, entries, iter.index);
+        if (entry_hash(keys, entry) != hash) {
             continue;
         }
-        if (!str_cmp(identity, entry->identity)) {
+        if (!str_cmp(identity, entry_identity(keys, entry))) {
             continue;
         }
 
