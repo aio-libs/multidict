@@ -158,28 +158,26 @@ bump_version(MultiDictObject* md)
 }
 
 static inline PyObject*
-load_identity(const htkeys_t* keys, entry_t* entry)
+load_identity_k(uint8_t kind, entry_t* entry)
 {
-    (void)keys;
-    return (PyObject*)atomic_load_ptr((void* const*)&entry->identity);
+    return (PyObject*)atomic_load_ptr(
+        (void* const*)entry_identity_slot_k(kind, entry));
 }
 
 /* The GIL arm skips the marking: a no-op there, but a real call. */
 static inline void
-publish_identity(const htkeys_t* keys, entry_t* entry, PyObject* identity)
+publish_identity_k(uint8_t kind, entry_t* entry, PyObject* identity)
 {
-    (void)keys;
     PyUnstable_EnableTryIncRef(identity);
-    atomic_store_ptr((void**)&entry->identity, identity);
+    atomic_store_ptr((void**)entry_identity_slot_k(kind, entry), identity);
 }
 
 /* Leaves the old reference to the caller, which decrefs it only once
    md's bookkeeping is consistent again. */
 static inline void
-reset_identity(const htkeys_t* keys, entry_t* entry)
+reset_identity_k(uint8_t kind, entry_t* entry)
 {
-    (void)keys;
-    atomic_store_ptr((void**)&entry->identity, NULL);
+    atomic_store_ptr((void**)entry_identity_slot_k(kind, entry), NULL);
 }
 
 static inline PyObject*
@@ -207,17 +205,26 @@ reset_value(entry_t* entry)
    so a reader's plain read would race it. Relaxed is enough: it is
    read only after the identity check has ordered the rest. */
 static inline Py_hash_t
-load_hash(const htkeys_t* keys, entry_t* entry)
+load_hash_k(uint8_t kind, entry_t* entry)
 {
-    (void)keys;
+    if (kind == KIND_STR) {
+        /* -1 is never a str's hash, so a slot being emptied reads as a
+           mismatch. The key is still readable if a writer is releasing
+           it: publish_identity() made it TryIncRef-able, which defers
+           the free. */
+        PyObject* key = (PyObject*)atomic_load_ptr((void* const*)&entry->key);
+        return key == NULL ? -1 : _str_cached_hash(key);
+    }
     return (Py_hash_t)atomic_load_ssize_relaxed((Py_ssize_t*)&entry->hash);
 }
 
 static inline void
-store_hash(const htkeys_t* keys, entry_t* entry, Py_hash_t hash)
+store_hash_k(uint8_t kind, entry_t* entry, Py_hash_t hash)
 {
-    (void)keys;
-    atomic_store_ssize_relaxed((Py_ssize_t*)&entry->hash, (Py_ssize_t)hash);
+    if (kind != KIND_STR) {
+        atomic_store_ssize_relaxed((Py_ssize_t*)&entry->hash,
+                                   (Py_ssize_t)hash);
+    }
 }
 
 /* NULL means the caller must fall back to the critical section, which
@@ -328,24 +335,21 @@ bump_version(MultiDictObject* md)
 }
 
 static inline PyObject*
-load_identity(const htkeys_t* keys, entry_t* entry)
+load_identity_k(uint8_t kind, entry_t* entry)
 {
-    (void)keys;
-    return entry->identity;
+    return entry_identity_k(kind, entry);
 }
 
 static inline void
-publish_identity(const htkeys_t* keys, entry_t* entry, PyObject* identity)
+publish_identity_k(uint8_t kind, entry_t* entry, PyObject* identity)
 {
-    (void)keys;
-    entry->identity = identity;
+    *entry_identity_slot_k(kind, entry) = identity;
 }
 
 static inline void
-reset_identity(const htkeys_t* keys, entry_t* entry)
+reset_identity_k(uint8_t kind, entry_t* entry)
 {
-    (void)keys;
-    entry->identity = NULL;
+    *entry_identity_slot_k(kind, entry) = NULL;
 }
 
 static inline PyObject*
@@ -367,17 +371,15 @@ reset_value(entry_t* entry)
 }
 
 static inline Py_hash_t
-load_hash(const htkeys_t* keys, entry_t* entry)
+load_hash_k(uint8_t kind, entry_t* entry)
 {
-    (void)keys;
-    return entry->hash;
+    return entry_hash_k(kind, entry);
 }
 
 static inline void
-store_hash(const htkeys_t* keys, entry_t* entry, Py_hash_t hash)
+store_hash_k(uint8_t kind, entry_t* entry, Py_hash_t hash)
 {
-    (void)keys;
-    entry->hash = hash;
+    entry_set_hash_k(kind, entry, hash);
 }
 
 static inline MultiDict_WatchCallback
@@ -415,6 +417,50 @@ retire_watcher(mod_state* state, int watcher_id)
 }
 
 #endif /* Py_GIL_DISABLED */
+
+/* A new key for a live entry. A KIND_STR key doubles as the identity, the
+   field lock-free readers check first, so it is published like one. */
+static inline void
+replace_key_k(uint8_t kind, entry_t* entry, PyObject* key)
+{
+    if (kind == KIND_STR) {
+        publish_identity_k(kind, entry, key);
+    } else {
+        entry->key = key;
+    }
+}
+
+static inline PyObject*
+load_identity(const htkeys_t* keys, entry_t* entry)
+{
+    return load_identity_k(keys->kind, entry);
+}
+
+static inline void
+publish_identity(const htkeys_t* keys, entry_t* entry, PyObject* identity)
+{
+    publish_identity_k(keys->kind, entry, identity);
+}
+
+/* Leaves the old reference to the caller, which decrefs it only once
+   md's bookkeeping is consistent again. */
+static inline void
+reset_identity(const htkeys_t* keys, entry_t* entry)
+{
+    reset_identity_k(keys->kind, entry);
+}
+
+static inline Py_hash_t
+load_hash(const htkeys_t* keys, entry_t* entry)
+{
+    return load_hash_k(keys->kind, entry);
+}
+
+static inline void
+store_hash(const htkeys_t* keys, entry_t* entry, Py_hash_t hash)
+{
+    store_hash_k(keys->kind, entry, hash);
+}
 
 #ifdef __cplusplus
 }

@@ -568,6 +568,17 @@ multidict_mp_ass_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
     return md_replace(self, key, val);
 }
 
+// See cimultidict_add().
+static int
+cimultidict_mp_ass_subscript(MultiDictObject* self, PyObject* key,
+                             PyObject* val)
+{
+    if (val == NULL) {
+        return md_del_ci(self, key);
+    }
+    return md_replace_ci(self, key, val);
+}
+
 static int
 multidict_sq_contains(MultiDictObject* self, PyObject* key)
 {
@@ -800,9 +811,9 @@ multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-static PyObject*
-multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
-              PyObject* kwnames)
+ALWAYS_INLINE static inline PyObject*
+_multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
+               PyObject* kwnames, uint8_t known)
 {
     PyObject *key = NULL, *val = NULL;
 
@@ -817,10 +828,26 @@ multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
                &val) < 0) {
         return NULL;
     }
-    if (md_add(self, key, val) < 0) {
+    if (md_add_k(self, key, val, known) < 0) {
         return NULL;
     }
     Py_RETURN_NONE;
+}
+
+static PyObject*
+multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
+              PyObject* kwnames)
+{
+    return _multidict_add(self, args, nargs, kwnames, KIND_UNKNOWN);
+}
+
+/* A CIMultiDict's table is always KIND_ANYSTR, so its copy of an entry
+   point compiles without the tests on the kind. */
+static PyObject*
+cimultidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
+                PyObject* kwnames)
+{
+    return _multidict_add(self, args, nargs, kwnames, KIND_ANYSTR);
 }
 
 static PyObject*
@@ -917,9 +944,9 @@ multidict_clear(MultiDictObject* self)
     Py_RETURN_NONE;
 }
 
-static PyObject*
-multidict_setdefault(MultiDictObject* self, PyObject* const* args,
-                     Py_ssize_t nargs, PyObject* kwnames)
+ALWAYS_INLINE static inline PyObject*
+_multidict_setdefault(MultiDictObject* self, PyObject* const* args,
+                      Py_ssize_t nargs, PyObject* kwnames, uint8_t known)
 {
     PyObject* key = NULL;
     PyObject* _default = NULL;
@@ -937,10 +964,25 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
         return NULL;
     }
     // md_set_default() reads a NULL default as None.
-    if (md_set_default(self, key, _default, &ret) < 0) {
+    if (md_set_default_k(self, key, _default, &ret, known) < 0) {
         assert(ret == NULL);
     }
     return ret;
+}
+
+static PyObject*
+multidict_setdefault(MultiDictObject* self, PyObject* const* args,
+                     Py_ssize_t nargs, PyObject* kwnames)
+{
+    return _multidict_setdefault(self, args, nargs, kwnames, KIND_UNKNOWN);
+}
+
+// See cimultidict_add().
+static PyObject*
+cimultidict_setdefault(MultiDictObject* self, PyObject* const* args,
+                       Py_ssize_t nargs, PyObject* kwnames)
+{
+    return _multidict_setdefault(self, args, nargs, kwnames, KIND_ANYSTR);
 }
 
 static PyObject*
@@ -1293,84 +1335,104 @@ multidict_sizeof(MultiDictObject* self)
     return PyLong_FromSsize_t(size);
 }
 
+/* One table for both types; P names the prefix of the entry points a
+   CIMultiDict has its own copy of, see cimultidict_add(). */
+#define MULTIDICT_METHODS(P)               \
+    {"getall",                             \
+     (PyCFunction)multidict_getall,        \
+     METH_FASTCALL | METH_KEYWORDS,        \
+     multidict_getall_doc},                \
+        {"getone",                         \
+         (PyCFunction)multidict_getone,    \
+         METH_FASTCALL | METH_KEYWORDS,    \
+         multidict_getone_doc},            \
+        {"get",                            \
+         (PyCFunction)multidict_get,       \
+         METH_FASTCALL | METH_KEYWORDS,    \
+         multidict_get_doc},               \
+        {"keys",                           \
+         (PyCFunction)multidict_keys,      \
+         METH_NOARGS,                      \
+         multidict_keys_doc},              \
+        {"items",                          \
+         (PyCFunction)multidict_items,     \
+         METH_NOARGS,                      \
+         multidict_items_doc},             \
+        {"values",                         \
+         (PyCFunction)multidict_values,    \
+         METH_NOARGS,                      \
+         multidict_values_doc},            \
+        {"add",                            \
+         (PyCFunction)P##add,              \
+         METH_FASTCALL | METH_KEYWORDS,    \
+         multidict_add_doc},               \
+        {"copy",                           \
+         (PyCFunction)multidict_copy,      \
+         METH_NOARGS,                      \
+         multidict_copy_doc},              \
+        {"to_dict",                        \
+         (PyCFunction)multidict_to_dict,   \
+         METH_NOARGS,                      \
+         multidict_to_dict_doc},           \
+        {"extend",                         \
+         (PyCFunction)multidict_extend,    \
+         METH_VARARGS | METH_KEYWORDS,     \
+         multidict_extend_doc},            \
+        {"clear",                          \
+         (PyCFunction)multidict_clear,     \
+         METH_NOARGS,                      \
+         multidict_clear_doc},             \
+        {"setdefault",                     \
+         (PyCFunction)P##setdefault,       \
+         METH_FASTCALL | METH_KEYWORDS,    \
+         multidict_setdefault_doc},        \
+        {"popone",                         \
+         (PyCFunction)multidict_popone,    \
+         METH_FASTCALL | METH_KEYWORDS,    \
+         multidict_popone_doc},            \
+        {"pop",                            \
+         (PyCFunction)multidict_pop,       \
+         METH_FASTCALL | METH_KEYWORDS,    \
+         multidict_pop_doc},               \
+        {"popall",                         \
+         (PyCFunction)multidict_popall,    \
+         METH_FASTCALL | METH_KEYWORDS,    \
+         multidict_popall_doc},            \
+        {"popitem",                        \
+         (PyCFunction)multidict_popitem,   \
+         METH_NOARGS,                      \
+         multidict_popitem_doc},           \
+        {"update",                         \
+         (PyCFunction)multidict_update,    \
+         METH_VARARGS | METH_KEYWORDS,     \
+         multidict_update_doc},            \
+        {"merge",                          \
+         (PyCFunction)multidict_merge,     \
+         METH_VARARGS | METH_KEYWORDS,     \
+         multidict_merge_doc},             \
+        {                                  \
+            "__reduce__",                  \
+            (PyCFunction)multidict_reduce, \
+            METH_NOARGS,                   \
+            NULL,                          \
+        },                                 \
+        {"__class_getitem__",              \
+         (PyCFunction)Py_GenericAlias,     \
+         METH_O | METH_CLASS,              \
+         NULL},                            \
+        {                                  \
+            "__sizeof__",                  \
+            (PyCFunction)multidict_sizeof, \
+            METH_NOARGS,                   \
+            sizeof__doc__,                 \
+        },
+
 static PyMethodDef multidict_methods[] = {
-    {"getall",
-     (PyCFunction)multidict_getall,
-     METH_FASTCALL | METH_KEYWORDS,
-     multidict_getall_doc},
-    {"getone",
-     (PyCFunction)multidict_getone,
-     METH_FASTCALL | METH_KEYWORDS,
-     multidict_getone_doc},
-    {"get",
-     (PyCFunction)multidict_get,
-     METH_FASTCALL | METH_KEYWORDS,
-     multidict_get_doc},
-    {"keys", (PyCFunction)multidict_keys, METH_NOARGS, multidict_keys_doc},
-    {"items", (PyCFunction)multidict_items, METH_NOARGS, multidict_items_doc},
-    {"values",
-     (PyCFunction)multidict_values,
-     METH_NOARGS,
-     multidict_values_doc},
-    {"add",
-     (PyCFunction)multidict_add,
-     METH_FASTCALL | METH_KEYWORDS,
-     multidict_add_doc},
-    {"copy", (PyCFunction)multidict_copy, METH_NOARGS, multidict_copy_doc},
-    {"to_dict",
-     (PyCFunction)multidict_to_dict,
-     METH_NOARGS,
-     multidict_to_dict_doc},
-    {"extend",
-     (PyCFunction)multidict_extend,
-     METH_VARARGS | METH_KEYWORDS,
-     multidict_extend_doc},
-    {"clear", (PyCFunction)multidict_clear, METH_NOARGS, multidict_clear_doc},
-    {"setdefault",
-     (PyCFunction)multidict_setdefault,
-     METH_FASTCALL | METH_KEYWORDS,
-     multidict_setdefault_doc},
-    {"popone",
-     (PyCFunction)multidict_popone,
-     METH_FASTCALL | METH_KEYWORDS,
-     multidict_popone_doc},
-    {"pop",
-     (PyCFunction)multidict_pop,
-     METH_FASTCALL | METH_KEYWORDS,
-     multidict_pop_doc},
-    {"popall",
-     (PyCFunction)multidict_popall,
-     METH_FASTCALL | METH_KEYWORDS,
-     multidict_popall_doc},
-    {"popitem",
-     (PyCFunction)multidict_popitem,
-     METH_NOARGS,
-     multidict_popitem_doc},
-    {"update",
-     (PyCFunction)multidict_update,
-     METH_VARARGS | METH_KEYWORDS,
-     multidict_update_doc},
-    {"merge",
-     (PyCFunction)multidict_merge,
-     METH_VARARGS | METH_KEYWORDS,
-     multidict_merge_doc},
-    {
-        "__reduce__",
-        (PyCFunction)multidict_reduce,
-        METH_NOARGS,
-        NULL,
-    },
-    {"__class_getitem__",
-     (PyCFunction)Py_GenericAlias,
-     METH_O | METH_CLASS,
-     NULL},
-    {
-        "__sizeof__",
-        (PyCFunction)multidict_sizeof,
-        METH_NOARGS,
-        sizeof__doc__,
-    },
-    {NULL, NULL} /* sentinel */
+    MULTIDICT_METHODS(multidict_){NULL, NULL} /* sentinel */
+};
+
+static PyMethodDef cimultidict_methods[] = {
+    MULTIDICT_METHODS(cimultidict_){NULL, NULL} /* sentinel */
 };
 
 PyDoc_STRVAR(multidict_doc, "Dictionary with the support for duplicate keys.");
@@ -1448,11 +1510,13 @@ PyDoc_STRVAR(
 
 static PyType_Slot cimultidict_slots[] = {
     {Py_tp_doc, (void*)cimultidict_doc},
-    /* The same table as MultiDict, listed again so the descriptors are
-       bound to CIMultiDict: CPython's CALL_METHOD_DESCRIPTOR_* guards
-       on Py_IS_TYPE(self, descr->d_type) and deopts every call whose
-       descriptor was inherited from a base type. */
-    {Py_tp_methods, multidict_methods},
+    /* Its own table, so the descriptors are bound to CIMultiDict:
+       CPython's CALL_METHOD_DESCRIPTOR_* guards on
+       Py_IS_TYPE(self, descr->d_type) and deopts every call whose
+       descriptor was inherited from a base type. It also points at the
+       entry points specialized for a KIND_ANYSTR table. */
+    {Py_tp_methods, cimultidict_methods},
+    {Py_mp_ass_subscript, cimultidict_mp_ass_subscript},
     {Py_tp_new, cimultidict_tp_new},
 #if PY_VERSION_HEX >= 0x030e00f0
     {Py_tp_vectorcall, cimultidict_tp_vectorcall},
@@ -1884,7 +1948,7 @@ drain_pools(mod_state* state)
 static void
 close_pools(mod_state* state)
 {
-    for (int i = 0; i < HTKEYS_POOL_CLASSES; i++) {
+    for (int i = 0; i < HTKEYS_POOLS; i++) {
         pool_init(state->htkeys_pools + i, 0);
     }
     pool_init(&state->view_pool, 0);

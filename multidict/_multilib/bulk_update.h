@@ -33,27 +33,32 @@ typedef enum _UpdateOp {
 
 /* Nothing here runs Python code or suspends the critical section: the
  * replaced key and value go to `defer`. */
-static inline int
+ALWAYS_INLINE static inline int
 _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
            PyObject* key, PyObject* value, reflist_t* defer,
-           update_marks_t* marks)
+           update_marks_t* marks, uint8_t known)
 {
     bool found = false;
+    if (htkeys_kind(md->keys, known) == KIND_STR &&
+        UNLIKELY(key != identity) && md_to_anystr(md) < 0) {
+        return -1;
+    }
     if (update_marks_sync(marks, md) < 0) {
         return -1;
     }
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
+    uint8_t kind = htkeys_kind(md->keys, known);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
-        if (hash != entry_hash(md->keys, entry) ||
+        entry_t* entry = entry_at_k(kind, entries, iter.index);
+        if (hash != entry_hash_k(kind, entry) ||
             bitmap_test(&marks->updated, iter.index) ||
-            !str_cmp(identity, entry_identity(md->keys, entry))) {
+            !str_cmp(identity, entry_identity_k(kind, entry))) {
             continue;
         }
         if (!found) {
@@ -68,7 +73,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             // old_key/old_value decref deferred: see reflist_t
             PyObject* old_key = entry->key;
             PyObject* old_value = load_value(entry);
-            entry->key = Py_NewRef(key);
+            replace_key_k(kind, entry, Py_NewRef(key));
             publish_value(entry, Py_NewRef(value));
             md_watch_record(md,
                             MultiDict_EVENT_REPLACED,
@@ -94,14 +99,14 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     }
 
     if (!found) {
-        return md_add_for_upd(md, hash, identity, key, value, marks);
+        return md_add_for_upd(md, hash, identity, key, value, marks, known);
     }
     return 0;
 }
 
-static inline int
+ALWAYS_INLINE static inline int
 _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-          PyObject* key, PyObject* value, update_marks_t* marks)
+          PyObject* key, PyObject* value, update_marks_t* marks, uint8_t known)
 {
     if (update_marks_sync(marks, md) < 0) {
         return -1;
@@ -109,23 +114,24 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     htkeysiter_t iter;
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
+    uint8_t kind = htkeys_kind(md->keys, known);
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
+        entry_t* entry = entry_at_k(kind, entries, iter.index);
         /* An entry this batch added doesn't count as already present. */
-        if (hash != entry_hash(md->keys, entry) ||
+        if (hash != entry_hash_k(kind, entry) ||
             bitmap_test(&marks->updated, iter.index)) {
             continue;
         }
-        if (str_cmp(identity, entry_identity(md->keys, entry))) {
+        if (str_cmp(identity, entry_identity_k(kind, entry))) {
             return 0;
         }
     }
 
-    return md_add_for_upd(md, hash, identity, key, value, marks);
+    return md_add_for_upd(md, hash, identity, key, value, marks, known);
 }
 
 /* Removes the entries update() doomed and nothing has written since. Only
@@ -144,6 +150,7 @@ restart:
     htkeys_t* keys = md->keys;
     uint64_t version = md->version;
     entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
     for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {
         doomed_entry_t* doomed = marks->doomed + i;
         Py_ssize_t pos = doomed->index;
@@ -153,22 +160,22 @@ restart:
         }
         assert(pos < keys->nentries);
         bitmap_clear(&marks->deleted, pos);
-        entry_t* entry = htkeys_entry_at(keys, entries, pos);
+        entry_t* entry = entry_at_k(kind, entries, pos);
         // Python code run between items may have removed or rewritten it
-        if (entry_identity(keys, entry) == NULL ||
+        if (entry_identity_k(kind, entry) == NULL ||
             load_value(entry) != doomed->value) {
             continue;
         }
         htkeysiter_t iter;
-        htkeysiter_init(&iter, keys, entry_hash(keys, entry));
+        htkeysiter_init(&iter, keys, entry_hash_k(kind, entry));
         while (iter.index != pos) {
             assert(iter.index != DKIX_EMPTY);
             htkeysiter_next(&iter);
         }
         md_watch_record(md,
                         MultiDict_EVENT_DELETED,
-                        entry_identity(keys, entry),
-                        entry_hash(keys, entry),
+                        entry_identity_k(kind, entry),
+                        entry_hash_k(kind, entry),
                         entry->key,
                         entry->value,
                         NULL);
@@ -198,9 +205,9 @@ md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
     return ret;
 }
 
-NOINLINE static int
-md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
-                  reflist_t* defer, update_marks_t* marks)
+ALWAYS_INLINE static inline int
+_md_update_from_ht_k(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
+                     reflist_t* defer, update_marks_t* marks, uint8_t known)
 {
     Py_ssize_t pos;
     Py_hash_t hash;
@@ -231,11 +238,12 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     }
 
     entry_t* entries = htkeys_entries(other->keys);
+    uint8_t kind = other->keys->kind;
     Py_ssize_t nentries = other->keys->nentries;
 
     for (pos = 0; pos < nentries; pos++) {
-        entry_t* entry = htkeys_entry_at(other->keys, entries, pos);
-        if (entry_identity(other->keys, entry) == NULL) {
+        entry_t* entry = entry_at_k(kind, entries, pos);
+        if (entry_identity_k(kind, entry) == NULL) {
             continue;
         }
         if (recalc_identity) {
@@ -257,25 +265,28 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                 goto fail;
             }
         } else {
-            identity = entry_identity(other->keys, entry);
-            hash = entry_hash(other->keys, entry);
+            identity = entry_identity_k(kind, entry);
+            hash = entry_hash_k(kind, entry);
             key = entry->key;
             value = entry->value;
         }
         switch (op) {
             case Update:
-                if (_md_update(md, hash, identity, key, value, defer, marks) <
+                if (_md_update(
+                        md, hash, identity, key, value, defer, marks, known) <
                     0) {
                     goto fail;
                 }
                 break;
             case Extend:
-                if (md_add_with_hash(md, hash, identity, key, value) < 0) {
+                if (md_add_with_hash_k(md, hash, identity, key, value, known) <
+                    0) {
                     goto fail;
                 }
                 break;
             case Merge:
-                if (_md_merge(md, hash, identity, key, value, marks) < 0) {
+                if (_md_merge(md, hash, identity, key, value, marks, known) <
+                    0) {
                     goto fail;
                 }
                 break;
@@ -287,6 +298,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
             /* Both lower() and a finalizer run by the decrefs above can
                replace other's table. */
             entries = htkeys_entries(other->keys);
+            kind = other->keys->kind;
             if (nentries > other->keys->nentries) {
                 nentries = other->keys->nentries;
             }
@@ -303,7 +315,75 @@ fail:
 }
 
 NOINLINE static int
-md_extend_self(MultiDictObject* md)
+_md_update_from_ht_extend_ci(MultiDictObject* md, MultiDictObject* other,
+                             reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_ht_k(md, other, Extend, defer, marks, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_ht_extend_any(MultiDictObject* md, MultiDictObject* other,
+                              reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_ht_k(md, other, Extend, defer, marks, KIND_UNKNOWN);
+}
+
+NOINLINE static int
+_md_update_from_ht_update_ci(MultiDictObject* md, MultiDictObject* other,
+                             reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_ht_k(md, other, Update, defer, marks, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_ht_update_any(MultiDictObject* md, MultiDictObject* other,
+                              reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_ht_k(md, other, Update, defer, marks, KIND_UNKNOWN);
+}
+
+NOINLINE static int
+_md_update_from_ht_merge_ci(MultiDictObject* md, MultiDictObject* other,
+                            reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_ht_k(md, other, Merge, defer, marks, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_ht_merge_any(MultiDictObject* md, MultiDictObject* other,
+                             reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_ht_k(md, other, Merge, defer, marks, KIND_UNKNOWN);
+}
+
+/* One copy per operation, which every caller names as a constant, and
+   per kind: a CIMultiDict table is always KIND_ANYSTR, and its copy
+   skips the tests on the kind. */
+ALWAYS_INLINE static inline int
+md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
+                  reflist_t* defer, update_marks_t* marks)
+{
+    switch (op) {
+        case Extend:
+            return md->is_ci
+                       ? _md_update_from_ht_extend_ci(md, other, defer, marks)
+                       : _md_update_from_ht_extend_any(
+                             md, other, defer, marks);
+        case Update:
+            return md->is_ci
+                       ? _md_update_from_ht_update_ci(md, other, defer, marks)
+                       : _md_update_from_ht_update_any(
+                             md, other, defer, marks);
+        case Merge:
+            return md->is_ci
+                       ? _md_update_from_ht_merge_ci(md, other, defer, marks)
+                       : _md_update_from_ht_merge_any(md, other, defer, marks);
+    }
+    Py_UNREACHABLE();
+}
+
+ALWAYS_INLINE static inline int
+_md_extend_self_k(MultiDictObject* md, uint8_t known)
 {
     if (md_reserve(md, md->keys->nentries) < 0) {
         return -1;
@@ -311,14 +391,16 @@ md_extend_self(MultiDictObject* md)
 
     Py_ssize_t nentries = md->keys->nentries;
     entry_t* entries = htkeys_entries(md->keys);
+    uint8_t kind = htkeys_kind(md->keys, known);
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
-        entry_t* entry = htkeys_entry_at(md->keys, entries, pos);
-        if (entry_identity(md->keys, entry) != NULL) {
-            if (md_add_with_hash(md,
-                                 entry_hash(md->keys, entry),
-                                 entry_identity(md->keys, entry),
-                                 entry->key,
-                                 entry->value) < 0) {
+        entry_t* entry = entry_at_k(kind, entries, pos);
+        if (entry_identity_k(kind, entry) != NULL) {
+            if (md_add_with_hash_k(md,
+                                   entry_hash_k(kind, entry),
+                                   entry_identity_k(kind, entry),
+                                   entry->key,
+                                   entry->value,
+                                   known) < 0) {
                 return -1;
             }
         }
@@ -327,8 +409,31 @@ md_extend_self(MultiDictObject* md)
 }
 
 NOINLINE static int
-md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
-                    reflist_t* defer, update_marks_t* marks)
+_md_extend_self_ci(MultiDictObject* md)
+{
+    return _md_extend_self_k(md, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_extend_self_any(MultiDictObject* md)
+{
+    return _md_extend_self_k(md, KIND_UNKNOWN);
+}
+
+// A CIMultiDict table is always KIND_ANYSTR: its copy skips the tests on
+// the kind.
+static inline int
+md_extend_self(MultiDictObject* md)
+{
+    if (md->is_ci) {
+        return _md_extend_self_ci(md);
+    }
+    return _md_extend_self_any(md);
+}
+
+ALWAYS_INLINE static inline int
+_md_update_from_dict_k(MultiDictObject* md, PyObject* kwds, UpdateOp op,
+                       reflist_t* defer, update_marks_t* marks, uint8_t known)
 {
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
@@ -359,7 +464,8 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
         }
         switch (op) {
             case Update:
-                if (_md_update(md, hash, identity, key, value, defer, marks) <
+                if (_md_update(
+                        md, hash, identity, key, value, defer, marks, known) <
                     0) {
                     goto fail;
                 }
@@ -370,15 +476,16 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                     Py_INCREF(value);
                     owned = true;
                 }
-                if (md_add_with_hash_steal_refs(
-                        md, hash, identity, key, value) < 0) {
+                if (md_add_with_hash_steal_refs_k(
+                        md, hash, identity, key, value, known) < 0) {
                     goto fail;
                 }
                 identity = NULL;
                 owned = false;
                 break;
             case Merge:
-                if (_md_merge(md, hash, identity, key, value, marks) < 0) {
+                if (_md_merge(md, hash, identity, key, value, marks, known) <
+                    0) {
                     goto fail;
                 }
                 break;
@@ -399,9 +506,80 @@ fail:
     return -1;
 }
 
-static inline int
-md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
-                       Py_ssize_t nargs, PyObject* kwnames)
+NOINLINE static int
+_md_update_from_dict_extend_ci(MultiDictObject* md, PyObject* kwds,
+                               reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_dict_k(md, kwds, Extend, defer, marks, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_dict_extend_any(MultiDictObject* md, PyObject* kwds,
+                                reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_dict_k(
+        md, kwds, Extend, defer, marks, KIND_UNKNOWN);
+}
+
+NOINLINE static int
+_md_update_from_dict_update_ci(MultiDictObject* md, PyObject* kwds,
+                               reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_dict_k(md, kwds, Update, defer, marks, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_dict_update_any(MultiDictObject* md, PyObject* kwds,
+                                reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_dict_k(
+        md, kwds, Update, defer, marks, KIND_UNKNOWN);
+}
+
+NOINLINE static int
+_md_update_from_dict_merge_ci(MultiDictObject* md, PyObject* kwds,
+                              reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_dict_k(md, kwds, Merge, defer, marks, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_dict_merge_any(MultiDictObject* md, PyObject* kwds,
+                               reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_dict_k(md, kwds, Merge, defer, marks, KIND_UNKNOWN);
+}
+
+/* One copy per operation, which every caller names as a constant, and
+   per kind: a CIMultiDict table is always KIND_ANYSTR, and its copy
+   skips the tests on the kind. */
+ALWAYS_INLINE static inline int
+md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
+                    reflist_t* defer, update_marks_t* marks)
+{
+    switch (op) {
+        case Extend:
+            return md->is_ci
+                       ? _md_update_from_dict_extend_ci(md, kwds, defer, marks)
+                       : _md_update_from_dict_extend_any(
+                             md, kwds, defer, marks);
+        case Update:
+            return md->is_ci
+                       ? _md_update_from_dict_update_ci(md, kwds, defer, marks)
+                       : _md_update_from_dict_update_any(
+                             md, kwds, defer, marks);
+        case Merge:
+            return md->is_ci
+                       ? _md_update_from_dict_merge_ci(md, kwds, defer, marks)
+                       : _md_update_from_dict_merge_any(
+                             md, kwds, defer, marks);
+    }
+    Py_UNREACHABLE();
+}
+
+ALWAYS_INLINE static inline int
+_md_update_from_kwnames_k(MultiDictObject* md, PyObject* const* args,
+                          Py_ssize_t nargs, PyObject* kwnames, uint8_t known)
 {
     Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
     if (md_reserve(md, nkwargs) < 0) {
@@ -423,8 +601,8 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
             return -1;
         }
         PyObject* value = args[nargs + i];  // borrowed
-        if (md_add_with_hash_steal_refs(
-                md, hash, identity, key, Py_NewRef(value)) < 0) {
+        if (md_add_with_hash_steal_refs_k(
+                md, hash, identity, key, Py_NewRef(value), known) < 0) {
             Py_DECREF(value);
             Py_DECREF(identity);
             Py_DECREF(key);
@@ -432,6 +610,32 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
         }
     }
     return 0;
+}
+
+NOINLINE static int
+_md_update_from_kwnames_ci(MultiDictObject* md, PyObject* const* args,
+                           Py_ssize_t nargs, PyObject* kwnames)
+{
+    return _md_update_from_kwnames_k(md, args, nargs, kwnames, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_kwnames_any(MultiDictObject* md, PyObject* const* args,
+                            Py_ssize_t nargs, PyObject* kwnames)
+{
+    return _md_update_from_kwnames_k(md, args, nargs, kwnames, KIND_UNKNOWN);
+}
+
+// A CIMultiDict table is always KIND_ANYSTR: its copy skips the tests on
+// the kind.
+static inline int
+md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
+                       Py_ssize_t nargs, PyObject* kwnames)
+{
+    if (md->is_ci) {
+        return _md_update_from_kwnames_ci(md, args, nargs, kwnames);
+    }
+    return _md_update_from_kwnames_any(md, args, nargs, kwnames);
 }
 
 static inline void
@@ -463,7 +667,7 @@ _err_cannot_fetch(Py_ssize_t i, const char* name)
                  name);
 }
 
-static int
+ALWAYS_INLINE static inline int
 _md_parse_item(Py_ssize_t i, PyObject* item, PyObject** pkey,
                PyObject** pvalue)
 {
@@ -507,9 +711,9 @@ fail:
     return -1;
 }
 
-NOINLINE static int
-md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
-                   reflist_t* defer, update_marks_t* marks)
+ALWAYS_INLINE static inline int
+_md_update_from_seq_k(MultiDictObject* md, PyObject* seq, UpdateOp op,
+                      reflist_t* defer, update_marks_t* marks, uint8_t known)
 {
     PyObject* it = NULL;
     PyObject* item = NULL;  // seq[i]
@@ -612,7 +816,8 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
 
         switch (op) {
             case Update:
-                if (_md_update(md, hash, identity, key, value, defer, marks) <
+                if (_md_update(
+                        md, hash, identity, key, value, defer, marks, known) <
                     0) {
                     goto fail;
                 }
@@ -621,8 +826,8 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                 Py_CLEAR(value);
                 break;
             case Extend:
-                if (md_add_with_hash_steal_refs(
-                        md, hash, identity, key, value) < 0) {
+                if (md_add_with_hash_steal_refs_k(
+                        md, hash, identity, key, value, known) < 0) {
                     goto fail;
                 }
                 identity = NULL;
@@ -630,7 +835,8 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                 value = NULL;
                 break;
             case Merge:
-                if (_md_merge(md, hash, identity, key, value, marks) < 0) {
+                if (_md_merge(md, hash, identity, key, value, marks, known) <
+                    0) {
                     goto fail;
                 }
                 Py_CLEAR(identity);
@@ -654,6 +860,72 @@ fail:
     Py_CLEAR(value);
     Py_CLEAR(items);
     return -1;
+}
+
+NOINLINE static int
+_md_update_from_seq_extend_ci(MultiDictObject* md, PyObject* seq,
+                              reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_seq_k(md, seq, Extend, defer, marks, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_seq_extend_any(MultiDictObject* md, PyObject* seq,
+                               reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_seq_k(md, seq, Extend, defer, marks, KIND_UNKNOWN);
+}
+
+NOINLINE static int
+_md_update_from_seq_update_ci(MultiDictObject* md, PyObject* seq,
+                              reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_seq_k(md, seq, Update, defer, marks, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_seq_update_any(MultiDictObject* md, PyObject* seq,
+                               reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_seq_k(md, seq, Update, defer, marks, KIND_UNKNOWN);
+}
+
+NOINLINE static int
+_md_update_from_seq_merge_ci(MultiDictObject* md, PyObject* seq,
+                             reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_seq_k(md, seq, Merge, defer, marks, KIND_ANYSTR);
+}
+
+NOINLINE static int
+_md_update_from_seq_merge_any(MultiDictObject* md, PyObject* seq,
+                              reflist_t* defer, update_marks_t* marks)
+{
+    return _md_update_from_seq_k(md, seq, Merge, defer, marks, KIND_UNKNOWN);
+}
+
+/* One copy per operation, which every caller names as a constant, and
+   per kind: a CIMultiDict table is always KIND_ANYSTR, and its copy
+   skips the tests on the kind. */
+ALWAYS_INLINE static inline int
+md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
+                   reflist_t* defer, update_marks_t* marks)
+{
+    switch (op) {
+        case Extend:
+            return md->is_ci
+                       ? _md_update_from_seq_extend_ci(md, seq, defer, marks)
+                       : _md_update_from_seq_extend_any(md, seq, defer, marks);
+        case Update:
+            return md->is_ci
+                       ? _md_update_from_seq_update_ci(md, seq, defer, marks)
+                       : _md_update_from_seq_update_any(md, seq, defer, marks);
+        case Merge:
+            return md->is_ci
+                       ? _md_update_from_seq_merge_ci(md, seq, defer, marks)
+                       : _md_update_from_seq_merge_any(md, seq, defer, marks);
+    }
+    Py_UNREACHABLE();
 }
 #ifdef __cplusplus
 }

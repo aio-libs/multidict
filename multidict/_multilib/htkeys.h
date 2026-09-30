@@ -26,12 +26,24 @@ itself but identity instead, borrowed references during iteration
 over pair_list for, e.g., md.get() or md.pop() is safe.
 */
 
+/* The key and the value lead, so that a table of KIND_STR, which stores
+   only them, is a prefix of this layout. */
 typedef struct entry {
-    Py_hash_t hash;
-    PyObject* identity;
     PyObject* key;
     PyObject* value;
+    PyObject* identity;
+    Py_hash_t hash;
 } entry_t;
+
+/* How a table stores its entries. KIND_ANYSTR stores the whole entry_t.
+   KIND_STR stores only the key and the value: every key is an exact str
+   that is its own identity, and the hash is the one the str caches. */
+typedef enum {
+    KIND_ANYSTR = 0,
+    KIND_STR = 1,
+} htkeys_kind_t;
+
+#define HTKEYS_KINDS 2
 
 #define DKIX_EMPTY (-1) /* empty (never used) slot */
 #define DKIX_DUMMY (-2) /* deleted slot */
@@ -54,20 +66,22 @@ typedef struct entry {
 #define HTKEYS_POOL_MIN_LOG2 HT_LOG_MINSIZE
 #define HTKEYS_POOL_MAX_LOG2 8
 #define HTKEYS_POOL_CLASSES (HTKEYS_POOL_MAX_LOG2 - HTKEYS_POOL_MIN_LOG2 + 1)
+// one ladder per kind: a block fits only its own kind's entry size
+#define HTKEYS_POOLS (HTKEYS_KINDS * HTKEYS_POOL_CLASSES)
 
 NOINLINE static void
 htkeys_pools_init(pool_t* pools)
 {
     static const uint8_t depths[HTKEYS_POOL_CLASSES] = {32, 32, 32, 16, 8, 4};
-    for (int i = 0; i < HTKEYS_POOL_CLASSES; i++) {
-        pool_init(pools + i, depths[i]);
+    for (int i = 0; i < HTKEYS_POOLS; i++) {
+        pool_init(pools + i, depths[i % HTKEYS_POOL_CLASSES]);
     }
 }
 
 static inline void
 htkeys_pools_clear(pool_t* pools)
 {
-    for (int i = 0; i < HTKEYS_POOL_CLASSES; i++) {
+    for (int i = 0; i < HTKEYS_POOLS; i++) {
         pool_clear(pools + i, PyMem_Free);
     }
 }
@@ -77,13 +91,15 @@ htkeys_pools_clear(pool_t* pools)
    on it. A build with no pools folds the whole thing away, since
    pool_pop() is then a bare NULL. */
 static inline pool_t*
-_htkeys_pool(pool_t* pools, uint8_t log2_size)
+_htkeys_pool(pool_t* pools, uint8_t log2_size, uint8_t kind)
 {
     assert(log2_size >= HTKEYS_POOL_MIN_LOG2);
+    assert(kind < HTKEYS_KINDS);
     if (log2_size > HTKEYS_POOL_MAX_LOG2) {
         return NULL;
     }
-    return pools + (log2_size - HTKEYS_POOL_MIN_LOG2);
+    return pools + kind * HTKEYS_POOL_CLASSES +
+           (log2_size - HTKEYS_POOL_MIN_LOG2);
 }
 
 #define HT_LOG_RESUME_SLOTS_MINSIZE 10
@@ -96,6 +112,9 @@ typedef struct _htkeys {
 
     /* Size of the hash table (indices) by bytes. */
     uint8_t log2_index_bytes;
+
+    /* An htkeys_kind_t, fixed for the table's lifetime. */
+    uint8_t kind;
 
     /* Number of usable entries in dk_entries. */
     Py_ssize_t usable;
@@ -159,34 +178,128 @@ htkeys_entries(const htkeys_t* dk)
 
 /* Code reaches a neighbouring entry, an entry's identity and its hash only
    through these and the accessors in freethreading.h, passing the table
-   the entry belongs to, so that a table can lay its entries out its own
-   way. The key and the value are plain fields. */
+   the entry belongs to, since the table's kind decides where they are.
+   The key and the value are plain fields, at the same offsets in every
+   kind. */
+/* Both sizes are powers of two, so stepping is a shift, not a multiply. */
+static inline unsigned
+htkeys_kind_entry_shift(uint8_t kind)
+{
+    Py_BUILD_ASSERT(sizeof(entry_t) == 4 * sizeof(PyObject*));
+    Py_BUILD_ASSERT(offsetof(entry_t, identity) == 2 * sizeof(PyObject*));
+    return (SIZEOF_VOID_P == 8 ? 4 : 3) + (kind != KIND_STR);
+}
+
+static inline size_t
+htkeys_kind_entry_size(uint8_t kind)
+{
+    return (size_t)1 << htkeys_kind_entry_shift(kind);
+}
+
+/* The _k forms take the kind itself, for a function that reads it once:
+   with -fno-strict-aliasing any store may alias keys->kind, so the
+   table forms reload it on every call. */
+static inline entry_t*
+entry_at_k(uint8_t kind, entry_t* entries, Py_ssize_t i)
+{
+    return (entry_t*)((char*)entries +
+                      ((size_t)i << htkeys_kind_entry_shift(kind)));
+}
+
+static inline entry_t*
+entry_next_k(uint8_t kind, entry_t* entry)
+{
+    return (entry_t*)((char*)entry + htkeys_kind_entry_size(kind));
+}
+
+static inline entry_t*
+entry_prev_k(uint8_t kind, entry_t* entry)
+{
+    return (entry_t*)((char*)entry - htkeys_kind_entry_size(kind));
+}
+
+// A KIND_STR key is its own identity.
+static inline PyObject*
+entry_identity_k(uint8_t kind, const entry_t* entry)
+{
+    return kind == KIND_STR ? entry->key : entry->identity;
+}
+
+// For the reads that go through try_get_ref().
+static inline PyObject**
+entry_identity_slot_k(uint8_t kind, entry_t* entry)
+{
+    return kind == KIND_STR ? &entry->key : &entry->identity;
+}
+
+static inline void
+entry_set_identity_k(uint8_t kind, entry_t* entry, PyObject* identity)
+{
+    if (kind != KIND_STR) {
+        entry->identity = identity;
+    }
+}
+
+// The str caches its hash, set when the key went in.
+static inline Py_hash_t
+_str_cached_hash(PyObject* str)
+{
+    PyASCIIObject* ascii = (PyASCIIObject*)str;
+#ifdef Py_GIL_DISABLED
+    return atomic_load_ssize_relaxed(&ascii->hash);
+#else
+    return ascii->hash;
+#endif
+}
+
+static inline Py_hash_t
+entry_hash_k(uint8_t kind, const entry_t* entry)
+{
+    return kind == KIND_STR ? _str_cached_hash(entry->key) : entry->hash;
+}
+
+static inline void
+entry_set_hash_k(uint8_t kind, entry_t* entry, Py_hash_t hash)
+{
+    if (kind != KIND_STR) {
+        entry->hash = hash;
+    }
+}
+
+/* What a caller knows of a table's kind before reading it: a CIMultiDict
+   entry point passes KIND_ANYSTR, since its tables never take another,
+   and every test on the kind then folds away at compile time. */
+#define KIND_UNKNOWN 0xff
+
+ALWAYS_INLINE static inline uint8_t
+htkeys_kind(const htkeys_t* keys, uint8_t known)
+{
+    assert(known == KIND_UNKNOWN || known == keys->kind);
+    return known == KIND_UNKNOWN ? keys->kind : known;
+}
+
 static inline size_t
 htkeys_entry_size(const htkeys_t* keys)
 {
-    (void)keys;
-    return sizeof(entry_t);
+    return htkeys_kind_entry_size(keys->kind);
 }
 
 static inline entry_t*
 htkeys_entry_at(const htkeys_t* keys, entry_t* entries, Py_ssize_t i)
 {
-    (void)keys;
-    return entries + i;
+    return entry_at_k(keys->kind, entries, i);
 }
 
 static inline entry_t*
 htkeys_entry_next(const htkeys_t* keys, entry_t* entry)
 {
-    (void)keys;
-    return entry + 1;
+    return entry_next_k(keys->kind, entry);
 }
 
 static inline entry_t*
 htkeys_entry_prev(const htkeys_t* keys, entry_t* entry)
 {
-    (void)keys;
-    return entry - 1;
+    return entry_prev_k(keys->kind, entry);
 }
 
 /* How many entries lie between `entries` and `entry`. */
@@ -194,51 +307,44 @@ static inline Py_ssize_t
 htkeys_entry_index(const htkeys_t* keys, const entry_t* entries,
                    const entry_t* entry)
 {
-    (void)keys;
-    return entry - entries;
+    return (Py_ssize_t)((size_t)((const char*)entry - (const char*)entries) /
+                        htkeys_entry_size(keys));
 }
 
 static inline void
 htkeys_entry_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src)
 {
-    (void)keys;
-    *dst = *src;
+    memcpy(dst, src, htkeys_entry_size(keys));
 }
 
 static inline PyObject*
 entry_identity(const htkeys_t* keys, const entry_t* entry)
 {
-    (void)keys;
-    return entry->identity;
+    return entry_identity_k(keys->kind, entry);
 }
 
-/* For the reads that go through try_get_ref(). */
 static inline PyObject**
 entry_identity_slot(const htkeys_t* keys, entry_t* entry)
 {
-    (void)keys;
-    return &entry->identity;
+    return entry_identity_slot_k(keys->kind, entry);
 }
 
 static inline void
 entry_set_identity(const htkeys_t* keys, entry_t* entry, PyObject* identity)
 {
-    (void)keys;
-    entry->identity = identity;
+    entry_set_identity_k(keys->kind, entry, identity);
 }
 
 static inline Py_hash_t
 entry_hash(const htkeys_t* keys, const entry_t* entry)
 {
-    (void)keys;
-    return entry->hash;
+    return entry_hash_k(keys->kind, entry);
 }
 
 static inline void
 entry_set_hash(const htkeys_t* keys, entry_t* entry, Py_hash_t hash)
 {
-    (void)keys;
-    entry->hash = hash;
+    entry_set_hash_k(keys->kind, entry, hash);
 }
 
 /* A slot in indices[] is written under md's critical section but read by
@@ -481,13 +587,13 @@ _htkeys_log2_index_bytes(uint8_t log2_size)
    lets a pooled block be reused for any table of its own size class,
    and lets md_clone_from_ht() copy a table byte for byte. */
 static inline size_t
-_htkeys_alloc_size(uint8_t log2_size)
+_htkeys_alloc_size(uint8_t log2_size, uint8_t kind)
 {
     size_t usable =
         (size_t)USABLE_FRACTION((Py_ssize_t)((size_t)1 << log2_size));
     return (sizeof(htkeys_t) +
             ((size_t)1 << _htkeys_log2_index_bytes(log2_size)) +
-            sizeof(entry_t) * usable);
+            htkeys_kind_entry_size(kind) * usable);
 }
 
 /* Whether _htkeys_alloc_size(log2_size) can be computed without a shift
@@ -515,8 +621,9 @@ htkeys_sizeof(htkeys_t* keys)
         USABLE_FRACTION((Py_ssize_t)((size_t)1 << keys->log2_size));
     Py_ssize_t size =
         (Py_ssize_t)(sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
-                     sizeof(entry_t) * (size_t)usable);
-    assert(size == (Py_ssize_t)_htkeys_alloc_size(keys->log2_size));
+                     htkeys_entry_size(keys) * (size_t)usable);
+    assert(size ==
+           (Py_ssize_t)_htkeys_alloc_size(keys->log2_size, keys->kind));
     return size;
 }
 
@@ -525,11 +632,11 @@ htkeys_sizeof(htkeys_t* keys)
    `size` is the byte count, taken as an argument for the sake of a
    caller that already has it off an existing table. */
 static inline htkeys_t*
-htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, size_t size)
+htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, uint8_t kind, size_t size)
 {
     assert(log2_size >= HT_LOG_MINSIZE);
-    assert(size == _htkeys_alloc_size(log2_size));
-    pool_t* pool = _htkeys_pool(pools, log2_size);
+    assert(size == _htkeys_alloc_size(log2_size, kind));
+    pool_t* pool = _htkeys_pool(pools, log2_size, kind);
     htkeys_t* keys = pool == NULL ? NULL : pool_pop(pool);
     if (keys == NULL) {
         keys = PyMem_Malloc(size);
@@ -542,9 +649,10 @@ htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, size_t size)
 }
 
 static inline htkeys_t*
-_htkeys_alloc_raw(pool_t* pools, uint8_t log2_size)
+_htkeys_alloc_raw(pool_t* pools, uint8_t log2_size, uint8_t kind)
 {
-    return htkeys_alloc_sized(pools, log2_size, _htkeys_alloc_size(log2_size));
+    return htkeys_alloc_sized(
+        pools, log2_size, kind, _htkeys_alloc_size(log2_size, kind));
 }
 
 /* Zeroes the entries from `from` on. A caller that fills the front of
@@ -563,17 +671,18 @@ htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
    writes the front of the array itself and calls htkeys_zero_entries()
    for the rest. Nothing may read the table in between. */
 static inline htkeys_t*
-htkeys_new_unfilled(pool_t* pools, uint8_t log2_size)
+htkeys_new_unfilled(pool_t* pools, uint8_t log2_size, uint8_t kind)
 {
     uint8_t log2_bytes = _htkeys_log2_index_bytes(log2_size);
 
-    htkeys_t* keys = _htkeys_alloc_raw(pools, log2_size);
+    htkeys_t* keys = _htkeys_alloc_raw(pools, log2_size, kind);
     if (keys == NULL) {
         return NULL;
     }
 
     keys->log2_size = log2_size;
     keys->log2_index_bytes = log2_bytes;
+    keys->kind = kind;
     keys->resume_slots = NULL;
     keys->nentries = 0;
     keys->usable = USABLE_FRACTION((Py_ssize_t)((size_t)1 << log2_size));
@@ -586,9 +695,9 @@ htkeys_new_unfilled(pool_t* pools, uint8_t log2_size)
 }
 
 static inline htkeys_t*
-htkeys_new(pool_t* pools, uint8_t log2_size)
+htkeys_new(pool_t* pools, uint8_t log2_size, uint8_t kind)
 {
-    htkeys_t* keys = htkeys_new_unfilled(pools, log2_size);
+    htkeys_t* keys = htkeys_new_unfilled(pools, log2_size, kind);
     if (keys != NULL) {
         htkeys_zero_entries(keys, 0);
     }
@@ -604,7 +713,7 @@ htkeys_free(pool_t* pools, htkeys_t* dk)
     if (dk->resume_slots != NULL) {
         PyMem_Free(dk->resume_slots);
     }
-    pool_t* pool = _htkeys_pool(pools, dk->log2_size);
+    pool_t* pool = _htkeys_pool(pools, dk->log2_size, dk->kind);
     if (pool == NULL || !pool_push(pool, dk)) {
         PyMem_Free(dk);
     }

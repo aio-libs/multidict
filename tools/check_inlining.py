@@ -144,6 +144,20 @@ RULES = (
         "#1627/#1628, where GCC 15 on FT dropped it again (+19%)",
     ),
     Rule(
+        "_md_parse_item",
+        "*",
+        BOTH,
+        "#1644: six copies of the bulk update took it out of line, "
+        "37 Ir per constructor item",
+    ),
+    Rule(
+        "md_add_with_hash_steal_refs",
+        "*",
+        BOTH,
+        "#1644: per-kind layouts pushed it out of the constructor's loop, "
+        "CIMultiDict(items) +10%",
+    ),
+    Rule(
         "md_clear",
         ("multidict_clear",),
         (FT,),
