@@ -50,9 +50,10 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
-        if (hash != entry->hash || bitmap_test(&marks->updated, iter.index) ||
-            !str_cmp(identity, entry->identity)) {
+        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
+        if (hash != entry_hash(md->keys, entry) ||
+            bitmap_test(&marks->updated, iter.index) ||
+            !str_cmp(identity, entry_identity(md->keys, entry))) {
             continue;
         }
         if (!found) {
@@ -113,12 +114,13 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
+        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
         /* An entry this batch added doesn't count as already present. */
-        if (hash != entry->hash || bitmap_test(&marks->updated, iter.index)) {
+        if (hash != entry_hash(md->keys, entry) ||
+            bitmap_test(&marks->updated, iter.index)) {
             continue;
         }
-        if (str_cmp(identity, entry->identity)) {
+        if (str_cmp(identity, entry_identity(md->keys, entry))) {
             return 0;
         }
     }
@@ -151,21 +153,22 @@ restart:
         }
         assert(pos < keys->nentries);
         bitmap_clear(&marks->deleted, pos);
-        entry_t* entry = entries + pos;
+        entry_t* entry = htkeys_entry_at(keys, entries, pos);
         // Python code run between items may have removed or rewritten it
-        if (entry->identity == NULL || load_value(entry) != doomed->value) {
+        if (entry_identity(keys, entry) == NULL ||
+            load_value(entry) != doomed->value) {
             continue;
         }
         htkeysiter_t iter;
-        htkeysiter_init(&iter, keys, entry->hash);
+        htkeysiter_init(&iter, keys, entry_hash(keys, entry));
         while (iter.index != pos) {
             assert(iter.index != DKIX_EMPTY);
             htkeysiter_next(&iter);
         }
         md_watch_record(md,
                         MultiDict_EVENT_DELETED,
-                        entry->identity,
-                        entry->hash,
+                        entry_identity(keys, entry),
+                        entry_hash(keys, entry),
                         entry->key,
                         entry->value,
                         NULL);
@@ -231,8 +234,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     Py_ssize_t nentries = other->keys->nentries;
 
     for (pos = 0; pos < nentries; pos++) {
-        entry_t* entry = entries + pos;
-        if (entry->identity == NULL) {
+        entry_t* entry = htkeys_entry_at(other->keys, entries, pos);
+        if (entry_identity(other->keys, entry) == NULL) {
             continue;
         }
         if (recalc_identity) {
@@ -254,8 +257,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                 goto fail;
             }
         } else {
-            identity = entry->identity;
-            hash = entry->hash;
+            identity = entry_identity(other->keys, entry);
+            hash = entry_hash(other->keys, entry);
             key = entry->key;
             value = entry->value;
         }
@@ -309,11 +312,11 @@ md_extend_self(MultiDictObject* md)
     Py_ssize_t nentries = md->keys->nentries;
     entry_t* entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
-        entry_t* entry = entries + pos;
-        if (entry->identity != NULL) {
+        entry_t* entry = htkeys_entry_at(md->keys, entries, pos);
+        if (entry_identity(md->keys, entry) != NULL) {
             if (md_add_with_hash(md,
-                                 entry->hash,
-                                 entry->identity,
+                                 entry_hash(md->keys, entry),
+                                 entry_identity(md->keys, entry),
                                  entry->key,
                                  entry->value) < 0) {
                 return -1;

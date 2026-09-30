@@ -273,7 +273,7 @@ _md_cache_ci_key(MultiDictObject* md, entry_t* entry)
 {
     uint64_t version = md->version;
     PyObject* old_key = Py_NewRef(entry->key);
-    PyObject* identity = Py_NewRef(entry->identity);
+    PyObject* identity = Py_NewRef(entry_identity(md->keys, entry));
     PyObject* key = md_calc_key(md, old_key, identity);
     if (key != NULL && md->version == version &&
         PyUnicode_CheckExact(old_key)) {
@@ -293,7 +293,7 @@ md_ensure_key(MultiDictObject* md, entry_t* entry)
     assert(entry >= htkeys_entries(md->keys));
     assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
     if (!md->is_ci || IStr_CheckExact(md->state, entry->key)) {
-        return md_calc_key(md, entry->key, entry->identity);
+        return md_calc_key(md, entry->key, entry_identity(md->keys, entry));
     }
     return _md_cache_ci_key(md, entry);
 }

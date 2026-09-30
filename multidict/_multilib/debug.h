@@ -43,14 +43,14 @@ _md_check_consistency(MultiDictObject* md)
 
     entry_t* entries = htkeys_entries(keys);
     for (Py_ssize_t i = 0; i < calc_usable; i++) {
-        entry_t* entry = &entries[i];
-        PyObject* identity = entry->identity;
+        entry_t* entry = htkeys_entry_at(keys, entries, i);
+        PyObject* identity = entry_identity(keys, entry);
 
         if (identity != NULL) {
             CHECK(entry->key != NULL);
             CHECK(entry->value != NULL);
             CHECK(PyUnicode_CheckExact(identity));
-            CHECK(entry->hash == unicode_hash(identity));
+            CHECK(entry_hash(keys, entry) == unicode_hash(identity));
         }
     }
     return 1;
@@ -75,14 +75,14 @@ _md_dump(MultiDictObject* md)
     printf("  --------\n");
     entry_t* entries = htkeys_entries(keys);
     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-        entry_t* entry = &entries[i];
-        PyObject* identity = entry->identity;
+        entry_t* entry = htkeys_entry_at(keys, entries, i);
+        PyObject* identity = entry_identity(keys, entry);
 
         if (identity == NULL) {
             printf("  %zd [deleted]\n", i);
         } else {
-            printf("  %zd h=%20zd, i=\'", i, entry->hash);
-            PyObject_Print(entry->identity, stdout, Py_PRINT_RAW);
+            printf("  %zd h=%20zd, i=\'", i, entry_hash(keys, entry));
+            PyObject_Print(entry_identity(keys, entry), stdout, Py_PRINT_RAW);
             printf("\', k=\'");
             PyObject_Print(entry->key, stdout, Py_PRINT_RAW);
             printf("\', v=\'");

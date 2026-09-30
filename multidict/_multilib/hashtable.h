@@ -411,7 +411,7 @@ _md_rebuild_keeping_indices(MultiDictObject* md, uint8_t log2_newsize)
     entry_t* newentries = htkeys_entries(newkeys);
     memcpy(newentries,
            htkeys_entries(oldkeys),
-           (size_t)nentries * sizeof(entry_t));
+           (size_t)nentries * htkeys_entry_size(oldkeys));
     htkeys_zero_entries(newkeys, nentries);
     htkeys_build_indices_with_holes(newkeys, newentries, nentries);
     newkeys->usable -= nentries;
@@ -468,18 +468,22 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
     entry_t* newentries = htkeys_entries(newkeys);
     Py_ssize_t filled;
     if (oldkeys->nentries == numentries) {
-        memcpy(newentries, oldentries, (size_t)numentries * sizeof(entry_t));
+        memcpy(newentries,
+               oldentries,
+               (size_t)numentries * htkeys_entry_size(oldkeys));
         filled = numentries;
     } else {
         entry_t* new_ep = newentries;
         entry_t* old_ep = oldentries;
         Py_ssize_t oldnumentries = oldkeys->nentries;
-        for (Py_ssize_t i = 0; i < oldnumentries; ++i, ++old_ep) {
-            if (old_ep->identity != NULL) {
-                *new_ep++ = *old_ep;
+        for (Py_ssize_t i = 0; i < oldnumentries;
+             ++i, old_ep = htkeys_entry_next(oldkeys, old_ep)) {
+            if (entry_identity(oldkeys, old_ep) != NULL) {
+                htkeys_entry_copy(newkeys, new_ep, old_ep);
+                new_ep = htkeys_entry_next(newkeys, new_ep);
             }
         }
-        filled = new_ep - newentries;
+        filled = htkeys_entry_index(newkeys, newentries, new_ep);
     }
     /* What the copy actually wrote, rather than md->used: the two agree,
        but taking the count from the copy means a table can never be
@@ -588,18 +592,20 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
         return -1;
     }
     entry_t* entries = htkeys_entries(keys);
-    entry_t* dst = entries + keys->nentries;
+    entry_t* dst = htkeys_entry_at(keys, entries, keys->nentries);
     entry_t* src = htkeys_entries(other->keys);
-    for (Py_ssize_t i = 0; i < other->keys->nentries; i++, src++) {
-        if (src->identity != NULL) {
-            dst->identity = Py_NewRef(src->identity);
+    for (Py_ssize_t i = 0; i < other->keys->nentries;
+         i++, src = htkeys_entry_next(other->keys, src)) {
+        if (entry_identity(other->keys, src) != NULL) {
+            entry_set_identity(
+                keys, dst, Py_NewRef(entry_identity(other->keys, src)));
             dst->key = Py_NewRef(src->key);
             dst->value = Py_NewRef(src->value);
-            dst->hash = src->hash;
-            dst++;
+            entry_set_hash(keys, dst, entry_hash(other->keys, src));
+            dst = htkeys_entry_next(keys, dst);
         }
     }
-    Py_ssize_t nentries = dst - entries;
+    Py_ssize_t nentries = htkeys_entry_index(keys, entries, dst);
     keys->usable -= nentries - keys->nentries;
     keys->nentries = nentries;
     htkeys_build_indices_with_holes(keys, entries, nentries);
@@ -642,8 +648,9 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 #endif
         keys->resume_slots = NULL;
         entry_t* entry = htkeys_entries(keys);
-        for (Py_ssize_t idx = 0; idx < keys->nentries; idx++, entry++) {
-            Py_XINCREF(entry->identity);
+        for (Py_ssize_t idx = 0; idx < keys->nentries;
+             idx++, entry = htkeys_entry_next(keys, entry)) {
+            Py_XINCREF(entry_identity(keys, entry));
             Py_XINCREF(entry->key);
             Py_XINCREF(entry->value);
         }
@@ -682,8 +689,9 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
     Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
     htkeys_set_index(keys, hashpos, keys->nentries);
 
-    entry_t* entry = htkeys_entries(keys) + keys->nentries;
-    assert(entry->identity == NULL && entry->key == NULL &&
+    entry_t* entry =
+        htkeys_entry_at(keys, htkeys_entries(keys), keys->nentries);
+    assert(entry_identity(keys, entry) == NULL && entry->key == NULL &&
            entry->value == NULL);
 
     /* identity is published last: it's the field a lock-free reader
@@ -695,9 +703,9 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
        publish_value() is enough; nothing here has an old reference to
        drop. */
     entry->key = key;
-    store_hash(entry, hash);
+    store_hash(keys, entry, hash);
     publish_value(entry, value);
-    publish_identity(entry, identity);
+    publish_identity(keys, entry, identity);
 
     bump_version(md);
     add_used(md, 1);
@@ -746,15 +754,16 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     Py_ssize_t hashpos = htkeys_find_empty_slot(keys, hash);
     htkeys_set_index(keys, hashpos, keys->nentries);
 
-    entry_t* entry = htkeys_entries(keys) + keys->nentries;
-    assert(entry->identity == NULL && entry->key == NULL &&
+    entry_t* entry =
+        htkeys_entry_at(keys, htkeys_entries(keys), keys->nentries);
+    assert(entry_identity(keys, entry) == NULL && entry->key == NULL &&
            entry->value == NULL);
 
     /* See md_add_with_hash_steal_refs() for the ordering. */
     entry->key = key;
-    store_hash(entry, hash);
+    store_hash(keys, entry, hash);
     publish_value(entry, value);
-    publish_identity(entry, identity);
+    publish_identity(keys, entry, identity);
 
     bump_version(md);
     add_used(md, 1);
@@ -819,11 +828,11 @@ ALWAYS_INLINE static inline void
 _md_unlink_at(MultiDictObject* md, size_t slot, entry_t* entry,
               PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
 {
-    *pidentity = load_identity(entry);
+    *pidentity = load_identity(md->keys, entry);
     *pkey = entry->key;
     *pvalue = load_value(entry);
 
-    reset_identity(entry);
+    reset_identity(md->keys, entry);
     entry->key = NULL;
     reset_value(entry);
     htkeys_set_index(md->keys, (Py_ssize_t)slot, DKIX_DUMMY);
@@ -870,11 +879,11 @@ _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
 {
     htkeys_t* keys = md->keys;
     assert(keys != &empty_htkeys);
-    PyObject* identity = load_identity(entry);
+    PyObject* identity = load_identity(md->keys, entry);
     PyObject* key = entry->key;
     PyObject* value = load_value(entry);
 
-    reset_identity(entry);
+    reset_identity(md->keys, entry);
     entry->key = NULL;
     reset_value(entry);
     htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
@@ -941,11 +950,11 @@ _md_del_at_held(MultiDictObject* md, size_t slot, entry_t* entry,
 {
     htkeys_t* keys = md->keys;
     assert(keys != &empty_htkeys);
-    PyObject* identity = load_identity(entry);
+    PyObject* identity = load_identity(md->keys, entry);
     PyObject* key = entry->key;
     PyObject* value = load_value(entry);
 
-    reset_identity(entry);
+    reset_identity(md->keys, entry);
     entry->key = NULL;
     reset_value(entry);
     htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
@@ -984,11 +993,11 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
-        if (hash != entry->hash) {
+        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
+        if (hash != entry_hash(md->keys, entry)) {
             continue;
         }
-        if (!str_cmp(entry->identity, identity)) {
+        if (!str_cmp(entry_identity(md->keys, entry), identity)) {
             continue;
         }
 
@@ -998,7 +1007,7 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             }
             md_watch_record(md,
                             MultiDict_EVENT_DELETED,
-                            entry->identity,
+                            entry_identity(md->keys, entry),
                             hash,
                             entry->key,
                             entry->value,
@@ -1091,18 +1100,18 @@ md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
     }
 
     entry_t* entries = htkeys_entries(md->keys);
-    entry_t* entry = entries + pos->pos;
+    entry_t* entry = htkeys_entry_at(md->keys, entries, pos->pos);
 
-    while (entry->identity == NULL) {
+    while (entry_identity(md->keys, entry) == NULL) {
         pos->pos += 1;
         if (pos->pos >= md->keys->nentries) {
             goto cleanup;
         }
-        entry += 1;
+        entry = htkeys_entry_next(md->keys, entry);
     }
 
     if (pidentity) {
-        *pidentity = Py_NewRef(entry->identity);
+        *pidentity = Py_NewRef(entry_identity(md->keys, entry));
     }
 
     if (pvalue) {
@@ -1164,18 +1173,18 @@ md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
     }
 
     entry_t* entries = htkeys_entries(md->keys);
-    entry_t* entry = entries + pos->pos;
+    entry_t* entry = htkeys_entry_at(md->keys, entries, pos->pos);
 
-    while (entry->identity == NULL) {
+    while (entry_identity(md->keys, entry) == NULL) {
         pos->pos -= 1;
         if (pos->pos < 0) {
             goto cleanup;
         }
-        entry -= 1;
+        entry = htkeys_entry_prev(md->keys, entry);
     }
 
     if (pidentity) {
-        *pidentity = Py_NewRef(entry->identity);
+        *pidentity = Py_NewRef(entry_identity(md->keys, entry));
     }
 
     if (pvalue) {
@@ -1224,11 +1233,11 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
-        if (hash != entry->hash) {
+        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
+        if (hash != entry_hash(md->keys, entry)) {
             continue;
         }
-        if (str_cmp(identity, entry->identity)) {
+        if (str_cmp(identity, entry_identity(md->keys, entry))) {
             if (pret != NULL) {
                 *pret = md_ensure_key(md, entry);
                 if (*pret == NULL) {
@@ -1259,24 +1268,24 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
+        entry_t* entry = htkeys_entry_at(keys, entries, iter.index);
 
         /* Hash first, so a mismatch costs no reference traffic; then a
            pointer-equal identity is a match outright, since the probe's
            own reference keeps that object alive and its address cannot
            be reused. Only a different object needs the reference for
            the string compare. */
-        if (load_hash(entry) != hash) {
+        if (load_hash(keys, entry) != hash) {
             continue;
         }
-        PyObject* entry_identity = load_identity(entry);
+        PyObject* entry_identity = load_identity(keys, entry);
         if (entry_identity == NULL) {
             continue;  // not populated (or deleted); keep probing
         }
         if (entry_identity != identity) {
-            entry_identity = try_get_ref(&entry->identity);
+            entry_identity = try_get_ref(entry_identity_slot(keys, entry));
             if (entry_identity == NULL) {
-                if (load_identity(entry) == NULL) {
+                if (load_identity(keys, entry) == NULL) {
                     continue;
                 }
                 result = 2;  // _MD_NEED_LOCK
@@ -1365,11 +1374,11 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
-        if (hash != entry->hash) {
+        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
+        if (hash != entry_hash(md->keys, entry)) {
             continue;
         }
-        if (str_cmp(identity, entry->identity)) {
+        if (str_cmp(identity, entry_identity(md->keys, entry))) {
             *ret = Py_NewRef(entry->value);
             return 1;
         }
@@ -1398,20 +1407,20 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
+        entry_t* entry = htkeys_entry_at(keys, entries, iter.index);
 
         /* See _md_contains_lockfree() on the order. */
-        if (load_hash(entry) != hash) {
+        if (load_hash(keys, entry) != hash) {
             continue;
         }
-        PyObject* entry_identity = load_identity(entry);
+        PyObject* entry_identity = load_identity(keys, entry);
         if (entry_identity == NULL) {
             continue;  // not populated (or deleted); keep probing
         }
         if (entry_identity != identity) {
-            entry_identity = try_get_ref(&entry->identity);
+            entry_identity = try_get_ref(entry_identity_slot(keys, entry));
             if (entry_identity == NULL) {
-                if (load_identity(entry) == NULL) {
+                if (load_identity(keys, entry) == NULL) {
                     continue;
                 }
                 result = _MD_NEED_LOCK;  // racing a concurrent change
@@ -1506,8 +1515,8 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
        first spelling; a hash chain walk is not insertion-ordered. */
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t* entries = htkeys_entries(md->keys);
-        entry_t* entry = entries + pos;
-        if (entry->identity == NULL) {
+        entry_t* entry = htkeys_entry_at(md->keys, entries, pos);
+        if (entry_identity(md->keys, entry) == NULL) {
             continue;  // deleted
         }
         if (bitmap_test(&collected, pos)) {
@@ -1516,15 +1525,17 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
 
         /* Equal keys sit on one hash chain in insertion order. Only the
            list allocation below can run Python in this walk. */
-        Py_hash_t hash = entry->hash;
+        Py_hash_t hash = entry_hash(md->keys, entry);
         htkeysiter_t iter;
         htkeysiter_init(&iter, md->keys, hash);
         for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
             if (iter.index < 0) {
                 continue;
             }
-            entry_t* e = entries + iter.index;
-            if (e->hash != hash || !str_cmp(entry->identity, e->identity)) {
+            entry_t* e = htkeys_entry_at(md->keys, entries, iter.index);
+            if (entry_hash(md->keys, e) != hash ||
+                !str_cmp(entry_identity(md->keys, entry),
+                         entry_identity(md->keys, e))) {
                 continue;
             }
             int seen = bitmap_test_and_set(&collected, iter.index);
@@ -1601,12 +1612,12 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
+        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
 
-        if (hash != entry->hash) {
+        if (hash != entry_hash(md->keys, entry)) {
             continue;
         }
-        if (str_cmp(identity, entry->identity)) {
+        if (str_cmp(identity, entry_identity(md->keys, entry))) {
             ASSERT_CONSISTENT(md);
             *result = Py_NewRef(entry->value);
             return 1;
@@ -1664,12 +1675,12 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
+        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
 
-        if (hash != entry->hash) {
+        if (hash != entry_hash(md->keys, entry)) {
             continue;
         }
-        if (str_cmp(identity, entry->identity)) {
+        if (str_cmp(identity, entry_identity(md->keys, entry))) {
             PyObject* value = Py_NewRef(entry->value);
             if (watched) {
                 md_watch_record(md,
@@ -1793,12 +1804,12 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (iter.index < 0) {
             continue;
         }
-        entry_t* entry = entries + iter.index;
+        entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
 
-        if (hash != entry->hash) {
+        if (hash != entry_hash(md->keys, entry)) {
             continue;
         }
-        if (str_cmp(identity, entry->identity)) {
+        if (str_cmp(identity, entry_identity(md->keys, entry))) {
             if (reflist_push(values, Py_NewRef(entry->value)) < 0) {
                 ret = -1;
                 break;
@@ -1872,22 +1883,22 @@ md_pop_item(MultiDictObject* md)
     entry_t* entries = htkeys_entries(md->keys);
 
     Py_ssize_t pos = md->keys->nentries - 1;
-    entry_t* entry = entries + pos;
-    while (pos >= 0 && entry->identity == NULL) {
+    entry_t* entry = htkeys_entry_at(md->keys, entries, pos);
+    while (pos >= 0 && entry_identity(md->keys, entry) == NULL) {
         pos--;
-        entry--;
+        entry = htkeys_entry_prev(md->keys, entry);
     }
     assert(pos >= 0);
 
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, entry->hash);
+    htkeysiter_init(&iter, md->keys, entry_hash(md->keys, entry));
 
     for (; iter.index != pos; htkeysiter_next(&iter)) {
     }
     md_watch_record(md,
                     MultiDict_EVENT_DELETED,
-                    entry->identity,
-                    entry->hash,
+                    entry_identity(md->keys, entry),
+                    entry_hash(md->keys, entry),
                     entry->key,
                     entry->value,
                     NULL);
@@ -1962,8 +1973,9 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
             uint64_t version_before = md->version;
 #endif
             entry_t* entries = htkeys_entries(md->keys);
-            entry_t* entry = entries + iter.index;
-            if (entry->hash != hash || !str_cmp(identity, entry->identity)) {
+            entry_t* entry = htkeys_entry_at(md->keys, entries, iter.index);
+            if (entry_hash(md->keys, entry) != hash ||
+                !str_cmp(identity, entry_identity(md->keys, entry))) {
                 continue;
             }
             if (skip_first) {
@@ -2004,7 +2016,7 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value,
                 if (watched) {
                     md_watch_record(md,
                                     MultiDict_EVENT_DELETED,
-                                    entry->identity,
+                                    entry_identity(md->keys, entry),
                                     hash,
                                     entry->key,
                                     entry->value,
@@ -2103,22 +2115,23 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
         if (pos1 >= md->keys->nentries || pos2 >= other->keys->nentries) {
             return 1;
         }
-        entry_t* entry1 = lft_entries + pos1;
-        if (entry1->identity == NULL) {
+        entry_t* entry1 = htkeys_entry_at(md->keys, lft_entries, pos1);
+        if (entry_identity(md->keys, entry1) == NULL) {
             pos1++;
             continue;
         }
-        entry_t* entry2 = rht_entries + pos2;
-        if (entry2->identity == NULL) {
+        entry_t* entry2 = htkeys_entry_at(other->keys, rht_entries, pos2);
+        if (entry_identity(other->keys, entry2) == NULL) {
             pos2++;
             continue;
         }
 
-        if (entry1->hash != entry2->hash) {
+        if (entry_hash(md->keys, entry1) != entry_hash(other->keys, entry2)) {
             return 0;
         }
 
-        if (!str_cmp(entry1->identity, entry2->identity)) {
+        if (!str_cmp(entry_identity(md->keys, entry1),
+                     entry_identity(other->keys, entry2))) {
             return 0;
         }
 
@@ -2257,8 +2270,8 @@ md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
                             "MultiDict changed during iteration");
             goto fail;  // discard the writer instead of leaking it
         }
-        entry_t* entry = entries + pos;
-        if (entry->identity == NULL) {
+        entry_t* entry = htkeys_entry_at(md->keys, entries, pos);
+        if (entry_identity(md->keys, entry) == NULL) {
             continue;
         }
         key = Py_NewRef(entry->key);
@@ -2368,8 +2381,8 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
          t = t->retired_next) {
         entry_t* retired_entries = htkeys_entries(t);
         for (Py_ssize_t pos = 0; pos < t->nentries; pos++) {
-            entry_t* entry = retired_entries + pos;
-            if (entry->identity != NULL) {
+            entry_t* entry = htkeys_entry_at(t, retired_entries, pos);
+            if (entry_identity(t, entry) != NULL) {
                 Py_VISIT(entry->key);
                 Py_VISIT(entry->value);
             }
@@ -2383,8 +2396,8 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
 
     entry_t* entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
-        entry_t* entry = entries + pos;
-        if (entry->identity != NULL) {
+        entry_t* entry = htkeys_entry_at(md->keys, entries, pos);
+        if (entry_identity(md->keys, entry) != NULL) {
             Py_VISIT(entry->key);
             Py_VISIT(entry->value);
         }

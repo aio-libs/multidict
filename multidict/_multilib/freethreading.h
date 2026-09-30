@@ -158,15 +158,17 @@ bump_version(MultiDictObject* md)
 }
 
 static inline PyObject*
-load_identity(entry_t* entry)
+load_identity(const htkeys_t* keys, entry_t* entry)
 {
+    (void)keys;
     return (PyObject*)atomic_load_ptr((void* const*)&entry->identity);
 }
 
 /* The GIL arm skips the marking: a no-op there, but a real call. */
 static inline void
-publish_identity(entry_t* entry, PyObject* identity)
+publish_identity(const htkeys_t* keys, entry_t* entry, PyObject* identity)
 {
+    (void)keys;
     PyUnstable_EnableTryIncRef(identity);
     atomic_store_ptr((void**)&entry->identity, identity);
 }
@@ -174,8 +176,9 @@ publish_identity(entry_t* entry, PyObject* identity)
 /* Leaves the old reference to the caller, which decrefs it only once
    md's bookkeeping is consistent again. */
 static inline void
-reset_identity(entry_t* entry)
+reset_identity(const htkeys_t* keys, entry_t* entry)
 {
+    (void)keys;
     atomic_store_ptr((void**)&entry->identity, NULL);
 }
 
@@ -204,14 +207,16 @@ reset_value(entry_t* entry)
    so a reader's plain read would race it. Relaxed is enough: it is
    read only after the identity check has ordered the rest. */
 static inline Py_hash_t
-load_hash(entry_t* entry)
+load_hash(const htkeys_t* keys, entry_t* entry)
 {
+    (void)keys;
     return (Py_hash_t)atomic_load_ssize_relaxed((Py_ssize_t*)&entry->hash);
 }
 
 static inline void
-store_hash(entry_t* entry, Py_hash_t hash)
+store_hash(const htkeys_t* keys, entry_t* entry, Py_hash_t hash)
 {
+    (void)keys;
     atomic_store_ssize_relaxed((Py_ssize_t*)&entry->hash, (Py_ssize_t)hash);
 }
 
@@ -323,20 +328,23 @@ bump_version(MultiDictObject* md)
 }
 
 static inline PyObject*
-load_identity(entry_t* entry)
+load_identity(const htkeys_t* keys, entry_t* entry)
 {
+    (void)keys;
     return entry->identity;
 }
 
 static inline void
-publish_identity(entry_t* entry, PyObject* identity)
+publish_identity(const htkeys_t* keys, entry_t* entry, PyObject* identity)
 {
+    (void)keys;
     entry->identity = identity;
 }
 
 static inline void
-reset_identity(entry_t* entry)
+reset_identity(const htkeys_t* keys, entry_t* entry)
 {
+    (void)keys;
     entry->identity = NULL;
 }
 
@@ -359,14 +367,16 @@ reset_value(entry_t* entry)
 }
 
 static inline Py_hash_t
-load_hash(entry_t* entry)
+load_hash(const htkeys_t* keys, entry_t* entry)
 {
+    (void)keys;
     return entry->hash;
 }
 
 static inline void
-store_hash(entry_t* entry, Py_hash_t hash)
+store_hash(const htkeys_t* keys, entry_t* entry, Py_hash_t hash)
 {
+    (void)keys;
     entry->hash = hash;
 }
 

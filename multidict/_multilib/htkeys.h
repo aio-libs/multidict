@@ -157,6 +157,90 @@ htkeys_entries(const htkeys_t* dk)
     return (entry_t*)(&indices[index]);
 }
 
+/* Code reaches a neighbouring entry, an entry's identity and its hash only
+   through these and the accessors in freethreading.h, passing the table
+   the entry belongs to, so that a table can lay its entries out its own
+   way. The key and the value are plain fields. */
+static inline size_t
+htkeys_entry_size(const htkeys_t* keys)
+{
+    (void)keys;
+    return sizeof(entry_t);
+}
+
+static inline entry_t*
+htkeys_entry_at(const htkeys_t* keys, entry_t* entries, Py_ssize_t i)
+{
+    (void)keys;
+    return entries + i;
+}
+
+static inline entry_t*
+htkeys_entry_next(const htkeys_t* keys, entry_t* entry)
+{
+    (void)keys;
+    return entry + 1;
+}
+
+static inline entry_t*
+htkeys_entry_prev(const htkeys_t* keys, entry_t* entry)
+{
+    (void)keys;
+    return entry - 1;
+}
+
+/* How many entries lie between `entries` and `entry`. */
+static inline Py_ssize_t
+htkeys_entry_index(const htkeys_t* keys, const entry_t* entries,
+                   const entry_t* entry)
+{
+    (void)keys;
+    return entry - entries;
+}
+
+static inline void
+htkeys_entry_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src)
+{
+    (void)keys;
+    *dst = *src;
+}
+
+static inline PyObject*
+entry_identity(const htkeys_t* keys, const entry_t* entry)
+{
+    (void)keys;
+    return entry->identity;
+}
+
+/* For the reads that go through try_get_ref(). */
+static inline PyObject**
+entry_identity_slot(const htkeys_t* keys, entry_t* entry)
+{
+    (void)keys;
+    return &entry->identity;
+}
+
+static inline void
+entry_set_identity(const htkeys_t* keys, entry_t* entry, PyObject* identity)
+{
+    (void)keys;
+    entry->identity = identity;
+}
+
+static inline Py_hash_t
+entry_hash(const htkeys_t* keys, const entry_t* entry)
+{
+    (void)keys;
+    return entry->hash;
+}
+
+static inline void
+entry_set_hash(const htkeys_t* keys, entry_t* entry, Py_hash_t hash)
+{
+    (void)keys;
+    entry->hash = hash;
+}
+
 /* A slot in indices[] is written under md's critical section but read by
    lock-free walks too, so both sides go through a relaxed atomic; on the
    GIL build atomic_*_int*_relaxed() is the plain access. The slot width
@@ -470,9 +554,9 @@ static inline void
 htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
 {
     assert(from >= 0 && from <= keys->usable);
-    memset(htkeys_entries(keys) + from,
+    memset(htkeys_entry_at(keys, htkeys_entries(keys), from),
            0,
-           (size_t)(keys->usable - from) * sizeof(entry_t));
+           (size_t)(keys->usable - from) * htkeys_entry_size(keys));
 }
 
 /* An empty table whose entries are left as they came, for a caller that
@@ -602,11 +686,11 @@ _htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n,
         memset(
             keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
     }
-    for (Py_ssize_t ix = 0; ix != n; ix++, ep++) {
-        if (skip_holes && ep->identity == NULL) {
+    for (Py_ssize_t ix = 0; ix != n; ix++, ep = htkeys_entry_next(keys, ep)) {
+        if (skip_holes && entry_identity(keys, ep) == NULL) {
             continue;
         }
-        Py_hash_t hash = ep->hash;
+        Py_hash_t hash = entry_hash(keys, ep);
         size_t i = (size_t)hash & mask;
         for (size_t perturb = (size_t)hash;
              htkeys_get_index(keys, (Py_ssize_t)i) != DKIX_EMPTY;) {
