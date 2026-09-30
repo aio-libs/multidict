@@ -1,11 +1,9 @@
 [build-system]
 requires = [
-  # setuptools >= 61.0 reads `[project]` from this file; >= 67.0 is
-  # required for Python 3.12+ support.
-  # Next step should be >= 77.0 for PEP 639 support.
-  # Don't bump too early to give distributors time to update
-  # their setuptools version.
-  "setuptools >= 67.0",
+  # setuptools >= 77.0 required for PEP 639 SPDX license metadata
+  # (it also covers the >= 67.0 floor needed for Python 3.12+ support,
+  # and the >= 61.0 one for reading `[project]` from this file).
+  "setuptools >= 77.0",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -14,7 +12,8 @@ build-backend = "setuptools.build_meta"
 name = "multidict"
 description = "multidict implementation"
 authors = [{ name = "Andrew Svetlov", email = "andrew.svetlov@gmail.com" }]
-license = { text = "Apache License 2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">= 3.10"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -49,7 +48,6 @@ dynamic = ["version", "readme"]
 
 [tool.setuptools]
 packages = ["multidict"]
-license-files = ["LICENSE"]
 # setuptools defaults this to true for a `[project]`-configured build,
 # unlike the `setup.cfg` default it replaces. Left on, every file
 # `MANIFEST.in` pulls into the sdist also lands in the wheel, including
