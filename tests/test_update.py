@@ -403,6 +403,32 @@ def test_keys_from_ci_source_keep_ci_identity(
     assert list(d2.items()) == [(key, 3)]
 
 
+class _CustomLower(str):
+    def lower(self) -> str:
+        return "custom"
+
+
+@pytest.mark.parametrize("op", ["ctor", "extend", "update", "merge"])
+def test_keys_from_ci_source_keep_custom_lower_identity(
+    case_sensitive_multidict_class: type[MultiDict[int]],
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    op: str,
+) -> None:
+    key = _CustomLower("Foo")
+    src = case_insensitive_multidict_class([(key, 1)])
+    if op == "ctor":
+        md = case_sensitive_multidict_class(src)
+    else:
+        md = case_sensitive_multidict_class()
+        getattr(md, op)(src)
+
+    (k,) = md.keys()
+    d = case_insensitive_multidict_class([(k, 1)])
+    assert d[key] == 1
+    assert d[k] == 1
+    assert "foo" not in d
+
+
 @pytest.mark.parametrize("op", ["ctor", "extend", "update", "merge"])
 def test_keys_from_cs_source_get_ci_identity(
     case_sensitive_multidict_class: type[MultiDict[int]],

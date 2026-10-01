@@ -1111,6 +1111,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     key_func = arg._key
                     for e in arg._keys.iter_entries():
                         key = key_func(e.key)
+                        if key is not e.key:
+                            # a fresh istr keeps the source's identity, as a
+                            # str subclass may override lower()
+                            key.__istr_identity__ = e.identity  # type: ignore[attr-defined]
                         identity = identity_func(key)
                         yield _Entry(hash(identity) & MAXSIZE, identity, key, e.value)
                 else:
