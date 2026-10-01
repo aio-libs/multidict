@@ -357,3 +357,94 @@ def test_update_keeps_what_code_between_items_wrote(
     d.update(items())
     assert list(d.items()) == expected[nested]
     assert len(d) == len(expected[nested])
+
+
+class _StrSubclass(str):
+    pass
+
+
+@pytest.mark.parametrize("op", ["ctor", "extend", "update", "merge"])
+@pytest.mark.parametrize("key", ["Foo", "FOO-Bar", "ÄbÇ", _StrSubclass("Foo")])
+@pytest.mark.parametrize("iterated", [False, True])
+def test_keys_from_ci_source_keep_ci_identity(
+    case_sensitive_multidict_class: type[MultiDict[int]],
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    case_insensitive_str_class: type[str],
+    op: str,
+    key: str,
+    iterated: bool,
+) -> None:
+    # A key leaves a CIMultiDict as its istr, which must carry the source's
+    # lowered identity, not the case-sensitive destination's.
+    src = case_insensitive_multidict_class([(key, 1)])
+    if iterated:
+        # Swaps the stored str for its cached istr.
+        list(src)
+    if op == "ctor":
+        md = case_sensitive_multidict_class(src)
+    else:
+        md = case_sensitive_multidict_class()
+        getattr(md, op)(src)
+
+    (k,) = md.keys()
+    assert type(k) is case_insensitive_str_class
+    assert k == str(key)
+    assert key in md
+    assert key.lower() not in md
+
+    d = case_insensitive_multidict_class([(k, 1)])
+    for spelling in (key, key.lower(), key.upper(), key.swapcase()):
+        assert spelling in d
+        assert d[spelling] == 1
+    assert list(d) == [key]
+    d2 = case_insensitive_multidict_class()
+    d2[key.upper()] = 2
+    d2.update({k: 3})
+    assert list(d2.items()) == [(key, 3)]
+
+
+class _CustomLower(str):
+    def lower(self) -> str:
+        return "custom"
+
+
+@pytest.mark.parametrize("op", ["ctor", "extend", "update", "merge"])
+def test_keys_from_ci_source_keep_custom_lower_identity(
+    case_sensitive_multidict_class: type[MultiDict[int]],
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    op: str,
+) -> None:
+    key = _CustomLower("Foo")
+    src = case_insensitive_multidict_class([(key, 1)])
+    if op == "ctor":
+        md = case_sensitive_multidict_class(src)
+    else:
+        md = case_sensitive_multidict_class()
+        getattr(md, op)(src)
+
+    (k,) = md.keys()
+    d = case_insensitive_multidict_class([(k, 1)])
+    assert d[key] == 1
+    assert d[k] == 1
+    assert "foo" not in d
+
+
+@pytest.mark.parametrize("op", ["ctor", "extend", "update", "merge"])
+def test_keys_from_cs_source_get_ci_identity(
+    case_sensitive_multidict_class: type[MultiDict[int]],
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    case_insensitive_str_class: type[str],
+    op: str,
+) -> None:
+    src = case_sensitive_multidict_class([("Foo", 1)])
+    if op == "ctor":
+        d = case_insensitive_multidict_class(src)
+    else:
+        d = case_insensitive_multidict_class()
+        getattr(d, op)(src)
+    for spelling in ("Foo", "foo", "FOO"):
+        assert d[spelling] == 1
+    (k,) = d.keys()
+    assert type(k) is case_insensitive_str_class
+    assert k == "Foo"
+    assert "foo" in case_insensitive_multidict_class([(k, 1)])
