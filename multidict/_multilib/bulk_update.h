@@ -212,6 +212,7 @@ _md_update_from_ht_k(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     Py_ssize_t pos;
     Py_hash_t hash;
     PyObject* identity = NULL;
+    PyObject* canonical = NULL;
     PyObject* key = NULL;
     PyObject* value = NULL;
     bool recalc_identity = md->is_ci != other->is_ci;
@@ -251,6 +252,10 @@ _md_update_from_ht_k(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                other and free entry, so hold our own refs. */
             key = Py_NewRef(entry->key);
             value = Py_NewRef(entry->value);
+            /* The key leaves as other's istr, whose canonical must be
+               other's identity: md's is the unlowered key. */
+            canonical = Py_XNewRef(other->is_ci ? entry_identity_k(kind, entry)
+                                                : NULL);
             identity = md_calc_identity(md, key);
             if (identity == NULL) {
                 goto fail;
@@ -260,7 +265,8 @@ _md_update_from_ht_k(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                 goto fail;
             }
             /* materialize key */
-            Py_SETREF(key, md_calc_key(other, key, identity));
+            Py_SETREF(key, md_calc_key(other, key, canonical));
+            Py_CLEAR(canonical);
             if (key == NULL) {
                 goto fail;
             }
@@ -307,6 +313,7 @@ _md_update_from_ht_k(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     return 0;
 fail:
     if (recalc_identity) {
+        Py_CLEAR(canonical);
         Py_CLEAR(identity);
         Py_CLEAR(key);
         Py_CLEAR(value);

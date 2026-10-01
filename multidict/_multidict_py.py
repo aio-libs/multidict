@@ -1108,9 +1108,11 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             if isinstance(arg, MultiDict):
                 yield len(arg) + len(kwargs)
                 if self._ci is not arg._ci:
+                    key_func = arg._key
                     for e in arg._keys.iter_entries():
-                        identity = identity_func(e.key)
-                        yield _Entry(hash(identity) & MAXSIZE, identity, e.key, e.value)
+                        key = key_func(e.key)
+                        identity = identity_func(key)
+                        yield _Entry(hash(identity) & MAXSIZE, identity, key, e.value)
                 else:
                     for e in arg._keys.iter_entries():
                         yield _Entry(e.hash, e.identity, e.key, e.value)
