@@ -170,8 +170,10 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
    that moved. */
 ALWAYS_INLINE static inline Py_ssize_t
 md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                  bool with_keys, md_item_visitor_t visitor, void* user_data)
+                  bool with_keys, md_item_visitor_t visitor, void* user_data,
+                  bool ci)
 {
+    assert(ci == md->is_ci);
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
@@ -190,10 +192,10 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
         entry_t* entry = entry_at(kind, entries, iter.index);
-        if (entry_hash(kind, md->is_ci, entry) != hash) {
+        if (entry_hash(kind, ci, entry) != hash) {
             continue;
         }
-        if (!str_cmp(identity, entry_identity(kind, md->is_ci, entry))) {
+        if (!str_cmp(identity, entry_identity(kind, ci, entry))) {
             continue;
         }
 
@@ -251,7 +253,7 @@ md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
         return -1;
     }
     return md_walk_with_hash(
-        md, identity, hash, with_keys, visitor, user_data);
+        md, identity, hash, with_keys, visitor, user_data, md->is_ci);
 }
 
 #ifdef __cplusplus

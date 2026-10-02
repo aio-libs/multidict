@@ -82,7 +82,12 @@ GETITEM_ENTRIES = (
     "MultiDict_GetItem",
 )
 
-GETALL_ENTRIES = ("multidict_getall", "multidict_proxy_getall")
+GETALL_ENTRIES = (
+    "multidict_getall",
+    "multidict_proxy_getall",
+    "cimultidict_getall",
+    "cimultidict_proxy_getall",
+)
 
 # Every entry point that takes a key.
 KEY_ENTRIES = (
@@ -215,6 +220,12 @@ RULES = (
         "*",
         BOTH,
         "#1604: pinned after budget respend, popitem +1% on FT",
+    ),
+    Rule(
+        "htkeys_get_index",
+        "*",
+        BOTH,
+        "#1651: per-class getall took it out of htkeysiter_init on FT, 4 Ir per d[key]",
     ),
     Rule(
         "htkeys_set_index",

@@ -415,7 +415,7 @@ _MD_DEFINE_INDEX_ACCESSORS(64)
 #undef _MD_DEFINE_INDEX_ACCESSORS
 
 /* lookup indices.  returns DKIX_EMPTY, DKIX_DUMMY, or ix >=0 */
-static inline Py_ssize_t
+ALWAYS_INLINE static inline Py_ssize_t
 htkeys_get_index(const htkeys_t* keys, Py_ssize_t i)
 {
     uint8_t log2size = keys->log2_size;

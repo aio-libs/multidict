@@ -1043,16 +1043,16 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value, bool ci)
 }
 
 /* Removes entry, whose index is at `slot`, and hands its references to the
-   caller; see _md_del_at() on the order. */
+   caller; see _md_del_at() on the order. A compact entry has no identity
+   reference of its own, so *pidentity is NULL for one. `kind` is
+   md->keys->kind, read once by the caller. */
 ALWAYS_INLINE static inline void
-_md_unlink_at(MultiDictObject* md, size_t slot, entry_t* entry,
+_md_unlink_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry,
               PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
 {
-    uint8_t kind = md->keys->kind;
     if (kind_is_compact(kind)) {
         *pkey = load_identity(KIND_COMPACT, entry);
-        // the caller releases the identity and the key, one each
-        *pidentity = Py_NewRef(compact_key_identity(md->is_ci, *pkey));
+        *pidentity = NULL;
         *pvalue = load_value(entry);
         reset_identity(KIND_COMPACT, entry);
     } else {
@@ -1068,7 +1068,7 @@ _md_unlink_at(MultiDictObject* md, size_t slot, entry_t* entry,
 }
 
 ALWAYS_INLINE static inline void
-_md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
+_md_del_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry)
 {
     assert(md->keys != &empty_htkeys);
     /* Null out every field and finish md's bookkeeping (index, used)
@@ -1092,7 +1092,7 @@ _md_del_at(MultiDictObject* md, size_t slot, entry_t* entry)
     PyObject* identity;
     PyObject* key;
     PyObject* value;
-    _md_unlink_at(md, slot, entry, &identity, &key, &value);
+    _md_unlink_at(md, kind, slot, entry, &identity, &key, &value);
 
     Py_XDECREF(identity);
     Py_XDECREF(key);
@@ -1179,15 +1179,15 @@ _removed_pairs_spill(removed_pairs_t* removed, PyObject* key, PyObject* value)
 
 /* _md_del_at() variant that hands the key and value to `removed`. */
 ALWAYS_INLINE static inline int
-_md_del_at_held(MultiDictObject* md, size_t slot, entry_t* entry,
-                removed_pairs_t* removed, bool ci)
+_md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
+                entry_t* entry, removed_pairs_t* removed, bool ci)
 {
     assert(ci == md->is_ci);
-    htkeys_t* keys = md->keys;
+    assert(keys == md->keys && kind == keys->kind);
     assert(keys != &empty_htkeys);
     PyObject* key;
     PyObject* identity = NULL;
-    if (kind_is_compact(keys->kind)) {
+    if (kind_is_compact(kind)) {
         key = load_identity(KIND_COMPACT, entry);
         reset_identity(KIND_COMPACT, entry);
     } else {
@@ -1226,11 +1226,12 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     bool found = false;
     int ret = 0;
 
+    htkeys_t* keys = md->keys;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    htkeysiter_init(&iter, keys, hash);
 
-    entry_t* entries = htkeys_entries(md->keys);
-    uint8_t kind = md->keys->kind;
+    entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
@@ -1257,7 +1258,8 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                             NULL);
         }
         found = true;
-        if (_md_del_at_held(md, iter.slot, entry, removed, ci) < 0) {
+        if (_md_del_at_held(md, keys, kind, iter.slot, entry, removed, ci) <
+            0) {
             ret = -1;
             break;
         }
@@ -2041,7 +2043,7 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                                 value,
                                 NULL);
             }
-            _md_del_at(md, iter.slot, entry);
+            _md_del_at(md, kind, iter.slot, entry);
             *ret = value;
             bump_version(md);
             ASSERT_CONSISTENT(md);
@@ -2124,29 +2126,30 @@ _md_getall_visit(void* user_data, PyObject* identity, Py_hash_t hash,
 }
 
 // Caller holds md's critical section
-static inline int
+ALWAYS_INLINE static inline int
 _md_get_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                   reflist_t* values)
+                   reflist_t* values, bool ci)
 {
-    Py_ssize_t count =
-        md_walk_with_hash(md, identity, hash, false, _md_getall_visit, values);
+    Py_ssize_t count = md_walk_with_hash(
+        md, identity, hash, false, _md_getall_visit, values, ci);
     return count < 0 ? -1 : 0;
 }
 
-static inline int
-md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+ALWAYS_INLINE static inline int
+md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret, bool ci)
 {
+    assert(ci == md->is_ci);
     *ret = NULL;
     PyObject* identity;
     Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash, md->is_ci) < 0) {
+    if (md_calc_identity_hash(md, key, &identity, &hash, ci) < 0) {
         return -1;
     }
     reflist_t values;
     reflist_init(&values);
     int tmp;
     Py_BEGIN_CRITICAL_SECTION(md);
-    tmp = _md_get_all_locked(md, identity, hash, &values);
+    tmp = _md_get_all_locked(md, identity, hash, &values, ci);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
     if (tmp < 0) {
@@ -2204,7 +2207,8 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                             entry->key,
                             entry->value,
                             NULL);
-            if (_md_del_at_held(md, iter.slot, entry, removed, md->is_ci) <
+            if (_md_del_at_held(
+                    md, md->keys, kind, iter.slot, entry, removed, md->is_ci) <
                 0) {
                 ret = -1;
                 break;
@@ -2251,18 +2255,20 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
-static inline PyObject*
-md_pop_item(MultiDictObject* md)
+ALWAYS_INLINE static inline PyObject*
+_md_pop_item(MultiDictObject* md, bool ci)
 {
+    assert(ci == md->is_ci);
     if (md->used == 0) {
         PyErr_SetString(PyExc_KeyError, "empty multidict");
         return NULL;
     }
 
-    entry_t* entries = htkeys_entries(md->keys);
-    uint8_t kind = md->keys->kind;
+    htkeys_t* keys = md->keys;
+    entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
 
-    Py_ssize_t pos = md->keys->nentries - 1;
+    Py_ssize_t pos = keys->nentries - 1;
     entry_t* entry = entry_at(kind, entries, pos);
     while (pos >= 0 && entry_is_hole(kind, entry)) {
         pos--;
@@ -2271,14 +2277,14 @@ md_pop_item(MultiDictObject* md)
     assert(pos >= 0);
 
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, entry_hash(kind, md->is_ci, entry));
+    htkeysiter_init(&iter, keys, entry_hash(kind, ci, entry));
 
     for (; iter.index != pos; htkeysiter_next(&iter)) {
     }
     md_watch_record(md,
                     MultiDict_EVENT_DELETED,
-                    entry_identity(kind, md->is_ci, entry),
-                    entry_hash(kind, md->is_ci, entry),
+                    entry_identity(kind, ci, entry),
+                    entry_hash(kind, ci, entry),
                     entry->key,
                     entry->value,
                     NULL);
@@ -2291,7 +2297,7 @@ md_pop_item(MultiDictObject* md)
        while an update() is in flight, whose marks would then name the
        entries that reuse the trimmed indices; see update_marks.h. */
     if (md->batches == 0) {
-        md->keys->nentries = pos;
+        keys->nentries = pos;
     }
     /* The entry's refs, taken over: building the result below can run
        Python code that mutates md (an istr key's __str__, or on 3.10 and
@@ -2300,15 +2306,18 @@ md_pop_item(MultiDictObject* md)
     PyObject* identity;
     PyObject* key;
     PyObject* value;
-    _md_unlink_at(md, iter.slot, entry, &identity, &key, &value);
+    _md_unlink_at(md, kind, iter.slot, entry, &identity, &key, &value);
     bump_version(md);
     ASSERT_CONSISTENT(md);
 
-    Py_SETREF(key, md_calc_key(md, key, identity, md->is_ci));
-    Py_DECREF(identity);
-    if (key == NULL) {
-        Py_DECREF(value);
-        return NULL;
+    // a compact table's key is already what md_calc_key() would return
+    if (identity != NULL) {
+        Py_SETREF(key, md_calc_key(md, key, identity, ci));
+        Py_DECREF(identity);
+        if (key == NULL) {
+            Py_DECREF(value);
+            return NULL;
+        }
     }
     PyObject* ret = PyTuple_New(2);
     if (ret == NULL) {
@@ -2319,6 +2328,12 @@ md_pop_item(MultiDictObject* md)
     PyTuple_SET_ITEM(ret, 0, key);
     PyTuple_SET_ITEM(ret, 1, value);
     return ret;
+}
+
+static inline PyObject*
+md_pop_item(MultiDictObject* md)
+{
+    return _md_pop_item(md, md->is_ci);
 }
 
 /* Returns 1 when `key` isn't there, leaving the add to the caller.
