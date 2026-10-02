@@ -1,0 +1,5 @@
+Changed the two pure-Python deadlock tests for reciprocal view operations
+to fail only when their workers stop making progress for 20 seconds,
+rather than when they have not finished within 20 seconds, which a
+ThreadSanitizer build under coverage could not meet without any deadlock
+-- by :user:`asvetlov`.
