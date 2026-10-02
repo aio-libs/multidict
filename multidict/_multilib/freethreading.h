@@ -209,12 +209,14 @@ load_hash(uint8_t kind, bool ci, entry_t* entry)
 {
     if (kind_is_compact(kind)) {
         /* -1 is never a str's hash, so a slot being emptied reads as a
-           mismatch. The key is still readable if a writer is releasing
-           it: publish_identity() made it TryIncRef-able, which defers
-           the free, and an istr's canonical form lives as long as it. */
+           mismatch. A concurrent delete can free the key between the two
+           loads, and its block can be reused at once by an allocation of
+           the same size: the free is not deferred, only an empty page's
+           reuse is. So the hash is a single read from the key, whose stale
+           value can only fail the comparison or pass it into the
+           try_get_ref() check that follows, never a pointer to follow. */
         PyObject* key = (PyObject*)atomic_load_ptr((void* const*)&entry->key);
-        return key == NULL ? -1
-                           : _str_cached_hash(compact_key_identity(ci, key));
+        return key == NULL ? -1 : compact_key_hash(ci, key);
     }
     return (Py_hash_t)atomic_load_ssize_relaxed((Py_ssize_t*)&entry->hash);
 }

@@ -301,11 +301,29 @@ _str_cached_hash(PyObject* str)
 #endif
 }
 
+/* The hash of a compact entry's identity, read from the key itself: a
+   str's cached hash, or the canonical form's hash an istr keeps. Never
+   through istr->canonical, so a lock-free reader whose key a concurrent
+   delete just freed reads one stale integer from it, not a stale pointer
+   it would follow; see load_hash(). */
+static inline Py_hash_t
+compact_key_hash(bool ci, PyObject* key)
+{
+    if (ci) {
+#ifdef Py_GIL_DISABLED
+        return atomic_load_ssize_relaxed(&((istrobject*)key)->canonical_hash);
+#else
+        return ((istrobject*)key)->canonical_hash;
+#endif
+    }
+    return _str_cached_hash(key);
+}
+
 static inline Py_hash_t
 entry_hash(uint8_t kind, bool ci, const entry_t* entry)
 {
     if (kind_is_compact(kind)) {
-        return _str_cached_hash(compact_key_identity(ci, entry->key));
+        return compact_key_hash(ci, entry->key);
     }
     return entry->hash;
 }

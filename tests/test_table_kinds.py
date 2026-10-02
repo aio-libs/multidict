@@ -311,3 +311,29 @@ def test_ci_kwargs_move_the_table_while_it_grows(method: str, shape: str) -> Non
         return _ci_items(d)
 
     assert make(c) == make(py)
+
+
+def test_ci_lookups_race_deletes_that_free_keys() -> None:
+    # Each key's only reference is the table's, so a delete frees it while
+    # readers may be probing its slot; a lookup must read nothing through
+    # the freed key.
+    stop = threading.Event()
+    d = c.CIMultiDict((k, i) for i, k in enumerate(ISTR_KEYS))
+
+    def read() -> None:
+        while not stop.is_set():
+            for i, k in enumerate(ISTR_KEYS):
+                assert d.get(k) == i
+            assert d.get("gone") is None
+
+    with ThreadPoolExecutor(4) as pool:
+        readers = [pool.submit(read) for _ in range(4)]
+        try:
+            for n in range(2000):
+                d[c.istr(f"Fresh-{n}")] = n
+                del d[f"fresh-{n}"]
+        finally:
+            stop.set()
+        for f in readers:
+            f.result(timeout=60)
+    assert _ci_items(d) == [(str(k), i) for i, k in enumerate(ISTR_KEYS)]

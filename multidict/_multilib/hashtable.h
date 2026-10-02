@@ -593,9 +593,8 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
         if (key == NULL) {
             continue;
         }
-        PyObject* identity = compact_key_identity(md->is_ci, key);
-        dst->identity = Py_NewRef(identity);
-        dst->hash = _str_cached_hash(identity);
+        dst->identity = Py_NewRef(compact_key_identity(md->is_ci, key));
+        dst->hash = compact_key_hash(md->is_ci, key);
         dst->key = key;
         dst->value = src->value;
         dst = entry_next(KIND_ANYSTR, dst);
@@ -869,9 +868,8 @@ md_to_anystr(MultiDictObject* md)
             dst->identity = NULL;
             dst->hash = 0;
         } else {
-            PyObject* identity = compact_key_identity(md->is_ci, key);
-            dst->identity = Py_NewRef(identity);
-            dst->hash = _str_cached_hash(identity);
+            dst->identity = Py_NewRef(compact_key_identity(md->is_ci, key));
+            dst->hash = compact_key_hash(md->is_ci, key);
         }
     }
     htkeys_zero_entries(newkeys, oldkeys->nentries);
