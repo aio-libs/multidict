@@ -1644,6 +1644,26 @@ def test_convert_multidict_to_cimultidict_and_back(
     assert converted_to_md["key2"] == "value2"
 
 
+def test_base_class_lookups_on_cimultidict(
+    case_sensitive_multidict_class: type[MultiDict[str]],
+    case_insensitive_multidict_class: type[CIMultiDict[str]],
+    case_sensitive_multidict_proxy_class: type[MultiDictProxy[str]],
+) -> None:
+    """MultiDict's own lookups stay case-insensitive on a CIMultiDict."""
+    cls = case_sensitive_multidict_class
+    d = case_insensitive_multidict_class([("Key", "value")])
+    proxy = case_sensitive_multidict_proxy_class(d)
+
+    assert cls.__getitem__(d, "KEY") == "value"
+    assert cls.__contains__(d, "KEY")
+    assert cls.get(d, "KEY") == "value"
+    assert cls.getone(d, "KEY") == "value"
+    assert proxy["KEY"] == "value"
+    assert "KEY" in proxy
+    assert proxy.get("KEY") == "value"
+    assert proxy.getone("KEY") == "value"
+
+
 def test_convert_multidict_to_cimultidict_eq(
     case_sensitive_multidict_class: type[MultiDict[str]],
     case_insensitive_multidict_class: type[CIMultiDict[str]],

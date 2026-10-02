@@ -119,7 +119,7 @@ _md_new(mod_state* state, PyTypeObject* tp, bool is_ci,
     if (md == NULL) {
         return NULL;
     }
-    if (md_init(md, is_ci, prealloc_size) < 0) {
+    if (md_init(md, is_ci, prealloc_size, KIND_COMPACT) < 0) {
         Py_DECREF(md);
         return NULL;
     }
@@ -203,7 +203,7 @@ MultiDict_Contains(void* state_, PyObject* self, PyObject* key)
 {
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
-    return md_contains(md, key);
+    return md_contains(md, key, md->is_ci);
 }
 
 static int
@@ -213,7 +213,7 @@ MultiDict_GetItem(void* state_, PyObject* self, PyObject* key,
     *result = NULL;
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
-    return md_get_one(md, key, result);
+    return md_get_one(md, key, result, md->is_ci);
 }
 
 /* ================= Setters ================= */
@@ -228,7 +228,8 @@ static int
 MultiDict_Add(void* state_, PyObject* self, PyObject* key, PyObject* value)
 {
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    return md_add((MultiDictObject*)self, key, value);
+    return md_add(
+        (MultiDictObject*)self, key, value, ((MultiDictObject*)self)->is_ci);
 }
 
 static int
@@ -270,7 +271,11 @@ MultiDict_SetDefault(void* state_, PyObject* self, PyObject* key,
 {
     *result = NULL;
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    return md_set_default((MultiDictObject*)self, key, default_value, result);
+    return md_set_default((MultiDictObject*)self,
+                          key,
+                          default_value,
+                          result,
+                          ((MultiDictObject*)self)->is_ci);
 }
 
 static int
@@ -316,7 +321,7 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
 {
     PyObject* identity;
     Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+    if (md_calc_identity_hash(md, key, &identity, &hash, md->is_ci) < 0) {
         return -1;
     }
     Py_ssize_t count;

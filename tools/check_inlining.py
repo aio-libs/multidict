@@ -70,9 +70,15 @@ GETITEM_ENTRIES = (
     "multidict_get",
     "multidict_getone",
     "multidict_mp_subscript",
+    "cimultidict_get",
+    "cimultidict_getone",
+    "cimultidict_mp_subscript",
     "multidict_proxy_get",
     "multidict_proxy_getone",
     "multidict_proxy_mp_subscript",
+    "cimultidict_proxy_get",
+    "cimultidict_proxy_getone",
+    "cimultidict_proxy_mp_subscript",
     "MultiDict_GetItem",
 )
 
@@ -83,7 +89,9 @@ KEY_ENTRIES = (
     *GETITEM_ENTRIES,
     *GETALL_ENTRIES,
     "multidict_sq_contains",
+    "cimultidict_sq_contains",
     "multidict_proxy_sq_contains",
+    "cimultidict_proxy_sq_contains",
     "multidict_mp_ass_subscript",
     "multidict_add",
     "multidict_setdefault",
@@ -149,6 +157,39 @@ RULES = (
         BOTH,
         "#1644: six copies of the bulk update took it out of line, "
         "37 Ir per constructor item",
+    ),
+    Rule(
+        "_multidict_ctor_vectorcall",
+        "*",
+        BOTH,
+        "the CIMultiDict kind hint took it out of line, 11 Ir per cls()",
+    ),
+    Rule(
+        "_multidict_vectorcall_impl",
+        "*",
+        BOTH,
+        "out of line once the constructor was pinned, cls() +5.5% on FT",
+    ),
+    Rule(
+        "md_calc_key",
+        "*",
+        BOTH,
+        "_md_cache_key_ci passes ci as a constant; an out-of-line copy "
+        "would test the class at run time",
+    ),
+    Rule(
+        "md_borrow_identity",
+        "*",
+        BOTH,
+        "borrowing the lookup identity saved 10 Ir per istr d[key] on "
+        "CIMultiDict and 15 per MultiDict d[key] on GIL",
+    ),
+    Rule(
+        "unpack_pair",
+        "*",
+        BOTH,
+        "per-class bulk updates took it out of line, 18 Ir per "
+        "MultiDict(items) item on FT",
     ),
     Rule(
         "md_add_with_hash_steal_refs",

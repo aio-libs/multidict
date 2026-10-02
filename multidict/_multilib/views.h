@@ -240,7 +240,7 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject* self, PyObject* arg,
         *pvalue = Py_NewRef(PyTuple_GET_ITEM(arg, 1));
     }
 
-    *pidentity = md_calc_identity(self->md, key);
+    *pidentity = md_calc_identity(self->md, key, self->md->is_ci);
     Py_DECREF(key);
     if (*pidentity == NULL) {
         if (pkey != NULL) {
@@ -1042,7 +1042,7 @@ _multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
             break;
     }
 
-    identity = md_calc_identity(self->md, key);
+    identity = md_calc_identity(self->md, key, self->md->is_ci);
     if (identity == NULL) {
         if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
             ret = -1;  // propagate MemoryError / KeyboardInterrupt / etc.
@@ -1338,7 +1338,7 @@ _multidict_keysview_and2_impl(_Multidict_ViewObject* self, PyObject* other)
             Py_CLEAR(key);
             continue;
         }
-        int tmp = md_contains(self->md, key);
+        int tmp = md_contains(self->md, key, self->md->is_ci);
         if (tmp < 0) {
             goto fail;
         }
@@ -1421,7 +1421,7 @@ _multidict_keysview_or1_impl(_Multidict_ViewObject* self, PyObject* other)
             Py_CLEAR(key);
             continue;
         }
-        int tmp = md_contains(self->md, key);
+        int tmp = md_contains(self->md, key, self->md->is_ci);
         if (tmp < 0) {
             goto fail;
         }
@@ -1483,7 +1483,7 @@ _multidict_keysview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
             Py_CLEAR(key);
             continue;
         }
-        identity = md_calc_identity(self->md, key);
+        identity = md_calc_identity(self->md, key, self->md->is_ci);
         if (identity == NULL) {
             goto fail;
         }
@@ -1650,7 +1650,7 @@ _multidict_keysview_sub2_impl(_Multidict_ViewObject* self, PyObject* other)
             Py_CLEAR(key);
             continue;
         }
-        tmp = md_contains(self->md, key);
+        tmp = md_contains(self->md, key, self->md->is_ci);
         if (tmp < 0) {
             goto fail;
         }
@@ -1770,7 +1770,7 @@ fail:
 NOINLINE static int
 multidict_keysview_sq_contains(_Multidict_ViewObject* self, PyObject* key)
 {
-    return md_contains(self->md, key);
+    return md_contains(self->md, key, self->md->is_ci);
 }
 
 static inline PyObject*
@@ -1784,7 +1784,7 @@ _multidict_keysview_isdisjoint_impl(_Multidict_ViewObject* self,
     PyObject* key = NULL;
     int st;
     while ((st = PyIter_NextItem(iter, &key)) > 0) {
-        int tmp = md_contains(self->md, key);
+        int tmp = md_contains(self->md, key, self->md->is_ci);
         Py_CLEAR(key);
         if (tmp < 0) {
             Py_CLEAR(iter);

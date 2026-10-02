@@ -6,12 +6,8 @@ extern "C" {
 #endif
 
 #include "compiler.h"
+#include "istr_object.h"
 #include "state.h"
-
-typedef struct {
-    PyUnicodeObject str;
-    PyObject* canonical;
-} istrobject;
 
 #define IStr_CheckExact(state, obj) Py_IS_TYPE(obj, state->IStrType)
 

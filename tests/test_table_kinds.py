@@ -1,4 +1,5 @@
-"""A MultiDict whose keys are all exact str stores them in a compact table.
+"""A MultiDict whose keys are all exact str, or a CIMultiDict whose keys are
+all exact istr, stores them in a compact table.
 
 Any other key moves the table to the full layout, keeping every entry and
 its position; clear() lets the table start compact again. Only the size
@@ -142,6 +143,151 @@ def test_lookups_race_a_move() -> None:
                 d.add(StrKey(f"s{n}"), n)
                 d.clear()
                 d.extend((k, i) for i, k in enumerate(KEYS))
+        finally:
+            stop.set()
+        for f in readers:
+            f.result(timeout=60)
+
+
+ISTR_KEYS = [c.istr(k) for k in KEYS]
+
+
+def _ci_items(md: Any) -> list[tuple[str, object]]:
+    return [(str(k), v) for k, v in md.items()]
+
+
+def test_istr_keys_use_the_compact_table() -> None:
+    ci = c.CIMultiDict((k, 1) for k in ISTR_KEYS)
+    assert ci.__sizeof__() < c.CIMultiDict((k, 1) for k in KEYS).__sizeof__()
+    assert ci.__sizeof__() == c.MultiDict((k, 1) for k in KEYS).__sizeof__()
+
+
+@pytest.mark.parametrize("op", OPS)
+@pytest.mark.parametrize("wrap", ["str", "subclass"])
+def test_a_non_istr_key_moves_the_ci_table(op: str, wrap: str) -> None:
+    def make(mod: Any) -> Any:
+        d = mod.CIMultiDict((mod.istr(k), i) for i, k in enumerate(KEYS))
+        OPS[op](d, str if wrap == "str" else StrKey)
+        return d
+
+    compact = c.CIMultiDict((k, i) for i, k in enumerate(ISTR_KEYS))
+    d = make(c)
+    expected = make(py)
+    assert _ci_items(d) == _ci_items(expected)
+    assert d.__sizeof__() > compact.__sizeof__()
+    assert d["K3"] == 3
+
+
+def test_ci_clear_starts_compact_again() -> None:
+    d = c.CIMultiDict((k, 1) for k in ISTR_KEYS)
+    d.add("X", 2)
+    d.clear()
+    d.extend((k, 1) for k in ISTR_KEYS)
+    assert d.__sizeof__() == c.CIMultiDict((k, 1) for k in ISTR_KEYS).__sizeof__()
+
+
+@pytest.mark.parametrize("convert", [False, True])
+def test_ci_copy_keeps_the_layout(convert: bool) -> None:
+    d = c.CIMultiDict((k, 1) for k in ISTR_KEYS)
+    if convert:
+        d.add("s", 2)
+    copy = d.copy()
+    assert copy.__sizeof__() == d.__sizeof__()
+    assert _ci_items(copy) == _ci_items(d)
+
+
+# The constructor picks the layout from the first key it will get; a later
+# key of the other sort still lands in the right one.
+CTOR_ARGS: dict[str, Callable[[Any], tuple[tuple[object, ...], dict[str, object]]]] = {
+    "list_istr_first": lambda m: (([(m.istr("A"), 1), ("b", 2)],), {}),
+    "list_str_first": lambda m: (([("a", 1), (m.istr("B"), 2)],), {}),
+    "tuple_istr": lambda m: ((((m.istr("A"), 1), (m.istr("B"), 2)),), {}),
+    "list_of_lists": lambda m: (([[m.istr("A"), 1], [m.istr("B"), 2]],), {}),
+    "dict_istr": lambda m: (({m.istr("A"): 1, m.istr("B"): 2},), {}),
+    "dict_str": lambda m: (({"a": 1, m.istr("B"): 2},), {}),
+    "kwargs": lambda m: ((), {"a": 1, "B": 2}),
+    "list_and_kwargs": lambda m: (([(m.istr("A"), 1)],), {"b": 2}),
+    "empty_list": lambda m: (([],), {}),
+    "bad_pair": lambda m: (([(m.istr("A"), 1, 0)],), {}),
+}
+
+
+@pytest.mark.parametrize("arg", CTOR_ARGS)
+def test_ci_constructor_arguments(arg: str) -> None:
+    def make(mod: Any) -> object:
+        args, kwargs = CTOR_ARGS[arg](mod)
+        try:
+            return _ci_items(mod.CIMultiDict(*args, **kwargs))
+        except ValueError:
+            return ValueError
+
+    assert make(c) == make(py)
+
+
+def test_ci_constructor_from_a_ci_multidict() -> None:
+    for keys in (ISTR_KEYS, KEYS):
+        src = c.CIMultiDict((k, 1) for k in keys)
+        d = c.CIMultiDict(src)
+        assert d.__sizeof__() == src.__sizeof__()
+        assert _ci_items(d) == _ci_items(src)
+
+
+def test_ci_move_inside_update_keeps_its_marks() -> None:
+    def run(mod: Any) -> list[tuple[str, object]]:
+        a, b = mod.istr("a"), mod.istr("b")
+        d = mod.CIMultiDict([(a, 0), (a, 0), (b, 0), (a, 0)])
+
+        def items() -> Iterator[tuple[str, int]]:
+            yield (a, 1)
+            yield ("B", 2)
+            yield (a, 3)
+
+        d.update(items())
+        return _ci_items(d)
+
+    assert run(c) == run(py)
+
+
+@pytest.mark.parametrize("compact", [True, False])
+def test_lookups_with_every_key_sort(compact: bool) -> None:
+    # A lookup borrows the identity of an exact str or istr and computes
+    # it for anything else.
+    keys = ISTR_KEYS if compact else KEYS
+    ci = c.CIMultiDict((k, i) for i, k in enumerate(keys))
+    for probe in ("k3", "K3", c.istr("K3"), StrKey("K3")):
+        assert ci[probe] == 3
+        assert probe in ci
+        assert ci.get(probe) == 3
+        assert ci.getone(probe) == 3
+        assert c.CIMultiDictProxy(ci)[probe] == 3
+    assert ci.get("missing") is None
+    assert "Missing" not in ci
+    md = c.MultiDict((k, i) for i, k in enumerate(KEYS))
+    for probe in ("k3", c.istr("k3"), StrKey("k3")):
+        assert md[probe] == 3
+        assert probe in md
+        assert md.get(probe) == 3
+    assert md.get("K3") is None
+    with pytest.raises(TypeError):
+        ci.get(1)
+
+
+def test_ci_lookups_race_a_move() -> None:
+    stop = threading.Event()
+    d = c.CIMultiDict((k, i) for i, k in enumerate(ISTR_KEYS))
+
+    def read() -> None:
+        while not stop.is_set():
+            for i, k in enumerate(ISTR_KEYS):
+                assert d.get(k) in (i, None)
+
+    with ThreadPoolExecutor(4) as pool:
+        readers = [pool.submit(read) for _ in range(4)]
+        try:
+            for n in range(200):
+                d.add(f"S{n}", n)
+                d.clear()
+                d.extend((k, i) for i, k in enumerate(ISTR_KEYS))
         finally:
             stop.set()
         for f in readers:
