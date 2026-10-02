@@ -488,10 +488,11 @@ multidict_to_dict(MultiDictObject* self)
 
 /******************** Base Methods ********************/
 
-static inline PyObject*
-multidict_getall(MultiDictObject* self, PyObject* const* args,
-                 Py_ssize_t nargs, PyObject* kwnames)
+ALWAYS_INLINE static inline PyObject*
+_multidict_getall_impl(MultiDictObject* self, PyObject* const* args,
+                       Py_ssize_t nargs, PyObject* kwnames, bool ci)
 {
+    assert(ci == self->is_ci);
     PyObject *list = NULL, *key = NULL, *_default = NULL;
 
     if (parse2("getall",
@@ -505,7 +506,7 @@ multidict_getall(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
-    if (md_get_all(self, key, &list) < 0) {
+    if (md_get_all(self, key, &list, ci) < 0) {
         return NULL;
     }
 
@@ -520,6 +521,26 @@ multidict_getall(MultiDictObject* self, PyObject* const* args,
     } else {
         return list;
     }
+}
+
+static PyObject*
+cimultidict_getall(MultiDictObject* self, PyObject* const* args,
+                   Py_ssize_t nargs, PyObject* kwnames)
+{
+    assert(self->is_ci);
+    return _multidict_getall_impl(self, args, nargs, kwnames, true);
+}
+
+/* Inlined into the MultiDictProxy copy. */
+ALWAYS_INLINE static inline PyObject*
+multidict_getall(MultiDictObject* self, PyObject* const* args,
+                 Py_ssize_t nargs, PyObject* kwnames)
+{
+    if (UNLIKELY(self->is_ci)) {
+        // See multidict_getone().
+        return cimultidict_getall(self, args, nargs, kwnames);
+    }
+    return _multidict_getall_impl(self, args, nargs, kwnames, false);
 }
 
 ALWAYS_INLINE static inline PyObject*
@@ -1565,7 +1586,7 @@ multidict_sizeof(MultiDictObject* self)
    CIMultiDict has its own copy of, see cimultidict_add(). */
 #define MULTIDICT_METHODS(P)               \
     {"getall",                             \
-     (PyCFunction)multidict_getall,        \
+     (PyCFunction)P##getall,               \
      METH_FASTCALL | METH_KEYWORDS,        \
      multidict_getall_doc},                \
         {"getone",                         \
@@ -1816,6 +1837,13 @@ multidict_proxy_getall(MultiDictProxyObject* self, PyObject* const* args,
 }
 
 static PyObject*
+cimultidict_proxy_getall(MultiDictProxyObject* self, PyObject* const* args,
+                         Py_ssize_t nargs, PyObject* kwnames)
+{
+    return _multidict_getall_impl(self->md, args, nargs, kwnames, true);
+}
+
+static PyObject*
 multidict_proxy_getone(MultiDictProxyObject* self, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
 {
@@ -1971,7 +1999,7 @@ multidict_proxy_tp_repr(MultiDictProxyObject* self)
 /* See MULTIDICT_METHODS(). */
 #define MULTIDICT_PROXY_METHODS(P)             \
     {"getall",                                 \
-     (PyCFunction)multidict_proxy_getall,      \
+     (PyCFunction)P##proxy_getall,             \
      METH_FASTCALL | METH_KEYWORDS,            \
      multidict_getall_doc},                    \
         {"getone",                             \
