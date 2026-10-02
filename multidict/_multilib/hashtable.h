@@ -1531,9 +1531,63 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
 #ifdef Py_GIL_DISABLED
 
+/* A compact entry keeps no hash of its own: it is read from the key, and
+   a concurrent delete can free the key, so nothing is read through it
+   until a reference is held, as in CPython's dict lookup on its
+   unicode-only tables. A key that is the probe's own needs none: the
+   caller's reference keeps that address from being reused. 1 is a match,
+   0 means keep probing, -1 racing a writer. */
 ALWAYS_INLINE static inline int
-_md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                      bool ci)
+_compact_entry_matches(entry_t* entry, PyObject* probe, PyObject* identity,
+                       Py_hash_t hash, bool ci)
+{
+    PyObject* key = load_identity(KIND_COMPACT, entry);
+    if (key == NULL) {
+        return 0;  // not populated (or deleted)
+    }
+    if (key == probe) {
+        return 1;
+    }
+    key = try_get_ref(entry_identity_slot(KIND_COMPACT, entry));
+    if (key == NULL) {
+        return load_identity(KIND_COMPACT, entry) == NULL ? 0 : -1;
+    }
+    bool matched = compact_key_hash(ci, key) == hash &&
+                   str_cmp(identity, compact_key_identity(ci, key));
+    Py_DECREF(key);
+    return matched;
+}
+
+/* The full layout keeps the hash in the entry, so it goes first and a
+   mismatch costs no reference traffic; then a pointer-equal identity is a
+   match outright, since the probe's own reference keeps that object alive
+   and its address cannot be reused. Only a different object needs the
+   reference for the string compare. */
+ALWAYS_INLINE static inline int
+_full_entry_matches(entry_t* entry, PyObject* identity, Py_hash_t hash)
+{
+    if (load_hash(entry) != hash) {
+        return 0;
+    }
+    PyObject* held = load_identity(KIND_ANYSTR, entry);
+    if (held == NULL) {
+        return 0;  // not populated (or deleted)
+    }
+    if (held == identity) {
+        return 1;
+    }
+    held = try_get_ref(entry_identity_slot(KIND_ANYSTR, entry));
+    if (held == NULL) {
+        return load_identity(KIND_ANYSTR, entry) == NULL ? 0 : -1;
+    }
+    bool matched = str_cmp(identity, held);
+    Py_DECREF(held);
+    return matched;
+}
+
+ALWAYS_INLINE static inline int
+_md_contains_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
+                      Py_hash_t hash, bool ci)
 {
     assert(ci == md->is_ci);
     htkeys_t* keys = _md_reader_enter(md);
@@ -1548,35 +1602,14 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
         entry_t* entry = entry_at(kind, entries, iter.index);
-
-        /* Hash first, so a mismatch costs no reference traffic; then a
-           pointer-equal identity is a match outright, since the probe's
-           own reference keeps that object alive and its address cannot
-           be reused. Only a different object needs the reference for
-           the string compare. */
-        if (load_hash(kind, ci, entry) != hash) {
+        int matched =
+            kind_is_compact(kind)
+                ? _compact_entry_matches(entry, probe, identity, hash, ci)
+                : _full_entry_matches(entry, identity, hash);
+        if (matched == 0) {
             continue;
         }
-        PyObject* held = load_identity(kind, entry);
-        if (held == NULL) {
-            continue;  // not populated (or deleted); keep probing
-        }
-        if (slot_identity(kind, ci, held) != identity) {
-            held = try_get_ref(entry_identity_slot(kind, entry));
-            if (held == NULL) {
-                if (load_identity(kind, entry) == NULL) {
-                    continue;
-                }
-                result = 2;  // _MD_NEED_LOCK
-                break;
-            }
-            bool matched = str_cmp(identity, slot_identity(kind, ci, held));
-            Py_DECREF(held);
-            if (!matched) {
-                continue;
-            }
-        }
-        result = 1;
+        result = matched < 0 ? 2 : 1;  // 2 is _MD_NEED_LOCK
         break;
     }
 
@@ -1600,12 +1633,12 @@ _md_contains_retry_locked(MultiDictObject* md, PyObject* identity,
 #endif /* Py_GIL_DISABLED */
 
 ALWAYS_INLINE static inline int
-_md_contains_identity(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                      bool ci)
+_md_contains_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
+                      Py_hash_t hash, bool ci)
 {
     int result;
 #ifdef Py_GIL_DISABLED
-    result = _md_contains_lockfree(md, identity, hash, ci);
+    result = _md_contains_lockfree(md, probe, identity, hash, ci);
     if (result == 2 /* _MD_NEED_LOCK */) {
         result = _md_contains_retry_locked(md, identity, hash);
     }
@@ -1625,7 +1658,7 @@ _md_contains_owned(MultiDictObject* md, PyObject* key)
     if (md_calc_identity_hash(md, key, &identity, &hash, md->is_ci) < 0) {
         return -1;
     }
-    int result = _md_contains_identity(md, identity, hash, md->is_ci);
+    int result = _md_contains_identity(md, key, identity, hash, md->is_ci);
     Py_DECREF(identity);
     return result;
 }
@@ -1646,7 +1679,7 @@ md_contains(MultiDictObject* md, PyObject* key, bool ci)
     if (hash == -1) {
         return -1;
     }
-    return _md_contains_identity(md, identity, hash, ci);
+    return _md_contains_identity(md, key, identity, hash, ci);
 }
 
 /* md_contains() that also returns the stored key in *pret.  Only the view
@@ -1708,8 +1741,8 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 #define _MD_NEED_LOCK 2
 
 ALWAYS_INLINE static inline int
-_md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                     PyObject** ret, bool ci)
+_md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
+                     Py_hash_t hash, PyObject** ret, bool ci)
 {
     assert(ci == md->is_ci);
     htkeys_t* keys = _md_reader_enter(md);
@@ -1724,29 +1757,16 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
         entry_t* entry = entry_at(kind, entries, iter.index);
-
-        /* See _md_contains_lockfree() on the order. */
-        if (load_hash(kind, ci, entry) != hash) {
+        int matched =
+            kind_is_compact(kind)
+                ? _compact_entry_matches(entry, probe, identity, hash, ci)
+                : _full_entry_matches(entry, identity, hash);
+        if (matched == 0) {
             continue;
         }
-        PyObject* held = load_identity(kind, entry);
-        if (held == NULL) {
-            continue;  // not populated (or deleted); keep probing
-        }
-        if (slot_identity(kind, ci, held) != identity) {
-            held = try_get_ref(entry_identity_slot(kind, entry));
-            if (held == NULL) {
-                if (load_identity(kind, entry) == NULL) {
-                    continue;
-                }
-                result = _MD_NEED_LOCK;  // racing a concurrent change
-                break;
-            }
-            bool matched = str_cmp(identity, slot_identity(kind, ci, held));
-            Py_DECREF(held);
-            if (!matched) {
-                continue;
-            }
+        if (matched < 0) {
+            result = _MD_NEED_LOCK;  // racing a concurrent change
+            break;
         }
 
         PyObject* value = try_get_ref(&entry->value);
@@ -1776,10 +1796,10 @@ _md_get_one_retry_locked(MultiDictObject* md, PyObject* identity,
 }
 
 ALWAYS_INLINE static inline int
-_md_get_one_identity(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                     PyObject** ret, bool ci)
+_md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
+                     Py_hash_t hash, PyObject** ret, bool ci)
 {
-    int result = _md_get_one_lockfree(md, identity, hash, ret, ci);
+    int result = _md_get_one_lockfree(md, probe, identity, hash, ret, ci);
     if (result == _MD_NEED_LOCK) {
         result = _md_get_one_retry_locked(md, identity, hash, ret);
     }
@@ -1791,8 +1811,8 @@ _md_get_one_identity(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 #else /* !Py_GIL_DISABLED */
 
 ALWAYS_INLINE static inline int
-_md_get_one_identity(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                     PyObject** ret, bool ci)
+_md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
+                     Py_hash_t hash, PyObject** ret, bool ci)
 {
     return _md_get_one_locked(md, identity, hash, ret, ci);
 }
@@ -1811,7 +1831,7 @@ _md_get_one_owned(MultiDictObject* md, PyObject* key)
         return NULL;
     }
     PyObject* ret = NULL;
-    _md_get_one_identity(md, identity, hash, &ret, md->is_ci);
+    _md_get_one_identity(md, key, identity, hash, &ret, md->is_ci);
     Py_DECREF(identity);
     return ret;
 }
@@ -1832,7 +1852,7 @@ md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret, bool ci)
     if (hash == -1) {
         return -1;
     }
-    return _md_get_one_identity(md, identity, hash, ret, ci);
+    return _md_get_one_identity(md, key, identity, hash, ret, ci);
 }
 
 static inline int

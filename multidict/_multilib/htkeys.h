@@ -302,19 +302,14 @@ _str_cached_hash(PyObject* str)
 }
 
 /* The hash of a compact entry's identity, read from the key itself: a
-   str's cached hash, or the canonical form's hash an istr keeps. Never
-   through istr->canonical, so a lock-free reader whose key a concurrent
-   delete just freed reads one stale integer from it, not a stale pointer
-   it would follow; see load_hash(). */
+   str's cached hash, or the canonical form's hash an istr keeps, set
+   before the istr is shared. A lock-free reader holds a reference to the
+   key first; see _compact_entry_matches(). */
 static inline Py_hash_t
 compact_key_hash(bool ci, PyObject* key)
 {
     if (ci) {
-#ifdef Py_GIL_DISABLED
-        return atomic_load_ssize_relaxed(&((istrobject*)key)->canonical_hash);
-#else
         return ((istrobject*)key)->canonical_hash;
-#endif
     }
     return _str_cached_hash(key);
 }
@@ -559,6 +554,9 @@ estimate_log2_keysize(Py_ssize_t n)
 static const htkeys_t empty_htkeys = {
     .log2_size = 0,
     .log2_index_bytes = 3,
+    /* Any kind would do: with no entries there is no layout to read, and
+       a table replacing this one takes md_next_kind(), which ignores it. */
+    .kind = KIND_ANYSTR,
     .usable = 0, /* immutable */
     .nentries = 0,
     .resume_slots = NULL,

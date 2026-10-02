@@ -1,0 +1,4 @@
+Fixed a lock-free lookup on the free-threaded build reading the hash
+through a key of a compact table that a concurrent delete had already
+freed, by taking a reference to such a key first unless it is the very
+object being looked up -- by :user:`asvetlov`.

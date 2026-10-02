@@ -149,6 +149,36 @@ def test_lookups_race_a_move() -> None:
             f.result(timeout=60)
 
 
+def test_lookups_race_deletes_that_free_keys() -> None:
+    # Each key's only reference is the table's, so a delete frees it while
+    # readers may be probing its slot. The probes are equal to the keys but
+    # not the same objects, so every lookup reads through a stored key.
+    stop = threading.Event()
+    d = c.MultiDict((k, i) for i, k in enumerate(KEYS))
+    probes = ["".join(k) for k in KEYS]
+
+    def read() -> None:
+        while not stop.is_set():
+            for i, k in enumerate(probes):
+                assert d.get(k) == i
+                assert d[k] == i
+                assert k in d
+            assert d.get("gone") is None
+            assert "gone" not in d
+
+    with ThreadPoolExecutor(4) as pool:
+        readers = [pool.submit(read) for _ in range(4)]
+        try:
+            for n in range(2000):
+                d[f"fresh-{n}"] = n
+                del d[f"fresh-{n}"]
+        finally:
+            stop.set()
+        for f in readers:
+            f.result(timeout=60)
+    assert _items(d) == [(k, i) for i, k in enumerate(KEYS)]
+
+
 ISTR_KEYS = [c.istr(k) for k in KEYS]
 
 
@@ -324,7 +354,10 @@ def test_ci_lookups_race_deletes_that_free_keys() -> None:
         while not stop.is_set():
             for i, k in enumerate(ISTR_KEYS):
                 assert d.get(k) == i
+                assert d[k] == i
+                assert k in d
             assert d.get("gone") is None
+            assert "gone" not in d
 
     with ThreadPoolExecutor(4) as pool:
         readers = [pool.submit(read) for _ in range(4)]
