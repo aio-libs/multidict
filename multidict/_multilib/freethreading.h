@@ -203,21 +203,11 @@ reset_value(entry_t* entry)
 
 /* _md_replace_locked()/_md_update() overwrite hash in place on a live entry,
    so a reader's plain read would race it. Relaxed is enough: it is
-   read only after the identity check has ordered the rest. */
+   read only after the identity check has ordered the rest. Only the full
+   layout has one; see _compact_entry_matches(). */
 static inline Py_hash_t
-load_hash(uint8_t kind, bool ci, entry_t* entry)
+load_hash(entry_t* entry)
 {
-    if (kind_is_compact(kind)) {
-        /* -1 is never a str's hash, so a slot being emptied reads as a
-           mismatch. A concurrent delete can free the key between the two
-           loads, and its block can be reused at once by an allocation of
-           the same size: the free is not deferred, only an empty page's
-           reuse is. So the hash is a single read from the key, whose stale
-           value can only fail the comparison or pass it into the
-           try_get_ref() check that follows, never a pointer to follow. */
-        PyObject* key = (PyObject*)atomic_load_ptr((void* const*)&entry->key);
-        return key == NULL ? -1 : compact_key_hash(ci, key);
-    }
     return (Py_hash_t)atomic_load_ssize_relaxed((Py_ssize_t*)&entry->hash);
 }
 
@@ -230,6 +220,25 @@ store_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
     }
 }
 
+/* PyUnstable_TryIncRef() with CPython's own fast path, which the API
+   only takes behind a call: an immortal object, or one this thread owns.
+   Py_REF_DEBUG builds keep a total the call maintains. */
+static inline int
+_try_incref(PyObject* op)
+{
+#ifndef Py_REF_DEBUG
+    uint32_t local = _Py_atomic_load_uint32_relaxed(&op->ob_ref_local) + 1;
+    if (local == 0) {
+        return 1;  // immortal
+    }
+    if (_Py_IsOwnedByCurrentThread(op)) {
+        _Py_atomic_store_uint32_relaxed(&op->ob_ref_local, local);
+        return 1;
+    }
+#endif
+    return PyUnstable_TryIncRef(op);
+}
+
 /* NULL means the caller must fall back to the critical section, which
    includes the case of the field legitimately being NULL. */
 static inline PyObject*
@@ -239,7 +248,7 @@ try_get_ref(PyObject** addr)
     if (value == NULL) {
         return NULL;
     }
-    if (!PyUnstable_TryIncRef(value)) {
+    if (!_try_incref(value)) {
         return NULL;
     }
     if ((PyObject*)atomic_load_ptr((void* const*)addr) != value) {
@@ -374,9 +383,9 @@ reset_value(entry_t* entry)
 }
 
 static inline Py_hash_t
-load_hash(uint8_t kind, bool ci, entry_t* entry)
+load_hash(entry_t* entry)
 {
-    return entry_hash(kind, ci, entry);
+    return entry->hash;
 }
 
 static inline void
