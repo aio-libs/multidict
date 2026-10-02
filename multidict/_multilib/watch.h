@@ -223,7 +223,7 @@ _md_watch_deliver(MultiDictObject* md, watchlog_t* snapshot)
 /* True when _md_watch_flush() would have something to do. Read under the
    caller's own critical section, so the flush itself needs no atomics. */
 static inline bool
-md_watch_pending(MultiDictObject* md)
+md_watch_pending(const MultiDictObject* md)
 {
     return UNLIKELY(md->watch != NULL) && !watchlog_empty(&md->watch->log);
 }

@@ -31,7 +31,7 @@ extern "C" {
 
 /* The kind a new, empty table of md starts with. */
 static inline uint8_t
-md_fresh_kind(MultiDictObject* md)
+md_fresh_kind(const MultiDictObject* md)
 {
     /* A table starts compact and moves to KIND_ANYSTR on the first key
        that does not fit (see md_key_fits()). */
@@ -41,7 +41,7 @@ md_fresh_kind(MultiDictObject* md)
 /* The kind of a table replacing `old`: a table with no entries yet starts
    afresh, so a clear() lets md return to the compact kind. */
 static inline uint8_t
-md_next_kind(MultiDictObject* md, const htkeys_t* old)
+md_next_kind(const MultiDictObject* md, const htkeys_t* old)
 {
     return old->nentries == 0 ? md_fresh_kind(md) : old->kind;
 }
@@ -50,7 +50,8 @@ md_next_kind(MultiDictObject* md, const htkeys_t* old)
    its own identity, a CIMultiDict's an exact istr, whose identity is then
    its canonical form. */
 ALWAYS_INLINE static inline bool
-md_key_fits(MultiDictObject* md, PyObject* key, PyObject* identity, bool ci)
+md_key_fits(const MultiDictObject* md, PyObject* key, PyObject* identity,
+            bool ci)
 {
     assert(ci == md->is_ci);
     if (ci) {
@@ -110,7 +111,7 @@ in the left and right arguments.
  * GROWTH_RATE was set to used*2 + capacity/2 in 3.4.0-3.6.0.
  */
 static inline Py_ssize_t
-GROWTH_RATE(MultiDictObject* md)
+GROWTH_RATE(const MultiDictObject* md)
 {
     return md->used * 3;
 }
