@@ -161,7 +161,10 @@ def test_lookups_race_deletes_that_free_keys() -> None:
         while not stop.is_set():
             for i, k in enumerate(probes):
                 assert d.get(k) == i
+                assert d[k] == i
+                assert k in d
             assert d.get("gone") is None
+            assert "gone" not in d
 
     with ThreadPoolExecutor(4) as pool:
         readers = [pool.submit(read) for _ in range(4)]
@@ -351,7 +354,10 @@ def test_ci_lookups_race_deletes_that_free_keys() -> None:
         while not stop.is_set():
             for i, k in enumerate(ISTR_KEYS):
                 assert d.get(k) == i
+                assert d[k] == i
+                assert k in d
             assert d.get("gone") is None
+            assert "gone" not in d
 
     with ThreadPoolExecutor(4) as pool:
         readers = [pool.submit(read) for _ in range(4)]
