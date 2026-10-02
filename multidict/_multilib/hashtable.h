@@ -567,6 +567,65 @@ md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
     return _md_rebuild(md, estimate_log2_keysize(extra_size + md->used));
 }
 
+/* md_reserve() into a KIND_ANYSTR table: grows and moves a compact table
+   in one rebuild, where md_reserve() and then md_to_anystr() would copy
+   it twice. Holes are dropped, so no batch may be in flight. */
+NOINLINE static int
+_md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
+{
+    htkeys_t* oldkeys = md->keys;
+    assert(md->batches == 0 && kind_is_compact(oldkeys->kind));
+    if (!htkeys_size_fits(log2_newsize)) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    htkeys_t* newkeys =
+        htkeys_new_unfilled(MD_POOLS(md), log2_newsize, KIND_ANYSTR);
+    if (newkeys == NULL) {
+        return -1;
+    }
+    entry_t* src = htkeys_entries(oldkeys);
+    entry_t* newentries = htkeys_entries(newkeys);
+    entry_t* dst = newentries;
+    for (Py_ssize_t i = 0; i < oldkeys->nentries;
+         i++, src = entry_next(KIND_COMPACT, src)) {
+        PyObject* key = src->key;
+        if (key == NULL) {
+            continue;
+        }
+        PyObject* identity = compact_key_identity(md->is_ci, key);
+        dst->identity = Py_NewRef(identity);
+        dst->hash = _str_cached_hash(identity);
+        dst->key = key;
+        dst->value = src->value;
+        dst = entry_next(KIND_ANYSTR, dst);
+    }
+    Py_ssize_t numentries = md->used;
+    assert(htkeys_entry_index(newkeys, newentries, dst) == numentries);
+    htkeys_zero_entries(newkeys, numentries);
+    htkeys_build_indices(newkeys, md->is_ci, newentries, numentries);
+    newkeys->usable -= numentries;
+    newkeys->nentries = numentries;
+    _md_publish_rebuilt(md, oldkeys, newkeys);
+    return 0;
+}
+
+/* md_reserve() for extend(), update() or merge(), before their batch
+   starts. Keyword names are plain str, which never fit a CIMultiDict's
+   compact table, so with any the table is moved while it grows; moved
+   later, it cost update(istr_items, **kwargs) a second copy, 18%. */
+static inline int
+md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs)
+{
+    if (UNLIKELY(kwargs) && md->is_ci && kind_is_compact(md->keys->kind) &&
+        md->used > 0 && md->batches == 0 &&
+        extra_size <= (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
+        return _md_rebuild_to_anystr(
+            md, estimate_log2_keysize(extra_size + md->used));
+    }
+    return md_reserve(md, extra_size);
+}
+
 /* Publishes md's replacement table, then drops the one it replaced,
    which a fresh shell does not have. The drop comes last because its
    decrefs can run a __del__ that reads or mutates md: publishing first

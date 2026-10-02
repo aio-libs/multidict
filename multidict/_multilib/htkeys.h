@@ -667,8 +667,12 @@ _htkeys_alloc_raw(pool_t* pools, uint8_t log2_size, uint8_t kind)
 
 /* Zeroes the entries from `from` on. A caller that fills the front of
    the table itself needs this for the rest: ASSERT_CONSISTENT() reads
-   every entry a table has room for, not just the used prefix. */
-static inline void
+   every entry a table has room for, not just the used prefix. Out of line,
+   like htkeys_new_unfilled(), so a COLD caller such as md_to_anystr(),
+   built for size, calls this copy, whose memset is a library call: its own
+   inlined one became rep stos, which costs a cycle per byte under the
+   benchmarks' instruction counts. */
+NOINLINE static void
 htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
 {
     assert(from >= 0 && from <= keys->usable);
@@ -679,8 +683,9 @@ htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
 
 /* An empty table whose entries are left as they came, for a caller that
    writes the front of the array itself and calls htkeys_zero_entries()
-   for the rest. Nothing may read the table in between. */
-static inline htkeys_t*
+   for the rest. Nothing may read the table in between. Out of line; see
+   htkeys_zero_entries(). */
+NOINLINE static htkeys_t*
 htkeys_new_unfilled(pool_t* pools, uint8_t log2_size, uint8_t kind)
 {
     uint8_t log2_bytes = _htkeys_log2_index_bytes(log2_size);

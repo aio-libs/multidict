@@ -292,3 +292,22 @@ def test_ci_lookups_race_a_move() -> None:
             stop.set()
         for f in readers:
             f.result(timeout=60)
+
+
+@pytest.mark.parametrize("method", ["extend", "update", "merge"])
+@pytest.mark.parametrize("shape", ["full", "holes", "empty"])
+def test_ci_kwargs_move_the_table_while_it_grows(method: str, shape: str) -> None:
+    # Keyword names are str, so the batch moves a compact table to the full
+    # layout up front, growing it in the same rebuild.
+    def make(mod: Any) -> list[tuple[str, object]]:
+        d = mod.CIMultiDict((mod.istr(k), i) for i, k in enumerate(KEYS))
+        if shape == "holes":
+            for k in KEYS[::3]:
+                del d[k]
+        elif shape == "empty":
+            d.clear()
+        getattr(d, method)([(mod.istr("K1"), "x")], **{f"w{i}": i for i in range(30)})
+        assert d["W5"] == 5
+        return _ci_items(d)
+
+    assert make(c) == make(py)

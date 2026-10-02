@@ -199,6 +199,9 @@ _multidict_init_kind(mod_state* state, bool is_ci, PyObject* arg,
     if (!is_ci) {
         return KIND_COMPACT;
     }
+    if (nkwargs > 0) {
+        return KIND_ANYSTR;  // keyword names are str
+    }
     PyObject* key = NULL;
     if (other != NULL) {
         entry_t* entry = htkeys_entries(other->keys);
@@ -210,9 +213,7 @@ _multidict_init_kind(mod_state* state, bool is_ci, PyObject* arg,
             }
         }
     } else if (arg == NULL) {
-        if (nkwargs > 0) {
-            return KIND_ANYSTR;  // keyword names are str
-        }
+        return KIND_COMPACT;
     } else if (PyList_CheckExact(arg)) {
         if (PyList_GET_SIZE(arg) > 0) {
             key = _seq_first_key(PyList_GET_ITEM(arg, 0));
@@ -1048,7 +1049,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_reserve(self, size);
+        ret = md_reserve_batch(self, size, kwds != NULL);
         if (ret == 0) {
             ret = md_update_from_ht(self, other, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
@@ -1062,7 +1063,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_reserve(self, size);
+        ret = md_reserve_batch(self, size, kwds != NULL);
         if (ret == 0) {
             ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
@@ -1076,7 +1077,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_reserve(self, size);
+        ret = md_reserve_batch(self, size, kwds != NULL);
         if (ret == 0) {
             if (other != NULL) {
                 ret = md_extend_self(self);
@@ -1346,7 +1347,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     reflist_init(&defer);
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
-        ret = md_reserve(self, size);
+        ret = md_reserve_batch(self, size, kwds != NULL);
         update_marks_init(&marks, self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
         if (ret == 0) {
@@ -1363,7 +1364,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
-        ret = md_reserve(self, size);
+        ret = md_reserve_batch(self, size, kwds != NULL);
         update_marks_init(&marks, self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
         if (ret == 0) {
@@ -1380,7 +1381,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
-        ret = md_reserve(self, size);
+        ret = md_reserve_batch(self, size, kwds != NULL);
         update_marks_init(&marks, self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
         if (ret == 0) {
@@ -1435,7 +1436,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
        close -- see the comment above reflist_t. */
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
-        ret = md_reserve(self, size);
+        ret = md_reserve_batch(self, size, kwds != NULL);
         update_marks_init(&marks, self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
         if (ret == 0) {
@@ -1452,7 +1453,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
-        ret = md_reserve(self, size);
+        ret = md_reserve_batch(self, size, kwds != NULL);
         update_marks_init(&marks, self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
         if (ret == 0) {
@@ -1469,7 +1470,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
-        ret = md_reserve(self, size);
+        ret = md_reserve_batch(self, size, kwds != NULL);
         update_marks_init(&marks, self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
         if (ret == 0) {
