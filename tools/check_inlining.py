@@ -178,6 +178,14 @@ RULES = (
         "would test the class at run time",
     ),
     Rule(
+        "_key_to_identity_cs",
+        KEY_ENTRIES,
+        (FT,),
+        "the heap reflist for d[key] = v duplicates took it out of "
+        "md_del_cs on FT, delitem +4 Ir; pinning it on GIL cost add "
+        "and ctor ~1%",
+    ),
+    Rule(
         "md_borrow_identity",
         "*",
         BOTH,

@@ -44,6 +44,12 @@ str_cmp(PyObject* s1, PyObject* s2)
     return (memcmp(data1, data2, (size_t)(len * kind)) == 0);
 }
 
+/* Pinned on FT only: there the replace path's growth took it out of
+   md_del_cs, while on GIL the pin reshuffles other inlining for a net
+   loss. */
+#ifdef Py_GIL_DISABLED
+ALWAYS_INLINE
+#endif
 static inline PyObject*
 _key_to_identity_cs(mod_state* state, PyObject* key)
 {

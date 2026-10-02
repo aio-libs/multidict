@@ -1246,6 +1246,45 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
         n += 1
 
 
+@pytest.mark.c_extension
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy" or "free-threading" in sys.version,
+    reason="getrefcount is not reliable",
+)
+@pytest.mark.parametrize("cls", (MultiDict, CIMultiDict))
+def test_setitem_duplicates_no_refleak_on_memory_error(
+    cls: type[MultiDict[object]],
+) -> None:
+    """d[key] = v with later matches of key allocates where it collects
+    their refs; failing that allocation must not leak the replaced or the
+    removed entries."""
+    testcapi = pytest.importorskip("_testcapi")
+    values = [object() for _ in range(4)]
+    baseline = [sys.getrefcount(obj) for obj in values]
+
+    n = 0
+    failures = 0
+    while True:
+        md = cls([("k", v) for v in values[:3]])
+        setitem = functools.partial(md.__setitem__, "k", values[3])
+        try:
+            # One line, so no tracer line event can take the failure.
+            testcapi.set_nomemory(n, n + 1), setitem(), testcapi.remove_mem_hooks()
+        except MemoryError:
+            testcapi.remove_mem_hooks()
+            failed = True
+        else:
+            failed = False
+            assert md.getall("k") == [values[3]]
+        del md, setitem
+        assert [sys.getrefcount(obj) for obj in values] == baseline
+        if failed:
+            failures += 1
+        elif failures:
+            break
+        n += 1
+
+
 @pytest.mark.parametrize("method", ["popone", "pop"])
 def test_pop_docstring_matches_behaviour(
     any_multidict_class: type[MultiDict[str]], method: str

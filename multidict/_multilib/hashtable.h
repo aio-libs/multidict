@@ -425,7 +425,7 @@ _md_publish_rebuilt(MultiDictObject* md, htkeys_t* oldkeys, htkeys_t* newkeys)
 /* _md_rebuild() while an update() or merge() is in flight: every entry
    keeps its index, holes and all, since the batch's marks name entries by
    index; see update_marks.h. */
-COLD NOINLINE static int
+COLD static int
 _md_rebuild_keeping_indices(MultiDictObject* md, uint8_t log2_newsize)
 {
     htkeys_t* oldkeys = md->keys;
@@ -467,7 +467,7 @@ _md_rebuild_keeping_indices(MultiDictObject* md, uint8_t log2_newsize)
    flight: it starts with as many holes as md has entries now, so the new
    entries take indices none of the batch's marks name. Holds `extra` more.
    */
-COLD NOINLINE static htkeys_t*
+COLD static htkeys_t*
 _md_new_keys_after_holes(MultiDictObject* md, Py_ssize_t extra, uint8_t kind)
 {
     Py_ssize_t nholes = md->keys->nentries;
@@ -701,7 +701,7 @@ md_ci_kind_for_first_key(mod_state* state, PyObject* key)
 
 /* md_clone_from_ht() while an update() or merge() on md is in flight:
    other's entries go after the holes _md_new_keys_after_holes() leaves. */
-COLD NOINLINE static int
+COLD static int
 _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
 {
     // the holes keep md's entries' indices; other's entries may need more
@@ -843,7 +843,7 @@ _md_fill_str_entry(htkeys_t* keys, PyObject* identity, PyObject* key,
 /* Moves md to a KIND_ANYSTR table of the same size, for a key that does
    not fit a compact one (see md_key_fits()). Every entry keeps its index,
    so iterators and an update()'s marks stay valid. */
-COLD NOINLINE static int
+COLD static int
 md_to_anystr(MultiDictObject* md)
 {
     htkeys_t* oldkeys = md->keys;
@@ -2321,12 +2321,37 @@ md_pop_item(MultiDictObject* md)
     return ret;
 }
 
+/* Later matches of a replaced key are rare, so their reflist lives on
+   the heap: in the caller's frame it cost every d[key] = v. */
+COLD static int
+_md_replace_del_dup(MultiDictObject* md, size_t slot, entry_t* entry,
+                    reflist_t** dups)
+{
+    if (*dups == NULL) {
+        *dups = PyMem_Malloc(sizeof(reflist_t));
+        if (*dups == NULL) {
+            PyErr_NoMemory();
+            return -1;
+        }
+        reflist_init(*dups);
+    }
+    return _md_del_at_deferred(md, slot, entry, *dups);
+}
+
+COLD static void
+_md_replace_free_dups(reflist_t* dups)
+{
+    reflist_clear(dups);
+    PyMem_Free(dups);
+}
+
 /* Returns 1 when `key` isn't there, leaving the add to the caller.
  * `watched` is a constant at both call sites; see _md_del_locked(). */
 ALWAYS_INLINE static inline int
 _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
-                   PyObject* identity, Py_hash_t hash, reflist_t* defer,
-                   bool watched, bool ci)
+                   PyObject* identity, Py_hash_t hash, PyObject** old_key_out,
+                   PyObject** old_value_out, reflist_t** dups, bool watched,
+                   bool ci)
 {
     assert(ci == md->is_ci);
     bool found = false;
@@ -2381,7 +2406,8 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
                 }
                 found = true;
                 replaced = iter.index;
-                // old_key/old_value decref deferred -- see reflist_t
+                /* old_key/old_value decref deferred to the caller, past
+                   the critical section -- see reflist_t */
                 PyObject* old_value = load_value(entry);
                 /* The same key object needs no store, and in a compact
                    table no new publication either. */
@@ -2400,18 +2426,8 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
                                     value,
                                     old_value);
                 }
-                /* Push both unconditionally, not with `||`: a failed
-                   first push already decref'd old_key itself (see
-                   reflist_push()'s doc comment), but short-circuiting
-                   past the second push would leak old_value -- neither
-                   deferred nor decref'd. */
-                int push_ret = reflist_push(defer, old_key);
-                if (reflist_push(defer, old_value) < 0) {
-                    push_ret = -1;
-                }
-                if (push_ret < 0) {
-                    return -1;
-                }
+                *old_key_out = old_key;
+                *old_value_out = old_value;
             } else {
                 if (watched) {
                     md_watch_record(md,
@@ -2422,7 +2438,7 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
                                     entry->value,
                                     NULL);
                 }
-                if (_md_del_at_deferred(md, iter.slot, entry, defer) < 0) {
+                if (_md_replace_del_dup(md, iter.slot, entry, dups) < 0) {
                     return -1;
                 }
             }
@@ -2469,11 +2485,20 @@ _md_add_after_replace(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 
 COLD static int
 _md_replace_watched(MultiDictObject* md, PyObject* key, PyObject* value,
-                    PyObject* identity, Py_hash_t hash, reflist_t* defer)
+                    PyObject* identity, Py_hash_t hash, PyObject** old_key,
+                    PyObject** old_value, reflist_t** dups)
 {
     md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
-    int ret = _md_replace_locked(
-        md, key, value, identity, hash, defer, true, md->is_ci);
+    int ret = _md_replace_locked(md,
+                                 key,
+                                 value,
+                                 identity,
+                                 hash,
+                                 old_key,
+                                 old_value,
+                                 dups,
+                                 true,
+                                 md->is_ci);
     if (ret > 0) {
         ret = _md_add_after_replace(md, hash, identity, key, value, md->is_ci);
     }
@@ -2490,25 +2515,40 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value, bool ci)
     if (md_calc_identity_hash(md, key, &identity, &hash, ci) < 0) {
         return -1;
     }
-    reflist_t defer;
-    reflist_init(&defer);
+    // The one replaced entry's refs; later matches go to dups
+    PyObject* old_key = NULL;
+    PyObject* old_value = NULL;
+    reflist_t* dups = NULL;
     int ret;
     // see md_del()
     bool flush = false;
     Py_BEGIN_CRITICAL_SECTION(md);
     if (UNLIKELY(md->watch != NULL)) {
-        ret = _md_replace_watched(md, key, value, identity, hash, &defer);
+        ret = _md_replace_watched(
+            md, key, value, identity, hash, &old_key, &old_value, &dups);
         flush = md_watch_pending(md);
     } else {
-        ret = _md_replace_locked(
-            md, key, value, identity, hash, &defer, false, ci);
+        ret = _md_replace_locked(md,
+                                 key,
+                                 value,
+                                 identity,
+                                 hash,
+                                 &old_key,
+                                 &old_value,
+                                 &dups,
+                                 false,
+                                 ci);
         if (ret > 0) {
             ret = _md_add_after_replace(md, hash, identity, key, value, ci);
         }
     }
     ASSERT_CONSISTENT(md);
     Py_END_CRITICAL_SECTION();
-    reflist_clear(&defer);
+    Py_XDECREF(old_key);
+    Py_XDECREF(old_value);
+    if (UNLIKELY(dups != NULL)) {
+        _md_replace_free_dups(dups);
+    }
     Py_DECREF(identity);
     md_watch_flush_if(md, flush);
     return ret;
