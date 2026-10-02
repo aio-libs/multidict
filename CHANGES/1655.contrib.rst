@@ -1,0 +1,7 @@
+Made the ThreadSanitizer run reliable: added
+``tools/tsan_suppressions.txt`` for the ``faulthandler`` watchdog's
+traceback dumps, used by the CI job and by the documented local command,
+which also gained ``--no-cov``; and changed the two pure-Python deadlock
+tests for reciprocal view operations to fail only when their workers stop
+making progress for 20 seconds, rather than when they have not finished
+within 20 seconds -- by :user:`asvetlov`.
