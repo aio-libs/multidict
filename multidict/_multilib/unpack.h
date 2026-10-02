@@ -9,6 +9,8 @@ extern "C" {
 
 #include <Python.h>
 
+#include "compiler.h"
+
 /* list[i] as a new reference. On a free-threaded build another thread can
    drop the item between a borrow and its incref, or shrink the list after
    its length was checked, so PyList_GetItemRef takes the reference
@@ -49,7 +51,7 @@ typedef enum {
    here. *plen is only written for UNPACK_LENGTH, which is an error path
    in both callers; the general path is not an option for an exact list,
    whose items have to be read through list_getitem_ref(). */
-static inline unpack_t
+ALWAYS_INLINE static inline unpack_t
 unpack_pair(PyObject* obj, PyObject** pkey, PyObject** pvalue,
             Py_ssize_t* plen)
 {

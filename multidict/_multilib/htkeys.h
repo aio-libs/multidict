@@ -13,6 +13,7 @@ extern "C" {
 #include "atomic_helpers.h"
 #include "compiler.h"
 #include "freelist.h"
+#include "istr_object.h"
 
 /* Implementation note.
 identity always has exact PyUnicode_Type type, not a subclass.
@@ -26,7 +27,7 @@ itself but identity instead, borrowed references during iteration
 over pair_list for, e.g., md.get() or md.pop() is safe.
 */
 
-/* The key and the value lead, so that a table of KIND_STR, which stores
+/* The key and the value lead, so that a table of KIND_COMPACT, which stores
    only them, is a prefix of this layout. */
 typedef struct entry {
     PyObject* key;
@@ -36,11 +37,13 @@ typedef struct entry {
 } entry_t;
 
 /* How a table stores its entries. KIND_ANYSTR stores the whole entry_t.
-   KIND_STR stores only the key and the value: every key is an exact str
-   that is its own identity, and the hash is the one the str caches. */
+   KIND_COMPACT stores only the key and the value, and the class decides
+   what the identity is: in a MultiDict every key is an exact str that is
+   its own identity, in a CIMultiDict an exact istr whose canonical form is.
+   Either way the hash is the one the identity caches. */
 typedef enum {
     KIND_ANYSTR = 0,
-    KIND_STR = 1,
+    KIND_COMPACT = 1,
 } htkeys_kind_t;
 
 #define HTKEYS_KINDS 2
@@ -177,8 +180,8 @@ htkeys_entries(const htkeys_t* dk)
 }
 
 /* Code reaches a neighbouring entry, an entry's identity and its hash only
-   through these and the accessors in freethreading.h, passing the table
-   the entry belongs to, since the table's kind decides where they are.
+   through these and the accessors in freethreading.h, passing the kind
+   of the table the entry belongs to, which decides where they are.
    The key and the value are plain fields, at the same offsets in every
    kind. */
 /* Both sizes are powers of two, so stepping is a shift, not a multiply. */
@@ -187,7 +190,37 @@ htkeys_kind_entry_shift(uint8_t kind)
 {
     Py_BUILD_ASSERT(sizeof(entry_t) == 4 * sizeof(PyObject*));
     Py_BUILD_ASSERT(offsetof(entry_t, identity) == 2 * sizeof(PyObject*));
-    return (SIZEOF_VOID_P == 8 ? 4 : 3) + (kind != KIND_STR);
+    return (SIZEOF_VOID_P == 8 ? 4 : 3) + (kind != KIND_COMPACT);
+}
+
+// A compact kind stores only the key and the value.
+static inline bool
+kind_is_compact(uint8_t kind)
+{
+    return kind == KIND_COMPACT;
+}
+
+static inline PyObject*
+istr_canonical(PyObject* key)
+{
+    return ((istrobject*)key)->canonical;
+}
+
+/* The identity of a compact entry's key, `ci` being whether the table
+   belongs to a CIMultiDict. */
+static inline PyObject*
+compact_key_identity(bool ci, PyObject* key)
+{
+    return ci ? istr_canonical(key) : key;
+}
+
+/* The identity of the object the identity slot holds (see
+   entry_identity_slot()): the object itself, except for a CIMultiDict's
+   compact table, whose slot holds the istr key. */
+static inline PyObject*
+slot_identity(uint8_t kind, bool ci, PyObject* held)
+{
+    return kind_is_compact(kind) ? compact_key_identity(ci, held) : held;
 }
 
 static inline size_t
@@ -196,46 +229,62 @@ htkeys_kind_entry_size(uint8_t kind)
     return (size_t)1 << htkeys_kind_entry_shift(kind);
 }
 
-/* The _k forms take the kind itself, for a function that reads it once:
-   with -fno-strict-aliasing any store may alias keys->kind, so the
-   table forms reload it on every call. */
+/* These take the kind, not the table, so a function reads keys->kind
+   once: with -fno-strict-aliasing any store may alias it, and a read per
+   call would reload it every time. */
 static inline entry_t*
-entry_at_k(uint8_t kind, entry_t* entries, Py_ssize_t i)
+entry_at(uint8_t kind, entry_t* entries, Py_ssize_t i)
 {
     return (entry_t*)((char*)entries +
                       ((size_t)i << htkeys_kind_entry_shift(kind)));
 }
 
 static inline entry_t*
-entry_next_k(uint8_t kind, entry_t* entry)
+entry_next(uint8_t kind, entry_t* entry)
 {
     return (entry_t*)((char*)entry + htkeys_kind_entry_size(kind));
 }
 
 static inline entry_t*
-entry_prev_k(uint8_t kind, entry_t* entry)
+entry_prev(uint8_t kind, entry_t* entry)
 {
     return (entry_t*)((char*)entry - htkeys_kind_entry_size(kind));
 }
 
-// A KIND_STR key is its own identity.
+/* NULL for a hole. */
 static inline PyObject*
-entry_identity_k(uint8_t kind, const entry_t* entry)
+entry_identity(uint8_t kind, bool ci, const entry_t* entry)
 {
-    return kind == KIND_STR ? entry->key : entry->identity;
+    if (kind_is_compact(kind)) {
+        PyObject* key = entry->key;
+        return key == NULL ? NULL : compact_key_identity(ci, key);
+    }
+    return entry->identity;
 }
 
-// For the reads that go through try_get_ref().
-static inline PyObject**
-entry_identity_slot_k(uint8_t kind, entry_t* entry)
+/* Whether entry is a hole (deleted or never filled). Cheaper than testing
+   entry_identity() for NULL, which in a CIMultiDict's compact table
+   reads through the key. */
+static inline bool
+entry_is_hole(uint8_t kind, const entry_t* entry)
 {
-    return kind == KIND_STR ? &entry->key : &entry->identity;
+    return kind_is_compact(kind) ? entry->key == NULL
+                                 : entry->identity == NULL;
+}
+
+/* The field lock-free readers check first: the key in a compact table, so
+   what it holds is the identity only in a MultiDict's. See
+   slot_identity(). */
+static inline PyObject**
+entry_identity_slot(uint8_t kind, entry_t* entry)
+{
+    return kind_is_compact(kind) ? &entry->key : &entry->identity;
 }
 
 static inline void
-entry_set_identity_k(uint8_t kind, entry_t* entry, PyObject* identity)
+entry_set_identity(uint8_t kind, entry_t* entry, PyObject* identity)
 {
-    if (kind != KIND_STR) {
+    if (!kind_is_compact(kind)) {
         entry->identity = identity;
     }
 }
@@ -252,30 +301,39 @@ _str_cached_hash(PyObject* str)
 #endif
 }
 
+/* The hash of a compact entry's identity, read from the key itself: a
+   str's cached hash, or the canonical form's hash an istr keeps. Never
+   through istr->canonical, so a lock-free reader whose key a concurrent
+   delete just freed reads one stale integer from it, not a stale pointer
+   it would follow; see load_hash(). */
 static inline Py_hash_t
-entry_hash_k(uint8_t kind, const entry_t* entry)
+compact_key_hash(bool ci, PyObject* key)
 {
-    return kind == KIND_STR ? _str_cached_hash(entry->key) : entry->hash;
+    if (ci) {
+#ifdef Py_GIL_DISABLED
+        return atomic_load_ssize_relaxed(&((istrobject*)key)->canonical_hash);
+#else
+        return ((istrobject*)key)->canonical_hash;
+#endif
+    }
+    return _str_cached_hash(key);
+}
+
+static inline Py_hash_t
+entry_hash(uint8_t kind, bool ci, const entry_t* entry)
+{
+    if (kind_is_compact(kind)) {
+        return compact_key_hash(ci, entry->key);
+    }
+    return entry->hash;
 }
 
 static inline void
-entry_set_hash_k(uint8_t kind, entry_t* entry, Py_hash_t hash)
+entry_set_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
 {
-    if (kind != KIND_STR) {
+    if (!kind_is_compact(kind)) {
         entry->hash = hash;
     }
-}
-
-/* What a caller knows of a table's kind before reading it: a CIMultiDict
-   entry point passes KIND_ANYSTR, since its tables never take another,
-   and every test on the kind then folds away at compile time. */
-#define KIND_UNKNOWN 0xff
-
-ALWAYS_INLINE static inline uint8_t
-htkeys_kind(const htkeys_t* keys, uint8_t known)
-{
-    assert(known == KIND_UNKNOWN || known == keys->kind);
-    return known == KIND_UNKNOWN ? keys->kind : known;
 }
 
 static inline size_t
@@ -287,19 +345,19 @@ htkeys_entry_size(const htkeys_t* keys)
 static inline entry_t*
 htkeys_entry_at(const htkeys_t* keys, entry_t* entries, Py_ssize_t i)
 {
-    return entry_at_k(keys->kind, entries, i);
+    return entry_at(keys->kind, entries, i);
 }
 
 static inline entry_t*
 htkeys_entry_next(const htkeys_t* keys, entry_t* entry)
 {
-    return entry_next_k(keys->kind, entry);
+    return entry_next(keys->kind, entry);
 }
 
 static inline entry_t*
 htkeys_entry_prev(const htkeys_t* keys, entry_t* entry)
 {
-    return entry_prev_k(keys->kind, entry);
+    return entry_prev(keys->kind, entry);
 }
 
 /* How many entries lie between `entries` and `entry`. */
@@ -315,36 +373,6 @@ static inline void
 htkeys_entry_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src)
 {
     memcpy(dst, src, htkeys_entry_size(keys));
-}
-
-static inline PyObject*
-entry_identity(const htkeys_t* keys, const entry_t* entry)
-{
-    return entry_identity_k(keys->kind, entry);
-}
-
-static inline PyObject**
-entry_identity_slot(const htkeys_t* keys, entry_t* entry)
-{
-    return entry_identity_slot_k(keys->kind, entry);
-}
-
-static inline void
-entry_set_identity(const htkeys_t* keys, entry_t* entry, PyObject* identity)
-{
-    entry_set_identity_k(keys->kind, entry, identity);
-}
-
-static inline Py_hash_t
-entry_hash(const htkeys_t* keys, const entry_t* entry)
-{
-    return entry_hash_k(keys->kind, entry);
-}
-
-static inline void
-entry_set_hash(const htkeys_t* keys, entry_t* entry, Py_hash_t hash)
-{
-    entry_set_hash_k(keys->kind, entry, hash);
 }
 
 /* A slot in indices[] is written under md's critical section but read by
@@ -657,8 +685,12 @@ _htkeys_alloc_raw(pool_t* pools, uint8_t log2_size, uint8_t kind)
 
 /* Zeroes the entries from `from` on. A caller that fills the front of
    the table itself needs this for the rest: ASSERT_CONSISTENT() reads
-   every entry a table has room for, not just the used prefix. */
-static inline void
+   every entry a table has room for, not just the used prefix. Out of line,
+   like htkeys_new_unfilled(), so a COLD caller such as md_to_anystr(),
+   built for size, calls this copy, whose memset is a library call: its own
+   inlined one became rep stos, which costs a cycle per byte under the
+   benchmarks' instruction counts. */
+NOINLINE static void
 htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
 {
     assert(from >= 0 && from <= keys->usable);
@@ -669,8 +701,9 @@ htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
 
 /* An empty table whose entries are left as they came, for a caller that
    writes the front of the array itself and calls htkeys_zero_entries()
-   for the rest. Nothing may read the table in between. */
-static inline htkeys_t*
+   for the rest. Nothing may read the table in between. Out of line; see
+   htkeys_zero_entries(). */
+NOINLINE static htkeys_t*
 htkeys_new_unfilled(pool_t* pools, uint8_t log2_size, uint8_t kind)
 {
     uint8_t log2_bytes = _htkeys_log2_index_bytes(log2_size);
@@ -787,7 +820,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 Internal routine used by ht_resize() to build a hashtable of entries.
 */
 ALWAYS_INLINE static inline void
-_htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n,
+_htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n,
                       bool skip_holes)
 {
     size_t mask = (size_t)_htkeys_mask(keys);
@@ -796,10 +829,10 @@ _htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n,
             keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
     }
     for (Py_ssize_t ix = 0; ix != n; ix++, ep = htkeys_entry_next(keys, ep)) {
-        if (skip_holes && entry_identity(keys, ep) == NULL) {
+        if (skip_holes && entry_is_hole(keys->kind, ep)) {
             continue;
         }
-        Py_hash_t hash = entry_hash(keys, ep);
+        Py_hash_t hash = entry_hash(keys->kind, ci, ep);
         size_t i = (size_t)hash & mask;
         for (size_t perturb = (size_t)hash;
              htkeys_get_index(keys, (Py_ssize_t)i) != DKIX_EMPTY;) {
@@ -815,16 +848,17 @@ _htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n,
 }
 
 static inline void
-htkeys_build_indices(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
+htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n)
 {
-    _htkeys_build_indices(keys, ep, n, false);
+    _htkeys_build_indices(keys, ci, ep, n, false);
 }
 
 /* Leaves the deleted entries among `ep` (a NULL identity) unindexed. */
 static inline void
-htkeys_build_indices_with_holes(htkeys_t* keys, entry_t* ep, Py_ssize_t n)
+htkeys_build_indices_with_holes(htkeys_t* keys, bool ci, entry_t* ep,
+                                Py_ssize_t n)
 {
-    _htkeys_build_indices(keys, ep, n, true);
+    _htkeys_build_indices(keys, ci, ep, n, true);
 }
 
 /* Uses keys, mask, i and perturb from the caller and returns. */

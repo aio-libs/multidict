@@ -45,7 +45,7 @@ str_cmp(PyObject* s1, PyObject* s2)
 }
 
 static inline PyObject*
-_key_to_identity(mod_state* state, PyObject* key)
+_key_to_identity_cs(mod_state* state, PyObject* key)
 {
     /* Inverted so the exact-str case is the fallthrough: left as written,
        GCC puts it out of line behind a taken branch and puts the subclass
@@ -134,7 +134,7 @@ _ascii_lower(const Py_UCS1* data, Py_ssize_t len)
 /* Anything but an ASCII exact str: rare enough in keys to keep off the
    straight line. */
 COLD static PyObject*
-_ci_str_call_lower(mod_state* state, PyObject* key)
+_str_call_lower_ci(mod_state* state, PyObject* key)
 {
     if (!PyUnicode_Check(key)) {
         PyErr_SetString(PyExc_TypeError,
@@ -157,7 +157,7 @@ _ci_str_call_lower(mod_state* state, PyObject* key)
    inliner's budget at their own call sites, which slowed keys().isdisjoint()
    by 31% even on a case-sensitive MultiDict, whose keys never reach here. */
 NOINLINE static PyObject*
-_ci_str_to_identity(mod_state* state, PyObject* key)
+_str_to_identity_ci(mod_state* state, PyObject* key)
 {
     /* Exact str only: a str subclass may override lower(), and callers rely
        on the override running. */
@@ -172,20 +172,34 @@ _ci_str_to_identity(mod_state* state, PyObject* key)
         }
         return _ascii_lower(data, len);
     }
-    return _ci_str_call_lower(state, key);
+    return _str_call_lower_ci(state, key);
+}
+
+/* An exact ASCII str with no uppercase is its own identity in a
+   CIMultiDict, the key itself; NULL for any other key.  Out of line for the
+   reason given above _str_to_identity_ci(). */
+NOINLINE static PyObject*
+_str_borrow_identity_ci(PyObject* key)
+{
+    if (PyUnicode_CheckExact(key) && PyUnicode_IS_ASCII(key) &&
+        !_ascii_has_upper((const Py_UCS1*)PyUnicode_DATA(key),
+                          PyUnicode_GET_LENGTH(key))) {
+        return key;
+    }
+    return NULL;
 }
 
 static inline PyObject*
-_ci_key_to_identity(mod_state* state, PyObject* key)
+_key_to_identity_ci(mod_state* state, PyObject* key)
 {
     if (IStr_CheckExact(state, key)) {
         return Py_NewRef(((istrobject*)key)->canonical);
     }
-    return _ci_str_to_identity(state, key);
+    return _str_to_identity_ci(state, key);
 }
 
 static inline PyObject*
-_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
+_arg_to_key_cs(mod_state* state, PyObject* key, PyObject* identity)
 {
     if (PyUnicode_Check(key)) {
         return Py_NewRef(key);
@@ -199,7 +213,7 @@ _arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
 /* A str subclass is copied to an exact str first: istr(), like str(), would
    call its __str__, which may spell a different string than the key. */
 NOINLINE static PyObject*
-_ci_subclass_to_key(mod_state* state, PyObject* key, PyObject* identity)
+_subclass_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 {
     PyObject* str = PyUnicode_FromObject(key);
     if (str == NULL) {
@@ -211,7 +225,7 @@ _ci_subclass_to_key(mod_state* state, PyObject* key, PyObject* identity)
 }
 
 static inline PyObject*
-_ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
+_arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 {
     if (IStr_CheckExact(state, key)) {
         return Py_NewRef(key);
@@ -220,7 +234,7 @@ _ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
         return IStr_New(state, key, identity);
     }
     if (PyUnicode_Check(key)) {
-        return _ci_subclass_to_key(state, key, identity);
+        return _subclass_to_key_ci(state, key, identity);
     }
     PyErr_SetString(PyExc_TypeError,
                     "CIMultiDict keys should be either str "
@@ -228,11 +242,56 @@ _ci_arg_to_key(mod_state* state, PyObject* key, PyObject* identity)
     return NULL;
 }
 
+/* ci is md->is_ci, passed in so an entry point that knows its class
+   folds the test away. */
 ALWAYS_INLINE static inline PyObject*
-md_calc_identity(MultiDictObject* md, PyObject* key)
+md_calc_identity(MultiDictObject* md, PyObject* key, bool ci)
 {
-    if (md->is_ci) return _ci_key_to_identity(md->state, key);
-    return _key_to_identity(md->state, key);
+    assert(ci == md->is_ci);
+    if (ci) return _key_to_identity_ci(md->state, key);
+    return _key_to_identity_cs(md->state, key);
+}
+
+/* The identity of key, borrowed, for a lookup that drops it before it
+   returns; NULL, with no exception set, when it must be computed instead.
+   An exact str that is its own identity and an exact istr's canonical,
+   which never changes, are kept alive by the caller's reference to the
+   key.  A borrowed identity keeps the owned one's decref off the lookup's
+   exit, which cost key in d 4% in taken branches. */
+ALWAYS_INLINE static inline PyObject*
+md_borrow_identity(MultiDictObject* md, PyObject* key, bool ci)
+{
+    assert(ci == md->is_ci);
+    if (ci) {
+        if (IStr_CheckExact(md->state, key)) {
+            return ((istrobject*)key)->canonical;
+        }
+        return _str_borrow_identity_ci(key);
+    }
+    if (UNLIKELY(!PyUnicode_CheckExact(key))) {
+        return NULL;
+    }
+    return key;
+}
+
+/* md_calc_identity() that also says whether key fits a compact table (see
+   md_key_fits()): a CIMultiDict's istr test has just run here, so the
+   insert need not repeat it. */
+ALWAYS_INLINE static inline PyObject*
+md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits, bool ci)
+{
+    assert(ci == md->is_ci);
+    if (ci) {
+        if (IStr_CheckExact(md->state, key)) {
+            *pfits = true;
+            return Py_NewRef(((istrobject*)key)->canonical);
+        }
+        *pfits = false;
+        return _str_to_identity_ci(md->state, key);
+    }
+    PyObject* identity = _key_to_identity_cs(md->state, key);
+    *pfits = identity == key;
+    return identity;
 }
 
 /* Reads only `key`, md->is_ci and md->state, all fixed for md's lifetime,
@@ -240,9 +299,10 @@ md_calc_identity(MultiDictObject* md, PyObject* key)
    to itself GCC emits it out of line, and every caller pays the call. */
 ALWAYS_INLINE static inline int
 md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
-                      Py_hash_t* phash)
+                      Py_hash_t* phash, bool ci)
 {
-    PyObject* identity = md_calc_identity(md, key);
+    assert(ci == md->is_ci);
+    PyObject* identity = md_calc_identity(md, key, ci);
     if (identity == NULL) {
         return -1;
     }
@@ -256,11 +316,32 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
     return 0;
 }
 
-static inline PyObject*
-md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
+/* md_calc_identity_hash() plus md_calc_identity_fits()'s *pfits. */
+ALWAYS_INLINE static inline int
+md_calc_identity_hash_fits(MultiDictObject* md, PyObject* key,
+                           PyObject** pidentity, Py_hash_t* phash, bool* pfits,
+                           bool ci)
 {
-    if (md->is_ci) return _ci_arg_to_key(md->state, key, identity);
-    return _arg_to_key(md->state, key, identity);
+    PyObject* identity = md_calc_identity_fits(md, key, pfits, ci);
+    if (identity == NULL) {
+        return -1;
+    }
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash == -1) {
+        Py_DECREF(identity);
+        return -1;
+    }
+    *pidentity = identity;
+    *phash = hash;
+    return 0;
+}
+
+ALWAYS_INLINE static inline PyObject*
+md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity, bool ci)
+{
+    assert(ci == md->is_ci);
+    if (ci) return _arg_to_key_ci(md->state, key, identity);
+    return _arg_to_key_cs(md->state, key, identity);
 }
 
 /* Building the istr allocates, which can run a collection whose finalizers
@@ -269,12 +350,14 @@ md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
    __del__ could. Out of line, it makes key iteration of every multidict
    10-15% cheaper. */
 NOINLINE static PyObject*
-_md_cache_ci_key(MultiDictObject* md, entry_t* entry)
+_md_cache_key_ci(MultiDictObject* md, entry_t* entry)
 {
+    assert(md->is_ci);
     uint64_t version = md->version;
     PyObject* old_key = Py_NewRef(entry->key);
-    PyObject* identity = Py_NewRef(entry_identity(md->keys, entry));
-    PyObject* key = md_calc_key(md, old_key, identity);
+    PyObject* identity =
+        Py_NewRef(entry_identity(md->keys->kind, true, entry));
+    PyObject* key = md_calc_key(md, old_key, identity, true);
     if (key != NULL && md->version == version &&
         PyUnicode_CheckExact(old_key)) {
         entry->key = Py_NewRef(key);
@@ -287,15 +370,17 @@ _md_cache_ci_key(MultiDictObject* md, entry_t* entry)
     return key;
 }
 
+/* A stored key was checked to be a str when it went in, so only a
+   CIMultiDict's plain str needs work. */
 static inline PyObject*
 md_ensure_key(MultiDictObject* md, entry_t* entry)
 {
-    assert(entry >= htkeys_entries(md->keys));
-    assert(entry < htkeys_entries(md->keys) + md->keys->nentries);
-    if (!md->is_ci || IStr_CheckExact(md->state, entry->key)) {
-        return md_calc_key(md, entry->key, entry_identity(md->keys, entry));
+    assert(!entry_is_hole(md->keys->kind, entry));
+    PyObject* key = entry->key;
+    if (!md->is_ci || IStr_CheckExact(md->state, key)) {
+        return Py_NewRef(key);
     }
-    return _md_cache_ci_key(md, entry);
+    return _md_cache_key_ci(md, entry);
 }
 
 #ifdef __cplusplus

@@ -57,6 +57,7 @@ Useful entry points:
 | `multidict/_multilib/htkeys.h`        | key-storage layout, ``estimate_log2_keysize``                   |
 | `multidict/_multilib/debug.h`         | ``ASSERT_CONSISTENT``, ``_md_check_consistency``, ``_md_dump`` (debug only) |
 | `multidict/_multilib/istr.h`          | C ``istr`` (case-insensitive str)                               |
+| `multidict/_multilib/istr_object.h`   | ``istrobject`` layout, apart so ``htkeys.h`` can read a canonical |
 | `multidict/_multilib/iter.h`          | views and iterators for the C impl                              |
 | `multidict/_multilib/unpack.h`        | reads a (key, value) pair out of a two-element tuple, list or sequence |
 | `multidict/_multilib/parser.h`        | argument parsing for ``extend`` / ``update`` / constructors     |

@@ -6,12 +6,8 @@ extern "C" {
 #endif
 
 #include "compiler.h"
+#include "istr_object.h"
 #include "state.h"
-
-typedef struct {
-    PyUnicodeObject str;
-    PyObject* canonical;
-} istrobject;
 
 #define IStr_CheckExact(state, obj) Py_IS_TYPE(obj, state->IStrType)
 
@@ -114,6 +110,11 @@ _istr_finish(mod_state* state, PyObject* ret)
         return NULL;
     }
     ((istrobject*)ret)->canonical = canonical;
+    ((istrobject*)ret)->canonical_hash = PyObject_Hash(canonical);
+    if (((istrobject*)ret)->canonical_hash == -1) {
+        Py_DECREF(ret);
+        return NULL;
+    }
     return ret;
 }
 
@@ -296,6 +297,10 @@ IStr_New(mod_state* state, PyObject* str, PyObject* canonical)
     }
     Py_INCREF(canonical);
     ((istrobject*)res)->canonical = canonical;
+    ((istrobject*)res)->canonical_hash = PyObject_Hash(canonical);
+    if (((istrobject*)res)->canonical_hash == -1) {
+        Py_CLEAR(res);
+    }
 ret:
     Py_CLEAR(args);
     return res;
