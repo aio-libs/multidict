@@ -28,7 +28,6 @@ charsetdetect
 cibuildwheel
 codecov
 codspeed
-const
 CPython
 criterias
 css
