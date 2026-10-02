@@ -1345,6 +1345,35 @@ def test_recording_out_of_memory_reports_one_lost_event(
     assert _testcapi.MultiDict_EVENT_LOST in seen
 
 
+@pytest.mark.skipif(
+    "free-threading" in sys.version,
+    reason="set_nomemory() swaps the global allocator, which races the "
+    "runtime's own threads on a free-threaded build",
+)
+def test_setitem_out_of_memory_reports_no_kept_duplicate_as_deleted(
+    watcher: Watcher, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # d[key] = v allocates where it collects later matches only on reaching
+    # the first one, so a failure there must leave it unreported.
+    cpython_testcapi = pytest.importorskip("_testcapi")
+    monkeypatch.setattr(sys, "unraisablehook", lambda unraisable: None)
+    nomemory = cpython_testcapi.set_nomemory
+    restore = cpython_testcapi.remove_mem_hooks
+    kept = 0
+    for nth in range(8):
+        md: MultiDictStr = multidict.MultiDict([("k", "1"), ("k", "2")])
+        watcher.watch(md, None)
+        watcher.drain()
+        setitem = md.__setitem__
+        try:
+            nomemory(nth, nth + 1), setitem("k", "9"), restore()
+        except MemoryError:
+            restore()
+        kept += len(md) == 2
+        assert DELETED not in watcher.kinds() or len(md) == 1
+    assert kept
+
+
 def test_a_failing_operation_keeps_its_own_exception(watcher: Watcher) -> None:
     # Delivery happens on the failure path too, so the flush must not let
     # the pending exception be mistaken for one a callback raised.

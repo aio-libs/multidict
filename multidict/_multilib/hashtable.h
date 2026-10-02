@@ -2322,9 +2322,11 @@ md_pop_item(MultiDictObject* md)
 }
 
 /* Later matches of a replaced key are rare, so their reflist lives on
-   the heap: in the caller's frame it cost every d[key] = v. */
+   the heap: in the caller's frame it cost every d[key] = v. The watcher
+   hears of the delete only once the allocation can no longer stop it. */
 COLD static int
 _md_replace_del_dup(MultiDictObject* md, size_t slot, entry_t* entry,
+                    uint8_t kind, bool ci, Py_hash_t hash, bool watched,
                     reflist_t** dups)
 {
     if (*dups == NULL) {
@@ -2334,6 +2336,15 @@ _md_replace_del_dup(MultiDictObject* md, size_t slot, entry_t* entry,
             return -1;
         }
         reflist_init(*dups);
+    }
+    if (watched) {
+        md_watch_record(md,
+                        MultiDict_EVENT_DELETED,
+                        entry_identity(kind, ci, entry),
+                        hash,
+                        entry->key,
+                        entry->value,
+                        NULL);
     }
     return _md_del_at_deferred(md, slot, entry, *dups);
 }
@@ -2428,19 +2439,15 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
                 }
                 *old_key_out = old_key;
                 *old_value_out = old_value;
-            } else {
-                if (watched) {
-                    md_watch_record(md,
-                                    MultiDict_EVENT_DELETED,
-                                    entry_identity(kind, ci, entry),
-                                    hash,
-                                    entry->key,
-                                    entry->value,
-                                    NULL);
-                }
-                if (_md_replace_del_dup(md, iter.slot, entry, dups) < 0) {
-                    return -1;
-                }
+            } else if (_md_replace_del_dup(md,
+                                           iter.slot,
+                                           entry,
+                                           kind,
+                                           ci,
+                                           hash,
+                                           watched,
+                                           dups) < 0) {
+                return -1;
             }
 #ifdef Py_GIL_DISABLED
             /* Checking the pointer alone isn't enough: a freed table
