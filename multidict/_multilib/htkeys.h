@@ -559,6 +559,9 @@ estimate_log2_keysize(Py_ssize_t n)
 static const htkeys_t empty_htkeys = {
     .log2_size = 0,
     .log2_index_bytes = 3,
+    /* Any kind would do: with no entries there is no layout to read, and
+       a table replacing this one takes md_next_kind(), which ignores it. */
+    .kind = KIND_ANYSTR,
     .usable = 0, /* immutable */
     .nentries = 0,
     .resume_slots = NULL,
