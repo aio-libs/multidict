@@ -269,6 +269,17 @@ class TestMutableMultiDict:
         assert len(d) == 1
         assert [("key", "val1")] == list(d.items())
 
+    def test_popitem_returns_stored_key(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[str]],
+    ) -> None:
+        key = "".join(["k", "ey"])
+        d = case_sensitive_multidict_class([(key, "val")])
+
+        popped, value = d.popitem()
+        assert popped is key
+        assert value == "val"
+
     def test_popitem2(
         self,
         case_sensitive_multidict_class: type[CIMultiDict[str]],
@@ -602,6 +613,33 @@ class TestMutableMultiDict:
 
 
 class TestCIMutableMultiDict:
+    def test_getall_through_base_class(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[str]],
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
+        case_sensitive_multidict_proxy_class: type[MultiDictProxy[str]],
+    ) -> None:
+        d = case_insensitive_multidict_class([("KEY", "value1"), ("key", "value2")])
+
+        assert case_sensitive_multidict_class.getall(d, "Key") == [
+            "value1",
+            "value2",
+        ]
+        proxy = case_sensitive_multidict_proxy_class(d)
+        assert proxy.getall("Key") == ["value1", "value2"]
+
+    def test_popitem_istr_key(
+        self,
+        case_insensitive_multidict_class: type[CIMultiDict[str]],
+        case_insensitive_str_class: type[istr],
+    ) -> None:
+        key = case_insensitive_str_class("Key")
+        d = case_insensitive_multidict_class([(key, "val")])
+
+        popped, value = d.popitem()
+        assert popped is key
+        assert value == "val"
+
     def test_getall(
         self,
         case_insensitive_multidict_class: type[CIMultiDict[str]],

@@ -82,7 +82,12 @@ GETITEM_ENTRIES = (
     "MultiDict_GetItem",
 )
 
-GETALL_ENTRIES = ("multidict_getall", "multidict_proxy_getall")
+GETALL_ENTRIES = (
+    "multidict_getall",
+    "multidict_proxy_getall",
+    "cimultidict_getall",
+    "cimultidict_proxy_getall",
+)
 
 # Every entry point that takes a key.
 KEY_ENTRIES = (
@@ -178,14 +183,6 @@ RULES = (
         "would test the class at run time",
     ),
     Rule(
-        "_key_to_identity_cs",
-        KEY_ENTRIES,
-        (FT,),
-        "the heap reflist for d[key] = v duplicates took it out of "
-        "md_del_cs on FT, delitem +4 Ir; pinning it on GIL cost add "
-        "and ctor ~1%",
-    ),
-    Rule(
         "md_borrow_identity",
         "*",
         BOTH,
@@ -225,10 +222,30 @@ RULES = (
         "#1604: pinned after budget respend, popitem +1% on FT",
     ),
     Rule(
+        "htkeys_get_index",
+        "*",
+        BOTH,
+        "#1651: per-class getall took it out of htkeysiter_init on FT, 4 Ir per d[key]",
+    ),
+    Rule(
         "htkeys_set_index",
         "*",
         BOTH,
         "#1604/#1605: pinned after budget respend, ctor +60 Ir on FT",
+    ),
+    Rule(
+        "_compact_entry_matches",
+        "*",
+        (FT,),
+        "#1653: out of line, MultiDict d[key] +6.9% and CIMultiDict "
+        "key in d +6.5% on FT",
+    ),
+    Rule(
+        "_full_entry_matches",
+        "*",
+        (FT,),
+        "#1653: pinned with _compact_entry_matches, its twin for the "
+        "full layout in the same lock-free probe loops",
     ),
     Rule(
         "_multidict_tp_init",

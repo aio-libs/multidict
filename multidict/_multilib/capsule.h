@@ -326,7 +326,8 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
     }
     Py_ssize_t count;
     Py_BEGIN_CRITICAL_SECTION(md);
-    count = md_walk_with_hash(md, identity, hash, true, visitor, user_data);
+    count = md_walk_with_hash(
+        md, identity, hash, true, visitor, user_data, md->is_ci);
     ASSERT_CONSISTENT(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);

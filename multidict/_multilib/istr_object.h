@@ -12,8 +12,8 @@ extern "C" {
 typedef struct {
     PyUnicodeObject str;
     PyObject* canonical;
-    /* canonical's hash, set with it: a lock-free reader of a compact
-       CIMultiDict gets it from the key in one load (see load_hash()). */
+    /* canonical's hash, set with it: a compact CIMultiDict entry keeps
+       none, so it is read from the key (see compact_key_hash()). */
     Py_hash_t canonical_hash;
 } istrobject;
 
