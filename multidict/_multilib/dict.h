@@ -7,6 +7,7 @@ extern "C" {
 
 #include <string.h>
 
+#include "compiler.h"
 #include "freelist.h"
 #include "htkeys.h"
 #include "pythoncapi_compat.h"
@@ -56,6 +57,19 @@ typedef struct {
     PyObject* weaklist;
 #endif
 } MultiDictProxyObject;
+
+/* Returns -1 with RuntimeError set if md was mutated, or got a new
+   table, since `version` was read from it; 0 otherwise. */
+ALWAYS_INLINE static inline int
+md_check_version(MultiDictObject* md, uint64_t version)
+{
+    if (version != md->version) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "MultiDict is changed during iteration");
+        return -1;
+    }
+    return 0;
+}
 
 /* Shells for the exact MultiDict, CIMultiDict and proxy types come from
    a module-state pool. Only those: a subclass has its own basicsize, and

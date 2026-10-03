@@ -400,7 +400,6 @@ _md_publish_rebuilt(MultiDictObject* md, htkeys_t* oldkeys, htkeys_t* newkeys)
     store_keys(md, newkeys);
     update_marks_moved(md);
 
-#ifdef Py_GIL_DISABLED
     /* Bump the version on every resize, not just when a caller's
        own insert/delete/replace would bump it anyway: a freed
        htkeys_t can get reallocated at the very same address by a
@@ -408,9 +407,8 @@ _md_publish_rebuilt(MultiDictObject* md, htkeys_t* oldkeys, htkeys_t* newkeys)
        elsewhere that detects "did md->keys change under me" by
        comparing the raw pointer alone (see _md_replace_locked()'s
        comment) needs a companion signal that can't coincidentally
-       repeat. */
+       repeat. It also lets md_check_version() ignore md->keys. */
     bump_version(md);
-#endif
 
     /* Ownership of oldkeys's entries has already moved to newkeys;
        zeroing nentries tells _htkeys_dispose() there is nothing left to
@@ -1356,9 +1354,7 @@ md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
 {
     int ret = 0;
 
-    if (pos->version != md->version) {
-        PyErr_SetString(PyExc_RuntimeError,
-                        "MultiDict is changed during iteration");
+    if (md_check_version(md, pos->version) < 0) {
         ret = -1;
         goto cleanup;
     }
@@ -1430,9 +1426,7 @@ md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
 {
     int ret = 0;
 
-    if (pos->version != md->version) {
-        PyErr_SetString(PyExc_RuntimeError,
-                        "MultiDict is changed during iteration");
+    if (md_check_version(md, pos->version) < 0) {
         ret = -1;
         goto cleanup;
     }
@@ -1909,9 +1903,7 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
                 /* On 3.10 and 3.11, allocating a tracked object can run a
                    collection whose finalizers mutate md: refused as below,
                    before `e` is read again. */
-                if (md->version != version) {
-                    PyErr_SetString(PyExc_RuntimeError,
-                                    "MultiDict is changed during iteration");
+                if (md_check_version(md, version) < 0) {
                     goto fail;
                 }
                 PyList_SET_ITEM(lst, 0, Py_NewRef(e->value));
@@ -1936,9 +1928,7 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
         }
         Py_CLEAR(key);
         Py_CLEAR(lst);
-        if (md->version != version) {
-            PyErr_SetString(PyExc_RuntimeError,
-                            "MultiDict is changed during iteration");
+        if (md_check_version(md, version) < 0) {
             goto fail;
         }
     }
@@ -2791,9 +2781,7 @@ md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
     uint8_t kind = md->keys->kind;
 
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; ++pos) {
-        if (version != md->version) {
-            PyErr_SetString(PyExc_RuntimeError,
-                            "MultiDict changed during iteration");
+        if (md_check_version(md, version) < 0) {
             goto fail;  // discard the writer instead of leaking it
         }
         entry_t* entry = entry_at(kind, entries, pos);

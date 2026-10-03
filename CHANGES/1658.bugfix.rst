@@ -1,0 +1,4 @@
+Fixed :func:`repr` of a multidict reading freed memory on the GIL build
+when a key's or value's ``__repr__`` called an ``extend()``, ``update()``
+or ``merge()`` that grew the table and then failed, by bumping the version
+on every resize -- by :user:`asvetlov`.

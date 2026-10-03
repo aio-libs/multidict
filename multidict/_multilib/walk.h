@@ -143,9 +143,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
             return -1;
         }
         /* md_ensure_key() and the visitor can both run Python code. */
-        if (keys != md->keys || version != md->version) {
-            PyErr_SetString(PyExc_RuntimeError,
-                            "MultiDict is changed during iteration");
+        if (md_check_version(md, version) < 0) {
             return -1;
         }
         if (ret == 0) {
@@ -227,9 +225,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             goto fail;
         }
         /* md_ensure_key() and the visitor can both run Python code. */
-        if (keys != md->keys || version != md->version) {
-            PyErr_SetString(PyExc_RuntimeError,
-                            "MultiDict is changed during iteration");
+        if (md_check_version(md, version) < 0) {
             goto fail;
         }
         if (ret == 0) {
