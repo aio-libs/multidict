@@ -1,0 +1,2 @@
+Replaced the shift arithmetic for the C extension's hash table entry
+size with the ``sizeof`` of the entry layouts -- by :user:`asvetlov`.
