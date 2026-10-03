@@ -3238,6 +3238,30 @@ def test_pure_python_view_set_ops_thread_safety() -> None:
     assert len(d) == len(list(d.items()))
 
 
+def _join_while_progressing(
+    threads: list[threading.Thread], progress: list[int], stall: float = 20.0
+) -> None:
+    """Join `threads`, failing once a live one has not advanced its own
+    `progress` slot for `stall` seconds.
+
+    A fixed timeout also fails a build that is only slow, such as a TSan
+    one under coverage, where these workers need well over 20 s. Each
+    worker is timed on its own, so another's progress cannot hide it.
+    """
+    seen = list(progress)
+    moved = [time.monotonic()] * len(threads)
+    while any(t.is_alive() for t in threads):
+        for t in threads:
+            t.join(timeout=0.5)
+        now = time.monotonic()
+        for i, t in enumerate(threads):
+            moved[i] = now if progress[i] != seen[i] else moved[i]
+            seen[i] = progress[i]
+            assert not t.is_alive() or now - moved[i] < stall, (
+                f"worker {i} made no progress for {stall} s: deadlock"
+            )
+
+
 def test_pure_python_reciprocal_view_ops_no_deadlock() -> None:
     """`a.items() & b.items()` racing `b.items() & a.items()` (and the
     same for the other set-algebra ops) must not deadlock.
@@ -3258,12 +3282,15 @@ def test_pure_python_reciprocal_view_ops_no_deadlock() -> None:
     a: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50))
     b: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50, 100))
 
+    progress = [0, 0]
+
     def worker1() -> None:
         for _ in range(500):
             a.items() & b.items()
             a.keys() | b.keys()
             a.keys() - b.items()
             a.keys().isdisjoint(b.keys())
+            progress[0] += 1
 
     def worker2() -> None:
         for _ in range(500):
@@ -3271,15 +3298,15 @@ def test_pure_python_reciprocal_view_ops_no_deadlock() -> None:
             b.keys() | a.keys()
             b.keys() - a.items()
             b.keys().isdisjoint(a.keys())
+            progress[1] += 1
 
-    t1 = threading.Thread(target=worker1, daemon=True)
-    t2 = threading.Thread(target=worker2, daemon=True)
-    t1.start()
-    t2.start()
-    t1.join(timeout=20)
-    t2.join(timeout=20)
-    assert not t1.is_alive(), "worker1 still running: deadlock"
-    assert not t2.is_alive(), "worker2 still running: deadlock"
+    threads = [
+        threading.Thread(target=worker1, daemon=True),
+        threading.Thread(target=worker2, daemon=True),
+    ]
+    for t in threads:
+        t.start()
+    _join_while_progressing(threads, progress)
 
 
 def test_pure_python_reciprocal_raw_iterator_ops_no_deadlock() -> None:
@@ -3299,24 +3326,27 @@ def test_pure_python_reciprocal_raw_iterator_ops_no_deadlock() -> None:
     a: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50))
     b: _pure.MultiDict[int] = _pure.MultiDict((str(i), i) for i in range(50, 100))
 
+    progress = [0, 0]
+
     def worker1() -> None:
         for _ in range(500):
             a.items() & iter(b.items())
             _pure.MultiDict[int]().update(iter(b.items()))
+            progress[0] += 1
 
     def worker2() -> None:
         for _ in range(500):
             b.items() & iter(a.items())
             _pure.MultiDict[int]().update(iter(a.items()))
+            progress[1] += 1
 
-    t1 = threading.Thread(target=worker1, daemon=True)
-    t2 = threading.Thread(target=worker2, daemon=True)
-    t1.start()
-    t2.start()
-    t1.join(timeout=20)
-    t2.join(timeout=20)
-    assert not t1.is_alive(), "worker1 still running: deadlock"
-    assert not t2.is_alive(), "worker2 still running: deadlock"
+    threads = [
+        threading.Thread(target=worker1, daemon=True),
+        threading.Thread(target=worker2, daemon=True),
+    ]
+    for t in threads:
+        t.start()
+    _join_while_progressing(threads, progress)
 
 
 def test_pure_python_version_thread_safety() -> None:

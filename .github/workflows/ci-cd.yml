@@ -902,7 +902,10 @@ jobs:
         # disable_coredump=0: the sanitizer runtime disables core dumps
         # for its own aborts by default, independently of the kernel
         # core_pattern/ulimit setup above.
-        TSAN_OPTIONS: halt_on_error=1:disable_coredump=0
+        # suppressions: the reports that are benign by design; see the
+        # file. Read once at startup, relative to the checkout.
+        TSAN_OPTIONS: >-
+          halt_on_error=1:disable_coredump=0:suppressions=tools/tsan_suppressions.txt
       run: |
         ulimit -c unlimited
         # --capture=no: the sanitizer runtime writes its report straight

@@ -1,0 +1,8 @@
+# ThreadSanitizer suppressions for the test suite, passed as
+# TSAN_OPTIONS=suppressions=tools/tsan_suppressions.txt. Each entry is a
+# report that is benign by design and outside multidict; keep them this
+# narrow, and never add one to make a race in multidict go away.
+
+# pytest's faulthandler_timeout watchdog dumps every thread's traceback
+# while those threads run, reading their frames without a lock.
+race:faulthandler_thread

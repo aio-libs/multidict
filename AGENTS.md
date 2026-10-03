@@ -611,8 +611,17 @@ CC=clang CXX=clang++ PYTHON_CONFIGURE_OPTS="--with-thread-sanitizer" \
 TSAN_PY=~/.pyenv/versions/3.14.7t-tsan/bin/python3.14t
 CC=clang CXX=clang++ MULTIDICT_DEBUG_BUILD=1 MULTIDICT_TSAN_BUILD=1 \
     $TSAN_PY -m pip install -e . --force-reinstall --no-deps
-TSAN_OPTIONS="halt_on_error=0" $TSAN_PY -m pytest tests -q -k "not test_leak"
+TSAN_OPTIONS="halt_on_error=0:suppressions=tools/tsan_suppressions.txt" \
+    $TSAN_PY -m pytest tests -q --no-cov -k "not test_leak"
 ```
+
+`--no-cov` matters: `pytest.ini` turns coverage on by default, and its
+tracer makes a TSan run about eight times slower. That pushes slow
+tests past `faulthandler_timeout`, and pure-Python stress tests past
+their own time limits. [`tools/tsan_suppressions.txt`](tools/tsan_suppressions.txt)
+holds the reports that are benign by design and outside multidict,
+so far only pytest's faulthandler watchdog; add an entry only with the
+same justification in a comment, never to hide a race in multidict.
 
 A TSan run is much slower than normal (single stress tests can take
 30-50s instead of well under a second); don't be surprised if it
