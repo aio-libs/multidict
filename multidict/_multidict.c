@@ -1566,7 +1566,7 @@ PyDoc_STRVAR(multidict_merge_doc,
 
 PyDoc_STRVAR(sizeof__doc__, "D.__sizeof__() -> size of D in memory, in bytes");
 
-static PyObject*
+COLD static PyObject*
 multidict_sizeof(MultiDictObject* self)
 {
     Py_ssize_t size = sizeof(MultiDictObject);
