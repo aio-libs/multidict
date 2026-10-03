@@ -61,36 +61,28 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         return -1;
     }
     htkeys_t* keys = md->keys;
+    entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
     if (self->reverse) {
-        if (self->pos < 0) {
-            return 0;
-        }
-        uint8_t kind = keys->kind;
-        entry_t* entry = entry_at(kind, htkeys_entries(keys), self->pos);
-        while (entry_is_hole(kind, entry)) {
-            if (--self->pos < 0) {
-                return 0;
+        for (; self->pos >= 0; --self->pos) {
+            entry_t* entry = entry_at(kind, entries, self->pos);
+            if (!entry_is_hole(kind, entry)) {
+                --self->pos;
+                *pentry = entry;
+                return 1;
             }
-            entry = entry_prev(kind, entry);
         }
-        --self->pos;
-        *pentry = entry;
-        return 1;
-    }
-    if (self->pos >= keys->nentries) {
         return 0;
     }
-    uint8_t kind = keys->kind;
-    entry_t* entry = entry_at(kind, htkeys_entries(keys), self->pos);
-    while (entry_is_hole(kind, entry)) {
-        if (++self->pos >= keys->nentries) {
-            return 0;
+    for (; self->pos < keys->nentries; ++self->pos) {
+        entry_t* entry = entry_at(kind, entries, self->pos);
+        if (!entry_is_hole(kind, entry)) {
+            ++self->pos;
+            *pentry = entry;
+            return 1;
         }
-        entry = entry_next(kind, entry);
     }
-    ++self->pos;
-    *pentry = entry;
-    return 1;
+    return 0;
 }
 
 static inline PyObject*

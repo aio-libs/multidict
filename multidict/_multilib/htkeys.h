@@ -246,16 +246,10 @@ entry_at(uint8_t kind, entry_t* entries, Py_ssize_t i)
     return (entry_t*)((char*)entries + (size_t)i * _htkeys_entry_size(kind));
 }
 
-static inline entry_t*
-entry_next(uint8_t kind, entry_t* entry)
+static inline anystr_entry_t*
+anystr_entry_at(entry_t* entries, Py_ssize_t i)
 {
-    return (entry_t*)((char*)entry + _htkeys_entry_size(kind));
-}
-
-static inline entry_t*
-entry_prev(uint8_t kind, entry_t* entry)
-{
-    return (entry_t*)((char*)entry - _htkeys_entry_size(kind));
+    return as_anystr(entries) + i;
 }
 
 /* NULL for a hole. */
@@ -334,21 +328,6 @@ static inline entry_t*
 htkeys_entry_at(const htkeys_t* keys, entry_t* entries, Py_ssize_t i)
 {
     return entry_at(keys->kind, entries, i);
-}
-
-static inline entry_t*
-htkeys_entry_next(const htkeys_t* keys, entry_t* entry)
-{
-    return entry_next(keys->kind, entry);
-}
-
-/* How many entries lie between `entries` and `entry`. */
-static inline Py_ssize_t
-htkeys_entry_index(const htkeys_t* keys, const entry_t* entries,
-                   const entry_t* entry)
-{
-    return (Py_ssize_t)((size_t)((const char*)entry - (const char*)entries) /
-                        _htkeys_entry_size(keys->kind));
 }
 
 static inline void
@@ -820,11 +799,12 @@ _htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n,
         memset(
             keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
     }
-    for (Py_ssize_t ix = 0; ix != n; ix++, ep = htkeys_entry_next(keys, ep)) {
-        if (skip_holes && entry_is_hole(keys->kind, ep)) {
+    for (Py_ssize_t ix = 0; ix != n; ix++) {
+        entry_t* entry = htkeys_entry_at(keys, ep, ix);
+        if (skip_holes && entry_is_hole(keys->kind, entry)) {
             continue;
         }
-        Py_hash_t hash = entry_hash(keys->kind, ci, ep);
+        Py_hash_t hash = entry_hash(keys->kind, ci, entry);
         size_t i = (size_t)hash & mask;
         for (size_t perturb = (size_t)hash;
              htkeys_get_index(keys, (Py_ssize_t)i) != DKIX_EMPTY;) {

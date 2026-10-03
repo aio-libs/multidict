@@ -121,20 +121,20 @@ _htkeys_dispose(pool_t* pools, htkeys_t* keys)
     /* Nothing can reach the table any more, so a finalizer run by a decref
        cannot see the stale pointers: no need to clear them, nor to reload
        nentries after each call. */
-    entry_t* entry = htkeys_entries(keys);
+    entry_t* entries = htkeys_entries(keys);
     Py_ssize_t nentries = keys->nentries;
     if (kind_is_compact(keys->kind)) {
-        for (Py_ssize_t i = 0; i < nentries;
-             i++, entry = entry_next(KIND_COMPACT, entry)) {
+        for (Py_ssize_t i = 0; i < nentries; i++) {
+            entry_t* entry = entry_at(KIND_COMPACT, entries, i);
             Py_XDECREF(entry->key);  // also owns the identity
             Py_XDECREF(entry->value);
         }
     } else {
-        for (Py_ssize_t i = 0; i < nentries;
-             i++, entry = entry_next(KIND_ANYSTR, entry)) {
-            Py_XDECREF(as_anystr(entry)->identity);
-            Py_XDECREF(entry->key);
-            Py_XDECREF(entry->value);
+        for (Py_ssize_t i = 0; i < nentries; i++) {
+            anystr_entry_t* entry = anystr_entry_at(entries, i);
+            Py_XDECREF(entry->identity);
+            Py_XDECREF(entry->base.key);
+            Py_XDECREF(entry->base.value);
         }
     }
     htkeys_free(pools, keys);
@@ -508,17 +508,16 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
         htkeys_entries_copy(oldkeys, newentries, oldentries, numentries);
         filled = numentries;
     } else {
-        entry_t* new_ep = newentries;
-        entry_t* old_ep = oldentries;
         Py_ssize_t oldnumentries = oldkeys->nentries;
-        for (Py_ssize_t i = 0; i < oldnumentries;
-             ++i, old_ep = entry_next(kind, old_ep)) {
+        filled = 0;
+        for (Py_ssize_t i = 0; i < oldnumentries; ++i) {
+            entry_t* old_ep = entry_at(kind, oldentries, i);
             if (!entry_is_hole(kind, old_ep)) {
-                htkeys_entry_copy(newkeys, new_ep, old_ep);
-                new_ep = htkeys_entry_next(newkeys, new_ep);
+                htkeys_entry_copy(
+                    newkeys, entry_at(kind, newentries, filled), old_ep);
+                filled++;
             }
         }
-        filled = htkeys_entry_index(newkeys, newentries, new_ep);
     }
     /* What the copy actually wrote, rather than md->used: the two agree,
        but taking the count from the copy means a table can never be
@@ -575,23 +574,23 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
     if (newkeys == NULL) {
         return -1;
     }
-    entry_t* src = htkeys_entries(oldkeys);
+    entry_t* oldentries = htkeys_entries(oldkeys);
     entry_t* newentries = htkeys_entries(newkeys);
-    anystr_entry_t* dst = as_anystr(newentries);
-    for (Py_ssize_t i = 0; i < oldkeys->nentries;
-         i++, src = entry_next(KIND_COMPACT, src)) {
+    Py_ssize_t filled = 0;
+    for (Py_ssize_t i = 0; i < oldkeys->nentries; i++) {
+        entry_t* src = entry_at(KIND_COMPACT, oldentries, i);
         PyObject* key = src->key;
         if (key == NULL) {
             continue;
         }
+        anystr_entry_t* dst = anystr_entry_at(newentries, filled++);
         dst->identity = Py_NewRef(compact_key_identity(md->is_ci, key));
         dst->hash = compact_key_hash(md->is_ci, key);
         dst->base.key = key;
         dst->base.value = src->value;
-        dst++;
     }
     Py_ssize_t numentries = md->used;
-    assert(htkeys_entry_index(newkeys, newentries, &dst->base) == numentries);
+    assert(filled == numentries);
     htkeys_zero_entries(newkeys, numentries);
     htkeys_build_indices(newkeys, md->is_ci, newentries, numentries);
     newkeys->usable -= numentries;
@@ -701,20 +700,19 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
         return -1;
     }
     entry_t* entries = htkeys_entries(keys);
-    anystr_entry_t* dst = as_anystr(entries) + keys->nentries;
-    entry_t* src = htkeys_entries(other->keys);
-    for (Py_ssize_t i = 0; i < other->keys->nentries;
-         i++, src = htkeys_entry_next(other->keys, src)) {
+    Py_ssize_t nentries = keys->nentries;
+    entry_t* src_entries = htkeys_entries(other->keys);
+    for (Py_ssize_t i = 0; i < other->keys->nentries; i++) {
+        entry_t* src = htkeys_entry_at(other->keys, src_entries, i);
         if (!entry_is_hole(other->keys->kind, src)) {
+            anystr_entry_t* dst = anystr_entry_at(entries, nentries++);
             dst->identity = Py_NewRef(
                 entry_identity(other->keys->kind, other->is_ci, src));
             dst->base.key = Py_NewRef(src->key);
             dst->base.value = Py_NewRef(src->value);
             dst->hash = entry_hash(other->keys->kind, other->is_ci, src);
-            dst++;
         }
     }
-    Py_ssize_t nentries = htkeys_entry_index(keys, entries, &dst->base);
     keys->usable -= nentries - keys->nentries;
     keys->nentries = nentries;
     htkeys_build_indices_with_holes(keys, md->is_ci, entries, nentries);
@@ -757,19 +755,19 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
         memcpy(keys, src, size);
 #endif
         keys->resume_slots = NULL;
-        entry_t* entry = htkeys_entries(keys);
+        entry_t* entries = htkeys_entries(keys);
         if (kind_is_compact(keys->kind)) {
-            for (Py_ssize_t idx = 0; idx < keys->nentries;
-                 idx++, entry = entry_next(KIND_COMPACT, entry)) {
+            for (Py_ssize_t idx = 0; idx < keys->nentries; idx++) {
+                entry_t* entry = entry_at(KIND_COMPACT, entries, idx);
                 Py_XINCREF(entry->key);  // also owns the identity
                 Py_XINCREF(entry->value);
             }
         } else {
-            for (Py_ssize_t idx = 0; idx < keys->nentries;
-                 idx++, entry = entry_next(KIND_ANYSTR, entry)) {
-                Py_XINCREF(as_anystr(entry)->identity);
-                Py_XINCREF(entry->key);
-                Py_XINCREF(entry->value);
+            for (Py_ssize_t idx = 0; idx < keys->nentries; idx++) {
+                anystr_entry_t* entry = anystr_entry_at(entries, idx);
+                Py_XINCREF(entry->identity);
+                Py_XINCREF(entry->base.key);
+                Py_XINCREF(entry->base.value);
             }
         }
     }
@@ -843,10 +841,11 @@ md_to_anystr(MultiDictObject* md)
     memcpy(newkeys->indices,
            oldkeys->indices,
            (size_t)1 << oldkeys->log2_index_bytes);
-    entry_t* src = htkeys_entries(oldkeys);
-    anystr_entry_t* dst = as_anystr(htkeys_entries(newkeys));
-    for (Py_ssize_t i = 0; i < oldkeys->nentries;
-         i++, src = entry_next(KIND_COMPACT, src), dst++) {
+    entry_t* oldentries = htkeys_entries(oldkeys);
+    entry_t* newentries = htkeys_entries(newkeys);
+    for (Py_ssize_t i = 0; i < oldkeys->nentries; i++) {
+        entry_t* src = entry_at(KIND_COMPACT, oldentries, i);
+        anystr_entry_t* dst = anystr_entry_at(newentries, i);
         PyObject* key = src->key;
         dst->base.key = key;
         dst->base.value = src->value;
@@ -2124,7 +2123,7 @@ _md_pop_item(MultiDictObject* md, bool ci)
     entry_t* entry = entry_at(kind, entries, pos);
     while (pos >= 0 && entry_is_hole(kind, entry)) {
         pos--;
-        entry = entry_prev(kind, entry);
+        entry = entry_at(kind, entries, pos);
     }
     assert(pos >= 0);
 
