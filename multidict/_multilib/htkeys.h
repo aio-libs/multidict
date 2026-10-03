@@ -27,16 +27,33 @@ itself but identity instead, borrowed references during iteration
 over pair_list for, e.g., md.get() or md.pop() is safe.
 */
 
-/* The key and the value lead, so that a table of KIND_COMPACT, which stores
-   only them, is a prefix of this layout. */
+/* The fields every kind stores, at the same offsets. A KIND_COMPACT entry
+   is exactly this. */
 typedef struct entry {
     PyObject* key;
     PyObject* value;
-    PyObject* identity;
-    Py_hash_t hash;
 } entry_t;
 
-/* How a table stores its entries. KIND_ANYSTR stores the whole entry_t.
+/* A KIND_ANYSTR entry: the shared fields, then the identity and its hash. */
+typedef struct anystr_entry {
+    entry_t base;
+    PyObject* identity;
+    Py_hash_t hash;
+} anystr_entry_t;
+
+static inline anystr_entry_t*
+as_anystr(entry_t* entry)
+{
+    return (anystr_entry_t*)entry;
+}
+
+static inline const anystr_entry_t*
+as_const_anystr(const entry_t* entry)
+{
+    return (const anystr_entry_t*)entry;
+}
+
+/* How a table stores its entries. KIND_ANYSTR stores an anystr_entry_t.
    KIND_COMPACT stores only the key and the value, and the class decides
    what the identity is: in a MultiDict every key is an exact str that is
    its own identity, in a CIMultiDict an exact istr whose canonical form is.
@@ -188,8 +205,8 @@ htkeys_entries(const htkeys_t* dk)
 static inline unsigned
 htkeys_kind_entry_shift(uint8_t kind)
 {
-    Py_BUILD_ASSERT(sizeof(entry_t) == 4 * sizeof(PyObject*));
-    Py_BUILD_ASSERT(offsetof(entry_t, identity) == 2 * sizeof(PyObject*));
+    Py_BUILD_ASSERT(sizeof(entry_t) == 2 * sizeof(PyObject*));
+    Py_BUILD_ASSERT(sizeof(anystr_entry_t) == 4 * sizeof(PyObject*));
     return (SIZEOF_VOID_P == 8 ? 4 : 3) + (kind != KIND_COMPACT);
 }
 
@@ -259,7 +276,7 @@ entry_identity(uint8_t kind, bool ci, const entry_t* entry)
         PyObject* key = entry->key;
         return key == NULL ? NULL : compact_key_identity(ci, key);
     }
-    return entry->identity;
+    return as_const_anystr(entry)->identity;
 }
 
 /* Whether entry is a hole (deleted or never filled). Cheaper than testing
@@ -269,7 +286,7 @@ static inline bool
 entry_is_hole(uint8_t kind, const entry_t* entry)
 {
     return kind_is_compact(kind) ? entry->key == NULL
-                                 : entry->identity == NULL;
+                                 : as_const_anystr(entry)->identity == NULL;
 }
 
 /* The field lock-free readers check first: the key in a compact table, so
@@ -278,15 +295,7 @@ entry_is_hole(uint8_t kind, const entry_t* entry)
 static inline PyObject**
 entry_identity_slot(uint8_t kind, entry_t* entry)
 {
-    return kind_is_compact(kind) ? &entry->key : &entry->identity;
-}
-
-static inline void
-entry_set_identity(uint8_t kind, entry_t* entry, PyObject* identity)
-{
-    if (!kind_is_compact(kind)) {
-        entry->identity = identity;
-    }
+    return kind_is_compact(kind) ? &entry->key : &as_anystr(entry)->identity;
 }
 
 // The str caches its hash, set when the key went in.
@@ -320,14 +329,14 @@ entry_hash(uint8_t kind, bool ci, const entry_t* entry)
     if (kind_is_compact(kind)) {
         return compact_key_hash(ci, entry->key);
     }
-    return entry->hash;
+    return as_const_anystr(entry)->hash;
 }
 
 static inline void
 entry_set_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
 {
     if (!kind_is_compact(kind)) {
-        entry->hash = hash;
+        as_anystr(entry)->hash = hash;
     }
 }
 
@@ -635,7 +644,7 @@ htkeys_size_fits(uint8_t log2_size)
     size_t usable = (size_t)USABLE_FRACTION((Py_ssize_t)1 << log2_size);
     return usable <=
            ((size_t)PY_SSIZE_T_MAX - sizeof(htkeys_t) - index_bytes) /
-               sizeof(entry_t);
+               sizeof(anystr_entry_t);
 }
 
 /* The same number as _htkeys_alloc_size(keys->log2_size), read back off
