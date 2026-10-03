@@ -34,8 +34,8 @@ first. It never goes from one non-NULL identity to another; a compact
 entry's key may be replaced (replace_key()), but only by a key with an
 equal identity. That orders the fields but does not keep the objects
 alive: a concurrent delete or replace drops its reference without
-waiting for readers, so reading
-the slot's or value's contents needs try_get_ref().
+waiting for readers, so reading the slot's or value's contents needs
+try_get_ref().
 */
 
 #ifdef Py_GIL_DISABLED
