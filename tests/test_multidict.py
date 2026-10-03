@@ -1863,6 +1863,63 @@ def test_repr_raises_when_resized_during_iteration() -> None:
         repr(md)
 
 
+@pytest.mark.c_extension
+@pytest.mark.parametrize("op", ("eq", "items_sub", "items_ror", "keys_ror"))
+@pytest.mark.parametrize("position", (0, 1), ids=("first", "last"))
+def test_scan_raises_when_resized_by_an_entry(op: str, position: int) -> None:
+    """A resize made by any entry's own Python code, the last one included,
+    must stop the scan before it reads the freed table again."""
+    md: MultiDict[object] = MultiDict()
+    armed: list[int] = []  # the entry whose next hash or compare resizes md
+
+    class Failing:
+        def __len__(self) -> int:
+            return 100
+
+        def __iter__(self) -> Iterator[tuple[str, int]]:
+            raise ValueError
+
+    def resize(entry: int) -> None:
+        if armed == [entry]:
+            armed.clear()
+            with pytest.raises(ValueError):
+                md.extend(Failing())
+
+    # A MultiDict keeps a str subclass key as is, so the keys scan hashes it.
+    class EvilKey(str):
+        entry = 0
+
+        def __hash__(self) -> int:
+            resize(self.entry)
+            return str.__hash__(self)
+
+    class Evil:
+        def __init__(self, entry: int) -> None:
+            self.entry = entry
+
+        def __eq__(self, other: object) -> bool:
+            resize(self.entry)
+            return True
+
+        def __hash__(self) -> int:
+            resize(self.entry)
+            return 0
+
+    for entry, name in enumerate(("k", "k2")):
+        key = EvilKey(name)
+        key.entry = entry
+        md.add(key, Evil(entry))
+    armed.append(position)
+    ops: dict[str, Callable[[], object]] = {
+        "eq": lambda: md == {"k": 1, "k2": 1},
+        "items_sub": lambda: md.items() - set(),
+        "items_ror": lambda: set() | md.items(),
+        "keys_ror": lambda: set() | md.keys(),
+    }
+    with pytest.raises(RuntimeError, match="changed during iteration"):
+        ops[op]()
+
+
 def test_update_extend_merge_thread_safety() -> None:
     """Concurrent update()/extend()/merge() must not crash or corrupt state.
 
@@ -2152,7 +2209,7 @@ def test_view_set_ops_thread_safety() -> None:
 
     Regression test for the free-threaded build: itemsview's and keysview's
     &/|/-/^/in/isdisjoint() implementations used to walk self's hash table
-    directly (md_calc_identity()/md_init_finder()/md_contains()/md_next())
+    directly (md_calc_identity()/md_init_finder()/md_contains() and a linear scan)
     without holding self's lock, so a concurrent resize triggered by
     mutation on another thread could free the table mid-walk. This is a
     C-extension-only concern: the pure-Python implementation has no

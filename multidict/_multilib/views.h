@@ -611,8 +611,6 @@ _multidict_itemsview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
     PyObject* tmp_set = NULL;
     int st;
 
-    md_pos_t pos;
-
     PyObject* ret = PySet_New(other);
     if (ret == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -648,32 +646,44 @@ _multidict_itemsview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
     }
     Py_CLEAR(iter);
 
-    md_init_pos(self->md, &pos);
+    MultiDictObject* md = self->md;
+    uint64_t version = md->version;
+    htkeys_t* keys = md->keys;
+    entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
 
-    while (true) {
-        int tmp = md_next(self->md, &pos, &identity, &key, &value);
+    for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
+        entry_t* entry = entry_at(kind, entries, pos);
+        if (entry_is_hole(kind, entry)) {
+            continue;
+        }
+        identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
+        value = Py_NewRef(entry->value);
+        key = md_ensure_key(md, entry);  // last entry access
+        if (key == NULL) {
+            goto fail;
+        }
+        PyObject* tpl = PyTuple_Pack(2, identity, value);
+        if (tpl == NULL) {
+            goto fail;
+        }
+        int tmp = PySet_Contains(tmp_set, tpl);
+        Py_DECREF(tpl);
         if (tmp < 0) {
             goto fail;
-        } else if (tmp == 0) {
-            break;
-        } else {
-            PyObject* tpl = PyTuple_Pack(2, identity, value);
-            if (tpl == NULL) {
+        }
+        if (tmp == 0) {
+            if (_set_add(ret, key, value) < 0) {
                 goto fail;
             }
-            tmp = PySet_Contains(tmp_set, tpl);
-            Py_DECREF(tpl);
-            if (tmp < 0) {
-                goto fail;
-            }
-            if (tmp == 0) {
-                if (_set_add(ret, key, value) < 0) {
-                    goto fail;
-                }
-            }
-            Py_DECREF(identity);
-            Py_DECREF(key);
-            Py_DECREF(value);
+        }
+        Py_CLEAR(identity);
+        Py_CLEAR(key);
+        Py_CLEAR(value);
+        /* Hashing and comparing run Python code; once the version checks
+           out, `keys` is still md's table. */
+        if (md_check_version(md, version) < 0) {
+            goto fail;
         }
     }
     Py_DECREF(tmp_set);
@@ -734,8 +744,6 @@ _multidict_itemsview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
     PyObject* tmp_set = NULL;
     int st;
 
-    md_pos_t pos;
-
     PyObject* iter = PyObject_GetIter(other);
     if (iter == NULL) {
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -771,32 +779,43 @@ _multidict_itemsview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
     }
     Py_CLEAR(iter);
 
-    md_init_pos(self->md, &pos);
+    MultiDictObject* md = self->md;
+    uint64_t version = md->version;
+    htkeys_t* keys = md->keys;
+    entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
 
-    while (true) {
-        int tmp = md_next(self->md, &pos, &identity, &key, &value);
+    for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
+        entry_t* entry = entry_at(kind, entries, pos);
+        if (entry_is_hole(kind, entry)) {
+            continue;
+        }
+        identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
+        value = Py_NewRef(entry->value);
+        key = md_ensure_key(md, entry);  // last entry access
+        if (key == NULL) {
+            goto fail;
+        }
+        PyObject* tpl = PyTuple_Pack(2, identity, value);
+        if (tpl == NULL) {
+            goto fail;
+        }
+        int tmp = PySet_Contains(tmp_set, tpl);
+        Py_DECREF(tpl);
         if (tmp < 0) {
             goto fail;
-        } else if (tmp == 0) {
-            break;
-        } else {
-            PyObject* tpl = PyTuple_Pack(2, identity, value);
-            if (tpl == NULL) {
+        }
+        if (tmp == 0) {
+            if (_set_add(ret, key, value) < 0) {
                 goto fail;
             }
-            tmp = PySet_Contains(tmp_set, tpl);
-            Py_DECREF(tpl);
-            if (tmp < 0) {
-                goto fail;
-            }
-            if (tmp == 0) {
-                if (_set_add(ret, key, value) < 0) {
-                    goto fail;
-                }
-            }
-            Py_DECREF(identity);
-            Py_DECREF(key);
-            Py_DECREF(value);
+        }
+        Py_CLEAR(identity);
+        Py_CLEAR(key);
+        Py_CLEAR(value);
+        /* See _multidict_itemsview_or2_impl(). */
+        if (md_check_version(md, version) < 0) {
+            goto fail;
         }
     }
     Py_DECREF(tmp_set);
@@ -1498,18 +1517,23 @@ _multidict_keysview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
     }
     Py_CLEAR(iter);
 
-    md_pos_t pos;
-    md_init_pos(self->md, &pos);
+    MultiDictObject* md = self->md;
+    uint64_t version = md->version;
+    htkeys_t* keys = md->keys;
+    entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
 
-    while (true) {
-        int tmp = md_next(self->md, &pos, &identity, &key, NULL);
-        if (tmp < 0) {
-            goto fail;
-        } else if (tmp == 0) {
-            break;
+    for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
+        entry_t* entry = entry_at(kind, entries, pos);
+        if (entry_is_hole(kind, entry)) {
+            continue;
         }
-
-        tmp = PySet_Contains(tmp_set, identity);
+        identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
+        key = md_ensure_key(md, entry);  // last entry access
+        if (key == NULL) {
+            goto fail;
+        }
+        int tmp = PySet_Contains(tmp_set, identity);
         if (tmp < 0) {
             goto fail;
         }
@@ -1518,8 +1542,12 @@ _multidict_keysview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
                 goto fail;
             }
         }
-        Py_DECREF(identity);
-        Py_DECREF(key);
+        Py_CLEAR(identity);
+        Py_CLEAR(key);
+        /* See _multidict_itemsview_or2_impl(). */
+        if (md_check_version(md, version) < 0) {
+            goto fail;
+        }
     }
     Py_DECREF(tmp_set);
     return ret;
