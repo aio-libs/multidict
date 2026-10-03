@@ -1864,12 +1864,13 @@ def test_repr_raises_when_resized_during_iteration() -> None:
 
 
 @pytest.mark.c_extension
-@pytest.mark.parametrize("op", ("eq", "items_sub", "items_ror"))
+@pytest.mark.parametrize("op", ("eq", "items_sub", "items_ror", "keys_ror"))
 @pytest.mark.parametrize("position", (0, 1), ids=("first", "last"))
 def test_scan_raises_when_resized_by_an_entry(op: str, position: int) -> None:
     """A resize made by any entry's own Python code, the last one included,
     must stop the scan before it reads the freed table again."""
     md: MultiDict[object] = MultiDict()
+    armed: list[int] = []  # the entry whose next hash or compare resizes md
 
     class Failing:
         def __len__(self) -> int:
@@ -1878,30 +1879,42 @@ def test_scan_raises_when_resized_by_an_entry(op: str, position: int) -> None:
         def __iter__(self) -> Iterator[tuple[str, int]]:
             raise ValueError
 
-    class Evil:
-        def __init__(self, trigger: bool) -> None:
-            self.trigger = trigger
+    def resize(entry: int) -> None:
+        if armed == [entry]:
+            armed.clear()
+            with pytest.raises(ValueError):
+                md.extend(Failing())
 
-        def _poke(self) -> None:
-            if self.trigger:
-                self.trigger = False
-                with pytest.raises(ValueError):
-                    md.extend(Failing())
+    # A MultiDict keeps a str subclass key as is, so the keys scan hashes it.
+    class EvilKey(str):
+        entry = 0
+
+        def __hash__(self) -> int:
+            resize(self.entry)
+            return str.__hash__(self)
+
+    class Evil:
+        def __init__(self, entry: int) -> None:
+            self.entry = entry
 
         def __eq__(self, other: object) -> bool:
-            self._poke()
+            resize(self.entry)
             return True
 
         def __hash__(self) -> int:
-            self._poke()
+            resize(self.entry)
             return 0
 
-    md.add("k", Evil(position == 0))
-    md.add("k2", Evil(position == 1))
+    for entry, name in enumerate(("k", "k2")):
+        key = EvilKey(name)
+        key.entry = entry
+        md.add(key, Evil(entry))
+    armed.append(position)
     ops: dict[str, Callable[[], object]] = {
         "eq": lambda: md == {"k": 1, "k2": 1},
         "items_sub": lambda: md.items() - set(),
         "items_ror": lambda: set() | md.items(),
+        "keys_ror": lambda: set() | md.keys(),
     }
     with pytest.raises(RuntimeError, match="changed during iteration"):
         ops[op]()
