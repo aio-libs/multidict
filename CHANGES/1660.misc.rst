@@ -1,3 +1,3 @@
 Merged the C extension's ``htkeys_kind_entry_size()`` into
-``htkeys_entry_size()``, which now takes the table kind explicitly
+``htkeys_entry_size()``, and changed it to take the table kind explicitly
 instead of the table -- by :user:`asvetlov`.
