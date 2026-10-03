@@ -27,12 +27,15 @@ extern "C" {
 #endif
 
 /*
-entry->identity is the "slot is populated" signal for a lock-free walk,
-so insertion publishes it last and deletion clears it first, and it
-never goes from one non-NULL identity to another. That orders the
-fields but does not keep the objects alive: a concurrent delete decrefs
-on the spot, so reading identity's or value's contents needs
-try_get_ref().
+The identity slot (see entry_identity_slot(): the key of a compact entry,
+the identity of an anystr one) is the "slot is populated" signal for a
+lock-free walk, so insertion publishes it last and deletion clears it
+first. It never goes from one non-NULL identity to another; a compact
+entry's key may be replaced (replace_key()), but only by a key with an
+equal identity. That orders the fields but does not keep the objects
+alive: a concurrent delete or replace drops its reference without
+waiting for readers, so reading
+the slot's or value's contents needs try_get_ref().
 */
 
 #ifdef Py_GIL_DISABLED
