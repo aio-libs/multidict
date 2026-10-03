@@ -201,15 +201,6 @@ htkeys_entries(const htkeys_t* dk)
    of the table the entry belongs to, which decides where they are.
    The key and the value are plain fields, at the same offsets in every
    kind. */
-/* Both sizes are powers of two, so stepping is a shift, not a multiply. */
-static inline unsigned
-htkeys_kind_entry_shift(uint8_t kind)
-{
-    Py_BUILD_ASSERT(sizeof(entry_t) == 2 * sizeof(PyObject*));
-    Py_BUILD_ASSERT(sizeof(anystr_entry_t) == 4 * sizeof(PyObject*));
-    return (SIZEOF_VOID_P == 8 ? 4 : 3) + (kind != KIND_COMPACT);
-}
-
 // A compact kind stores only the key and the value.
 static inline bool
 kind_is_compact(uint8_t kind)
@@ -243,7 +234,7 @@ slot_identity(uint8_t kind, bool ci, PyObject* held)
 static inline size_t
 htkeys_kind_entry_size(uint8_t kind)
 {
-    return (size_t)1 << htkeys_kind_entry_shift(kind);
+    return kind_is_compact(kind) ? sizeof(entry_t) : sizeof(anystr_entry_t);
 }
 
 /* These take the kind, not the table, so a function reads keys->kind
@@ -253,7 +244,7 @@ static inline entry_t*
 entry_at(uint8_t kind, entry_t* entries, Py_ssize_t i)
 {
     return (entry_t*)((char*)entries +
-                      ((size_t)i << htkeys_kind_entry_shift(kind)));
+                      (size_t)i * htkeys_kind_entry_size(kind));
 }
 
 static inline entry_t*
