@@ -1318,7 +1318,7 @@ def test_setitem_duplicates_no_refleak_on_memory_error(
         assert [sys.getrefcount(obj) for obj in values] == baseline
         if failed:
             failures += 1
-        elif failures:
+        elif failures:  # pragma: no branch
             break
         n += 1
 
