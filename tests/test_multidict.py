@@ -1838,6 +1838,31 @@ def test_repr_raises_when_mutated_during_iteration() -> None:
         repr(md)
 
 
+@pytest.mark.c_extension
+def test_repr_raises_when_resized_during_iteration() -> None:
+    """A failed extend() grows the table but adds nothing; on GIL builds
+    that resize kept the version, and repr() read the freed entries."""
+    md: MultiDict[object] = MultiDict()
+
+    class Failing:
+        def __len__(self) -> int:
+            return 100
+
+        def __iter__(self) -> Iterator[tuple[str, int]]:
+            raise ValueError
+
+    class Evil:
+        def __repr__(self) -> str:
+            with pytest.raises(ValueError):
+                md.extend(Failing())
+            return "e"
+
+    md.add("k", Evil())
+    md.add("k2", Evil())
+    with pytest.raises(RuntimeError, match="changed during iteration"):
+        repr(md)
+
+
 def test_update_extend_merge_thread_safety() -> None:
     """Concurrent update()/extend()/merge() must not crash or corrupt state.
 
