@@ -2726,7 +2726,7 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
             break;
         }
         ret = PyMapping_GetOptionalItem(other, key, &bvalue);
-        Py_CLEAR(key);
+        Py_DECREF(key);
         if (ret < 0) {
             Py_CLEAR(avalue);
             return -1;
@@ -2738,8 +2738,8 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
         }
 
         int eq = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
-        Py_CLEAR(bvalue);
-        Py_CLEAR(avalue);
+        Py_DECREF(bvalue);
+        Py_DECREF(avalue);
 
         if (eq <= 0) {
             return eq;

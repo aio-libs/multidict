@@ -1,0 +1,3 @@
+Replaced ``Py_CLEAR()`` with ``Py_DECREF()`` in the C extension's loop
+that compares a multidict with another mapping, which made
+``md == other_mapping`` up to 4% faster -- by :user:`asvetlov`.
