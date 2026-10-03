@@ -57,7 +57,7 @@ typedef struct _update_marks {
 } update_marks_t;
 
 static inline Py_ssize_t
-md_entries_capacity(htkeys_t* keys)
+md_entries_capacity(const htkeys_t* keys)
 {
     return keys->nentries + keys->usable;
 }

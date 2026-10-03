@@ -17,7 +17,7 @@ extern "C" {
 #ifndef NDEBUG
 
 static inline int
-_md_check_consistency(MultiDictObject* md)
+_md_check_consistency(const MultiDictObject* md)
 {
     //    ASSERT_WORLD_STOPPED_OR_DICT_LOCKED(op);
 

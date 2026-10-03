@@ -97,17 +97,17 @@ reflist_push(reflist_t* lst, PyObject* obj)
 }
 
 static inline bool
-reflist_empty(reflist_t* lst)
+reflist_empty(const reflist_t* lst)
 {
     return lst->count == 0 && lst->current == NULL;
 }
 
 // Every block but the newest is full, and they all follow the inline array
 COLD static Py_ssize_t
-_reflist_spilled_size(reflist_t* lst)
+_reflist_spilled_size(const reflist_t* lst)
 {
     Py_ssize_t size = REFLIST_INLINE + lst->count;
-    for (reflist_block_t* block = lst->current->next; block != NULL;
+    for (const reflist_block_t* block = lst->current->next; block != NULL;
          block = block->next) {
         size += REFLIST_BLOCK;
     }
@@ -115,7 +115,7 @@ _reflist_spilled_size(reflist_t* lst)
 }
 
 static inline Py_ssize_t
-reflist_size(reflist_t* lst)
+reflist_size(const reflist_t* lst)
 {
     if (UNLIKELY(lst->current != NULL)) {
         return _reflist_spilled_size(lst);

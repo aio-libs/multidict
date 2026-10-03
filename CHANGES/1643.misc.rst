@@ -1,0 +1,2 @@
+Added ``const`` qualifiers to internal C helpers that read table, reference list,
+and watcher metadata -- by :user:`anshurajbisoyi98-ctrl`.
