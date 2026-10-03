@@ -1,0 +1,4 @@
+Merged the C extension's ``htkeys_kind_entry_size()`` into
+``_htkeys_entry_size()``, changed it to take the table kind explicitly
+instead of the table, and added ``htkeys_entries_copy()`` for the bulk
+entry copies made while resizing -- by :user:`asvetlov`.

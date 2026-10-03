@@ -450,9 +450,8 @@ _md_rebuild_keeping_indices(MultiDictObject* md, uint8_t log2_newsize)
         return -1;
     }
     entry_t* newentries = htkeys_entries(newkeys);
-    memcpy(newentries,
-           htkeys_entries(oldkeys),
-           (size_t)nentries * htkeys_entry_size(oldkeys));
+    htkeys_entries_copy(
+        oldkeys, newentries, htkeys_entries(oldkeys), nentries);
     htkeys_zero_entries(newkeys, nentries);
     htkeys_build_indices_with_holes(newkeys, md->is_ci, newentries, nentries);
     newkeys->usable -= nentries;
@@ -511,9 +510,7 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
     entry_t* newentries = htkeys_entries(newkeys);
     Py_ssize_t filled;
     if (oldkeys->nentries == numentries) {
-        memcpy(newentries,
-               oldentries,
-               (size_t)numentries * htkeys_entry_size(oldkeys));
+        htkeys_entries_copy(oldkeys, newentries, oldentries, numentries);
         filled = numentries;
     } else {
         entry_t* new_ep = newentries;
