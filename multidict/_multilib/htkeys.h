@@ -342,12 +342,6 @@ htkeys_entry_next(const htkeys_t* keys, entry_t* entry)
     return entry_next(keys->kind, entry);
 }
 
-static inline entry_t*
-htkeys_entry_prev(const htkeys_t* keys, entry_t* entry)
-{
-    return entry_prev(keys->kind, entry);
-}
-
 /* How many entries lie between `entries` and `entry`. */
 static inline Py_ssize_t
 htkeys_entry_index(const htkeys_t* keys, const entry_t* entries,

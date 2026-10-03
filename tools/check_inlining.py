@@ -7,7 +7,7 @@ somewhere else.  Each time that happened the benchmarks regressed on
 code nobody touched: ``md_calc_identity()`` fell out of ``__getitem__``
 and ``__delitem__`` when the shell pools landed, ``md_contains()`` fell
 out of ``keys().isdisjoint()`` when the ASCII identity path landed, and
-``md_next()`` fell out of the items iterator when a cold leg of
+the iterator step fell out of the items iterator when a cold leg of
 ``md_get_one()`` was outlined.
 
 This script compiles ``_multidict.c`` the way ``pip install`` does, with
@@ -150,7 +150,7 @@ RULES = (
         "#1530: a stack buffer over 256 bytes cost getall 2%",
     ),
     Rule(
-        "md_next",
+        "_iter_next_entry",
         ITERNEXT_ENTRIES,
         BOTH,
         "#1601 prototype: items iteration +19% on FT; ALWAYS_INLINE since "

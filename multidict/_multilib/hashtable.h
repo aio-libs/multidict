@@ -62,11 +62,6 @@ md_key_fits(const MultiDictObject* md, PyObject* key, PyObject* identity,
     return key == identity;
 }
 
-typedef struct _md_pos {
-    Py_ssize_t pos;
-    uint64_t version;
-} md_pos_t;
-
 /*
 The multidict's implementation is close to Python's dict except for multiple
 keys.
@@ -1143,7 +1138,7 @@ removed_pairs_init(removed_pairs_t* removed)
     removed->spilled = false;
 }
 
-// Out of line: inlined twice, it pushes md_next() out of the FT items iterator
+// Out of line: inlined twice, it pushes the FT items iterator step out
 NOINLINE static void
 removed_pairs_release(removed_pairs_t* removed)
 {
@@ -1334,152 +1329,6 @@ md_del(MultiDictObject* md, PyObject* key)
         return md_del_ci(md, key);
     }
     return md_del_cs(md, key);
-}
-
-static inline void
-md_init_pos(MultiDictObject* md, md_pos_t* pos)
-{
-    pos->pos = 0;
-    pos->version = md->version;
-}
-
-/* Forced: the FT items iterator needs it inline (#1601), and this unit
-   sits so close to GCC's budget that unrelated changes push it out. */
-ALWAYS_INLINE static inline int
-md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
-        PyObject** pkey, PyObject** pvalue)
-{
-    int ret = 0;
-
-    if (md_check_version(md, pos->version) < 0) {
-        ret = -1;
-        goto cleanup;
-    }
-
-    if (pos->pos >= md->keys->nentries) {
-        goto cleanup;
-    }
-
-    entry_t* entries = htkeys_entries(md->keys);
-    uint8_t kind = md->keys->kind;
-    entry_t* entry = entry_at(kind, entries, pos->pos);
-
-    while (entry_is_hole(kind, entry)) {
-        pos->pos += 1;
-        if (pos->pos >= md->keys->nentries) {
-            goto cleanup;
-        }
-        entry = entry_next(kind, entry);
-    }
-
-    if (pidentity) {
-        *pidentity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
-    }
-
-    if (pvalue) {
-        *pvalue = Py_NewRef(entry->value);
-    }
-    if (pkey) {
-        assert(entry->key != NULL);
-        *pkey = md_ensure_key(md, entry);  // last entry access
-        if (*pkey == NULL) {
-            assert(PyErr_Occurred());
-            if (pidentity) {
-                Py_CLEAR(*pidentity);
-            }
-            if (pvalue) {
-                Py_CLEAR(*pvalue);
-            }
-            ret = -1;
-            goto cleanup;
-        }
-    }
-
-    ++pos->pos;
-    return 1;
-cleanup:
-    if (pidentity) {
-        *pidentity = NULL;
-    }
-    if (pkey) {
-        *pkey = NULL;
-    }
-    if (pvalue) {
-        *pvalue = NULL;
-    }
-    return ret;
-}
-
-static inline void
-md_init_pos_reverse(MultiDictObject* md, md_pos_t* pos)
-{
-    pos->pos = md->keys->nentries - 1;
-    pos->version = md->version;
-}
-
-static inline int
-md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
-        PyObject** pkey, PyObject** pvalue)
-{
-    int ret = 0;
-
-    if (md_check_version(md, pos->version) < 0) {
-        ret = -1;
-        goto cleanup;
-    }
-
-    if (pos->pos < 0) {
-        goto cleanup;
-    }
-
-    entry_t* entries = htkeys_entries(md->keys);
-    uint8_t kind = md->keys->kind;
-    entry_t* entry = entry_at(kind, entries, pos->pos);
-
-    while (entry_is_hole(kind, entry)) {
-        pos->pos -= 1;
-        if (pos->pos < 0) {
-            goto cleanup;
-        }
-        entry = entry_prev(kind, entry);
-    }
-
-    if (pidentity) {
-        *pidentity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
-    }
-
-    if (pvalue) {
-        *pvalue = Py_NewRef(entry->value);
-    }
-    if (pkey) {
-        assert(entry->key != NULL);
-        *pkey = md_ensure_key(md, entry);  // last entry access
-        if (*pkey == NULL) {
-            assert(PyErr_Occurred());
-            if (pidentity) {
-                Py_CLEAR(*pidentity);
-            }
-            if (pvalue) {
-                Py_CLEAR(*pvalue);
-            }
-            ret = -1;
-            goto cleanup;
-        }
-    }
-
-    --pos->pos;
-    return 1;
-cleanup:
-    if (pidentity) {
-        *pidentity = NULL;
-    }
-    if (pkey) {
-        *pkey = NULL;
-    }
-    if (pvalue) {
-        *pvalue = NULL;
-    }
-    return ret;
 }
 
 ALWAYS_INLINE static inline int
@@ -1914,7 +1763,7 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
 
         /* Both calls below can run a str subclass's own __hash__, __eq__
            or __del__, which may mutate this multidict. That is refused the
-           way md_next() refuses one, before `entry` or `collected` is
+           way the iterators refuse one, before `entry` or `collected` is
            trusted again. */
         key = md_ensure_key(md, entry);
         if (key == NULL) {
@@ -2701,18 +2550,23 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
         return 0;
     }
 
-    md_pos_t pos;
-    md_init_pos(md, &pos);
+    uint64_t version = md->version;
+    htkeys_t* keys = md->keys;
+    entry_t* entries = htkeys_entries(keys);
+    uint8_t kind = keys->kind;
 
-    for (;;) {
-        int ret = md_next(md, &pos, NULL, &key, &avalue);
-        if (ret < 0) {
+    for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
+        entry_t* entry = entry_at(kind, entries, pos);
+        if (entry_is_hole(kind, entry)) {
+            continue;
+        }
+        avalue = Py_NewRef(entry->value);
+        key = md_ensure_key(md, entry);  // last entry access
+        if (key == NULL) {
+            Py_DECREF(avalue);
             return -1;
         }
-        if (ret == 0) {
-            break;
-        }
-        ret = PyMapping_GetOptionalItem(other, key, &bvalue);
+        int ret = PyMapping_GetOptionalItem(other, key, &bvalue);
         Py_DECREF(key);
         if (ret < 0) {
             Py_CLEAR(avalue);
@@ -2730,6 +2584,11 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
 
         if (eq <= 0) {
             return eq;
+        }
+        /* Every mutation and resize bumps the version, so `keys` is still
+           md's table once it checks out. */
+        if (md_check_version(md, version) < 0) {
+            return -1;
         }
     }
 

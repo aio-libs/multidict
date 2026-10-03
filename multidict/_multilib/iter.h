@@ -12,7 +12,8 @@ extern "C" {
 typedef struct multidict_iter {
     PyObject_HEAD
     MultiDictObject* md;  // MultiDict or CIMultiDict
-    md_pos_t current;
+    Py_ssize_t pos;       // the next entry to look at
+    uint64_t version;
     int reverse;
     PyObject* result;  // items iterator: the last tuple handed out
 } MultidictIter;
@@ -41,12 +42,55 @@ _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
     it->reverse = reverse;
     it->result = NULL;
     Py_BEGIN_CRITICAL_SECTION(md);
-    if (reverse) {
-        md_init_pos_reverse(md, &it->current);
-    } else {
-        md_init_pos(md, &it->current);
-    }
+    it->pos = reverse ? md->keys->nentries - 1 : 0;
+    it->version = md->version;
     Py_END_CRITICAL_SECTION();
+}
+
+/* Finds the next live entry in the iterator's direction and moves past it.
+   Returns 1 with *pentry set, 0 at the end, or -1 with RuntimeError set if
+   md has changed. The caller holds md's critical section.
+
+   Forced: the FT items iterator needs it inline (#1601), and this unit
+   sits so close to GCC's budget that unrelated changes push it out. */
+ALWAYS_INLINE static inline int
+_iter_next_entry(MultidictIter* self, entry_t** pentry)
+{
+    MultiDictObject* md = self->md;
+    if (md_check_version(md, self->version) < 0) {
+        return -1;
+    }
+    htkeys_t* keys = md->keys;
+    if (self->reverse) {
+        if (self->pos < 0) {
+            return 0;
+        }
+        uint8_t kind = keys->kind;
+        entry_t* entry = entry_at(kind, htkeys_entries(keys), self->pos);
+        while (entry_is_hole(kind, entry)) {
+            if (--self->pos < 0) {
+                return 0;
+            }
+            entry = entry_prev(kind, entry);
+        }
+        --self->pos;
+        *pentry = entry;
+        return 1;
+    }
+    if (self->pos >= keys->nentries) {
+        return 0;
+    }
+    uint8_t kind = keys->kind;
+    entry_t* entry = entry_at(kind, htkeys_entries(keys), self->pos);
+    while (entry_is_hole(kind, entry)) {
+        if (++self->pos >= keys->nentries) {
+            return 0;
+        }
+        entry = entry_next(kind, entry);
+    }
+    ++self->pos;
+    *pentry = entry;
+    return 1;
 }
 
 static inline PyObject*
@@ -103,19 +147,24 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
     PyObject* key = NULL;
     PyObject* value = NULL;
     PyObject* ret = NULL;
+    entry_t* entry;
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = self->reverse
-              ? md_prev(self->md, &self->current, NULL, &key, &value)
-              : md_next(self->md, &self->current, NULL, &key, &value);
+    res = _iter_next_entry(self, &entry);
+    if (res > 0) {
+        value = Py_NewRef(entry->value);
+        key = md_ensure_key(self->md, entry);  // last entry access
+        if (key == NULL) {
+            Py_DECREF(value);
+            res = -1;
+        }
+    }
     Py_END_CRITICAL_SECTION();
     if (res < 0) {
         return NULL;
     }
     if (res == 0) {
-        Py_CLEAR(key);
-        Py_CLEAR(value);
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }
@@ -161,12 +210,14 @@ NOINLINE static PyObject*
 multidict_values_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* value = NULL;
+    entry_t* entry;
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = self->reverse
-              ? md_prev(self->md, &self->current, NULL, NULL, &value)
-              : md_next(self->md, &self->current, NULL, NULL, &value);
+    res = _iter_next_entry(self, &entry);
+    if (res > 0) {
+        value = Py_NewRef(entry->value);
+    }
     Py_END_CRITICAL_SECTION();
     if (res < 0) {
         return NULL;
@@ -183,11 +234,17 @@ NOINLINE static PyObject*
 multidict_keys_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;
+    entry_t* entry;
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = self->reverse ? md_prev(self->md, &self->current, NULL, &key, NULL)
-                        : md_next(self->md, &self->current, NULL, &key, NULL);
+    res = _iter_next_entry(self, &entry);
+    if (res > 0) {
+        key = md_ensure_key(self->md, entry);  // last entry access
+        if (key == NULL) {
+            res = -1;
+        }
+    }
     Py_END_CRITICAL_SECTION();
     if (res < 0) {
         return NULL;
