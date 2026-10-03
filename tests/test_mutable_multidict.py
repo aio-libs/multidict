@@ -1277,9 +1277,11 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
             failed = False
         del md, bound, call
         assert [sys.getrefcount(obj) for obj in keys + values] == baseline
-        if failed:
-            failures += 1
-        elif failures:
+        # Not an if/elif: whether a call ever succeeds before the first
+        # failure depends on the Python version, which would leave a branch
+        # uncovered on some.
+        failures += failed
+        if failures and not failed:
             break
         n += 1
 
