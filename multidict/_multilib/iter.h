@@ -114,6 +114,8 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
         return NULL;
     }
     if (res == 0) {
+        Py_CLEAR(key);
+        Py_CLEAR(value);
         PyErr_SetNone(PyExc_StopIteration);
         return NULL;
     }

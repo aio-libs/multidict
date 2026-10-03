@@ -1392,10 +1392,10 @@ md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
             if (pidentity) {
-                Py_DECREF(*pidentity);
+                Py_CLEAR(*pidentity);
             }
             if (pvalue) {
-                Py_DECREF(*pvalue);
+                Py_CLEAR(*pvalue);
             }
             ret = -1;
             goto cleanup;
@@ -1466,10 +1466,10 @@ md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
             if (pidentity) {
-                Py_DECREF(*pidentity);
+                Py_CLEAR(*pidentity);
             }
             if (pvalue) {
-                Py_DECREF(*pvalue);
+                Py_CLEAR(*pvalue);
             }
             ret = -1;
             goto cleanup;
@@ -2728,7 +2728,7 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
         ret = PyMapping_GetOptionalItem(other, key, &bvalue);
         Py_DECREF(key);
         if (ret < 0) {
-            Py_DECREF(avalue);
+            Py_CLEAR(avalue);
             return -1;
         }
 
@@ -2772,7 +2772,7 @@ md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
 
     PyUnicodeWriter* writer = PyUnicodeWriter_Create(1024);
     if (writer == NULL) {
-        Py_DECREF(name);
+        Py_CLEAR(name);
         Py_ReprLeave(obj);
         return NULL;
     }
@@ -2876,9 +2876,9 @@ md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
     Py_ReprLeave(obj);
     return PyUnicodeWriter_Finish(writer);
 fail:
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_DECREF(name);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_CLEAR(name);
     PyUnicodeWriter_Discard(writer);
     Py_ReprLeave(obj);
     return NULL;

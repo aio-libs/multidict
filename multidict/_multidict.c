@@ -972,7 +972,7 @@ done:
     Py_XDECREF(arg);
     return 0;
 fail:
-    Py_XDECREF(arg);
+    Py_CLEAR(arg);
     return -1;
 }
 
@@ -1121,7 +1121,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
     Py_XDECREF(arg);
     Py_RETURN_NONE;
 fail:
-    Py_XDECREF(arg);
+    Py_CLEAR(arg);
     return NULL;
 }
 
@@ -1430,7 +1430,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     Py_XDECREF(arg);
     Py_RETURN_NONE;
 fail:
-    Py_XDECREF(arg);
+    Py_CLEAR(arg);
     return NULL;
 }
 
@@ -1518,7 +1518,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     Py_XDECREF(arg);
     Py_RETURN_NONE;
 fail:
-    Py_XDECREF(arg);
+    Py_CLEAR(arg);
     return NULL;
 }
 
@@ -2480,7 +2480,7 @@ module_exec(PyObject* mod)
 
     return 0;
 fail:
-    Py_XDECREF(tpl);
+    Py_CLEAR(tpl);
     return -1;
 }
 

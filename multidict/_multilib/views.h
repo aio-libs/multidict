@@ -178,8 +178,8 @@ multidict_view_richcompare(_Multidict_ViewObject* self, PyObject* other,
             Py_RETURN_TRUE;
     }
 fail:
-    Py_XDECREF(item);
-    Py_XDECREF(iter);
+    Py_CLEAR(item);
+    Py_CLEAR(iter);
     return NULL;
 }
 
@@ -378,13 +378,13 @@ _multidict_itemsview_and1_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(iter);
     return ret;
 fail:
-    Py_XDECREF(matches);
-    Py_XDECREF(arg);
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
+    Py_CLEAR(matches);
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -463,13 +463,13 @@ _multidict_itemsview_and2_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(iter);
     return ret;
 fail:
-    Py_XDECREF(matches);
-    Py_XDECREF(arg);
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
+    Py_CLEAR(matches);
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -580,13 +580,13 @@ _multidict_itemsview_or1_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(iter);
     return ret;
 fail:
-    Py_XDECREF(matches);
-    Py_XDECREF(arg);
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
+    Py_CLEAR(matches);
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -679,13 +679,13 @@ _multidict_itemsview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(tmp_set);
     return ret;
 fail:
-    Py_XDECREF(arg);
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
-    Py_XDECREF(tmp_set);
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
+    Py_CLEAR(tmp_set);
     return NULL;
 }
 
@@ -802,13 +802,13 @@ _multidict_itemsview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(tmp_set);
     return ret;
 fail:
-    Py_XDECREF(arg);
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_XDECREF(ret);
-    Py_XDECREF(tmp_set);
-    Py_XDECREF(iter);
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_CLEAR(ret);
+    Py_CLEAR(tmp_set);
+    Py_CLEAR(iter);
     return NULL;
 }
 
@@ -895,13 +895,13 @@ _multidict_itemsview_sub2_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(iter);
     return ret;
 fail:
-    Py_XDECREF(matches);
-    Py_XDECREF(arg);
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
+    Py_CLEAR(matches);
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -992,10 +992,10 @@ multidict_itemsview_xor(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(rht);
     return ret;
 fail:
-    Py_XDECREF(tmp1);
-    Py_XDECREF(tmp2);
-    Py_XDECREF(rht);
-    Py_XDECREF(ret);
+    Py_CLEAR(tmp1);
+    Py_CLEAR(tmp2);
+    Py_CLEAR(rht);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -1154,11 +1154,11 @@ _multidict_itemsview_isdisjoint_impl(_Multidict_ViewObject* self,
     ASSERT_CONSISTENT(self->md);
     Py_RETURN_TRUE;
 fail:
-    Py_XDECREF(matches);
-    Py_XDECREF(iter);
-    Py_XDECREF(arg);
-    Py_XDECREF(identity);
-    Py_XDECREF(value);
+    Py_CLEAR(matches);
+    Py_CLEAR(iter);
+    Py_CLEAR(arg);
+    Py_CLEAR(identity);
+    Py_CLEAR(value);
     return NULL;
 }
 
@@ -1298,10 +1298,10 @@ _multidict_keysview_and1_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(iter);
     return ret;
 fail:
-    Py_XDECREF(key);
-    Py_XDECREF(key2);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
+    Py_CLEAR(key);
+    Py_CLEAR(key2);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -1355,9 +1355,9 @@ _multidict_keysview_and2_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(iter);
     return ret;
 fail:
-    Py_XDECREF(key);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
+    Py_CLEAR(key);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -1438,9 +1438,9 @@ _multidict_keysview_or1_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(iter);
     return ret;
 fail:
-    Py_XDECREF(key);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
+    Py_CLEAR(key);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -1524,11 +1524,11 @@ _multidict_keysview_or2_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(tmp_set);
     return ret;
 fail:
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
-    Py_XDECREF(tmp_set);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
+    Py_CLEAR(tmp_set);
     return NULL;
 }
 
@@ -1609,10 +1609,10 @@ _multidict_keysview_sub1_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(iter);
     return ret;
 fail:
-    Py_XDECREF(key);
-    Py_XDECREF(key2);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
+    Py_CLEAR(key);
+    Py_CLEAR(key2);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -1667,9 +1667,9 @@ _multidict_keysview_sub2_impl(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(iter);
     return ret;
 fail:
-    Py_XDECREF(key);
-    Py_XDECREF(iter);
-    Py_XDECREF(ret);
+    Py_CLEAR(key);
+    Py_CLEAR(iter);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -1760,10 +1760,10 @@ multidict_keysview_xor(_Multidict_ViewObject* self, PyObject* other)
     Py_DECREF(rht);
     return ret;
 fail:
-    Py_XDECREF(tmp1);
-    Py_XDECREF(tmp2);
-    Py_XDECREF(rht);
-    Py_XDECREF(ret);
+    Py_CLEAR(tmp1);
+    Py_CLEAR(tmp2);
+    Py_CLEAR(rht);
+    Py_CLEAR(ret);
     return NULL;
 }
 
@@ -1787,7 +1787,7 @@ _multidict_keysview_isdisjoint_impl(_Multidict_ViewObject* self,
         int tmp = md_contains(self->md, key, self->md->is_ci);
         Py_DECREF(key);
         if (tmp < 0) {
-            Py_DECREF(iter);
+            Py_CLEAR(iter);
             return NULL;
         }
         if (tmp > 0) {

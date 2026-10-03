@@ -325,10 +325,10 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     return 0;
 fail:
     if (recalc_identity) {
-        Py_XDECREF(canonical);
-        Py_XDECREF(identity);
-        Py_XDECREF(key);
-        Py_XDECREF(value);
+        Py_CLEAR(canonical);
+        Py_CLEAR(identity);
+        Py_CLEAR(key);
+        Py_CLEAR(value);
     }
     return -1;
 }
@@ -532,7 +532,7 @@ _md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
     }
     return 0;
 fail:
-    Py_XDECREF(identity);
+    Py_CLEAR(identity);
     if (owned) {
         Py_DECREF(key);
         Py_DECREF(value);
@@ -900,12 +900,12 @@ exit:
     return 0;
 
 fail:
-    Py_XDECREF(identity);
-    Py_XDECREF(it);
-    Py_XDECREF(item);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-    Py_XDECREF(items);
+    Py_CLEAR(identity);
+    Py_CLEAR(it);
+    Py_CLEAR(item);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
+    Py_CLEAR(items);
     return -1;
 }
 

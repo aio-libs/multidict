@@ -1,5 +1,5 @@
-Replaced ``Py_CLEAR()`` in the C extension with ``Py_DECREF()`` or
-``Py_XDECREF()`` wherever nothing reads the variable afterwards, and
-kept it only where a later error path still releases the variable.
-Comparing a multidict with another mapping became up to 4% faster
--- by :user:`asvetlov`.
+Replaced ``Py_CLEAR()`` on the C extension's success paths with
+``Py_DECREF()`` or ``Py_XDECREF()`` wherever nothing reads the variable
+afterwards. Error paths kept ``Py_CLEAR()``. Building a multidict from
+items became up to 1.7% faster, and comparing one with another mapping
+up to 4% faster -- by :user:`asvetlov`.
