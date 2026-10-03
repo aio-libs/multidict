@@ -310,9 +310,9 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                 break;
         }
         if (recalc_identity) {
-            Py_CLEAR(identity);
-            Py_CLEAR(key);
-            Py_CLEAR(value);
+            Py_DECREF(identity);
+            Py_DECREF(key);
+            Py_DECREF(value);
             /* Both lower() and a finalizer run by the decrefs above can
                replace other's table. */
             entries = htkeys_entries(other->keys);
@@ -325,10 +325,10 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     return 0;
 fail:
     if (recalc_identity) {
-        Py_CLEAR(canonical);
-        Py_CLEAR(identity);
-        Py_CLEAR(key);
-        Py_CLEAR(value);
+        Py_XDECREF(canonical);
+        Py_XDECREF(identity);
+        Py_XDECREF(key);
+        Py_XDECREF(value);
     }
     return -1;
 }
@@ -524,7 +524,7 @@ _md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                 }
                 break;
         }
-        Py_CLEAR(identity);
+        Py_XDECREF(identity);
         if (owned) {
             Py_DECREF(key);
             Py_DECREF(value);
@@ -532,7 +532,7 @@ _md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
     }
     return 0;
 fail:
-    Py_CLEAR(identity);
+    Py_XDECREF(identity);
     if (owned) {
         Py_DECREF(key);
         Py_DECREF(value);
@@ -891,21 +891,21 @@ _md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                 Py_CLEAR(value);
                 break;
         }
-        Py_CLEAR(item);
+        Py_DECREF(item);
     }
 
 exit:
-    Py_CLEAR(it);
-    Py_CLEAR(items);
+    Py_XDECREF(it);
+    Py_XDECREF(items);
     return 0;
 
 fail:
-    Py_CLEAR(identity);
-    Py_CLEAR(it);
-    Py_CLEAR(item);
-    Py_CLEAR(key);
-    Py_CLEAR(value);
-    Py_CLEAR(items);
+    Py_XDECREF(identity);
+    Py_XDECREF(it);
+    Py_XDECREF(item);
+    Py_XDECREF(key);
+    Py_XDECREF(value);
+    Py_XDECREF(items);
     return -1;
 }
 

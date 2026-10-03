@@ -1392,10 +1392,10 @@ md_next(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
             if (pidentity) {
-                Py_CLEAR(*pidentity);
+                Py_DECREF(*pidentity);
             }
             if (pvalue) {
-                Py_CLEAR(*pvalue);
+                Py_DECREF(*pvalue);
             }
             ret = -1;
             goto cleanup;
@@ -1466,10 +1466,10 @@ md_prev(MultiDictObject* md, md_pos_t* pos, PyObject** pidentity,
         if (*pkey == NULL) {
             assert(PyErr_Occurred());
             if (pidentity) {
-                Py_CLEAR(*pidentity);
+                Py_DECREF(*pidentity);
             }
             if (pvalue) {
-                Py_CLEAR(*pvalue);
+                Py_DECREF(*pvalue);
             }
             ret = -1;
             goto cleanup;
@@ -2728,12 +2728,12 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
         ret = PyMapping_GetOptionalItem(other, key, &bvalue);
         Py_DECREF(key);
         if (ret < 0) {
-            Py_CLEAR(avalue);
+            Py_DECREF(avalue);
             return -1;
         }
 
         if (bvalue == NULL) {
-            Py_CLEAR(avalue);
+            Py_DECREF(avalue);
             return 0;
         }
 
@@ -2772,7 +2772,7 @@ md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
 
     PyUnicodeWriter* writer = PyUnicodeWriter_Create(1024);
     if (writer == NULL) {
-        Py_CLEAR(name);
+        Py_DECREF(name);
         Py_ReprLeave(obj);
         return NULL;
     }
@@ -2872,13 +2872,13 @@ md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
     if (PyUnicodeWriter_WriteChar(writer, '>') < 0) {
         goto fail;
     }
-    Py_CLEAR(name);
+    Py_DECREF(name);
     Py_ReprLeave(obj);
     return PyUnicodeWriter_Finish(writer);
 fail:
-    Py_CLEAR(key);
-    Py_CLEAR(value);
-    Py_CLEAR(name);
+    Py_XDECREF(key);
+    Py_XDECREF(value);
+    Py_DECREF(name);
     PyUnicodeWriter_Discard(writer);
     Py_ReprLeave(obj);
     return NULL;
