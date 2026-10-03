@@ -232,7 +232,7 @@ slot_identity(uint8_t kind, bool ci, PyObject* held)
 }
 
 static inline size_t
-htkeys_kind_entry_size(uint8_t kind)
+htkeys_entry_size(uint8_t kind)
 {
     return kind_is_compact(kind) ? sizeof(entry_t) : sizeof(anystr_entry_t);
 }
@@ -243,20 +243,19 @@ htkeys_kind_entry_size(uint8_t kind)
 static inline entry_t*
 entry_at(uint8_t kind, entry_t* entries, Py_ssize_t i)
 {
-    return (entry_t*)((char*)entries +
-                      (size_t)i * htkeys_kind_entry_size(kind));
+    return (entry_t*)((char*)entries + (size_t)i * htkeys_entry_size(kind));
 }
 
 static inline entry_t*
 entry_next(uint8_t kind, entry_t* entry)
 {
-    return (entry_t*)((char*)entry + htkeys_kind_entry_size(kind));
+    return (entry_t*)((char*)entry + htkeys_entry_size(kind));
 }
 
 static inline entry_t*
 entry_prev(uint8_t kind, entry_t* entry)
 {
-    return (entry_t*)((char*)entry - htkeys_kind_entry_size(kind));
+    return (entry_t*)((char*)entry - htkeys_entry_size(kind));
 }
 
 /* NULL for a hole. */
@@ -331,12 +330,6 @@ entry_set_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
     }
 }
 
-static inline size_t
-htkeys_entry_size(const htkeys_t* keys)
-{
-    return htkeys_kind_entry_size(keys->kind);
-}
-
 static inline entry_t*
 htkeys_entry_at(const htkeys_t* keys, entry_t* entries, Py_ssize_t i)
 {
@@ -361,13 +354,13 @@ htkeys_entry_index(const htkeys_t* keys, const entry_t* entries,
                    const entry_t* entry)
 {
     return (Py_ssize_t)((size_t)((const char*)entry - (const char*)entries) /
-                        htkeys_entry_size(keys));
+                        htkeys_entry_size(keys->kind));
 }
 
 static inline void
 htkeys_entry_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src)
 {
-    memcpy(dst, src, htkeys_entry_size(keys));
+    memcpy(dst, src, htkeys_entry_size(keys->kind));
 }
 
 /* A slot in indices[] is written under md's critical section but read by
@@ -619,7 +612,7 @@ _htkeys_alloc_size(uint8_t log2_size, uint8_t kind)
         (size_t)USABLE_FRACTION((Py_ssize_t)((size_t)1 << log2_size));
     return (sizeof(htkeys_t) +
             ((size_t)1 << _htkeys_log2_index_bytes(log2_size)) +
-            htkeys_kind_entry_size(kind) * usable);
+            htkeys_entry_size(kind) * usable);
 }
 
 /* Whether _htkeys_alloc_size(log2_size) can be computed without a shift
@@ -647,7 +640,7 @@ htkeys_sizeof(const htkeys_t* keys)
         USABLE_FRACTION((Py_ssize_t)((size_t)1 << keys->log2_size));
     Py_ssize_t size =
         (Py_ssize_t)(sizeof(htkeys_t) + ((size_t)1 << keys->log2_index_bytes) +
-                     htkeys_entry_size(keys) * (size_t)usable);
+                     htkeys_entry_size(keys->kind) * (size_t)usable);
     assert(size ==
            (Py_ssize_t)_htkeys_alloc_size(keys->log2_size, keys->kind));
     return size;
@@ -694,7 +687,7 @@ htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
     assert(from >= 0 && from <= keys->usable);
     memset(htkeys_entry_at(keys, htkeys_entries(keys), from),
            0,
-           (size_t)(keys->usable - from) * htkeys_entry_size(keys));
+           (size_t)(keys->usable - from) * htkeys_entry_size(keys->kind));
 }
 
 /* An empty table whose entries are left as they came, for a caller that
