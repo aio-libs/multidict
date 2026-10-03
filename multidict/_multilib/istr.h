@@ -242,8 +242,8 @@ istr_reduce(PyObject* self)
     }
     result = PyTuple_Pack(2, Py_TYPE(self), args);
 ret:
-    Py_CLEAR(str);
-    Py_CLEAR(args);
+    Py_XDECREF(str);
+    Py_XDECREF(args);
     return result;
 }
 
@@ -302,7 +302,7 @@ IStr_New(mod_state* state, PyObject* str, PyObject* canonical)
         Py_CLEAR(res);
     }
 ret:
-    Py_CLEAR(args);
+    Py_XDECREF(args);
     return res;
 }
 

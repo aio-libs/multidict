@@ -2716,20 +2716,20 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
             break;
         }
         ret = PyMapping_GetOptionalItem(other, key, &bvalue);
-        Py_CLEAR(key);
+        Py_DECREF(key);
         if (ret < 0) {
             Py_CLEAR(avalue);
             return -1;
         }
 
         if (bvalue == NULL) {
-            Py_CLEAR(avalue);
+            Py_DECREF(avalue);
             return 0;
         }
 
         int eq = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
-        Py_CLEAR(bvalue);
-        Py_CLEAR(avalue);
+        Py_DECREF(bvalue);
+        Py_DECREF(avalue);
 
         if (eq <= 0) {
             return eq;
@@ -2860,7 +2860,7 @@ md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
     if (PyUnicodeWriter_WriteChar(writer, '>') < 0) {
         goto fail;
     }
-    Py_CLEAR(name);
+    Py_DECREF(name);
     Py_ReprLeave(obj);
     return PyUnicodeWriter_Finish(writer);
 fail:

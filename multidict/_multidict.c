@@ -795,6 +795,7 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
         if (!fits) {
             PyObject* keys = PyMapping_Keys(other);
             if (keys != NULL) {
+                Py_DECREF(keys);
                 fits = true;
             } else if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
                 // other is not a mapping (no keys()); treat as not equal
@@ -804,7 +805,6 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
                 cmp = -1;
                 goto done;
             }
-            Py_CLEAR(keys);
         }
         if (fits) {
             cmp = md_eq_to_mapping(self, other);
@@ -969,7 +969,7 @@ _multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         goto fail;
     }
 done:
-    Py_CLEAR(arg);
+    Py_XDECREF(arg);
     return 0;
 fail:
     Py_CLEAR(arg);
@@ -1118,7 +1118,7 @@ multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (ret < 0) {
         goto fail;
     }
-    Py_CLEAR(arg);
+    Py_XDECREF(arg);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);
@@ -1427,7 +1427,7 @@ multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (ret < 0) {
         goto fail;
     }
-    Py_CLEAR(arg);
+    Py_XDECREF(arg);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);
@@ -1515,7 +1515,7 @@ multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
     if (ret < 0) {
         goto fail;
     }
-    Py_CLEAR(arg);
+    Py_XDECREF(arg);
     Py_RETURN_NONE;
 fail:
     Py_CLEAR(arg);
