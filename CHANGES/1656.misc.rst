@@ -1,0 +1,4 @@
+Split the C extension's hash table entry into a key and value layout
+that every table kind shares, which is all a compact table stores, and
+a separate layout that adds the identity and its hash for the other
+kind -- by :user:`asvetlov`.

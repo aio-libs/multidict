@@ -206,7 +206,7 @@ reset_value(entry_t* entry)
    read only after the identity check has ordered the rest. Only the full
    layout has one; see _compact_entry_matches(). */
 static inline Py_hash_t
-load_hash(entry_t* entry)
+load_hash(anystr_entry_t* entry)
 {
     return (Py_hash_t)atomic_load_ssize_relaxed((Py_ssize_t*)&entry->hash);
 }
@@ -215,7 +215,7 @@ static inline void
 store_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
 {
     if (!kind_is_compact(kind)) {
-        atomic_store_ssize_relaxed((Py_ssize_t*)&entry->hash,
+        atomic_store_ssize_relaxed((Py_ssize_t*)&as_anystr(entry)->hash,
                                    (Py_ssize_t)hash);
     }
 }
@@ -383,7 +383,7 @@ reset_value(entry_t* entry)
 }
 
 static inline Py_hash_t
-load_hash(entry_t* entry)
+load_hash(anystr_entry_t* entry)
 {
     return entry->hash;
 }
