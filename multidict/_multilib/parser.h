@@ -61,8 +61,8 @@ equivalent def: the keywords are walked left to right and the first
 offending one wins, then the positional count, then missing args.
 */
 
-static COLD int
-_parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
+static inline int
+_parse2_bind(const char* fname, PyObject* const* args, Py_ssize_t nargs,
              PyObject* kwnames, Py_ssize_t minargs, PyObject* arg1name,
              PyObject** arg1, PyObject* arg2name, PyObject** arg2)
 {
@@ -131,6 +131,35 @@ _parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
     return 0;
 }
 
+/* Returned by value, not through out-parameters: those would make every
+   caller's locals address-taken, and -fstack-protector-strong then gives each
+   call a canary for a path only keyword calls take.  arg1 is NULL on error;
+   a successful bind always sets it, since minargs >= 1. */
+typedef struct {
+    PyObject* arg1;
+    PyObject* arg2;
+} parse2_t;
+
+static COLD parse2_t
+_parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
+             PyObject* kwnames, Py_ssize_t minargs, PyObject* arg1name,
+             PyObject* arg2name)
+{
+    parse2_t r = {NULL, NULL};
+    if (_parse2_bind(fname,
+                     args,
+                     nargs,
+                     kwnames,
+                     minargs,
+                     arg1name,
+                     &r.arg1,
+                     arg2name,
+                     &r.arg2) < 0) {
+        r.arg1 = NULL;
+    }
+    return r;
+}
+
 static inline int
 parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
        PyObject* kwnames, Py_ssize_t minargs, PyObject* arg1name,
@@ -144,8 +173,14 @@ parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
         *arg2 = nargs == 2 ? args[1] : NULL;
         return 0;
     }
-    return _parse2_slow(
-        fname, args, nargs, kwnames, minargs, arg1name, arg1, arg2name, arg2);
+    parse2_t r =
+        _parse2_slow(fname, args, nargs, kwnames, minargs, arg1name, arg2name);
+    if (r.arg1 == NULL) {
+        return -1;
+    }
+    *arg1 = r.arg1;
+    *arg2 = r.arg2;
+    return 0;
 }
 
 #ifdef __cplusplus
