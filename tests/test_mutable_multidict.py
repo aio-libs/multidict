@@ -1633,3 +1633,30 @@ def test_keyword_args_bind_like_positional(
         args = ()
     assert getattr(actual, method_name)(*args, **kwargs) == want
     assert list(actual.items()) == list(expected.items())
+
+
+def _outcome(
+    md: MultiDict[int], method_name: str, *args: str, **kwargs: str
+) -> tuple[str, object]:
+    try:
+        return "ok", getattr(md, method_name)(*args, **kwargs)
+    except KeyError:
+        return "KeyError", None
+
+
+@pytest.mark.parametrize("key", ("a", "missing"))
+@pytest.mark.parametrize(
+    "method_name",
+    ("getall", "getone", "get", "setdefault", "popone", "pop", "popall"),
+)
+def test_key_only_keyword_binds_like_positional(
+    any_multidict_class: type[MultiDict[int]],
+    method_name: str,
+    key: str,
+) -> None:
+    """A key-only keyword call must leave the optional argument unset."""
+    expected = any_multidict_class([("a", 1), ("a", 2)])
+    actual = any_multidict_class([("a", 1), ("a", 2)])
+    want = _outcome(expected, method_name, key)
+    assert _outcome(actual, method_name, key=key) == want
+    assert list(actual.items()) == list(expected.items())
