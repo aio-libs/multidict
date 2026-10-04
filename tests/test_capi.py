@@ -951,6 +951,23 @@ def test_init_from_the_same_type_clones(watcher: Watcher) -> None:
     assert watcher.kinds() == [CLONED]
 
 
+@pytest.mark.parametrize("use_proxy", (False, True), ids=("self", "proxy"))
+def test_init_from_itself_with_kwargs_only_adds(
+    watcher: Watcher, use_proxy: bool
+) -> None:
+    md: MultiDictStr = multidict.MultiDict([("a", "1")])
+    source = multidict.MultiDictProxy(md) if use_proxy else md
+    watcher.watch(md, None)
+    md.__init__(source, b="2")  # type: ignore[misc]
+    events = watcher.drain()
+    assert [(event[0], event[5]) for event in events] == [
+        (BATCH_BEGIN, None),
+        (ADDED, "b"),
+        (BATCH_END, None),
+    ]
+    assert list(md.items()) == [("a", "1"), ("b", "2")]
+
+
 class _AddsLate:
     def __init__(self, md: MultiDictStr) -> None:
         self.md = md

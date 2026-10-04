@@ -1706,6 +1706,22 @@ def test_reinitialize_releases_previous_values(
     assert list(d.items()) == [("source", "value")]
 
 
+@pytest.mark.parametrize("use_proxy", (False, True), ids=("self", "proxy"))
+def test_reinitialize_from_itself_with_kwargs(
+    any_multidict_class: type[MultiDict[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+    use_proxy: bool,
+) -> None:
+    d = any_multidict_class([("a", "1"), ("b", "2"), ("a", "3")])
+    del d["b"]
+    source = any_multidict_proxy_class(d) if use_proxy else d
+
+    d.__init__(source, extra="4")  # type: ignore[misc]
+
+    assert list(d.items()) == [("a", "1"), ("a", "3"), ("extra", "4")]
+    assert d.getall("a") == ["1", "3"]
+
+
 @pytest.mark.skipif(IS_PYPY, reason="getrefcount is not supported on PyPy")
 def test_extend_does_not_alter_refcount(
     case_sensitive_multidict_class: type[MultiDict[str]],

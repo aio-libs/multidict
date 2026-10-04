@@ -941,20 +941,21 @@ _multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_init(self,
-                      is_ci,
-                      size,
-                      _multidict_init_kind(state,
-                                           is_ci,
-                                           arg,
-                                           other != self ? other : NULL,
-                                           kwds == NULL ? 0 : 1));
-        if (ret == 0) {
-            if (other != NULL) {
-                ret = md_extend_self(self);
-            } else if (arg != NULL) {
+        if (other != NULL) {
+            // re-init from itself: md_init() would drop the source
+            assert(other == self && kwds != NULL);
+            ret = md_reserve_batch(self, PyDict_GET_SIZE(kwds), true);
+        } else {
+            ret = md_init(self,
+                          is_ci,
+                          size,
+                          _multidict_init_kind(
+                              state, is_ci, arg, NULL, kwds == NULL ? 0 : 1));
+            if (ret == 0 && arg != NULL) {
                 ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
             }
+        }
+        if (ret == 0) {
             if (ret == 0 && kwds != NULL) {
                 ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
             }

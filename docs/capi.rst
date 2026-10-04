@@ -479,6 +479,10 @@ time.
       or ``__init__()`` was called again on a live one. One event, not
       one per pair, the same choice CPython makes.
 
+      ``__init__()`` given the multidict itself, or a proxy of it, together
+      with keyword arguments keeps the pairs, so it reports no clear: only
+      the keyword arguments, as :c:enumerator:`MultiDict_EVENT_ADDED`.
+
    .. c:enumerator:: MultiDict_EVENT_CLONED
 
       The contents were replaced wholesale by those of another
