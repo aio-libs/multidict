@@ -1,0 +1,4 @@
+Changed the C extension's keyword argument binder to return both
+arguments by value, which stopped ``get()``, ``getone()``, ``getall()``,
+``add()`` and ``setdefault()`` from paying for a stack protector canary
+on every call -- by :user:`asvetlov`.

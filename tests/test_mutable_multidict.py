@@ -1598,3 +1598,65 @@ def test_remove_all_keeps_what_a_finalizer_adds(
         expected.insert(1, ("a", "new"))
     assert list(d.items()) == expected
     assert len(d) == len(expected)
+
+
+@pytest.mark.parametrize("by_name", ("second", "both"))
+@pytest.mark.parametrize("key", ("a", "missing"))
+@pytest.mark.parametrize(
+    ("method_name", "second_argname"),
+    (
+        ("getall", "default"),
+        ("getone", "default"),
+        ("get", "default"),
+        ("add", "value"),
+        ("setdefault", "default"),
+        ("popone", "default"),
+        ("pop", "default"),
+        ("popall", "default"),
+    ),
+)
+def test_keyword_args_bind_like_positional(
+    any_multidict_class: type[MultiDict[int]],
+    method_name: str,
+    second_argname: str,
+    key: str,
+    by_name: str,
+) -> None:
+    """Keyword calls take the slow binder, which must return both arguments."""
+    expected = any_multidict_class([("a", 1), ("a", 2)])
+    actual = any_multidict_class([("a", 1), ("a", 2)])
+    want = getattr(expected, method_name)(key, 0)
+    kwargs: dict[str, object] = {second_argname: 0}
+    args: tuple[str, ...] = (key,)
+    if by_name == "both":
+        kwargs["key"] = key
+        args = ()
+    assert getattr(actual, method_name)(*args, **kwargs) == want
+    assert list(actual.items()) == list(expected.items())
+
+
+def _outcome(
+    md: MultiDict[int], method_name: str, *args: str, **kwargs: str
+) -> tuple[str, object]:
+    try:
+        return "ok", getattr(md, method_name)(*args, **kwargs)
+    except KeyError:
+        return "KeyError", None
+
+
+@pytest.mark.parametrize("key", ("a", "missing"))
+@pytest.mark.parametrize(
+    "method_name",
+    ("getall", "getone", "get", "setdefault", "popone", "pop", "popall"),
+)
+def test_key_only_keyword_binds_like_positional(
+    any_multidict_class: type[MultiDict[int]],
+    method_name: str,
+    key: str,
+) -> None:
+    """A key-only keyword call must leave the optional argument unset."""
+    expected = any_multidict_class([("a", 1), ("a", 2)])
+    actual = any_multidict_class([("a", 1), ("a", 2)])
+    want = _outcome(expected, method_name, key)
+    assert _outcome(actual, method_name, key=key) == want
+    assert list(actual.items()) == list(expected.items())
