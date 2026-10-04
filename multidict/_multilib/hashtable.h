@@ -995,17 +995,6 @@ md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-// Caller holds md's critical section
-ALWAYS_INLINE static inline int
-_md_add_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-               PyObject* key, PyObject* value, bool fits, bool ci)
-{
-    assert(ci == md->is_ci);
-    int ret = md_add_with_hash(md, hash, identity, key, value, fits, ci);
-    ASSERT_CONSISTENT(md);
-    return ret;
-}
-
 ALWAYS_INLINE static inline int
 md_add(MultiDictObject* md, PyObject* key, PyObject* value, bool ci)
 {
@@ -1019,7 +1008,8 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value, bool ci)
     int ret;
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
-    ret = _md_add_locked(md, identity, hash, key, value, fits, ci);
+    ret = md_add_with_hash(md, hash, identity, key, value, fits, ci);
+    ASSERT_CONSISTENT(md);
     flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
@@ -1366,6 +1356,11 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
 #ifdef Py_GIL_DISABLED
 
+/* Sentinel meaning "could not complete lock-free"; never returned to
+   md_contains()'s or md_get_one()'s own caller. Distinct from 1 (found) /
+   0 (not found) / -1 (error). */
+#define _MD_NEED_LOCK 2
+
 /* A compact entry keeps no hash of its own: it is read from the key, and
    a concurrent delete can free the key, so nothing is read through it
    until a reference is held, as in CPython's dict lookup on its
@@ -1444,7 +1439,7 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
         if (matched == 0) {
             continue;
         }
-        result = matched < 0 ? 2 : 1;  // 2 is _MD_NEED_LOCK
+        result = matched < 0 ? _MD_NEED_LOCK : 1;
         break;
     }
 
@@ -1474,7 +1469,7 @@ _md_contains_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
     int result;
 #ifdef Py_GIL_DISABLED
     result = _md_contains_lockfree(md, probe, identity, hash, ci);
-    if (result == 2 /* _MD_NEED_LOCK */) {
+    if (result == _MD_NEED_LOCK) {
         result = _md_contains_retry_locked(md, identity, hash);
     }
 #else
@@ -1569,11 +1564,6 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 }
 
 #ifdef Py_GIL_DISABLED
-
-/* Sentinel meaning "could not complete lock-free"; never returned to
-   md_get_one()'s own caller, only used between the two functions
-   below. Distinct from 1 (found) / 0 (not found) / -1 (error). */
-#define _MD_NEED_LOCK 2
 
 ALWAYS_INLINE static inline int
 _md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
@@ -1976,16 +1966,6 @@ _md_getall_visit(void* user_data, PyObject* identity, Py_hash_t hash,
     return 1;
 }
 
-// Caller holds md's critical section
-ALWAYS_INLINE static inline int
-_md_get_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                   reflist_t* values, bool ci)
-{
-    Py_ssize_t count = md_walk_with_hash(
-        md, identity, hash, false, _md_getall_visit, values, ci);
-    return count < 0 ? -1 : 0;
-}
-
 ALWAYS_INLINE static inline int
 md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret, bool ci)
 {
@@ -1998,12 +1978,13 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret, bool ci)
     }
     reflist_t values;
     reflist_init(&values);
-    int tmp;
+    Py_ssize_t count;
     Py_BEGIN_CRITICAL_SECTION(md);
-    tmp = _md_get_all_locked(md, identity, hash, &values, ci);
+    count = md_walk_with_hash(
+        md, identity, hash, false, _md_getall_visit, &values, ci);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
-    if (tmp < 0) {
+    if (count < 0) {
         reflist_clear(&values);
         return -1;
     }
@@ -2106,10 +2087,10 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
-ALWAYS_INLINE static inline PyObject*
-_md_pop_item(MultiDictObject* md, bool ci)
+static inline PyObject*
+md_pop_item(MultiDictObject* md)
 {
-    assert(ci == md->is_ci);
+    bool ci = md->is_ci;
     if (md->used == 0) {
         PyErr_SetString(PyExc_KeyError, "empty multidict");
         return NULL;
@@ -2179,12 +2160,6 @@ _md_pop_item(MultiDictObject* md, bool ci)
     PyTuple_SET_ITEM(ret, 0, key);
     PyTuple_SET_ITEM(ret, 1, value);
     return ret;
-}
-
-static inline PyObject*
-md_pop_item(MultiDictObject* md)
-{
-    return _md_pop_item(md, md->is_ci);
 }
 
 /* Later matches of a replaced key are rare, so their reflist lives on
@@ -2515,14 +2490,13 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
         }
         if (cmp < 0) {
             return -1;
-        };
+        }
         if (cmp == 0) {
             return 0;
         }
         pos1++;
         pos2++;
     }
-    return 1;
 }
 
 static inline int

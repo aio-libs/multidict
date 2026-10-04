@@ -266,11 +266,8 @@ static PyType_Slot istr_slots[] = {
 static PyType_Spec istr_spec = {
     .name = "multidict._multidict.istr",
     .basicsize = sizeof(istrobject),
-    .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a00f0
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
-              | Py_TPFLAGS_UNICODE_SUBCLASS),
+    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE |
+              Py_TPFLAGS_UNICODE_SUBCLASS),
     .slots = istr_slots,
 };
 
