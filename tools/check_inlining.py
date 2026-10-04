@@ -157,6 +157,26 @@ RULES = (
         "#1627/#1628, where GCC 15 on FT dropped it again (+19%)",
     ),
     Rule(
+        "_iter_scan",
+        ITERNEXT_ENTRIES,
+        BOTH,
+        "#1674: an out-of-line copy loses the constant kind, which cost "
+        "2-3 Ir per __next__ (iter_keys +4%)",
+    ),
+    Rule(
+        "_md_last_live",
+        "*",
+        BOTH,
+        "#1674: an out-of-line copy loses the constant kind, which cost "
+        "3-5 Ir per popitem()",
+    ),
+    Rule(
+        "entry_is_hole",
+        "*",
+        BOTH,
+        "#1674: a single load tested once per entry in every walk",
+    ),
+    Rule(
         "_md_parse_item",
         "*",
         BOTH,
