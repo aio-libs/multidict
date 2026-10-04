@@ -99,7 +99,7 @@ _parse2_bind(const char* fname, PyObject* const* args, Py_ssize_t nargs,
         }
     }
 
-    if (nargs > 2) {
+    if (UNLIKELY(nargs > 2)) {
         const char* txt;
         if (minargs == 2) {
             txt = "exactly 2 positional arguments";
@@ -113,7 +113,7 @@ _parse2_bind(const char* fname, PyObject* const* args, Py_ssize_t nargs,
                      nargs);
         return -1;
     }
-    if (*arg1 == NULL) {
+    if (UNLIKELY(*arg1 == NULL)) {
         if (minargs == 2 && *arg2 == NULL) {
             PyErr_Format(PyExc_TypeError,
                          "%.150s() missing 2 required positional arguments: "
@@ -125,7 +125,7 @@ _parse2_bind(const char* fname, PyObject* const* args, Py_ssize_t nargs,
         }
         return _raise_missing_posarg(fname, arg1name);
     }
-    if (minargs == 2 && *arg2 == NULL) {
+    if (UNLIKELY(minargs == 2 && *arg2 == NULL)) {
         return _raise_missing_posarg(fname, arg2name);
     }
     return 0;

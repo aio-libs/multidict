@@ -71,7 +71,7 @@ _err_version_changed(void)
 ALWAYS_INLINE static inline int
 md_check_version(MultiDictObject* md, uint64_t version)
 {
-    if (version != md->version) {
+    if (UNLIKELY(version != md->version)) {
         return _err_version_changed();
     }
     return 0;

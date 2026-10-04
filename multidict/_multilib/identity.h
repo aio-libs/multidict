@@ -214,10 +214,10 @@ _key_to_identity_ci(mod_state* state, PyObject* key)
 static inline PyObject*
 _arg_to_key_cs(mod_state* state, PyObject* key, PyObject* identity)
 {
-    if (PyUnicode_Check(key)) {
-        return Py_NewRef(key);
+    if (UNLIKELY(!PyUnicode_Check(key))) {
+        return _err_key_type_cs();
     }
-    return _err_key_type_cs();
+    return Py_NewRef(key);
 }
 
 /* A str subclass is copied to an exact str first: istr(), like str(), would
@@ -243,10 +243,10 @@ _arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
     if (PyUnicode_CheckExact(key)) {
         return IStr_New(state, key, identity);
     }
-    if (PyUnicode_Check(key)) {
-        return _subclass_to_key_ci(state, key, identity);
+    if (UNLIKELY(!PyUnicode_Check(key))) {
+        return _err_key_type_ci();
     }
-    return _err_key_type_ci();
+    return _subclass_to_key_ci(state, key, identity);
 }
 
 /* ci is md->is_ci, passed in so an entry point that knows its class
