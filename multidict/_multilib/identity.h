@@ -62,6 +62,11 @@ _err_key_type_ci(void)
     return NULL;
 }
 
+/* Forced on FT builds only, where GCC drops it from d[key] = v; forced
+   on GIL builds it costs the constructor an instruction per item. */
+#ifdef Py_GIL_DISABLED
+ALWAYS_INLINE
+#endif
 static inline PyObject*
 _key_to_identity_cs(mod_state* state, PyObject* key)
 {
@@ -385,7 +390,9 @@ md_ensure_key(MultiDictObject* md, entry_t* entry)
     assert(!entry_is_hole(entry));
     PyObject* key = entry->key;
     if (!md->is_ci || IStr_CheckExact(md->state, key)) {
-        return Py_NewRef(key);
+        // not Py_NewRef(): GCC leaves it out of line on FT builds
+        Py_INCREF(key);
+        return key;
     }
     return _md_cache_key_ci(md, entry);
 }

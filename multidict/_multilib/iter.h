@@ -155,7 +155,9 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
     Py_BEGIN_CRITICAL_SECTION(self->md);
     res = _iter_next_entry(self, &entry);
     if (res > 0) {
-        value = Py_NewRef(entry->value);
+        // not Py_NewRef(): see md_ensure_key()
+        value = entry->value;
+        Py_INCREF(value);
         key = md_ensure_key(self->md, entry);  // last entry access
         if (key == NULL) {
             Py_DECREF(value);
