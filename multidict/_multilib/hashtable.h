@@ -495,6 +495,23 @@ _md_copy_live(uint8_t kind, entry_t* dst, entry_t* src, Py_ssize_t n)
     return entry_index(kind, dst, out);
 }
 
+/* Publishes newkeys, whose first `filled` entries hold all of md's and
+   nothing else. */
+ALWAYS_INLINE static inline void
+_md_publish_compacted(MultiDictObject* md, htkeys_t* oldkeys,
+                      htkeys_t* newkeys, Py_ssize_t filled)
+{
+    /* What the copy actually wrote, rather than md->used: the two agree,
+       but taking the count from the copy means a table can never be
+       published over entries nothing has written. */
+    assert(filled == md->used);
+    htkeys_zero_entries(newkeys, filled);
+    htkeys_build_indices(newkeys, md->is_ci, htkeys_entries(newkeys), filled);
+    newkeys->usable -= filled;
+    newkeys->nentries = filled;
+    _md_publish_rebuilt(md, oldkeys, newkeys);
+}
+
 NOINLINE static int
 _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
 {
@@ -531,18 +548,7 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
         filled = _md_copy_live(
             KIND_ANYSTR, newentries, oldentries, oldkeys->nentries);
     }
-    /* What the copy actually wrote, rather than md->used: the two agree,
-       but taking the count from the copy means a table can never be
-       published over entries nothing has written. */
-    assert(filled == numentries);
-    htkeys_zero_entries(newkeys, filled);
-
-    htkeys_build_indices(newkeys, md->is_ci, newentries, numentries);
-
-    newkeys->usable = newkeys->usable - numentries;
-    newkeys->nentries = numentries;
-
-    _md_publish_rebuilt(md, oldkeys, newkeys);
+    _md_publish_compacted(md, oldkeys, newkeys, filled);
     return 0;
 }
 
@@ -601,13 +607,7 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
         dst->base.key = key;
         dst->base.value = src->value;
     }
-    Py_ssize_t numentries = md->used;
-    assert(filled == numentries);
-    htkeys_zero_entries(newkeys, numentries);
-    htkeys_build_indices(newkeys, md->is_ci, newentries, numentries);
-    newkeys->usable -= numentries;
-    newkeys->nentries = numentries;
-    _md_publish_rebuilt(md, oldkeys, newkeys);
+    _md_publish_compacted(md, oldkeys, newkeys, filled);
     return 0;
 }
 
@@ -1094,25 +1094,13 @@ static inline int
 _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
                     reflist_t* defer)
 {
-    htkeys_t* keys = md->keys;
-    assert(keys != &empty_htkeys);
-    int ret = 0;
+    assert(md->keys != &empty_htkeys);
+    PyObject* identity;
     PyObject* key;
-    if (kind_is_compact(keys->kind)) {
-        key = load_identity(KIND_COMPACT, entry);
-        reset_identity(KIND_COMPACT, entry);
-    } else {
-        PyObject* identity = load_identity(KIND_ANYSTR, entry);
-        key = entry->key;
-        reset_identity(KIND_ANYSTR, entry);
-        entry->key = NULL;
-        ret = reflist_push(defer, identity);
-    }
-    PyObject* value = load_value(entry);
-    reset_value(entry);
-    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
-    add_used(md, -1);
+    PyObject* value;
+    _md_unlink_at(md, md->keys->kind, slot, entry, &identity, &key, &value);
 
+    int ret = reflist_push(defer, identity);
     if (reflist_push(defer, key) < 0) {
         ret = -1;
     }
@@ -1166,7 +1154,8 @@ _removed_pairs_spill(removed_pairs_t* removed, PyObject* key, PyObject* value)
     return ret;
 }
 
-/* _md_del_at() variant that hands the key and value to `removed`. */
+/* _md_del_at() variant that hands the key and value to `removed`. Not
+   through _md_unlink_at(), which costs del d[key] up to 3 instructions. */
 ALWAYS_INLINE static inline int
 _md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
                 entry_t* entry, removed_pairs_t* removed, bool ci)
@@ -1990,6 +1979,22 @@ _md_getall_visit(void* user_data, PyObject* identity, Py_hash_t hash,
     return 1;
 }
 
+/* The result of getall() or popall(): 1 with the collected values as a
+   list in *ret, 0 if there are none, -1 on error or if the walk failed. */
+ALWAYS_INLINE static inline int
+_md_values_to_list(reflist_t* values, bool failed, PyObject** ret)
+{
+    if (failed) {
+        reflist_clear(values);
+        return -1;
+    }
+    if (reflist_empty(values)) {
+        return 0;
+    }
+    *ret = reflist_to_list(values);
+    return *ret != NULL ? 1 : -1;
+}
+
 ALWAYS_INLINE static inline int
 md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret, bool ci)
 {
@@ -2008,15 +2013,7 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret, bool ci)
         md, identity, hash, false, _md_getall_visit, &values, ci);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
-    if (count < 0) {
-        reflist_clear(&values);
-        return -1;
-    }
-    if (reflist_empty(&values)) {
-        return 0;
-    }
-    *ret = reflist_to_list(&values);
-    return *ret != NULL ? 1 : -1;
+    return _md_values_to_list(&values, count < 0, ret);
 }
 
 /* Caller holds md's critical section. The removed pairs go to `removed`,
@@ -2100,15 +2097,7 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     removed_pairs_release(&removed);
     Py_DECREF(identity);
     md_watch_flush_if(md, flush);
-    if (tmp < 0) {
-        reflist_clear(&values);
-        return -1;
-    }
-    if (reflist_empty(&values)) {
-        return 0;
-    }
-    *ret = reflist_to_list(&values);
-    return *ret != NULL ? 1 : -1;
+    return _md_values_to_list(&values, tmp < 0, ret);
 }
 
 /* The last live entry at or before *ppos, which it moves there; `kind` is
