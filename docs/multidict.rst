@@ -532,6 +532,11 @@ no cached hash, so every operation also hashes it afresh.
 
    ``upstr()`` is a deprecated alias for :class:`istr`.
 
+.. versionchanged:: 7.1.0
+
+   Accessing ``upstr`` emits :exc:`DeprecationWarning`, and it is no
+   longer listed in ``multidict.__all__``.
+
 .. versionchanged:: 3.7
 
    :class:`istr` no longer title-cases its argument. The original
