@@ -1,0 +1,4 @@
+Replaced the repeated blocks that set up the C extension module, which
+interned strings and created and registered types one by one, with two
+table loops and a helper
+-- by :user:`asvetlov`.
