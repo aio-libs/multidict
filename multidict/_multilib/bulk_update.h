@@ -677,7 +677,7 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
     return _md_update_from_kwnames_cs(md, args, nargs, kwnames);
 }
 
-static inline void
+NOINLINE static void
 _err_not_sequence(Py_ssize_t i)
 {
     PyErr_Format(PyExc_TypeError,
@@ -686,7 +686,7 @@ _err_not_sequence(Py_ssize_t i)
                  i);
 }
 
-static inline void
+NOINLINE static void
 _err_bad_length(Py_ssize_t i, Py_ssize_t n)
 {
     PyErr_Format(PyExc_ValueError,
@@ -696,7 +696,7 @@ _err_bad_length(Py_ssize_t i, Py_ssize_t n)
                  n);
 }
 
-static inline void
+NOINLINE static void
 _err_cannot_fetch(Py_ssize_t i, const char* name)
 {
     PyErr_Format(PyExc_ValueError,
