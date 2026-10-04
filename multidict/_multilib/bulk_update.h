@@ -345,72 +345,41 @@ fail:
 }
 
 NOINLINE static int
-_md_update_from_ht_extend_ci(MultiDictObject* md, MultiDictObject* other,
-                             reflist_t* defer, update_marks_t* marks)
+_md_update_from_ht_extend(MultiDictObject* md, MultiDictObject* other,
+                          reflist_t* defer, update_marks_t* marks)
 {
-    assert(md->is_ci);
-    return _md_update_from_ht(md, other, Extend, defer, marks, true);
+    return _md_update_from_ht(md, other, Extend, defer, marks, md->is_ci);
 }
 
 NOINLINE static int
-_md_update_from_ht_extend_cs(MultiDictObject* md, MultiDictObject* other,
-                             reflist_t* defer, update_marks_t* marks)
+_md_update_from_ht_update(MultiDictObject* md, MultiDictObject* other,
+                          reflist_t* defer, update_marks_t* marks)
 {
-    assert(!md->is_ci);
-    return _md_update_from_ht(md, other, Extend, defer, marks, false);
+    return _md_update_from_ht(md, other, Update, defer, marks, md->is_ci);
 }
 
 NOINLINE static int
-_md_update_from_ht_update_ci(MultiDictObject* md, MultiDictObject* other,
-                             reflist_t* defer, update_marks_t* marks)
+_md_update_from_ht_merge(MultiDictObject* md, MultiDictObject* other,
+                         reflist_t* defer, update_marks_t* marks)
 {
-    assert(md->is_ci);
-    return _md_update_from_ht(md, other, Update, defer, marks, true);
+    return _md_update_from_ht(md, other, Merge, defer, marks, md->is_ci);
 }
 
-NOINLINE static int
-_md_update_from_ht_update_cs(MultiDictObject* md, MultiDictObject* other,
-                             reflist_t* defer, update_marks_t* marks)
-{
-    assert(!md->is_ci);
-    return _md_update_from_ht(md, other, Update, defer, marks, false);
-}
-
-NOINLINE static int
-_md_update_from_ht_merge_ci(MultiDictObject* md, MultiDictObject* other,
-                            reflist_t* defer, update_marks_t* marks)
-{
-    assert(md->is_ci);
-    return _md_update_from_ht(md, other, Merge, defer, marks, true);
-}
-
-NOINLINE static int
-_md_update_from_ht_merge_cs(MultiDictObject* md, MultiDictObject* other,
-                            reflist_t* defer, update_marks_t* marks)
-{
-    assert(!md->is_ci);
-    return _md_update_from_ht(md, other, Merge, defer, marks, false);
-}
-
-/* One copy per operation, which every caller names as a constant, and
-   per class, so each copy compiles for one class only. */
+/* One copy per operation, which every caller names as a constant. Each
+   reads the class at run time instead of having a copy per class: that
+   costs a multidict source up to 3%, and takes a sixth off the size of
+   the extension. */
 ALWAYS_INLINE static inline int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                   reflist_t* defer, update_marks_t* marks)
 {
     switch (op) {
         case Extend:
-            return md->is_ci
-                       ? _md_update_from_ht_extend_ci(md, other, defer, marks)
-                       : _md_update_from_ht_extend_cs(md, other, defer, marks);
+            return _md_update_from_ht_extend(md, other, defer, marks);
         case Update:
-            return md->is_ci
-                       ? _md_update_from_ht_update_ci(md, other, defer, marks)
-                       : _md_update_from_ht_update_cs(md, other, defer, marks);
+            return _md_update_from_ht_update(md, other, defer, marks);
         case Merge:
-            return md->is_ci
-                       ? _md_update_from_ht_merge_ci(md, other, defer, marks)
-                       : _md_update_from_ht_merge_cs(md, other, defer, marks);
+            return _md_update_from_ht_merge(md, other, defer, marks);
     }
     Py_UNREACHABLE();
 }
@@ -437,10 +406,11 @@ _md_extend_self_scan(MultiDictObject* md, bool ci, uint8_t kind)
     return 0;
 }
 
-ALWAYS_INLINE static inline int
-_md_extend_self(MultiDictObject* md, bool ci)
+// d.extend(d) is rare: one copy, the class read at run time
+NOINLINE static int
+md_extend_self(MultiDictObject* md)
 {
-    assert(ci == md->is_ci);
+    bool ci = md->is_ci;
     if (md_reserve(md, md->keys->nentries) < 0) {
         return -1;
     }
@@ -449,30 +419,6 @@ _md_extend_self(MultiDictObject* md, bool ci)
         return _md_extend_self_scan(md, ci, KIND_COMPACT);
     }
     return _md_extend_self_scan(md, ci, KIND_ANYSTR);
-}
-
-NOINLINE static int
-_md_extend_self_ci(MultiDictObject* md)
-{
-    assert(md->is_ci);
-    return _md_extend_self(md, true);
-}
-
-NOINLINE static int
-_md_extend_self_cs(MultiDictObject* md)
-{
-    assert(!md->is_ci);
-    return _md_extend_self(md, false);
-}
-
-// One copy per class, so each compiles for one class only.
-static inline int
-md_extend_self(MultiDictObject* md)
-{
-    if (md->is_ci) {
-        return _md_extend_self_ci(md);
-    }
-    return _md_extend_self_cs(md);
 }
 
 ALWAYS_INLINE static inline int
@@ -575,39 +521,22 @@ _md_update_from_dict_extend_cs(MultiDictObject* md, PyObject* kwds,
 }
 
 NOINLINE static int
-_md_update_from_dict_update_ci(MultiDictObject* md, PyObject* kwds,
-                               reflist_t* defer, update_marks_t* marks)
+_md_update_from_dict_update(MultiDictObject* md, PyObject* kwds,
+                            reflist_t* defer, update_marks_t* marks)
 {
-    assert(md->is_ci);
-    return _md_update_from_dict(md, kwds, Update, defer, marks, true);
+    return _md_update_from_dict(md, kwds, Update, defer, marks, md->is_ci);
 }
 
 NOINLINE static int
-_md_update_from_dict_update_cs(MultiDictObject* md, PyObject* kwds,
-                               reflist_t* defer, update_marks_t* marks)
+_md_update_from_dict_merge(MultiDictObject* md, PyObject* kwds,
+                           reflist_t* defer, update_marks_t* marks)
 {
-    assert(!md->is_ci);
-    return _md_update_from_dict(md, kwds, Update, defer, marks, false);
+    return _md_update_from_dict(md, kwds, Merge, defer, marks, md->is_ci);
 }
 
-NOINLINE static int
-_md_update_from_dict_merge_ci(MultiDictObject* md, PyObject* kwds,
-                              reflist_t* defer, update_marks_t* marks)
-{
-    assert(md->is_ci);
-    return _md_update_from_dict(md, kwds, Merge, defer, marks, true);
-}
-
-NOINLINE static int
-_md_update_from_dict_merge_cs(MultiDictObject* md, PyObject* kwds,
-                              reflist_t* defer, update_marks_t* marks)
-{
-    assert(!md->is_ci);
-    return _md_update_from_dict(md, kwds, Merge, defer, marks, false);
-}
-
-/* One copy per operation, which every caller names as a constant, and
-   per class, so each copy compiles for one class only. */
+/* One copy per operation, which every caller names as a constant.
+   Extend is the constructor's path and has a copy per class too; update()
+   and merge() read the class at run time, see md_update_from_ht(). */
 ALWAYS_INLINE static inline int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                     reflist_t* defer, update_marks_t* marks)
@@ -619,14 +548,9 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                        : _md_update_from_dict_extend_cs(
                              md, kwds, defer, marks);
         case Update:
-            return md->is_ci
-                       ? _md_update_from_dict_update_ci(md, kwds, defer, marks)
-                       : _md_update_from_dict_update_cs(
-                             md, kwds, defer, marks);
+            return _md_update_from_dict_update(md, kwds, defer, marks);
         case Merge:
-            return md->is_ci
-                       ? _md_update_from_dict_merge_ci(md, kwds, defer, marks)
-                       : _md_update_from_dict_merge_cs(md, kwds, defer, marks);
+            return _md_update_from_dict_merge(md, kwds, defer, marks);
     }
     Py_UNREACHABLE();
 }
@@ -944,39 +868,22 @@ _md_update_from_seq_extend_cs(MultiDictObject* md, PyObject* seq,
 }
 
 NOINLINE static int
-_md_update_from_seq_update_ci(MultiDictObject* md, PyObject* seq,
-                              reflist_t* defer, update_marks_t* marks)
+_md_update_from_seq_update(MultiDictObject* md, PyObject* seq,
+                           reflist_t* defer, update_marks_t* marks)
 {
-    assert(md->is_ci);
-    return _md_update_from_seq(md, seq, Update, defer, marks, true);
+    return _md_update_from_seq(md, seq, Update, defer, marks, md->is_ci);
 }
 
 NOINLINE static int
-_md_update_from_seq_update_cs(MultiDictObject* md, PyObject* seq,
-                              reflist_t* defer, update_marks_t* marks)
+_md_update_from_seq_merge(MultiDictObject* md, PyObject* seq, reflist_t* defer,
+                          update_marks_t* marks)
 {
-    assert(!md->is_ci);
-    return _md_update_from_seq(md, seq, Update, defer, marks, false);
+    return _md_update_from_seq(md, seq, Merge, defer, marks, md->is_ci);
 }
 
-NOINLINE static int
-_md_update_from_seq_merge_ci(MultiDictObject* md, PyObject* seq,
-                             reflist_t* defer, update_marks_t* marks)
-{
-    assert(md->is_ci);
-    return _md_update_from_seq(md, seq, Merge, defer, marks, true);
-}
-
-NOINLINE static int
-_md_update_from_seq_merge_cs(MultiDictObject* md, PyObject* seq,
-                             reflist_t* defer, update_marks_t* marks)
-{
-    assert(!md->is_ci);
-    return _md_update_from_seq(md, seq, Merge, defer, marks, false);
-}
-
-/* One copy per operation, which every caller names as a constant, and
-   per class, so each copy compiles for one class only. */
+/* One copy per operation, which every caller names as a constant.
+   Extend is the constructor's path and has a copy per class too; update()
+   and merge() read the class at run time, see md_update_from_ht(). */
 ALWAYS_INLINE static inline int
 md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                    reflist_t* defer, update_marks_t* marks)
@@ -987,13 +894,9 @@ md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                        ? _md_update_from_seq_extend_ci(md, seq, defer, marks)
                        : _md_update_from_seq_extend_cs(md, seq, defer, marks);
         case Update:
-            return md->is_ci
-                       ? _md_update_from_seq_update_ci(md, seq, defer, marks)
-                       : _md_update_from_seq_update_cs(md, seq, defer, marks);
+            return _md_update_from_seq_update(md, seq, defer, marks);
         case Merge:
-            return md->is_ci
-                       ? _md_update_from_seq_merge_ci(md, seq, defer, marks)
-                       : _md_update_from_seq_merge_cs(md, seq, defer, marks);
+            return _md_update_from_seq_merge(md, seq, defer, marks);
     }
     Py_UNREACHABLE();
 }

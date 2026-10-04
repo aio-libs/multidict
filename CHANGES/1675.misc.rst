@@ -1,0 +1,5 @@
+Replaced the per-class copies of the ``update()`` and ``merge()`` loops in
+the C extension, and of ``extend()`` from another multidict, with one copy
+that reads the class at run time. The compiled extension became about 15%
+smaller; ``update()`` and ``merge()`` became up to 3% slower
+-- by :user:`asvetlov`.

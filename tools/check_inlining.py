@@ -288,6 +288,13 @@ RULES = (
         "full layout in the same lock-free probe loops",
     ),
     Rule(
+        "_key_to_identity_cs",
+        "*",
+        (FT,),
+        "#1675: out of line in d[key] = v once update() and merge() lost "
+        "their per-class copies, and with it del d[key] +3% on CIMultiDict",
+    ),
+    Rule(
         "_multidict_bulk",
         "*",
         BOTH,
