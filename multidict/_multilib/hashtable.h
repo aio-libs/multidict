@@ -124,14 +124,14 @@ _htkeys_dispose(pool_t* pools, htkeys_t* keys)
     entry_t* entries = htkeys_entries(keys);
     Py_ssize_t nentries = keys->nentries;
     if (kind_is_compact(keys->kind)) {
-        for (Py_ssize_t i = 0; i < nentries; i++) {
-            entry_t* entry = entry_at(KIND_COMPACT, entries, i);
+        for (entry_t *entry = entries, *end = entries + nentries; entry < end;
+             entry++) {
             Py_XDECREF(entry->key);  // also owns the identity
             Py_XDECREF(entry->value);
         }
     } else {
-        for (Py_ssize_t i = 0; i < nentries; i++) {
-            anystr_entry_t* entry = anystr_entry_at(entries, i);
+        anystr_entry_t* entry = as_anystr(entries);
+        for (anystr_entry_t* end = entry + nentries; entry < end; entry++) {
             Py_XDECREF(entry->identity);
             Py_XDECREF(entry->base.key);
             Py_XDECREF(entry->base.value);
@@ -478,6 +478,23 @@ _md_new_keys_after_holes(MultiDictObject* md, Py_ssize_t extra, uint8_t kind)
     return keys;
 }
 
+/* Copies the live entries of `src` to the front of `dst`, returning how
+   many. One copy per kind, as for every walk below: the kind a constant
+   makes the step a constant. */
+ALWAYS_INLINE static inline Py_ssize_t
+_md_copy_live(uint8_t kind, entry_t* dst, entry_t* src, Py_ssize_t n)
+{
+    entry_t* out = dst;
+    entry_t* end = entry_at(kind, src, n);
+    for (entry_t* ep = src; ep < end; ep = entry_next(kind, ep)) {
+        if (!entry_is_hole(ep)) {
+            entry_copy(kind, out, ep);
+            out = entry_next(kind, out);
+        }
+    }
+    return entry_index(kind, dst, out);
+}
+
 NOINLINE static int
 _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
 {
@@ -507,17 +524,12 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
     if (oldkeys->nentries == numentries) {
         htkeys_entries_copy(oldkeys, newentries, oldentries, numentries);
         filled = numentries;
+    } else if (kind_is_compact(kind)) {
+        filled = _md_copy_live(
+            KIND_COMPACT, newentries, oldentries, oldkeys->nentries);
     } else {
-        Py_ssize_t oldnumentries = oldkeys->nentries;
-        filled = 0;
-        for (Py_ssize_t i = 0; i < oldnumentries; ++i) {
-            entry_t* old_ep = entry_at(kind, oldentries, i);
-            if (!entry_is_hole(old_ep)) {
-                htkeys_entry_copy(
-                    newkeys, entry_at(kind, newentries, filled), old_ep);
-                filled++;
-            }
-        }
+        filled = _md_copy_live(
+            KIND_ANYSTR, newentries, oldentries, oldkeys->nentries);
     }
     /* What the copy actually wrote, rather than md->used: the two agree,
        but taking the count from the copy means a table can never be
@@ -757,14 +769,16 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
         keys->resume_slots = NULL;
         entry_t* entries = htkeys_entries(keys);
         if (kind_is_compact(keys->kind)) {
-            for (Py_ssize_t idx = 0; idx < keys->nentries; idx++) {
-                entry_t* entry = entry_at(KIND_COMPACT, entries, idx);
+            for (entry_t *entry = entries, *end = entries + keys->nentries;
+                 entry < end;
+                 entry++) {
                 Py_XINCREF(entry->key);  // also owns the identity
                 Py_XINCREF(entry->value);
             }
         } else {
-            for (Py_ssize_t idx = 0; idx < keys->nentries; idx++) {
-                anystr_entry_t* entry = anystr_entry_at(entries, idx);
+            anystr_entry_t* entry = as_anystr(entries);
+            for (anystr_entry_t* end = entry + keys->nentries; entry < end;
+                 entry++) {
                 Py_XINCREF(entry->identity);
                 Py_XINCREF(entry->base.key);
                 Py_XINCREF(entry->base.value);
@@ -1680,8 +1694,8 @@ md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret, bool ci)
     return _md_get_one_identity(md, key, identity, hash, ret, ci);
 }
 
-static inline int
-md_to_dict(MultiDictObject* md, PyObject** ret)
+ALWAYS_INLINE static inline int
+_md_to_dict_scan(MultiDictObject* md, PyObject* dict, uint8_t kind)
 {
     PyObject* key = NULL;
     PyObject* lst = NULL;
@@ -1689,17 +1703,12 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
     bitmap_t collected;
     collected.summary = NULL;
 
-    *ret = PyDict_New();
-    if (*ret == NULL) {
-        return -1;
-    }
     bitmap_init(&collected, md->keys, md->keys->nentries);
 
     /* Walk the entries in insertion order, so every key is collected at its
        first spelling; a hash chain walk is not insertion-ordered. */
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t* entries = htkeys_entries(md->keys);
-        uint8_t kind = md->keys->kind;
         entry_t* entry = entry_at(kind, entries, pos);
         if (entry_is_hole(entry)) {
             continue;  // deleted
@@ -1758,7 +1767,7 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
         if (key == NULL) {
             goto fail;
         }
-        if (PyDict_SetItem(*ret, key, lst) < 0) {
+        if (PyDict_SetItem(dict, key, lst) < 0) {
             goto fail;
         }
         Py_CLEAR(key);
@@ -1774,8 +1783,23 @@ fail:
     bitmap_release(&collected);
     Py_XDECREF(key);
     Py_XDECREF(lst);
-    Py_CLEAR(*ret);
     return -1;
+}
+
+static inline int
+md_to_dict(MultiDictObject* md, PyObject** ret)
+{
+    *ret = PyDict_New();
+    if (*ret == NULL) {
+        return -1;
+    }
+    int r = kind_is_compact(md->keys->kind)
+                ? _md_to_dict_scan(md, *ret, KIND_COMPACT)
+                : _md_to_dict_scan(md, *ret, KIND_ANYSTR);
+    if (r < 0) {
+        Py_CLEAR(*ret);
+    }
+    return r;
 }
 
 // Caller holds md's critical section
@@ -2441,6 +2465,82 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     return md_replace_cs(md, key, value);
 }
 
+/* 2 means a value's __eq__ changed the kind of either table: the caller
+   carries on from *ppos1 and *ppos2 under the new kinds. */
+ALWAYS_INLINE static inline int
+_md_eq_scan(MultiDictObject* md, MultiDictObject* other, uint8_t kind1,
+            uint8_t kind2, Py_ssize_t* ppos1, Py_ssize_t* ppos2)
+{
+    entry_t* lft_entries = htkeys_entries(md->keys);
+    entry_t* rht_entries = htkeys_entries(other->keys);
+    entry_t* entry1 = entry_at(kind1, lft_entries, *ppos1);
+    entry_t* entry2 = entry_at(kind2, rht_entries, *ppos2);
+    entry_t* end1 = entry_at(kind1, lft_entries, md->keys->nentries);
+    entry_t* end2 = entry_at(kind2, rht_entries, other->keys->nentries);
+    for (;;) {
+        if (entry1 >= end1 || entry2 >= end2) {
+            return 1;
+        }
+        if (entry_is_hole(entry1)) {
+            entry1 = entry_next(kind1, entry1);
+            continue;
+        }
+        if (entry_is_hole(entry2)) {
+            entry2 = entry_next(kind2, entry2);
+            continue;
+        }
+
+        if (entry_hash(kind1, md->is_ci, entry1) !=
+            entry_hash(kind2, other->is_ci, entry2)) {
+            return 0;
+        }
+
+        if (!str_cmp(entry_identity(kind1, md->is_ci, entry1),
+                     entry_identity(kind2, other->is_ci, entry2))) {
+            return 0;
+        }
+
+        PyObject* value1 = entry1->value;
+        PyObject* value2 = entry2->value;
+        int cmp;
+        if (value1 == value2) {
+            cmp = 1;
+        } else if (PyUnicode_CheckExact(value1) &&
+                   PyUnicode_CheckExact(value2)) {
+            cmp = str_cmp(value1, value2);
+        } else {
+            Py_ssize_t pos1 = entry_index(kind1, lft_entries, entry1);
+            Py_ssize_t pos2 = entry_index(kind2, rht_entries, entry2);
+            /* A value's __eq__ can mutate either dict and free its keys. */
+            Py_INCREF(value1);
+            Py_INCREF(value2);
+            cmp = PyObject_RichCompareBool(value1, value2, Py_EQ);
+            Py_DECREF(value1);
+            Py_DECREF(value2);
+            if (cmp > 0 &&
+                (md->keys->kind != kind1 || other->keys->kind != kind2)) {
+                *ppos1 = pos1 + 1;
+                *ppos2 = pos2 + 1;
+                return 2;
+            }
+            lft_entries = htkeys_entries(md->keys);
+            rht_entries = htkeys_entries(other->keys);
+            entry1 = entry_at(kind1, lft_entries, pos1);
+            entry2 = entry_at(kind2, rht_entries, pos2);
+            end1 = entry_at(kind1, lft_entries, md->keys->nentries);
+            end2 = entry_at(kind2, rht_entries, other->keys->nentries);
+        }
+        if (cmp < 0) {
+            return -1;
+        }
+        if (cmp == 0) {
+            return 0;
+        }
+        entry1 = entry_next(kind1, entry1);
+        entry2 = entry_next(kind2, entry2);
+    }
+}
+
 static inline int
 md_eq(MultiDictObject* md, MultiDictObject* other)
 {
@@ -2454,92 +2554,37 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
 
     Py_ssize_t pos1 = 0;
     Py_ssize_t pos2 = 0;
-
-    entry_t* lft_entries = htkeys_entries(md->keys);
-    entry_t* rht_entries = htkeys_entries(other->keys);
-    for (;;) {
-        if (pos1 >= md->keys->nentries || pos2 >= other->keys->nentries) {
-            return 1;
-        }
-        entry_t* entry1 = entry_at(md->keys->kind, lft_entries, pos1);
-        if (entry_is_hole(entry1)) {
-            pos1++;
-            continue;
-        }
-        entry_t* entry2 = entry_at(other->keys->kind, rht_entries, pos2);
-        if (entry_is_hole(entry2)) {
-            pos2++;
-            continue;
-        }
-
-        if (entry_hash(md->keys->kind, md->is_ci, entry1) !=
-            entry_hash(other->keys->kind, other->is_ci, entry2)) {
-            return 0;
-        }
-
-        if (!str_cmp(
-                entry_identity(md->keys->kind, md->is_ci, entry1),
-                entry_identity(other->keys->kind, other->is_ci, entry2))) {
-            return 0;
-        }
-
-        PyObject* value1 = entry1->value;
-        PyObject* value2 = entry2->value;
-        int cmp;
-        if (value1 == value2) {
-            cmp = 1;
-        } else if (PyUnicode_CheckExact(value1) &&
-                   PyUnicode_CheckExact(value2)) {
-            cmp = str_cmp(value1, value2);
+    int ret;
+    do {
+        bool c1 = kind_is_compact(md->keys->kind);
+        bool c2 = kind_is_compact(other->keys->kind);
+        if (c1 && c2) {
+            ret = _md_eq_scan(
+                md, other, KIND_COMPACT, KIND_COMPACT, &pos1, &pos2);
+        } else if (c1) {
+            ret = _md_eq_scan(
+                md, other, KIND_COMPACT, KIND_ANYSTR, &pos1, &pos2);
+        } else if (c2) {
+            ret = _md_eq_scan(
+                md, other, KIND_ANYSTR, KIND_COMPACT, &pos1, &pos2);
         } else {
-            /* A value's __eq__ can mutate either dict and free its keys. */
-            Py_INCREF(value1);
-            Py_INCREF(value2);
-            cmp = PyObject_RichCompareBool(value1, value2, Py_EQ);
-            Py_DECREF(value1);
-            Py_DECREF(value2);
-            lft_entries = htkeys_entries(md->keys);
-            rht_entries = htkeys_entries(other->keys);
+            ret =
+                _md_eq_scan(md, other, KIND_ANYSTR, KIND_ANYSTR, &pos1, &pos2);
         }
-        if (cmp < 0) {
-            return -1;
-        }
-        if (cmp == 0) {
-            return 0;
-        }
-        pos1++;
-        pos2++;
-    }
+    } while (ret == 2);
+    return ret;
 }
 
-static inline int
-md_eq_to_mapping(MultiDictObject* md, PyObject* other)
+ALWAYS_INLINE static inline int
+_md_eq_to_mapping_scan(MultiDictObject* md, PyObject* other, uint8_t kind)
 {
     PyObject* key = NULL;
     PyObject* avalue = NULL;
     PyObject* bvalue;
 
-    Py_ssize_t other_len;
-
-    if (!PyMapping_Check(other)) {
-        PyErr_Format(PyExc_TypeError,
-                     "other argument must be a mapping, not %s",
-                     Py_TYPE(other)->tp_name);
-        return -1;
-    }
-
-    other_len = PyMapping_Size(other);
-    if (other_len < 0) {
-        return -1;
-    }
-    if (md_len(md) != other_len) {
-        return 0;
-    }
-
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
-    uint8_t kind = keys->kind;
 
     for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
         entry_t* entry = entry_at(kind, entries, pos);
@@ -2579,6 +2624,32 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
     }
 
     return 1;
+}
+
+static inline int
+md_eq_to_mapping(MultiDictObject* md, PyObject* other)
+{
+    Py_ssize_t other_len;
+
+    if (!PyMapping_Check(other)) {
+        PyErr_Format(PyExc_TypeError,
+                     "other argument must be a mapping, not %s",
+                     Py_TYPE(other)->tp_name);
+        return -1;
+    }
+
+    other_len = PyMapping_Size(other);
+    if (other_len < 0) {
+        return -1;
+    }
+    if (md_len(md) != other_len) {
+        return 0;
+    }
+
+    if (kind_is_compact(md->keys->kind)) {
+        return _md_eq_to_mapping_scan(md, other, KIND_COMPACT);
+    }
+    return _md_eq_to_mapping_scan(md, other, KIND_ANYSTR);
 }
 
 NOINLINE static PyObject*
@@ -2716,6 +2787,20 @@ fail:
 
 /***********************************************************************/
 
+ALWAYS_INLINE static inline int
+_md_traverse_entries(uint8_t kind, htkeys_t* keys, visitproc visit, void* arg)
+{
+    entry_t* entry = htkeys_entries(keys);
+    entry_t* end = entry_at(kind, entry, keys->nentries);
+    for (; entry < end; entry = entry_next(kind, entry)) {
+        if (!entry_is_hole(entry)) {
+            Py_VISIT(entry->key);
+            Py_VISIT(entry->value);
+        }
+    }
+    return 0;
+}
+
 static int
 multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
 {
@@ -2735,13 +2820,11 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
     for (htkeys_t* t = (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
          t != NULL;
          t = t->retired_next) {
-        entry_t* retired_entries = htkeys_entries(t);
-        for (Py_ssize_t pos = 0; pos < t->nentries; pos++) {
-            entry_t* entry = entry_at(t->kind, retired_entries, pos);
-            if (!entry_is_hole(entry)) {
-                Py_VISIT(entry->key);
-                Py_VISIT(entry->value);
-            }
+        int ret = kind_is_compact(t->kind)
+                      ? _md_traverse_entries(KIND_COMPACT, t, visit, arg)
+                      : _md_traverse_entries(KIND_ANYSTR, t, visit, arg);
+        if (ret != 0) {
+            return ret;
         }
     }
 #endif
@@ -2750,16 +2833,10 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
         return 0;
     }
 
-    entry_t* entries = htkeys_entries(md->keys);
-    for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
-        entry_t* entry = entry_at(md->keys->kind, entries, pos);
-        if (!entry_is_hole(entry)) {
-            Py_VISIT(entry->key);
-            Py_VISIT(entry->value);
-        }
+    if (kind_is_compact(md->keys->kind)) {
+        return _md_traverse_entries(KIND_COMPACT, md->keys, visit, arg);
     }
-
-    return 0;
+    return _md_traverse_entries(KIND_ANYSTR, md->keys, visit, arg);
 }
 
 // Out of line: inlined into dealloc and both clear() entry points, it costs

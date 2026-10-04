@@ -246,6 +246,22 @@ entry_at(uint8_t kind, entry_t* entries, Py_ssize_t i)
     return (entry_t*)((char*)entries + (size_t)i * _htkeys_entry_size(kind));
 }
 
+/* For walking a table by pointer, with the kind a constant at the call:
+   then this is entry++ on the kind's own entry type, where entry_at()
+   multiplies. */
+ALWAYS_INLINE static inline entry_t*
+entry_next(uint8_t kind, entry_t* entry)
+{
+    return (entry_t*)((char*)entry + _htkeys_entry_size(kind));
+}
+
+static inline Py_ssize_t
+entry_index(uint8_t kind, const entry_t* entries, const entry_t* entry)
+{
+    return (Py_ssize_t)((size_t)((const char*)entry - (const char*)entries) /
+                        _htkeys_entry_size(kind));
+}
+
 static inline anystr_entry_t*
 anystr_entry_at(entry_t* entries, Py_ssize_t i)
 {
@@ -324,9 +340,9 @@ entry_set_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
 }
 
 static inline void
-htkeys_entry_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src)
+entry_copy(uint8_t kind, entry_t* dst, const entry_t* src)
 {
-    memcpy(dst, src, _htkeys_entry_size(keys->kind));
+    memcpy(dst, src, _htkeys_entry_size(kind));
 }
 
 static inline void

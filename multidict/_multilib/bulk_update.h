@@ -210,6 +210,54 @@ md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
     return ret;
 }
 
+// One item of an update(), extend() or merge() from another multidict.
+ALWAYS_INLINE static inline int
+_md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
+                PyObject* identity, PyObject* key, PyObject* value,
+                reflist_t* defer, update_marks_t* marks, bool ci)
+{
+    // from another table, so not known from the identity
+    bool fits = md_key_fits(md, key, identity, ci);
+    switch (op) {
+        case Update:
+            return _md_update(
+                md, hash, identity, key, value, defer, marks, fits, ci);
+        case Extend:
+            return md_add_with_hash(md, hash, identity, key, value, fits, ci);
+        case Merge:
+            return _md_merge(md, hash, identity, key, value, marks, fits, ci);
+    }
+    Py_UNREACHABLE();
+}
+
+/* other of md's class: nothing here runs Python code, so other's table
+   and its kind hold throughout. */
+ALWAYS_INLINE static inline int
+_md_update_from_ht_scan(MultiDictObject* md, MultiDictObject* other,
+                        UpdateOp op, reflist_t* defer, update_marks_t* marks,
+                        bool ci, uint8_t kind)
+{
+    entry_t* entry = htkeys_entries(other->keys);
+    entry_t* end = entry_at(kind, entry, other->keys->nentries);
+    for (; entry < end; entry = entry_next(kind, entry)) {
+        if (entry_is_hole(entry)) {
+            continue;
+        }
+        if (_md_update_item(md,
+                            op,
+                            entry_hash(kind, ci, entry),
+                            entry_identity(kind, ci, entry),
+                            entry->key,
+                            entry->value,
+                            defer,
+                            marks,
+                            ci) < 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
 ALWAYS_INLINE static inline int
 _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                    reflist_t* defer, update_marks_t* marks, bool ci)
@@ -221,7 +269,6 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     PyObject* canonical = NULL;
     PyObject* key = NULL;
     PyObject* value = NULL;
-    bool recalc_identity = ci != other->is_ci;
 
     if (other->used == 0) {
         return 0;
@@ -234,6 +281,14 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         return -1;
     }
 
+    if (ci == other->is_ci) {
+        return kind_is_compact(other->keys->kind)
+                   ? _md_update_from_ht_scan(
+                         md, other, op, defer, marks, ci, KIND_COMPACT)
+                   : _md_update_from_ht_scan(
+                         md, other, op, defer, marks, ci, KIND_ANYSTR);
+    }
+
     entry_t* entries = htkeys_entries(other->keys);
     uint8_t kind = other->keys->kind;
     Py_ssize_t nentries = other->keys->nentries;
@@ -243,85 +298,49 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         if (entry_is_hole(entry)) {
             continue;
         }
-        if (recalc_identity) {
-            /* lower() on a str subclass key runs Python code that can mutate
-               other and free entry, so hold our own refs. */
-            key = Py_NewRef(entry->key);
-            value = Py_NewRef(entry->value);
-            /* The key leaves as other's istr, whose canonical must be
-               other's identity: md's is the unlowered key. */
-            canonical = Py_XNewRef(
-                other->is_ci ? entry_identity(kind, true, entry) : NULL);
-            identity = md_calc_identity(md, key, ci);
-            if (identity == NULL) {
-                goto fail;
-            }
-            hash = unicode_hash(identity);
-            if (hash == -1) {
-                goto fail;
-            }
-            /* materialize key */
-            Py_SETREF(key, md_calc_key(other, key, canonical, other->is_ci));
-            Py_CLEAR(canonical);
-            if (key == NULL) {
-                goto fail;
-            }
-        } else {
-            identity = entry_identity(kind, ci, entry);
-            hash = entry_hash(kind, ci, entry);
-            key = entry->key;
-            value = entry->value;
+        /* lower() on a str subclass key runs Python code that can mutate
+           other and free entry, so hold our own refs. */
+        key = Py_NewRef(entry->key);
+        value = Py_NewRef(entry->value);
+        /* The key leaves as other's istr, whose canonical must be
+           other's identity: md's is the unlowered key. */
+        canonical = Py_XNewRef(other->is_ci ? entry_identity(kind, true, entry)
+                                            : NULL);
+        identity = md_calc_identity(md, key, ci);
+        if (identity == NULL) {
+            goto fail;
         }
-        // from another table, so not known from the identity
-        bool fits = md_key_fits(md, key, identity, ci);
-        switch (op) {
-            case Update:
-                if (_md_update(md,
-                               hash,
-                               identity,
-                               key,
-                               value,
-                               defer,
-                               marks,
-                               fits,
-                               ci) < 0) {
-                    goto fail;
-                }
-                break;
-            case Extend:
-                if (md_add_with_hash(
-                        md, hash, identity, key, value, fits, ci) < 0) {
-                    goto fail;
-                }
-                break;
-            case Merge:
-                if (_md_merge(
-                        md, hash, identity, key, value, marks, fits, ci) < 0) {
-                    goto fail;
-                }
-                break;
+        hash = unicode_hash(identity);
+        if (hash == -1) {
+            goto fail;
         }
-        if (recalc_identity) {
-            Py_DECREF(identity);
-            Py_DECREF(key);
-            Py_DECREF(value);
-            /* Both lower() and a finalizer run by the decrefs above can
-               replace other's table. */
-            entries = htkeys_entries(other->keys);
-            kind = other->keys->kind;
-            if (nentries > other->keys->nentries) {
-                nentries = other->keys->nentries;
-            }
+        /* materialize key */
+        Py_SETREF(key, md_calc_key(other, key, canonical, other->is_ci));
+        Py_CLEAR(canonical);
+        if (key == NULL) {
+            goto fail;
+        }
+        if (_md_update_item(
+                md, op, hash, identity, key, value, defer, marks, ci) < 0) {
+            goto fail;
+        }
+        Py_DECREF(identity);
+        Py_DECREF(key);
+        Py_DECREF(value);
+        /* Both lower() and a finalizer run by the decrefs above can
+           replace other's table. */
+        entries = htkeys_entries(other->keys);
+        kind = other->keys->kind;
+        if (nentries > other->keys->nentries) {
+            nentries = other->keys->nentries;
         }
     }
     return 0;
 fail:
-    if (recalc_identity) {
-        Py_CLEAR(canonical);
-        Py_CLEAR(identity);
-        Py_CLEAR(key);
-        Py_CLEAR(value);
-    }
+    Py_CLEAR(canonical);
+    Py_CLEAR(identity);
+    Py_CLEAR(key);
+    Py_CLEAR(value);
     return -1;
 }
 
@@ -397,18 +416,11 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
 }
 
 ALWAYS_INLINE static inline int
-_md_extend_self(MultiDictObject* md, bool ci)
+_md_extend_self_scan(MultiDictObject* md, bool ci, uint8_t kind)
 {
-    assert(ci == md->is_ci);
-    if (md_reserve(md, md->keys->nentries) < 0) {
-        return -1;
-    }
-
-    Py_ssize_t nentries = md->keys->nentries;
-    entry_t* entries = htkeys_entries(md->keys);
-    uint8_t kind = md->keys->kind;
-    for (Py_ssize_t pos = 0; pos < nentries; pos++) {
-        entry_t* entry = entry_at(kind, entries, pos);
+    entry_t* entry = htkeys_entries(md->keys);
+    entry_t* end = entry_at(kind, entry, md->keys->nentries);
+    for (; entry < end; entry = entry_next(kind, entry)) {
         if (!entry_is_hole(entry)) {
             PyObject* identity = entry_identity(kind, ci, entry);
             if (md_add_with_hash(md,
@@ -423,6 +435,20 @@ _md_extend_self(MultiDictObject* md, bool ci)
         }
     }
     return 0;
+}
+
+ALWAYS_INLINE static inline int
+_md_extend_self(MultiDictObject* md, bool ci)
+{
+    assert(ci == md->is_ci);
+    if (md_reserve(md, md->keys->nentries) < 0) {
+        return -1;
+    }
+
+    if (kind_is_compact(md->keys->kind)) {
+        return _md_extend_self_scan(md, ci, KIND_COMPACT);
+    }
+    return _md_extend_self_scan(md, ci, KIND_ANYSTR);
 }
 
 NOINLINE static int
