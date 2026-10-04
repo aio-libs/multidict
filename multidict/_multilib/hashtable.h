@@ -2087,6 +2087,21 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
+/* The last live entry at or before *ppos, which it moves there; `kind` is
+   a constant at each call, so the scan steps by a fixed entry size. */
+ALWAYS_INLINE static inline entry_t*
+_md_last_live(uint8_t kind, entry_t* entries, Py_ssize_t* ppos)
+{
+    Py_ssize_t pos = *ppos;
+    entry_t* entry = entry_at(kind, entries, pos);
+    while (pos >= 0 && entry_is_hole(entry)) {
+        pos--;
+        entry = entry_at(kind, entries, pos);
+    }
+    *ppos = pos;
+    return entry;
+}
+
 NOINLINE static PyObject*
 md_pop_item(MultiDictObject* md)
 {
@@ -2101,11 +2116,9 @@ md_pop_item(MultiDictObject* md)
     uint8_t kind = keys->kind;
 
     Py_ssize_t pos = keys->nentries - 1;
-    entry_t* entry = entry_at(kind, entries, pos);
-    while (pos >= 0 && entry_is_hole(entry)) {
-        pos--;
-        entry = entry_at(kind, entries, pos);
-    }
+    entry_t* entry = kind_is_compact(kind)
+                         ? _md_last_live(KIND_COMPACT, entries, &pos)
+                         : _md_last_live(KIND_ANYSTR, entries, &pos);
     assert(pos >= 0);
 
     htkeysiter_t iter;

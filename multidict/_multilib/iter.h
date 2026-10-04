@@ -47,22 +47,12 @@ _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
     Py_END_CRITICAL_SECTION();
 }
 
-/* Finds the next live entry in the iterator's direction and moves past it.
-   Returns 1 with *pentry set, 0 at the end, or -1 with RuntimeError set if
-   md has changed. The caller holds md's critical section.
-
-   Forced: the FT items iterator needs it inline (#1601), and this unit
-   sits so close to GCC's budget that unrelated changes push it out. */
+/* _iter_next_entry() with the table kind a constant, so the scan steps by
+   a fixed entry size. */
 ALWAYS_INLINE static inline int
-_iter_next_entry(MultidictIter* self, entry_t** pentry)
+_iter_scan(MultidictIter* self, uint8_t kind, htkeys_t* keys, entry_t** pentry)
 {
-    MultiDictObject* md = self->md;
-    if (md_check_version(md, self->version) < 0) {
-        return -1;
-    }
-    htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
-    uint8_t kind = keys->kind;
     if (self->reverse) {
         for (; self->pos >= 0; --self->pos) {
             entry_t* entry = entry_at(kind, entries, self->pos);
@@ -83,6 +73,26 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         }
     }
     return 0;
+}
+
+/* Finds the next live entry in the iterator's direction and moves past it.
+   Returns 1 with *pentry set, 0 at the end, or -1 with RuntimeError set if
+   md has changed. The caller holds md's critical section.
+
+   Forced: the FT items iterator needs it inline (#1601), and this unit
+   sits so close to GCC's budget that unrelated changes push it out. */
+ALWAYS_INLINE static inline int
+_iter_next_entry(MultidictIter* self, entry_t** pentry)
+{
+    MultiDictObject* md = self->md;
+    if (md_check_version(md, self->version) < 0) {
+        return -1;
+    }
+    htkeys_t* keys = md->keys;
+    if (kind_is_compact(keys->kind)) {
+        return _iter_scan(self, KIND_COMPACT, keys, pentry);
+    }
+    return _iter_scan(self, KIND_ANYSTR, keys, pentry);
 }
 
 static inline PyObject*
