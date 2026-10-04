@@ -117,7 +117,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
     Py_ssize_t count = 0;
     for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
         entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(kind, entry)) {
+        if (entry_is_hole(entry)) {
             continue;
         }
 

@@ -166,7 +166,7 @@ restart:
         bitmap_clear(&marks->deleted, pos);
         entry_t* entry = entry_at(kind, entries, pos);
         // Python code run between items may have removed or rewritten it
-        if (entry_is_hole(kind, entry) || load_value(entry) != doomed->value) {
+        if (entry_is_hole(entry) || load_value(entry) != doomed->value) {
             continue;
         }
         htkeysiter_t iter;
@@ -240,7 +240,7 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
 
     for (pos = 0; pos < nentries; pos++) {
         entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(kind, entry)) {
+        if (entry_is_hole(entry)) {
             continue;
         }
         if (recalc_identity) {
@@ -409,7 +409,7 @@ _md_extend_self(MultiDictObject* md, bool ci)
     uint8_t kind = md->keys->kind;
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         entry_t* entry = entry_at(kind, entries, pos);
-        if (!entry_is_hole(kind, entry)) {
+        if (!entry_is_hole(entry)) {
             PyObject* identity = entry_identity(kind, ci, entry);
             if (md_add_with_hash(md,
                                  entry_hash(kind, ci, entry),

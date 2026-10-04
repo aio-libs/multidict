@@ -66,7 +66,7 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
     if (self->reverse) {
         for (; self->pos >= 0; --self->pos) {
             entry_t* entry = entry_at(kind, entries, self->pos);
-            if (!entry_is_hole(kind, entry)) {
+            if (!entry_is_hole(entry)) {
                 --self->pos;
                 *pentry = entry;
                 return 1;
@@ -76,7 +76,7 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
     }
     for (; self->pos < keys->nentries; ++self->pos) {
         entry_t* entry = entry_at(kind, entries, self->pos);
-        if (!entry_is_hole(kind, entry)) {
+        if (!entry_is_hole(entry)) {
             ++self->pos;
             *pentry = entry;
             return 1;

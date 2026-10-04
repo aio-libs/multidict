@@ -597,7 +597,7 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
 
     for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
         entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(kind, entry)) {
+        if (entry_is_hole(entry)) {
             continue;
         }
         identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
@@ -1030,7 +1030,7 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
 
     for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
         entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(kind, entry)) {
+        if (entry_is_hole(entry)) {
             continue;
         }
         identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));

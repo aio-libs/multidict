@@ -382,7 +382,7 @@ _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
 static inline PyObject*
 md_ensure_key(MultiDictObject* md, entry_t* entry)
 {
-    assert(!entry_is_hole(md->keys->kind, entry));
+    assert(!entry_is_hole(entry));
     PyObject* key = entry->key;
     if (!md->is_ci || IStr_CheckExact(md->state, key)) {
         return Py_NewRef(key);
