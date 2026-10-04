@@ -1,0 +1,3 @@
+Moved the body of :meth:`MultiDict.popitem() <multidict.MultiDict.popitem>`
+out of line in the C extension, since the method is rarely called and does
+not need to be inlined into its slot -- by :user:`asvetlov`.
