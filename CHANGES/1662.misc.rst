@@ -1,0 +1,4 @@
+Removed the C extension's ``md_pos_t`` cursor and its ``md_next()`` and
+``md_prev()`` helpers; the iterators, ``==`` against a mapping and the
+views' set operations walk the hash table with their own loops instead
+-- by :user:`asvetlov`.

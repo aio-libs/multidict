@@ -153,9 +153,10 @@ _str_call_lower_ci(mod_state* state, PyObject* key)
 
 /* Out of line on purpose.  md_calc_identity() carries this whole function
    into every md_*() that takes a key, and inlining it there costs more than
-   it saves: the extra size pushes md_contains() and md_next() past the
-   inliner's budget at their own call sites, which slowed keys().isdisjoint()
-   by 31% even on a case-sensitive MultiDict, whose keys never reach here. */
+   it saves: the extra size pushes md_contains() and the iterators' step
+   past the inliner's budget at their own call sites, which slowed
+   keys().isdisjoint() by 31% even on a case-sensitive MultiDict, whose keys
+   never reach here. */
 NOINLINE static PyObject*
 _str_to_identity_ci(mod_state* state, PyObject* key)
 {
