@@ -2066,13 +2066,31 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL} /* sentinel */
 };
 
+/* One of the four mapping types, a subclass of `base` if there is one. */
+static PyTypeObject*
+_multidict_new_type(PyObject* mod, PyType_Spec* spec, PyTypeObject* base,
+                    vectorcallfunc vectorcall)
+{
+    PyTypeObject* tp =
+        (PyTypeObject*)PyType_FromModuleAndSpec(mod, spec, (PyObject*)base);
+#if PY_VERSION_HEX < 0x030e00f0
+    /* 3.14+ sets this via the Py_tp_vectorcall slot instead: MultiDict(...)
+       construction behaves like tp_new + tp_init, but reads its arguments
+       directly off the vectorcall stack instead of requiring type_call()
+       to first pack them into an args tuple and a kwargs dict. */
+    if (tp != NULL) {
+        tp->tp_vectorcall = vectorcall;
+    }
+#else
+    (void)vectorcall;
+#endif
+    return tp;
+}
+
 static int
 module_exec(PyObject* mod)
 {
     mod_state* state = get_mod_state(mod);
-    PyObject* tmp;
-    PyObject* tpl = NULL;
-
     state->mod = mod;
 
     htkeys_pools_init(state->htkeys_pools);
@@ -2081,135 +2099,92 @@ module_exec(PyObject* mod)
     pool_init(&state->md_pool, POOL_MAX_DEPTH);
     pool_init(&state->proxy_pool, POOL_MAX_DEPTH);
 
-    state->str_lower = PyUnicode_InternFromString("lower");
-    if (state->str_lower == NULL) {
-        goto fail;
-    }
-    state->str_canonical = PyUnicode_InternFromString("_canonical");
-    if (state->str_canonical == NULL) {
-        goto fail;
-    }
-    state->str_name = PyUnicode_InternFromString("__name__");
-    if (state->str_name == NULL) {
-        goto fail;
-    }
-    state->str_key = PyUnicode_InternFromString("key");
-    if (state->str_key == NULL) {
-        goto fail;
-    }
-    state->str_default = PyUnicode_InternFromString("default");
-    if (state->str_default == NULL) {
-        goto fail;
-    }
-    state->str_value = PyUnicode_InternFromString("value");
-    if (state->str_value == NULL) {
-        goto fail;
+    static const struct {
+        size_t offset;
+        const char* text;
+    } interned[] = {
+        {offsetof(mod_state, str_lower), "lower"},
+        {offsetof(mod_state, str_canonical), "_canonical"},
+        {offsetof(mod_state, str_name), "__name__"},
+        {offsetof(mod_state, str_key), "key"},
+        {offsetof(mod_state, str_default), "default"},
+        {offsetof(mod_state, str_value), "value"},
+    };
+    for (size_t i = 0; i < Py_ARRAY_LENGTH(interned); i++) {
+        PyObject* str = PyUnicode_InternFromString(interned[i].text);
+        if (str == NULL) {
+            return -1;
+        }
+        *(PyObject**)((char*)state + interned[i].offset) = str;
     }
     state->none = Py_GetConstant(Py_CONSTANT_NONE);
     if (state->none == NULL) {
-        goto fail;
+        return -1;
     }
 
     if (multidict_views_init(mod, state) < 0) {
-        goto fail;
+        return -1;
     }
 
     if (multidict_iter_init(mod, state) < 0) {
-        goto fail;
+        return -1;
     }
 
     if (istr_init(mod, state) < 0) {
-        goto fail;
+        return -1;
     }
 
-    tmp = PyType_FromModuleAndSpec(mod, &multidict_spec, NULL);
-    if (tmp == NULL) {
-        goto fail;
+    state->MultiDictType = _multidict_new_type(
+        mod, &multidict_spec, NULL, multidict_tp_vectorcall);
+    if (state->MultiDictType == NULL) {
+        return -1;
     }
-    state->MultiDictType = (PyTypeObject*)tmp;
-#if PY_VERSION_HEX < 0x030e00f0
-    /* 3.14+ sets this via the Py_tp_vectorcall slot instead: MultiDict(...)
-       construction behaves like tp_new + tp_init, but reads its arguments
-       directly off the vectorcall stack instead of requiring type_call()
-       to first pack them into an args tuple and a kwargs dict. */
-    state->MultiDictType->tp_vectorcall = multidict_tp_vectorcall;
-#endif
+    state->CIMultiDictType = _multidict_new_type(mod,
+                                                 &cimultidict_spec,
+                                                 state->MultiDictType,
+                                                 cimultidict_tp_vectorcall);
+    if (state->CIMultiDictType == NULL) {
+        return -1;
+    }
+    state->MultiDictProxyType = _multidict_new_type(
+        mod, &multidict_proxy_spec, NULL, multidict_proxy_tp_vectorcall);
+    if (state->MultiDictProxyType == NULL) {
+        return -1;
+    }
+    state->CIMultiDictProxyType =
+        _multidict_new_type(mod,
+                            &cimultidict_proxy_spec,
+                            state->MultiDictProxyType,
+                            cimultidict_proxy_tp_vectorcall);
+    if (state->CIMultiDictProxyType == NULL) {
+        return -1;
+    }
 
-    tpl = PyTuple_Pack(1, (PyObject*)state->MultiDictType);
-    if (tpl == NULL) {
-        goto fail;
-    }
-    tmp = PyType_FromModuleAndSpec(mod, &cimultidict_spec, tpl);
-    if (tmp == NULL) {
-        goto fail;
-    }
-    state->CIMultiDictType = (PyTypeObject*)tmp;
-#if PY_VERSION_HEX < 0x030e00f0
-    state->CIMultiDictType->tp_vectorcall = cimultidict_tp_vectorcall;
-#endif
-    Py_CLEAR(tpl);
-
-    tmp = PyType_FromModuleAndSpec(mod, &multidict_proxy_spec, NULL);
-    if (tmp == NULL) {
-        goto fail;
-    }
-    state->MultiDictProxyType = (PyTypeObject*)tmp;
-#if PY_VERSION_HEX < 0x030e00f0
-    state->MultiDictProxyType->tp_vectorcall = multidict_proxy_tp_vectorcall;
-#endif
-
-    tpl = PyTuple_Pack(1, (PyObject*)state->MultiDictProxyType);
-    if (tpl == NULL) {
-        goto fail;
-    }
-    tmp = PyType_FromModuleAndSpec(mod, &cimultidict_proxy_spec, tpl);
-    if (tmp == NULL) {
-        goto fail;
-    }
-    state->CIMultiDictProxyType = (PyTypeObject*)tmp;
-#if PY_VERSION_HEX < 0x030e00f0
-    state->CIMultiDictProxyType->tp_vectorcall =
-        cimultidict_proxy_tp_vectorcall;
-#endif
-    Py_CLEAR(tpl);
-
-    if (PyModule_AddType(mod, state->IStrType) < 0) {
-        goto fail;
-    }
-    if (PyModule_AddType(mod, state->MultiDictType) < 0) {
-        goto fail;
-    }
-    if (PyModule_AddType(mod, state->CIMultiDictType) < 0) {
-        goto fail;
-    }
-    if (PyModule_AddType(mod, state->MultiDictProxyType) < 0) {
-        goto fail;
-    }
-    if (PyModule_AddType(mod, state->CIMultiDictProxyType) < 0) {
-        goto fail;
-    }
-    if (PyModule_AddType(mod, state->ItemsViewType) < 0) {
-        goto fail;
-    }
-    if (PyModule_AddType(mod, state->KeysViewType) < 0) {
-        goto fail;
-    }
-    if (PyModule_AddType(mod, state->ValuesViewType) < 0) {
-        goto fail;
+    PyTypeObject* const exported[] = {
+        state->IStrType,
+        state->MultiDictType,
+        state->CIMultiDictType,
+        state->MultiDictProxyType,
+        state->CIMultiDictProxyType,
+        state->ItemsViewType,
+        state->KeysViewType,
+        state->ValuesViewType,
+    };
+    for (size_t i = 0; i < Py_ARRAY_LENGTH(exported); i++) {
+        if (PyModule_AddType(mod, exported[i]) < 0) {
+            return -1;
+        }
     }
 
     PyObject* capsule = new_capsule(state);
     if (capsule == NULL) {
-        goto fail;
+        return -1;
     }
     if (PyModule_Add(mod, MultiDict_CAPI_NAME, capsule) < 0) {
-        goto fail;
+        return -1;
     }
 
     return 0;
-fail:
-    Py_CLEAR(tpl);
-    return -1;
 }
 
 static struct PyModuleDef_Slot module_slots[] = {
