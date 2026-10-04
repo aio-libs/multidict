@@ -2703,7 +2703,7 @@ fail:
 
 /***********************************************************************/
 
-static inline int
+static int
 multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
 {
     Py_VISIT(Py_TYPE(md));

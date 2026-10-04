@@ -447,7 +447,7 @@ cimultidict_proxy_tp_vectorcall(PyObject* type, PyObject* const* args,
     return _multidict_proxy_ctor_vectorcall(type, args, nargsf, kwnames, true);
 }
 
-static inline PyObject*
+static PyObject*
 multidict_copy(MultiDictObject* self)
 {
     MultiDictObject* new_md = md_shell_new(self->state, Py_TYPE(self));

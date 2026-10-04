@@ -1,0 +1,3 @@
+Dropped ``inline`` from five C extension functions registered as type
+slots or methods, whose out-of-line copy the compiler has to emit anyway
+-- by :user:`asvetlov`.
