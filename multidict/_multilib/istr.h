@@ -13,7 +13,7 @@ extern "C" {
 
 PyDoc_STRVAR(istr__doc__, "istr class implementation");
 
-static inline void
+static void
 istr_tp_dealloc(istrobject* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
@@ -118,7 +118,7 @@ _istr_finish(mod_state* state, PyObject* ret)
     return ret;
 }
 
-static inline PyObject*
+static PyObject*
 istr_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     PyObject* mod = PyType_GetModuleByDef(type, &multidict_module);
@@ -225,7 +225,7 @@ istr_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
     return _istr_from_object(tp, get_mod_state(mod), args[0]);
 }
 
-static inline PyObject*
+static PyObject*
 istr_reduce(PyObject* self)
 {
     PyObject* str = NULL;
