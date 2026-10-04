@@ -1,0 +1,4 @@
+Started emitting :exc:`DeprecationWarning` on access to ``multidict.upstr``,
+the alias for :class:`~multidict.istr` deprecated since 2.0, and removed it
+from ``multidict.__all__``
+-- by :user:`asvetlov`.

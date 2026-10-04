@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 import pytest
 
+import multidict
 from multidict import CIMultiDict
 
 IMPLEMENTATION = getattr(sys, "implementation")  # to suppress mypy error
@@ -158,3 +159,22 @@ def test_leak(
     assert not any(
         isinstance(obj, case_insensitive_str_class) for obj in gc.get_objects()
     )
+
+
+def test_upstr_deprecated() -> None:
+    with pytest.deprecated_call(match="upstr is deprecated, use istr instead"):
+        assert multidict.upstr is multidict.istr
+
+
+def test_upstr_in_dir() -> None:
+    assert "upstr" in dir(multidict)
+    assert "istr" in dir(multidict)
+
+
+def test_upstr_not_in_all() -> None:
+    assert "upstr" not in multidict.__all__
+
+
+def test_unknown_module_attribute() -> None:
+    with pytest.raises(AttributeError, match="has no attribute 'nonexistent'"):
+        getattr(multidict, "nonexistent")

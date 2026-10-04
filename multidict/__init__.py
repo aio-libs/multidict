@@ -6,8 +6,9 @@ multidict. It behaves mostly like a dict but it can have
 several values for the same key.
 """
 
+import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ._abc import MultiMapping, MutableMultiMapping
 from ._compat import USE_EXTENSIONS
@@ -22,7 +23,6 @@ __all__ = (
     "get_include",
     "getversion",
     "istr",
-    "upstr",
 )
 
 __version__ = "7.1.0.dev0"
@@ -59,7 +59,23 @@ else:
     ValuesView.register(_ValuesView)
 
 
-upstr = istr
+if TYPE_CHECKING:
+    upstr = istr
+else:
+
+    def __getattr__(name: str) -> Any:
+        if name == "upstr":
+            warnings.warn(
+                "upstr is deprecated, use istr instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return istr
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return [*globals(), "upstr"]
 
 
 def get_include() -> str:
