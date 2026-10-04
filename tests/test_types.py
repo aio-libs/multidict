@@ -127,6 +127,24 @@ def test_create_ci_multidict_proxy_from_multidict(
         multidict_module.CIMultiDictProxy(d)
 
 
+@pytest.mark.parametrize(
+    ("dict_class_name", "proxy_class_name"),
+    (("MultiDict", "MultiDictProxy"), ("CIMultiDict", "CIMultiDictProxy")),
+)
+def test_reinit_multidict_proxy_missing_arg(
+    multidict_module: types.ModuleType,
+    dict_class_name: str,
+    proxy_class_name: str,
+) -> None:
+    d = getattr(multidict_module, dict_class_name)(key="val")
+    proxy = getattr(multidict_module, proxy_class_name)(d)
+    with pytest.raises(
+        TypeError, match=r"missing 1 required positional argument: 'arg'$"
+    ):
+        proxy.__init__()
+    assert proxy == d
+
+
 @pytest.mark.parametrize("proxy_class_name", ("MultiDictProxy", "CIMultiDictProxy"))
 def test_create_multidict_proxy_missing_arg(
     multidict_module: types.ModuleType,
