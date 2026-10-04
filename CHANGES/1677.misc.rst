@@ -1,0 +1,6 @@
+Merged the bodies of ``pop()`` and ``popone()`` in the C extension, and the
+argument check that the proxy constructors, ``__init__()`` and the C API
+each repeated. ``CIMultiDictProxy.__init__()`` called without an argument
+started reporting the same :exc:`TypeError` message as ``MultiDictProxy``
+and the pure-Python implementation
+-- by :user:`asvetlov`.

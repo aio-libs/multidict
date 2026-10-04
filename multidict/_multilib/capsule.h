@@ -140,52 +140,40 @@ CIMultiDict_New(void* state_, Py_ssize_t prealloc_size)
     return _md_new(state, state->CIMultiDictType, true, prealloc_size);
 }
 
-static PyObject*
-MultiDictProxy_New(void* state_, PyObject* arg)
+ALWAYS_INLINE static inline PyObject*
+_proxy_new(mod_state* state, PyObject* arg, bool is_ci)
 {
-    mod_state* state = (mod_state*)state_;
-    if (!AnyMultiDictProxy_Check(state, arg) &&
-        !AnyMultiDict_Check(state, arg)) {
+    MultiDictObject* md = multidict_proxy_target(state, arg, is_ci);
+    if (md == NULL) {
+        const char* name = is_ci ? "CIMultiDict" : "MultiDict";
         PyErr_Format(PyExc_TypeError,
-                     "MultiDictProxy requires a MultiDict or "
-                     "MultiDictProxy instance, not %s",
+                     "%sProxy requires a %s or %sProxy instance, not %s",
+                     name,
+                     name,
+                     name,
                      Py_TYPE(arg)->tp_name);
         return NULL;
     }
     MultiDictProxyObject* self = (MultiDictProxyObject*)md_shell_alloc(
-        state, state->MultiDictProxyType);
+        state,
+        is_ci ? state->CIMultiDictProxyType : state->MultiDictProxyType);
     if (self == NULL) {
         return NULL;
     }
-    MultiDictObject* md = AnyMultiDictProxy_Check(state, arg)
-                              ? ((MultiDictProxyObject*)arg)->md
-                              : (MultiDictObject*)arg;
     self->md = (MultiDictObject*)Py_NewRef(md);
     return (PyObject*)self;
 }
 
 static PyObject*
+MultiDictProxy_New(void* state_, PyObject* arg)
+{
+    return _proxy_new((mod_state*)state_, arg, false);
+}
+
+static PyObject*
 CIMultiDictProxy_New(void* state_, PyObject* arg)
 {
-    mod_state* state = (mod_state*)state_;
-    if (!CIMultiDictProxy_Check(state, arg) &&
-        !CIMultiDict_Check(state, arg)) {
-        PyErr_Format(PyExc_TypeError,
-                     "CIMultiDictProxy requires a CIMultiDict or "
-                     "CIMultiDictProxy instance, not %s",
-                     Py_TYPE(arg)->tp_name);
-        return NULL;
-    }
-    MultiDictProxyObject* self = (MultiDictProxyObject*)md_shell_alloc(
-        state, state->CIMultiDictProxyType);
-    if (self == NULL) {
-        return NULL;
-    }
-    MultiDictObject* md = CIMultiDictProxy_Check(state, arg)
-                              ? ((MultiDictProxyObject*)arg)->md
-                              : (MultiDictObject*)arg;
-    self->md = (MultiDictObject*)Py_NewRef(md);
-    return (PyObject*)self;
+    return _proxy_new((mod_state*)state_, arg, true);
 }
 
 /* ================= Getters ================= */
