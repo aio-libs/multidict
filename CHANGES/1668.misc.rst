@@ -1,0 +1,3 @@
+Removed dead code from the C extension: a self-update branch no caller
+could reach, version guards that are always true on the supported Python
+versions, and a few single-use forwarding helpers -- by :user:`asvetlov`.

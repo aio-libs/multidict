@@ -225,19 +225,9 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         return 0;
     }
 
-    if (md == other && op != Extend) {
-        /* update(self) and merge(self) leave the dict unchanged: every key
-           already maps to its own values.  Short-circuit -- doing the work in
-           place would soft-delete and reinsert the very entries we iterate. */
-        return 0;
-    }
+    // callers handle md itself: md_extend_self(), or a no-op
+    assert(md != other);
 
-    /* Pre-allocate room for other's items so the inserts below cannot trigger
-       a resize of md->keys.  This is what makes extend(self) (md IS other,
-       e.g. ``d.extend(d)``) safe: a resize would free the very entries array
-       we iterate here, a use-after-free.  Reserving up front also lets us
-       snapshot the entry count so self-extension does not reprocess the
-       entries it just appended. */
     if (md_reserve(md, other->used) < 0) {
         return -1;
     }

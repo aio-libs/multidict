@@ -114,9 +114,6 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
     if (kwds != NULL) {
         assert((PyDict_CheckExact(kwds)));
         s = PyDict_GET_SIZE(kwds);
-        if (s < 0) {
-            return -1;
-        }
         /* size may already hold an arbitrary __length_hint__. */
         size = s > PY_SSIZE_T_MAX - size ? PY_SSIZE_T_MAX : size + s;
     }
@@ -902,11 +899,8 @@ _multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         ret = md_init(self,
                       is_ci,
                       size,
-                      _multidict_init_kind(state,
-                                           is_ci,
-                                           arg,
-                                           other != self ? other : NULL,
-                                           kwds == NULL ? 0 : 1));
+                      _multidict_init_kind(
+                          state, is_ci, arg, other, kwds == NULL ? 0 : 1));
         if (ret == 0) {
             ret = md_update_from_ht(self, other, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
@@ -923,11 +917,8 @@ _multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
         ret = md_init(self,
                       is_ci,
                       size,
-                      _multidict_init_kind(state,
-                                           is_ci,
-                                           arg,
-                                           other != self ? other : NULL,
-                                           kwds == NULL ? 0 : 1));
+                      _multidict_init_kind(
+                          state, is_ci, arg, NULL, kwds == NULL ? 0 : 1));
         if (ret == 0) {
             ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
             if (ret == 0 && kwds != NULL) {
@@ -1726,14 +1717,12 @@ static PyType_Slot multidict_slots[] = {
 static PyType_Spec multidict_spec = {
     .name = "multidict._multidict.MultiDict",
     .basicsize = sizeof(MultiDictObject),
-    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE
-#if PY_VERSION_HEX >= 0x030a00f0
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
+    .flags =
+        (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_IMMUTABLETYPE
 #ifdef MANAGED_WEAKREFS
-              | Py_TPFLAGS_MANAGED_WEAKREF
+         | Py_TPFLAGS_MANAGED_WEAKREF
 #endif
-              | Py_TPFLAGS_HAVE_GC),
+         | Py_TPFLAGS_HAVE_GC),
     .slots = multidict_slots,
 };
 
@@ -1776,11 +1765,8 @@ static PyType_Slot cimultidict_slots[] = {
 static PyType_Spec cimultidict_spec = {
     .name = "multidict._multidict.CIMultiDict",
     .basicsize = sizeof(MultiDictObject),
-    .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a00f0
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
-              | Py_TPFLAGS_BASETYPE),
+    .flags =
+        (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE | Py_TPFLAGS_BASETYPE),
     .slots = cimultidict_slots,
 };
 
@@ -2090,14 +2076,12 @@ static PyType_Slot multidict_proxy_slots[] = {
 static PyType_Spec multidict_proxy_spec = {
     .name = "multidict._multidict.MultiDictProxy",
     .basicsize = sizeof(MultiDictProxyObject),
-    .flags = (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE
-#if PY_VERSION_HEX >= 0x030a00f0
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
+    .flags =
+        (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_IMMUTABLETYPE
 #ifdef MANAGED_WEAKREFS
-              | Py_TPFLAGS_MANAGED_WEAKREF
+         | Py_TPFLAGS_MANAGED_WEAKREF
 #endif
-              | Py_TPFLAGS_HAVE_GC),
+         | Py_TPFLAGS_HAVE_GC),
     .slots = multidict_proxy_slots,
 };
 
@@ -2164,11 +2148,8 @@ static PyType_Slot cimultidict_proxy_slots[] = {
 static PyType_Spec cimultidict_proxy_spec = {
     .name = "multidict._multidict.CIMultiDictProxy",
     .basicsize = sizeof(MultiDictProxyObject),
-    .flags = (Py_TPFLAGS_DEFAULT
-#if PY_VERSION_HEX >= 0x030a00f0
-              | Py_TPFLAGS_IMMUTABLETYPE
-#endif
-              | Py_TPFLAGS_BASETYPE),
+    .flags =
+        (Py_TPFLAGS_DEFAULT | Py_TPFLAGS_IMMUTABLETYPE | Py_TPFLAGS_BASETYPE),
     .slots = cimultidict_proxy_slots,
 };
 
