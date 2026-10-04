@@ -1,0 +1,3 @@
+Moved the C implementation of :meth:`MultiDict.clear() <multidict.MultiDict.clear>`
+out of line, trading a few instructions per call and per deallocation
+for smaller code -- by :user:`asvetlov`.
