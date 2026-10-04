@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-static inline int
+NOINLINE static int
 _raise_unexpected_kwarg(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
@@ -17,7 +17,7 @@ _raise_unexpected_kwarg(const char* fname, PyObject* argname)
     return -1;
 }
 
-static inline int
+NOINLINE static int
 _raise_multiple_values(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
@@ -27,7 +27,7 @@ _raise_multiple_values(const char* fname, PyObject* argname)
     return -1;
 }
 
-static inline int
+NOINLINE static int
 _raise_missing_posarg(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,

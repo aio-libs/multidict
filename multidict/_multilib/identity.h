@@ -44,6 +44,24 @@ str_cmp(PyObject* s1, PyObject* s2)
     return (memcmp(data1, data2, (size_t)(len * kind)) == 0);
 }
 
+NOINLINE static PyObject*
+_err_key_type_cs(void)
+{
+    PyErr_SetString(PyExc_TypeError,
+                    "MultiDict keys should be either str "
+                    "or subclasses of str");
+    return NULL;
+}
+
+NOINLINE static PyObject*
+_err_key_type_ci(void)
+{
+    PyErr_SetString(PyExc_TypeError,
+                    "CIMultiDict keys should be either str "
+                    "or subclasses of str");
+    return NULL;
+}
+
 static inline PyObject*
 _key_to_identity_cs(mod_state* state, PyObject* key)
 {
@@ -54,10 +72,7 @@ _key_to_identity_cs(mod_state* state, PyObject* key)
         if (PyUnicode_Check(key)) {
             return PyUnicode_FromObject(key);
         }
-        PyErr_SetString(PyExc_TypeError,
-                        "MultiDict keys should be either str "
-                        "or subclasses of str");
-        return NULL;
+        return _err_key_type_cs();
     }
     return Py_NewRef(key);
 }
@@ -137,10 +152,7 @@ COLD static PyObject*
 _str_call_lower_ci(mod_state* state, PyObject* key)
 {
     if (!PyUnicode_Check(key)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "CIMultiDict keys should be either str "
-                        "or subclasses of str");
-        return NULL;
+        return _err_key_type_ci();
     }
     PyObject* ret = PyObject_CallMethodNoArgs(key, state->str_lower);
     if (ret == NULL || PyUnicode_CheckExact(ret)) {
@@ -205,10 +217,7 @@ _arg_to_key_cs(mod_state* state, PyObject* key, PyObject* identity)
     if (PyUnicode_Check(key)) {
         return Py_NewRef(key);
     }
-    PyErr_SetString(PyExc_TypeError,
-                    "MultiDict keys should be either str "
-                    "or subclasses of str");
-    return NULL;
+    return _err_key_type_cs();
 }
 
 /* A str subclass is copied to an exact str first: istr(), like str(), would
@@ -237,10 +246,7 @@ _arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
     if (PyUnicode_Check(key)) {
         return _subclass_to_key_ci(state, key, identity);
     }
-    PyErr_SetString(PyExc_TypeError,
-                    "CIMultiDict keys should be either str "
-                    "or subclasses of str");
-    return NULL;
+    return _err_key_type_ci();
 }
 
 /* ci is md->is_ci, passed in so an entry point that knows its class
