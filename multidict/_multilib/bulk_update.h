@@ -192,8 +192,10 @@ restart:
     return ret;
 }
 
-/* Ends the batch; the caller holds md's critical section. */
-static inline int
+/* Ends the batch; the caller holds md's critical section. Out of line:
+   once per update() or merge(), and inlined it takes the FT items
+   iterator's Py_NewRef() out of line. */
+NOINLINE static int
 md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
 {
     int ret = 0;

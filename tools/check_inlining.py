@@ -242,7 +242,7 @@ RULES = (
         "full layout in the same lock-free probe loops",
     ),
     Rule(
-        "_multidict_tp_init",
+        "_multidict_bulk",
         "*",
         BOTH,
         "#1591: one shared copy made subclass init 7-8% slower",

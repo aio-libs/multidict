@@ -866,95 +866,177 @@ PyDoc_STRVAR(multidict_values_doc,
 
 /******************** MultiDict ********************/
 
+typedef enum {
+    BULK_FROM_HT,    // another multidict, locked together with self
+    BULK_FROM_DICT,  // an exact dict, locked together with self
+    BULK_FROM_SEQ,   // anything else, self itself included
+} bulk_source;
+
+/* The locked part of _multidict_bulk(); `op`, `reinit` and `source` are
+   constants at every call site. */
 ALWAYS_INLINE static inline int
-_multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
+_multidict_bulk_locked(MultiDictObject* self, UpdateOp op, bool reinit,
+                       bulk_source source, PyObject* arg,
+                       MultiDictObject* other, PyObject* kwds, Py_ssize_t size,
+                       bool is_ci, reflist_t* defer, update_marks_t* marks)
+{
+    int ret;
+    bool from_self = source == BULK_FROM_SEQ && other != NULL;
+    if (op != Extend) {
+        ret = md_reserve_batch(self, size, kwds != NULL);
+        update_marks_init(marks, self);
+        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
+    } else {
+        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
+        if (!reinit) {
+            ret = md_reserve_batch(self, size, kwds != NULL);
+        } else if (from_self) {
+            // re-init from itself: md_init() would drop the source
+            assert(kwds != NULL);
+            ret = md_reserve_batch(self, PyDict_GET_SIZE(kwds), true);
+        } else {
+            ret = md_init(
+                self,
+                is_ci,
+                size,
+                _multidict_init_kind(self->state,
+                                     is_ci,
+                                     arg,
+                                     source == BULK_FROM_HT ? other : NULL,
+                                     kwds == NULL ? 0 : 1));
+        }
+    }
+    if (ret == 0) {
+        switch (source) {
+            case BULK_FROM_HT:
+                ret = md_update_from_ht(self, other, op, defer, marks);
+                break;
+            case BULK_FROM_DICT:
+                ret = md_update_from_dict(self, arg, op, defer, marks);
+                break;
+            case BULK_FROM_SEQ:
+                if (from_self) {
+                    /* Only extend() adds anything: update() and merge()
+                       find every pair there, and __init__() keeps them. */
+                    if (op == Extend && !reinit) {
+                        ret = md_extend_self(self);
+                    }
+                } else if (arg != NULL) {
+                    ret = md_update_from_seq(self, arg, op, defer, marks);
+                }
+                break;
+        }
+        if (ret == 0 && kwds != NULL) {
+            ret = md_update_from_dict(self, kwds, op, defer, marks);
+        }
+        ASSERT_CONSISTENT(self);
+    }
+    if (op != Extend) {
+        if (md_post_update(self, defer, marks) < 0 && ret == 0) {
+            ret = -1;
+        }
+    } else {
+        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
+    }
+    return ret;
+}
+
+/* __init__() when `reinit`, else extend(), update() or merge() by `op`,
+   a constant at every call site so each entry point compiles its own
+   copy. */
+ALWAYS_INLINE static inline int
+_multidict_bulk(MultiDictObject* self, PyObject* args, PyObject* kwds,
+                const char* name, UpdateOp op, bool reinit)
 {
     mod_state* state = self->state;
     /* The instance's own mode, not the class whose __init__() was called:
        MultiDict.__init__() on a CIMultiDict must not make it
        case-sensitive. */
     bool is_ci = self->is_ci;
+    if (reinit) {
+        name = is_ci ? "CIMultiDict" : "MultiDict";
+    }
     PyObject* arg = NULL;
-    Py_ssize_t size = _multidict_extend_parse_args(
-        state, args, kwds, is_ci ? "CIMultiDict" : "MultiDict", &arg);
+    Py_ssize_t size =
+        _multidict_extend_parse_args(state, args, kwds, name, &arg);
     if (size < 0) {
         goto fail;
     }
     if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
         goto fail;
     }
-    int tmp = _multidict_clone_fast(state, self, is_ci, arg, kwds);
-    if (tmp < 0) {
-        goto fail;
-    } else if (tmp == 1) {
-        goto done;
+    if (reinit) {
+        int tmp = _multidict_clone_fast(state, self, is_ci, arg, kwds);
+        if (tmp < 0) {
+            goto fail;
+        } else if (tmp == 1) {
+            goto done;
+        }
     }
     MultiDictObject* other = _multidict_resolve_other(state, arg);
     bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
     int ret;
     bool flush;
+    update_marks_t marks_buf;
+    reflist_t defer_buf;
+    update_marks_t* marks = op != Extend ? &marks_buf : NULL;
+    /* Only update() defers decrefs: merge() never drops a reference
+       mid-scan, it either finds the key or inserts a new entry. */
+    reflist_t* defer = op == Update ? &defer_buf : NULL;
+    if (defer != NULL) {
+        reflist_init(defer);
+    }
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_init(self,
-                      is_ci,
-                      size,
-                      _multidict_init_kind(
-                          state, is_ci, arg, other, kwds == NULL ? 0 : 1));
-        if (ret == 0) {
-            ret = md_update_from_ht(self, other, Extend, NULL, NULL);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
+        ret = _multidict_bulk_locked(self,
+                                     op,
+                                     reinit,
+                                     BULK_FROM_HT,
+                                     arg,
+                                     other,
+                                     kwds,
+                                     size,
+                                     is_ci,
+                                     defer,
+                                     marks);
         flush = md_watch_pending(self);
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_init(self,
-                      is_ci,
-                      size,
-                      _multidict_init_kind(
-                          state, is_ci, arg, NULL, kwds == NULL ? 0 : 1));
-        if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
+        ret = _multidict_bulk_locked(self,
+                                     op,
+                                     reinit,
+                                     BULK_FROM_DICT,
+                                     arg,
+                                     NULL,
+                                     kwds,
+                                     size,
+                                     is_ci,
+                                     defer,
+                                     marks);
         flush = md_watch_pending(self);
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        if (other != NULL) {
-            // re-init from itself: md_init() would drop the source
-            assert(other == self && kwds != NULL);
-            ret = md_reserve_batch(self, PyDict_GET_SIZE(kwds), true);
-        } else {
-            ret = md_init(self,
-                          is_ci,
-                          size,
-                          _multidict_init_kind(
-                              state, is_ci, arg, NULL, kwds == NULL ? 0 : 1));
-            if (ret == 0 && arg != NULL) {
-                ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
-            }
-        }
-        if (ret == 0) {
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
+        ret = _multidict_bulk_locked(self,
+                                     op,
+                                     reinit,
+                                     BULK_FROM_SEQ,
+                                     arg,
+                                     other,
+                                     kwds,
+                                     size,
+                                     is_ci,
+                                     defer,
+                                     marks);
         flush = md_watch_pending(self);
         Py_END_CRITICAL_SECTION();
+    }
+    if (marks != NULL) {
+        update_marks_release(marks);
+    }
+    if (defer != NULL) {
+        reflist_clear(defer);
     }
     md_watch_flush_if(self, flush);
     if (ret < 0) {
@@ -971,7 +1053,7 @@ fail:
 static int
 multidict_tp_init(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
-    return _multidict_tp_init(self, args, kwds);
+    return _multidict_bulk(self, args, kwds, NULL, Extend, true);
 }
 
 static PyObject*
@@ -1046,75 +1128,10 @@ multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
 static PyObject*
 multidict_extend(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
-    PyObject* arg = NULL;
-    Py_ssize_t size =
-        _multidict_extend_parse_args(self->state, args, kwds, "extend", &arg);
-    if (size < 0) {
-        goto fail;
+    if (_multidict_bulk(self, args, kwds, "extend", Extend, false) < 0) {
+        return NULL;
     }
-    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
-        goto fail;
-    }
-    MultiDictObject* other = _multidict_resolve_other(self->state, arg);
-    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
-    int ret;
-    bool flush;
-    if (other != NULL && other != self) {
-        Py_BEGIN_CRITICAL_SECTION2(self, other);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        if (ret == 0) {
-            ret = md_update_from_ht(self, other, Extend, NULL, NULL);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION2();
-    } else if (arg_is_dict) {
-        Py_BEGIN_CRITICAL_SECTION2(self, arg);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION2();
-    } else {
-        Py_BEGIN_CRITICAL_SECTION(self);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        if (ret == 0) {
-            if (other != NULL) {
-                ret = md_extend_self(self);
-            } else if (arg != NULL) {
-                ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
-            }
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Extend, NULL, NULL);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION();
-    }
-    md_watch_flush_if(self, flush);
-    if (ret < 0) {
-        goto fail;
-    }
-    Py_XDECREF(arg);
     Py_RETURN_NONE;
-fail:
-    Py_CLEAR(arg);
-    return NULL;
 }
 
 static PyObject*
@@ -1342,176 +1359,19 @@ multidict_popitem(MultiDictObject* self)
 static PyObject*
 multidict_update(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
-    PyObject* arg = NULL;
-    Py_ssize_t size =
-        _multidict_extend_parse_args(self->state, args, kwds, "update", &arg);
-    if (size < 0) {
-        goto fail;
+    if (_multidict_bulk(self, args, kwds, "update", Update, false) < 0) {
+        return NULL;
     }
-    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
-        goto fail;
-    }
-    MultiDictObject* other = _multidict_resolve_other(self->state, arg);
-    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
-    int ret;
-    bool flush;
-    update_marks_t marks;
-    reflist_t defer;
-    reflist_init(&defer);
-    if (other != NULL && other != self) {
-        Py_BEGIN_CRITICAL_SECTION2(self, other);
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        update_marks_init(&marks, self);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        if (ret == 0) {
-            ret = md_update_from_ht(self, other, Update, &defer, &marks);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Update, &defer, &marks);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        if (md_post_update(self, &defer, &marks) < 0 && ret == 0) {
-            ret = -1;
-        }
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION2();
-    } else if (arg_is_dict) {
-        Py_BEGIN_CRITICAL_SECTION2(self, arg);
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        update_marks_init(&marks, self);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Update, &defer, &marks);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Update, &defer, &marks);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        if (md_post_update(self, &defer, &marks) < 0 && ret == 0) {
-            ret = -1;
-        }
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION2();
-    } else {
-        Py_BEGIN_CRITICAL_SECTION(self);
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        update_marks_init(&marks, self);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        if (ret == 0) {
-            // self-referential update() is a no-op: entries already match
-            if (other == NULL && arg != NULL) {
-                ret = md_update_from_seq(self, arg, Update, &defer, &marks);
-            }
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Update, &defer, &marks);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        if (md_post_update(self, &defer, &marks) < 0 && ret == 0) {
-            ret = -1;
-        }
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION();
-    }
-    update_marks_release(&marks);
-    reflist_clear(&defer);
-    md_watch_flush_if(self, flush);
-    if (ret < 0) {
-        goto fail;
-    }
-    Py_XDECREF(arg);
     Py_RETURN_NONE;
-fail:
-    Py_CLEAR(arg);
-    return NULL;
 }
 
 static PyObject*
 multidict_merge(MultiDictObject* self, PyObject* args, PyObject* kwds)
 {
-    PyObject* arg = NULL;
-    Py_ssize_t size =
-        _multidict_extend_parse_args(self->state, args, kwds, "merge", &arg);
-    if (size < 0) {
-        goto fail;
+    if (_multidict_bulk(self, args, kwds, "merge", Merge, false) < 0) {
+        return NULL;
     }
-    if (kwds && !PyArg_ValidateKeywordArguments(kwds)) {
-        goto fail;
-    }
-    MultiDictObject* other = _multidict_resolve_other(self->state, arg);
-    bool arg_is_dict = arg != NULL && PyDict_CheckExact(arg);
-    int ret;
-    bool flush;
-    update_marks_t marks;
-    /* No deferred-decref accumulator here: _md_merge() never decrefs
-       anything mid-scan (it either returns early on a match or inserts
-       a brand-new entry), so it has no suspension window of its own to
-       close -- see the comment above reflist_t. */
-    if (other != NULL && other != self) {
-        Py_BEGIN_CRITICAL_SECTION2(self, other);
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        update_marks_init(&marks, self);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        if (ret == 0) {
-            ret = md_update_from_ht(self, other, Merge, NULL, &marks);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Merge, NULL, &marks);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        if (md_post_update(self, NULL, &marks) < 0 && ret == 0) {
-            ret = -1;
-        }
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION2();
-    } else if (arg_is_dict) {
-        Py_BEGIN_CRITICAL_SECTION2(self, arg);
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        update_marks_init(&marks, self);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        if (ret == 0) {
-            ret = md_update_from_dict(self, arg, Merge, NULL, &marks);
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Merge, NULL, &marks);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        if (md_post_update(self, NULL, &marks) < 0 && ret == 0) {
-            ret = -1;
-        }
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION2();
-    } else {
-        Py_BEGIN_CRITICAL_SECTION(self);
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        update_marks_init(&marks, self);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
-        if (ret == 0) {
-            // self-referential merge() is a no-op: entries already match
-            if (other == NULL && arg != NULL) {
-                ret = md_update_from_seq(self, arg, Merge, NULL, &marks);
-            }
-            if (ret == 0 && kwds != NULL) {
-                ret = md_update_from_dict(self, kwds, Merge, NULL, &marks);
-            }
-            ASSERT_CONSISTENT(self);
-        }
-        if (md_post_update(self, NULL, &marks) < 0 && ret == 0) {
-            ret = -1;
-        }
-        flush = md_watch_pending(self);
-        Py_END_CRITICAL_SECTION();
-    }
-    update_marks_release(&marks);
-    md_watch_flush_if(self, flush);
-    if (ret < 0) {
-        goto fail;
-    }
-    Py_XDECREF(arg);
     Py_RETURN_NONE;
-fail:
-    Py_CLEAR(arg);
-    return NULL;
 }
 
 PyDoc_STRVAR(multidict_add_doc,
