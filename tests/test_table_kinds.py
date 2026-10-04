@@ -87,6 +87,30 @@ def test_copy_keeps_the_layout(convert: bool) -> None:
     assert list(copy.items()) == list(d.items())
 
 
+@pytest.mark.parametrize("side", ["left", "right"])
+@pytest.mark.parametrize("tail_equal", [True, False])
+def test_move_inside_eq_keeps_comparing(side: str, tail_equal: bool) -> None:
+    # A value's __eq__ moves one table to the full layout; the comparison
+    # goes on past it under the new layout.
+    def run(mod: Any) -> tuple[bool, int]:
+        class Value:
+            def __eq__(self, other: object) -> bool:
+                target.add(StrKey("s"), 0)
+                return True
+
+            __hash__ = None  # type: ignore[assignment]
+
+        tail = [(k, 1) for k in KEYS]
+        lft = mod.MultiDict([("a", Value())] + tail)
+        rht = mod.MultiDict([("a", Value())] + tail)
+        if not tail_equal:
+            rht[KEYS[-1]] = 2
+        target = lft if side == "left" else rht
+        return lft == rht, len(target)
+
+    assert run(c) == run(py) == (tail_equal, len(KEYS) + 2)
+
+
 def test_move_inside_update_keeps_its_marks() -> None:
     # The move happens between update()'s items, on a table whose earlier
     # items are marked by index; the result must match the pure backend.

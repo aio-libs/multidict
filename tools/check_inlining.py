@@ -171,6 +171,32 @@ RULES = (
         "3-5 Ir per popitem()",
     ),
     Rule(
+        "entry_next",
+        "*",
+        BOTH,
+        "#1676: the step of every per-kind pointer walk; out of line it "
+        "loses the constant entry size",
+    ),
+    Rule(
+        "_md_copy_live",
+        "*",
+        BOTH,
+        "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
+    ),
+    Rule(
+        "_md_eq_scan",
+        "*",
+        BOTH,
+        "#1676: the constant kinds made md == md 35-46% cheaper",
+    ),
+    Rule(
+        "_md_update_from_ht_scan",
+        "*",
+        BOTH,
+        "#1676: the constant kind made extend() and merge() from another "
+        "multidict 5-18% cheaper",
+    ),
+    Rule(
         "entry_is_hole",
         "*",
         BOTH,
