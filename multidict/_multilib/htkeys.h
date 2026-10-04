@@ -324,12 +324,6 @@ entry_set_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
     }
 }
 
-static inline entry_t*
-htkeys_entry_at(const htkeys_t* keys, entry_t* entries, Py_ssize_t i)
-{
-    return entry_at(keys->kind, entries, i);
-}
-
 static inline void
 htkeys_entry_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src)
 {
@@ -665,7 +659,7 @@ NOINLINE static void
 htkeys_zero_entries(htkeys_t* keys, Py_ssize_t from)
 {
     assert(from >= 0 && from <= keys->usable);
-    memset(htkeys_entry_at(keys, htkeys_entries(keys), from),
+    memset(entry_at(keys->kind, htkeys_entries(keys), from),
            0,
            (size_t)(keys->usable - from) * _htkeys_entry_size(keys->kind));
 }
@@ -800,7 +794,7 @@ _htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n,
             keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
     }
     for (Py_ssize_t ix = 0; ix != n; ix++) {
-        entry_t* entry = htkeys_entry_at(keys, ep, ix);
+        entry_t* entry = entry_at(keys->kind, ep, ix);
         if (skip_holes && entry_is_hole(keys->kind, entry)) {
             continue;
         }

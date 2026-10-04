@@ -703,7 +703,7 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
     Py_ssize_t nentries = keys->nentries;
     entry_t* src_entries = htkeys_entries(other->keys);
     for (Py_ssize_t i = 0; i < other->keys->nentries; i++) {
-        entry_t* src = htkeys_entry_at(other->keys, src_entries, i);
+        entry_t* src = entry_at(other->keys->kind, src_entries, i);
         if (!entry_is_hole(other->keys->kind, src)) {
             anystr_entry_t* dst = anystr_entry_at(entries, nentries++);
             dst->identity = Py_NewRef(
@@ -2473,12 +2473,12 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
         if (pos1 >= md->keys->nentries || pos2 >= other->keys->nentries) {
             return 1;
         }
-        entry_t* entry1 = htkeys_entry_at(md->keys, lft_entries, pos1);
+        entry_t* entry1 = entry_at(md->keys->kind, lft_entries, pos1);
         if (entry_is_hole(md->keys->kind, entry1)) {
             pos1++;
             continue;
         }
-        entry_t* entry2 = htkeys_entry_at(other->keys, rht_entries, pos2);
+        entry_t* entry2 = entry_at(other->keys->kind, rht_entries, pos2);
         if (entry_is_hole(other->keys->kind, entry2)) {
             pos2++;
             continue;
@@ -2750,7 +2750,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
          t = t->retired_next) {
         entry_t* retired_entries = htkeys_entries(t);
         for (Py_ssize_t pos = 0; pos < t->nentries; pos++) {
-            entry_t* entry = htkeys_entry_at(t, retired_entries, pos);
+            entry_t* entry = entry_at(t->kind, retired_entries, pos);
             if (!entry_is_hole(t->kind, entry)) {
                 Py_VISIT(entry->key);
                 Py_VISIT(entry->value);
@@ -2765,7 +2765,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
 
     entry_t* entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
-        entry_t* entry = htkeys_entry_at(md->keys, entries, pos);
+        entry_t* entry = entry_at(md->keys->kind, entries, pos);
         if (!entry_is_hole(md->keys->kind, entry)) {
             Py_VISIT(entry->key);
             Py_VISIT(entry->value);
