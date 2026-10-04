@@ -47,6 +47,34 @@ _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
     Py_END_CRITICAL_SECTION();
 }
 
+/* _iter_next_entry() with the table kind a constant, so the scan steps by
+   a fixed entry size. */
+ALWAYS_INLINE static inline int
+_iter_scan(MultidictIter* self, uint8_t kind, htkeys_t* keys, entry_t** pentry)
+{
+    entry_t* entries = htkeys_entries(keys);
+    if (self->reverse) {
+        for (; self->pos >= 0; --self->pos) {
+            entry_t* entry = entry_at(kind, entries, self->pos);
+            if (!entry_is_hole(entry)) {
+                --self->pos;
+                *pentry = entry;
+                return 1;
+            }
+        }
+        return 0;
+    }
+    for (; self->pos < keys->nentries; ++self->pos) {
+        entry_t* entry = entry_at(kind, entries, self->pos);
+        if (!entry_is_hole(entry)) {
+            ++self->pos;
+            *pentry = entry;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /* Finds the next live entry in the iterator's direction and moves past it.
    Returns 1 with *pentry set, 0 at the end, or -1 with RuntimeError set if
    md has changed. The caller holds md's critical section.
@@ -61,28 +89,10 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         return -1;
     }
     htkeys_t* keys = md->keys;
-    entry_t* entries = htkeys_entries(keys);
-    uint8_t kind = keys->kind;
-    if (self->reverse) {
-        for (; self->pos >= 0; --self->pos) {
-            entry_t* entry = entry_at(kind, entries, self->pos);
-            if (!entry_is_hole(kind, entry)) {
-                --self->pos;
-                *pentry = entry;
-                return 1;
-            }
-        }
-        return 0;
+    if (kind_is_compact(keys->kind)) {
+        return _iter_scan(self, KIND_COMPACT, keys, pentry);
     }
-    for (; self->pos < keys->nentries; ++self->pos) {
-        entry_t* entry = entry_at(kind, entries, self->pos);
-        if (!entry_is_hole(kind, entry)) {
-            ++self->pos;
-            *pentry = entry;
-            return 1;
-        }
-    }
-    return 0;
+    return _iter_scan(self, KIND_ANYSTR, keys, pentry);
 }
 
 static inline PyObject*

@@ -52,6 +52,8 @@ _md_check_consistency(const MultiDictObject* md)
             CHECK(PyUnicode_CheckExact(identity));
             CHECK(entry_hash(keys->kind, md->is_ci, entry) ==
                   unicode_hash(identity));
+        } else {
+            CHECK(entry->key == NULL);
         }
     }
     return 1;

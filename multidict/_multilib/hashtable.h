@@ -512,7 +512,7 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
         filled = 0;
         for (Py_ssize_t i = 0; i < oldnumentries; ++i) {
             entry_t* old_ep = entry_at(kind, oldentries, i);
-            if (!entry_is_hole(kind, old_ep)) {
+            if (!entry_is_hole(old_ep)) {
                 htkeys_entry_copy(
                     newkeys, entry_at(kind, newentries, filled), old_ep);
                 filled++;
@@ -704,7 +704,7 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
     entry_t* src_entries = htkeys_entries(other->keys);
     for (Py_ssize_t i = 0; i < other->keys->nentries; i++) {
         entry_t* src = entry_at(other->keys->kind, src_entries, i);
-        if (!entry_is_hole(other->keys->kind, src)) {
+        if (!entry_is_hole(src)) {
             anystr_entry_t* dst = anystr_entry_at(entries, nentries++);
             dst->identity = Py_NewRef(
                 entry_identity(other->keys->kind, other->is_ci, src));
@@ -1701,7 +1701,7 @@ md_to_dict(MultiDictObject* md, PyObject** ret)
         entry_t* entries = htkeys_entries(md->keys);
         uint8_t kind = md->keys->kind;
         entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(kind, entry)) {
+        if (entry_is_hole(entry)) {
             continue;  // deleted
         }
         if (bitmap_test(&collected, pos)) {
@@ -2087,6 +2087,21 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
+/* The last live entry at or before *ppos, which it moves there; `kind` is
+   a constant at each call, so the scan steps by a fixed entry size. */
+ALWAYS_INLINE static inline entry_t*
+_md_last_live(uint8_t kind, entry_t* entries, Py_ssize_t* ppos)
+{
+    Py_ssize_t pos = *ppos;
+    entry_t* entry = entry_at(kind, entries, pos);
+    while (pos >= 0 && entry_is_hole(entry)) {
+        pos--;
+        entry = entry_at(kind, entries, pos);
+    }
+    *ppos = pos;
+    return entry;
+}
+
 NOINLINE static PyObject*
 md_pop_item(MultiDictObject* md)
 {
@@ -2101,11 +2116,9 @@ md_pop_item(MultiDictObject* md)
     uint8_t kind = keys->kind;
 
     Py_ssize_t pos = keys->nentries - 1;
-    entry_t* entry = entry_at(kind, entries, pos);
-    while (pos >= 0 && entry_is_hole(kind, entry)) {
-        pos--;
-        entry = entry_at(kind, entries, pos);
-    }
+    entry_t* entry = kind_is_compact(kind)
+                         ? _md_last_live(KIND_COMPACT, entries, &pos)
+                         : _md_last_live(KIND_ANYSTR, entries, &pos);
     assert(pos >= 0);
 
     htkeysiter_t iter;
@@ -2449,12 +2462,12 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
             return 1;
         }
         entry_t* entry1 = entry_at(md->keys->kind, lft_entries, pos1);
-        if (entry_is_hole(md->keys->kind, entry1)) {
+        if (entry_is_hole(entry1)) {
             pos1++;
             continue;
         }
         entry_t* entry2 = entry_at(other->keys->kind, rht_entries, pos2);
-        if (entry_is_hole(other->keys->kind, entry2)) {
+        if (entry_is_hole(entry2)) {
             pos2++;
             continue;
         }
@@ -2530,7 +2543,7 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
 
     for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
         entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(kind, entry)) {
+        if (entry_is_hole(entry)) {
             continue;
         }
         avalue = Py_NewRef(entry->value);
@@ -2614,7 +2627,7 @@ md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
             goto fail;  // discard the writer instead of leaking it
         }
         entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(kind, entry)) {
+        if (entry_is_hole(entry)) {
             continue;
         }
         key = Py_NewRef(entry->key);
@@ -2725,7 +2738,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
         entry_t* retired_entries = htkeys_entries(t);
         for (Py_ssize_t pos = 0; pos < t->nentries; pos++) {
             entry_t* entry = entry_at(t->kind, retired_entries, pos);
-            if (!entry_is_hole(t->kind, entry)) {
+            if (!entry_is_hole(entry)) {
                 Py_VISIT(entry->key);
                 Py_VISIT(entry->value);
             }
@@ -2740,7 +2753,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
     entry_t* entries = htkeys_entries(md->keys);
     for (Py_ssize_t pos = 0; pos < md->keys->nentries; pos++) {
         entry_t* entry = entry_at(md->keys->kind, entries, pos);
-        if (!entry_is_hole(md->keys->kind, entry)) {
+        if (!entry_is_hole(entry)) {
             Py_VISIT(entry->key);
             Py_VISIT(entry->value);
         }

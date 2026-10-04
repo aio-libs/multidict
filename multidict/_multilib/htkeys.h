@@ -263,14 +263,13 @@ entry_identity(uint8_t kind, bool ci, const entry_t* entry)
     return as_const_anystr(entry)->identity;
 }
 
-/* Whether entry is a hole (deleted or never filled). Cheaper than testing
-   entry_identity() for NULL, which in a CIMultiDict's compact table
-   reads through the key. */
-static inline bool
-entry_is_hole(uint8_t kind, const entry_t* entry)
+/* Whether entry is a hole (deleted or never filled). The key is NULL
+   exactly when the identity is, in every kind, for a caller holding md's
+   critical section; a lock-free reader checks the identity slot instead. */
+ALWAYS_INLINE static inline bool
+entry_is_hole(const entry_t* entry)
 {
-    return kind_is_compact(kind) ? entry->key == NULL
-                                 : as_const_anystr(entry)->identity == NULL;
+    return entry->key == NULL;
 }
 
 /* The field lock-free readers check first: the key in a compact table, so
@@ -795,7 +794,7 @@ _htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n,
     }
     for (Py_ssize_t ix = 0; ix != n; ix++) {
         entry_t* entry = entry_at(keys->kind, ep, ix);
-        if (skip_holes && entry_is_hole(keys->kind, entry)) {
+        if (skip_holes && entry_is_hole(entry)) {
             continue;
         }
         Py_hash_t hash = entry_hash(keys->kind, ci, entry);
