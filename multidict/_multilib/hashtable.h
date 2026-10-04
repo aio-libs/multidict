@@ -2087,7 +2087,7 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 md_pop_item(MultiDictObject* md)
 {
     bool ci = md->is_ci;
