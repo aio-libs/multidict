@@ -206,7 +206,7 @@ _multidict_init_kind(mod_state* state, bool is_ci, PyObject* arg,
     if (other != NULL) {
         entry_t* entries = htkeys_entries(other->keys);
         for (Py_ssize_t i = 0; i < other->keys->nentries; i++) {
-            entry_t* entry = htkeys_entry_at(other->keys, entries, i);
+            entry_t* entry = entry_at(other->keys->kind, entries, i);
             if (!entry_is_hole(other->keys->kind, entry)) {
                 key = entry->key;
                 break;

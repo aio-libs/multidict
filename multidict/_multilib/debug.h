@@ -43,7 +43,7 @@ _md_check_consistency(const MultiDictObject* md)
 
     entry_t* entries = htkeys_entries(keys);
     for (Py_ssize_t i = 0; i < calc_usable; i++) {
-        entry_t* entry = htkeys_entry_at(keys, entries, i);
+        entry_t* entry = entry_at(keys->kind, entries, i);
         PyObject* identity = entry_identity(keys->kind, md->is_ci, entry);
 
         if (identity != NULL) {
@@ -76,7 +76,7 @@ _md_dump(MultiDictObject* md)
     printf("  --------\n");
     entry_t* entries = htkeys_entries(keys);
     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-        entry_t* entry = htkeys_entry_at(keys, entries, i);
+        entry_t* entry = entry_at(keys->kind, entries, i);
         PyObject* identity = entry_identity(keys->kind, md->is_ci, entry);
 
         if (identity == NULL) {
