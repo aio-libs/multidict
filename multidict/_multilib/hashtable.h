@@ -2749,7 +2749,9 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
     return 0;
 }
 
-static inline int
+// Out of line: inlined into dealloc and both clear() entry points, it costs
+// 756 bytes of GIL code to save 5-12 instructions per call
+NOINLINE static int
 md_clear(MultiDictObject* md)
 {
     if (md->keys == NULL || md->keys == &empty_htkeys) {

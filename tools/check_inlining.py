@@ -204,12 +204,6 @@ RULES = (
         "CIMultiDict(items) +10%",
     ),
     Rule(
-        "md_clear",
-        ("multidict_clear",),
-        (FT,),
-        "#1601 prototype: clear() +13% on FT",
-    ),
-    Rule(
         "htkeysiter_init",
         "*",
         BOTH,
