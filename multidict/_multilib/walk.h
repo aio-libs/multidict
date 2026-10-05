@@ -238,7 +238,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (md_check_version(md, version) < 0) {
             goto fail;
         }
-        if (ret == 0) {
+        if (ret == 0 || !keys->maybe_dups) {
             break;
         }
     }

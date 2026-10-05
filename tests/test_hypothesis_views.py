@@ -38,8 +38,17 @@ def _fold_for(any_multidict_class_name: str) -> Callable[[str], str]:
     return str.lower if any_multidict_class_name == "CIMultiDict" else (lambda s: s)
 
 
+def _first_spellings(pairs: _Pairs, fold: Callable[[str], str]) -> list[str]:
+    first: dict[str, str] = {}
+    for k, _v in pairs:
+        first.setdefault(fold(k), k)
+    return list(first.values())
+
+
 @given(pairs=pairs_lists())
-def test_view_len_is_live(any_multidict_class: _MD_Classes, pairs: _Pairs) -> None:
+def test_view_len_is_live(
+    any_multidict_class: _MD_Classes, any_multidict_class_name: str, pairs: _Pairs
+) -> None:
     md = any_multidict_class(pairs)
     items_view = md.items()
     keys_view = md.keys()
@@ -48,17 +57,20 @@ def test_view_len_is_live(any_multidict_class: _MD_Classes, pairs: _Pairs) -> No
     md.add("__len_marker__", 1)
 
     assert len(items_view) == len(md)
-    assert len(keys_view) == len(md)
     assert len(values_view) == len(md)
+    fold = _fold_for(any_multidict_class_name)
+    assert len(keys_view) == len({fold(k) for k, _v in pairs}) + 1
 
 
 @given(pairs=pairs_lists())
 def test_forward_iteration_matches_insertion_order(
-    any_multidict_class: _MD_Classes, pairs: _Pairs
+    any_multidict_class: _MD_Classes, any_multidict_class_name: str, pairs: _Pairs
 ) -> None:
     md = any_multidict_class(pairs)
     assert [(str(k), v) for k, v in md.items()] == pairs
-    assert [str(k) for k in md.keys()] == [str(k) for k, _v in pairs]
+    first = _first_spellings(pairs, _fold_for(any_multidict_class_name))
+    assert [str(k) for k in md.keys()] == first
+    assert [str(k) for k in md] == first
     assert list(md.values()) == [v for _k, v in pairs]
 
 

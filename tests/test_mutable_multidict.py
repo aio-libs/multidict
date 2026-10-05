@@ -185,7 +185,7 @@ class TestMutableMultiDict:
         case_sensitive_multidict_class: type[MultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class([("key", "one"), ("key", "two")], foo="bar")
-        assert list(d.keys()) == ["key", "key", "foo"]
+        assert list(d.keys()) == ["key", "foo"]
 
         del d["key"]
         assert d == {"foo": "bar"}

@@ -50,13 +50,16 @@ _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
 /* _iter_next_entry() with the table kind a constant, so the scan steps by
    a fixed entry size. */
 ALWAYS_INLINE static inline int
-_iter_scan(MultidictIter* self, uint8_t kind, htkeys_t* keys, entry_t** pentry)
+_iter_scan(MultidictIter* self, uint8_t kind, htkeys_t* keys, entry_t** pentry,
+           bool first_only)
 {
     entry_t* entries = htkeys_entries(keys);
     if (self->reverse) {
         for (; self->pos >= 0; --self->pos) {
             entry_t* entry = entry_at(kind, entries, self->pos);
-            if (!entry_is_hole(entry)) {
+            if (!entry_is_hole(entry) &&
+                (!first_only ||
+                 md_is_first_key(self->md, kind, entries, entry, self->pos))) {
                 --self->pos;
                 *pentry = entry;
                 return 1;
@@ -66,7 +69,9 @@ _iter_scan(MultidictIter* self, uint8_t kind, htkeys_t* keys, entry_t** pentry)
     }
     for (; self->pos < keys->nentries; ++self->pos) {
         entry_t* entry = entry_at(kind, entries, self->pos);
-        if (!entry_is_hole(entry)) {
+        if (!entry_is_hole(entry) &&
+            (!first_only ||
+             md_is_first_key(self->md, kind, entries, entry, self->pos))) {
             ++self->pos;
             *pentry = entry;
             return 1;
@@ -75,24 +80,45 @@ _iter_scan(MultidictIter* self, uint8_t kind, htkeys_t* keys, entry_t** pentry)
     return 0;
 }
 
-/* Finds the next live entry in the iterator's direction and moves past it.
+/* The keys iterator's scan once the table may hold a key twice, NULL at
+   the end; out of line so the scan for a table without one stays as small
+   as the others. Returns the entry by value: an out-parameter would make
+   GCC add a stack protector to every caller. */
+NOINLINE static entry_t*
+_iter_scan_first_keys(MultidictIter* self, htkeys_t* keys)
+{
+    entry_t* entry = NULL;
+    if (kind_is_compact(keys->kind)) {
+        _iter_scan(self, KIND_COMPACT, keys, &entry, true);
+    } else {
+        _iter_scan(self, KIND_ANYSTR, keys, &entry, true);
+    }
+    return entry;
+}
+
+/* Finds the next live entry in the iterator's direction and moves past it;
+   with `first_only`, only the first entry of each key.
    Returns 1 with *pentry set, 0 at the end, or -1 with RuntimeError set if
    md has changed. The caller holds md's critical section.
 
    Forced: the FT items iterator needs it inline (#1601), and this unit
    sits so close to GCC's budget that unrelated changes push it out. */
 ALWAYS_INLINE static inline int
-_iter_next_entry(MultidictIter* self, entry_t** pentry)
+_iter_next_entry(MultidictIter* self, entry_t** pentry, bool first_only)
 {
     MultiDictObject* md = self->md;
     if (md_check_version(md, self->version) < 0) {
         return -1;
     }
     htkeys_t* keys = md->keys;
-    if (kind_is_compact(keys->kind)) {
-        return _iter_scan(self, KIND_COMPACT, keys, pentry);
+    if (first_only && keys->maybe_dups) {
+        *pentry = _iter_scan_first_keys(self, keys);
+        return *pentry != NULL;
     }
-    return _iter_scan(self, KIND_ANYSTR, keys, pentry);
+    if (kind_is_compact(keys->kind)) {
+        return _iter_scan(self, KIND_COMPACT, keys, pentry, false);
+    }
+    return _iter_scan(self, KIND_ANYSTR, keys, pentry, false);
 }
 
 static inline PyObject*
@@ -153,7 +179,7 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = _iter_next_entry(self, &entry);
+    res = _iter_next_entry(self, &entry, false);
     if (res > 0) {
         // not Py_NewRef(): see md_ensure_key()
         value = entry->value;
@@ -218,7 +244,7 @@ multidict_values_iter_tp_iternext(MultidictIter* self)
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = _iter_next_entry(self, &entry);
+    res = _iter_next_entry(self, &entry, false);
     if (res > 0) {
         value = Py_NewRef(entry->value);
     }
@@ -242,7 +268,7 @@ multidict_keys_iter_tp_iternext(MultidictIter* self)
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = _iter_next_entry(self, &entry);
+    res = _iter_next_entry(self, &entry, true);
     if (res > 0) {
         key = md_ensure_key(self->md, entry);  // last entry access
         if (key == NULL) {

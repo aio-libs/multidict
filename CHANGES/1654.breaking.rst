@@ -1,0 +1,7 @@
+Changed :meth:`~multidict.MultiDict.keys` and iteration over
+:class:`~multidict.MultiDict`, :class:`~multidict.CIMultiDict` and their
+proxies to yield each key once, as spelled in its first item, so that
+``CIMultiDict([('X-Foo', '1'), ('x-foo', '2')])`` iterates over ``'X-Foo'``
+alone and ``len(d.keys())`` counts distinct keys; :meth:`~multidict.MultiDict.items`,
+:meth:`~multidict.MultiDict.values` and ``len(d)`` kept every item
+-- by :user:`asvetlov`.

@@ -122,7 +122,11 @@ NOINLINE static PyObject*
 multidict_view_richcompare(_Multidict_ViewObject* self, PyObject* other,
                            int op)
 {
-    Py_ssize_t self_size = md_len(self->md);
+    // a keys view is shorter than its multidict when keys repeat
+    Py_ssize_t self_size = PyObject_Length((PyObject*)self);
+    if (self_size < 0) {
+        return NULL;
+    }
     Py_ssize_t size = PyObject_Length(other);
     if (size < 0) {
         if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -847,6 +851,12 @@ multidict_keysview_new(MultiDictObject* md)
     return _multidict_view_new(md, md->state->KeysViewType);
 }
 
+NOINLINE static Py_ssize_t
+multidict_keysview_sq_length(_Multidict_ViewObject* self)
+{
+    return md_keys_len(self->md);
+}
+
 NOINLINE static PyObject*
 multidict_keysview_tp_iter(_Multidict_ViewObject* self)
 {
@@ -1030,7 +1040,9 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
 
     for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
         entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(entry)) {
+        if (entry_is_hole(entry) ||
+            (keys->maybe_dups &&
+             !md_is_first_key(md, kind, entries, entry, pos))) {
             continue;
         }
         identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
@@ -1173,7 +1185,7 @@ static PyType_Slot multidict_keysview_slots[] = {
     {Py_nb_and, multidict_keysview_nb_and},
     {Py_nb_xor, multidict_keysview_xor},
     {Py_nb_or, multidict_keysview_nb_or},
-    {Py_sq_length, multidict_view_sq_length},
+    {Py_sq_length, multidict_keysview_sq_length},
     {Py_sq_contains, multidict_keysview_sq_contains},
     {Py_tp_getattro, PyObject_GenericGetAttr},
     {Py_tp_traverse, multidict_view_tp_traverse},

@@ -258,7 +258,7 @@ class BaseMultiDictTest:
         cls: type[MultiDict[str | int]] | type[CIMultiDict[str | int]],
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
-        assert list(d) == ["key", "key2", "key"]
+        assert list(d) == ["key", "key2"]
 
     def test__contains(
         self,
@@ -266,7 +266,7 @@ class BaseMultiDictTest:
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
 
-        assert list(d) == ["key", "key2", "key"]
+        assert list(d) == ["key", "key2"]
 
         assert "key" in d
         assert "key2" in d
@@ -280,7 +280,7 @@ class BaseMultiDictTest:
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
 
-        assert list(d.keys()) == ["key", "key2", "key"]
+        assert list(d.keys()) == ["key", "key2"]
 
         assert "key" in d.keys()
         assert "key2" in d.keys()
@@ -763,7 +763,7 @@ class BaseMultiDictTest:
         cls: type[MultiDict[int | str]] | type[CIMultiDict[int | str]],
     ) -> None:
         d = cls([("key", "one"), ("key2", "two"), ("key", 3)])
-        assert list(reversed(d.keys())) == ["key", "key2", "key"]  # type: ignore[call-overload]
+        assert list(reversed(d.keys())) == ["key2", "key"]  # type: ignore[call-overload]
 
     def test_reversed_values(
         self,
@@ -935,7 +935,7 @@ class TestMultiDict(BaseMultiDictTest):
 
     def test_keys__repr__(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")], key="value2")
-        assert repr(d.keys()) == "<_KeysView('key', 'key')>"
+        assert repr(d.keys()) == "<_KeysView('key')>"
 
     def test_keys__repr__recursive(
         self, case_sensitive_multidict_class: type[MultiDict[object]]
@@ -1054,7 +1054,7 @@ class TestCIMultiDict(BaseMultiDictTest):
 
     def test_keys__repr__(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "value1")], key="value2")
-        assert repr(d.keys()) == "<_KeysView('KEY', 'key')>"
+        assert repr(d.keys()) == "<_KeysView('KEY')>"
 
     def test_values__repr__(self, cls: type[CIMultiDict[str]]) -> None:
         d = cls([("KEY", "value1")], key="value2")

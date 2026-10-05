@@ -52,15 +52,23 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
+    /* For a miss: an entry this batch updated may be the key's, so check
+       then; with none, the key is new. */
+    Py_ssize_t slot = MD_SLOT_FIND;
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
             continue;
         }
         entry_t* entry = entry_at(kind, entries, iter.index);
-        if (hash != entry_hash(kind, ci, entry) ||
-            bitmap_test(&marks->updated, iter.index) ||
-            !str_cmp(identity, entry_identity(kind, ci, entry))) {
+        if (hash != entry_hash(kind, ci, entry)) {
+            continue;
+        }
+        if (bitmap_test(&marks->updated, iter.index)) {
+            slot = MD_SLOT_CHECK;
+            continue;
+        }
+        if (!str_cmp(identity, entry_identity(kind, ci, entry))) {
             continue;
         }
         if (!found) {
@@ -98,10 +106,14 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         } else if (update_marks_doom(marks, iter.index, entry) < 0) {
             return -1;
         }
+        if (!md->keys->maybe_dups) {
+            break;  // the key's only entry
+        }
     }
 
     if (!found) {
-        return md_add_for_upd(md, hash, identity, key, value, marks, fits, ci);
+        return md_add_for_upd(
+            md, hash, identity, key, value, marks, fits, slot, ci);
     }
     return 0;
 }
@@ -119,15 +131,19 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     htkeysiter_init(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
+    Py_ssize_t slot = MD_SLOT_FIND;  // as in _md_update()
 
     for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
         if (iter.index < 0) {
             continue;
         }
         entry_t* entry = entry_at(kind, entries, iter.index);
+        if (hash != entry_hash(kind, ci, entry)) {
+            continue;
+        }
         /* An entry this batch added doesn't count as already present. */
-        if (hash != entry_hash(kind, ci, entry) ||
-            bitmap_test(&marks->updated, iter.index)) {
+        if (bitmap_test(&marks->updated, iter.index)) {
+            slot = MD_SLOT_CHECK;
             continue;
         }
         if (str_cmp(identity, entry_identity(kind, ci, entry))) {
@@ -135,7 +151,8 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         }
     }
 
-    return md_add_for_upd(md, hash, identity, key, value, marks, fits, ci);
+    return md_add_for_upd(
+        md, hash, identity, key, value, marks, fits, slot, ci);
 }
 
 /* Removes the entries update() doomed and nothing has written since. Only
@@ -214,7 +231,8 @@ md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
 ALWAYS_INLINE static inline int
 _md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
                 PyObject* identity, PyObject* key, PyObject* value,
-                reflist_t* defer, update_marks_t* marks, bool ci)
+                reflist_t* defer, update_marks_t* marks, Py_ssize_t slot,
+                bool ci)
 {
     // from another table, so not known from the identity
     bool fits = md_key_fits(md, key, identity, ci);
@@ -223,7 +241,8 @@ _md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
             return _md_update(
                 md, hash, identity, key, value, defer, marks, fits, ci);
         case Extend:
-            return md_add_with_hash(md, hash, identity, key, value, fits, ci);
+            return md_add_with_hash(
+                md, hash, identity, key, value, fits, slot, ci);
         case Merge:
             return _md_merge(md, hash, identity, key, value, marks, fits, ci);
     }
@@ -235,7 +254,7 @@ _md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
 ALWAYS_INLINE static inline int
 _md_update_from_ht_scan(MultiDictObject* md, MultiDictObject* other,
                         UpdateOp op, reflist_t* defer, update_marks_t* marks,
-                        bool ci, uint8_t kind)
+                        Py_ssize_t slot, bool ci, uint8_t kind)
 {
     entry_t* entry = htkeys_entries(other->keys);
     entry_t* end = entry_at(kind, entry, other->keys->nentries);
@@ -251,6 +270,7 @@ _md_update_from_ht_scan(MultiDictObject* md, MultiDictObject* other,
                             entry->value,
                             defer,
                             marks,
+                            slot,
                             ci) < 0) {
             return -1;
         }
@@ -282,11 +302,21 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     }
 
     if (ci == other->is_ci) {
+        /* Keys that are unique in other stay unique in an empty md, and
+           ones that repeat there will here. */
+        Py_ssize_t slot = MD_SLOT_CHECK;
+        if (op == Extend) {
+            if (other->keys->maybe_dups) {
+                md->keys->maybe_dups = 1;
+            } else if (md->used == 0) {
+                slot = MD_SLOT_FIND;
+            }
+        }
         return kind_is_compact(other->keys->kind)
                    ? _md_update_from_ht_scan(
-                         md, other, op, defer, marks, ci, KIND_COMPACT)
+                         md, other, op, defer, marks, slot, ci, KIND_COMPACT)
                    : _md_update_from_ht_scan(
-                         md, other, op, defer, marks, ci, KIND_ANYSTR);
+                         md, other, op, defer, marks, slot, ci, KIND_ANYSTR);
     }
 
     entry_t* entries = htkeys_entries(other->keys);
@@ -320,8 +350,16 @@ _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         if (key == NULL) {
             goto fail;
         }
-        if (_md_update_item(
-                md, op, hash, identity, key, value, defer, marks, ci) < 0) {
+        if (_md_update_item(md,
+                            op,
+                            hash,
+                            identity,
+                            key,
+                            value,
+                            defer,
+                            marks,
+                            MD_SLOT_CHECK,
+                            ci) < 0) {
             goto fail;
         }
         Py_DECREF(identity);
@@ -398,6 +436,7 @@ _md_extend_self_scan(MultiDictObject* md, bool ci, uint8_t kind)
                                  entry->key,
                                  entry->value,
                                  md_key_fits(md, entry->key, identity, ci),
+                                 MD_SLOT_CHECK,
                                  ci) < 0) {
                 return -1;
             }
@@ -413,6 +452,9 @@ md_extend_self(MultiDictObject* md)
     bool ci = md->is_ci;
     if (md_reserve(md, md->keys->nentries) < 0) {
         return -1;
+    }
+    if (md->used > 0) {
+        md->keys->maybe_dups = 1;  // every key gets a second entry
     }
 
     if (kind_is_compact(md->keys->kind)) {
@@ -433,6 +475,8 @@ _md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
     bool owned = false;
 
     assert(PyDict_CheckExact(kwds));
+    // a dict's keys are distinct strings, so unique in an empty MultiDict
+    Py_ssize_t slot = !ci && md->used == 0 ? MD_SLOT_FIND : MD_SLOT_CHECK;
 
     // PyDict_Next returns borrowed refs
     while (PyDict_Next(kwds, &pos, &key, &value)) {
@@ -475,7 +519,7 @@ _md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                     owned = true;
                 }
                 if (md_add_with_hash_steal_refs(
-                        md, hash, identity, key, value, fits, ci) < 0) {
+                        md, hash, identity, key, value, fits, slot, ci) < 0) {
                     goto fail;
                 }
                 identity = NULL;
@@ -561,6 +605,8 @@ _md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
 {
     assert(ci == md->is_ci);
     Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
+    // keyword names are distinct, so unique in an empty MultiDict
+    Py_ssize_t slot = !ci && md->used == 0 ? MD_SLOT_FIND : MD_SLOT_CHECK;
     if (md_reserve(md, nkwargs) < 0) {
         return -1;
     }
@@ -582,7 +628,8 @@ _md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
         }
         PyObject* value = args[nargs + i];  // borrowed
         if (md_add_with_hash_steal_refs(
-                md, hash, identity, key, Py_NewRef(value), fits, ci) < 0) {
+                md, hash, identity, key, Py_NewRef(value), fits, slot, ci) <
+            0) {
             Py_DECREF(value);
             Py_DECREF(identity);
             Py_DECREF(key);
@@ -815,8 +862,14 @@ _md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                 Py_CLEAR(value);
                 break;
             case Extend:
-                if (md_add_with_hash_steal_refs(
-                        md, hash, identity, key, value, fits, ci) < 0) {
+                if (md_add_with_hash_steal_refs(md,
+                                                hash,
+                                                identity,
+                                                key,
+                                                value,
+                                                fits,
+                                                MD_SLOT_CHECK,
+                                                ci) < 0) {
                     goto fail;
                 }
                 identity = NULL;
