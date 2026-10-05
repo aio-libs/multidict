@@ -40,7 +40,7 @@ _multidict_view_alloc(MultiDictObject* md, PyTypeObject* tp)
     return mv;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 _multidict_view_new(MultiDictObject* md, PyTypeObject* tp)
 {
     _Multidict_ViewObject* mv = _multidict_view_alloc(md, tp);

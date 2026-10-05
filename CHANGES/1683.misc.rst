@@ -1,0 +1,4 @@
+Moved the constructors of the C extension's iterators and views out of
+line, so that every caller shares one copy of each instead of inlining
+its own
+-- by :user:`asvetlov`.

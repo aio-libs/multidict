@@ -95,7 +95,9 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
     return _iter_scan(self, KIND_ANYSTR, keys, pentry);
 }
 
-static inline PyObject*
+/* The three constructors are out of line: each has several callers, and
+   allocation dominates the cost of the call. */
+NOINLINE static PyObject*
 multidict_items_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it = _multidict_iter_alloc(md, md->state->ItemsIterType);
@@ -115,7 +117,7 @@ multidict_items_iter_new(MultiDictObject* md, int reverse)
     return (PyObject*)it;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 multidict_keys_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it = _multidict_iter_alloc(md, md->state->KeysIterType);
@@ -129,7 +131,7 @@ multidict_keys_iter_new(MultiDictObject* md, int reverse)
     return (PyObject*)it;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 multidict_values_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it = _multidict_iter_alloc(md, md->state->ValuesIterType);
