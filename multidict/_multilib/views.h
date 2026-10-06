@@ -164,7 +164,7 @@ multidict_view_richcompare(_Multidict_ViewObject* self, PyObject* other,
     }
     PyObject* ret = _view_all_in(subset, superset);
     if (ret != NULL && op == Py_NE) {
-        bool equal = ret == Py_True;
+        bool equal = Py_IsTrue(ret);
         Py_DECREF(ret);
         return PyBool_FromLong(!equal);
     }
