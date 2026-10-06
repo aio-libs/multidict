@@ -1,0 +1,4 @@
+Stopped copying the fast path of :c:func:`!PyUnstable_TryIncRef` into
+the free-threaded C extension, where it read CPython's private reference
+count fields, and called the function itself instead
+-- by :user:`asvetlov`.
