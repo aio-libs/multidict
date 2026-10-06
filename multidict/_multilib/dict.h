@@ -100,7 +100,7 @@ md_check_version(MultiDictObject* md, uint64_t version)
 
    MultiDict and CIMultiDict share a pool because they share a struct and
    differ only in md->is_ci, and the two proxy types likewise. */
-static inline pool_t*
+static pool_t*
 _md_pool_for(mod_state* state, PyTypeObject* tp)
 {
     if (tp == state->MultiDictType || tp == state->CIMultiDictType) {
