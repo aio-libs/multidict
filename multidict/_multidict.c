@@ -471,8 +471,7 @@ multidict_to_dict(MultiDictObject* self)
 
 /******************** Base Methods ********************/
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 multidict_getall(MultiDictObject* self, PyObject* const* args,
                  Py_ssize_t nargs, PyObject* kwnames)
 {
@@ -499,8 +498,7 @@ multidict_getall(MultiDictObject* self, PyObject* const* args,
     return list;
 }
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 multidict_getone(MultiDictObject* self, PyObject* const* args,
                  Py_ssize_t nargs, PyObject* kwnames)
 {
@@ -519,8 +517,7 @@ multidict_getone(MultiDictObject* self, PyObject* const* args,
     return _multidict_getone(self, key, _default);
 }
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
               PyObject* kwnames)
 {
@@ -613,8 +610,7 @@ multidict_mp_length(MultiDictObject* self)
     return md_len(self);
 }
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 multidict_mp_subscript(MultiDictObject* self, PyObject* key)
 {
     return _multidict_getone(self, key, NULL);
@@ -629,8 +625,7 @@ multidict_mp_ass_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
     return md_replace(self, key, val);
 }
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline int
+static int
 multidict_sq_contains(MultiDictObject* self, PyObject* key)
 {
     return md_contains(self, key);
