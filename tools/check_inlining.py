@@ -190,12 +190,6 @@ RULES = (
         "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
     ),
     Rule(
-        "_md_eq_scan",
-        "*",
-        BOTH,
-        "#1676: the constant kinds made md == md 35-46% cheaper",
-    ),
-    Rule(
         "_md_update_from_ht_scan",
         "*",
         BOTH,
