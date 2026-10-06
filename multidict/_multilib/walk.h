@@ -75,14 +75,6 @@ _md_seen_test_and_add(md_seen_t* seen, MultiDictObject* md, Py_ssize_t index)
     return bitmap_test_and_set(&seen->bitmap, index);
 }
 
-static inline void
-_md_seen_release(md_seen_t* seen)
-{
-    if (seen->nfew > MD_SEEN_MANY) {
-        bitmap_release(&seen->bitmap);
-    }
-}
-
 /* Visitor for md_walk().
 
    `identity`, `key` and `value` are borrowed: the walk holds a reference to
@@ -97,7 +89,7 @@ typedef int (*md_item_visitor_t)(void* user_data, PyObject* identity,
                                  Py_hash_t hash, PyObject* key,
                                  PyObject* value);
 
-ALWAYS_INLINE static inline Py_ssize_t
+static Py_ssize_t
 _md_walk_all_scan(MultiDictObject* md, bool with_keys,
                   md_item_visitor_t visitor, void* user_data, uint8_t kind)
 {
@@ -152,7 +144,7 @@ _md_walk_all_scan(MultiDictObject* md, bool with_keys,
    no seen set to keep.
 
    `visitor` must not call back into `md`, for the reason md_walk() gives. */
-ALWAYS_INLINE static inline Py_ssize_t
+static Py_ssize_t
 md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
             void* user_data)
 {
@@ -190,7 +182,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     htkeysiter_init(&iter, keys, hash);
 
     /* Not zero-initialized: the bitmap's inline buffer is 4 KB.
-       _md_seen_release() only needs `nfew`. */
+       The release below only needs `nfew`. */
     md_seen_t seen;
     seen.nfew = 0;
 
@@ -211,7 +203,8 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
            (see its doc comment), and this scan never marks the table. */
         int seen_before = _md_seen_test_and_add(&seen, md, iter.index);
         if (seen_before < 0) {
-            goto fail;
+            count = -1;
+            break;
         }
         if (seen_before) {
             continue;
@@ -223,7 +216,8 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             key = md_ensure_key(md, entry);  // last entry access
             if (key == NULL) {
                 Py_DECREF(value);
-                goto fail;
+                count = -1;
+                break;
             }
         }
         count++;
@@ -232,25 +226,26 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         Py_DECREF(value);
         if (ret < 0) {
             assert(PyErr_Occurred());
-            goto fail;
+            count = -1;
+            break;
         }
         /* md_ensure_key() and the visitor can both run Python code. */
         if (md_check_version(md, version) < 0) {
-            goto fail;
+            count = -1;
+            break;
         }
         if (ret == 0) {
             break;
         }
     }
-    _md_seen_release(&seen);
+    if (seen.nfew > MD_SEEN_MANY) {
+        bitmap_release(&seen.bitmap);
+    }
     return count;
-fail:
-    _md_seen_release(&seen);
-    return -1;
 }
 
 /* md_walk_with_hash() for callers that have no hash at hand yet. */
-ALWAYS_INLINE static inline Py_ssize_t
+static Py_ssize_t
 md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
         md_item_visitor_t visitor, void* user_data)
 {

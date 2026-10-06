@@ -1,0 +1,4 @@
+Dropped ``ALWAYS_INLINE`` from three of the multidict walk helpers in the C
+extension and folded the seen-set release into its only caller; the pin on
+the walk that :meth:`~multidict.MultiDict.getall` uses stayed, and gained an
+inlining rule -- by :user:`asvetlov`.
