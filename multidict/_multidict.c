@@ -352,7 +352,7 @@ cimultidict_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
 
 /* ---- MultiDictProxy/CIMultiDictProxy tp_vectorcall ---- */
 
-static inline int
+static int
 _multidict_proxy_set_target(mod_state* state, MultiDictProxyObject* self,
                             bool is_ci, PyObject* arg)
 {
