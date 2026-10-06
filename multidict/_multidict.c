@@ -1951,7 +1951,7 @@ module_traverse(PyObject* mod, visitproc visit, void* arg)
     return 0;
 }
 
-static void
+NOINLINE static void
 drain_pools(mod_state* state)
 {
     htkeys_pools_clear(state->htkeys_pools);
