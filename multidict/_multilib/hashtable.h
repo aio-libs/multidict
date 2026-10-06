@@ -1684,9 +1684,15 @@ md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret, bool ci)
     return _md_get_one_identity(md, key, identity, hash, ret, ci);
 }
 
-ALWAYS_INLINE static inline int
-_md_to_dict_scan(MultiDictObject* md, PyObject* dict, uint8_t kind)
+static int
+md_to_dict(MultiDictObject* md, PyObject** ret)
 {
+    PyObject* dict = PyDict_New();
+    if (dict == NULL) {
+        return -1;
+    }
+    uint8_t kind =
+        kind_is_compact(md->keys->kind) ? KIND_COMPACT : KIND_ANYSTR;
     PyObject* key = NULL;
     PyObject* lst = NULL;
     uint64_t version = md->version;
@@ -1768,28 +1774,14 @@ _md_to_dict_scan(MultiDictObject* md, PyObject* dict, uint8_t kind)
     }
 
     bitmap_release(&collected);
+    *ret = dict;
     return 0;
 fail:
     bitmap_release(&collected);
     Py_XDECREF(key);
     Py_XDECREF(lst);
+    Py_DECREF(dict);
     return -1;
-}
-
-static int
-md_to_dict(MultiDictObject* md, PyObject** ret)
-{
-    *ret = PyDict_New();
-    if (*ret == NULL) {
-        return -1;
-    }
-    int r = kind_is_compact(md->keys->kind)
-                ? _md_to_dict_scan(md, *ret, KIND_COMPACT)
-                : _md_to_dict_scan(md, *ret, KIND_ANYSTR);
-    if (r < 0) {
-        Py_CLEAR(*ret);
-    }
-    return r;
 }
 
 // Caller holds md's critical section

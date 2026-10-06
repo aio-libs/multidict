@@ -300,12 +300,6 @@ RULES = (
         "#1675: out of line in d[key] = v once update() and merge() lost "
         "their per-class copies, and with it del d[key] +3% on CIMultiDict",
     ),
-    Rule(
-        "_multidict_bulk",
-        "*",
-        BOTH,
-        "#1591: one shared copy made subclass init 7-8% slower",
-    ),
 )
 
 FUNC_RE = re.compile(r"^[0-9a-f]+ <(.+)>:$")
