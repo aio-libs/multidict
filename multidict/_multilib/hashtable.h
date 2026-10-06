@@ -560,7 +560,7 @@ _md_resize_for_add(MultiDictObject* md)
     return _md_rebuild(md, calculate_log2_keysize(GROWTH_RATE(md)));
 }
 
-NOINLINE static int
+static int
 md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 {
     if (extra_size > (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
