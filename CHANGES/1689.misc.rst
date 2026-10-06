@@ -1,0 +1,2 @@
+Removed three unused helpers from the C extension's headers
+-- by :user:`asvetlov`.

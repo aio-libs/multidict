@@ -127,16 +127,6 @@ _bitmap_start(bitmap_t* bm)
     return 0;
 }
 
-/* Sets up storage now, so that no later mark on this bitmap can fail. */
-static inline int
-bitmap_reserve(bitmap_t* bm)
-{
-    if (bm->summary != NULL) {
-        return 0;
-    }
-    return _bitmap_start(bm);
-}
-
 /* Safe to call more than once, and on a bitmap whose init never ran,
    provided `summary` was set to NULL up front. */
 static inline void
