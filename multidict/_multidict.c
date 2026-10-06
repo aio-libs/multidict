@@ -431,7 +431,8 @@ cimultidict_proxy_tp_vectorcall(PyObject* type, PyObject* const* args,
     return _multidict_proxy_ctor_vectorcall(type, args, nargsf, kwnames, true);
 }
 
-static PyObject*
+/* Tail-called by the MultiDictProxy copy. */
+NOINLINE static PyObject*
 multidict_copy(MultiDictObject* self)
 {
     MultiDictObject* new_md = md_shell_new(self->state, Py_TYPE(self));
@@ -452,7 +453,8 @@ multidict_copy(MultiDictObject* self)
 PyDoc_STRVAR(multidict_to_dict_doc,
              "Return a dict with lists of all values for each key.");
 
-static PyObject*
+/* Tail-called by the MultiDictProxy copy. */
+NOINLINE static PyObject*
 multidict_to_dict(MultiDictObject* self)
 {
     PyObject* result = NULL;
@@ -640,7 +642,8 @@ multidict_tp_iter(MultiDictObject* self)
     return multidict_keys_iter_new(self, 0);
 }
 
-static PyObject*
+/* Tail-called by the MultiDictProxy copy. */
+NOINLINE static PyObject*
 multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
 {
     int cmp;
