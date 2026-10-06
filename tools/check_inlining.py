@@ -210,12 +210,6 @@ RULES = (
         "37 Ir per constructor item",
     ),
     Rule(
-        "_multidict_ctor_vectorcall",
-        "*",
-        BOTH,
-        "the CIMultiDict kind hint took it out of line, 11 Ir per cls()",
-    ),
-    Rule(
         "_multidict_vectorcall_impl",
         "*",
         BOTH,
