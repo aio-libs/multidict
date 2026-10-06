@@ -343,39 +343,10 @@ fail:
 }
 
 static int
-_md_update_from_ht_extend(MultiDictObject* md, MultiDictObject* other,
-                          reflist_t* defer, update_marks_t* marks)
-{
-    return _md_update_from_ht(md, other, Extend, defer, marks, md->is_ci);
-}
-
-static int
-_md_update_from_ht_update(MultiDictObject* md, MultiDictObject* other,
-                          reflist_t* defer, update_marks_t* marks)
-{
-    return _md_update_from_ht(md, other, Update, defer, marks, md->is_ci);
-}
-
-static int
-_md_update_from_ht_merge(MultiDictObject* md, MultiDictObject* other,
-                         reflist_t* defer, update_marks_t* marks)
-{
-    return _md_update_from_ht(md, other, Merge, defer, marks, md->is_ci);
-}
-
-static int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                   reflist_t* defer, update_marks_t* marks)
 {
-    switch (op) {
-        case Extend:
-            return _md_update_from_ht_extend(md, other, defer, marks);
-        case Update:
-            return _md_update_from_ht_update(md, other, defer, marks);
-        case Merge:
-            return _md_update_from_ht_merge(md, other, defer, marks);
-    }
-    Py_UNREACHABLE();
+    return _md_update_from_ht(md, other, op, defer, marks, md->is_ci);
 }
 
 ALWAYS_INLINE static inline int
@@ -499,51 +470,10 @@ fail:
 }
 
 static int
-_md_update_from_dict_extend_ci(MultiDictObject* md, PyObject* kwds,
-                               reflist_t* defer, update_marks_t* marks)
-{
-    assert(md->is_ci);
-    return _md_update_from_dict(md, kwds, Extend, defer, marks, true);
-}
-
-static int
-_md_update_from_dict_extend_cs(MultiDictObject* md, PyObject* kwds,
-                               reflist_t* defer, update_marks_t* marks)
-{
-    assert(!md->is_ci);
-    return _md_update_from_dict(md, kwds, Extend, defer, marks, false);
-}
-
-static int
-_md_update_from_dict_update(MultiDictObject* md, PyObject* kwds,
-                            reflist_t* defer, update_marks_t* marks)
-{
-    return _md_update_from_dict(md, kwds, Update, defer, marks, md->is_ci);
-}
-
-static int
-_md_update_from_dict_merge(MultiDictObject* md, PyObject* kwds,
-                           reflist_t* defer, update_marks_t* marks)
-{
-    return _md_update_from_dict(md, kwds, Merge, defer, marks, md->is_ci);
-}
-
-static int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                     reflist_t* defer, update_marks_t* marks)
 {
-    switch (op) {
-        case Extend:
-            return md->is_ci
-                       ? _md_update_from_dict_extend_ci(md, kwds, defer, marks)
-                       : _md_update_from_dict_extend_cs(
-                             md, kwds, defer, marks);
-        case Update:
-            return _md_update_from_dict_update(md, kwds, defer, marks);
-        case Merge:
-            return _md_update_from_dict_merge(md, kwds, defer, marks);
-    }
-    Py_UNREACHABLE();
+    return _md_update_from_dict(md, kwds, op, defer, marks, md->is_ci);
 }
 
 static int
@@ -584,29 +514,10 @@ _md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
 }
 
 static int
-_md_update_from_kwnames_ci(MultiDictObject* md, PyObject* const* args,
-                           Py_ssize_t nargs, PyObject* kwnames)
-{
-    assert(md->is_ci);
-    return _md_update_from_kwnames(md, args, nargs, kwnames, true);
-}
-
-static int
-_md_update_from_kwnames_cs(MultiDictObject* md, PyObject* const* args,
-                           Py_ssize_t nargs, PyObject* kwnames)
-{
-    assert(!md->is_ci);
-    return _md_update_from_kwnames(md, args, nargs, kwnames, false);
-}
-
-static int
 md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
 {
-    if (md->is_ci) {
-        return _md_update_from_kwnames_ci(md, args, nargs, kwnames);
-    }
-    return _md_update_from_kwnames_cs(md, args, nargs, kwnames);
+    return _md_update_from_kwnames(md, args, nargs, kwnames, md->is_ci);
 }
 
 static void
