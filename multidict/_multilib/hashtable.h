@@ -2019,7 +2019,7 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret, bool ci)
 
 /* Caller holds md's critical section. The removed pairs go to `removed`,
  * as in _md_del_locked(); `values` collects the result. */
-static inline int
+static int
 _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                    reflist_t* values, removed_pairs_t* removed)
 {
