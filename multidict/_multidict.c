@@ -223,7 +223,7 @@ _multidict_init_kind(mod_state* state, bool is_ci, PyObject* arg,
     return md_ci_kind_for_first_key(state, key);
 }
 
-ALWAYS_INLINE static inline int
+static int
 _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                            PyObject* arg, PyObject* const* args,
                            Py_ssize_t nargs, PyObject* kwnames)
@@ -300,7 +300,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
     return ret;
 }
 
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 _multidict_ctor_vectorcall(PyObject* type, PyObject* const* args,
                            size_t nargsf, PyObject* kwnames, bool is_ci)
 {
