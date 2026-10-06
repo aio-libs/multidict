@@ -105,7 +105,7 @@ pool_push(pool_t* pool, void* block)
    buffer from PyMem_Malloc(), an object shell from PyObject_GC_Del(),
    which needs the shell's type to find the start of its allocation.
    Idempotent, because the GC can run m_clear more than once. */
-static inline void
+NOINLINE static void
 pool_clear(pool_t* pool, void (*release)(void*))
 {
     while (pool->used > 0) {
@@ -137,7 +137,7 @@ pool_push(pool_t* pool, void* block)
     return false;
 }
 
-static inline void
+NOINLINE static void
 pool_clear(pool_t* pool, void (*release)(void*))
 {
     (void)pool;

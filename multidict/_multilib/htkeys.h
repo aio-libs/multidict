@@ -98,7 +98,7 @@ htkeys_pools_init(pool_t* pools)
     }
 }
 
-static inline void
+NOINLINE static void
 htkeys_pools_clear(pool_t* pools)
 {
     for (int i = 0; i < HTKEYS_POOLS; i++) {
