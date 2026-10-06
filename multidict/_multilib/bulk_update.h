@@ -257,10 +257,10 @@ _md_update_from_ht_scan(MultiDictObject* md, MultiDictObject* other,
 }
 
 static int
-_md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
-                   reflist_t* defer, update_marks_t* marks, bool ci)
+md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
+                  reflist_t* defer, update_marks_t* marks)
 {
-    assert(ci == md->is_ci);
+    bool ci = md->is_ci;
     Py_ssize_t pos;
     Py_hash_t hash;
     PyObject* identity = NULL;
@@ -342,13 +342,6 @@ fail:
     return -1;
 }
 
-static int
-md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
-                  reflist_t* defer, update_marks_t* marks)
-{
-    return _md_update_from_ht(md, other, op, defer, marks, md->is_ci);
-}
-
 ALWAYS_INLINE static inline int
 _md_extend_self_scan(MultiDictObject* md, bool ci, uint8_t kind)
 {
@@ -387,10 +380,10 @@ md_extend_self(MultiDictObject* md)
 }
 
 static int
-_md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
-                     reflist_t* defer, update_marks_t* marks, bool ci)
+md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
+                    reflist_t* defer, update_marks_t* marks)
 {
-    assert(ci == md->is_ci);
+    bool ci = md->is_ci;
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
     PyObject* key = NULL;
@@ -470,17 +463,10 @@ fail:
 }
 
 static int
-md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
-                    reflist_t* defer, update_marks_t* marks)
+md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
+                       Py_ssize_t nargs, PyObject* kwnames)
 {
-    return _md_update_from_dict(md, kwds, op, defer, marks, md->is_ci);
-}
-
-static int
-_md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
-                        Py_ssize_t nargs, PyObject* kwnames, bool ci)
-{
-    assert(ci == md->is_ci);
+    bool ci = md->is_ci;
     Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
     if (md_reserve(md, nkwargs) < 0) {
         return -1;
@@ -511,13 +497,6 @@ _md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
         }
     }
     return 0;
-}
-
-static int
-md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
-                       Py_ssize_t nargs, PyObject* kwnames)
-{
-    return _md_update_from_kwnames(md, args, nargs, kwnames, md->is_ci);
 }
 
 static void
