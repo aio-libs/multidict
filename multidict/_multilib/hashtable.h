@@ -578,7 +578,7 @@ md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 /* md_reserve() into a KIND_ANYSTR table: grows and moves a compact table
    in one rebuild, where md_reserve() and then md_to_anystr() would copy
    it twice. Holes are dropped, so no batch may be in flight. */
-NOINLINE static int
+static int
 _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
 {
     htkeys_t* oldkeys = md->keys;
@@ -615,7 +615,7 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
    starts. Keyword names are plain str, which never fit a CIMultiDict's
    compact table, so with any the table is moved while it grows; moved
    later, it cost update(istr_items, **kwargs) a second copy, 18%. */
-NOINLINE static int
+static int
 md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs)
 {
     if (UNLIKELY(kwargs) && md->is_ci && kind_is_compact(md->keys->kind) &&
@@ -954,7 +954,7 @@ md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
                            PyObject* identity, PyObject* key, PyObject* value,
                            update_marks_t* marks, bool fits, bool ci)
@@ -988,7 +988,7 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                PyObject* key, PyObject* value, update_marks_t* marks,
                bool fits, bool ci)

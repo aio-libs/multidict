@@ -33,7 +33,7 @@ typedef enum _UpdateOp {
 
 /* Nothing here runs Python code or suspends the critical section: the
  * replaced key and value go to `defer`. */
-ALWAYS_INLINE static inline int
+static int
 _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
            PyObject* key, PyObject* value, reflist_t* defer,
            update_marks_t* marks, bool fits, bool ci)
@@ -106,7 +106,7 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
           PyObject* key, PyObject* value, update_marks_t* marks, bool fits,
           bool ci)
@@ -142,7 +142,7 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
    an out-of-memory fallback decref in _md_del_at_deferred() can run Python
    here; the walk then starts over, which each record leaving the set as it
    goes makes safe. */
-NOINLINE static int
+static int
 _md_post_update_deleted(MultiDictObject* md, reflist_t* defer,
                         update_marks_t* marks)
 {
@@ -192,10 +192,8 @@ restart:
     return ret;
 }
 
-/* Ends the batch; the caller holds md's critical section. Out of line:
-   once per update() or merge(), and inlined it takes the FT items
-   iterator's Py_NewRef() out of line. */
-NOINLINE static int
+/* Ends the batch; the caller holds md's critical section. */
+static int
 md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
 {
     int ret = 0;
@@ -211,7 +209,7 @@ md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
 }
 
 // One item of an update(), extend() or merge() from another multidict.
-ALWAYS_INLINE static inline int
+static int
 _md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
                 PyObject* identity, PyObject* key, PyObject* value,
                 reflist_t* defer, update_marks_t* marks, bool ci)
@@ -407,7 +405,7 @@ _md_extend_self_scan(MultiDictObject* md, bool ci, uint8_t kind)
 }
 
 // d.extend(d) is rare: one copy, the class read at run time
-NOINLINE static int
+static int
 md_extend_self(MultiDictObject* md)
 {
     bool ci = md->is_ci;

@@ -64,7 +64,7 @@ md_entries_capacity(const htkeys_t* keys)
 
 /* Starts a batch; the caller holds md's critical section until the
    matching update_marks_end(). */
-static inline void
+static void
 update_marks_init(update_marks_t* marks, MultiDictObject* md)
 {
     Py_ssize_t capacity = md_entries_capacity(md->keys);
@@ -78,7 +78,7 @@ update_marks_init(update_marks_t* marks, MultiDictObject* md)
     md->batches++;
 }
 
-static inline void
+static void
 update_marks_end(MultiDictObject* md)
 {
     assert(md->batches > 0);
@@ -87,7 +87,7 @@ update_marks_end(MultiDictObject* md)
 
 /* Called once the critical section is over: the references it drops can
    run a finalizer. */
-static inline void
+static void
 update_marks_release(update_marks_t* marks)
 {
     bitmap_release(&marks->updated);
@@ -121,7 +121,7 @@ _update_marks_grow_doomed(update_marks_t* marks)
 }
 
 /* Dooms `entry`, at `index`; a no-op if the batch already has. */
-static inline int
+static int
 update_marks_doom(update_marks_t* marks, Py_ssize_t index, entry_t* entry)
 {
     int seen = bitmap_test_and_set(&marks->deleted, index);
@@ -155,7 +155,7 @@ _update_marks_widen(update_marks_t* marks, MultiDictObject* md)
 
 /* Makes room in the marks for every index md's table has, after md got a
    new one. */
-static inline int
+static int
 update_marks_sync(update_marks_t* marks, MultiDictObject* md)
 {
     if (UNLIKELY(marks->layout_gen != md->layout_gen)) {

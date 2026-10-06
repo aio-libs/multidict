@@ -60,7 +60,7 @@ _multidict_resolve_other(mod_state* state, PyObject* arg)
     return NULL;
 }
 
-static inline Py_ssize_t
+static Py_ssize_t
 _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
                              const char* name, PyObject** parg)
 {
@@ -124,7 +124,7 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
     return size;
 }
 
-static inline int
+static int
 _multidict_clone_fast(mod_state* state, MultiDictObject* self, bool is_ci,
                       PyObject* arg, PyObject* kwds)
 {
