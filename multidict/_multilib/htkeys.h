@@ -819,7 +819,7 @@ _htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n,
     }
 }
 
-static inline void
+static void
 htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n)
 {
     _htkeys_build_indices(keys, ci, ep, n, false);

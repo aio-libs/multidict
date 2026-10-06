@@ -1091,7 +1091,7 @@ _md_del_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry)
 
 /* _md_del_at() variant that defers the decref (see reflist_t);
  * used by _md_replace_locked()'s duplicate-cleanup path on both builds. */
-static inline int
+static int
 _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
                     reflist_t* defer)
 {
