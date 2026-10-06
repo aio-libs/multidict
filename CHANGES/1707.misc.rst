@@ -1,0 +1,3 @@
+Dropped ``inline`` from eighteen helpers of the C extension, leaving the
+inlining decision to the compiler
+-- by :user:`asvetlov`.

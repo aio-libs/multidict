@@ -33,7 +33,7 @@ _multidict_iter_alloc(MultiDictObject* md, PyTypeObject* tp)
     return it;
 }
 
-static inline void
+static void
 _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
 {
     Py_INCREF(md);

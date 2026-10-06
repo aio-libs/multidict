@@ -30,7 +30,7 @@ extern "C" {
 #define MD_POOLS(md) ((md)->state->htkeys_pools)
 
 /* The kind a new, empty table of md starts with. */
-static inline uint8_t
+static uint8_t
 md_fresh_kind(const MultiDictObject* md)
 {
     /* A table starts compact and moves to KIND_ANYSTR on the first key
@@ -40,7 +40,7 @@ md_fresh_kind(const MultiDictObject* md)
 
 /* The kind of a table replacing `old`: a table with no entries yet starts
    afresh, so a clear() lets md return to the compact kind. */
-static inline uint8_t
+static uint8_t
 md_next_kind(const MultiDictObject* md, const htkeys_t* old)
 {
     return old->nentries == 0 ? md_fresh_kind(md) : old->kind;
@@ -695,7 +695,7 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused, uint8_t kind)
 /* The kind a CIMultiDict's table starts with when `key` (borrowed, or NULL
    if unknown) is the first key it will get: pre-sizing a compact table
    for a str key would only have it rebuilt at once. */
-static inline uint8_t
+static uint8_t
 md_ci_kind_for_first_key(mod_state* state, PyObject* key)
 {
     return key == NULL || IStr_CheckExact(state, key) ? KIND_COMPACT
@@ -798,7 +798,7 @@ md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
     return 0;
 }
 
-static inline Py_ssize_t
+static Py_ssize_t
 md_len(MultiDictObject* md)
 {
     return load_used(md);
@@ -1776,7 +1776,7 @@ fail:
     return -1;
 }
 
-static inline int
+static int
 md_to_dict(MultiDictObject* md, PyObject** ret)
 {
     *ret = PyDict_New();
@@ -2077,7 +2077,7 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return ret;
 }
 
-static inline int
+static int
 md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     PyObject* identity;
