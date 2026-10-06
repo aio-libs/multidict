@@ -956,9 +956,9 @@ md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 }
 
 static int
-_md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
-                           PyObject* identity, PyObject* key, PyObject* value,
-                           update_marks_t* marks, bool fits, bool ci)
+md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
+               PyObject* key, PyObject* value, update_marks_t* marks,
+               bool fits, bool ci)
 {
     assert(ci == md->is_ci);
     htkeys_t* keys = md->keys;
@@ -975,8 +975,16 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     if (bitmap_set(&marks->updated, keys->nentries) < 0) {
         return -1;
     }
+    Py_INCREF(identity);
+    Py_INCREF(key);
+    Py_INCREF(value);
     keys = _md_store_new_entry(md, hash, identity, key, value, fits, ci);
     if (keys == NULL) {
+        /* Not deferred: the caller still holds its own references, so
+           none of these can drop to zero and run __del__. */
+        Py_DECREF(identity);
+        Py_DECREF(key);
+        Py_DECREF(value);
         return -1;
     }
 
@@ -990,30 +998,9 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
 }
 
 static int
-md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-               PyObject* key, PyObject* value, update_marks_t* marks,
-               bool fits, bool ci)
+md_add(MultiDictObject* md, PyObject* key, PyObject* value)
 {
-    assert(ci == md->is_ci);
-    Py_INCREF(identity);
-    Py_INCREF(key);
-    Py_INCREF(value);
-    if (_md_add_for_upd_steal_refs(
-            md, hash, identity, key, value, marks, fits, ci) < 0) {
-        /* Not deferred: the caller still holds its own references, so
-           none of these can drop to zero and run __del__. */
-        Py_DECREF(identity);
-        Py_DECREF(key);
-        Py_DECREF(value);
-        return -1;
-    }
-    return 0;
-}
-
-ALWAYS_INLINE static inline int
-md_add(MultiDictObject* md, PyObject* key, PyObject* value, bool ci)
-{
-    assert(ci == md->is_ci);
+    bool ci = md->is_ci;
     PyObject* identity;
     Py_hash_t hash;
     bool fits;

@@ -731,7 +731,8 @@ multidict_mp_ass_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
     return md_replace(self, key, val);
 }
 
-// See cimultidict_add().
+/* The CIMultiDict copy: the class is known, so the inlined write path
+   carries one class only. */
 static int
 cimultidict_mp_ass_subscript(MultiDictObject* self, PyObject* key,
                              PyObject* val)
@@ -1085,46 +1086,10 @@ multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-ALWAYS_INLINE static inline PyObject*
-_multidict_add(MultiDictObject* self, PyObject* key, PyObject* val, bool ci)
-{
-    assert(ci == self->is_ci);
-    if (md_add(self, key, val, ci) < 0) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
-
-/* The CIMultiDict copy: the class is known, so the inlined write path
-   carries one class only. */
-static PyObject*
-cimultidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
-                PyObject* kwnames)
-{
-    assert(self->is_ci);
-    PyObject *key = NULL, *val = NULL;
-    if (parse2("add",
-               args,
-               nargs,
-               kwnames,
-               2,
-               self->state->str_key,
-               &key,
-               self->state->str_value,
-               &val) < 0) {
-        return NULL;
-    }
-    return _multidict_add(self, key, val, true);
-}
-
 static PyObject*
 multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
               PyObject* kwnames)
 {
-    if (UNLIKELY(self->is_ci)) {
-        // See multidict_getone().
-        return cimultidict_add(self, args, nargs, kwnames);
-    }
     PyObject *key = NULL, *val = NULL;
     if (parse2("add",
                args,
@@ -1137,7 +1102,10 @@ multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
                &val) < 0) {
         return NULL;
     }
-    return _multidict_add(self, key, val, false);
+    if (md_add(self, key, val) < 0) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -1182,7 +1150,7 @@ _multidict_setdefault(MultiDictObject* self, PyObject* key, PyObject* _default,
     return ret;
 }
 
-// See cimultidict_add().
+// See cimultidict_mp_ass_subscript().
 static PyObject*
 cimultidict_setdefault(MultiDictObject* self, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
@@ -1447,7 +1415,7 @@ multidict_sizeof(MultiDictObject* self)
 }
 
 /* One table for both types; P names the prefix of the entry points a
-   CIMultiDict has its own copy of, see cimultidict_add(). */
+   CIMultiDict has its own copy of, see cimultidict_mp_ass_subscript(). */
 #define MULTIDICT_METHODS(P)               \
     {"getall",                             \
      (PyCFunction)P##getall,               \
@@ -1474,7 +1442,7 @@ multidict_sizeof(MultiDictObject* self)
          METH_NOARGS,                      \
          multidict_values_doc},            \
         {"add",                            \
-         (PyCFunction)P##add,              \
+         (PyCFunction)multidict_add,       \
          METH_FASTCALL | METH_KEYWORDS,    \
          multidict_add_doc},               \
         {"copy",                           \

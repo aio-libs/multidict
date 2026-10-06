@@ -216,8 +216,7 @@ static int
 MultiDict_Add(void* state_, PyObject* self, PyObject* key, PyObject* value)
 {
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    return md_add(
-        (MultiDictObject*)self, key, value, ((MultiDictObject*)self)->is_ci);
+    return md_add((MultiDictObject*)self, key, value);
 }
 
 static int

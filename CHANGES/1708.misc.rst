@@ -1,0 +1,3 @@
+Merged the ``CIMultiDict`` copy of ``add()`` into the shared one and moved
+the C extension's add helper out of line
+-- by :user:`asvetlov`.
