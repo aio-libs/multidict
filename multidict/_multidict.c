@@ -740,7 +740,7 @@ cimultidict_mp_ass_subscript(MultiDictObject* self, PyObject* key,
     if (val == NULL) {
         return md_del_ci(self, key);
     }
-    return md_replace_ci(self, key, val);
+    return md_replace(self, key, val);
 }
 
 static int

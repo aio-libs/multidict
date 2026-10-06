@@ -2381,7 +2381,7 @@ _md_replace_watched(MultiDictObject* md, PyObject* key, PyObject* value,
     return ret;
 }
 
-ALWAYS_INLINE static inline int
+static int
 _md_replace(MultiDictObject* md, PyObject* key, PyObject* value, bool ci)
 {
     assert(ci == md->is_ci);
@@ -2429,30 +2429,10 @@ _md_replace(MultiDictObject* md, PyObject* key, PyObject* value, bool ci)
     return ret;
 }
 
-// One copy per class, each inlining the path for its own only.
-NOINLINE static int
-md_replace_ci(MultiDictObject* md, PyObject* key, PyObject* value)
-{
-    assert(md->is_ci);
-    return _md_replace(md, key, value, true);
-}
-
-NOINLINE static int
-md_replace_cs(MultiDictObject* md, PyObject* key, PyObject* value)
-{
-    assert(!md->is_ci);
-    return _md_replace(md, key, value, false);
-}
-
-/* For a caller that does not know the class; MultiDict entry points
-   expect it to be one. */
 ALWAYS_INLINE static inline int
 md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
 {
-    if (UNLIKELY(md->is_ci)) {
-        return md_replace_ci(md, key, value);
-    }
-    return md_replace_cs(md, key, value);
+    return _md_replace(md, key, value, md->is_ci);
 }
 
 /* 2 means a value's __eq__ changed the kind of either table: the caller

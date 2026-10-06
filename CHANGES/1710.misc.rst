@@ -1,0 +1,3 @@
+Made the C extension's item assignment helper a plain ``static`` function,
+dropping its per-class copies
+-- by :user:`asvetlov`.
