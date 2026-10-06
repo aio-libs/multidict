@@ -1,0 +1,3 @@
+Removed ``inline`` from the view helpers and two bulk update helpers of
+the C extension; GCC compiles them the same way without the hint
+-- by :user:`asvetlov`.
