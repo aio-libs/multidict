@@ -819,7 +819,7 @@ _seq_item_clear(seq_item_t* item)
     Py_DECREF(item->pair);
 }
 
-NOINLINE static int
+static int
 _md_update_from_seq_extend(MultiDictObject* md, PyObject* seq)
 {
     bool ci = md->is_ci;
@@ -847,7 +847,7 @@ _md_update_from_seq_extend(MultiDictObject* md, PyObject* seq)
     return ret;
 }
 
-NOINLINE static int
+static int
 _md_update_from_seq_update(MultiDictObject* md, PyObject* seq,
                            reflist_t* defer, update_marks_t* marks)
 {
@@ -882,7 +882,7 @@ _md_update_from_seq_update(MultiDictObject* md, PyObject* seq,
     return ret;
 }
 
-NOINLINE static int
+static int
 _md_update_from_seq_merge(MultiDictObject* md, PyObject* seq, reflist_t* defer,
                           update_marks_t* marks)
 {
