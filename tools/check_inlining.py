@@ -198,12 +198,6 @@ RULES = (
         "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
     ),
     Rule(
-        "_md_eq_scan",
-        "*",
-        BOTH,
-        "#1676: the constant kinds made md == md 35-46% cheaper",
-    ),
-    Rule(
         "_md_update_from_ht_scan",
         "*",
         BOTH,
@@ -307,12 +301,6 @@ RULES = (
         (FT,),
         "#1675: out of line in d[key] = v once update() and merge() lost "
         "their per-class copies, and with it del d[key] +3% on CIMultiDict",
-    ),
-    Rule(
-        "_multidict_bulk",
-        "*",
-        BOTH,
-        "#1591: one shared copy made subclass init 7-8% slower",
     ),
 )
 
