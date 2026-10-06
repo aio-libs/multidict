@@ -76,7 +76,7 @@ typedef struct {
     pool_t proxy_pool;
 } mod_state;
 
-static inline mod_state*
+static mod_state*
 get_mod_state(PyObject* mod)
 {
     mod_state* state = (mod_state*)PyModule_GetState(mod);
@@ -138,7 +138,7 @@ err:
 
 static PyModuleDef multidict_module;
 
-static inline int
+static int
 get_mod_state_by_def_checked(PyObject* self, mod_state** ret)
 {
     PyTypeObject* tp = Py_TYPE(self);
@@ -155,7 +155,7 @@ get_mod_state_by_def_checked(PyObject* self, mod_state** ret)
     return 1;
 }
 
-static inline mod_state*
+static mod_state*
 get_mod_state_by_def(PyObject* self)
 {
     PyTypeObject* tp = Py_TYPE(self);

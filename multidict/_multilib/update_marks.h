@@ -56,7 +56,7 @@ typedef struct _update_marks {
     uint32_t layout_gen;
 } update_marks_t;
 
-static inline Py_ssize_t
+static Py_ssize_t
 md_entries_capacity(const htkeys_t* keys)
 {
     return keys->nentries + keys->usable;
@@ -165,7 +165,7 @@ update_marks_sync(update_marks_t* marks, MultiDictObject* md)
 }
 
 // md got a new table
-static inline void
+static void
 update_marks_moved(MultiDictObject* md)
 {
     if (md->batches != 0) {
