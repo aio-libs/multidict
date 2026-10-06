@@ -147,7 +147,7 @@ _bitmap_word_ready(const bitmap_t* bm, Py_ssize_t wi)
             1);
 }
 
-ALWAYS_INLINE static inline bool
+static bool
 _bitmap_dense_test(const bitmap_t* bm, Py_ssize_t i)
 {
     return (bm->words[i >> BITMAP_WORD_SHIFT] >> (i & BITMAP_WORD_MASK)) & 1;
