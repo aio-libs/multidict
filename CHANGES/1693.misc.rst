@@ -1,0 +1,4 @@
+Moved the slow paths of the C extension's :class:`~multidict.istr` constructor,
+the ones for anything but an exact :class:`str`, into one cold helper,
+and stopped asking the compiler to inline ``IStr_New()``
+-- by :user:`asvetlov`.
