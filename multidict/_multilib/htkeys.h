@@ -222,15 +222,6 @@ compact_key_identity(bool ci, PyObject* key)
     return ci ? istr_canonical(key) : key;
 }
 
-/* The identity of the object the identity slot holds (see
-   entry_identity_slot()): the object itself, except for a CIMultiDict's
-   compact table, whose slot holds the istr key. */
-static inline PyObject*
-slot_identity(uint8_t kind, bool ci, PyObject* held)
-{
-    return kind_is_compact(kind) ? compact_key_identity(ci, held) : held;
-}
-
 static inline size_t
 _htkeys_entry_size(uint8_t kind)
 {
@@ -290,7 +281,7 @@ entry_is_hole(const entry_t* entry)
 
 /* The field lock-free readers check first: the key in a compact table, so
    what it holds is the identity only in a MultiDict's. See
-   slot_identity(). */
+   compact_key_identity(). */
 static inline PyObject**
 entry_identity_slot(uint8_t kind, entry_t* entry)
 {
