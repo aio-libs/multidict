@@ -7,34 +7,31 @@
 extern "C" {
 #endif
 
-NOINLINE static int
+NOINLINE static void
 _raise_unexpected_kwarg(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() got an unexpected keyword argument '%.150U'",
                  fname,
                  argname);
-    return -1;
 }
 
-NOINLINE static int
+NOINLINE static void
 _raise_multiple_values(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() got multiple values for argument '%.150U'",
                  fname,
                  argname);
-    return -1;
 }
 
-NOINLINE static int
+NOINLINE static void
 _raise_missing_posarg(const char* fname, PyObject* argname)
 {
     PyErr_Format(PyExc_TypeError,
                  "%.150s() missing 1 required positional argument: '%.150U'",
                  fname,
                  argname);
-    return -1;
 }
 
 /* The parameter names come from the module state, where they are interned,
@@ -43,11 +40,20 @@ _raise_missing_posarg(const char* fname, PyObject* argname)
    still needed for names that never went through the intern table, such as
    the ones f(**{"key": ...}) builds.  This is what CPython's own
    find_keyword() in Python/getargs.c does. */
-ALWAYS_INLINE static inline int
+static int
 _name_is(PyObject* argname, PyObject* name)
 {
     return argname == name || PyUnicode_Compare(argname, name) == 0;
 }
+
+/* Returned by value, not through out-parameters: those would make every
+   caller's locals address-taken, and -fstack-protector-strong then gives each
+   call a canary for a path only keyword calls take.  arg1 is NULL on error;
+   a successful bind always sets it, since minargs >= 1. */
+typedef struct {
+    PyObject* arg1;
+    PyObject* arg2;
+} parse2_t;
 
 /* Parse FASTCALL|METH_KEYWORDS arguments as two args,
 the first arg is mandatory and the second one is optional
@@ -61,16 +67,17 @@ equivalent def: the keywords are walked left to right and the first
 offending one wins, then the positional count, then missing args.
 */
 
-static inline int
-_parse2_bind(const char* fname, PyObject* const* args, Py_ssize_t nargs,
+static COLD parse2_t
+_parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
              PyObject* kwnames, Py_ssize_t minargs, PyObject* arg1name,
-             PyObject** arg1, PyObject* arg2name, PyObject** arg2)
+             PyObject* arg2name)
 {
+    parse2_t r;
     assert(minargs >= 1);
     assert(minargs <= 2);
 
-    *arg1 = nargs >= 1 ? args[0] : NULL;
-    *arg2 = nargs >= 2 ? args[1] : NULL;
+    r.arg1 = nargs >= 1 ? args[0] : NULL;
+    r.arg2 = nargs >= 2 ? args[1] : NULL;
 
     if (kwnames != NULL) {
         // The vectorcall protocol guarantees a tuple of strings here.
@@ -80,22 +87,25 @@ _parse2_bind(const char* fname, PyObject* const* args, Py_ssize_t nargs,
             /* The two names are distinct, so the comparison order is free.
                Try the one still unbound first: that keeps the common
                f(key, default=...) and f(key=...) forms at one comparison. */
-            if (*arg1 == NULL && _name_is(argname, arg1name)) {
-                *arg1 = args[nargs + i];
+            if (r.arg1 == NULL && _name_is(argname, arg1name)) {
+                r.arg1 = args[nargs + i];
                 continue;
             }
-            if (*arg2 == NULL && _name_is(argname, arg2name)) {
-                *arg2 = args[nargs + i];
+            if (r.arg2 == NULL && _name_is(argname, arg2name)) {
+                r.arg2 = args[nargs + i];
                 continue;
             }
             // Names a parameter that is already bound, or none of them.
             if (_name_is(argname, arg1name)) {
-                return _raise_multiple_values(fname, arg1name);
+                _raise_multiple_values(fname, arg1name);
+                goto fail;
             }
             if (_name_is(argname, arg2name)) {
-                return _raise_multiple_values(fname, arg2name);
+                _raise_multiple_values(fname, arg2name);
+                goto fail;
             }
-            return _raise_unexpected_kwarg(fname, argname);
+            _raise_unexpected_kwarg(fname, argname);
+            goto fail;
         }
     }
 
@@ -111,52 +121,28 @@ _parse2_bind(const char* fname, PyObject* const* args, Py_ssize_t nargs,
                      fname,
                      txt,
                      nargs);
-        return -1;
+        goto fail;
     }
-    if (UNLIKELY(*arg1 == NULL)) {
-        if (minargs == 2 && *arg2 == NULL) {
+    if (UNLIKELY(r.arg1 == NULL)) {
+        if (minargs == 2 && r.arg2 == NULL) {
             PyErr_Format(PyExc_TypeError,
                          "%.150s() missing 2 required positional arguments: "
                          "'%.150U' and '%.150U'",
                          fname,
                          arg1name,
                          arg2name);
-            return -1;
+            goto fail;
         }
-        return _raise_missing_posarg(fname, arg1name);
+        _raise_missing_posarg(fname, arg1name);
+        goto fail;
     }
-    if (UNLIKELY(minargs == 2 && *arg2 == NULL)) {
-        return _raise_missing_posarg(fname, arg2name);
+    if (UNLIKELY(minargs == 2 && r.arg2 == NULL)) {
+        _raise_missing_posarg(fname, arg2name);
+        goto fail;
     }
-    return 0;
-}
-
-/* Returned by value, not through out-parameters: those would make every
-   caller's locals address-taken, and -fstack-protector-strong then gives each
-   call a canary for a path only keyword calls take.  arg1 is NULL on error;
-   a successful bind always sets it, since minargs >= 1. */
-typedef struct {
-    PyObject* arg1;
-    PyObject* arg2;
-} parse2_t;
-
-static COLD parse2_t
-_parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
-             PyObject* kwnames, Py_ssize_t minargs, PyObject* arg1name,
-             PyObject* arg2name)
-{
-    parse2_t r = {NULL, NULL};
-    if (_parse2_bind(fname,
-                     args,
-                     nargs,
-                     kwnames,
-                     minargs,
-                     arg1name,
-                     &r.arg1,
-                     arg2name,
-                     &r.arg2) < 0) {
-        r.arg1 = NULL;
-    }
+    return r;
+fail:
+    r.arg1 = NULL;
     return r;
 }
 

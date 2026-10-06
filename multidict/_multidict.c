@@ -60,7 +60,7 @@ _multidict_resolve_other(mod_state* state, PyObject* arg)
     return NULL;
 }
 
-static inline Py_ssize_t
+static Py_ssize_t
 _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
                              const char* name, PyObject** parg)
 {
@@ -124,7 +124,7 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
     return size;
 }
 
-static inline int
+static int
 _multidict_clone_fast(mod_state* state, MultiDictObject* self, bool is_ci,
                       PyObject* arg, PyObject* kwds)
 {
@@ -473,23 +473,11 @@ multidict_to_dict(MultiDictObject* self)
 /******************** Base Methods ********************/
 
 ALWAYS_INLINE static inline PyObject*
-_multidict_getall_impl(MultiDictObject* self, PyObject* const* args,
-                       Py_ssize_t nargs, PyObject* kwnames, bool ci)
+_multidict_getall(MultiDictObject* self, PyObject* key, PyObject* _default,
+                  bool ci)
 {
     assert(ci == self->is_ci);
-    PyObject *list = NULL, *key = NULL, *_default = NULL;
-
-    if (parse2("getall",
-               args,
-               nargs,
-               kwnames,
-               1,
-               self->state->str_key,
-               &key,
-               self->state->str_default,
-               &_default) < 0) {
-        return NULL;
-    }
+    PyObject* list = NULL;
     if (md_get_all(self, key, &list, ci) < 0) {
         return NULL;
     }
@@ -505,7 +493,19 @@ cimultidict_getall(MultiDictObject* self, PyObject* const* args,
                    Py_ssize_t nargs, PyObject* kwnames)
 {
     assert(self->is_ci);
-    return _multidict_getall_impl(self, args, nargs, kwnames, true);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("getall",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->state->str_key,
+               &key,
+               self->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_getall(self, key, _default, true);
 }
 
 /* Inlined into the MultiDictProxy copy. */
@@ -517,16 +517,27 @@ multidict_getall(MultiDictObject* self, PyObject* const* args,
         // See multidict_getone().
         return cimultidict_getall(self, args, nargs, kwnames);
     }
-    return _multidict_getall_impl(self, args, nargs, kwnames, false);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("getall",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->state->str_key,
+               &key,
+               self->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_getall(self, key, _default, false);
 }
 
-ALWAYS_INLINE static inline PyObject*
-_multidict_getone_impl(MultiDictObject* self, PyObject* const* args,
-                       Py_ssize_t nargs, PyObject* kwnames, bool ci)
+static PyObject*
+cimultidict_getone(MultiDictObject* self, PyObject* const* args,
+                   Py_ssize_t nargs, PyObject* kwnames)
 {
-    assert(ci == self->is_ci);
+    assert(self->is_ci);
     PyObject *key = NULL, *_default = NULL;
-
     if (parse2("getone",
                args,
                nargs,
@@ -538,15 +549,7 @@ _multidict_getone_impl(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
-    return _multidict_getone(self, key, _default, ci);
-}
-
-static PyObject*
-cimultidict_getone(MultiDictObject* self, PyObject* const* args,
-                   Py_ssize_t nargs, PyObject* kwnames)
-{
-    assert(self->is_ci);
-    return _multidict_getone_impl(self, args, nargs, kwnames, true);
+    return _multidict_getone(self, key, _default, true);
 }
 
 /* Inlined into the MultiDictProxy copy. */
@@ -558,18 +561,8 @@ multidict_getone(MultiDictObject* self, PyObject* const* args,
         // MultiDict.getone(a_cimultidict) or a MultiDictProxy over one
         return cimultidict_getone(self, args, nargs, kwnames);
     }
-    return _multidict_getone_impl(self, args, nargs, kwnames, false);
-}
-
-ALWAYS_INLINE static inline PyObject*
-_multidict_get_impl(MultiDictObject* self, PyObject* const* args,
-                    Py_ssize_t nargs, PyObject* kwnames, bool ci)
-{
-    assert(ci == self->is_ci);
-    PyObject* key = NULL;
-    PyObject* _default = NULL;
-
-    if (parse2("get",
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("getone",
                args,
                nargs,
                kwnames,
@@ -580,6 +573,14 @@ _multidict_get_impl(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
+    return _multidict_getone(self, key, _default, false);
+}
+
+ALWAYS_INLINE static inline PyObject*
+_multidict_get(MultiDictObject* self, PyObject* key, PyObject* _default,
+               bool ci)
+{
+    assert(ci == self->is_ci);
     PyObject* val = NULL;
     if (md_get_one(self, key, &val, ci) < 0) {
         return NULL;
@@ -601,7 +602,19 @@ cimultidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
                 PyObject* kwnames)
 {
     assert(self->is_ci);
-    return _multidict_get_impl(self, args, nargs, kwnames, true);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("get",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->state->str_key,
+               &key,
+               self->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_get(self, key, _default, true);
 }
 
 /* Inlined into the MultiDictProxy copy. */
@@ -613,7 +626,19 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
         // See multidict_getone().
         return cimultidict_get(self, args, nargs, kwnames);
     }
-    return _multidict_get_impl(self, args, nargs, kwnames, false);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("get",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->state->str_key,
+               &key,
+               self->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_get(self, key, _default, false);
 }
 
 static PyObject*
@@ -1061,23 +1086,9 @@ multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 }
 
 ALWAYS_INLINE static inline PyObject*
-_multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
-               PyObject* kwnames, bool ci)
+_multidict_add(MultiDictObject* self, PyObject* key, PyObject* val, bool ci)
 {
     assert(ci == self->is_ci);
-    PyObject *key = NULL, *val = NULL;
-
-    if (parse2("add",
-               args,
-               nargs,
-               kwnames,
-               2,
-               self->state->str_key,
-               &key,
-               self->state->str_value,
-               &val) < 0) {
-        return NULL;
-    }
     if (md_add(self, key, val, ci) < 0) {
         return NULL;
     }
@@ -1091,7 +1102,19 @@ cimultidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
                 PyObject* kwnames)
 {
     assert(self->is_ci);
-    return _multidict_add(self, args, nargs, kwnames, true);
+    PyObject *key = NULL, *val = NULL;
+    if (parse2("add",
+               args,
+               nargs,
+               kwnames,
+               2,
+               self->state->str_key,
+               &key,
+               self->state->str_value,
+               &val) < 0) {
+        return NULL;
+    }
+    return _multidict_add(self, key, val, true);
 }
 
 static PyObject*
@@ -1102,7 +1125,19 @@ multidict_add(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
         // See multidict_getone().
         return cimultidict_add(self, args, nargs, kwnames);
     }
-    return _multidict_add(self, args, nargs, kwnames, false);
+    PyObject *key = NULL, *val = NULL;
+    if (parse2("add",
+               args,
+               nargs,
+               kwnames,
+               2,
+               self->state->str_key,
+               &key,
+               self->state->str_value,
+               &val) < 0) {
+        return NULL;
+    }
+    return _multidict_add(self, key, val, false);
 }
 
 static PyObject*
@@ -1135,25 +1170,11 @@ multidict_clear(MultiDictObject* self)
 }
 
 ALWAYS_INLINE static inline PyObject*
-_multidict_setdefault(MultiDictObject* self, PyObject* const* args,
-                      Py_ssize_t nargs, PyObject* kwnames, bool ci)
+_multidict_setdefault(MultiDictObject* self, PyObject* key, PyObject* _default,
+                      bool ci)
 {
     assert(ci == self->is_ci);
-    PyObject* key = NULL;
-    PyObject* _default = NULL;
     PyObject* ret = NULL;
-
-    if (parse2("setdefault",
-               args,
-               nargs,
-               kwnames,
-               1,
-               self->state->str_key,
-               &key,
-               self->state->str_default,
-               &_default) < 0) {
-        return NULL;
-    }
     // md_set_default() reads a NULL default as None.
     if (md_set_default(self, key, _default, &ret, ci) < 0) {
         assert(ret == NULL);
@@ -1167,29 +1188,8 @@ cimultidict_setdefault(MultiDictObject* self, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
 {
     assert(self->is_ci);
-    return _multidict_setdefault(self, args, nargs, kwnames, true);
-}
-
-static PyObject*
-multidict_setdefault(MultiDictObject* self, PyObject* const* args,
-                     Py_ssize_t nargs, PyObject* kwnames)
-{
-    if (UNLIKELY(self->is_ci)) {
-        // See multidict_getone().
-        return cimultidict_setdefault(self, args, nargs, kwnames);
-    }
-    return _multidict_setdefault(self, args, nargs, kwnames, false);
-}
-
-ALWAYS_INLINE static inline PyObject*
-_multidict_pop_impl(MultiDictObject* self, PyObject* const* args,
-                    Py_ssize_t nargs, PyObject* kwnames, const char* name,
-                    bool ci)
-{
-    assert(ci == self->is_ci);
-    PyObject *key = NULL, *_default = NULL, *ret_val = NULL;
-
-    if (parse2(name,
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("setdefault",
                args,
                nargs,
                kwnames,
@@ -1200,6 +1200,38 @@ _multidict_pop_impl(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
+    return _multidict_setdefault(self, key, _default, true);
+}
+
+static PyObject*
+multidict_setdefault(MultiDictObject* self, PyObject* const* args,
+                     Py_ssize_t nargs, PyObject* kwnames)
+{
+    if (UNLIKELY(self->is_ci)) {
+        // See multidict_getone().
+        return cimultidict_setdefault(self, args, nargs, kwnames);
+    }
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("setdefault",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->state->str_key,
+               &key,
+               self->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_setdefault(self, key, _default, false);
+}
+
+ALWAYS_INLINE static inline PyObject*
+_multidict_pop(MultiDictObject* self, PyObject* key, PyObject* _default,
+               bool ci)
+{
+    assert(ci == self->is_ci);
+    PyObject* ret_val = NULL;
     if (_md_pop_one(self, key, &ret_val, ci) < 0) {
         return NULL;
     }
@@ -1215,7 +1247,19 @@ cimultidict_popone(MultiDictObject* self, PyObject* const* args,
                    Py_ssize_t nargs, PyObject* kwnames)
 {
     assert(self->is_ci);
-    return _multidict_pop_impl(self, args, nargs, kwnames, "popone", true);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("popone",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->state->str_key,
+               &key,
+               self->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_pop(self, key, _default, true);
 }
 
 static PyObject*
@@ -1226,7 +1270,19 @@ multidict_popone(MultiDictObject* self, PyObject* const* args,
         // See multidict_getone().
         return cimultidict_popone(self, args, nargs, kwnames);
     }
-    return _multidict_pop_impl(self, args, nargs, kwnames, "popone", false);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("popone",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->state->str_key,
+               &key,
+               self->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_pop(self, key, _default, false);
 }
 
 static PyObject*
@@ -1234,7 +1290,19 @@ cimultidict_pop(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
                 PyObject* kwnames)
 {
     assert(self->is_ci);
-    return _multidict_pop_impl(self, args, nargs, kwnames, "pop", true);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("pop",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->state->str_key,
+               &key,
+               self->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_pop(self, key, _default, true);
 }
 
 static PyObject*
@@ -1245,7 +1313,19 @@ multidict_pop(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
         // See multidict_getone().
         return cimultidict_pop(self, args, nargs, kwnames);
     }
-    return _multidict_pop_impl(self, args, nargs, kwnames, "pop", false);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("pop",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->state->str_key,
+               &key,
+               self->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_pop(self, key, _default, false);
 }
 
 static PyObject*
@@ -1608,7 +1688,19 @@ static PyObject*
 cimultidict_proxy_getall(MultiDictProxyObject* self, PyObject* const* args,
                          Py_ssize_t nargs, PyObject* kwnames)
 {
-    return _multidict_getall_impl(self->md, args, nargs, kwnames, true);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("getall",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->md->state->str_key,
+               &key,
+               self->md->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_getall(self->md, key, _default, true);
 }
 
 static PyObject*
@@ -1622,7 +1714,19 @@ static PyObject*
 cimultidict_proxy_getone(MultiDictProxyObject* self, PyObject* const* args,
                          Py_ssize_t nargs, PyObject* kwnames)
 {
-    return _multidict_getone_impl(self->md, args, nargs, kwnames, true);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("getone",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->md->state->str_key,
+               &key,
+               self->md->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_getone(self->md, key, _default, true);
 }
 
 static PyObject*
@@ -1636,7 +1740,19 @@ static PyObject*
 cimultidict_proxy_get(MultiDictProxyObject* self, PyObject* const* args,
                       Py_ssize_t nargs, PyObject* kwnames)
 {
-    return _multidict_get_impl(self->md, args, nargs, kwnames, true);
+    PyObject *key = NULL, *_default = NULL;
+    if (parse2("get",
+               args,
+               nargs,
+               kwnames,
+               1,
+               self->md->state->str_key,
+               &key,
+               self->md->state->str_default,
+               &_default) < 0) {
+        return NULL;
+    }
+    return _multidict_get(self->md, key, _default, true);
 }
 
 static PyObject*
@@ -1951,7 +2067,7 @@ module_traverse(PyObject* mod, visitproc visit, void* arg)
     return 0;
 }
 
-static void
+NOINLINE static void
 drain_pools(mod_state* state)
 {
     htkeys_pools_clear(state->htkeys_pools);

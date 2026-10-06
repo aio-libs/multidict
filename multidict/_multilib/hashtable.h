@@ -258,7 +258,8 @@ _md_reader_enter(MultiDictObject* md)
 static inline void
 _md_drain_retired(MultiDictObject* md);
 
-static inline void
+/* Out of line: inlined, it costs FT lookups up to 10 Ir. */
+static void
 _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys != &empty_htkeys) {
@@ -559,7 +560,7 @@ _md_resize_for_add(MultiDictObject* md)
     return _md_rebuild(md, calculate_log2_keysize(GROWTH_RATE(md)));
 }
 
-static inline int
+NOINLINE static int
 md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 {
     if (extra_size > (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
@@ -578,7 +579,7 @@ md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 /* md_reserve() into a KIND_ANYSTR table: grows and moves a compact table
    in one rebuild, where md_reserve() and then md_to_anystr() would copy
    it twice. Holes are dropped, so no batch may be in flight. */
-NOINLINE static int
+static int
 _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
 {
     htkeys_t* oldkeys = md->keys;
@@ -615,7 +616,7 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
    starts. Keyword names are plain str, which never fit a CIMultiDict's
    compact table, so with any the table is moved while it grows; moved
    later, it cost update(istr_items, **kwargs) a second copy, 18%. */
-static inline int
+static int
 md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs)
 {
     if (UNLIKELY(kwargs) && md->is_ci && kind_is_compact(md->keys->kind) &&
@@ -954,7 +955,7 @@ md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
                            PyObject* identity, PyObject* key, PyObject* value,
                            update_marks_t* marks, bool fits, bool ci)
@@ -988,7 +989,7 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                PyObject* key, PyObject* value, update_marks_t* marks,
                bool fits, bool ci)
@@ -1090,7 +1091,7 @@ _md_del_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry)
 
 /* _md_del_at() variant that defers the decref (see reflist_t);
  * used by _md_replace_locked()'s duplicate-cleanup path on both builds. */
-static inline int
+static int
 _md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
                     reflist_t* defer)
 {
@@ -2102,7 +2103,7 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 
 /* The last live entry at or before *ppos, which it moves there; `kind` is
    a constant at each call, so the scan steps by a fixed entry size. */
-ALWAYS_INLINE static inline entry_t*
+static entry_t*
 _md_last_live(uint8_t kind, entry_t* entries, Py_ssize_t* ppos)
 {
     Py_ssize_t pos = *ppos;
@@ -2530,7 +2531,7 @@ _md_eq_scan(MultiDictObject* md, MultiDictObject* other, uint8_t kind1,
     }
 }
 
-static inline int
+NOINLINE static int
 md_eq(MultiDictObject* md, MultiDictObject* other)
 {
     if (md == other) {
@@ -2564,15 +2565,33 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
     return ret;
 }
 
-ALWAYS_INLINE static inline int
-_md_eq_to_mapping_scan(MultiDictObject* md, PyObject* other, uint8_t kind)
+NOINLINE static int
+md_eq_to_mapping(MultiDictObject* md, PyObject* other)
 {
+    Py_ssize_t other_len;
+
+    if (!PyMapping_Check(other)) {
+        PyErr_Format(PyExc_TypeError,
+                     "other argument must be a mapping, not %s",
+                     Py_TYPE(other)->tp_name);
+        return -1;
+    }
+
+    other_len = PyMapping_Size(other);
+    if (other_len < 0) {
+        return -1;
+    }
+    if (md_len(md) != other_len) {
+        return 0;
+    }
+
     PyObject* key = NULL;
     PyObject* avalue = NULL;
     PyObject* bvalue;
 
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
+    uint8_t kind = keys->kind;
     entry_t* entries = htkeys_entries(keys);
 
     for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
@@ -2613,32 +2632,6 @@ _md_eq_to_mapping_scan(MultiDictObject* md, PyObject* other, uint8_t kind)
     }
 
     return 1;
-}
-
-static inline int
-md_eq_to_mapping(MultiDictObject* md, PyObject* other)
-{
-    Py_ssize_t other_len;
-
-    if (!PyMapping_Check(other)) {
-        PyErr_Format(PyExc_TypeError,
-                     "other argument must be a mapping, not %s",
-                     Py_TYPE(other)->tp_name);
-        return -1;
-    }
-
-    other_len = PyMapping_Size(other);
-    if (other_len < 0) {
-        return -1;
-    }
-    if (md_len(md) != other_len) {
-        return 0;
-    }
-
-    if (kind_is_compact(md->keys->kind)) {
-        return _md_eq_to_mapping_scan(md, other, KIND_COMPACT);
-    }
-    return _md_eq_to_mapping_scan(md, other, KIND_ANYSTR);
 }
 
 NOINLINE static PyObject*

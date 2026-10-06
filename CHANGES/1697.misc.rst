@@ -1,0 +1,2 @@
+Moved the C extension's table reservation helpers out of line
+-- by :user:`asvetlov`.

@@ -83,7 +83,7 @@ _key_to_identity_cs(mod_state* state, PyObject* key)
 }
 
 /* True if the eight bytes at p hold an ASCII uppercase one. */
-ALWAYS_INLINE static inline bool
+static bool
 _word_has_upper(const Py_UCS1* p)
 {
     const uint64_t ones = UINT64_C(0x0101010101010101);
