@@ -877,9 +877,8 @@ typedef enum {
     BULK_FROM_SEQ,   // anything else, self itself included
 } bulk_source;
 
-/* The locked part of _multidict_bulk(); `op`, `reinit` and `source` are
-   constants at every call site. */
-ALWAYS_INLINE static inline int
+/* The locked part of _multidict_bulk(). */
+static int
 _multidict_bulk_locked(MultiDictObject* self, UpdateOp op, bool reinit,
                        bulk_source source, PyObject* arg,
                        MultiDictObject* other, PyObject* kwds, Py_ssize_t size,
@@ -946,10 +945,8 @@ _multidict_bulk_locked(MultiDictObject* self, UpdateOp op, bool reinit,
     return ret;
 }
 
-/* __init__() when `reinit`, else extend(), update() or merge() by `op`,
-   a constant at every call site so each entry point compiles its own
-   copy. */
-ALWAYS_INLINE static inline int
+/* __init__() when `reinit`, else extend(), update() or merge() by `op`. */
+static int
 _multidict_bulk(MultiDictObject* self, PyObject* args, PyObject* kwds,
                 const char* name, UpdateOp op, bool reinit)
 {
