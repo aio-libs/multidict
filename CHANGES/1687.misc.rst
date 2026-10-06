@@ -1,0 +1,1 @@
+Upgrade ``pythoncapi_compact`` to the latest version -- by :user:`asvetlov`
