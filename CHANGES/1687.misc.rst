@@ -1,0 +1,1 @@
+Upgraded ``pythoncapi_compat`` to the latest version -- by :user:`asvetlov`

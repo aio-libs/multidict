@@ -100,6 +100,20 @@ _istr_from_exact_str(PyTypeObject* type, PyObject* str)
     return self;
 }
 
+/* Anything but an exact str: a str subclass goes through its own
+   __str__(), as istr(x) does through str.__new__(). */
+COLD static PyObject*
+_istr_from_object(PyTypeObject* type, PyObject* x)
+{
+    PyObject* args = PyTuple_Pack(1, x);
+    if (args == NULL) {
+        return NULL;
+    }
+    PyObject* ret = PyUnicode_Type.tp_new(type, args, NULL);
+    Py_DECREF(args);
+    return ret;
+}
+
 /* Build the instance once str.__new__() has produced its value. */
 static inline PyObject*
 _istr_finish(mod_state* state, PyObject* ret)
@@ -148,31 +162,6 @@ istr_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return _istr_finish(state, ret);
 }
 
-/* istr(x), the only form that carries no encoding or errors argument and
-   so needs nothing from str.__new__() but the value itself. */
-static inline PyObject*
-_istr_from_object(PyTypeObject* type, mod_state* state, PyObject* x)
-{
-    if (IStr_CheckExact(state, x)) {
-        return Py_NewRef(x);
-    }
-    PyObject* ret;
-    if (PyUnicode_CheckExact(x)) {
-        ret = _istr_from_exact_str(type, x);
-    } else {
-        PyObject* args = PyTuple_Pack(1, x);
-        if (args == NULL) {
-            return NULL;
-        }
-        ret = PyUnicode_Type.tp_new(type, args, NULL);
-        Py_DECREF(args);
-    }
-    if (ret == NULL) {
-        return NULL;
-    }
-    return _istr_finish(state, ret);
-}
-
 /* The encoding and errors form, and istr() itself: rebuild the tuple and
    dict that type_call() would have packed and let istr_new() parse them. */
 COLD static PyObject*
@@ -215,14 +204,30 @@ istr_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
     PyTypeObject* tp = (PyTypeObject*)type;
     Py_ssize_t nargs = PyVectorcall_NARGS(nargsf);
 
-    if (nargs != 1 || kwnames != NULL) {
+    if (UNLIKELY(nargs != 1 || kwnames != NULL)) {
         return _istr_slow_vectorcall(tp, args, nargs, kwnames);
     }
     PyObject* mod = PyType_GetModuleByDef(tp, &multidict_module);
     if (mod == NULL) {
         return NULL;
     }
-    return _istr_from_object(tp, get_mod_state(mod), args[0]);
+    mod_state* state = get_mod_state(mod);
+    /* istr(x), the only form that carries no encoding or errors argument
+       and so needs nothing from str.__new__() but the value itself. */
+    PyObject* x = args[0];
+    if (IStr_CheckExact(state, x)) {
+        return Py_NewRef(x);
+    }
+    PyObject* ret;
+    if (PyUnicode_CheckExact(x)) {
+        ret = _istr_from_exact_str(tp, x);
+    } else {
+        ret = _istr_from_object(tp, x);
+    }
+    if (ret == NULL) {
+        return NULL;
+    }
+    return _istr_finish(state, ret);
 }
 
 static PyObject*
@@ -271,26 +276,17 @@ static PyType_Spec istr_spec = {
     .slots = istr_slots,
 };
 
-static inline PyObject*
+static PyObject*
 IStr_New(mod_state* state, PyObject* str, PyObject* canonical)
 {
-    PyObject* args = NULL;
-    PyObject* res = NULL;
+    PyObject* res;
     if (PyUnicode_CheckExact(str)) {
         res = _istr_from_exact_str(state->IStrType, str);
-        if (!res) {
-            goto ret;
-        }
     } else {
-        // a str subclass goes through its own __str__, as istr(str) does
-        args = PyTuple_Pack(1, str);
-        if (args == NULL) {
-            goto ret;
-        }
-        res = PyUnicode_Type.tp_new(state->IStrType, args, NULL);
-        if (!res) {
-            goto ret;
-        }
+        res = _istr_from_object(state->IStrType, str);
+    }
+    if (res == NULL) {
+        return NULL;
     }
     Py_INCREF(canonical);
     ((istrobject*)res)->canonical = canonical;
@@ -298,8 +294,6 @@ IStr_New(mod_state* state, PyObject* str, PyObject* canonical)
     if (((istrobject*)res)->canonical_hash == -1) {
         Py_CLEAR(res);
     }
-ret:
-    Py_XDECREF(args);
     return res;
 }
 

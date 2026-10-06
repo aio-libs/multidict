@@ -111,7 +111,7 @@ CIMultiDictProxy_GetType(void* state_)
 
 /* ================= Constructors ================= */
 
-static inline PyObject*
+static PyObject*
 _md_new(mod_state* state, PyTypeObject* tp, bool is_ci,
         Py_ssize_t prealloc_size)
 {
@@ -140,7 +140,7 @@ CIMultiDict_New(void* state_, Py_ssize_t prealloc_size)
     return _md_new(state, state->CIMultiDictType, true, prealloc_size);
 }
 
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 _proxy_new(mod_state* state, PyObject* arg, bool is_ci)
 {
     MultiDictObject* md = multidict_proxy_target(state, arg, is_ci);
@@ -379,7 +379,7 @@ MultiDict_AddWatcher(void* state_, MultiDict_WatchCallback callback,
 }
 
 // callers hold watcher_mutex
-static inline bool
+static bool
 _watcher_registered(mod_state* state, int watcher_id)
 {
     return watcher_id >= 0 && watcher_id < MULTIDICT_MAX_WATCHERS &&

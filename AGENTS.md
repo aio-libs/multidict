@@ -42,39 +42,6 @@ implementations that must stay behaviourally identical**:
 - C extension: `multidict/_multidict.c`, plus headers in
   `multidict/_multilib/`
 
-Useful entry points:
-
-| Path                                  | What                                                            |
-| ------------------------------------- | --------------------------------------------------------------- |
-| `multidict/__init__.py`               | public surface; chooses C vs. pure-Python impl at import time   |
-| `multidict/_abc.py`                   | `MultiMapping`, `MutableMultiMapping`, type protocols           |
-| `multidict/_multidict_py.py`          | pure-Python `MultiDict`, `CIMultiDict`, `istr`, proxies         |
-| `multidict/_multidict.c`              | C implementation entry points and type definitions              |
-| `multidict/_multilib/hashtable.h`     | core hash table (``md_*`` functions, resize, lookup)            |
-| `multidict/_multilib/bulk_update.h`    | bulk ``extend()``, ``update()`` and ``merge()`` paths            |
-| `multidict/_multilib/compiler.h`      | ``UNLIKELY``, ``COLD``, ``ALWAYS_INLINE`` portability macros |
-| `multidict/_multilib/reflist.h`       | ``reflist_t``, collects refs under a lock; drained into a list or decref'd after |
-| `multidict/_multilib/htkeys.h`        | key-storage layout, ``estimate_log2_keysize``                   |
-| `multidict/_multilib/debug.h`         | ``ASSERT_CONSISTENT``, ``_md_check_consistency``, ``_md_dump`` (debug only) |
-| `multidict/_multilib/istr.h`          | C ``istr`` (case-insensitive str)                               |
-| `multidict/_multilib/istr_object.h`   | ``istrobject`` layout, apart so ``htkeys.h`` can read a canonical |
-| `multidict/_multilib/iter.h`          | views and iterators for the C impl                              |
-| `multidict/_multilib/unpack.h`        | reads a (key, value) pair out of a two-element tuple, list or sequence |
-| `multidict/_multilib/parser.h`        | argument parsing for ``extend`` / ``update`` / constructors     |
-| `multidict/_multilib/pythoncapi_compat.h` | vendored upstream; do not edit                              |
-| `multidict/multidict_capi.h`          | public C API header; client-facing inline wrappers               |
-| `multidict/multidict_capi_struct.h`   | public C API; shared ``MultiDict_CAPI`` struct layout            |
-| `multidict/_multilib/capsule.h`       | public C API implementation, populates the capsule                |
-| `multidict/_testcapi.c`               | C-extension-only harness exercising the C API from tests          |
-| `multidict/__init__.pxd`              | public C API for Cython, mirrors ``multidict_capi.h``             |
-| `multidict/_testcyapi.pyx`            | optional Cython harness mirroring ``_testcapi.c``                 |
-| `docs/capi.rst`                       | public C API reference docs                                       |
-| `docs/cyapi.rst`                      | public Cython API reference docs                                  |
-| `tests/`                              | pytest suite, parametrised across both backends                 |
-| `CHANGES/`                            | towncrier news fragments, one per PR                            |
-| `RELEASE.md`                          | maintainer release procedure, including the benchmark refresh   |
-| `tools/check_inlining.py`             | checks GCC still inlines the helpers hot paths depend on (``RULES``) |
-
 `MULTIDICT_NO_EXTENSIONS=1` forces the pure-Python build at install
 time; the default is the C extension. `MULTIDICT_DEBUG_BUILD=1` builds
 the C extension with `-O0 -g3 -UNDEBUG`.
@@ -543,148 +510,23 @@ signed/unsigned comparisons will fail the build, not just warn.
 
 ### Sanitizer builds
 
-Sanitizers are opt-in on top of `MULTIDICT_DEBUG_BUILD=1`, not implied
-by it: plain `MULTIDICT_DEBUG_BUILD=1` is relied on across CI (and by
-contributors) to just build with `-O0`/`-UNDEBUG` and run normally,
-with no sanitizer runtime preloaded. Add `MULTIDICT_ASAN_BUILD=1` to
-also compile and link the C extension with AddressSanitizer and
-UndefinedBehaviorSanitizer (skipped on Windows, where these flags
-aren't supported by MSVC). Because the extension is then loaded into
-a normal CPython that wasn't itself built with ASan, the runtime has
-to be preloaded ahead of everything else:
-
-```bash
-ASAN_SO=$(cc -print-file-name=libasan.so)
-MULTIDICT_DEBUG_BUILD=1 MULTIDICT_ASAN_BUILD=1 \
-    pip install -e . --force-reinstall --no-deps
-LD_PRELOAD="$ASAN_SO" ASAN_OPTIONS=detect_leaks=0 PYTHONMALLOC=malloc \
-    python -m pytest tests -q -k "not test_leak"
-```
-
-`PYTHONMALLOC=malloc` routes every allocation through libc `malloc`,
-which ASan intercepts. Without it, pymalloc serves small blocks
-(512 bytes or less, which covers most hash tables) from its own
-arenas; ASan sees the arena as one live allocation, so a freed block
-is never flagged and use-after-free goes unreported. Free-threaded
-builds do not support it: they abort at startup with
-`PYTHONMALLOC: unknown allocator`, since only the mimalloc allocators
-are available there. Run ASan on a GIL build.
-
-Do not add `-I` (or `-E`) to that command. Both make Python ignore
-`PYTHON*` environment variables, so `PYTHONMALLOC=malloc` is silently
-dropped and small allocations (most hash tables) come from pymalloc
-arenas, where ASan cannot see use-after-free.
-
-Run the suite a second time with `MULTIDICT_NO_FREELIST=1` added to
-the install. The extension keeps bounded pools of freed hash tables and
-object shells in its module state, and a pooled block never reaches
-`free()`, so ASan can neither poison it nor report a use-after-free on
-it. That flag makes every pool a miss, which puts those paths back under
-ASan's redzones and quarantine. Deselect
-`test_freed_blocks_are_reused` on that run, the way `test_leaks.py` is
-deselected above: it asserts that a pool hands a block back out, which
-is the very thing the flag turns off.
-
-`detect_leaks=0` and excluding `test_leaks.py` are required: CPython
-itself retains allocations at shutdown (interned strings, caches)
-that LeakSanitizer reports as leaks, and `test_leaks.py` asserts on
-process RSS growth, which ASan's redzones/quarantine inflate well
-past the test's threshold regardless of any real multidict
-behaviour. Neither is a multidict bug; both are just sanitizer
-overhead interacting with checks that assume an uninstrumented
-process.
-
-ThreadSanitizer can't be linked into the same binary as ASan/UBSan,
-and running it against a normal CPython produces false positives
-from the interpreter's own internals (its locks aren't all built
-from primitives TSan recognizes unless the interpreter itself is
-TSan-instrumented). Use `MULTIDICT_TSAN_BUILD=1` instead of the
-default sanitizer set, together with a free-threaded CPython built
-with `--with-thread-sanitizer` (a normal `--disable-gil` build is
-not enough):
-
-```bash
-CC=clang CXX=clang++ PYTHON_CONFIGURE_OPTS="--with-thread-sanitizer" \
-    PYTHON_BUILD_FREE_THREADING=1 \
-    python-build 3.14.7t ~/.pyenv/versions/3.14.7t-tsan   # one-time, slow
-
-TSAN_PY=~/.pyenv/versions/3.14.7t-tsan/bin/python3.14t
-CC=clang CXX=clang++ MULTIDICT_DEBUG_BUILD=1 MULTIDICT_TSAN_BUILD=1 \
-    $TSAN_PY -m pip install -e . --force-reinstall --no-deps
-TSAN_OPTIONS="halt_on_error=0:suppressions=tools/tsan_suppressions.txt" \
-    $TSAN_PY -m pytest tests -q --no-cov -k "not test_leak"
-```
-
-`--no-cov` matters: `pytest.ini` turns coverage on by default, and its
-tracer makes a TSan run about eight times slower. That pushes slow
-tests past `faulthandler_timeout`, and pure-Python stress tests past
-their own time limits. [`tools/tsan_suppressions.txt`](tools/tsan_suppressions.txt)
-holds the reports that are benign by design and outside multidict,
-so far only pytest's faulthandler watchdog; add an entry only with the
-same justification in a comment, never to hide a race in multidict.
-
-A TSan run is much slower than normal (single stress tests can take
-30-50s instead of well under a second); don't be surprised if it
-takes minutes to get through the suite.
-
-CI runs across the supported CPython versions plus a wheel build for
-manylinux, musllinux, macOS, Windows, iOS, and Android, plus a
-pure-Python leg under `MULTIDICT_NO_EXTENSIONS=1`. Do not regress
-the benchmarks under `benchmarks/` without flagging the trade-off
-in the PR body.
+Sanitizers are opt-in on top of `MULTIDICT_DEBUG_BUILD=1`:
+`MULTIDICT_ASAN_BUILD=1` adds ASan and UBSan, `MULTIDICT_TSAN_BUILD=1`
+swaps in TSan. The recipes, with the preload, allocator and suppression
+setup each one needs, are in
+[`.claude/skills/sanitizer-builds/SKILL.md`](.claude/skills/sanitizer-builds/SKILL.md).
+Never add `-I` or `-E` to the ASan `python` command: both drop
+`PYTHONMALLOC=malloc`, and use-after-free on small tables goes unreported.
 
 ### The comparison tables are refreshed at release time
 
-[`docs/benchmark.rst`](docs/benchmark.rst) publishes per-operation
-instruction counts for `dict`, `MultiDict` and `CIMultiDict` on both
-the GIL and the free-threaded build. They are real measurements, not
-illustrations, but regenerating them in every PR that touches
-performance is too noisy to review: every row shifts a little on every
-run, so the table churns on changes that did not move it. Do not
-regenerate them in a feature or bugfix PR. They are refreshed once per
-release; see [RELEASE.md](RELEASE.md).
-
-What a performance change owes a reviewer instead is a measurement in
-the PR body: which operations moved, by how much, and how you measured
-it. Collect a before/after pair per interpreter build the change can
-reach, reinstalling the extension into each virtualenv in between.
-Anything touching atomics, locking or the free-threaded paths means
-both builds:
-
-```bash
-.venv-gil/bin/python benchmarks/callgrind_driver.py -o gil-before.json
-.venv-ft/bin/python  benchmarks/callgrind_driver.py -o ft-before.json
-# apply the change, then per venv:
-#     <venv>/bin/pip install -e . --force-reinstall --no-deps
-.venv-gil/bin/python benchmarks/callgrind_driver.py -o gil-after.json
-.venv-ft/bin/python  benchmarks/callgrind_driver.py -o ft-after.json
-```
-
-One run measures every operation in the table; the driver has no flag
-to pick a single one, so narrow the report rather than the run and
-quote the rows that moved. `--impl` restricts it to one
-implementation, and `--include-multidict-only` adds the operations
-`dict` has no counterpart for. Compare a GIL run against a GIL run and
-a free-threaded run against a free-threaded run; the two builds are
-separate baselines, and one is not a control for the other.
-
-The measurement is deterministic, so it does not need a quiet machine;
-it does need Valgrind, `requirements/pytest.txt` (for the
-`pytest-codspeed` client requests; the driver refuses to run without
-them unless given `--whole-process`, whose numbers are not comparable)
-and one virtualenv per interpreter build, both on the same CPython
-patch release. Before and after trees may live at different paths; the
-driver runs its children from a fixed-length staging directory so
-neither the path length nor stray build products shift the heap, but a
-few instructions of delta on an allocating row still deserves a
-base-to-base control.
-`docs/benchmark.rst` has the setup and
-the traps. Adding or renaming a benchmarked operation means editing
-`benchmarks/operations.py`, which is the single registry all three
-entry points read; run `python benchmarks/callgrind_driver.py
---self-check` afterwards. Adding or renaming an operation does change
-the table's shape rather than just its numbers, so that is the one case
-where a regular PR regenerates it.
+Do not regenerate the tables in [`docs/benchmark.rst`](docs/benchmark.rst)
+in a feature or bugfix PR; they are refreshed once per release (see
+[RELEASE.md](RELEASE.md)), except when a PR adds or renames a benchmarked
+operation. A performance change owes the reviewer a before/after
+measurement in the PR body instead, per interpreter build it can reach;
+how to collect it is in
+[`.claude/skills/perf-measurement/SKILL.md`](.claude/skills/perf-measurement/SKILL.md).
 
 ### Keep the inlining rules green, and extend them
 

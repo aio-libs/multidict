@@ -1,0 +1,5 @@
+Moved the sanitizer build recipes and the performance measurement
+procedure out of ``AGENTS.md`` into Claude Code skills under
+``.claude/skills/``, and dropped its file layout table, so that less of
+it is loaded into every agent session
+-- by :user:`asvetlov`.
