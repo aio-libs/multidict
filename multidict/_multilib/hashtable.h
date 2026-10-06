@@ -2457,7 +2457,7 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
 
 /* 2 means a value's __eq__ changed the kind of either table: the caller
    carries on from *ppos1 and *ppos2 under the new kinds. */
-ALWAYS_INLINE static inline int
+static int
 _md_eq_scan(MultiDictObject* md, MultiDictObject* other, uint8_t kind1,
             uint8_t kind2, Py_ssize_t* ppos1, Py_ssize_t* ppos2)
 {
