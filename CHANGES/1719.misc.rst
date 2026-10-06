@@ -1,0 +1,1 @@
+Outline ``multidict_proxy_target`` and ``_multidict_proxy_set_target`` functions -- by :user:`asvetlov`
