@@ -342,21 +342,21 @@ fail:
     return -1;
 }
 
-NOINLINE static int
+static int
 _md_update_from_ht_extend(MultiDictObject* md, MultiDictObject* other,
                           reflist_t* defer, update_marks_t* marks)
 {
     return _md_update_from_ht(md, other, Extend, defer, marks, md->is_ci);
 }
 
-NOINLINE static int
+static int
 _md_update_from_ht_update(MultiDictObject* md, MultiDictObject* other,
                           reflist_t* defer, update_marks_t* marks)
 {
     return _md_update_from_ht(md, other, Update, defer, marks, md->is_ci);
 }
 
-NOINLINE static int
+static int
 _md_update_from_ht_merge(MultiDictObject* md, MultiDictObject* other,
                          reflist_t* defer, update_marks_t* marks)
 {
@@ -502,7 +502,7 @@ fail:
     return -1;
 }
 
-NOINLINE static int
+static int
 _md_update_from_dict_extend_ci(MultiDictObject* md, PyObject* kwds,
                                reflist_t* defer, update_marks_t* marks)
 {
@@ -510,7 +510,7 @@ _md_update_from_dict_extend_ci(MultiDictObject* md, PyObject* kwds,
     return _md_update_from_dict(md, kwds, Extend, defer, marks, true);
 }
 
-NOINLINE static int
+static int
 _md_update_from_dict_extend_cs(MultiDictObject* md, PyObject* kwds,
                                reflist_t* defer, update_marks_t* marks)
 {
@@ -518,14 +518,14 @@ _md_update_from_dict_extend_cs(MultiDictObject* md, PyObject* kwds,
     return _md_update_from_dict(md, kwds, Extend, defer, marks, false);
 }
 
-NOINLINE static int
+static int
 _md_update_from_dict_update(MultiDictObject* md, PyObject* kwds,
                             reflist_t* defer, update_marks_t* marks)
 {
     return _md_update_from_dict(md, kwds, Update, defer, marks, md->is_ci);
 }
 
-NOINLINE static int
+static int
 _md_update_from_dict_merge(MultiDictObject* md, PyObject* kwds,
                            reflist_t* defer, update_marks_t* marks)
 {
@@ -590,7 +590,7 @@ _md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
     return 0;
 }
 
-NOINLINE static int
+static int
 _md_update_from_kwnames_ci(MultiDictObject* md, PyObject* const* args,
                            Py_ssize_t nargs, PyObject* kwnames)
 {
@@ -598,7 +598,7 @@ _md_update_from_kwnames_ci(MultiDictObject* md, PyObject* const* args,
     return _md_update_from_kwnames(md, args, nargs, kwnames, true);
 }
 
-NOINLINE static int
+static int
 _md_update_from_kwnames_cs(MultiDictObject* md, PyObject* const* args,
                            Py_ssize_t nargs, PyObject* kwnames)
 {
@@ -607,7 +607,7 @@ _md_update_from_kwnames_cs(MultiDictObject* md, PyObject* const* args,
 }
 
 // One copy per class, so each compiles for one class only.
-NOINLINE static int
+static int
 md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
 {
@@ -617,7 +617,7 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
     return _md_update_from_kwnames_cs(md, args, nargs, kwnames);
 }
 
-NOINLINE static void
+static void
 _err_not_sequence(Py_ssize_t i)
 {
     PyErr_Format(PyExc_TypeError,
@@ -626,7 +626,7 @@ _err_not_sequence(Py_ssize_t i)
                  i);
 }
 
-NOINLINE static void
+static void
 _err_bad_length(Py_ssize_t i, Py_ssize_t n)
 {
     PyErr_Format(PyExc_ValueError,
@@ -636,7 +636,7 @@ _err_bad_length(Py_ssize_t i, Py_ssize_t n)
                  n);
 }
 
-NOINLINE static void
+static void
 _err_cannot_fetch(Py_ssize_t i, const char* name)
 {
     PyErr_Format(PyExc_ValueError,
