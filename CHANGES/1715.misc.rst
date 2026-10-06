@@ -1,0 +1,3 @@
+Removed the per-operation and per-class wrappers around the update helpers
+of the C extension, and folded each remaining helper into its caller
+-- by :user:`asvetlov`.
