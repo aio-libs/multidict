@@ -2102,7 +2102,7 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 
 /* The last live entry at or before *ppos, which it moves there; `kind` is
    a constant at each call, so the scan steps by a fixed entry size. */
-ALWAYS_INLINE static inline entry_t*
+static entry_t*
 _md_last_live(uint8_t kind, entry_t* entries, Py_ssize_t* ppos)
 {
     Py_ssize_t pos = *ppos;
