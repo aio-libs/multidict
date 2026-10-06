@@ -2530,7 +2530,7 @@ _md_eq_scan(MultiDictObject* md, MultiDictObject* other, uint8_t kind1,
     }
 }
 
-static inline int
+NOINLINE static int
 md_eq(MultiDictObject* md, MultiDictObject* other)
 {
     if (md == other) {
@@ -2564,15 +2564,33 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
     return ret;
 }
 
-ALWAYS_INLINE static inline int
-_md_eq_to_mapping_scan(MultiDictObject* md, PyObject* other, uint8_t kind)
+NOINLINE static int
+md_eq_to_mapping(MultiDictObject* md, PyObject* other)
 {
+    Py_ssize_t other_len;
+
+    if (!PyMapping_Check(other)) {
+        PyErr_Format(PyExc_TypeError,
+                     "other argument must be a mapping, not %s",
+                     Py_TYPE(other)->tp_name);
+        return -1;
+    }
+
+    other_len = PyMapping_Size(other);
+    if (other_len < 0) {
+        return -1;
+    }
+    if (md_len(md) != other_len) {
+        return 0;
+    }
+
     PyObject* key = NULL;
     PyObject* avalue = NULL;
     PyObject* bvalue;
 
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
+    uint8_t kind = keys->kind;
     entry_t* entries = htkeys_entries(keys);
 
     for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
@@ -2613,32 +2631,6 @@ _md_eq_to_mapping_scan(MultiDictObject* md, PyObject* other, uint8_t kind)
     }
 
     return 1;
-}
-
-static inline int
-md_eq_to_mapping(MultiDictObject* md, PyObject* other)
-{
-    Py_ssize_t other_len;
-
-    if (!PyMapping_Check(other)) {
-        PyErr_Format(PyExc_TypeError,
-                     "other argument must be a mapping, not %s",
-                     Py_TYPE(other)->tp_name);
-        return -1;
-    }
-
-    other_len = PyMapping_Size(other);
-    if (other_len < 0) {
-        return -1;
-    }
-    if (md_len(md) != other_len) {
-        return 0;
-    }
-
-    if (kind_is_compact(md->keys->kind)) {
-        return _md_eq_to_mapping_scan(md, other, KIND_COMPACT);
-    }
-    return _md_eq_to_mapping_scan(md, other, KIND_ANYSTR);
 }
 
 NOINLINE static PyObject*
