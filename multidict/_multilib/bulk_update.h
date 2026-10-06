@@ -230,7 +230,7 @@ _md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
 
 /* other of md's class: nothing here runs Python code, so other's table
    and its kind hold throughout. */
-ALWAYS_INLINE static inline int
+static int
 _md_update_from_ht_scan(MultiDictObject* md, MultiDictObject* other,
                         UpdateOp op, reflist_t* defer, update_marks_t* marks,
                         bool ci, uint8_t kind)
@@ -256,7 +256,7 @@ _md_update_from_ht_scan(MultiDictObject* md, MultiDictObject* other,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 _md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                    reflist_t* defer, update_marks_t* marks, bool ci)
 {
@@ -363,11 +363,7 @@ _md_update_from_ht_merge(MultiDictObject* md, MultiDictObject* other,
     return _md_update_from_ht(md, other, Merge, defer, marks, md->is_ci);
 }
 
-/* One copy per operation, which every caller names as a constant. Each
-   reads the class at run time instead of having a copy per class: that
-   costs a multidict source up to 3%, and takes a sixth off the size of
-   the extension. */
-ALWAYS_INLINE static inline int
+static int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                   reflist_t* defer, update_marks_t* marks)
 {
@@ -419,7 +415,7 @@ md_extend_self(MultiDictObject* md)
     return _md_extend_self_scan(md, ci, KIND_ANYSTR);
 }
 
-ALWAYS_INLINE static inline int
+static int
 _md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                      reflist_t* defer, update_marks_t* marks, bool ci)
 {
@@ -532,10 +528,7 @@ _md_update_from_dict_merge(MultiDictObject* md, PyObject* kwds,
     return _md_update_from_dict(md, kwds, Merge, defer, marks, md->is_ci);
 }
 
-/* One copy per operation, which every caller names as a constant.
-   Extend is the constructor's path and has a copy per class too; update()
-   and merge() read the class at run time, see md_update_from_ht(). */
-ALWAYS_INLINE static inline int
+static int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                     reflist_t* defer, update_marks_t* marks)
 {
@@ -553,7 +546,7 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
     Py_UNREACHABLE();
 }
 
-ALWAYS_INLINE static inline int
+static int
 _md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
                         Py_ssize_t nargs, PyObject* kwnames, bool ci)
 {
@@ -606,7 +599,6 @@ _md_update_from_kwnames_cs(MultiDictObject* md, PyObject* const* args,
     return _md_update_from_kwnames(md, args, nargs, kwnames, false);
 }
 
-// One copy per class, so each compiles for one class only.
 static int
 md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
@@ -916,7 +908,7 @@ _md_update_from_seq_merge(MultiDictObject* md, PyObject* seq, reflist_t* defer,
     return ret;
 }
 
-static inline int
+static int
 md_update_from_seq(MultiDictObject* md, PyObject* seq, UpdateOp op,
                    reflist_t* defer, update_marks_t* marks)
 {

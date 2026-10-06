@@ -734,7 +734,7 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
     return 0;
 }
 
-static inline int
+static int
 md_clone_from_ht(MultiDictObject* md, MultiDictObject* other)
 {
     ASSERT_CONSISTENT(other);
