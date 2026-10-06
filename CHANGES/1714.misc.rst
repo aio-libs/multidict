@@ -1,0 +1,2 @@
+Made the multidict and dict update helpers and ``md_clone_from_ht()`` of
+the C extension plain ``static`` functions -- by :user:`asvetlov`.
