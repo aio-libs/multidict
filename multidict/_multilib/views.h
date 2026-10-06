@@ -590,6 +590,7 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
     Py_CLEAR(iter);
 
     MultiDictObject* md = self->md;
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
@@ -600,7 +601,7 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
         if (entry_is_hole(entry)) {
             continue;
         }
-        identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
+        identity = Py_NewRef(entry_identity(kind, ci, entry));
         value = Py_NewRef(entry->value);
         key = md_ensure_key(md, entry);  // last entry access
         if (key == NULL) {
@@ -1023,6 +1024,7 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
     Py_CLEAR(iter);
 
     MultiDictObject* md = self->md;
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
@@ -1033,7 +1035,7 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
         if (entry_is_hole(entry)) {
             continue;
         }
-        identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
+        identity = Py_NewRef(entry_identity(kind, ci, entry));
         key = md_ensure_key(md, entry);  // last entry access
         if (key == NULL) {
             goto fail;

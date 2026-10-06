@@ -93,6 +93,7 @@ static Py_ssize_t
 _md_walk_all_scan(MultiDictObject* md, bool with_keys,
                   md_item_visitor_t visitor, void* user_data, uint8_t kind)
 {
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entry = htkeys_entries(keys);
@@ -104,8 +105,8 @@ _md_walk_all_scan(MultiDictObject* md, bool with_keys,
             continue;
         }
 
-        PyObject* identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
-        Py_hash_t hash = entry_hash(kind, md->is_ci, entry);
+        PyObject* identity = Py_NewRef(entry_identity(kind, ci, entry));
+        Py_hash_t hash = entry_hash(kind, ci, entry);
         PyObject* value = Py_NewRef(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
@@ -172,6 +173,7 @@ ALWAYS_INLINE static inline Py_ssize_t
 md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                   bool with_keys, md_item_visitor_t visitor, void* user_data)
 {
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
@@ -190,10 +192,10 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
         entry_t* entry = entry_at(kind, entries, iter.index);
-        if (entry_hash(kind, md->is_ci, entry) != hash) {
+        if (entry_hash(kind, ci, entry) != hash) {
             continue;
         }
-        if (!str_cmp(identity, entry_identity(kind, md->is_ci, entry))) {
+        if (!str_cmp(identity, entry_identity(kind, ci, entry))) {
             continue;
         }
 
