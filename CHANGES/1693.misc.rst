@@ -1,0 +1,2 @@
+Moved two rarely run bulk update helpers of the C extension out of line
+-- by :user:`asvetlov`.
