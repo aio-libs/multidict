@@ -36,10 +36,9 @@ typedef enum _UpdateOp {
 static int
 _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
            PyObject* key, PyObject* value, reflist_t* defer,
-           update_marks_t* marks, bool fits, bool ci)
+           update_marks_t* marks, bool fits)
 {
-    assert(ci == md->is_ci);
-    assert(fits == md_key_fits(md, key, identity, ci));
+    assert(fits == md_key_fits(md, key, identity));
     bool found = false;
     if (kind_is_compact(md->keys->kind) && UNLIKELY(!fits) &&
         md_to_anystr(md) < 0) {
@@ -58,9 +57,9 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             continue;
         }
         entry_t* entry = entry_at(kind, entries, iter.index);
-        if (hash != entry_hash(kind, ci, entry) ||
+        if (hash != entry_hash(kind, md->is_ci, entry) ||
             bitmap_test(&marks->updated, iter.index) ||
-            !str_cmp(identity, entry_identity(kind, ci, entry))) {
+            !str_cmp(identity, entry_identity(kind, md->is_ci, entry))) {
             continue;
         }
         if (!found) {
@@ -101,17 +100,15 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     }
 
     if (!found) {
-        return md_add_for_upd(md, hash, identity, key, value, marks, fits, ci);
+        return md_add_for_upd(md, hash, identity, key, value, marks, fits);
     }
     return 0;
 }
 
 static int
 _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-          PyObject* key, PyObject* value, update_marks_t* marks, bool fits,
-          bool ci)
+          PyObject* key, PyObject* value, update_marks_t* marks, bool fits)
 {
-    assert(ci == md->is_ci);
     if (update_marks_sync(marks, md) < 0) {
         return -1;
     }
@@ -126,16 +123,16 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         }
         entry_t* entry = entry_at(kind, entries, iter.index);
         /* An entry this batch added doesn't count as already present. */
-        if (hash != entry_hash(kind, ci, entry) ||
+        if (hash != entry_hash(kind, md->is_ci, entry) ||
             bitmap_test(&marks->updated, iter.index)) {
             continue;
         }
-        if (str_cmp(identity, entry_identity(kind, ci, entry))) {
+        if (str_cmp(identity, entry_identity(kind, md->is_ci, entry))) {
             return 0;
         }
     }
 
-    return md_add_for_upd(md, hash, identity, key, value, marks, fits, ci);
+    return md_add_for_upd(md, hash, identity, key, value, marks, fits);
 }
 
 /* Removes the entries update() doomed and nothing has written since. Only
@@ -212,18 +209,18 @@ md_post_update(MultiDictObject* md, reflist_t* defer, update_marks_t* marks)
 static int
 _md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
                 PyObject* identity, PyObject* key, PyObject* value,
-                reflist_t* defer, update_marks_t* marks, bool ci)
+                reflist_t* defer, update_marks_t* marks)
 {
     // from another table, so not known from the identity
-    bool fits = md_key_fits(md, key, identity, ci);
+    bool fits = md_key_fits(md, key, identity);
     switch (op) {
         case Update:
             return _md_update(
-                md, hash, identity, key, value, defer, marks, fits, ci);
+                md, hash, identity, key, value, defer, marks, fits);
         case Extend:
-            return md_add_with_hash(md, hash, identity, key, value, fits, ci);
+            return md_add_with_hash(md, hash, identity, key, value, fits);
         case Merge:
-            return _md_merge(md, hash, identity, key, value, marks, fits, ci);
+            return _md_merge(md, hash, identity, key, value, marks, fits);
     }
     Py_UNREACHABLE();
 }
@@ -233,7 +230,7 @@ _md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
 static int
 _md_update_from_ht_scan(MultiDictObject* md, MultiDictObject* other,
                         UpdateOp op, reflist_t* defer, update_marks_t* marks,
-                        bool ci, uint8_t kind)
+                        uint8_t kind)
 {
     entry_t* entry = htkeys_entries(other->keys);
     entry_t* end = entry_at(kind, entry, other->keys->nentries);
@@ -243,13 +240,12 @@ _md_update_from_ht_scan(MultiDictObject* md, MultiDictObject* other,
         }
         if (_md_update_item(md,
                             op,
-                            entry_hash(kind, ci, entry),
-                            entry_identity(kind, ci, entry),
+                            entry_hash(kind, md->is_ci, entry),
+                            entry_identity(kind, md->is_ci, entry),
                             entry->key,
                             entry->value,
                             defer,
-                            marks,
-                            ci) < 0) {
+                            marks) < 0) {
             return -1;
         }
     }
@@ -260,7 +256,6 @@ static int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                   reflist_t* defer, update_marks_t* marks)
 {
-    bool ci = md->is_ci;
     Py_ssize_t pos;
     Py_hash_t hash;
     PyObject* identity = NULL;
@@ -279,12 +274,12 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         return -1;
     }
 
-    if (ci == other->is_ci) {
+    if (md->is_ci == other->is_ci) {
         return kind_is_compact(other->keys->kind)
                    ? _md_update_from_ht_scan(
-                         md, other, op, defer, marks, ci, KIND_COMPACT)
+                         md, other, op, defer, marks, KIND_COMPACT)
                    : _md_update_from_ht_scan(
-                         md, other, op, defer, marks, ci, KIND_ANYSTR);
+                         md, other, op, defer, marks, KIND_ANYSTR);
     }
 
     entry_t* entries = htkeys_entries(other->keys);
@@ -304,7 +299,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
            other's identity: md's is the unlowered key. */
         canonical = Py_XNewRef(other->is_ci ? entry_identity(kind, true, entry)
                                             : NULL);
-        identity = md_calc_identity(md, key, ci);
+        identity = md_calc_identity(md, key);
         if (identity == NULL) {
             goto fail;
         }
@@ -313,13 +308,13 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
             goto fail;
         }
         /* materialize key */
-        Py_SETREF(key, md_calc_key(other, key, canonical, other->is_ci));
+        Py_SETREF(key, md_calc_key(other, key, canonical));
         Py_CLEAR(canonical);
         if (key == NULL) {
             goto fail;
         }
-        if (_md_update_item(
-                md, op, hash, identity, key, value, defer, marks, ci) < 0) {
+        if (_md_update_item(md, op, hash, identity, key, value, defer, marks) <
+            0) {
             goto fail;
         }
         Py_DECREF(identity);
@@ -343,20 +338,19 @@ fail:
 }
 
 ALWAYS_INLINE static inline int
-_md_extend_self_scan(MultiDictObject* md, bool ci, uint8_t kind)
+_md_extend_self_scan(MultiDictObject* md, uint8_t kind)
 {
     entry_t* entry = htkeys_entries(md->keys);
     entry_t* end = entry_at(kind, entry, md->keys->nentries);
     for (; entry < end; entry = entry_next(kind, entry)) {
         if (!entry_is_hole(entry)) {
-            PyObject* identity = entry_identity(kind, ci, entry);
+            PyObject* identity = entry_identity(kind, md->is_ci, entry);
             if (md_add_with_hash(md,
-                                 entry_hash(kind, ci, entry),
+                                 entry_hash(kind, md->is_ci, entry),
                                  identity,
                                  entry->key,
                                  entry->value,
-                                 md_key_fits(md, entry->key, identity, ci),
-                                 ci) < 0) {
+                                 md_key_fits(md, entry->key, identity)) < 0) {
                 return -1;
             }
         }
@@ -368,22 +362,20 @@ _md_extend_self_scan(MultiDictObject* md, bool ci, uint8_t kind)
 static int
 md_extend_self(MultiDictObject* md)
 {
-    bool ci = md->is_ci;
     if (md_reserve(md, md->keys->nentries) < 0) {
         return -1;
     }
 
     if (kind_is_compact(md->keys->kind)) {
-        return _md_extend_self_scan(md, ci, KIND_COMPACT);
+        return _md_extend_self_scan(md, KIND_COMPACT);
     }
-    return _md_extend_self_scan(md, ci, KIND_ANYSTR);
+    return _md_extend_self_scan(md, KIND_ANYSTR);
 }
 
 static int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                     reflist_t* defer, update_marks_t* marks)
 {
-    bool ci = md->is_ci;
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
     PyObject* key = NULL;
@@ -397,14 +389,14 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
         /* Only lower() on a str subclass key runs Python code here, and it
            can clear kwds and free both; any other key keeps them alive
            through kwds. */
-        owned = ci && !PyUnicode_CheckExact(key) &&
+        owned = md->is_ci && !PyUnicode_CheckExact(key) &&
                 !IStr_CheckExact(md->state, key);
         if (UNLIKELY(owned)) {
             Py_INCREF(key);
             Py_INCREF(value);
         }
         bool fits;
-        identity = md_calc_identity_fits(md, key, &fits, ci);
+        identity = md_calc_identity_fits(md, key, &fits);
         if (identity == NULL) {
             goto fail;
         }
@@ -414,15 +406,9 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
         }
         switch (op) {
             case Update:
-                if (_md_update(md,
-                               hash,
-                               identity,
-                               key,
-                               value,
-                               defer,
-                               marks,
-                               fits,
-                               ci) < 0) {
+                if (_md_update(
+                        md, hash, identity, key, value, defer, marks, fits) <
+                    0) {
                     goto fail;
                 }
                 break;
@@ -433,15 +419,15 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                     owned = true;
                 }
                 if (md_add_with_hash_steal_refs(
-                        md, hash, identity, key, value, fits, ci) < 0) {
+                        md, hash, identity, key, value, fits) < 0) {
                     goto fail;
                 }
                 identity = NULL;
                 owned = false;
                 break;
             case Merge:
-                if (_md_merge(
-                        md, hash, identity, key, value, marks, fits, ci) < 0) {
+                if (_md_merge(md, hash, identity, key, value, marks, fits) <
+                    0) {
                     goto fail;
                 }
                 break;
@@ -466,7 +452,6 @@ static int
 md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
 {
-    bool ci = md->is_ci;
     Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
     if (md_reserve(md, nkwargs) < 0) {
         return -1;
@@ -476,7 +461,7 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
         assert(PyUnicode_Check(key));
         Py_INCREF(key);
         bool fits;
-        PyObject* identity = md_calc_identity_fits(md, key, &fits, ci);
+        PyObject* identity = md_calc_identity_fits(md, key, &fits);
         if (identity == NULL) {
             Py_DECREF(key);
             return -1;
@@ -489,7 +474,7 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
         }
         PyObject* value = args[nargs + i];  // borrowed
         if (md_add_with_hash_steal_refs(
-                md, hash, identity, key, Py_NewRef(value), fits, ci) < 0) {
+                md, hash, identity, key, Py_NewRef(value), fits) < 0) {
             Py_DECREF(value);
             Py_DECREF(identity);
             Py_DECREF(key);
@@ -674,7 +659,7 @@ _md_seq_next(MultiDictObject* md, seq_iter_t* it, Py_ssize_t i,
         return -1;
     }
 
-    out->identity = md_calc_identity_fits(md, out->key, &out->fits, md->is_ci);
+    out->identity = md_calc_identity_fits(md, out->key, &out->fits);
     if (out->identity == NULL) {
         goto fail;
     }
@@ -704,7 +689,6 @@ _seq_item_clear(seq_item_t* item)
 static int
 _md_update_from_seq_extend(MultiDictObject* md, PyObject* seq)
 {
-    bool ci = md->is_ci;
     seq_iter_t it;
     seq_item_t item;
     int ret;
@@ -718,7 +702,7 @@ _md_update_from_seq_extend(MultiDictObject* md, PyObject* seq)
             break;
         }
         ret = md_add_with_hash_steal_refs(
-            md, item.hash, item.identity, item.key, item.value, item.fits, ci);
+            md, item.hash, item.identity, item.key, item.value, item.fits);
         if (ret < 0) {
             _seq_item_clear(&item);
             break;
@@ -733,7 +717,6 @@ static int
 _md_update_from_seq_update(MultiDictObject* md, PyObject* seq,
                            reflist_t* defer, update_marks_t* marks)
 {
-    bool ci = md->is_ci;
     seq_iter_t it;
     seq_item_t item;
     int ret;
@@ -753,8 +736,7 @@ _md_update_from_seq_update(MultiDictObject* md, PyObject* seq,
                          item.value,
                          defer,
                          marks,
-                         item.fits,
-                         ci);
+                         item.fits);
         _seq_item_clear(&item);
         if (ret < 0) {
             break;
@@ -768,7 +750,6 @@ static int
 _md_update_from_seq_merge(MultiDictObject* md, PyObject* seq, reflist_t* defer,
                           update_marks_t* marks)
 {
-    bool ci = md->is_ci;
     seq_iter_t it;
     seq_item_t item;
     int ret;
@@ -787,8 +768,7 @@ _md_update_from_seq_merge(MultiDictObject* md, PyObject* seq, reflist_t* defer,
                         item.key,
                         item.value,
                         marks,
-                        item.fits,
-                        ci);
+                        item.fits);
         _seq_item_clear(&item);
         if (ret < 0) {
             break;

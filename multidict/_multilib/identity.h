@@ -254,13 +254,10 @@ _arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
     return _subclass_to_key_ci(state, key, identity);
 }
 
-/* ci is md->is_ci, passed in so an entry point that knows its class
-   folds the test away. */
 ALWAYS_INLINE static inline PyObject*
-md_calc_identity(MultiDictObject* md, PyObject* key, bool ci)
+md_calc_identity(MultiDictObject* md, PyObject* key)
 {
-    assert(ci == md->is_ci);
-    if (ci) return _key_to_identity_ci(md->state, key);
+    if (md->is_ci) return _key_to_identity_ci(md->state, key);
     return _key_to_identity_cs(md->state, key);
 }
 
@@ -271,10 +268,9 @@ md_calc_identity(MultiDictObject* md, PyObject* key, bool ci)
    key.  A borrowed identity keeps the owned one's decref off the lookup's
    exit, which cost key in d 4% in taken branches. */
 ALWAYS_INLINE static inline PyObject*
-md_borrow_identity(MultiDictObject* md, PyObject* key, bool ci)
+md_borrow_identity(MultiDictObject* md, PyObject* key)
 {
-    assert(ci == md->is_ci);
-    if (ci) {
+    if (md->is_ci) {
         if (IStr_CheckExact(md->state, key)) {
             return ((istrobject*)key)->canonical;
         }
@@ -290,10 +286,9 @@ md_borrow_identity(MultiDictObject* md, PyObject* key, bool ci)
    md_key_fits()): a CIMultiDict's istr test has just run here, so the
    insert need not repeat it. */
 ALWAYS_INLINE static inline PyObject*
-md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits, bool ci)
+md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits)
 {
-    assert(ci == md->is_ci);
-    if (ci) {
+    if (md->is_ci) {
         if (IStr_CheckExact(md->state, key)) {
             *pfits = true;
             return Py_NewRef(((istrobject*)key)->canonical);
@@ -311,10 +306,9 @@ md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits, bool ci)
    to itself GCC emits it out of line, and every caller pays the call. */
 ALWAYS_INLINE static inline int
 md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
-                      Py_hash_t* phash, bool ci)
+                      Py_hash_t* phash)
 {
-    assert(ci == md->is_ci);
-    PyObject* identity = md_calc_identity(md, key, ci);
+    PyObject* identity = md_calc_identity(md, key);
     if (identity == NULL) {
         return -1;
     }
@@ -331,10 +325,9 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
 /* md_calc_identity_hash() plus md_calc_identity_fits()'s *pfits. */
 ALWAYS_INLINE static inline int
 md_calc_identity_hash_fits(MultiDictObject* md, PyObject* key,
-                           PyObject** pidentity, Py_hash_t* phash, bool* pfits,
-                           bool ci)
+                           PyObject** pidentity, Py_hash_t* phash, bool* pfits)
 {
-    PyObject* identity = md_calc_identity_fits(md, key, pfits, ci);
+    PyObject* identity = md_calc_identity_fits(md, key, pfits);
     if (identity == NULL) {
         return -1;
     }
@@ -349,10 +342,9 @@ md_calc_identity_hash_fits(MultiDictObject* md, PyObject* key,
 }
 
 ALWAYS_INLINE static inline PyObject*
-md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity, bool ci)
+md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
 {
-    assert(ci == md->is_ci);
-    if (ci) return _arg_to_key_ci(md->state, key, identity);
+    if (md->is_ci) return _arg_to_key_ci(md->state, key, identity);
     return _arg_to_key_cs(md->state, key, identity);
 }
 
@@ -369,7 +361,7 @@ _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
     PyObject* old_key = Py_NewRef(entry->key);
     PyObject* identity =
         Py_NewRef(entry_identity(md->keys->kind, true, entry));
-    PyObject* key = md_calc_key(md, old_key, identity, true);
+    PyObject* key = _arg_to_key_ci(md->state, old_key, identity);
     if (key != NULL && md->version == version &&
         PyUnicode_CheckExact(old_key)) {
         entry->key = Py_NewRef(key);
