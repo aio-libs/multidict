@@ -259,7 +259,7 @@ static inline void
 _md_drain_retired(MultiDictObject* md);
 
 /* Out of line: inlined, it costs FT lookups up to 10 Ir. */
-NOINLINE static void
+static void
 _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys != &empty_htkeys) {
