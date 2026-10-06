@@ -142,7 +142,7 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
    an out-of-memory fallback decref in _md_del_at_deferred() can run Python
    here; the walk then starts over, which each record leaving the set as it
    goes makes safe. */
-static inline int
+static int
 _md_post_update_deleted(MultiDictObject* md, reflist_t* defer,
                         update_marks_t* marks)
 {
@@ -609,7 +609,7 @@ _md_update_from_kwnames_cs(MultiDictObject* md, PyObject* const* args,
 }
 
 // One copy per class, so each compiles for one class only.
-static inline int
+static int
 md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
 {

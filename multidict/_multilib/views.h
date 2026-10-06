@@ -264,7 +264,7 @@ done:
 
 /********** Items **********/
 
-static inline PyObject*
+static PyObject*
 multidict_itemsview_new(MultiDictObject* md)
 {
     return _multidict_view_new(md, md->state->ItemsViewType);
@@ -286,7 +286,7 @@ multidict_itemsview_tp_repr(_Multidict_ViewObject* self)
     return ret;
 }
 
-static inline int
+static int
 _multidict_itemsview_parse_item(_Multidict_ViewObject* self, PyObject* arg,
                                 PyObject** pidentity, PyObject** pkey,
                                 PyObject** pvalue)
@@ -329,7 +329,7 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject* self, PyObject* arg,
     return 1;
 }
 
-static inline int
+static int
 _set_add(PyObject* set, PyObject* key, PyObject* value)
 {
     PyObject* tpl = PyTuple_Pack(2, key, value);
@@ -365,7 +365,7 @@ _multidict_collect_visit(void* user_data, PyObject* identity, Py_hash_t hash,
    so that callers can run a custom __eq__ against it after the walk.
 
    `with_keys` selects values (false) or (key, value) tuples (true). */
-static inline PyObject*
+static PyObject*
 _multidict_collect_matches(MultiDictObject* md, PyObject* identity,
                            bool with_keys)
 {
@@ -678,7 +678,7 @@ multidict_itemsview_xor(PyObject* lft, PyObject* rht)
     return _view_binop(lft, rht, true, false, _view_xor);
 }
 
-static inline int
+static int
 _multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
 {
     PyObject* identity = NULL;
@@ -746,7 +746,7 @@ multidict_itemsview_sq_contains(_Multidict_ViewObject* self, PyObject* obj)
     return ret;
 }
 
-static inline PyObject*
+static PyObject*
 _multidict_itemsview_isdisjoint_impl(_Multidict_ViewObject* self,
                                      PyObject* other)
 {
@@ -841,7 +841,7 @@ static PyType_Spec multidict_itemsview_spec = {
 
 /********** Keys **********/
 
-static inline PyObject*
+static PyObject*
 multidict_keysview_new(MultiDictObject* md)
 {
     return _multidict_view_new(md, md->state->KeysViewType);
@@ -1104,7 +1104,7 @@ multidict_keysview_sq_contains(_Multidict_ViewObject* self, PyObject* key)
     return md_contains(self->md, key, self->md->is_ci);
 }
 
-static inline PyObject*
+static PyObject*
 _multidict_keysview_isdisjoint_impl(_Multidict_ViewObject* self,
                                     PyObject* other)
 {
@@ -1194,7 +1194,7 @@ static PyType_Spec multidict_keysview_spec = {
 
 /********** Values **********/
 
-static inline PyObject*
+static PyObject*
 multidict_valuesview_new(MultiDictObject* md)
 {
     return _multidict_view_new(md, md->state->ValuesViewType);
