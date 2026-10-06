@@ -708,6 +708,14 @@ tools/check_inlining.py \
 
 `--show FUNCTION` prints what a function calls out of line today.
 
+The same run also fails on any out-of-line copy of an inline function
+from the CPython headers (`Py_DECREF()`, `Py_NewRef()`, ...) or from
+`pythoncapi_compat.h`. We cannot annotate those, so a copy means our
+code has used up the inlining budget they need. The fix belongs in our
+code, not in compiler options such as `--param inline-unit-growth`,
+which clang and MSVC do not share. `KNOWN_CPYTHON_COPIES` lists the
+copies GCC makes today; it only shrinks.
+
 The rules are yours to maintain, not only to obey:
 
 - When it fails, fix the code, usually with `NOINLINE` on the code
@@ -720,6 +728,9 @@ The rules are yours to maintain, not only to obey:
   `ALWAYS_INLINE` or `NOINLINE` for speed, add a rule for it in the
   same PR, with the PR number and the measured cost in its `why`, so
   the next change cannot undo it silently.
+- When a change removes the last copy of an entry in
+  `KNOWN_CPYTHON_COPIES`, delete the entry; the script prints a note
+  for it. Never add an entry to get CI green.
 - When you rename a helper or an entry point a rule lists, update
   the rule. The script fails on a name it cannot find rather than
   passing forever, and on a listed function that is not an entry
