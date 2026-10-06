@@ -1,2 +1,0 @@
-Moved out of line the C extension helpers that empty the free lists when
-the module is cleared -- by :user:`asvetlov`.

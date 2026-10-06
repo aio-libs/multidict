@@ -559,7 +559,7 @@ _md_resize_for_add(MultiDictObject* md)
     return _md_rebuild(md, calculate_log2_keysize(GROWTH_RATE(md)));
 }
 
-static inline int
+NOINLINE static int
 md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 {
     if (extra_size > (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
@@ -615,7 +615,7 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
    starts. Keyword names are plain str, which never fit a CIMultiDict's
    compact table, so with any the table is moved while it grows; moved
    later, it cost update(istr_items, **kwargs) a second copy, 18%. */
-static inline int
+NOINLINE static int
 md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs)
 {
     if (UNLIKELY(kwargs) && md->is_ci && kind_is_compact(md->keys->kind) &&
