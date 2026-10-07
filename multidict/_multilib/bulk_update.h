@@ -228,34 +228,6 @@ _md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
     Py_UNREACHABLE();
 }
 
-/* other of md's class: nothing here runs Python code, so other's table
-   and its kind hold throughout. */
-static int
-_md_update_from_ht_scan(MultiDictObject* md, MultiDictObject* other,
-                        UpdateOp op, reflist_t* defer, update_marks_t* marks,
-                        uint8_t kind)
-{
-    bool ci = md->is_ci;
-    entry_t* entry = htkeys_entries(other->keys);
-    entry_t* end = entry_at(kind, entry, other->keys->nentries);
-    for (; entry < end; entry = entry_next(kind, entry)) {
-        if (entry_is_hole(entry)) {
-            continue;
-        }
-        if (_md_update_item(md,
-                            op,
-                            entry_hash(kind, ci, entry),
-                            entry_identity(kind, ci, entry),
-                            entry->key,
-                            entry->value,
-                            defer,
-                            marks) < 0) {
-            return -1;
-        }
-    }
-    return 0;
-}
-
 static int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                   reflist_t* defer, update_marks_t* marks)
@@ -279,17 +251,32 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         return -1;
     }
 
-    if (md->is_ci == other_ci) {
-        return kind_is_compact(other->keys->kind)
-                   ? _md_update_from_ht_scan(
-                         md, other, op, defer, marks, KIND_COMPACT)
-                   : _md_update_from_ht_scan(
-                         md, other, op, defer, marks, KIND_ANYSTR);
-    }
-
     entry_t* entries = htkeys_entries(other->keys);
     uint8_t kind = other->keys->kind;
     Py_ssize_t nentries = other->keys->nentries;
+
+    if (md->is_ci == other_ci) {
+        /* other of md's class: nothing here runs Python code, so other's
+           table and its kind hold throughout. */
+        entry_t* end = entry_at(kind, entries, nentries);
+        for (entry_t* entry = entries; entry < end;
+             entry = entry_next(kind, entry)) {
+            if (entry_is_hole(entry)) {
+                continue;
+            }
+            if (_md_update_item(md,
+                                op,
+                                entry_hash(kind, other_ci, entry),
+                                entry_identity(kind, other_ci, entry),
+                                entry->key,
+                                entry->value,
+                                defer,
+                                marks) < 0) {
+                return -1;
+            }
+        }
+        return 0;
+    }
 
     for (pos = 0; pos < nentries; pos++) {
         entry_t* entry = entry_at(kind, entries, pos);
@@ -342,10 +329,16 @@ fail:
     return -1;
 }
 
-ALWAYS_INLINE static inline int
-_md_extend_self_scan(MultiDictObject* md, uint8_t kind)
+// d.extend(d) is rare: one copy, the class read at run time
+static int
+md_extend_self(MultiDictObject* md)
 {
+    if (md_reserve(md, md->keys->nentries) < 0) {
+        return -1;
+    }
+
     bool ci = md->is_ci;
+    uint8_t kind = md->keys->kind;
     entry_t* entry = htkeys_entries(md->keys);
     entry_t* end = entry_at(kind, entry, md->keys->nentries);
     for (; entry < end; entry = entry_next(kind, entry)) {
@@ -362,20 +355,6 @@ _md_extend_self_scan(MultiDictObject* md, uint8_t kind)
         }
     }
     return 0;
-}
-
-// d.extend(d) is rare: one copy, the class read at run time
-static int
-md_extend_self(MultiDictObject* md)
-{
-    if (md_reserve(md, md->keys->nentries) < 0) {
-        return -1;
-    }
-
-    if (kind_is_compact(md->keys->kind)) {
-        return _md_extend_self_scan(md, KIND_COMPACT);
-    }
-    return _md_extend_self_scan(md, KIND_ANYSTR);
 }
 
 static int
