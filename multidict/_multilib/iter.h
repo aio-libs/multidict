@@ -134,18 +134,26 @@ _iter_scan_first_key(MultidictIter* self, htkeys_t* keys, uint8_t kind)
     return NULL;
 }
 
-/* The next first entry of a key, NULL at the end; the caller has checked
-   the version. Out of line so the keys iterator for a table without
-   repeats stays as small as the others, and returns the entry by value:
-   an out-parameter would make GCC add a stack protector to the caller. */
-NOINLINE static entry_t*
+/* The keys iterator's step once its table may hold a key twice: the next
+   key, or NULL at the end or with an exception set. The caller holds md's
+   critical section. Out of line, and finishing the step here, so the
+   iterator for a table without repeats keeps nothing live across a call:
+   that cost it a register save per key. */
+NOINLINE static PyObject*
 _iter_next_first_key(MultidictIter* self)
 {
-    htkeys_t* keys = self->md->keys;
-    if (kind_is_compact(keys->kind)) {
-        return _iter_scan_first_key(self, keys, KIND_COMPACT);
+    MultiDictObject* md = self->md;
+    if (md_check_version(md, self->version) < 0) {
+        return NULL;
     }
-    return _iter_scan_first_key(self, keys, KIND_ANYSTR);
+    htkeys_t* keys = md->keys;
+    entry_t* entry = kind_is_compact(keys->kind)
+                         ? _iter_scan_first_key(self, keys, KIND_COMPACT)
+                         : _iter_scan_first_key(self, keys, KIND_ANYSTR);
+    if (entry == NULL) {
+        return NULL;
+    }
+    return md_ensure_key(md, entry);  // last entry access
 }
 
 /* The three constructors are out of line: each has several callers, and
@@ -297,21 +305,16 @@ multidict_keys_iter_tp_iternext(MultidictIter* self)
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    MultiDictObject* md = self->md;
-    if (md->keys->maybe_dups) {
-        if (md_check_version(md, self->version) < 0) {
-            res = -1;
-        } else {
-            entry = _iter_next_first_key(self);
-            res = entry != NULL;
-        }
+    if (self->md->keys->maybe_dups) {
+        key = _iter_next_first_key(self);
+        res = key != NULL ? 1 : PyErr_Occurred() ? -1 : 0;
     } else {
         res = _iter_next_entry(self, &entry);
-    }
-    if (res > 0) {
-        key = md_ensure_key(self->md, entry);  // last entry access
-        if (key == NULL) {
-            res = -1;
+        if (res > 0) {
+            key = md_ensure_key(self->md, entry);  // last entry access
+            if (key == NULL) {
+                res = -1;
+            }
         }
     }
     Py_END_CRITICAL_SECTION();
