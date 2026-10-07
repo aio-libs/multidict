@@ -140,12 +140,6 @@ RULES = (
         "#1530: a stack buffer over 256 bytes cost getall 2%",
     ),
     Rule(
-        "md_walk_with_hash",
-        GETALL_ENTRIES,
-        BOTH,
-        "#1701: out of line the visitor call is indirect, getall +6-8%",
-    ),
-    Rule(
         "_iter_next_entry",
         ITERNEXT_ENTRIES,
         BOTH,
