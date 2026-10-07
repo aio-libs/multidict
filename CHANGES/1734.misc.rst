@@ -1,0 +1,1 @@
+Outlined the ``md_contains`` function -- by :user:`asvetlov`
