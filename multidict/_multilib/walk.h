@@ -50,7 +50,7 @@ _md_seen_spill(md_seen_t* seen, MultiDictObject* md)
 
 /* 1 if `index` was already returned by this walk, 0 if not (it is now
    recorded), -1 on error. */
-static inline int
+static int
 _md_seen_test_and_add(md_seen_t* seen, MultiDictObject* md, Py_ssize_t index)
 {
     Py_ssize_t n = seen->nfew;
@@ -159,7 +159,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
    rechecked after every visitor call, so a reentrant mutation ends the walk
    with "MultiDict is changed during iteration" instead of walking a table
    that moved. */
-ALWAYS_INLINE static inline Py_ssize_t
+static Py_ssize_t
 md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                   bool with_keys, md_item_visitor_t visitor, void* user_data)
 {
