@@ -124,6 +124,10 @@ def test_copy_of_every_str_kind(
     assert made.lower() == value.lower()
     assert made[1:] == value[1:]
     assert repr(made) == repr(value)
+    # parsing an encoding name caches its UTF-8 form, a buffer of its own
+    # unless ASCII, which the istr frees with itself
+    with pytest.raises(LookupError):
+        "".encode(made)
 
 
 def test_eq(case_insensitive_str_class: type[str]) -> None:

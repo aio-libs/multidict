@@ -13,21 +13,59 @@ extern "C" {
 
 PyDoc_STRVAR(istr__doc__, "istr class implementation");
 
+/* The characters of an istr built by _istr_from_exact_str(), which follow
+   the object in its own block. */
+static inline void*
+_istr_inline_data(istrobject* self)
+{
+    return (char*)self + sizeof(istrobject);
+}
+
+/* A buffer str's dealloc would free: PyObject_Malloc()'s up to 3.12,
+   PyMem_Malloc()'s from 3.13. */
+static inline void
+_istr_free_buffer(void* p)
+{
+#if PY_VERSION_HEX < 0x030d0000
+    PyObject_Free(p);
+#else
+    PyMem_Free(p);
+#endif
+}
+
+/* What str's dealloc does for an istr, which is never interned, except
+   that characters following the object go with it: only a buffer of its
+   own, from unicode_subtype_new(), is freed on its own. */
 static void
 istr_tp_dealloc(istrobject* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
     Py_XDECREF(self->canonical);
-    PyUnicode_Type.tp_dealloc((PyObject*)self);
+    void* data = self->str.data.any;
+#if PY_VERSION_HEX < 0x030c0000
+    wchar_t* wstr = ((PyASCIIObject*)self)->wstr;
+    if (wstr != NULL && (void*)wstr != data) {
+        PyObject_Free(wstr);
+    }
+#endif
+    char* utf8 = ((PyCompactUnicodeObject*)self)->utf8;
+    if (utf8 != NULL && (void*)utf8 != data) {
+        _istr_free_buffer(utf8);
+    }
+    if (data != NULL && data != _istr_inline_data(self)) {
+        _istr_free_buffer(data);
+    }
+    tp->tp_free(self);
     Py_DECREF(tp);
 }
 
 /* An istr holding the same string as `str`, an exact str: what
    str.__new__(type, str) does, without the argument tuple, the argument
    parsing and the str() call around it. It mirrors CPython's
-   unicode_subtype_new(), and the buffer comes from the allocator str's
-   dealloc frees it with: PyObject_Malloc() up to 3.12, PyMem_Malloc()
-   from 3.13. The C extension is never built for PyPy.
+   unicode_subtype_new(), except that the characters follow the object in
+   one block, where unicode_subtype_new() allocates two, and no field is
+   zeroed only to be set below. istr_tp_dealloc() frees the block whole.
+   The C extension is never built for PyPy.
 
    Checked for 3.10 to 3.15 against their unicode_subtype_new() and
    unicode_dealloc(). A newer CPython must be checked the same way, and
@@ -39,19 +77,24 @@ static PyObject*
 _istr_from_exact_str(PyTypeObject* type, PyObject* str)
 {
     assert(PyUnicode_CheckExact(str));
+    assert(type->tp_basicsize == (Py_ssize_t)sizeof(istrobject));
 #if PY_VERSION_HEX < 0x030c0000
     if (PyUnicode_READY(str) < 0) {
         return NULL;
     }
 #endif
-    PyObject* self = type->tp_alloc(type, 0);
-    if (self == NULL) {
-        return NULL;
-    }
-    PyASCIIObject* ascii = (PyASCIIObject*)self;
-    PyCompactUnicodeObject* compact = (PyCompactUnicodeObject*)self;
     unsigned int kind = PyUnicode_KIND(str);
     Py_ssize_t length = PyUnicode_GET_LENGTH(str);
+    size_t size = (size_t)kind * ((size_t)length + 1);
+    PyObject* self = PyObject_Malloc(sizeof(istrobject) + size);
+    if (self == NULL) {
+        return PyErr_NoMemory();
+    }
+    PyObject_Init(self, type);
+    PyASCIIObject* ascii = (PyASCIIObject*)self;
+    PyCompactUnicodeObject* compact = (PyCompactUnicodeObject*)self;
+    void* data = _istr_inline_data((istrobject*)self);
+    ((istrobject*)self)->canonical = NULL;
     ascii->length = length;
 #ifdef Py_GIL_DISABLED
     // another thread may be caching the source's hash right now
@@ -59,31 +102,16 @@ _istr_from_exact_str(PyTypeObject* type, PyObject* str)
 #else
     ascii->hash = ((PyASCIIObject*)str)->hash;
 #endif
-    ascii->state.interned = 0;
+    memset(&ascii->state, 0, sizeof(ascii->state));
     ascii->state.kind = ((PyASCIIObject*)str)->state.kind;
-    ascii->state.compact = 0;
     ascii->state.ascii = ((PyASCIIObject*)str)->state.ascii;
 #if PY_VERSION_HEX < 0x030c0000
     ascii->state.ready = 1;
     ascii->wstr = NULL;
     compact->wstr_length = 0;
-#else
-    ascii->state.statically_allocated = 0;
 #endif
     compact->utf8_length = 0;
     compact->utf8 = NULL;
-    ((PyUnicodeObject*)self)->data.any = NULL;
-
-    size_t size = (size_t)kind * ((size_t)length + 1);
-#if PY_VERSION_HEX < 0x030d0000
-    void* data = PyObject_Malloc(size);
-#else
-    void* data = PyMem_Malloc(size);
-#endif
-    if (data == NULL) {
-        Py_DECREF(self);
-        return PyErr_NoMemory();
-    }
     ((PyUnicodeObject*)self)->data.any = data;
     // An ASCII string is its own UTF-8, and shares the buffer as such.
     if (ascii->state.ascii) {
