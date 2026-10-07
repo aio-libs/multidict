@@ -1,0 +1,1 @@
+Outlined the ``md_get_one`` function -- by :user:`asvetlov`
