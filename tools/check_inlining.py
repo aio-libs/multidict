@@ -146,6 +146,12 @@ RULES = (
         "#1701: out of line the visitor call is indirect, getall +6-8%",
     ),
     Rule(
+        "_md_seen_test_and_add",
+        "*",
+        BOTH,
+        "#1721: without inline GCC outlines it, getall +1.5-2.6%",
+    ),
+    Rule(
         "_iter_next_entry",
         ITERNEXT_ENTRIES,
         BOTH,

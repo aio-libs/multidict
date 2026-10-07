@@ -1,0 +1,3 @@
+Added a ``tools/check_inlining.py`` rule that keeps the duplicate-slot
+check of a key lookup walk inline, since outlining it made ``getall()``
+1.5 to 2.6 percent slower -- by :user:`asvetlov`.
