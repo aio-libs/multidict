@@ -90,6 +90,41 @@ typedef int (*md_item_visitor_t)(void* user_data, PyObject* identity,
                                  Py_hash_t hash, PyObject* key,
                                  PyObject* value);
 
+/* Hands md_walk_all()'s visitor one live entry: 1 to go on, 0 if the
+   visitor stopped the walk, -1 with an exception set. */
+static inline int
+_md_walk_visit(MultiDictObject* md, uint8_t kind, entry_t* entry,
+               bool with_keys, md_item_visitor_t visitor, void* user_data,
+               uint64_t version)
+{
+    bool ci = md->is_ci;
+    PyObject* identity = Py_NewRef(entry_identity(kind, ci, entry));
+    Py_hash_t hash = entry_hash(kind, ci, entry);
+    PyObject* value = Py_NewRef(entry->value);
+    PyObject* key = NULL;
+    if (with_keys) {
+        key = md_ensure_key(md, entry);  // last entry access
+        if (key == NULL) {
+            Py_DECREF(value);
+            Py_DECREF(identity);
+            return -1;
+        }
+    }
+    int ret = visitor(user_data, identity, hash, key, value);
+    Py_XDECREF(key);
+    Py_DECREF(value);
+    Py_DECREF(identity);
+    if (ret < 0) {
+        assert(PyErr_Occurred());
+        return -1;
+    }
+    /* md_ensure_key() and the visitor can both run Python code. */
+    if (md_check_version(md, version) < 0) {
+        return -1;
+    }
+    return ret == 0 ? 0 : 1;
+}
+
 /* Calls `visitor` once for every live entry, in insertion order. Returns how
    many entries were visited, or -1 with an exception set. The caller holds
    md's critical section.
@@ -102,45 +137,44 @@ static Py_ssize_t
 md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
             void* user_data)
 {
-    bool ci = md->is_ci;
     uint64_t version = md->version;
-    // the version check below keeps the table and its nentries in place
+    // the version check in _md_walk_visit() keeps the table in place
     htkeys_t* keys = md->keys;
-    uint8_t kind = keys->kind;
     Py_ssize_t count = 0;
-    entry_t* entry;
-    for (Py_ssize_t pos = 0; (entry = htkeys_next_live(keys, &pos)) != NULL;
-         pos++) {
-        PyObject* identity = Py_NewRef(entry_identity(kind, ci, entry));
-        Py_hash_t hash = entry_hash(kind, ci, entry);
-        PyObject* value = Py_NewRef(entry->value);
-        PyObject* key = NULL;
-        if (with_keys) {
-            key = md_ensure_key(md, entry);  // last entry access
-            if (key == NULL) {
-                Py_DECREF(value);
-                Py_DECREF(identity);
-                return -1;
+    int ret = 1;
+    if (kind_is_compact(keys->kind)) {
+        entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
+        for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
+             entry++) {
+            if (!entry_is_hole(entry)) {
+                count++;
+                ret = _md_walk_visit(md,
+                                     KIND_COMPACT,
+                                     entry,
+                                     with_keys,
+                                     visitor,
+                                     user_data,
+                                     version);
             }
         }
-        count++;
-        int ret = visitor(user_data, identity, hash, key, value);
-        Py_XDECREF(key);
-        Py_DECREF(value);
-        Py_DECREF(identity);
-        if (ret < 0) {
-            assert(PyErr_Occurred());
-            return -1;
-        }
-        /* md_ensure_key() and the visitor can both run Python code. */
-        if (md_check_version(md, version) < 0) {
-            return -1;
-        }
-        if (ret == 0) {
-            break;
+    } else {
+        anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys);
+        for (anystr_entry_t* end = entry + keys->nentries;
+             ret > 0 && entry < end;
+             entry++) {
+            if (!entry_is_hole(&entry->base)) {
+                count++;
+                ret = _md_walk_visit(md,
+                                     KIND_ANYSTR,
+                                     &entry->base,
+                                     with_keys,
+                                     visitor,
+                                     user_data,
+                                     version);
+            }
         }
     }
-    return count;
+    return ret < 0 ? -1 : count;
 }
 
 /* Calls `visitor` once for every entry whose identity is `identity`, in probe
@@ -173,7 +207,11 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     Py_ssize_t count = 0;
     entry_t* entry = NULL;
     for (;;) {
-        HTKEYSITER_FIND(&iter, ci, identity, hash, entry);
+        if (kind_is_compact(iter.keys->kind)) {
+            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+        } else {
+            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
+        }
         if (entry == NULL) {
             break;
         }

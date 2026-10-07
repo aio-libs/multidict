@@ -587,7 +587,10 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
     uint8_t kind = keys->kind;
     entry_t* entry;
 
-    for (Py_ssize_t pos = 0; (entry = htkeys_next_live(keys, &pos)) != NULL;
+    for (Py_ssize_t pos = 0;
+         (entry = (kind_is_compact(kind)
+                       ? htkeys_compact_next_live(keys, &pos)
+                       : htkeys_anystr_next_live(keys, &pos))) != NULL;
          ++pos) {
         identity = Py_NewRef(entry_identity(kind, ci, entry));
         value = Py_NewRef(entry->value);
@@ -1013,7 +1016,10 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
     uint8_t kind = keys->kind;
     entry_t* entry;
 
-    for (Py_ssize_t pos = 0; (entry = htkeys_next_live(keys, &pos)) != NULL;
+    for (Py_ssize_t pos = 0;
+         (entry = (kind_is_compact(kind)
+                       ? htkeys_compact_next_live(keys, &pos)
+                       : htkeys_anystr_next_live(keys, &pos))) != NULL;
          ++pos) {
         identity = Py_NewRef(entry_identity(kind, ci, entry));
         key = md_ensure_key(md, entry);  // last entry access

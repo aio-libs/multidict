@@ -230,7 +230,7 @@ RULES = (
         "their per-class copies, and with it del d[key] +3% on CIMultiDict",
     ),
     Rule(
-        "htkeys_next_live",
+        "htkeys_compact_next_live",
         (
             "multidict_tp_init",
             "multidict_update",
@@ -240,7 +240,22 @@ RULES = (
             "MultiDict_ForEach",
         ),
         BOTH,
-        "the per-kind scan for the next live entry behind the walks; "
+        "the scan for the next live entry behind the walks; "
+        "only cold ones (view set operations, a clone during a batch) "
+        "call it out of line",
+    ),
+    Rule(
+        "htkeys_anystr_next_live",
+        (
+            "multidict_tp_init",
+            "multidict_update",
+            "multidict_extend",
+            "multidict_tp_repr",
+            "multidict_to_dict",
+            "MultiDict_ForEach",
+        ),
+        BOTH,
+        "the scan for the next live entry behind the walks; "
         "only cold ones (view set operations, a clone during a batch) "
         "call it out of line",
     ),

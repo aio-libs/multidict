@@ -54,7 +54,11 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 
     entry_t* entry = NULL;
     for (;;) {
-        HTKEYSITER_FIND(&iter, ci, identity, hash, entry);
+        if (kind_is_compact(iter.keys->kind)) {
+            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+        } else {
+            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
+        }
         if (entry == NULL) {
             break;
         }
@@ -117,7 +121,11 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 
     entry_t* entry = NULL;
     for (;;) {
-        HTKEYSITER_FIND(&iter, ci, identity, hash, entry);
+        if (kind_is_compact(iter.keys->kind)) {
+            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+        } else {
+            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
+        }
         if (entry == NULL) {
             break;
         }
@@ -292,7 +300,9 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
 
     Py_ssize_t nentries = other->keys->nentries;
     for (pos = 0; pos < nentries; pos++) {
-        entry_t* entry = htkeys_next_live(other->keys, &pos);
+        entry_t* entry = (kind_is_compact(other->keys->kind)
+                              ? htkeys_compact_next_live(other->keys, &pos)
+                              : htkeys_anystr_next_live(other->keys, &pos));
         if (entry == NULL || pos >= nentries) {
             break;
         }

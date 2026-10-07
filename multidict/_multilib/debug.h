@@ -72,7 +72,9 @@ _md_check_consistency(const MultiDictObject* md)
 #undef CHECK
 }
 
-static void
+/* For a debugger: nothing calls these, and inline keeps the unused copies
+   from warning. */
+static inline void
 _md_dump_entry(uint8_t kind, bool ci, Py_ssize_t i, const entry_t* entry)
 {
     PyObject* identity = entry_identity(kind, ci, entry);
@@ -89,7 +91,7 @@ _md_dump_entry(uint8_t kind, bool ci, Py_ssize_t i, const entry_t* entry)
     printf("\'\n");
 }
 
-static int
+static inline int
 _md_dump(MultiDictObject* md)
 {
     bool ci = md->is_ci;

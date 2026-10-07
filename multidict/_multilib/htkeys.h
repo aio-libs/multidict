@@ -262,34 +262,37 @@ entry_is_hole(const entry_t* entry)
     return entry->key == NULL;
 }
 
-/* The first live entry at or after *ppos, which it moves there, or NULL
-   once *ppos reaches nentries. One loop per kind, so each steps by a
-   constant entry size. */
+/* The first live entry at or after *ppos in a KIND_COMPACT table, which
+   it moves there, or NULL once *ppos reaches nentries. */
 static inline entry_t*
-htkeys_next_live(htkeys_t* keys, Py_ssize_t* ppos)
+htkeys_compact_next_live(htkeys_t* keys, Py_ssize_t* ppos)
 {
-    Py_ssize_t pos = *ppos;
+    entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
     Py_ssize_t n = keys->nentries;
-    entry_t* entry = NULL;
-    if (kind_is_compact(keys->kind)) {
-        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
-        for (; pos < n; pos++) {
-            if (!entry_is_hole(entries + pos)) {
-                entry = entries + pos;
-                break;
-            }
-        }
-    } else {
-        anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
-        for (; pos < n; pos++) {
-            if (!entry_is_hole(&entries[pos].base)) {
-                entry = &entries[pos].base;
-                break;
-            }
+    for (Py_ssize_t pos = *ppos; pos < n; pos++) {
+        if (!entry_is_hole(entries + pos)) {
+            *ppos = pos;
+            return entries + pos;
         }
     }
-    *ppos = pos;
-    return entry;
+    *ppos = n;
+    return NULL;
+}
+
+// htkeys_compact_next_live() for a KIND_ANYSTR table.
+static inline entry_t*
+htkeys_anystr_next_live(htkeys_t* keys, Py_ssize_t* ppos)
+{
+    anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
+    Py_ssize_t n = keys->nentries;
+    for (Py_ssize_t pos = *ppos; pos < n; pos++) {
+        if (!entry_is_hole(&entries[pos].base)) {
+            *ppos = pos;
+            return &entries[pos].base;
+        }
+    }
+    *ppos = n;
+    return NULL;
 }
 
 /* The field lock-free readers check first: the key in a compact table, so
@@ -977,53 +980,59 @@ typedef struct _htkeysiter {
 #define HTKEYSITER_NEXT_ACQUIRE(iter) \
     _HTKEYSITER_NEXT(iter, HTKEYS_ACQUIRE_INDEX)
 
-/* Sets `entry` (an entry_t* lvalue) to the next entry on `iter`'s chain
-   whose identity is `identity`, `hash` being its hash, moving `iter` to
-   its slot, or to NULL at the end of the chain. A non-NULL `entry` is the
-   previous match, which it steps past first, so a probe loop starts with
-   `entry` NULL and calls this at the top of every pass. One loop per kind,
-   so each steps by a constant entry size. */
-#define HTKEYSITER_FIND(iter, ci, identity, hash, entry)                    \
-    do {                                                                    \
-        htkeysiter_t* _hf_iter = (iter);                                    \
-        bool _hf_ci = (ci);                                                 \
-        PyObject* _hf_identity = (identity);                                \
-        Py_hash_t _hf_hash = (hash);                                        \
-        htkeys_t* _hf_keys = _hf_iter->keys;                                \
-        if ((entry) != NULL) {                                              \
-            HTKEYSITER_NEXT(_hf_iter);                                      \
-        }                                                                   \
-        (entry) = NULL;                                                     \
-        if (kind_is_compact(_hf_keys->kind)) {                              \
-            entry_t* _hf_entries = HTKEYS_COMPACT_ENTRIES(_hf_keys);        \
-            for (; _hf_iter->index != DKIX_EMPTY;                           \
-                 HTKEYSITER_NEXT(_hf_iter)) {                               \
-                if (UNLIKELY(_hf_iter->index < 0)) {                        \
-                    continue;                                               \
-                }                                                           \
-                entry_t* _hf_e = _hf_entries + _hf_iter->index;             \
-                if (entry_hash(KIND_COMPACT, _hf_ci, _hf_e) == _hf_hash &&  \
-                    str_cmp(_hf_identity,                                   \
-                            entry_identity(KIND_COMPACT, _hf_ci, _hf_e))) { \
-                    (entry) = _hf_e;                                        \
-                    break;                                                  \
-                }                                                           \
-            }                                                               \
-        } else {                                                            \
-            anystr_entry_t* _hf_entries = HTKEYS_ANYSTR_ENTRIES(_hf_keys);  \
-            for (; _hf_iter->index != DKIX_EMPTY;                           \
-                 HTKEYSITER_NEXT(_hf_iter)) {                               \
-                if (UNLIKELY(_hf_iter->index < 0)) {                        \
-                    continue;                                               \
-                }                                                           \
-                anystr_entry_t* _hf_e = _hf_entries + _hf_iter->index;      \
-                if (_hf_e->hash == _hf_hash &&                              \
-                    str_cmp(_hf_identity, _hf_e->identity)) {               \
-                    (entry) = &_hf_e->base;                                 \
-                    break;                                                  \
-                }                                                           \
-            }                                                               \
-        }                                                                   \
+/* Sets `entry` (an entry_t* lvalue) to the next entry on `iter`'s chain,
+   a KIND_COMPACT table's, whose identity is `identity`, `hash` being its
+   hash, moving `iter` to its slot, or to NULL at the end of the chain. A
+   non-NULL `entry` is the previous match, which it steps past first, so a
+   probe loop starts with `entry` NULL and uses this at the top of every
+   pass. */
+#define HTKEYSITER_FIND_COMPACT(iter, ci, identity, hash, entry)           \
+    do {                                                                   \
+        htkeysiter_t* _hf_iter = (iter);                                   \
+        bool _hf_ci = (ci);                                                \
+        PyObject* _hf_identity = (identity);                               \
+        Py_hash_t _hf_hash = (hash);                                       \
+        entry_t* _hf_entries = HTKEYS_COMPACT_ENTRIES(_hf_iter->keys);     \
+        if ((entry) != NULL) {                                             \
+            HTKEYSITER_NEXT(_hf_iter);                                     \
+        }                                                                  \
+        (entry) = NULL;                                                    \
+        for (; _hf_iter->index != DKIX_EMPTY; HTKEYSITER_NEXT(_hf_iter)) { \
+            if (UNLIKELY(_hf_iter->index < 0)) {                           \
+                continue;                                                  \
+            }                                                              \
+            entry_t* _hf_e = _hf_entries + _hf_iter->index;                \
+            if (compact_key_hash(_hf_ci, _hf_e->key) == _hf_hash &&        \
+                str_cmp(_hf_identity,                                      \
+                        compact_key_identity(_hf_ci, _hf_e->key))) {       \
+                (entry) = _hf_e;                                           \
+                break;                                                     \
+            }                                                              \
+        }                                                                  \
+    } while (0)
+
+// HTKEYSITER_FIND_COMPACT() for a KIND_ANYSTR table.
+#define HTKEYSITER_FIND_ANYSTR(iter, identity, hash, entry)                  \
+    do {                                                                     \
+        htkeysiter_t* _hf_iter = (iter);                                     \
+        PyObject* _hf_identity = (identity);                                 \
+        Py_hash_t _hf_hash = (hash);                                         \
+        anystr_entry_t* _hf_entries = HTKEYS_ANYSTR_ENTRIES(_hf_iter->keys); \
+        if ((entry) != NULL) {                                               \
+            HTKEYSITER_NEXT(_hf_iter);                                       \
+        }                                                                    \
+        (entry) = NULL;                                                      \
+        for (; _hf_iter->index != DKIX_EMPTY; HTKEYSITER_NEXT(_hf_iter)) {   \
+            if (UNLIKELY(_hf_iter->index < 0)) {                             \
+                continue;                                                    \
+            }                                                                \
+            anystr_entry_t* _hf_e = _hf_entries + _hf_iter->index;           \
+            if (_hf_e->hash == _hf_hash &&                                   \
+                str_cmp(_hf_identity, _hf_e->identity)) {                    \
+                (entry) = &_hf_e->base;                                      \
+                break;                                                       \
+            }                                                                \
+        }                                                                    \
     } while (0)
 
 #ifdef __cplusplus
