@@ -811,16 +811,16 @@ static inline void
 _md_fill_anystr_entry(htkeys_t* keys, Py_hash_t hash, PyObject* identity,
                       PyObject* key, PyObject* value)
 {
-    entry_t* entry =
-        entry_at(KIND_ANYSTR, htkeys_entries(keys), keys->nentries);
-    assert(as_anystr(entry)->identity == NULL && entry->key == NULL &&
-           entry->value == NULL);
+    anystr_entry_t* entry =
+        anystr_entry_at(htkeys_entries(keys), keys->nentries);
+    assert(entry->identity == NULL && entry->base.key == NULL &&
+           entry->base.value == NULL);
     mark_shared(identity);
     mark_shared(value);
-    entry->key = key;
-    entry->value = value;
-    as_anystr(entry)->hash = hash;
-    as_anystr(entry)->identity = identity;
+    entry->base.key = key;
+    entry->base.value = value;
+    entry->hash = hash;
+    entry->identity = identity;
 }
 
 /* For both compact kinds: the key's reference keeps the identity alive,
