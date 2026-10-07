@@ -1748,7 +1748,7 @@ fail:
 }
 
 // Caller holds md's critical section
-ALWAYS_INLINE static inline int
+static int
 _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                        PyObject* key, PyObject* value, PyObject** result)
 {
@@ -1787,7 +1787,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
                PyObject** result)
 {
