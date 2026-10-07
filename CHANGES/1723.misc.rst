@@ -1,0 +1,4 @@
+Dropped the compile-time kind specializations of ``_md_traverse_entries()``,
+which now reads the kind from the table, and made it a plain ``static``
+function, leaving the inlining decision to the compiler
+-- by :user:`asvetlov`.
