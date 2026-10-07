@@ -1359,7 +1359,7 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return ret;
 }
 
-COLD static int
+static int
 _md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                        removed_pairs_t* removed)
 {
@@ -1526,9 +1526,7 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
     return result;
 }
 
-/* Only a reader racing a writer gets here, so it stays out of line and
-   leaves the inlining budget to the lock-free loops. */
-NOINLINE static int
+static int
 _md_contains_retry_locked(MultiDictObject* md, PyObject* identity,
                           Py_hash_t hash)
 {
@@ -1572,7 +1570,7 @@ _md_contains_owned(MultiDictObject* md, PyObject* key)
     return result;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_contains(MultiDictObject* md, PyObject* key)
 {
     if (!PyUnicode_Check(key)) {
@@ -1685,8 +1683,7 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
     return result;
 }
 
-/* See _md_contains_retry_locked(). */
-NOINLINE static int
+static int
 _md_get_one_retry_locked(MultiDictObject* md, PyObject* identity,
                          Py_hash_t hash, PyObject** ret)
 {
@@ -1738,7 +1735,7 @@ _md_get_one_owned(MultiDictObject* md, PyObject* key)
     return ret;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     PyObject* identity = md_borrow_identity(md, key);
@@ -1997,7 +1994,7 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return 0;
 }
 
-COLD static int
+static int
 _md_pop_one_locked_watched(MultiDictObject* md, PyObject* identity,
                            Py_hash_t hash, PyObject** ret)
 {
@@ -2198,7 +2195,7 @@ _md_last_live(uint8_t kind, entry_t* entries, Py_ssize_t* ppos)
     return entry;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 _md_pop_item_locked(MultiDictObject* md)
 {
     bool ci = md->is_ci;
@@ -2321,7 +2318,7 @@ _md_replace_free_dups(reflist_t* dups)
 
 /* Returns 1 when `key` isn't there, leaving the add to the caller.
  * `watched` is a constant at both call sites; see _md_del_locked(). */
-ALWAYS_INLINE static inline int
+static int
 _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
                    PyObject* identity, Py_hash_t hash, PyObject** old_key_out,
                    PyObject** old_value_out, reflist_t** dups, bool watched)
@@ -2623,7 +2620,7 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
     return ret;
 }
 
-NOINLINE static int
+static int
 _md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
 {
     Py_ssize_t other_len;
@@ -2702,7 +2699,7 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
     return ret;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 _md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
                 bool show_values)
 {

@@ -24,6 +24,13 @@ followed, since that code is off the hot path by definition.  ``"*"`` in
 place of the entry points means no out-of-line copy of the helper may
 exist at all.
 
+Separately from ``RULES``, no inline function from the CPython headers
+(``Py_DECREF()``, ``Py_NewRef()``, ...) or from the vendored
+``pythoncapi_compat.h`` may get an out-of-line copy.  The names are read
+from the headers themselves, so the check follows each version's API.  We cannot annotate those functions, so a
+copy only ever means our code has used up the inlining budget they
+need; ``KNOWN_CPYTHON_COPIES`` lists the copies not fixed yet.
+
 Entry points are the functions Python or a C API client calls through a
 pointer: type slots, methods and ``MultiDict_*`` C API functions.  GCC
 always keeps a copy of those, so a rule naming anything else fails the
@@ -57,6 +64,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 EXTENSION_SOURCE = "multidict/_multidict.c"
+COMPAT_HEADER = "multidict/_multilib/pythoncapi_compat.h"
 
 # Release flags from setup.py, minus the warning options: this build is
 # only ever disassembled, and warnings do not affect code generation.
@@ -126,12 +134,6 @@ RULES = (
         BOTH,
         "#1541/#1542: out of line in get and delitem cost 3.6% and 4%; "
         "#1614: out of line in getall on FT with GCC 13",
-    ),
-    Rule(
-        "md_get_one",
-        GETITEM_ENTRIES,
-        (GIL,),
-        "__getitem__ and get() pay a call per lookup",
     ),
     Rule(
         "md_walk_with_hash",
@@ -261,6 +263,52 @@ RULES = (
     ),
 )
 
+
+@dataclass(frozen=True)
+class KnownCopy:
+    name: str
+    builds: tuple[str, ...]
+    why: str
+
+
+# Out-of-line copies of CPython inlines that GCC makes today, until the
+# code that crowds them out is fixed.  Which copies exist depends on the
+# compiler and the Python version, so an entry without a copy is only
+# reported, not failed.
+KNOWN_CPYTHON_COPIES = (
+    KnownCopy(
+        "Py_XDECREF",
+        (GIL,),
+        "called from cold code only: watchlog_drain(), _view_xor(), ...",
+    ),
+    KnownCopy(
+        "Py_DECREF",
+        (FT,),
+        "inline-unit-growth and large-function-growth limits reached; "
+        "called out of line from d[key], key in d, iteration",
+    ),
+    KnownCopy(
+        "_Py_NewRef",
+        (FT,),
+        "inline-unit-growth limit reached; called out of line from "
+        "d.get(), d.getall(), ...",
+    ),
+    KnownCopy(
+        "Py_XINCREF",
+        (FT,),
+        "called from cold code only: _md_watch_record()",
+    ),
+    KnownCopy(
+        "PyIter_NextItem",
+        (GIL,),
+        "the pythoncapi_compat.h shim before 3.14; called from the view "
+        "set operations and isdisjoint()",
+    ),
+)
+
+CPYTHON_INLINE_RE = re.compile(
+    r"^\s*static\s+inline\b[^;{(]*?\b([A-Za-z_]\w*)\s*\(", re.MULTILINE
+)
 FUNC_RE = re.compile(r"^[0-9a-f]+ <(.+)>:$")
 TARGET_RE = re.compile(r"<([A-Za-z_][A-Za-z_0-9.]*?)(?:@plt)?(?:[+-]0x[0-9a-f]+)?>")
 CLONE_SUFFIX_RE = re.compile(r"(\.(isra|part|constprop|lto_priv|cold)(\.\d+)?)+$")
@@ -305,7 +353,7 @@ def interpreter_config(python):
     return (
         shlex.split(cc),
         shlex.split(cflags) + shlex.split(ccshared),
-        include,
+        Path(include),
         ft == "1",
     )
 
@@ -335,7 +383,16 @@ def build_object(root, python, cc, out):
     if result.returncode:
         print(result.stdout, end="", file=sys.stderr)
         sys.exit(f"build failed with {python}")
-    return ft
+    return ft, include
+
+
+def cpython_inlines(root, include):
+    """The names of the inline functions declared in the CPython headers
+    and in pythoncapi_compat.h."""
+    names = set()
+    for path in [*include.rglob("*.h"), root / COMPAT_HEADER]:
+        names.update(CPYTHON_INLINE_RE.findall(path.read_text(errors="replace")))
+    return names
 
 
 def call_graph(obj):
@@ -428,6 +485,31 @@ def check(root, graph, build):
     return failures
 
 
+def check_cpython_inlines(graph, build, inlines):
+    """Return the failures and the notes for CPython inline copies."""
+    failures = []
+    notes = []
+    known = {k.name for k in KNOWN_CPYTHON_COPIES if build in k.builds}
+    copies = {base_name(s) for s in graph if not is_cold(s)} & inlines
+    for name in sorted(copies - known):
+        callers = sorted(
+            {
+                base_name(s)
+                for s, targets in graph.items()
+                if base_name(s) != name and any(base_name(t) == name for t in targets)
+            }
+        )
+        shown = ", ".join(callers[:6])
+        if len(callers) > 6:
+            shown += f" and {len(callers) - 6} more"
+        failures.append(
+            f"{name}: out-of-line copy of a CPython inline, called from {shown}"
+        )
+    for name in sorted(known - copies):
+        notes.append(f"note: {name} has no out-of-line copy in this build")
+    return failures, notes
+
+
 def show(graph, name):
     paths = reachable(graph, name)
     if paths is None:
@@ -472,7 +554,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="check-inlining-") as tmp:
         for python in args.python or [sys.executable]:
             obj = Path(tmp) / "_multidict.o"
-            build = FT if build_object(root, python, args.cc, obj) else GIL
+            ft, include = build_object(root, python, args.cc, obj)
+            build = FT if ft else GIL
             graph = call_graph(obj)
             print(f"{python} ({build.upper()}):")
             if args.show:
@@ -480,11 +563,17 @@ def main():
                     show(graph, name)
                 continue
             failures = check(root, graph, build)
+            more, notes = check_cpython_inlines(
+                graph, build, cpython_inlines(root, include)
+            )
+            failures += more
+            for note in notes:
+                print(f"  {note}")
             for failure in failures:
                 print(f"  {failure}")
             if not failures:
                 applicable = sum(build in rule.builds for rule in RULES)
-                print(f"  ok, {applicable} rules")
+                print(f"  ok, {applicable} rules and no new CPython inline copies")
             failed = failed or bool(failures)
     return 1 if failed else 0
 
