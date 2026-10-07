@@ -1390,12 +1390,12 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
     bool ci = md->is_ci;
     htkeys_t* keys = _md_reader_enter(md);
     htkeysiter_t iter;
-    HTKEYSITER_INIT(&iter, keys, hash);
+    HTKEYSITER_INIT_ACQUIRE(&iter, keys, hash);
     entry_t* entries = htkeys_entries(keys);
     uint8_t kind = keys->kind;
 
     int result = 0;
-    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT_ACQUIRE(&iter)) {
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }
@@ -1534,12 +1534,12 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
     bool ci = md->is_ci;
     htkeys_t* keys = _md_reader_enter(md);
     htkeysiter_t iter;
-    HTKEYSITER_INIT(&iter, keys, hash);
+    HTKEYSITER_INIT_ACQUIRE(&iter, keys, hash);
     entry_t* entries = htkeys_entries(keys);
     uint8_t kind = keys->kind;
 
     int result = 0;
-    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT_ACQUIRE(&iter)) {
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }

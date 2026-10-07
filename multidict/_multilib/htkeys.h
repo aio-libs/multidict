@@ -356,6 +356,12 @@ htkeys_entries_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src,
         return atomic_load_int##bits##_relaxed(                               \
             &((const int##bits##_t*)(keys->indices))[i]);                     \
     }                                                                         \
+    static inline int##bits##_t htkeys_acquire_index##bits(                   \
+        const htkeys_t* keys, Py_ssize_t i)                                   \
+    {                                                                         \
+        return atomic_load_int##bits##_acquire(                               \
+            &((const int##bits##_t*)(keys->indices))[i]);                     \
+    }                                                                         \
     static inline void htkeys_store_index##bits(                              \
         htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
     {                                                                         \
@@ -374,6 +380,11 @@ htkeys_entries_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src,
                                                         Py_ssize_t i)         \
     {                                                                         \
         return ((const int##bits##_t*)(keys->indices))[i];                    \
+    }                                                                         \
+    static inline int##bits##_t htkeys_acquire_index##bits(                   \
+        const htkeys_t* keys, Py_ssize_t i)                                   \
+    {                                                                         \
+        return htkeys_load_index##bits(keys, i);                              \
     }                                                                         \
     static inline void htkeys_store_index##bits(                              \
         htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
@@ -399,13 +410,21 @@ _MD_DEFINE_INDEX_ACCESSORS(64)
 #define _HTKEYS_IS_INDEX64(log2size) 0
 #endif
 
-/* lookup indices.  returns DKIX_EMPTY, DKIX_DUMMY, or ix >=0 */
-#define HTKEYS_GET_INDEX(keys, i)                                            \
-    ((keys)->log2_size < 8    ? (Py_ssize_t)htkeys_load_index8((keys), (i))  \
-     : (keys)->log2_size < 16 ? (Py_ssize_t)htkeys_load_index16((keys), (i)) \
-     : _HTKEYS_IS_INDEX64((keys)->log2_size)                                 \
-         ? (Py_ssize_t)htkeys_load_index64((keys), (i))                      \
-         : (Py_ssize_t)htkeys_load_index32((keys), (i)))
+/* lookup indices.  returns DKIX_EMPTY, DKIX_DUMMY, or ix >=0; op is load
+   or acquire. */
+#define _HTKEYS_READ_INDEX(keys, i, op)                                    \
+    ((keys)->log2_size < 8 ? (Py_ssize_t)htkeys_##op##_index8((keys), (i)) \
+     : (keys)->log2_size < 16                                              \
+         ? (Py_ssize_t)htkeys_##op##_index16((keys), (i))                  \
+     : _HTKEYS_IS_INDEX64((keys)->log2_size)                               \
+         ? (Py_ssize_t)htkeys_##op##_index64((keys), (i))                  \
+         : (Py_ssize_t)htkeys_##op##_index32((keys), (i)))
+
+#define HTKEYS_GET_INDEX(keys, i) _HTKEYS_READ_INDEX(keys, i, load)
+
+/* For a lock-free walk: pairs with HTKEYS_PUBLISH_INDEX(), so the entry
+   the slot points at is seen filled. */
+#define HTKEYS_ACQUIRE_INDEX(keys, i) _HTKEYS_READ_INDEX(keys, i, acquire)
 
 /* write to indices; op is store or publish. */
 #define _HTKEYS_WRITE_INDEX(keys, i, ix, op)        \
@@ -897,23 +916,33 @@ typedef struct _htkeysiter {
     Py_ssize_t index;
 } htkeysiter_t;
 
-#define HTKEYSITER_INIT(iter, ht_keys, hash)                                \
-    do {                                                                    \
-        htkeysiter_t* _hti = (iter);                                        \
-        Py_hash_t _hti_hash = (hash);                                       \
-        _hti->keys = (ht_keys);                                             \
-        _hti->mask = (size_t)_htkeys_mask(_hti->keys);                      \
-        _hti->perturb = (size_t)_hti_hash;                                  \
-        _hti->slot = (size_t)_hti_hash & _hti->mask;                        \
-        _hti->index = HTKEYS_GET_INDEX(_hti->keys, (Py_ssize_t)_hti->slot); \
+/* get is HTKEYS_GET_INDEX or HTKEYS_ACQUIRE_INDEX. */
+#define _HTKEYSITER_INIT(iter, ht_keys, hash, get)             \
+    do {                                                       \
+        htkeysiter_t* _hti = (iter);                           \
+        Py_hash_t _hti_hash = (hash);                          \
+        _hti->keys = (ht_keys);                                \
+        _hti->mask = (size_t)_htkeys_mask(_hti->keys);         \
+        _hti->perturb = (size_t)_hti_hash;                     \
+        _hti->slot = (size_t)_hti_hash & _hti->mask;           \
+        _hti->index = get(_hti->keys, (Py_ssize_t)_hti->slot); \
     } while (0)
 
-#define HTKEYSITER_NEXT(iter)                                                \
+#define _HTKEYSITER_NEXT(iter, get)                                          \
     ((iter)->perturb >>= HT_PERTURB_SHIFT,                                   \
      (iter)->slot = ((iter)->slot * 5 + (iter)->perturb + 1) & (iter)->mask, \
-     (iter)->index =                                                         \
-         HTKEYS_GET_INDEX((iter)->keys, (Py_ssize_t)(iter)->slot),           \
+     (iter)->index = get((iter)->keys, (Py_ssize_t)(iter)->slot),            \
      (void)0)
+
+#define HTKEYSITER_INIT(iter, ht_keys, hash) \
+    _HTKEYSITER_INIT(iter, ht_keys, hash, HTKEYS_GET_INDEX)
+#define HTKEYSITER_NEXT(iter) _HTKEYSITER_NEXT(iter, HTKEYS_GET_INDEX)
+
+/* The lock-free walk's variants; see HTKEYS_ACQUIRE_INDEX(). */
+#define HTKEYSITER_INIT_ACQUIRE(iter, ht_keys, hash) \
+    _HTKEYSITER_INIT(iter, ht_keys, hash, HTKEYS_ACQUIRE_INDEX)
+#define HTKEYSITER_NEXT_ACQUIRE(iter) \
+    _HTKEYSITER_NEXT(iter, HTKEYS_ACQUIRE_INDEX)
 
 #ifdef __cplusplus
 }

@@ -94,6 +94,11 @@ atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
     {                                                                        \
         return __atomic_load_n(obj, __ATOMIC_RELAXED);                       \
     }                                                                        \
+    static inline int##bits##_t atomic_load_int##bits##_acquire(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return __atomic_load_n(obj, __ATOMIC_ACQUIRE);                       \
+    }                                                                        \
     static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
                                                         int##bits##_t value) \
     {                                                                        \
@@ -221,6 +226,12 @@ atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
     {                                                                        \
         return atomic_load_explicit((const _Atomic(int##bits##_t)*)obj,      \
                                     memory_order_relaxed);                   \
+    }                                                                        \
+    static inline int##bits##_t atomic_load_int##bits##_acquire(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        return atomic_load_explicit((const _Atomic(int##bits##_t)*)obj,      \
+                                    memory_order_acquire);                   \
     }                                                                        \
     static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
                                                         int##bits##_t value) \
@@ -406,9 +417,9 @@ atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
 }
 
 #if defined(_M_ARM64)
-#define _MULTIDICT_RELEASE_FENCE() __dmb(_ARM64_BARRIER_ISH)
+#define _MULTIDICT_FENCE() __dmb(_ARM64_BARRIER_ISH)
 #else
-#define _MULTIDICT_RELEASE_FENCE() _ReadWriteBarrier()
+#define _MULTIDICT_FENCE() _ReadWriteBarrier()
 #endif
 
 #define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
@@ -416,6 +427,13 @@ atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
         const int##bits##_t* obj)                                            \
     {                                                                        \
         return *(volatile const int##bits##_t*)obj;                          \
+    }                                                                        \
+    static inline int##bits##_t atomic_load_int##bits##_acquire(             \
+        const int##bits##_t* obj)                                            \
+    {                                                                        \
+        int##bits##_t value = *(volatile const int##bits##_t*)obj;           \
+        _MULTIDICT_FENCE();                                                  \
+        return value;                                                        \
     }                                                                        \
     static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
                                                         int##bits##_t value) \
@@ -425,7 +443,7 @@ atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
     static inline void atomic_store_int##bits##_release(int##bits##_t* obj,  \
                                                         int##bits##_t value) \
     {                                                                        \
-        _MULTIDICT_RELEASE_FENCE();                                          \
+        _MULTIDICT_FENCE();                                                  \
         *(volatile int##bits##_t*)obj = value;                               \
     }
 
