@@ -70,23 +70,15 @@ GETITEM_ENTRIES = (
     "multidict_get",
     "multidict_getone",
     "multidict_mp_subscript",
-    "cimultidict_get",
-    "cimultidict_getone",
-    "cimultidict_mp_subscript",
     "multidict_proxy_get",
     "multidict_proxy_getone",
     "multidict_proxy_mp_subscript",
-    "cimultidict_proxy_get",
-    "cimultidict_proxy_getone",
-    "cimultidict_proxy_mp_subscript",
     "MultiDict_GetItem",
 )
 
 GETALL_ENTRIES = (
     "multidict_getall",
     "multidict_proxy_getall",
-    "cimultidict_getall",
-    "cimultidict_proxy_getall",
 )
 
 # Every entry point that takes a key.
@@ -94,9 +86,7 @@ KEY_ENTRIES = (
     *GETITEM_ENTRIES,
     *GETALL_ENTRIES,
     "multidict_sq_contains",
-    "cimultidict_sq_contains",
     "multidict_proxy_sq_contains",
-    "cimultidict_proxy_sq_contains",
     "multidict_mp_ass_subscript",
     "multidict_add",
     "multidict_setdefault",
@@ -144,10 +134,10 @@ RULES = (
         "__getitem__ and get() pay a call per lookup",
     ),
     Rule(
-        "md_get_all",
+        "md_walk_with_hash",
         GETALL_ENTRIES,
         BOTH,
-        "#1530: a stack buffer over 256 bytes cost getall 2%",
+        "#1701: out of line the visitor call is indirect, getall +6-8%",
     ),
     Rule(
         "_iter_next_entry",
@@ -184,12 +174,6 @@ RULES = (
         "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
     ),
     Rule(
-        "_md_eq_scan",
-        "*",
-        BOTH,
-        "#1676: the constant kinds made md == md 35-46% cheaper",
-    ),
-    Rule(
         "_md_update_from_ht_scan",
         "*",
         BOTH,
@@ -210,12 +194,6 @@ RULES = (
         "37 Ir per constructor item",
     ),
     Rule(
-        "_multidict_ctor_vectorcall",
-        "*",
-        BOTH,
-        "the CIMultiDict kind hint took it out of line, 11 Ir per cls()",
-    ),
-    Rule(
         "_multidict_vectorcall_impl",
         "*",
         BOTH,
@@ -225,8 +203,8 @@ RULES = (
         "md_calc_key",
         "*",
         BOTH,
-        "_md_cache_key_ci passes ci as a constant; an out-of-line copy "
-        "would test the class at run time",
+        "an out-of-line copy adds a call per key that popitem() and "
+        "update() from another class materialize",
     ),
     Rule(
         "md_borrow_identity",
@@ -293,12 +271,6 @@ RULES = (
         (FT,),
         "#1675: out of line in d[key] = v once update() and merge() lost "
         "their per-class copies, and with it del d[key] +3% on CIMultiDict",
-    ),
-    Rule(
-        "_multidict_bulk",
-        "*",
-        BOTH,
-        "#1591: one shared copy made subclass init 7-8% slower",
     ),
 )
 

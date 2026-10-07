@@ -19,6 +19,7 @@ extern "C" {
 static inline int
 _md_check_consistency(const MultiDictObject* md)
 {
+    bool ci = md->is_ci;
     //    ASSERT_WORLD_STOPPED_OR_DICT_LOCKED(op);
 
 #define CHECK(expr) assert(expr)
@@ -44,14 +45,13 @@ _md_check_consistency(const MultiDictObject* md)
     entry_t* entries = htkeys_entries(keys);
     for (Py_ssize_t i = 0; i < calc_usable; i++) {
         entry_t* entry = entry_at(keys->kind, entries, i);
-        PyObject* identity = entry_identity(keys->kind, md->is_ci, entry);
+        PyObject* identity = entry_identity(keys->kind, ci, entry);
 
         if (identity != NULL) {
             CHECK(entry->key != NULL);
             CHECK(entry->value != NULL);
             CHECK(PyUnicode_CheckExact(identity));
-            CHECK(entry_hash(keys->kind, md->is_ci, entry) ==
-                  unicode_hash(identity));
+            CHECK(entry_hash(keys->kind, ci, entry) == unicode_hash(identity));
         } else {
             CHECK(entry->key == NULL);
         }
@@ -82,6 +82,7 @@ _md_check_consistency(const MultiDictObject* md)
 static inline int
 _md_dump(MultiDictObject* md)
 {
+    bool ci = md->is_ci;
     htkeys_t* keys = md->keys;
     printf("Dump %p [%zd from %zd usable %zd nentries %zd]\n",
            (void*)md,
@@ -97,17 +98,15 @@ _md_dump(MultiDictObject* md)
     entry_t* entries = htkeys_entries(keys);
     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
         entry_t* entry = entry_at(keys->kind, entries, i);
-        PyObject* identity = entry_identity(keys->kind, md->is_ci, entry);
+        PyObject* identity = entry_identity(keys->kind, ci, entry);
 
         if (identity == NULL) {
             printf("  %zd [deleted]\n", i);
         } else {
-            printf("  %zd h=%20zd, i=\'",
-                   i,
-                   entry_hash(keys->kind, md->is_ci, entry));
-            PyObject_Print(entry_identity(keys->kind, md->is_ci, entry),
-                           stdout,
-                           Py_PRINT_RAW);
+            printf(
+                "  %zd h=%20zd, i=\'", i, entry_hash(keys->kind, ci, entry));
+            PyObject_Print(
+                entry_identity(keys->kind, ci, entry), stdout, Py_PRINT_RAW);
             printf("\', k=\'");
             PyObject_Print(entry->key, stdout, Py_PRINT_RAW);
             printf("\', v=\'");

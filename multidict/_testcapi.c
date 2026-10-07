@@ -317,7 +317,7 @@ md_foreach(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    PyObject* key = args[1] == Py_None ? NULL : args[1];
+    PyObject* key = Py_IsNone(args[1]) ? NULL : args[1];
     Py_ssize_t limit = PyLong_AsSsize_t(args[2]);
     if (limit == -1 && PyErr_Occurred()) {
         return NULL;
@@ -374,7 +374,7 @@ md_foreach_mutates(PyObject* self, PyObject* const* args, Py_ssize_t nargs)
         return NULL;
     }
     mod_state* state = get_mod_state(self);
-    PyObject* key = args[1] == Py_None ? NULL : args[1];
+    PyObject* key = Py_IsNone(args[1]) ? NULL : args[1];
     mutate_ctx ctx = {state->capi, args[0], args[2]};
     if (MultiDict_ForEach(state->capi, args[0], key, mutating_visitor, &ctx) <
         0) {

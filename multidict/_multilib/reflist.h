@@ -114,15 +114,6 @@ _reflist_spilled_size(const reflist_t* lst)
     return size;
 }
 
-static inline Py_ssize_t
-reflist_size(const reflist_t* lst)
-{
-    if (UNLIKELY(lst->current != NULL)) {
-        return _reflist_spilled_size(lst);
-    }
-    return lst->count;
-}
-
 COLD static void
 _reflist_clear_spilled(reflist_t* lst)
 {

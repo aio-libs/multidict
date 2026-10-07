@@ -80,7 +80,7 @@ _bitmap_nwords(Py_ssize_t nbits)
 }
 
 /* Can't fail and touches no storage: the first mark does that. */
-static inline void
+static void
 bitmap_init(bitmap_t* bm, htkeys_t* keys, Py_ssize_t nbits)
 {
     bm->nwords = _bitmap_nwords(nbits);
@@ -127,19 +127,9 @@ _bitmap_start(bitmap_t* bm)
     return 0;
 }
 
-/* Sets up storage now, so that no later mark on this bitmap can fail. */
-static inline int
-bitmap_reserve(bitmap_t* bm)
-{
-    if (bm->summary != NULL) {
-        return 0;
-    }
-    return _bitmap_start(bm);
-}
-
 /* Safe to call more than once, and on a bitmap whose init never ran,
    provided `summary` was set to NULL up front. */
-static inline void
+static void
 bitmap_release(bitmap_t* bm)
 {
     if (bm->summary != NULL && bm->summary != bm->inline_summary) {
@@ -157,7 +147,7 @@ _bitmap_word_ready(const bitmap_t* bm, Py_ssize_t wi)
             1);
 }
 
-ALWAYS_INLINE static inline bool
+static bool
 _bitmap_dense_test(const bitmap_t* bm, Py_ssize_t i)
 {
     return (bm->words[i >> BITMAP_WORD_SHIFT] >> (i & BITMAP_WORD_MASK)) & 1;
@@ -192,7 +182,7 @@ _bitmap_word(bitmap_t* bm, Py_ssize_t i)
 
 /* Moves `src` into `dst`, releasing what `dst` held. `src` is left
    released. */
-static inline void
+static void
 bitmap_move(bitmap_t* dst, bitmap_t* src)
 {
     bitmap_release(dst);
@@ -228,7 +218,7 @@ bitmap_move(bitmap_t* dst, bitmap_t* src)
 
 /* How many indices `bm` has room for: at least the `nbits` it was built
    for. */
-static inline Py_ssize_t
+static Py_ssize_t
 bitmap_nbits(const bitmap_t* bm)
 {
     return bm->nwords << BITMAP_WORD_SHIFT;
@@ -317,7 +307,7 @@ _bitmap_ctz(bitmap_word_t w)
 
 /* The first set index at or after `start`, or -1 if there is none.
    Untouched words are skipped a whole summary word at a time. */
-static inline Py_ssize_t
+static Py_ssize_t
 bitmap_next(const bitmap_t* bm, Py_ssize_t start)
 {
     assert(start >= 0);

@@ -1,0 +1,3 @@
+Moved the end of a lock-free read out of line in FT builds of the C
+extension, which made lookups slightly faster
+-- by :user:`asvetlov`.

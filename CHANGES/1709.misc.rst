@@ -1,0 +1,3 @@
+Made ``_md_eq_scan()`` a plain ``static`` function, leaving the inlining
+decision to the compiler
+-- by :user:`asvetlov`.

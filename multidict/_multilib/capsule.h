@@ -111,7 +111,7 @@ CIMultiDictProxy_GetType(void* state_)
 
 /* ================= Constructors ================= */
 
-static inline PyObject*
+static PyObject*
 _md_new(mod_state* state, PyTypeObject* tp, bool is_ci,
         Py_ssize_t prealloc_size)
 {
@@ -140,7 +140,7 @@ CIMultiDict_New(void* state_, Py_ssize_t prealloc_size)
     return _md_new(state, state->CIMultiDictType, true, prealloc_size);
 }
 
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 _proxy_new(mod_state* state, PyObject* arg, bool is_ci)
 {
     MultiDictObject* md = multidict_proxy_target(state, arg, is_ci);
@@ -191,7 +191,7 @@ MultiDict_Contains(void* state_, PyObject* self, PyObject* key)
 {
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
-    return md_contains(md, key, md->is_ci);
+    return md_contains(md, key);
 }
 
 static int
@@ -201,7 +201,7 @@ MultiDict_GetItem(void* state_, PyObject* self, PyObject* key,
     *result = NULL;
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
-    return md_get_one(md, key, result, md->is_ci);
+    return md_get_one(md, key, result);
 }
 
 /* ================= Setters ================= */
@@ -216,8 +216,7 @@ static int
 MultiDict_Add(void* state_, PyObject* self, PyObject* key, PyObject* value)
 {
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    return md_add(
-        (MultiDictObject*)self, key, value, ((MultiDictObject*)self)->is_ci);
+    return md_add((MultiDictObject*)self, key, value);
 }
 
 static int
@@ -259,11 +258,7 @@ MultiDict_SetDefault(void* state_, PyObject* self, PyObject* key,
 {
     *result = NULL;
     __MULTIDICT_VALIDATION_CHECK(self, state_, -1);
-    return md_set_default((MultiDictObject*)self,
-                          key,
-                          default_value,
-                          result,
-                          ((MultiDictObject*)self)->is_ci);
+    return md_set_default((MultiDictObject*)self, key, default_value, result);
 }
 
 static int
@@ -309,13 +304,12 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
 {
     PyObject* identity;
     Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash, md->is_ci) < 0) {
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
         return -1;
     }
     Py_ssize_t count;
     Py_BEGIN_CRITICAL_SECTION(md);
-    count = md_walk_with_hash(
-        md, identity, hash, true, visitor, user_data, md->is_ci);
+    count = md_walk_with_hash(md, identity, hash, true, visitor, user_data);
     ASSERT_CONSISTENT(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
@@ -379,7 +373,7 @@ MultiDict_AddWatcher(void* state_, MultiDict_WatchCallback callback,
 }
 
 // callers hold watcher_mutex
-static inline bool
+static bool
 _watcher_registered(mod_state* state, int watcher_id)
 {
     return watcher_id >= 0 && watcher_id < MULTIDICT_MAX_WATCHERS &&

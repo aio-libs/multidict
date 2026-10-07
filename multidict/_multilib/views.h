@@ -40,7 +40,7 @@ _multidict_view_alloc(MultiDictObject* md, PyTypeObject* tp)
     return mv;
 }
 
-static inline PyObject*
+NOINLINE static PyObject*
 _multidict_view_new(MultiDictObject* md, PyTypeObject* tp)
 {
     _Multidict_ViewObject* mv = _multidict_view_alloc(md, tp);
@@ -168,7 +168,7 @@ multidict_view_richcompare(_Multidict_ViewObject* self, PyObject* other,
     }
     PyObject* ret = _view_all_in(subset, superset);
     if (ret != NULL && op == Py_NE) {
-        bool equal = ret == Py_True;
+        bool equal = Py_IsTrue(ret);
         Py_DECREF(ret);
         return PyBool_FromLong(!equal);
     }
@@ -268,7 +268,7 @@ done:
 
 /********** Items **********/
 
-static inline PyObject*
+static PyObject*
 multidict_itemsview_new(MultiDictObject* md)
 {
     return _multidict_view_new(md, md->state->ItemsViewType);
@@ -283,14 +283,10 @@ multidict_itemsview_tp_iter(_Multidict_ViewObject* self)
 NOINLINE static PyObject*
 multidict_itemsview_tp_repr(_Multidict_ViewObject* self)
 {
-    PyObject* ret;
-    Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = md_repr(self->md, (PyObject*)self, true, true);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_repr(self->md, (PyObject*)self, true, true);
 }
 
-static inline int
+static int
 _multidict_itemsview_parse_item(_Multidict_ViewObject* self, PyObject* arg,
                                 PyObject** pidentity, PyObject** pkey,
                                 PyObject** pvalue)
@@ -314,7 +310,7 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject* self, PyObject* arg,
         *pvalue = Py_NewRef(PyTuple_GET_ITEM(arg, 1));
     }
 
-    *pidentity = md_calc_identity(self->md, key, self->md->is_ci);
+    *pidentity = md_calc_identity(self->md, key);
     Py_DECREF(key);
     if (*pidentity == NULL) {
         if (pkey != NULL) {
@@ -333,7 +329,7 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject* self, PyObject* arg,
     return 1;
 }
 
-static inline int
+static int
 _set_add(PyObject* set, PyObject* key, PyObject* value)
 {
     PyObject* tpl = PyTuple_Pack(2, key, value);
@@ -369,7 +365,7 @@ _multidict_collect_visit(void* user_data, PyObject* identity, Py_hash_t hash,
    so that callers can run a custom __eq__ against it after the walk.
 
    `with_keys` selects values (false) or (key, value) tuples (true). */
-static inline PyObject*
+static PyObject*
 _multidict_collect_matches(MultiDictObject* md, PyObject* identity,
                            bool with_keys)
 {
@@ -594,6 +590,7 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
     Py_CLEAR(iter);
 
     MultiDictObject* md = self->md;
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
@@ -604,7 +601,7 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
         if (entry_is_hole(entry)) {
             continue;
         }
-        identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
+        identity = Py_NewRef(entry_identity(kind, ci, entry));
         value = Py_NewRef(entry->value);
         key = md_ensure_key(md, entry);  // last entry access
         if (key == NULL) {
@@ -682,7 +679,7 @@ multidict_itemsview_xor(PyObject* lft, PyObject* rht)
     return _view_binop(lft, rht, true, false, _view_xor);
 }
 
-static inline int
+static int
 _multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
 {
     PyObject* identity = NULL;
@@ -723,7 +720,7 @@ _multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
             break;
     }
 
-    identity = md_calc_identity(self->md, key, self->md->is_ci);
+    identity = md_calc_identity(self->md, key);
     if (identity == NULL) {
         if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
             ret = -1;  // propagate MemoryError / KeyboardInterrupt / etc.
@@ -750,7 +747,7 @@ multidict_itemsview_sq_contains(_Multidict_ViewObject* self, PyObject* obj)
     return ret;
 }
 
-static inline PyObject*
+static PyObject*
 _multidict_itemsview_isdisjoint_impl(_Multidict_ViewObject* self,
                                      PyObject* other)
 {
@@ -845,7 +842,7 @@ static PyType_Spec multidict_itemsview_spec = {
 
 /********** Keys **********/
 
-static inline PyObject*
+static PyObject*
 multidict_keysview_new(MultiDictObject* md)
 {
     return _multidict_view_new(md, md->state->KeysViewType);
@@ -866,18 +863,14 @@ multidict_keysview_tp_iter(_Multidict_ViewObject* self)
 NOINLINE static PyObject*
 multidict_keysview_tp_repr(_Multidict_ViewObject* self)
 {
-    PyObject* ret;
-    Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = md_repr(self->md, (PyObject*)self, true, false);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_repr(self->md, (PyObject*)self, true, false);
 }
 
 // Out of line: a set operator is not worth a copy of the lookup.
 NOINLINE static int
 _keysview_has(MultiDictObject* md, PyObject* key)
 {
-    return md_contains(md, key, md->is_ci);
+    return md_contains(md, key);
 }
 
 /* `&`, or `-` if `subtract`. `view & other` and `view - other` go by the
@@ -1017,7 +1010,7 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
             Py_DECREF(key);
             continue;
         }
-        identity = md_calc_identity(self->md, key, self->md->is_ci);
+        identity = md_calc_identity(self->md, key);
         if (identity == NULL) {
             goto fail;
         }
@@ -1033,6 +1026,7 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
     Py_CLEAR(iter);
 
     MultiDictObject* md = self->md;
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
@@ -1045,7 +1039,7 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
              !md_is_first_key(md, kind, entries, entry, pos))) {
             continue;
         }
-        identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
+        identity = Py_NewRef(entry_identity(kind, ci, entry));
         key = md_ensure_key(md, entry);  // last entry access
         if (key == NULL) {
             goto fail;
@@ -1113,10 +1107,10 @@ multidict_keysview_xor(PyObject* lft, PyObject* rht)
 NOINLINE static int
 multidict_keysview_sq_contains(_Multidict_ViewObject* self, PyObject* key)
 {
-    return md_contains(self->md, key, self->md->is_ci);
+    return md_contains(self->md, key);
 }
 
-static inline PyObject*
+static PyObject*
 _multidict_keysview_isdisjoint_impl(_Multidict_ViewObject* self,
                                     PyObject* other)
 {
@@ -1127,7 +1121,7 @@ _multidict_keysview_isdisjoint_impl(_Multidict_ViewObject* self,
     PyObject* key = NULL;
     int st;
     while ((st = PyIter_NextItem(iter, &key)) > 0) {
-        int tmp = md_contains(self->md, key, self->md->is_ci);
+        int tmp = md_contains(self->md, key);
         Py_DECREF(key);
         if (tmp < 0) {
             Py_CLEAR(iter);
@@ -1206,7 +1200,7 @@ static PyType_Spec multidict_keysview_spec = {
 
 /********** Values **********/
 
-static inline PyObject*
+static PyObject*
 multidict_valuesview_new(MultiDictObject* md)
 {
     return _multidict_view_new(md, md->state->ValuesViewType);
@@ -1221,11 +1215,7 @@ multidict_valuesview_tp_iter(_Multidict_ViewObject* self)
 NOINLINE static PyObject*
 multidict_valuesview_tp_repr(_Multidict_ViewObject* self)
 {
-    PyObject* ret;
-    Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = md_repr(self->md, (PyObject*)self, false, true);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_repr(self->md, (PyObject*)self, false, true);
 }
 
 NOINLINE static PyObject*

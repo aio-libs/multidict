@@ -6,7 +6,7 @@ import urllib.request
 import sys
 
 
-MIN_PYTHON = (3, 10)
+MIN_PYTHON = (2, 7)
 
 
 PYTHONCAPI_COMPAT_URL = ('https://raw.githubusercontent.com/python/'

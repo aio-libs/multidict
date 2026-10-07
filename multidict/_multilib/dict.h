@@ -60,7 +60,7 @@ typedef struct {
 
 /* The multidict a proxy of the given class wraps for arg; NULL without an
    exception if arg is neither such a multidict nor a proxy of one. */
-static inline MultiDictObject*
+static MultiDictObject*
 multidict_proxy_target(mod_state* state, PyObject* arg, bool is_ci)
 {
     if (is_ci ? CIMultiDict_Check(state, arg)
@@ -100,7 +100,7 @@ md_check_version(MultiDictObject* md, uint64_t version)
 
    MultiDict and CIMultiDict share a pool because they share a struct and
    differ only in md->is_ci, and the two proxy types likewise. */
-static inline pool_t*
+static pool_t*
 _md_pool_for(mod_state* state, PyTypeObject* tp)
 {
     if (tp == state->MultiDictType || tp == state->CIMultiDictType) {

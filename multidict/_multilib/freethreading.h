@@ -223,25 +223,6 @@ store_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
     }
 }
 
-/* PyUnstable_TryIncRef() with CPython's own fast path, which the API
-   only takes behind a call: an immortal object, or one this thread owns.
-   Py_REF_DEBUG builds keep a total the call maintains. */
-static inline int
-_try_incref(PyObject* op)
-{
-#ifndef Py_REF_DEBUG
-    uint32_t local = _Py_atomic_load_uint32_relaxed(&op->ob_ref_local) + 1;
-    if (local == 0) {
-        return 1;  // immortal
-    }
-    if (_Py_IsOwnedByCurrentThread(op)) {
-        _Py_atomic_store_uint32_relaxed(&op->ob_ref_local, local);
-        return 1;
-    }
-#endif
-    return PyUnstable_TryIncRef(op);
-}
-
 /* NULL means the caller must fall back to the critical section, which
    includes the case of the field legitimately being NULL. */
 static inline PyObject*
@@ -251,7 +232,7 @@ try_get_ref(PyObject** addr)
     if (value == NULL) {
         return NULL;
     }
-    if (!_try_incref(value)) {
+    if (!PyUnstable_TryIncRef(value)) {
         return NULL;
     }
     if ((PyObject*)atomic_load_ptr((void* const*)addr) != value) {

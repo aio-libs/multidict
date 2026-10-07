@@ -75,14 +75,6 @@ _md_seen_test_and_add(md_seen_t* seen, MultiDictObject* md, Py_ssize_t index)
     return bitmap_test_and_set(&seen->bitmap, index);
 }
 
-static inline void
-_md_seen_release(md_seen_t* seen)
-{
-    if (seen->nfew > MD_SEEN_MANY) {
-        bitmap_release(&seen->bitmap);
-    }
-}
-
 /* Visitor for md_walk().
 
    `identity`, `key` and `value` are borrowed: the walk holds a reference to
@@ -97,12 +89,22 @@ typedef int (*md_item_visitor_t)(void* user_data, PyObject* identity,
                                  Py_hash_t hash, PyObject* key,
                                  PyObject* value);
 
-ALWAYS_INLINE static inline Py_ssize_t
-_md_walk_all_scan(MultiDictObject* md, bool with_keys,
-                  md_item_visitor_t visitor, void* user_data, uint8_t kind)
+/* Calls `visitor` once for every live entry, in insertion order. Returns how
+   many entries were visited, or -1 with an exception set. The caller holds
+   md's critical section.
+
+   The linear scan cannot reach an entry twice, so unlike md_walk() there is
+   no seen set to keep.
+
+   `visitor` must not call back into `md`, for the reason md_walk() gives. */
+static Py_ssize_t
+md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
+            void* user_data)
 {
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
+    uint8_t kind = keys->kind;
     entry_t* entry = htkeys_entries(keys);
     // the version check below keeps the table and its nentries in place
     entry_t* end = entry_at(kind, entry, keys->nentries);
@@ -112,8 +114,8 @@ _md_walk_all_scan(MultiDictObject* md, bool with_keys,
             continue;
         }
 
-        PyObject* identity = Py_NewRef(entry_identity(kind, md->is_ci, entry));
-        Py_hash_t hash = entry_hash(kind, md->is_ci, entry);
+        PyObject* identity = Py_NewRef(entry_identity(kind, ci, entry));
+        Py_hash_t hash = entry_hash(kind, ci, entry);
         PyObject* value = Py_NewRef(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
@@ -144,25 +146,6 @@ _md_walk_all_scan(MultiDictObject* md, bool with_keys,
     return count;
 }
 
-/* Calls `visitor` once for every live entry, in insertion order. Returns how
-   many entries were visited, or -1 with an exception set. The caller holds
-   md's critical section.
-
-   The linear scan cannot reach an entry twice, so unlike md_walk() there is
-   no seen set to keep.
-
-   `visitor` must not call back into `md`, for the reason md_walk() gives. */
-ALWAYS_INLINE static inline Py_ssize_t
-md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
-            void* user_data)
-{
-    if (kind_is_compact(md->keys->kind)) {
-        return _md_walk_all_scan(
-            md, with_keys, visitor, user_data, KIND_COMPACT);
-    }
-    return _md_walk_all_scan(md, with_keys, visitor, user_data, KIND_ANYSTR);
-}
-
 /* Calls `visitor` once for every entry whose identity is `identity`, in probe
    order; `hash` is that identity's hash. Returns how many entries were
    visited, or -1 with an exception set. The caller holds md's critical
@@ -178,10 +161,9 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
    that moved. */
 ALWAYS_INLINE static inline Py_ssize_t
 md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                  bool with_keys, md_item_visitor_t visitor, void* user_data,
-                  bool ci)
+                  bool with_keys, md_item_visitor_t visitor, void* user_data)
 {
-    assert(ci == md->is_ci);
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
@@ -190,7 +172,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     htkeysiter_init(&iter, keys, hash);
 
     /* Not zero-initialized: the bitmap's inline buffer is 4 KB.
-       _md_seen_release() only needs `nfew`. */
+       The release below only needs `nfew`. */
     md_seen_t seen;
     seen.nfew = 0;
 
@@ -211,7 +193,8 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
            (see its doc comment), and this scan never marks the table. */
         int seen_before = _md_seen_test_and_add(&seen, md, iter.index);
         if (seen_before < 0) {
-            goto fail;
+            count = -1;
+            break;
         }
         if (seen_before) {
             continue;
@@ -223,7 +206,8 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             key = md_ensure_key(md, entry);  // last entry access
             if (key == NULL) {
                 Py_DECREF(value);
-                goto fail;
+                count = -1;
+                break;
             }
         }
         count++;
@@ -232,25 +216,26 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         Py_DECREF(value);
         if (ret < 0) {
             assert(PyErr_Occurred());
-            goto fail;
+            count = -1;
+            break;
         }
         /* md_ensure_key() and the visitor can both run Python code. */
         if (md_check_version(md, version) < 0) {
-            goto fail;
+            count = -1;
+            break;
         }
         if (ret == 0 || !keys->maybe_dups) {
             break;
         }
     }
-    _md_seen_release(&seen);
+    if (seen.nfew > MD_SEEN_MANY) {
+        bitmap_release(&seen.bitmap);
+    }
     return count;
-fail:
-    _md_seen_release(&seen);
-    return -1;
 }
 
 /* md_walk_with_hash() for callers that have no hash at hand yet. */
-ALWAYS_INLINE static inline Py_ssize_t
+static Py_ssize_t
 md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
         md_item_visitor_t visitor, void* user_data)
 {
@@ -259,7 +244,7 @@ md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
         return -1;
     }
     return md_walk_with_hash(
-        md, identity, hash, with_keys, visitor, user_data, md->is_ci);
+        md, identity, hash, with_keys, visitor, user_data);
 }
 
 #ifdef __cplusplus

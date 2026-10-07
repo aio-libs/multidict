@@ -1,0 +1,3 @@
+Removed ``inline`` and ``ALWAYS_INLINE`` from the helpers of the C API
+implementation; GCC compiles them the same way without the hints
+-- by :user:`asvetlov`.
