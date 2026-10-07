@@ -1462,7 +1462,7 @@ _md_contains_owned(MultiDictObject* md, PyObject* key)
     return result;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_contains(MultiDictObject* md, PyObject* key)
 {
     if (!PyUnicode_Check(key)) {
