@@ -1,3 +1,4 @@
+import ctypes
 import gc
 import sys
 from collections.abc import Callable
@@ -124,10 +125,31 @@ def test_copy_of_every_str_kind(
     assert made.lower() == value.lower()
     assert made[1:] == value[1:]
     assert repr(made) == repr(value)
-    # parsing an encoding name caches its UTF-8 form, a buffer of its own
-    # unless ASCII, which the istr frees with itself
-    with pytest.raises(LookupError):
-        "".encode(made)
+
+
+@pytest.mark.skipif(
+    IMPLEMENTATION.name != "cpython",
+    reason="calls the C API through ctypes",
+)
+@pytest.mark.parametrize("value", ALL_KINDS[2:], ids=["latin1", "ucs2", "ucs4"])
+@pytest.mark.parametrize("via", ["istr", "key"])
+def test_cached_utf8_is_freed(
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    case_insensitive_str_class: type[str],
+    value: str,
+    via: str,
+) -> None:
+    """The UTF-8 form CPython caches on a non-ASCII str has a buffer of its
+    own, which the istr frees with itself."""
+    source = "".join(list(value))
+    if via == "istr":
+        made = case_insensitive_str_class(source)
+    else:
+        made = next(iter(case_insensitive_multidict_class([(source, 1)])))
+    as_utf8 = ctypes.pythonapi.PyUnicode_AsUTF8AndSize
+    as_utf8.restype = ctypes.c_char_p
+    as_utf8.argtypes = [ctypes.py_object, ctypes.c_void_p]
+    assert as_utf8(made, None) == value.encode()
 
 
 def test_eq(case_insensitive_str_class: type[str]) -> None:
