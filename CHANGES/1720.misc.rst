@@ -1,0 +1,3 @@
+Made the shared ``getone()``/``__getitem__``, ``pop()`` and proxy
+``__init__()`` helpers of the C extension out-of-line functions that
+their callers tail-call -- by :user:`asvetlov`.

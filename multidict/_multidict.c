@@ -16,7 +16,7 @@
 
 /******************** Internal Methods ********************/
 
-static inline PyObject*
+static PyObject*
 _multidict_default_or_key_error(PyObject* key, PyObject* _default)
 {
     if (_default != NULL) {
@@ -26,7 +26,7 @@ _multidict_default_or_key_error(PyObject* key, PyObject* _default)
     return NULL;
 }
 
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 _multidict_getone(MultiDictObject* self, PyObject* key, PyObject* _default)
 {
     PyObject* val = NULL;
@@ -42,7 +42,7 @@ _multidict_getone(MultiDictObject* self, PyObject* key, PyObject* _default)
     return val;
 }
 
-static inline MultiDictObject*
+static MultiDictObject*
 _multidict_resolve_other(mod_state* state, PyObject* arg)
 {
     if (arg == NULL) {
@@ -168,7 +168,7 @@ _dict_first_key(PyObject* arg)
 }
 
 /* The first item's key of a list or tuple of pairs, or NULL. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 _seq_first_key(PyObject* first)
 {
     if (PyTuple_CheckExact(first)) {
@@ -1028,7 +1028,8 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
     return ret;
 }
 
-ALWAYS_INLINE static inline PyObject*
+/* Tail-called by pop() and popone(). */
+NOINLINE static PyObject*
 _multidict_pop(MultiDictObject* self, PyObject* key, PyObject* _default)
 {
     PyObject* ret_val = NULL;
@@ -1373,7 +1374,8 @@ static PyType_Spec cimultidict_spec = {
 
 /******************** MultiDictProxy ********************/
 
-ALWAYS_INLINE static inline int
+/* Tail-called by both proxy classes' __init__(). */
+NOINLINE static int
 _multidict_proxy_init(MultiDictProxyObject* self, PyObject* args,
                       PyObject* kwds, const char* name, bool is_ci)
 {
