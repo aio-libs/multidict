@@ -47,19 +47,46 @@ _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
     Py_END_CRITICAL_SECTION();
 }
 
-/* _iter_next_entry() with the table kind a constant, so the scan steps by
-   a fixed entry size. */
-ALWAYS_INLINE static inline int
-_iter_scan(MultidictIter* self, uint8_t kind, htkeys_t* keys, entry_t** pentry,
-           bool first_only)
+/* Finds the next live entry in the iterator's direction and moves past it.
+   Returns 1 with *pentry set, 0 at the end, or -1 with RuntimeError set if
+   md has changed. The caller holds md's critical section. */
+static inline int
+_iter_next_entry(MultidictIter* self, entry_t** pentry)
 {
+    MultiDictObject* md = self->md;
+    if (md_check_version(md, self->version) < 0) {
+        return -1;
+    }
+    htkeys_t* keys = md->keys;
     entry_t* entries = htkeys_entries(keys);
+    /* One loop per kind and direction, so each steps by a constant entry
+       size. */
+    if (kind_is_compact(keys->kind)) {
+        if (self->reverse) {
+            for (; self->pos >= 0; --self->pos) {
+                entry_t* entry = entry_at(KIND_COMPACT, entries, self->pos);
+                if (!entry_is_hole(entry)) {
+                    --self->pos;
+                    *pentry = entry;
+                    return 1;
+                }
+            }
+            return 0;
+        }
+        for (; self->pos < keys->nentries; ++self->pos) {
+            entry_t* entry = entry_at(KIND_COMPACT, entries, self->pos);
+            if (!entry_is_hole(entry)) {
+                ++self->pos;
+                *pentry = entry;
+                return 1;
+            }
+        }
+        return 0;
+    }
     if (self->reverse) {
         for (; self->pos >= 0; --self->pos) {
-            entry_t* entry = entry_at(kind, entries, self->pos);
-            if (!entry_is_hole(entry) &&
-                (!first_only ||
-                 md_is_first_key(self->md, kind, entries, entry, self->pos))) {
+            entry_t* entry = entry_at(KIND_ANYSTR, entries, self->pos);
+            if (!entry_is_hole(entry)) {
                 --self->pos;
                 *pentry = entry;
                 return 1;
@@ -68,10 +95,8 @@ _iter_scan(MultidictIter* self, uint8_t kind, htkeys_t* keys, entry_t** pentry,
         return 0;
     }
     for (; self->pos < keys->nentries; ++self->pos) {
-        entry_t* entry = entry_at(kind, entries, self->pos);
-        if (!entry_is_hole(entry) &&
-            (!first_only ||
-             md_is_first_key(self->md, kind, entries, entry, self->pos))) {
+        entry_t* entry = entry_at(KIND_ANYSTR, entries, self->pos);
+        if (!entry_is_hole(entry)) {
             ++self->pos;
             *pentry = entry;
             return 1;
@@ -80,45 +105,47 @@ _iter_scan(MultidictIter* self, uint8_t kind, htkeys_t* keys, entry_t** pentry,
     return 0;
 }
 
-/* The keys iterator's scan once the table may hold a key twice, NULL at
-   the end; out of line so the scan for a table without one stays as small
-   as the others. Returns the entry by value: an out-parameter would make
-   GCC add a stack protector to every caller. */
-NOINLINE static entry_t*
-_iter_scan_first_keys(MultidictIter* self, htkeys_t* keys)
+/* _iter_next_entry() for the keys iterator once its table may hold a key
+   twice: only the first entry of each key. `kind` is a constant at each
+   call, so the scan steps by a fixed entry size. */
+ALWAYS_INLINE static inline entry_t*
+_iter_scan_first_key(MultidictIter* self, htkeys_t* keys, uint8_t kind)
 {
-    entry_t* entry = NULL;
-    if (kind_is_compact(keys->kind)) {
-        _iter_scan(self, KIND_COMPACT, keys, &entry, true);
-    } else {
-        _iter_scan(self, KIND_ANYSTR, keys, &entry, true);
+    entry_t* entries = htkeys_entries(keys);
+    if (self->reverse) {
+        for (; self->pos >= 0; --self->pos) {
+            entry_t* entry = entry_at(kind, entries, self->pos);
+            if (!entry_is_hole(entry) &&
+                md_is_first_key(self->md, kind, entries, entry, self->pos)) {
+                --self->pos;
+                return entry;
+            }
+        }
+        return NULL;
     }
-    return entry;
+    for (; self->pos < keys->nentries; ++self->pos) {
+        entry_t* entry = entry_at(kind, entries, self->pos);
+        if (!entry_is_hole(entry) &&
+            md_is_first_key(self->md, kind, entries, entry, self->pos)) {
+            ++self->pos;
+            return entry;
+        }
+    }
+    return NULL;
 }
 
-/* Finds the next live entry in the iterator's direction and moves past it;
-   with `first_only`, only the first entry of each key.
-   Returns 1 with *pentry set, 0 at the end, or -1 with RuntimeError set if
-   md has changed. The caller holds md's critical section.
-
-   Forced: the FT items iterator needs it inline (#1601), and this unit
-   sits so close to GCC's budget that unrelated changes push it out. */
-ALWAYS_INLINE static inline int
-_iter_next_entry(MultidictIter* self, entry_t** pentry, bool first_only)
+/* The next first entry of a key, NULL at the end; the caller has checked
+   the version. Out of line so the keys iterator for a table without
+   repeats stays as small as the others, and returns the entry by value:
+   an out-parameter would make GCC add a stack protector to the caller. */
+NOINLINE static entry_t*
+_iter_next_first_key(MultidictIter* self)
 {
-    MultiDictObject* md = self->md;
-    if (md_check_version(md, self->version) < 0) {
-        return -1;
-    }
-    htkeys_t* keys = md->keys;
-    if (first_only && keys->maybe_dups) {
-        *pentry = _iter_scan_first_keys(self, keys);
-        return *pentry != NULL;
-    }
+    htkeys_t* keys = self->md->keys;
     if (kind_is_compact(keys->kind)) {
-        return _iter_scan(self, KIND_COMPACT, keys, pentry, false);
+        return _iter_scan_first_key(self, keys, KIND_COMPACT);
     }
-    return _iter_scan(self, KIND_ANYSTR, keys, pentry, false);
+    return _iter_scan_first_key(self, keys, KIND_ANYSTR);
 }
 
 /* The three constructors are out of line: each has several callers, and
@@ -181,7 +208,7 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = _iter_next_entry(self, &entry, false);
+    res = _iter_next_entry(self, &entry);
     if (res > 0) {
         // not Py_NewRef(): see md_ensure_key()
         value = entry->value;
@@ -246,7 +273,7 @@ multidict_values_iter_tp_iternext(MultidictIter* self)
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = _iter_next_entry(self, &entry, false);
+    res = _iter_next_entry(self, &entry);
     if (res > 0) {
         value = Py_NewRef(entry->value);
     }
@@ -270,7 +297,17 @@ multidict_keys_iter_tp_iternext(MultidictIter* self)
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = _iter_next_entry(self, &entry, true);
+    MultiDictObject* md = self->md;
+    if (md->keys->maybe_dups) {
+        if (md_check_version(md, self->version) < 0) {
+            res = -1;
+        } else {
+            entry = _iter_next_first_key(self);
+            res = entry != NULL;
+        }
+    } else {
+        res = _iter_next_entry(self, &entry);
+    }
     if (res > 0) {
         key = md_ensure_key(self->md, entry);  // last entry access
         if (key == NULL) {
