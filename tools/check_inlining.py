@@ -174,13 +174,6 @@ RULES = (
         "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
     ),
     Rule(
-        "_md_update_from_ht_scan",
-        "*",
-        BOTH,
-        "#1676: the constant kind made extend() and merge() from another "
-        "multidict 5-18% cheaper",
-    ),
-    Rule(
         "entry_is_hole",
         "*",
         BOTH,
