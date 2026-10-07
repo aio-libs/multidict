@@ -907,7 +907,7 @@ _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return keys;
 }
 
-static inline int
+static int
 md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
                             PyObject* identity, PyObject* key, PyObject* value,
                             bool fits)
@@ -2538,7 +2538,85 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
     return ret;
 }
 
-static PyObject*
+typedef struct _md_repr_state {
+    PyUnicodeWriter* writer;
+    bool show_keys;
+    bool show_values;
+    bool comma;
+} md_repr_state_t;
+
+static int
+_md_repr_visit(void* user_data, PyObject* identity, Py_hash_t hash,
+               PyObject* key, PyObject* value)
+{
+    md_repr_state_t* state = (md_repr_state_t*)user_data;
+    PyUnicodeWriter* writer = state->writer;
+    if (state->comma) {
+        if (PyUnicodeWriter_WriteChar(writer, ',') < 0) {
+            return -1;
+        }
+        if (PyUnicodeWriter_WriteChar(writer, ' ') < 0) {
+            return -1;
+        }
+    }
+    state->comma = true;
+    if (state->show_keys) {
+        /* Fast path: ASCII keys without characters that would be escaped
+         * by repr() can be wrapped in single quotes directly. Falls back
+         * to PyUnicodeWriter_WriteRepr for keys containing quotes,
+         * backslashes, or non-printable characters so the output stays
+         * a valid Python string literal. */
+        int fast = 0;
+        if (PyUnicode_IS_ASCII(key)) {
+            Py_ssize_t klen = PyUnicode_GET_LENGTH(key);
+            const unsigned char* kdata =
+                (const unsigned char*)PyUnicode_DATA(key);
+            fast = 1;
+            for (Py_ssize_t ki = 0; ki < klen; ++ki) {
+                unsigned char c = kdata[ki];
+                if (c < 0x20 || c == 0x7f || c == '\'' || c == '\\') {
+                    fast = 0;
+                    break;
+                }
+            }
+        }
+        if (fast) {
+            if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
+                return -1;
+            }
+            /* WriteStr() copies an istr through str(). */
+            if ((PyUnicode_CheckExact(key)
+                     ? PyUnicodeWriter_WriteStr(writer, key)
+                     : PyUnicodeWriter_WriteSubstring(
+                           writer, key, 0, PyUnicode_GET_LENGTH(key))) < 0) {
+                return -1;
+            }
+            if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
+                return -1;
+            }
+        } else {
+            if (PyUnicodeWriter_WriteRepr(writer, key) < 0) {
+                return -1;
+            }
+        }
+    }
+    if (state->show_keys && state->show_values) {
+        if (PyUnicodeWriter_WriteChar(writer, ':') < 0) {
+            return -1;
+        }
+        if (PyUnicodeWriter_WriteChar(writer, ' ') < 0) {
+            return -1;
+        }
+    }
+    if (state->show_values) {
+        if (PyUnicodeWriter_WriteRepr(writer, value) < 0) {
+            return -1;
+        }
+    }
+    return 1;
+}
+
+COLD static PyObject*
 _md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
                 bool show_values)
 {
@@ -2553,12 +2631,6 @@ _md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
         Py_ReprLeave(obj);
         return NULL;
     }
-
-    PyObject* key = NULL;
-    PyObject* value = NULL;
-
-    bool comma = false;
-    uint64_t version = md->version;
 
     PyUnicodeWriter* writer = PyUnicodeWriter_Create(1024);
     if (writer == NULL) {
@@ -2577,81 +2649,9 @@ _md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
         goto fail;
     }
 
-    entry_t* entries = htkeys_entries(md->keys);
-    uint8_t kind = md->keys->kind;
-
-    for (Py_ssize_t pos = 0; pos < md->keys->nentries; ++pos) {
-        if (md_check_version(md, version) < 0) {
-            goto fail;  // discard the writer instead of leaking it
-        }
-        entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(entry)) {
-            continue;
-        }
-        key = Py_NewRef(entry->key);
-        value = Py_NewRef(entry->value);
-
-        if (comma) {
-            if (PyUnicodeWriter_WriteChar(writer, ',') < 0) {
-                goto fail;
-            }
-            if (PyUnicodeWriter_WriteChar(writer, ' ') < 0) {
-                goto fail;
-            }
-        }
-        if (show_keys) {
-            /* Fast path: ASCII keys without characters that would be escaped
-             * by repr() can be wrapped in single quotes directly. Falls back
-             * to PyUnicodeWriter_WriteRepr for keys containing quotes,
-             * backslashes, or non-printable characters so the output stays
-             * a valid Python string literal. */
-            int fast = 0;
-            if (PyUnicode_IS_ASCII(key)) {
-                Py_ssize_t klen = PyUnicode_GET_LENGTH(key);
-                const unsigned char* kdata =
-                    (const unsigned char*)PyUnicode_DATA(key);
-                fast = 1;
-                for (Py_ssize_t ki = 0; ki < klen; ++ki) {
-                    unsigned char c = kdata[ki];
-                    if (c < 0x20 || c == 0x7f || c == '\'' || c == '\\') {
-                        fast = 0;
-                        break;
-                    }
-                }
-            }
-            if (fast) {
-                if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
-                    goto fail;
-                }
-                if (PyUnicodeWriter_WriteStr(writer, key) < 0) {
-                    goto fail;
-                }
-                if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
-                    goto fail;
-                }
-            } else {
-                if (PyUnicodeWriter_WriteRepr(writer, key) < 0) {
-                    goto fail;
-                }
-            }
-        }
-        if (show_keys && show_values) {
-            if (PyUnicodeWriter_WriteChar(writer, ':') < 0) {
-                goto fail;
-            }
-            if (PyUnicodeWriter_WriteChar(writer, ' ') < 0) {
-                goto fail;
-            }
-        }
-        if (show_values) {
-            if (PyUnicodeWriter_WriteRepr(writer, value) < 0) {
-                goto fail;
-            }
-        }
-
-        comma = true;
-        Py_CLEAR(key);
-        Py_CLEAR(value);
+    md_repr_state_t state = {writer, show_keys, show_values, false};
+    if (md_walk_all(md, show_keys, _md_repr_visit, &state) < 0) {
+        goto fail;
     }
 
     if (PyUnicodeWriter_WriteChar(writer, ')') < 0) {
@@ -2664,8 +2664,6 @@ _md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
     Py_ReprLeave(obj);
     return PyUnicodeWriter_Finish(writer);
 fail:
-    Py_CLEAR(key);
-    Py_CLEAR(value);
     Py_CLEAR(name);
     PyUnicodeWriter_Discard(writer);
     Py_ReprLeave(obj);
