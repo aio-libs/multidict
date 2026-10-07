@@ -1918,7 +1918,7 @@ _md_values_to_list(reflist_t* values, bool failed, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     *ret = NULL;
