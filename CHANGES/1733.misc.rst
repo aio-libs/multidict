@@ -1,0 +1,2 @@
+Dropped the forced inlining and outlining attributes from seven ``_locked``
+helpers of the C extension -- by :user:`asvetlov`.
