@@ -145,7 +145,7 @@ RULES = (
         BOTH,
         "#1601 prototype: items iteration +19% on FT; ALWAYS_INLINE in "
         "#1627/#1628, where GCC 15 on FT dropped it again (+19%); plain "
-        "inline since #1731",
+        "inline since #1732",
     ),
     Rule(
         "_md_last_live",
