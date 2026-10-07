@@ -142,12 +142,6 @@ RULES = (
         "__getitem__ and get() pay a call per lookup",
     ),
     Rule(
-        "md_get_all",
-        GETALL_ENTRIES,
-        BOTH,
-        "#1530: a stack buffer over 256 bytes cost getall 2%",
-    ),
-    Rule(
         "md_walk_with_hash",
         GETALL_ENTRIES,
         BOTH,

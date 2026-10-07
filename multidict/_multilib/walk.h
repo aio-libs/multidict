@@ -89,13 +89,22 @@ typedef int (*md_item_visitor_t)(void* user_data, PyObject* identity,
                                  Py_hash_t hash, PyObject* key,
                                  PyObject* value);
 
+/* Calls `visitor` once for every live entry, in insertion order. Returns how
+   many entries were visited, or -1 with an exception set. The caller holds
+   md's critical section.
+
+   The linear scan cannot reach an entry twice, so unlike md_walk() there is
+   no seen set to keep.
+
+   `visitor` must not call back into `md`, for the reason md_walk() gives. */
 static Py_ssize_t
-_md_walk_all_scan(MultiDictObject* md, bool with_keys,
-                  md_item_visitor_t visitor, void* user_data, uint8_t kind)
+md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
+            void* user_data)
 {
     bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
+    uint8_t kind = keys->kind;
     entry_t* entry = htkeys_entries(keys);
     // the version check below keeps the table and its nentries in place
     entry_t* end = entry_at(kind, entry, keys->nentries);
@@ -135,25 +144,6 @@ _md_walk_all_scan(MultiDictObject* md, bool with_keys,
         }
     }
     return count;
-}
-
-/* Calls `visitor` once for every live entry, in insertion order. Returns how
-   many entries were visited, or -1 with an exception set. The caller holds
-   md's critical section.
-
-   The linear scan cannot reach an entry twice, so unlike md_walk() there is
-   no seen set to keep.
-
-   `visitor` must not call back into `md`, for the reason md_walk() gives. */
-static Py_ssize_t
-md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
-            void* user_data)
-{
-    if (kind_is_compact(md->keys->kind)) {
-        return _md_walk_all_scan(
-            md, with_keys, visitor, user_data, KIND_COMPACT);
-    }
-    return _md_walk_all_scan(md, with_keys, visitor, user_data, KIND_ANYSTR);
 }
 
 /* Calls `visitor` once for every entry whose identity is `identity`, in probe
