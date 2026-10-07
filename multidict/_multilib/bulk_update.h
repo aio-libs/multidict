@@ -499,7 +499,7 @@ _err_cannot_fetch(Py_ssize_t i, const char* name)
                  name);
 }
 
-ALWAYS_INLINE static inline int
+static inline int
 _md_parse_item(Py_ssize_t i, PyObject* item, PyObject** pkey,
                PyObject** pvalue)
 {

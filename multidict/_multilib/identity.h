@@ -62,11 +62,6 @@ _err_key_type_ci(void)
     return NULL;
 }
 
-/* Forced on FT builds only, where GCC drops it from d[key] = v; forced
-   on GIL builds it costs the constructor an instruction per item. */
-#ifdef Py_GIL_DISABLED
-ALWAYS_INLINE
-#endif
 static inline PyObject*
 _key_to_identity_cs(mod_state* state, PyObject* key)
 {
@@ -101,7 +96,7 @@ _word_has_upper(const Py_UCS1* p)
 }
 
 /* True if s[0:len] holds an ASCII uppercase byte. */
-ALWAYS_INLINE static inline bool
+static inline bool
 _ascii_has_upper(const Py_UCS1* s, Py_ssize_t len)
 {
     /* Too short for a word.  A compact ASCII str is allocated as its header
@@ -247,7 +242,7 @@ _arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
     return _subclass_to_key_ci(state, key, identity);
 }
 
-ALWAYS_INLINE static inline PyObject*
+static inline PyObject*
 md_calc_identity(MultiDictObject* md, PyObject* key)
 {
     if (md->is_ci) return _key_to_identity_ci(md->state, key);
@@ -260,7 +255,7 @@ md_calc_identity(MultiDictObject* md, PyObject* key)
    which never changes, are kept alive by the caller's reference to the
    key.  A borrowed identity keeps the owned one's decref off the lookup's
    exit, which cost key in d 4% in taken branches. */
-ALWAYS_INLINE static inline PyObject*
+static inline PyObject*
 md_borrow_identity(MultiDictObject* md, PyObject* key)
 {
     if (md->is_ci) {
@@ -278,7 +273,7 @@ md_borrow_identity(MultiDictObject* md, PyObject* key)
 /* md_calc_identity() that also says whether key fits a compact table (see
    md_key_fits()): a CIMultiDict's istr test has just run here, so the
    insert need not repeat it. */
-ALWAYS_INLINE static inline PyObject*
+static inline PyObject*
 md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits)
 {
     if (md->is_ci) {
@@ -295,9 +290,8 @@ md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits)
 }
 
 /* Reads only `key`, md->is_ci and md->state, all fixed for md's lifetime,
-   so the caller need not hold md's critical section. Always inlined: left
-   to itself GCC emits it out of line, and every caller pays the call. */
-ALWAYS_INLINE static inline int
+   so the caller need not hold md's critical section. */
+static inline int
 md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
                       Py_hash_t* phash)
 {
@@ -316,7 +310,7 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
 }
 
 /* md_calc_identity_hash() plus md_calc_identity_fits()'s *pfits. */
-ALWAYS_INLINE static inline int
+static inline int
 md_calc_identity_hash_fits(MultiDictObject* md, PyObject* key,
                            PyObject** pidentity, Py_hash_t* phash, bool* pfits)
 {
@@ -334,7 +328,7 @@ md_calc_identity_hash_fits(MultiDictObject* md, PyObject* key,
     return 0;
 }
 
-ALWAYS_INLINE static inline PyObject*
+static inline PyObject*
 md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
 {
     if (md->is_ci) return _arg_to_key_ci(md->state, key, identity);

@@ -240,7 +240,7 @@ entry_at(uint8_t kind, entry_t* entries, Py_ssize_t i)
 /* For walking a table by pointer, with the kind a constant at the call:
    then this is entry++ on the kind's own entry type, where entry_at()
    multiplies. */
-ALWAYS_INLINE static inline entry_t*
+static inline entry_t*
 entry_next(uint8_t kind, entry_t* entry)
 {
     return (entry_t*)((char*)entry + _htkeys_entry_size(kind));
@@ -273,7 +273,7 @@ entry_identity(uint8_t kind, bool ci, const entry_t* entry)
 /* Whether entry is a hole (deleted or never filled). The key is NULL
    exactly when the identity is, in every kind, for a caller holding md's
    critical section; a lock-free reader checks the identity slot instead. */
-ALWAYS_INLINE static inline bool
+static inline bool
 entry_is_hole(const entry_t* entry)
 {
     return entry->key == NULL;
@@ -383,7 +383,7 @@ _MD_DEFINE_INDEX_ACCESSORS(64)
 #undef _MD_DEFINE_INDEX_ACCESSORS
 
 /* lookup indices.  returns DKIX_EMPTY, DKIX_DUMMY, or ix >=0 */
-ALWAYS_INLINE static inline Py_ssize_t
+static inline Py_ssize_t
 htkeys_get_index(const htkeys_t* keys, Py_ssize_t i)
 {
     uint8_t log2size = keys->log2_size;
@@ -407,7 +407,7 @@ htkeys_get_index(const htkeys_t* keys, Py_ssize_t i)
 }
 
 /* write to indices. */
-ALWAYS_INLINE static inline void
+static inline void
 htkeys_set_index(htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)
 {
     uint8_t log2size = keys->log2_size;
@@ -785,7 +785,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 /*
 Internal routine used by ht_resize() to build a hashtable of entries.
 */
-ALWAYS_INLINE static inline void
+static inline void
 _htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n,
                       bool skip_holes)
 {
@@ -890,9 +890,7 @@ typedef struct _htkeysiter {
     Py_ssize_t index;
 } htkeysiter_t;
 
-/* Always inlined: left to itself GCC emits it out of line, and then
-   every probe in the extension opens with a call for five stores. */
-ALWAYS_INLINE static inline void
+static inline void
 htkeysiter_init(htkeysiter_t* iter, htkeys_t* keys, Py_hash_t hash)
 {
     iter->keys = keys;

@@ -1,0 +1,2 @@
+Dropped the ``ALWAYS_INLINE`` macro of the C extension and all of its uses,
+leaving the inlining decisions to the compiler -- by :user:`asvetlov`.

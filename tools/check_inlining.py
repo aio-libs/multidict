@@ -48,8 +48,7 @@ reading a failure, pass ``--show``::
     tools/check_inlining.py --show multidict_get --show MultiDict_GetItem
 
 Rules describe what the current code achieves on the compilers CI uses.
-A fix for a new inlining regression, or a helper pinned with
-``ALWAYS_INLINE`` for speed, adds a rule in the same
+A fix for a new inlining regression adds a rule in the same
 change; a regression that is accepted on purpose edits its rule there
 too, with the measurement that justified it.
 """
