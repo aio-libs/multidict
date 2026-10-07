@@ -49,7 +49,7 @@ reading a failure, pass ``--show``::
 
 Rules describe what the current code achieves on the compilers CI uses.
 A fix for a new inlining regression, or a helper pinned with
-``ALWAYS_INLINE`` or ``NOINLINE`` for speed, adds a rule in the same
+``ALWAYS_INLINE`` for speed, adds a rule in the same
 change; a regression that is accepted on purpose edits its rule there
 too, with the measurement that justified it.
 """

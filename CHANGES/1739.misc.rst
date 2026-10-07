@@ -1,3 +1,2 @@
-Dropped the forced outlining attribute from every function of the C
-extension that had it, leaving the inlining decisions to the compiler
--- by :user:`asvetlov`.
+Dropped the ``NOINLINE`` macro of the C extension and all of its uses,
+leaving the inlining decisions to the compiler -- by :user:`asvetlov`.
