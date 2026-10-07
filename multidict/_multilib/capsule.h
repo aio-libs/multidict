@@ -479,7 +479,7 @@ _capsule_destructor(PyObject* o)
     _capsule_free(capi);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 new_capsule(mod_state* state)
 {
     MultiDict_CAPI* capi =

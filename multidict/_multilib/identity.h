@@ -44,7 +44,7 @@ str_cmp(PyObject* s1, PyObject* s2)
     return (memcmp(data1, data2, (size_t)(len * kind)) == 0);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 _err_key_type_cs(void)
 {
     PyErr_SetString(PyExc_TypeError,
@@ -53,7 +53,7 @@ _err_key_type_cs(void)
     return NULL;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 _err_key_type_ci(void)
 {
     PyErr_SetString(PyExc_TypeError,
@@ -168,13 +168,7 @@ _str_call_lower_ci(mod_state* state, PyObject* key)
     return tmp;
 }
 
-/* Out of line on purpose.  md_calc_identity() carries this whole function
-   into every md_*() that takes a key, and inlining it there costs more than
-   it saves: the extra size pushes md_contains() and the iterators' step
-   past the inliner's budget at their own call sites, which slowed
-   keys().isdisjoint() by 31% even on a case-sensitive MultiDict, whose keys
-   never reach here. */
-NOINLINE static PyObject*
+static PyObject*
 _str_to_identity_ci(mod_state* state, PyObject* key)
 {
     /* Exact str only: a str subclass may override lower(), and callers rely
@@ -194,9 +188,8 @@ _str_to_identity_ci(mod_state* state, PyObject* key)
 }
 
 /* An exact ASCII str with no uppercase is its own identity in a
-   CIMultiDict, the key itself; NULL for any other key.  Out of line for the
-   reason given above _str_to_identity_ci(). */
-NOINLINE static PyObject*
+   CIMultiDict, the key itself; NULL for any other key. */
+static PyObject*
 _str_borrow_identity_ci(PyObject* key)
 {
     if (PyUnicode_CheckExact(key) && PyUnicode_IS_ASCII(key) &&
@@ -227,7 +220,7 @@ _arg_to_key_cs(mod_state* state, PyObject* key, PyObject* identity)
 
 /* A str subclass is copied to an exact str first: istr(), like str(), would
    call its __str__, which may spell a different string than the key. */
-NOINLINE static PyObject*
+static PyObject*
 _subclass_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 {
     PyObject* str = PyUnicode_FromObject(key);
@@ -351,9 +344,8 @@ md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
 /* Building the istr allocates, which can run a collection whose finalizers
    mutate md and free entry, so hold our own refs. Only an exact str is
    replaced by its istr: releasing one runs no code, where a subclass's
-   __del__ could. Out of line, it makes key iteration of every multidict
-   10-15% cheaper. */
-NOINLINE static PyObject*
+   __del__ could. */
+static PyObject*
 _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
 {
     assert(md->is_ci);

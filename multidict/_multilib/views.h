@@ -20,13 +20,8 @@ typedef struct {
 
 /* A pooled shell keeps the GC preheader it was allocated with, which
    PyObject_GC_UnTrack() left in the untracked state, so only the object
-   header has to be put back the way PyObject_GC_New() leaves it.
-
-   Out of line on purpose: inlined into all three view constructors it
-   grows the translation unit enough that GCC stops inlining
-   md_calc_identity() into get(), which costs more on every lookup than
-   the call saves here. */
-NOINLINE static _Multidict_ViewObject*
+   header has to be put back the way PyObject_GC_New() leaves it. */
+static _Multidict_ViewObject*
 _multidict_view_alloc(MultiDictObject* md, PyTypeObject* tp)
 {
     _Multidict_ViewObject* mv = pool_pop(&md->state->view_pool);
@@ -40,7 +35,7 @@ _multidict_view_alloc(MultiDictObject* md, PyTypeObject* tp)
     return mv;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 _multidict_view_new(MultiDictObject* md, PyTypeObject* tp)
 {
     _Multidict_ViewObject* mv = _multidict_view_alloc(md, tp);
@@ -52,7 +47,7 @@ _multidict_view_new(MultiDictObject* md, PyTypeObject* tp)
     return (PyObject*)mv;
 }
 
-NOINLINE static void
+static void
 multidict_view_tp_dealloc(_Multidict_ViewObject* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
@@ -68,7 +63,7 @@ multidict_view_tp_dealloc(_Multidict_ViewObject* self)
     Py_DECREF(tp);
 }
 
-NOINLINE static int
+static int
 multidict_view_tp_traverse(_Multidict_ViewObject* self, visitproc visit,
                            void* arg)
 {
@@ -77,21 +72,21 @@ multidict_view_tp_traverse(_Multidict_ViewObject* self, visitproc visit,
     return 0;
 }
 
-NOINLINE static int
+static int
 multidict_view_tp_clear(_Multidict_ViewObject* self)
 {
     Py_CLEAR(self->md);
     return 0;
 }
 
-NOINLINE static Py_ssize_t
+static Py_ssize_t
 multidict_view_sq_length(_Multidict_ViewObject* self)
 {
     return md_len(self->md);
 }
 
 /* Whether every item of `items` is in `container`: a bool, or NULL. */
-NOINLINE static PyObject*
+static PyObject*
 _view_all_in(PyObject* items, PyObject* container)
 {
     PyObject* iter = PyObject_GetIter(items);
@@ -118,7 +113,7 @@ _view_all_in(PyObject* items, PyObject* container)
     Py_RETURN_TRUE;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_view_richcompare(_Multidict_ViewObject* self, PyObject* other,
                            int op)
 {
@@ -172,7 +167,7 @@ multidict_view_richcompare(_Multidict_ViewObject* self, PyObject* other,
 }
 
 /* The answer of a set operator to an operand it cannot iterate over. */
-NOINLINE static PyObject*
+static PyObject*
 _type_error_to_notimplemented(void)
 {
     if (PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -270,13 +265,13 @@ multidict_itemsview_new(MultiDictObject* md)
     return _multidict_view_new(md, md->state->ItemsViewType);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_itemsview_tp_iter(_Multidict_ViewObject* self)
 {
     return multidict_items_iter_new(self->md, 0);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_itemsview_tp_repr(_Multidict_ViewObject* self)
 {
     return md_repr(self->md, (PyObject*)self, true, true);
@@ -471,7 +466,7 @@ fail:
     return NULL;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_itemsview_nb_and(PyObject* lft, PyObject* rht)
 {
     return _view_binop(lft, rht, true, true, _itemsview_and);
@@ -648,7 +643,7 @@ _itemsview_or(_Multidict_ViewObject* self, PyObject* other, bool reflected)
     return _itemsview_missing(self, other, true);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_itemsview_nb_or(PyObject* lft, PyObject* rht)
 {
     return _view_binop(lft, rht, true, true, _itemsview_or);
@@ -663,13 +658,13 @@ _itemsview_sub(_Multidict_ViewObject* self, PyObject* other, bool reflected)
     return _itemsview_unmatched(self, other, false);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_itemsview_nb_subtract(PyObject* lft, PyObject* rht)
 {
     return _view_binop(lft, rht, true, true, _itemsview_sub);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_itemsview_xor(PyObject* lft, PyObject* rht)
 {
     return _view_binop(lft, rht, true, false, _view_xor);
@@ -733,7 +728,7 @@ _multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
     return ret;
 }
 
-NOINLINE static int
+static int
 multidict_itemsview_sq_contains(_Multidict_ViewObject* self, PyObject* obj)
 {
     int ret;
@@ -788,7 +783,7 @@ multidict_itemsview_isdisjoint(_Multidict_ViewObject* self, PyObject* other)
 PyDoc_STRVAR(itemsview_isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_itemsview_reversed(_Multidict_ViewObject* self,
                              PyObject* Py_UNUSED(ignored))
 {
@@ -844,20 +839,19 @@ multidict_keysview_new(MultiDictObject* md)
     return _multidict_view_new(md, md->state->KeysViewType);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keysview_tp_iter(_Multidict_ViewObject* self)
 {
     return multidict_keys_iter_new(self->md, 0);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keysview_tp_repr(_Multidict_ViewObject* self)
 {
     return md_repr(self->md, (PyObject*)self, true, false);
 }
 
-// Out of line: a set operator is not worth a copy of the lookup.
-NOINLINE static int
+static int
 _keysview_has(MultiDictObject* md, PyObject* key)
 {
     return md_contains(md, key);
@@ -924,7 +918,7 @@ _keysview_and(_Multidict_ViewObject* self, PyObject* other, bool reflected)
     return _keysview_filter(self, other, reflected, false);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keysview_nb_and(PyObject* lft, PyObject* rht)
 {
     return _view_binop(lft, rht, false, true, _keysview_and);
@@ -1068,7 +1062,7 @@ _keysview_or(_Multidict_ViewObject* self, PyObject* other, bool reflected)
     return _keysview_or_lft(self, other);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keysview_nb_or(PyObject* lft, PyObject* rht)
 {
     return _view_binop(lft, rht, false, true, _keysview_or);
@@ -1080,19 +1074,19 @@ _keysview_sub(_Multidict_ViewObject* self, PyObject* other, bool reflected)
     return _keysview_filter(self, other, reflected, true);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keysview_nb_subtract(PyObject* lft, PyObject* rht)
 {
     return _view_binop(lft, rht, false, true, _keysview_sub);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keysview_xor(PyObject* lft, PyObject* rht)
 {
     return _view_binop(lft, rht, false, false, _view_xor);
 }
 
-NOINLINE static int
+static int
 multidict_keysview_sq_contains(_Multidict_ViewObject* self, PyObject* key)
 {
     return md_contains(self->md, key);
@@ -1127,7 +1121,7 @@ _multidict_keysview_isdisjoint_impl(_Multidict_ViewObject* self,
     Py_RETURN_TRUE;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keysview_isdisjoint(_Multidict_ViewObject* self, PyObject* other)
 {
     PyObject* ret;
@@ -1140,7 +1134,7 @@ multidict_keysview_isdisjoint(_Multidict_ViewObject* self, PyObject* other)
 PyDoc_STRVAR(keysview_isdisjoint_doc,
              "Return True if two sets have a null intersection.");
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keysview_reversed(_Multidict_ViewObject* self,
                             PyObject* Py_UNUSED(ignored))
 {
@@ -1194,19 +1188,19 @@ multidict_valuesview_new(MultiDictObject* md)
     return _multidict_view_new(md, md->state->ValuesViewType);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_valuesview_tp_iter(_Multidict_ViewObject* self)
 {
     return multidict_values_iter_new(self->md, 0);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_valuesview_tp_repr(_Multidict_ViewObject* self)
 {
     return md_repr(self->md, (PyObject*)self, false, true);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_valuesview_reversed(_Multidict_ViewObject* self,
                               PyObject* Py_UNUSED(ignored))
 {
@@ -1242,7 +1236,7 @@ static PyType_Spec multidict_valuesview_spec = {
     .slots = multidict_valuesview_slots,
 };
 
-NOINLINE static int
+static int
 multidict_views_init(PyObject* module, mod_state* state)
 {
     PyObject* tmp;
