@@ -113,7 +113,7 @@ GROWTH_RATE(const MultiDictObject* md)
    entries still hold: only md_clear()'s and _md_install_keys()'s
    tables have any, since _md_rebuild() moves its old table's entries
    and zeroes nentries. */
-NOINLINE static void
+static void
 _htkeys_dispose(pool_t* pools, htkeys_t* keys)
 {
     /* Nothing can reach the table any more, so a finalizer run by a decref
@@ -270,7 +270,7 @@ _md_reader_exit(MultiDictObject* md, htkeys_t* keys)
     }
 }
 
-NOINLINE static void
+static void
 _md_drain_retired_slow(MultiDictObject* md)
 {
 retry:
@@ -511,7 +511,7 @@ _md_publish_compacted(MultiDictObject* md, htkeys_t* oldkeys,
     _md_publish_rebuilt(md, oldkeys, newkeys);
 }
 
-NOINLINE static int
+static int
 _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
 {
     if (UNLIKELY(md->batches != 0)) {
@@ -551,8 +551,7 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
     return 0;
 }
 
-// Out of line: inlined, it slows construction and update() on GIL builds
-NOINLINE static int
+static int
 _md_resize_for_add(MultiDictObject* md)
 {
     return _md_rebuild(md, calculate_log2_keysize(GROWTH_RATE(md)));
@@ -1124,8 +1123,7 @@ removed_pairs_init(removed_pairs_t* removed)
     removed->spilled = false;
 }
 
-// Out of line: inlined twice, it pushes the FT items iterator step out
-NOINLINE static void
+static void
 removed_pairs_release(removed_pairs_t* removed)
 {
     Py_XDECREF(removed->key);
@@ -1445,9 +1443,8 @@ _md_contains_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
     return result;
 }
 
-/* A key whose identity has to be computed: off md_contains()'s straight
-   line, so its decref is not on every lookup's exit. */
-NOINLINE static int
+/* A key whose identity has to be computed. */
+static int
 _md_contains_owned(MultiDictObject* md, PyObject* key)
 {
     PyObject* identity;
@@ -1478,9 +1475,8 @@ md_contains(MultiDictObject* md, PyObject* key)
 }
 
 /* md_contains() that also returns the stored key in *pret.  Only the view
-   set operations need it, so it stays out of line and off md_contains()'s
-   inlining budget. */
-NOINLINE static int
+   set operations need it. */
+static int
 md_find_key(MultiDictObject* md, PyObject* key, PyObject** pret)
 {
     *pret = NULL;
@@ -1611,7 +1607,7 @@ _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
 /* See _md_contains_owned().  Returns the value, or NULL, with an exception
    set on error: an out-pointer into the caller's frame would make GCC put a
    stack protector on every lookup slot. */
-NOINLINE static PyObject*
+static PyObject*
 _md_get_one_owned(MultiDictObject* md, PyObject* key)
 {
     PyObject* identity;
@@ -2428,7 +2424,7 @@ _md_eq_scan(MultiDictObject* md, MultiDictObject* other, uint8_t kind1,
     }
 }
 
-NOINLINE static int
+static int
 md_eq(MultiDictObject* md, MultiDictObject* other)
 {
     if (md == other) {
@@ -2735,9 +2731,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
     return _md_traverse_entries(md->keys, visit, arg);
 }
 
-// Out of line: inlined into dealloc and both clear() entry points, it costs
-// 756 bytes of GIL code to save 5-12 instructions per call
-NOINLINE static int
+static int
 md_clear(MultiDictObject* md)
 {
     if (md->keys == NULL || md->keys == &empty_htkeys) {

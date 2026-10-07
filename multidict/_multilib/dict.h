@@ -74,7 +74,7 @@ multidict_proxy_target(mod_state* state, PyObject* arg, bool is_ci)
     return NULL;
 }
 
-NOINLINE static int
+static int
 _err_version_changed(void)
 {
     PyErr_SetString(PyExc_RuntimeError,
@@ -112,9 +112,7 @@ _md_pool_for(mod_state* state, PyTypeObject* tp)
     return NULL;
 }
 
-/* Out of line for the reason _multidict_view_alloc() gives: inlined,
-   these two cost del d[key] its inlined md_calc_identity(). */
-NOINLINE static PyObject*
+static PyObject*
 md_shell_alloc(mod_state* state, PyTypeObject* tp)
 {
     pool_t* pool = _md_pool_for(state, tp);
@@ -133,7 +131,7 @@ md_shell_alloc(mod_state* state, PyTypeObject* tp)
 }
 
 /* True once the shell is parked, false to leave the caller to free it. */
-NOINLINE static bool
+static bool
 md_shell_recycle(mod_state* state, PyObject* obj)
 {
     if (state == NULL) {
@@ -145,10 +143,8 @@ md_shell_recycle(mod_state* state, PyObject* obj)
 
 /* A MultiDictObject shell with its state set and its strong reference
    to state->mod taken, which keeps `state` addressable through teardown;
-   see mod_state.mod. The caller still has to md_init() it. Out of line:
-   inlined into a constructor it costs the insert loop more than the
-   call, by pushing the compiler off a better layout. */
-NOINLINE static MultiDictObject*
+   see mod_state.mod. The caller still has to md_init() it. */
+static MultiDictObject*
 md_shell_new(mod_state* state, PyTypeObject* tp)
 {
     MultiDictObject* md = (MultiDictObject*)md_shell_alloc(state, tp);
