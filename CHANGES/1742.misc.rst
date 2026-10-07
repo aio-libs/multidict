@@ -1,0 +1,2 @@
+Rewrote the C extension's ``repr()`` of multidicts and their views on top of
+the shared walk over all entries -- by :user:`asvetlov`.
