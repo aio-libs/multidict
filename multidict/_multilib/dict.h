@@ -84,7 +84,7 @@ _err_version_changed(void)
 
 /* Returns -1 with RuntimeError set if md was mutated, or got a new
    table, since `version` was read from it; 0 otherwise. */
-ALWAYS_INLINE static inline int
+static inline int
 md_check_version(MultiDictObject* md, uint64_t version)
 {
     if (UNLIKELY(version != md->version)) {

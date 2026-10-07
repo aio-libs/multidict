@@ -2353,12 +2353,12 @@ def test_popall_lock_free_get_thread_safety() -> None:
 
     Regression test for the free-threaded build: popall() (like
     popone()/__delitem__) rewrites the removed entry's hash table index
-    slot to DKIX_DUMMY via htkeys_set_index(), while a lock-free
+    slot to DKIX_DUMMY via HTKEYS_SET_INDEX(), while a lock-free
     get()/getone()/__getitem__ walks that same index array via
-    htkeysiter_next()/htkeys_get_index() and holds no lock at all.
+    HTKEYSITER_NEXT()/HTKEYS_GET_INDEX() and holds no lock at all.
     ThreadSanitizer flagged a genuine data race here between
-    multidict_popall() and multidict_get(): both htkeys_get_index() and
-    htkeys_set_index() used to be plain, non-atomic array accesses; they
+    multidict_popall() and multidict_get(): both HTKEYS_GET_INDEX() and
+    HTKEYS_SET_INDEX() used to be plain, non-atomic array accesses; they
     now go through relaxed atomics under Py_GIL_DISABLED. Deliberately
     uses popall() rather than pop()/popone() to target that call site
     specifically. This is a C-extension-only concern: the pure-Python

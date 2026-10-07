@@ -48,8 +48,7 @@ reading a failure, pass ``--show``::
     tools/check_inlining.py --show multidict_get --show MultiDict_GetItem
 
 Rules describe what the current code achieves on the compilers CI uses.
-A fix for a new inlining regression, or a helper pinned with
-``ALWAYS_INLINE`` for speed, adds a rule in the same
+A fix for a new inlining regression adds a rule in the same
 change; a regression that is accepted on purpose edits its rule there
 too, with the measurement that justified it.
 """
@@ -204,35 +203,10 @@ RULES = (
         "MultiDict(items) item on FT",
     ),
     Rule(
-        "md_add_with_hash_steal_refs",
-        "*",
-        BOTH,
-        "#1644: per-kind layouts pushed it out of the constructor's loop, "
-        "CIMultiDict(items) +10%",
-    ),
-    Rule(
-        "htkeysiter_init",
-        "*",
-        BOTH,
-        "#1554: a call on every probe, get_miss -23% once inlined",
-    ),
-    Rule(
         "_md_del_at",
         "*",
         BOTH,
         "#1604: pinned after budget respend, popitem +1% on FT",
-    ),
-    Rule(
-        "htkeys_get_index",
-        "*",
-        BOTH,
-        "#1651: per-class getall took it out of htkeysiter_init on FT, 4 Ir per d[key]",
-    ),
-    Rule(
-        "htkeys_set_index",
-        "*",
-        BOTH,
-        "#1604/#1605: pinned after budget respend, ctor +60 Ir on FT",
     ),
     Rule(
         "_compact_entry_matches",

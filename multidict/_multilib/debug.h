@@ -38,7 +38,7 @@ _md_check_consistency(const MultiDictObject* md)
     CHECK(usable + nentries <= calc_usable);
 
     for (Py_ssize_t i = 0; i < htkeys_nslots(keys); i++) {
-        Py_ssize_t ix = htkeys_get_index(keys, i);
+        Py_ssize_t ix = HTKEYS_GET_INDEX(keys, i);
         CHECK(DKIX_DUMMY <= ix && ix <= calc_usable);
     }
 
@@ -73,7 +73,7 @@ _md_dump(MultiDictObject* md)
            keys->usable,
            keys->nentries);
     for (Py_ssize_t i = 0; i < htkeys_nslots(keys); i++) {
-        Py_ssize_t ix = htkeys_get_index(keys, i);
+        Py_ssize_t ix = HTKEYS_GET_INDEX(keys, i);
         printf("  %zd -> %zd\n", i, ix);
     }
     printf("  --------\n");

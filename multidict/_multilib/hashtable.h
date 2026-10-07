@@ -49,7 +49,7 @@ md_next_kind(const MultiDictObject* md, const htkeys_t* old)
 /* Whether a compact table of md can hold `key`: a MultiDict's key must be
    its own identity, a CIMultiDict's an exact istr, whose identity is then
    its canonical form. */
-ALWAYS_INLINE static inline bool
+static inline bool
 md_key_fits(const MultiDictObject* md, PyObject* key, PyObject* identity)
 {
     if (md->is_ci) {
@@ -388,7 +388,7 @@ _md_release_keys(MultiDictObject* md, htkeys_t* keys)
 }
 
 /* Publishes a rebuilt table: the old one's entries have all moved over. */
-ALWAYS_INLINE static inline void
+static inline void
 _md_publish_rebuilt(MultiDictObject* md, htkeys_t* oldkeys, htkeys_t* newkeys)
 {
     store_keys(md, newkeys);
@@ -480,7 +480,7 @@ _md_new_keys_after_holes(MultiDictObject* md, Py_ssize_t extra, uint8_t kind)
 /* Copies the live entries of `src` to the front of `dst`, returning how
    many. One copy per kind, as for every walk below: the kind a constant
    makes the step a constant. */
-ALWAYS_INLINE static inline Py_ssize_t
+static inline Py_ssize_t
 _md_copy_live(uint8_t kind, entry_t* dst, entry_t* src, Py_ssize_t n)
 {
     entry_t* out = dst;
@@ -496,7 +496,7 @@ _md_copy_live(uint8_t kind, entry_t* dst, entry_t* src, Py_ssize_t n)
 
 /* Publishes newkeys, whose first `filled` entries hold all of md's and
    nothing else. */
-ALWAYS_INLINE static inline void
+static inline void
 _md_publish_compacted(MultiDictObject* md, htkeys_t* oldkeys,
                       htkeys_t* newkeys, Py_ssize_t filled)
 {
@@ -802,39 +802,40 @@ md_len(MultiDictObject* md)
     return load_used(md);
 }
 
-/* Fill the entry past every live one, which the caller has indexed.
-   identity is published last: it's the field a lock-free reader checks
-   first (before ever touching hash/key/value), treating NULL as "not
-   populated yet, keep probing". See the comment above load_identity().
-   The GIL build has no reader to order against, so it just follows
-   along. The entry is carved out of the zeroed tail, so value is still
-   NULL and publish_value() is enough; nothing here has an old reference
-   to drop. */
-ALWAYS_INLINE static inline void
+/* Fill the entry past every live one, which the caller indexes only
+   afterwards with HTKEYS_PUBLISH_INDEX(). Until then no lock-free reader
+   can reach the entry, so plain stores are enough; mark_shared() still
+   lets a reader take a reference once it does. The entry is carved out
+   of the zeroed tail, so nothing here has an old reference to drop. */
+static inline void
 _md_fill_anystr_entry(htkeys_t* keys, Py_hash_t hash, PyObject* identity,
                       PyObject* key, PyObject* value)
 {
-    entry_t* entry =
-        entry_at(KIND_ANYSTR, htkeys_entries(keys), keys->nentries);
-    assert(as_anystr(entry)->identity == NULL && entry->key == NULL &&
-           entry->value == NULL);
-    entry->key = key;
-    store_hash(KIND_ANYSTR, entry, hash);
-    publish_value(entry, value);
-    publish_identity(KIND_ANYSTR, entry, identity);
+    anystr_entry_t* entry =
+        anystr_entry_at(htkeys_entries(keys), keys->nentries);
+    assert(entry->identity == NULL && entry->base.key == NULL &&
+           entry->base.value == NULL);
+    mark_shared(identity);
+    mark_shared(value);
+    entry->base.key = key;
+    entry->base.value = value;
+    entry->hash = hash;
+    entry->identity = identity;
 }
 
 /* For both compact kinds: the key's reference keeps the identity alive,
    being either the key itself or the istr's canonical form. */
-ALWAYS_INLINE static inline void
+static inline void
 _md_fill_str_entry(htkeys_t* keys, PyObject* identity, PyObject* key,
                    PyObject* value)
 {
     entry_t* entry =
         entry_at(KIND_COMPACT, htkeys_entries(keys), keys->nentries);
     assert(entry->key == NULL && entry->value == NULL);
-    publish_value(entry, value);
-    publish_identity(KIND_COMPACT, entry, key);
+    mark_shared(key);
+    mark_shared(value);
+    entry->key = key;
+    entry->value = value;
     Py_DECREF(identity);
 }
 
@@ -882,7 +883,7 @@ md_to_anystr(MultiDictObject* md)
    to KIND_ANYSTR if the key does not fit a compact one; the move keeps
    every index, so the slot found first stays valid. One test on the kind
    covers both the fit and the layout. Returns the table, NULL on error. */
-ALWAYS_INLINE static inline htkeys_t*
+static inline htkeys_t*
 _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     PyObject* key, PyObject* value, bool fits)
 {
@@ -896,17 +897,17 @@ _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             }
             keys = md->keys;
         } else {
-            htkeys_set_index(keys, hashpos, keys->nentries);
             _md_fill_str_entry(keys, identity, key, value);
+            HTKEYS_PUBLISH_INDEX(keys, hashpos, keys->nentries);
             return keys;
         }
     }
-    htkeys_set_index(keys, hashpos, keys->nentries);
     _md_fill_anystr_entry(keys, hash, identity, key, value);
+    HTKEYS_PUBLISH_INDEX(keys, hashpos, keys->nentries);
     return keys;
 }
 
-ALWAYS_INLINE static inline int
+static inline int
 md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
                             PyObject* identity, PyObject* key, PyObject* value,
                             bool fits)
@@ -934,7 +935,7 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                  PyObject* key, PyObject* value, bool fits)
 {
@@ -1029,7 +1030,7 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
    caller; see _md_del_at() on the order. A compact entry has no identity
    reference of its own, so *pidentity is NULL for one. `kind` is
    md->keys->kind, read once by the caller. */
-ALWAYS_INLINE static inline void
+static inline void
 _md_unlink_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry,
               PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
 {
@@ -1046,11 +1047,11 @@ _md_unlink_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry,
         entry->key = NULL;
     }
     reset_value(entry);
-    htkeys_set_index(md->keys, (Py_ssize_t)slot, DKIX_DUMMY);
+    HTKEYS_SET_INDEX(md->keys, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 }
 
-ALWAYS_INLINE static inline void
+static inline void
 _md_del_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry)
 {
     assert(md->keys != &empty_htkeys);
@@ -1149,7 +1150,7 @@ _removed_pairs_spill(removed_pairs_t* removed, PyObject* key, PyObject* value)
 
 /* _md_del_at() variant that hands the key and value to `removed`. Not
    through _md_unlink_at(), which costs del d[key] up to 3 instructions. */
-ALWAYS_INLINE static inline int
+static inline int
 _md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
                 entry_t* entry, removed_pairs_t* removed)
 {
@@ -1168,7 +1169,7 @@ _md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
     }
     PyObject* value = load_value(entry);
     reset_value(entry);
-    htkeys_set_index(keys, (Py_ssize_t)slot, DKIX_DUMMY);
+    HTKEYS_SET_INDEX(keys, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 
     // an exact str: freeing it runs no code
@@ -1188,7 +1189,7 @@ _md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
  * `watched` is a constant at both call sites, so the unwatched copy
  * carries no watch code at all: testing md->watch inside the loop costs a
  * reload per record, since every decref and store may alias it. */
-ALWAYS_INLINE static inline int
+static int
 _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                removed_pairs_t* removed, bool watched)
 {
@@ -1198,12 +1199,12 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
     htkeys_t* keys = md->keys;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, keys, hash);
+    HTKEYSITER_INIT(&iter, keys, hash);
 
     entry_t* entries = htkeys_entries(keys);
     uint8_t kind = keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
         if (iter.index < 0) {
             continue;
         }
@@ -1287,17 +1288,17 @@ md_del(MultiDictObject* md, PyObject* key)
     return found < 0 ? -1 : 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                     PyObject** pret)
 {
     bool ci = md->is_ci;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    HTKEYSITER_INIT(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }
@@ -1334,7 +1335,7 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
    unicode-only tables. A key that is the probe's own needs none: the
    caller's reference keeps that address from being reused. 1 is a match,
    0 means keep probing, -1 racing a writer. */
-ALWAYS_INLINE static inline int
+static inline int
 _compact_entry_matches(entry_t* entry, PyObject* probe, PyObject* identity,
                        Py_hash_t hash, bool ci)
 {
@@ -1360,7 +1361,7 @@ _compact_entry_matches(entry_t* entry, PyObject* probe, PyObject* identity,
    match outright, since the probe's own reference keeps that object alive
    and its address cannot be reused. Only a different object needs the
    reference for the string compare. */
-ALWAYS_INLINE static inline int
+static inline int
 _full_entry_matches(entry_t* entry, PyObject* identity, Py_hash_t hash)
 {
     if (load_hash(as_anystr(entry)) != hash) {
@@ -1382,19 +1383,19 @@ _full_entry_matches(entry_t* entry, PyObject* identity, Py_hash_t hash)
     return matched;
 }
 
-ALWAYS_INLINE static inline int
+static inline int
 _md_contains_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
                       Py_hash_t hash)
 {
     bool ci = md->is_ci;
     htkeys_t* keys = _md_reader_enter(md);
     htkeysiter_t iter;
-    htkeysiter_init(&iter, keys, hash);
+    HTKEYSITER_INIT_ACQUIRE(&iter, keys, hash);
     entry_t* entries = htkeys_entries(keys);
     uint8_t kind = keys->kind;
 
     int result = 0;
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT_ACQUIRE(&iter)) {
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }
@@ -1427,7 +1428,7 @@ _md_contains_retry_locked(MultiDictObject* md, PyObject* identity,
 
 #endif /* Py_GIL_DISABLED */
 
-ALWAYS_INLINE static inline int
+static inline int
 _md_contains_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
                       Py_hash_t hash)
 {
@@ -1498,17 +1499,17 @@ md_find_key(MultiDictObject* md, PyObject* key, PyObject** pret)
     return result;
 }
 
-ALWAYS_INLINE static inline int
+static int
 _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                    PyObject** ret)
 {
     bool ci = md->is_ci;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    HTKEYSITER_INIT(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }
@@ -1526,19 +1527,19 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
 #ifdef Py_GIL_DISABLED
 
-ALWAYS_INLINE static inline int
+static inline int
 _md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
                      Py_hash_t hash, PyObject** ret)
 {
     bool ci = md->is_ci;
     htkeys_t* keys = _md_reader_enter(md);
     htkeysiter_t iter;
-    htkeysiter_init(&iter, keys, hash);
+    HTKEYSITER_INIT_ACQUIRE(&iter, keys, hash);
     entry_t* entries = htkeys_entries(keys);
     uint8_t kind = keys->kind;
 
     int result = 0;
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT_ACQUIRE(&iter)) {
         if (UNLIKELY(iter.index < 0)) {
             continue;
         }
@@ -1580,7 +1581,7 @@ _md_get_one_retry_locked(MultiDictObject* md, PyObject* identity,
     return result;
 }
 
-ALWAYS_INLINE static inline int
+static inline int
 _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
                      Py_hash_t hash, PyObject** ret)
 {
@@ -1595,7 +1596,7 @@ _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
 
 #else /* !Py_GIL_DISABLED */
 
-ALWAYS_INLINE static inline int
+static inline int
 _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
                      Py_hash_t hash, PyObject** ret)
 {
@@ -1673,8 +1674,8 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
            list allocation below can run Python in this walk. */
         Py_hash_t hash = entry_hash(kind, ci, entry);
         htkeysiter_t iter;
-        htkeysiter_init(&iter, md->keys, hash);
-        for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        HTKEYSITER_INIT(&iter, md->keys, hash);
+        for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
             if (iter.index < 0) {
                 continue;
             }
@@ -1760,11 +1761,11 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     ASSERT_CONSISTENT(md);
 
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    HTKEYSITER_INIT(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
         if (iter.index < 0) {
             continue;
         }
@@ -1821,17 +1822,17 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
 
 /* Caller holds md's critical section. `watched` is a constant at both
  * call sites; see _md_del_locked(). */
-ALWAYS_INLINE static inline int
+static int
 _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                    PyObject** ret, bool watched)
 {
     bool ci = md->is_ci;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    HTKEYSITER_INIT(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
         if (iter.index < 0) {
             continue;
         }
@@ -1908,7 +1909,7 @@ _md_getall_visit(void* user_data, PyObject* identity, Py_hash_t hash,
 
 /* The result of getall() or popall(): 1 with the collected values as a
    list in *ret, 0 if there are none, -1 on error or if the walk failed. */
-ALWAYS_INLINE static inline int
+static inline int
 _md_values_to_list(reflist_t* values, bool failed, PyObject** ret)
 {
     if (failed) {
@@ -1957,11 +1958,11 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     int ret = 0;
 
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    HTKEYSITER_INIT(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
         if (iter.index < 0) {
             continue;
         }
@@ -2061,9 +2062,9 @@ _md_pop_item_locked(MultiDictObject* md)
     assert(pos >= 0);
 
     htkeysiter_t iter;
-    htkeysiter_init(&iter, keys, entry_hash(kind, ci, entry));
+    HTKEYSITER_INIT(&iter, keys, entry_hash(kind, ci, entry));
 
-    for (; iter.index != pos; htkeysiter_next(&iter)) {
+    for (; iter.index != pos; HTKEYSITER_NEXT(&iter)) {
     }
     md_watch_record(md,
                     MultiDict_EVENT_DELETED,
@@ -2176,10 +2177,10 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
      * decrefs mean nothing here can trigger one, so this shouldn't loop. */
     for (;;) {
         htkeysiter_t iter;
-        htkeysiter_init(&iter, md->keys, hash);
+        HTKEYSITER_INIT(&iter, md->keys, hash);
         /* The one entry to keep. Later matches are deleted, which turns
            their slots into DKIX_DUMMY, so only this one can show up again
-           when htkeysiter_next() repeats a slot. */
+           when HTKEYSITER_NEXT() repeats a slot. */
         Py_ssize_t replaced = -1;
         /* Equal keys sit on their hash chain in insertion order, before
            and after a resize alike, so on a retry the first match is the
@@ -2187,7 +2188,7 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
         bool skip_first = found;
         bool stale = false;
 
-        for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+        for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
             if (iter.index < 0 || iter.index == replaced) {
                 continue;
             }
@@ -2277,7 +2278,7 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
 /* The fit is checked only here, where a key is stored, not carried from
    the identity: kept live across the replace loop, it cost d[key] = v up
    to 4%. */
-ALWAYS_INLINE static inline int
+static inline int
 _md_add_after_replace(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                       PyObject* key, PyObject* value)
 {

@@ -240,7 +240,7 @@ entry_at(uint8_t kind, entry_t* entries, Py_ssize_t i)
 /* For walking a table by pointer, with the kind a constant at the call:
    then this is entry++ on the kind's own entry type, where entry_at()
    multiplies. */
-ALWAYS_INLINE static inline entry_t*
+static inline entry_t*
 entry_next(uint8_t kind, entry_t* entry)
 {
     return (entry_t*)((char*)entry + _htkeys_entry_size(kind));
@@ -273,7 +273,7 @@ entry_identity(uint8_t kind, bool ci, const entry_t* entry)
 /* Whether entry is a hole (deleted or never filled). The key is NULL
    exactly when the identity is, in every kind, for a caller holding md's
    critical section; a lock-free reader checks the identity slot instead. */
-ALWAYS_INLINE static inline bool
+static inline bool
 entry_is_hole(const entry_t* entry)
 {
     return entry->key == NULL;
@@ -356,10 +356,22 @@ htkeys_entries_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src,
         return atomic_load_int##bits##_relaxed(                               \
             &((const int##bits##_t*)(keys->indices))[i]);                     \
     }                                                                         \
+    static inline int##bits##_t htkeys_acquire_index##bits(                   \
+        const htkeys_t* keys, Py_ssize_t i)                                   \
+    {                                                                         \
+        return atomic_load_int##bits##_acquire(                               \
+            &((const int##bits##_t*)(keys->indices))[i]);                     \
+    }                                                                         \
     static inline void htkeys_store_index##bits(                              \
         htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
     {                                                                         \
         atomic_store_int##bits##_relaxed(                                     \
+            &((int##bits##_t*)(keys->indices))[i], (int##bits##_t)ix);        \
+    }                                                                         \
+    static inline void htkeys_publish_index##bits(                            \
+        htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
+    {                                                                         \
+        atomic_store_int##bits##_release(                                     \
             &((int##bits##_t*)(keys->indices))[i], (int##bits##_t)ix);        \
     }
 #else
@@ -369,10 +381,20 @@ htkeys_entries_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src,
     {                                                                         \
         return ((const int##bits##_t*)(keys->indices))[i];                    \
     }                                                                         \
+    static inline int##bits##_t htkeys_acquire_index##bits(                   \
+        const htkeys_t* keys, Py_ssize_t i)                                   \
+    {                                                                         \
+        return htkeys_load_index##bits(keys, i);                              \
+    }                                                                         \
     static inline void htkeys_store_index##bits(                              \
         htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
     {                                                                         \
         ((int##bits##_t*)(keys->indices))[i] = (int##bits##_t)ix;             \
+    }                                                                         \
+    static inline void htkeys_publish_index##bits(                            \
+        htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
+    {                                                                         \
+        htkeys_store_index##bits(keys, i, ix);                                \
     }
 #endif
 
@@ -382,55 +404,57 @@ _MD_DEFINE_INDEX_ACCESSORS(32)
 _MD_DEFINE_INDEX_ACCESSORS(64)
 #undef _MD_DEFINE_INDEX_ACCESSORS
 
-/* lookup indices.  returns DKIX_EMPTY, DKIX_DUMMY, or ix >=0 */
-ALWAYS_INLINE static inline Py_ssize_t
-htkeys_get_index(const htkeys_t* keys, Py_ssize_t i)
-{
-    uint8_t log2size = keys->log2_size;
-    Py_ssize_t ix;
-
-    if (log2size < 8) {
-        ix = htkeys_load_index8(keys, i);
-    } else if (log2size < 16) {
-        ix = htkeys_load_index16(keys, i);
-    }
 #if SIZEOF_VOID_P > 4
-    else if (log2size >= 32) {
-        ix = htkeys_load_index64(keys, i);
-    }
+#define _HTKEYS_IS_INDEX64(log2size) ((log2size) >= 32)
+#else
+#define _HTKEYS_IS_INDEX64(log2size) 0
 #endif
-    else {
-        ix = htkeys_load_index32(keys, i);
-    }
-    assert(ix >= DKIX_DUMMY);
-    return ix;
-}
 
-/* write to indices. */
-ALWAYS_INLINE static inline void
-htkeys_set_index(htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)
-{
-    uint8_t log2size = keys->log2_size;
+/* lookup indices.  returns DKIX_EMPTY, DKIX_DUMMY, or ix >=0; op is load
+   or acquire. */
+#define _HTKEYS_READ_INDEX(keys, i, op)                                    \
+    ((keys)->log2_size < 8 ? (Py_ssize_t)htkeys_##op##_index8((keys), (i)) \
+     : (keys)->log2_size < 16                                              \
+         ? (Py_ssize_t)htkeys_##op##_index16((keys), (i))                  \
+     : _HTKEYS_IS_INDEX64((keys)->log2_size)                               \
+         ? (Py_ssize_t)htkeys_##op##_index64((keys), (i))                  \
+         : (Py_ssize_t)htkeys_##op##_index32((keys), (i)))
 
-    assert(ix >= DKIX_DUMMY);
+#define HTKEYS_GET_INDEX(keys, i) _HTKEYS_READ_INDEX(keys, i, load)
 
-    if (log2size < 8) {
-        assert(ix <= 0x7f);
-        htkeys_store_index8(keys, i, ix);
-    } else if (log2size < 16) {
-        assert(ix <= 0x7fff);
-        htkeys_store_index16(keys, i, ix);
-    }
-#if SIZEOF_VOID_P > 4
-    else if (log2size >= 32) {
-        htkeys_store_index64(keys, i, ix);
-    }
-#endif
-    else {
-        assert(ix <= 0x7fffffff);
-        htkeys_store_index32(keys, i, ix);
-    }
-}
+/* For a lock-free walk: pairs with HTKEYS_PUBLISH_INDEX(), so the entry
+   the slot points at is seen filled. */
+#define HTKEYS_ACQUIRE_INDEX(keys, i) _HTKEYS_READ_INDEX(keys, i, acquire)
+
+/* write to indices; op is store or publish. */
+#define _HTKEYS_WRITE_INDEX(keys, i, ix, op)        \
+    do {                                            \
+        htkeys_t* _keys = (keys);                   \
+        Py_ssize_t _i = (i);                        \
+        Py_ssize_t _ix = (ix);                      \
+        uint8_t _log2size = _keys->log2_size;       \
+        assert(_ix >= DKIX_DUMMY);                  \
+        if (_log2size < 8) {                        \
+            assert(_ix <= 0x7f);                    \
+            htkeys_##op##_index8(_keys, _i, _ix);   \
+        } else if (_log2size < 16) {                \
+            assert(_ix <= 0x7fff);                  \
+            htkeys_##op##_index16(_keys, _i, _ix);  \
+        } else if (_HTKEYS_IS_INDEX64(_log2size)) { \
+            htkeys_##op##_index64(_keys, _i, _ix);  \
+        } else {                                    \
+            assert(_ix <= 0x7fffffff);              \
+            htkeys_##op##_index32(_keys, _i, _ix);  \
+        }                                           \
+    } while (0)
+
+#define HTKEYS_SET_INDEX(keys, i, ix) _HTKEYS_WRITE_INDEX(keys, i, ix, store)
+
+/* For a slot pointing at an entry the caller has just filled with plain
+   stores: on FT the release orders the fill before the index, the only
+   way a lock-free walk reaches the entry. */
+#define HTKEYS_PUBLISH_INDEX(keys, i, ix) \
+    _HTKEYS_WRITE_INDEX(keys, i, ix, publish)
 
 /* USABLE_FRACTION is the maximum dictionary load.
  * Increasing this ratio makes dictionaries more dense resulting in more
@@ -443,11 +467,7 @@ htkeys_set_index(htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)
  * USABLE_FRACTION should be quick to calculate.
  * Fractions around 1/2 to 2/3 seem to work well in practice.
  */
-static inline Py_ssize_t
-USABLE_FRACTION(Py_ssize_t n)
-{
-    return (n << 1) / 3;
-}
+#define USABLE_FRACTION(n) (((Py_ssize_t)(n) << 1) / 3)
 
 // Return the index of the most significant 1 bit in 'x'. This is the smallest
 // integer k such that x < 2**k. Equivalent to floor(log2(x)) + 1 for x != 0.
@@ -759,7 +779,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
         }
     }
     size_t steps = 0;
-    while (htkeys_get_index(keys, (Py_ssize_t)i) != DKIX_EMPTY) {
+    while (HTKEYS_GET_INDEX(keys, (Py_ssize_t)i) != DKIX_EMPTY) {
         i = (i * 5 + 1) & mask;
         steps++;
     }
@@ -785,39 +805,45 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 /*
 Internal routine used by ht_resize() to build a hashtable of entries.
 */
-ALWAYS_INLINE static inline void
-_htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n,
-                      bool skip_holes)
-{
-    size_t mask = (size_t)_htkeys_mask(keys);
-    if (keys->resume_slots != NULL) {
-        memset(
-            keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
-    }
-    for (Py_ssize_t ix = 0; ix != n; ix++) {
-        entry_t* entry = entry_at(keys->kind, ep, ix);
-        if (skip_holes && entry_is_hole(entry)) {
-            continue;
-        }
-        Py_hash_t hash = entry_hash(keys->kind, ci, entry);
-        size_t i = (size_t)hash & mask;
-        for (size_t perturb = (size_t)hash;
-             htkeys_get_index(keys, (Py_ssize_t)i) != DKIX_EMPTY;) {
-            perturb >>= HT_PERTURB_SHIFT;
-            i = mask & (i * 5 + perturb + 1);
-            if (UNLIKELY(perturb == 0)) {
-                i = (size_t)_htkeys_find_empty_slot_resume(keys, i);
-                break;
-            }
-        }
-        htkeys_set_index(keys, (Py_ssize_t)i, ix);
-    }
-}
+#define _HTKEYS_BUILD_INDICES(ht_keys, ci, ep, n, skip_holes)                \
+    do {                                                                     \
+        htkeys_t* _bi_keys = (ht_keys);                                      \
+        bool _bi_ci = (ci);                                                  \
+        entry_t* _bi_ep = (ep);                                              \
+        Py_ssize_t _bi_n = (n);                                              \
+        size_t _bi_mask = (size_t)_htkeys_mask(_bi_keys);                    \
+        if (_bi_keys->resume_slots != NULL) {                                \
+            memset(_bi_keys->resume_slots,                                   \
+                   0,                                                        \
+                   htkeys_resume_slots_bytes(_bi_keys->log2_size));          \
+        }                                                                    \
+        for (Py_ssize_t _bi_ix = 0; _bi_ix != _bi_n; _bi_ix++) {             \
+            entry_t* _bi_entry = entry_at(_bi_keys->kind, _bi_ep, _bi_ix);   \
+            if ((skip_holes) && entry_is_hole(_bi_entry)) {                  \
+                continue;                                                    \
+            }                                                                \
+            Py_hash_t _bi_hash =                                             \
+                entry_hash(_bi_keys->kind, _bi_ci, _bi_entry);               \
+            size_t _bi_i = (size_t)_bi_hash & _bi_mask;                      \
+            for (size_t _bi_perturb = (size_t)_bi_hash;                      \
+                 HTKEYS_GET_INDEX(_bi_keys, (Py_ssize_t)_bi_i) !=            \
+                 DKIX_EMPTY;) {                                              \
+                _bi_perturb >>= HT_PERTURB_SHIFT;                            \
+                _bi_i = _bi_mask & (_bi_i * 5 + _bi_perturb + 1);            \
+                if (UNLIKELY(_bi_perturb == 0)) {                            \
+                    _bi_i = (size_t)_htkeys_find_empty_slot_resume(_bi_keys, \
+                                                                   _bi_i);   \
+                    break;                                                   \
+                }                                                            \
+            }                                                                \
+            HTKEYS_SET_INDEX(_bi_keys, (Py_ssize_t)_bi_i, _bi_ix);           \
+        }                                                                    \
+    } while (0)
 
 static void
 htkeys_build_indices(htkeys_t* keys, bool ci, entry_t* ep, Py_ssize_t n)
 {
-    _htkeys_build_indices(keys, ci, ep, n, false);
+    _HTKEYS_BUILD_INDICES(keys, ci, ep, n, false);
 }
 
 /* Leaves the deleted entries among `ep` (a NULL identity) unindexed. */
@@ -825,7 +851,7 @@ static inline void
 htkeys_build_indices_with_holes(htkeys_t* keys, bool ci, entry_t* ep,
                                 Py_ssize_t n)
 {
-    _htkeys_build_indices(keys, ci, ep, n, true);
+    _HTKEYS_BUILD_INDICES(keys, ci, ep, n, true);
 }
 
 /* Uses keys, mask, i and perturb from the caller and returns. */
@@ -890,25 +916,33 @@ typedef struct _htkeysiter {
     Py_ssize_t index;
 } htkeysiter_t;
 
-/* Always inlined: left to itself GCC emits it out of line, and then
-   every probe in the extension opens with a call for five stores. */
-ALWAYS_INLINE static inline void
-htkeysiter_init(htkeysiter_t* iter, htkeys_t* keys, Py_hash_t hash)
-{
-    iter->keys = keys;
-    iter->mask = (size_t)_htkeys_mask(keys);
-    iter->perturb = (size_t)hash;
-    iter->slot = (size_t)hash & iter->mask;
-    iter->index = htkeys_get_index(iter->keys, (Py_ssize_t)iter->slot);
-}
+/* get is HTKEYS_GET_INDEX or HTKEYS_ACQUIRE_INDEX. */
+#define _HTKEYSITER_INIT(iter, ht_keys, hash, get)             \
+    do {                                                       \
+        htkeysiter_t* _hti = (iter);                           \
+        Py_hash_t _hti_hash = (hash);                          \
+        _hti->keys = (ht_keys);                                \
+        _hti->mask = (size_t)_htkeys_mask(_hti->keys);         \
+        _hti->perturb = (size_t)_hti_hash;                     \
+        _hti->slot = (size_t)_hti_hash & _hti->mask;           \
+        _hti->index = get(_hti->keys, (Py_ssize_t)_hti->slot); \
+    } while (0)
 
-static inline void
-htkeysiter_next(htkeysiter_t* iter)
-{
-    iter->perturb >>= HT_PERTURB_SHIFT;
-    iter->slot = (iter->slot * 5 + iter->perturb + 1) & iter->mask;
-    iter->index = htkeys_get_index(iter->keys, (Py_ssize_t)iter->slot);
-}
+#define _HTKEYSITER_NEXT(iter, get)                                          \
+    ((iter)->perturb >>= HT_PERTURB_SHIFT,                                   \
+     (iter)->slot = ((iter)->slot * 5 + (iter)->perturb + 1) & (iter)->mask, \
+     (iter)->index = get((iter)->keys, (Py_ssize_t)(iter)->slot),            \
+     (void)0)
+
+#define HTKEYSITER_INIT(iter, ht_keys, hash) \
+    _HTKEYSITER_INIT(iter, ht_keys, hash, HTKEYS_GET_INDEX)
+#define HTKEYSITER_NEXT(iter) _HTKEYSITER_NEXT(iter, HTKEYS_GET_INDEX)
+
+/* The lock-free walk's variants; see HTKEYS_ACQUIRE_INDEX(). */
+#define HTKEYSITER_INIT_ACQUIRE(iter, ht_keys, hash) \
+    _HTKEYSITER_INIT(iter, ht_keys, hash, HTKEYS_ACQUIRE_INDEX)
+#define HTKEYSITER_NEXT_ACQUIRE(iter) \
+    _HTKEYSITER_NEXT(iter, HTKEYS_ACQUIRE_INDEX)
 
 #ifdef __cplusplus
 }

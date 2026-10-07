@@ -29,8 +29,10 @@ extern "C" {
 /*
 The identity slot (see entry_identity_slot(): the key of a compact entry,
 the identity of an anystr one) is the "slot is populated" signal for a
-lock-free walk, so insertion publishes it last and deletion clears it
-first. It never goes from one non-NULL identity to another; a compact
+lock-free walk, so deletion clears it first. Insertion fills a fresh
+entry with plain stores and publishes its index slot last, with release
+order (HTKEYS_PUBLISH_INDEX()); the walk reaches the entry only through
+that slot. It never goes from one non-NULL identity to another; a compact
 entry's key may be replaced (replace_key()), but only by a key with an
 equal identity. That orders the fields but does not keep the objects
 alive: a concurrent delete or replace drops its reference without
@@ -167,11 +169,18 @@ load_identity(uint8_t kind, entry_t* entry)
         (void* const*)entry_identity_slot(kind, entry));
 }
 
-/* The GIL arm skips the marking: a no-op there, but a real call. */
+/* Lets a lock-free reader take a reference with try_get_ref(). The GIL
+   arm skips the marking: a no-op there, but a real call. */
+static inline void
+mark_shared(PyObject* obj)
+{
+    PyUnstable_EnableTryIncRef(obj);
+}
+
 static inline void
 publish_identity(uint8_t kind, entry_t* entry, PyObject* identity)
 {
-    PyUnstable_EnableTryIncRef(identity);
+    mark_shared(identity);
     atomic_store_ptr((void**)entry_identity_slot(kind, entry), identity);
 }
 
@@ -189,11 +198,10 @@ load_value(entry_t* entry)
     return (PyObject*)atomic_load_ptr((void* const*)&entry->value);
 }
 
-/* See publish_identity(). */
 static inline void
 publish_value(entry_t* entry, PyObject* value)
 {
-    PyUnstable_EnableTryIncRef(value);
+    mark_shared(value);
     atomic_store_ptr((void**)&entry->value, value);
 }
 
@@ -212,15 +220,6 @@ static inline Py_hash_t
 load_hash(anystr_entry_t* entry)
 {
     return (Py_hash_t)atomic_load_ssize_relaxed((Py_ssize_t*)&entry->hash);
-}
-
-static inline void
-store_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
-{
-    if (!kind_is_compact(kind)) {
-        atomic_store_ssize_relaxed((Py_ssize_t*)&as_anystr(entry)->hash,
-                                   (Py_ssize_t)hash);
-    }
 }
 
 /* NULL means the caller must fall back to the critical section, which
@@ -337,6 +336,12 @@ load_identity(uint8_t kind, entry_t* entry)
 }
 
 static inline void
+mark_shared(PyObject* obj)
+{
+    (void)obj;
+}
+
+static inline void
 publish_identity(uint8_t kind, entry_t* entry, PyObject* identity)
 {
     *entry_identity_slot(kind, entry) = identity;
@@ -370,12 +375,6 @@ static inline Py_hash_t
 load_hash(anystr_entry_t* entry)
 {
     return entry->hash;
-}
-
-static inline void
-store_hash(uint8_t kind, entry_t* entry, Py_hash_t hash)
-{
-    entry_set_hash(kind, entry, hash);
 }
 
 static inline MultiDict_WatchCallback
