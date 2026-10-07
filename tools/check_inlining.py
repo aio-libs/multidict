@@ -143,15 +143,9 @@ RULES = (
         "_iter_next_entry",
         ITERNEXT_ENTRIES,
         BOTH,
-        "#1601 prototype: items iteration +19% on FT; ALWAYS_INLINE since "
-        "#1627/#1628, where GCC 15 on FT dropped it again (+19%)",
-    ),
-    Rule(
-        "_iter_scan",
-        ITERNEXT_ENTRIES,
-        BOTH,
-        "#1674: an out-of-line copy loses the constant kind, which cost "
-        "2-3 Ir per __next__ (iter_keys +4%)",
+        "#1601 prototype: items iteration +19% on FT; ALWAYS_INLINE in "
+        "#1627/#1628, where GCC 15 on FT dropped it again (+19%); plain "
+        "inline since #1732",
     ),
     Rule(
         "_md_last_live",
