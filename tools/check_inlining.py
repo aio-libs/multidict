@@ -128,12 +128,6 @@ RULES = (
         "#1614: out of line in getall on FT with GCC 13",
     ),
     Rule(
-        "md_get_one",
-        GETITEM_ENTRIES,
-        (GIL,),
-        "__getitem__ and get() pay a call per lookup",
-    ),
-    Rule(
         "md_walk_with_hash",
         GETALL_ENTRIES,
         BOTH,

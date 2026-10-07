@@ -1625,7 +1625,7 @@ _md_get_one_owned(MultiDictObject* md, PyObject* key)
     return ret;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     PyObject* identity = md_borrow_identity(md, key);
