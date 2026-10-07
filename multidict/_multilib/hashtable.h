@@ -907,7 +907,7 @@ _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return keys;
 }
 
-static inline int
+static int
 md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
                             PyObject* identity, PyObject* key, PyObject* value,
                             bool fits)
