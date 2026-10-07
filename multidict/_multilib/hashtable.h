@@ -1748,7 +1748,7 @@ fail:
 }
 
 // Caller holds md's critical section
-ALWAYS_INLINE static inline int
+static int
 _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                        PyObject* key, PyObject* value, PyObject** result)
 {
@@ -1787,7 +1787,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
                PyObject** result)
 {
@@ -2645,9 +2645,10 @@ fail:
 
 /***********************************************************************/
 
-ALWAYS_INLINE static inline int
-_md_traverse_entries(uint8_t kind, htkeys_t* keys, visitproc visit, void* arg)
+static int
+_md_traverse_entries(htkeys_t* keys, visitproc visit, void* arg)
 {
+    uint8_t kind = keys->kind;
     entry_t* entry = htkeys_entries(keys);
     entry_t* end = entry_at(kind, entry, keys->nentries);
     for (; entry < end; entry = entry_next(kind, entry)) {
@@ -2678,9 +2679,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
     for (htkeys_t* t = (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
          t != NULL;
          t = t->retired_next) {
-        int ret = kind_is_compact(t->kind)
-                      ? _md_traverse_entries(KIND_COMPACT, t, visit, arg)
-                      : _md_traverse_entries(KIND_ANYSTR, t, visit, arg);
+        int ret = _md_traverse_entries(t, visit, arg);
         if (ret != 0) {
             return ret;
         }
@@ -2691,10 +2690,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
         return 0;
     }
 
-    if (kind_is_compact(md->keys->kind)) {
-        return _md_traverse_entries(KIND_COMPACT, md->keys, visit, arg);
-    }
-    return _md_traverse_entries(KIND_ANYSTR, md->keys, visit, arg);
+    return _md_traverse_entries(md->keys, visit, arg);
 }
 
 // Out of line: inlined into dealloc and both clear() entry points, it costs

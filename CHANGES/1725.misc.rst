@@ -1,0 +1,4 @@
+Merged the C extension's per-class ``tp_vectorcall`` slots into one for
+``MultiDict``/``CIMultiDict`` and one for the proxy classes, and expanded
+the small ``getone()``, ``KeyError`` and other-multidict helpers at their
+call sites -- by :user:`asvetlov`.
