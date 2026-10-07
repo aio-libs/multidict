@@ -279,11 +279,7 @@ multidict_itemsview_tp_iter(_Multidict_ViewObject* self)
 NOINLINE static PyObject*
 multidict_itemsview_tp_repr(_Multidict_ViewObject* self)
 {
-    PyObject* ret;
-    Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = md_repr(self->md, (PyObject*)self, true, true);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_repr(self->md, (PyObject*)self, true, true);
 }
 
 static int
@@ -857,11 +853,7 @@ multidict_keysview_tp_iter(_Multidict_ViewObject* self)
 NOINLINE static PyObject*
 multidict_keysview_tp_repr(_Multidict_ViewObject* self)
 {
-    PyObject* ret;
-    Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = md_repr(self->md, (PyObject*)self, true, false);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_repr(self->md, (PyObject*)self, true, false);
 }
 
 // Out of line: a set operator is not worth a copy of the lookup.
@@ -1211,11 +1203,7 @@ multidict_valuesview_tp_iter(_Multidict_ViewObject* self)
 NOINLINE static PyObject*
 multidict_valuesview_tp_repr(_Multidict_ViewObject* self)
 {
-    PyObject* ret;
-    Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = md_repr(self->md, (PyObject*)self, false, true);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_repr(self->md, (PyObject*)self, false, true);
 }
 
 NOINLINE static PyObject*
