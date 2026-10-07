@@ -1596,6 +1596,8 @@ drain_pools(mod_state* state)
     pool_clear(&state->iter_pool, PyObject_GC_Del);
     pool_clear(&state->md_pool, PyObject_GC_Del);
     pool_clear(&state->proxy_pool, PyObject_GC_Del);
+    // a cached istr, like a pooled block, spares an allocation
+    istr_cache_clear(state);
 }
 
 /* Capacity 0 turns every push into a miss, so nothing is parked after

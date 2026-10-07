@@ -8,6 +8,21 @@ extern "C" {
 #include "../multidict_capi_struct.h"
 #include "htkeys.h"
 
+/* The istr a CIMultiDict stored for an exact str key, so storing the same
+   str object again reuses it: code keyed by str constants builds each
+   istr once. Sets of two ways, picked by the str's address; a slot holds
+   both strongly, so a matching address is always the same, still live,
+   object. Two ways keep a pair of constants that share a set from
+   evicting each other on every use. Not on a free-threaded build, where
+   a slot would need atomics on every hit. */
+#define ISTR_CACHE_LOG2_SETS 7
+#define ISTR_CACHE_WAYS 2
+
+typedef struct {
+    PyObject* str;
+    PyObject* istr;
+} istr_cache_entry_t;
+
 /* State of the _multidict module */
 typedef struct {
     /* The module owning this state, borrowed. Anything caching `state`
@@ -74,6 +89,12 @@ typedef struct {
     pool_t iter_pool;
     pool_t md_pool;
     pool_t proxy_pool;
+
+#ifndef Py_GIL_DISABLED
+    // released by module_clear(); nothing in it can be part of a cycle
+    istr_cache_entry_t
+        istr_cache[(1 << ISTR_CACHE_LOG2_SETS) * ISTR_CACHE_WAYS];
+#endif
 } mod_state;
 
 static mod_state*

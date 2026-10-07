@@ -54,7 +54,7 @@ md_key_fits(const MultiDictObject* md, PyObject* key, PyObject* identity)
 {
     if (md->is_ci) {
         assert(IStr_CheckExact(md->state, key) &&
-               istr_canonical(key) == identity);
+               str_cmp(istr_canonical(key), identity));
         return true;
     }
     return key == identity;

@@ -258,12 +258,82 @@ md_borrow_identity(MultiDictObject* md, PyObject* key)
     return key;
 }
 
-/* The key a CIMultiDict stores for a key that is not an exact istr. */
+#ifndef Py_GIL_DISABLED
+/* The set for `str`: Fibonacci hashing of the address, whose low bits are
+   alignment and whose high ones are shared by every object. */
+static inline istr_cache_entry_t*
+_istr_cache_set(mod_state* state, PyObject* str)
+{
+    uint64_t p = (uint64_t)(uintptr_t)str >> 4;
+    size_t set = (size_t)((p * UINT64_C(0x9E3779B97F4A7C15)) >>
+                          (64 - ISTR_CACHE_LOG2_SETS));
+    return &state->istr_cache[set * ISTR_CACHE_WAYS];
+}
+#endif
+
+/* The istr cached for the exact str `key`, borrowed, or NULL. */
+static inline PyObject*
+_istr_cache_get(mod_state* state, PyObject* key)
+{
+#ifdef Py_GIL_DISABLED
+    return NULL;
+#else
+    istr_cache_entry_t* set = _istr_cache_set(state, key);
+    if (set[0].str == key) {
+        return set[0].istr;
+    }
+    return set[1].str == key ? set[1].istr : NULL;
+#endif
+}
+
+/* Builds and caches the istr for the exact str `key`, in the set's first
+   way; the pair there moves to the second, whose pair is released. That
+   runs no Python code: they are an exact str and an istr. */
+static PyObject*
+_istr_cache_fill(mod_state* state, PyObject* key, PyObject* identity)
+{
+    PyObject* ret = istr_create(state, key, identity);
+#ifndef Py_GIL_DISABLED
+    if (ret != NULL) {
+        istr_cache_entry_t* set = _istr_cache_set(state, key);
+        istr_cache_entry_t evicted = set[1];
+        set[1] = set[0];
+        set[0].str = Py_NewRef(key);
+        set[0].istr = Py_NewRef(ret);
+        Py_XDECREF(evicted.str);
+        Py_XDECREF(evicted.istr);
+    }
+#endif
+    return ret;
+}
+
+/* Releases every cached pair. Idempotent, as module_clear() may run more
+   than once. */
+static void
+istr_cache_clear(mod_state* state)
+{
+#ifndef Py_GIL_DISABLED
+    for (int i = 0; i < (1 << ISTR_CACHE_LOG2_SETS) * ISTR_CACHE_WAYS; i++) {
+        Py_CLEAR(state->istr_cache[i].str);
+        Py_CLEAR(state->istr_cache[i].istr);
+    }
+#else
+    (void)state;
+#endif
+}
+
+/* The key a CIMultiDict stores for a key that is not an exact istr. Its
+   canonical form may be another object equal to `identity`, when the
+   istr comes from the cache. */
 static inline PyObject*
 str_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 {
     if (PyUnicode_CheckExact(key)) {
-        return istr_create(state, key, identity);
+        PyObject* cached = _istr_cache_get(state, key);
+        if (cached != NULL) {
+            return Py_NewRef(cached);
+        }
+        return _istr_cache_fill(state, key, identity);
     }
     return _subclass_to_key_ci(state, key, identity);
 }
@@ -281,6 +351,12 @@ md_calc_identity_key(MultiDictObject* md, PyObject* key, PyObject** pkey,
         if (IStr_CheckExact(md->state, key)) {
             *pkey = Py_NewRef(key);
             return Py_NewRef(((istrobject*)key)->canonical);
+        }
+        // a cached istr also saves computing the identity
+        PyObject* cached = _istr_cache_get(md->state, key);
+        if (cached != NULL) {
+            *pkey = Py_NewRef(cached);
+            return Py_NewRef(((istrobject*)cached)->canonical);
         }
         PyObject* identity = _str_to_identity_ci(md->state, key);
         if (identity == NULL) {

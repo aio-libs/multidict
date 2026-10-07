@@ -3622,15 +3622,17 @@ def test_update_from_list_mutated_by_key_lookup() -> None:
 @pytest.mark.c_extension
 def test_ascii_identity_refcounts_are_balanced() -> None:
     """An already-lowercase ASCII key is the canonical form of the istr the
-    entry stores, so it picks up a reference and must give it back."""
+    entry stores, and the str the istr cache maps to it, so it picks up
+    references and must give them all back."""
     key = "".join(("content", "-type"))
     before = sys.getrefcount(key)
 
     d: multidict.CIMultiDict[str] = multidict.CIMultiDict()
     d[key] = "value"
-    assert sys.getrefcount(key) - before == 1
+    assert sys.getrefcount(key) > before
 
     del d[key]
+    sys.modules[_C_MODULE]._freelist_clear()
     assert sys.getrefcount(key) == before
 
 
