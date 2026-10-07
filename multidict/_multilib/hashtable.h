@@ -1005,7 +1005,7 @@ md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_add(MultiDictObject* md, PyObject* key, PyObject* value)
 {
     PyObject* identity;
