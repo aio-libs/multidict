@@ -16,7 +16,7 @@
 
 /******************** Internal Methods ********************/
 
-static inline PyObject*
+static PyObject*
 _multidict_default_or_key_error(PyObject* key, PyObject* _default)
 {
     if (_default != NULL) {
@@ -26,7 +26,7 @@ _multidict_default_or_key_error(PyObject* key, PyObject* _default)
     return NULL;
 }
 
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 _multidict_getone(MultiDictObject* self, PyObject* key, PyObject* _default)
 {
     PyObject* val = NULL;
@@ -42,7 +42,7 @@ _multidict_getone(MultiDictObject* self, PyObject* key, PyObject* _default)
     return val;
 }
 
-static inline MultiDictObject*
+static MultiDictObject*
 _multidict_resolve_other(mod_state* state, PyObject* arg)
 {
     if (arg == NULL) {
@@ -168,7 +168,7 @@ _dict_first_key(PyObject* arg)
 }
 
 /* The first item's key of a list or tuple of pairs, or NULL. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 _seq_first_key(PyObject* first)
 {
     if (PyTuple_CheckExact(first)) {
@@ -352,7 +352,7 @@ cimultidict_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
 
 /* ---- MultiDictProxy/CIMultiDictProxy tp_vectorcall ---- */
 
-static inline int
+static int
 _multidict_proxy_set_target(mod_state* state, MultiDictProxyObject* self,
                             bool is_ci, PyObject* arg)
 {
@@ -431,7 +431,8 @@ cimultidict_proxy_tp_vectorcall(PyObject* type, PyObject* const* args,
     return _multidict_proxy_ctor_vectorcall(type, args, nargsf, kwnames, true);
 }
 
-static PyObject*
+/* Tail-called by the MultiDictProxy copy. */
+NOINLINE static PyObject*
 multidict_copy(MultiDictObject* self)
 {
     MultiDictObject* new_md = md_shell_new(self->state, Py_TYPE(self));
@@ -452,7 +453,8 @@ multidict_copy(MultiDictObject* self)
 PyDoc_STRVAR(multidict_to_dict_doc,
              "Return a dict with lists of all values for each key.");
 
-static PyObject*
+/* Tail-called by the MultiDictProxy copy. */
+NOINLINE static PyObject*
 multidict_to_dict(MultiDictObject* self)
 {
     PyObject* result = NULL;
@@ -469,8 +471,7 @@ multidict_to_dict(MultiDictObject* self)
 
 /******************** Base Methods ********************/
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 multidict_getall(MultiDictObject* self, PyObject* const* args,
                  Py_ssize_t nargs, PyObject* kwnames)
 {
@@ -497,8 +498,7 @@ multidict_getall(MultiDictObject* self, PyObject* const* args,
     return list;
 }
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 multidict_getone(MultiDictObject* self, PyObject* const* args,
                  Py_ssize_t nargs, PyObject* kwnames)
 {
@@ -517,8 +517,7 @@ multidict_getone(MultiDictObject* self, PyObject* const* args,
     return _multidict_getone(self, key, _default);
 }
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
               PyObject* kwnames)
 {
@@ -611,8 +610,7 @@ multidict_mp_length(MultiDictObject* self)
     return md_len(self);
 }
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline PyObject*
+static PyObject*
 multidict_mp_subscript(MultiDictObject* self, PyObject* key)
 {
     return _multidict_getone(self, key, NULL);
@@ -627,8 +625,7 @@ multidict_mp_ass_subscript(MultiDictObject* self, PyObject* key, PyObject* val)
     return md_replace(self, key, val);
 }
 
-/* Inlined into the MultiDictProxy copy. */
-ALWAYS_INLINE static inline int
+static int
 multidict_sq_contains(MultiDictObject* self, PyObject* key)
 {
     return md_contains(self, key);
@@ -640,7 +637,8 @@ multidict_tp_iter(MultiDictObject* self)
     return multidict_keys_iter_new(self, 0);
 }
 
-static PyObject*
+/* Tail-called by the MultiDictProxy copy. */
+NOINLINE static PyObject*
 multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
 {
     int cmp;
@@ -1030,7 +1028,8 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
     return ret;
 }
 
-ALWAYS_INLINE static inline PyObject*
+/* Tail-called by pop() and popone(). */
+NOINLINE static PyObject*
 _multidict_pop(MultiDictObject* self, PyObject* key, PyObject* _default)
 {
     PyObject* ret_val = NULL;
@@ -1375,7 +1374,8 @@ static PyType_Spec cimultidict_spec = {
 
 /******************** MultiDictProxy ********************/
 
-ALWAYS_INLINE static inline int
+/* Tail-called by both proxy classes' __init__(). */
+NOINLINE static int
 _multidict_proxy_init(MultiDictProxyObject* self, PyObject* args,
                       PyObject* kwds, const char* name, bool is_ci)
 {
