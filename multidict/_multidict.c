@@ -10,6 +10,7 @@
 #include "_multilib/iter.h"
 #include "_multilib/parser.h"
 #include "_multilib/pythoncapi_compat.h"
+#include "_multilib/refcount.h"
 #include "_multilib/state.h"
 #include "_multilib/views.h"
 #include "_multilib/watch.h"
@@ -36,7 +37,7 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
     }
 
     if (s == 1) {
-        *parg = Py_NewRef(PyTuple_GET_ITEM(args, 0));
+        *parg = md_newref(PyTuple_GET_ITEM(args, 0));
         if (PyTuple_CheckExact(*parg)) {
             size += PyTuple_GET_SIZE(*parg);
         } else if (PyList_CheckExact(*parg)) {
@@ -362,7 +363,7 @@ multidict_getall(MultiDictObject* self, PyObject* const* args,
 
     if (list == NULL) {
         if (_default != NULL) {
-            return Py_NewRef(_default);
+            return md_newref(_default);
         }
         PyErr_SetObject(PyExc_KeyError, key);
         return NULL;
@@ -392,7 +393,7 @@ multidict_getone(MultiDictObject* self, PyObject* const* args,
     }
     if (val == NULL) {
         if (_default != NULL) {
-            return Py_NewRef(_default);
+            return md_newref(_default);
         }
         PyErr_SetObject(PyExc_KeyError, key);
         return NULL;
@@ -424,7 +425,7 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
         return val;
     }
     if (_default != NULL) {
-        return Py_NewRef(_default);
+        return md_newref(_default);
     }
     // None is only needed when the key is missing.
     return Py_GetConstant(Py_CONSTANT_NONE);
@@ -933,7 +934,7 @@ _multidict_pop(MultiDictObject* self, PyObject* key, PyObject* _default)
 
     if (ret_val == NULL) {
         if (_default != NULL) {
-            return Py_NewRef(_default);
+            return md_newref(_default);
         }
         PyErr_SetObject(PyExc_KeyError, key);
         return NULL;
@@ -1002,7 +1003,7 @@ multidict_popall(MultiDictObject* self, PyObject* const* args,
 
     if (ret_val == NULL) {
         if (_default != NULL) {
-            return Py_NewRef(_default);
+            return md_newref(_default);
         }
         PyErr_SetObject(PyExc_KeyError, key);
         return NULL;

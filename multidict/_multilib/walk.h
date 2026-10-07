@@ -17,6 +17,7 @@ extern "C" {
 #include "dict.h"
 #include "htkeys.h"
 #include "identity.h"
+#include "refcount.h"
 
 /* Matches kept in the short list before starting the bitmap: MD_SEEN_FEW
    when the bitmap fits its inline buffer, MD_SEEN_MANY when it would need
@@ -114,9 +115,9 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
             continue;
         }
 
-        PyObject* identity = Py_NewRef(entry_identity(kind, ci, entry));
+        PyObject* identity = md_newref(entry_identity(kind, ci, entry));
         Py_hash_t hash = entry_hash(kind, ci, entry);
-        PyObject* value = Py_NewRef(entry->value);
+        PyObject* value = md_newref(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
             key = md_ensure_key(md, entry);  // last entry access
@@ -200,7 +201,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
 
-        PyObject* value = Py_NewRef(entry->value);
+        PyObject* value = md_newref(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
             key = md_ensure_key(md, entry);  // last entry access

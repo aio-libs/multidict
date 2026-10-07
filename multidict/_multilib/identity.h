@@ -16,6 +16,7 @@ extern "C" {
 #include "dict.h"
 #include "htkeys.h"
 #include "istr.h"
+#include "refcount.h"
 #include "state.h"
 
 static bool
@@ -79,7 +80,7 @@ _key_to_identity_cs(mod_state* state, PyObject* key)
         }
         return _err_key_type_cs();
     }
-    return Py_NewRef(key);
+    return md_newref(key);
 }
 
 /* True if the eight bytes at p hold an ASCII uppercase one. */
@@ -186,7 +187,7 @@ _str_to_identity_ci(mod_state* state, PyObject* key)
             /* The key already is its own identity, so reuse it: no copy, and
                unicode_hash() gets the key's cached hash instead of hashing
                a fresh string. */
-            return Py_NewRef(key);
+            return md_newref(key);
         }
         return _ascii_lower(data, len);
     }
@@ -211,7 +212,7 @@ static inline PyObject*
 _key_to_identity_ci(mod_state* state, PyObject* key)
 {
     if (IStr_CheckExact(state, key)) {
-        return Py_NewRef(((istrobject*)key)->canonical);
+        return md_newref(((istrobject*)key)->canonical);
     }
     return _str_to_identity_ci(state, key);
 }
@@ -222,7 +223,7 @@ _arg_to_key_cs(mod_state* state, PyObject* key, PyObject* identity)
     if (UNLIKELY(!PyUnicode_Check(key))) {
         return _err_key_type_cs();
     }
-    return Py_NewRef(key);
+    return md_newref(key);
 }
 
 /* A str subclass is copied to an exact str first: istr(), like str(), would
@@ -243,7 +244,7 @@ static inline PyObject*
 _arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 {
     if (IStr_CheckExact(state, key)) {
-        return Py_NewRef(key);
+        return md_newref(key);
     }
     if (PyUnicode_CheckExact(key)) {
         return IStr_New(state, key, identity);
@@ -291,7 +292,7 @@ md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits)
     if (md->is_ci) {
         if (IStr_CheckExact(md->state, key)) {
             *pfits = true;
-            return Py_NewRef(((istrobject*)key)->canonical);
+            return md_newref(((istrobject*)key)->canonical);
         }
         *pfits = false;
         return _str_to_identity_ci(md->state, key);
@@ -358,13 +359,13 @@ _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
 {
     assert(md->is_ci);
     uint64_t version = md->version;
-    PyObject* old_key = Py_NewRef(entry->key);
+    PyObject* old_key = md_newref(entry->key);
     PyObject* identity =
-        Py_NewRef(entry_identity(md->keys->kind, true, entry));
+        md_newref(entry_identity(md->keys->kind, true, entry));
     PyObject* key = _arg_to_key_ci(md->state, old_key, identity);
     if (key != NULL && md->version == version &&
         PyUnicode_CheckExact(old_key)) {
-        entry->key = Py_NewRef(key);
+        entry->key = md_newref(key);
         Py_DECREF(old_key);
     }
     /* These can run __del__ or suspend the critical section, so the caller
@@ -382,7 +383,7 @@ md_ensure_key(MultiDictObject* md, entry_t* entry)
     assert(!entry_is_hole(entry));
     PyObject* key = entry->key;
     if (!md->is_ci || IStr_CheckExact(md->state, key)) {
-        // not Py_NewRef(): GCC leaves it out of line on FT builds
+        // not md_newref(): GCC leaves it out of line on FT builds
         Py_INCREF(key);
         return key;
     }

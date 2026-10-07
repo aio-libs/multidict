@@ -10,6 +10,7 @@ extern "C" {
 #include <Python.h>
 
 #include "compiler.h"
+#include "refcount.h"
 
 /* list[i] as a new reference. On a free-threaded build another thread can
    drop the item between a borrow and its incref, or shrink the list after
@@ -33,7 +34,7 @@ list_getitem_ref(PyObject* list, Py_ssize_t i)
 }
 #define _list_item_gone(item) ((item) == NULL)
 #else
-#define list_getitem_ref(list, i) Py_NewRef(PyList_GET_ITEM((list), (i)))
+#define list_getitem_ref(list, i) md_newref(PyList_GET_ITEM((list), (i)))
 #define _list_item_gone(item) (0)
 #endif
 
@@ -60,8 +61,8 @@ unpack_pair(PyObject* obj, PyObject** pkey, PyObject** pvalue,
             *plen = PyTuple_GET_SIZE(obj);
             return UNPACK_LENGTH;
         }
-        *pkey = Py_NewRef(PyTuple_GET_ITEM(obj, 0));
-        *pvalue = Py_NewRef(PyTuple_GET_ITEM(obj, 1));
+        *pkey = md_newref(PyTuple_GET_ITEM(obj, 0));
+        *pvalue = md_newref(PyTuple_GET_ITEM(obj, 1));
         return UNPACK_OK;
     }
     if (PyList_CheckExact(obj)) {

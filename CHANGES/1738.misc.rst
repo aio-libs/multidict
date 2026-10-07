@@ -1,0 +1,4 @@
+Made the C extension's hot paths inline :c:func:`Py_NewRef` and
+:c:func:`Py_DECREF` on the free-threaded build, where GCC's inlining
+budget had left them as calls
+-- by :user:`asvetlov`.

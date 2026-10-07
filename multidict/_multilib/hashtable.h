@@ -21,6 +21,7 @@ extern "C" {
 #include "htkeys.h"
 #include "identity.h"
 #include "istr.h"
+#include "refcount.h"
 #include "reflist.h"
 #include "state.h"
 #include "update_marks.h"
@@ -602,7 +603,7 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
             continue;
         }
         anystr_entry_t* dst = anystr_entry_at(newentries, filled++);
-        dst->identity = Py_NewRef(compact_key_identity(ci, key));
+        dst->identity = md_newref(compact_key_identity(ci, key));
         dst->hash = compact_key_hash(ci, key);
         dst->base.key = key;
         dst->base.value = src->value;
@@ -720,9 +721,9 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
         if (!entry_is_hole(src)) {
             anystr_entry_t* dst = anystr_entry_at(entries, nentries++);
             dst->identity =
-                Py_NewRef(entry_identity(other->keys->kind, other_ci, src));
-            dst->base.key = Py_NewRef(src->key);
-            dst->base.value = Py_NewRef(src->value);
+                md_newref(entry_identity(other->keys->kind, other_ci, src));
+            dst->base.key = md_newref(src->key);
+            dst->base.value = md_newref(src->value);
             dst->hash = entry_hash(other->keys->kind, other_ci, src);
         }
     }
@@ -868,7 +869,7 @@ md_to_anystr(MultiDictObject* md)
             dst->identity = NULL;
             dst->hash = 0;
         } else {
-            dst->identity = Py_NewRef(compact_key_identity(ci, key));
+            dst->identity = md_newref(compact_key_identity(ci, key));
             dst->hash = compact_key_hash(ci, key);
         }
     }
@@ -1005,7 +1006,7 @@ md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-static int
+FLATTEN static int
 md_add(MultiDictObject* md, PyObject* key, PyObject* value)
 {
     PyObject* identity;
@@ -1256,7 +1257,7 @@ _md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return _md_del_locked(md, identity, hash, removed, true);
 }
 
-static int
+FT_FLATTEN static int
 md_del(MultiDictObject* md, PyObject* key)
 {
     PyObject* identity;
@@ -1521,7 +1522,7 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
         if (str_cmp(identity, entry_identity(kind, ci, entry))) {
-            *ret = Py_NewRef(entry->value);
+            *ret = md_newref(entry->value);
             return 1;
         }
     }
@@ -1706,7 +1707,7 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
                 if (md_check_version(md, version) < 0) {
                     goto fail;
                 }
-                PyList_SET_ITEM(lst, 0, Py_NewRef(e->value));
+                PyList_SET_ITEM(lst, 0, md_newref(e->value));
             } else if (PyList_Append(lst, e->value) < 0) {
                 goto fail;
             }
@@ -1779,7 +1780,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         }
         if (str_cmp(identity, entry_identity(kind, ci, entry))) {
             ASSERT_CONSISTENT(md);
-            *result = Py_NewRef(entry->value);
+            *result = md_newref(entry->value);
             return 1;
         }
     }
@@ -1791,7 +1792,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     }
 
     ASSERT_CONSISTENT(md);
-    *result = Py_NewRef(value);
+    *result = md_newref(value);
     return 0;
 }
 
@@ -1845,7 +1846,7 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
         if (str_cmp(identity, entry_identity(kind, ci, entry))) {
-            PyObject* value = Py_NewRef(entry->value);
+            PyObject* value = md_newref(entry->value);
             if (watched) {
                 md_watch_record(md,
                                 MultiDict_EVENT_DELETED,
@@ -1873,7 +1874,7 @@ _md_pop_one_locked_watched(MultiDictObject* md, PyObject* identity,
     return _md_pop_one_locked(md, identity, hash, ret, true);
 }
 
-static int
+FT_FLATTEN static int
 md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     PyObject* identity;
@@ -1904,7 +1905,7 @@ _md_getall_visit(void* user_data, PyObject* identity, Py_hash_t hash,
     (void)identity;
     (void)hash;
     (void)key;  // value-only walk
-    if (reflist_push((reflist_t*)user_data, Py_NewRef(value)) < 0) {
+    if (reflist_push((reflist_t*)user_data, md_newref(value)) < 0) {
         return -1;
     }
     return 1;
@@ -1975,7 +1976,7 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
         if (str_cmp(identity, entry_identity(kind, ci, entry))) {
-            if (reflist_push(values, Py_NewRef(entry->value)) < 0) {
+            if (reflist_push(values, md_newref(entry->value)) < 0) {
                 ret = -1;
                 break;
             }
@@ -2234,9 +2235,9 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
                 if (key == old_key) {
                     old_key = NULL;
                 } else {
-                    replace_key(kind, entry, Py_NewRef(key));
+                    replace_key(kind, entry, md_newref(key));
                 }
-                publish_value(entry, Py_NewRef(value));
+                publish_value(entry, md_newref(value));
                 if (watched) {
                     md_watch_record(md,
                                     MultiDict_EVENT_REPLACED,
@@ -2304,7 +2305,7 @@ _md_replace_watched(MultiDictObject* md, PyObject* key, PyObject* value,
     return ret;
 }
 
-static int
+FLATTEN static int
 md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
 {
     PyObject* identity;
@@ -2496,7 +2497,7 @@ _md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
         if (entry_is_hole(entry)) {
             continue;
         }
-        avalue = Py_NewRef(entry->value);
+        avalue = md_newref(entry->value);
         key = md_ensure_key(md, entry);  // last entry access
         if (key == NULL) {
             Py_DECREF(avalue);
@@ -2591,8 +2592,8 @@ _md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
         if (entry_is_hole(entry)) {
             continue;
         }
-        key = Py_NewRef(entry->key);
-        value = Py_NewRef(entry->value);
+        key = md_newref(entry->key);
+        value = md_newref(entry->value);
 
         if (comma) {
             if (PyUnicodeWriter_WriteChar(writer, ',') < 0) {

@@ -8,6 +8,7 @@ extern "C" {
 #include "debug.h"
 #include "dict.h"
 #include "hashtable.h"
+#include "refcount.h"
 #include "state.h"
 #include "unpack.h"
 
@@ -47,7 +48,7 @@ _multidict_view_new(MultiDictObject* md, PyTypeObject* tp)
     if (mv == NULL) {
         return NULL;
     }
-    mv->md = (MultiDictObject*)Py_NewRef(md);
+    mv->md = (MultiDictObject*)md_newref(md);
     PyObject_GC_Track(mv);
     return (PyObject*)mv;
 }
@@ -297,13 +298,13 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject* self, PyObject* arg,
         return 0;
     }
 
-    PyObject* key = Py_NewRef(PyTuple_GET_ITEM(arg, 0));
+    PyObject* key = md_newref(PyTuple_GET_ITEM(arg, 0));
 
     if (pkey != NULL) {
-        *pkey = Py_NewRef(key);
+        *pkey = md_newref(key);
     }
     if (pvalue != NULL) {
-        *pvalue = Py_NewRef(PyTuple_GET_ITEM(arg, 1));
+        *pvalue = md_newref(PyTuple_GET_ITEM(arg, 1));
     }
 
     *pidentity = md_calc_identity(self->md, key);
@@ -350,7 +351,7 @@ _multidict_collect_visit(void* user_data, PyObject* identity, Py_hash_t hash,
             return -1;
         }
     } else {
-        item = Py_NewRef(value);
+        item = md_newref(value);
     }
     int tmp = PyList_Append((PyObject*)user_data, item);
     Py_DECREF(item);
@@ -597,8 +598,8 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
         if (entry_is_hole(entry)) {
             continue;
         }
-        identity = Py_NewRef(entry_identity(kind, ci, entry));
-        value = Py_NewRef(entry->value);
+        identity = md_newref(entry_identity(kind, ci, entry));
+        value = md_newref(entry->value);
         key = md_ensure_key(md, entry);  // last entry access
         if (key == NULL) {
             goto fail;
@@ -1027,7 +1028,7 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
         if (entry_is_hole(entry)) {
             continue;
         }
-        identity = Py_NewRef(entry_identity(kind, ci, entry));
+        identity = md_newref(entry_identity(kind, ci, entry));
         key = md_ensure_key(md, entry);  // last entry access
         if (key == NULL) {
             goto fail;

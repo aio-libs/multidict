@@ -8,6 +8,7 @@ extern "C" {
 #include "../multidict_capi_struct.h"
 #include "dict.h"
 #include "hashtable.h"
+#include "refcount.h"
 #include "state.h"
 #include "watch.h"
 
@@ -43,7 +44,7 @@ static PyTypeObject*
 IStr_GetType(void* state_)
 {
     mod_state* state = (mod_state*)state_;
-    return (PyTypeObject*)Py_NewRef(state->IStrType);
+    return (PyTypeObject*)md_newref(state->IStrType);
 }
 
 static PyObject*
@@ -58,7 +59,7 @@ IStr_FromUnicode(void* state_, PyObject* str)
     }
     // Matches istr(existing_istr): return the same object, not a copy.
     if (IStr_CheckExact(state, str)) {
-        return Py_NewRef(str);
+        return md_newref(str);
     }
     PyObject* canonical = PyObject_CallMethodNoArgs(str, state->str_lower);
     if (canonical == NULL) {
@@ -85,28 +86,28 @@ static PyTypeObject*
 MultiDict_GetType(void* state_)
 {
     mod_state* state = (mod_state*)state_;
-    return (PyTypeObject*)Py_NewRef(state->MultiDictType);
+    return (PyTypeObject*)md_newref(state->MultiDictType);
 }
 
 static PyTypeObject*
 CIMultiDict_GetType(void* state_)
 {
     mod_state* state = (mod_state*)state_;
-    return (PyTypeObject*)Py_NewRef(state->CIMultiDictType);
+    return (PyTypeObject*)md_newref(state->CIMultiDictType);
 }
 
 static PyTypeObject*
 MultiDictProxy_GetType(void* state_)
 {
     mod_state* state = (mod_state*)state_;
-    return (PyTypeObject*)Py_NewRef(state->MultiDictProxyType);
+    return (PyTypeObject*)md_newref(state->MultiDictProxyType);
 }
 
 static PyTypeObject*
 CIMultiDictProxy_GetType(void* state_)
 {
     mod_state* state = (mod_state*)state_;
-    return (PyTypeObject*)Py_NewRef(state->CIMultiDictProxyType);
+    return (PyTypeObject*)md_newref(state->CIMultiDictProxyType);
 }
 
 /* ================= Constructors ================= */
@@ -160,7 +161,7 @@ _proxy_new(mod_state* state, PyObject* arg, bool is_ci)
     if (self == NULL) {
         return NULL;
     }
-    self->md = (MultiDictObject*)Py_NewRef(md);
+    self->md = (MultiDictObject*)md_newref(md);
     return (PyObject*)self;
 }
 

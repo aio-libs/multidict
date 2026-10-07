@@ -7,6 +7,7 @@ extern "C" {
 
 #include "dict.h"
 #include "hashtable.h"
+#include "refcount.h"
 #include "state.h"
 
 typedef struct multidict_iter {
@@ -155,7 +156,7 @@ multidict_values_iter_new(MultiDictObject* md, int reverse)
     return (PyObject*)it;
 }
 
-NOINLINE static PyObject*
+FLATTEN NOINLINE static PyObject*
 multidict_items_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;
@@ -167,7 +168,7 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
     Py_BEGIN_CRITICAL_SECTION(self->md);
     res = _iter_next_entry(self, &entry);
     if (res > 0) {
-        // not Py_NewRef(): see md_ensure_key()
+        // not md_newref(): see md_ensure_key()
         value = entry->value;
         Py_INCREF(value);
         key = md_ensure_key(self->md, entry);  // last entry access
@@ -222,7 +223,7 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
     return ret;
 }
 
-NOINLINE static PyObject*
+FLATTEN NOINLINE static PyObject*
 multidict_values_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* value = NULL;
@@ -232,7 +233,7 @@ multidict_values_iter_tp_iternext(MultidictIter* self)
     Py_BEGIN_CRITICAL_SECTION(self->md);
     res = _iter_next_entry(self, &entry);
     if (res > 0) {
-        value = Py_NewRef(entry->value);
+        value = md_newref(entry->value);
     }
     Py_END_CRITICAL_SECTION();
     if (res < 0) {
@@ -246,7 +247,7 @@ multidict_values_iter_tp_iternext(MultidictIter* self)
     return value;
 }
 
-NOINLINE static PyObject*
+FLATTEN NOINLINE static PyObject*
 multidict_keys_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;

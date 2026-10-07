@@ -7,6 +7,7 @@ extern "C" {
 
 #include "compiler.h"
 #include "istr_object.h"
+#include "refcount.h"
 #include "state.h"
 
 #define IStr_CheckExact(state, obj) Py_IS_TYPE(obj, state->IStrType)
@@ -175,7 +176,7 @@ _istr_slow_vectorcall(PyTypeObject* type, PyObject* const* args,
         goto done;
     }
     for (Py_ssize_t i = 0; i < nargs; i++) {
-        PyTuple_SET_ITEM(tpl, i, Py_NewRef(args[i]));
+        PyTuple_SET_ITEM(tpl, i, md_newref(args[i]));
     }
     if (kwnames != NULL) {
         kwds = PyDict_New();
@@ -216,7 +217,7 @@ istr_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
        and so needs nothing from str.__new__() but the value itself. */
     PyObject* x = args[0];
     if (IStr_CheckExact(state, x)) {
-        return Py_NewRef(x);
+        return md_newref(x);
     }
     PyObject* ret;
     if (PyUnicode_CheckExact(x)) {

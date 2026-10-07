@@ -16,6 +16,7 @@ extern "C" {
 #include "dict.h"
 #include "freethreading.h"
 #include "htkeys.h"
+#include "refcount.h"
 
 /* Per-batch bookkeeping for update() and merge(), keyed by entry index.
 
@@ -135,7 +136,7 @@ update_marks_doom(update_marks_t* marks, Py_ssize_t index, entry_t* entry)
     }
     doomed_entry_t* doomed = marks->doomed + marks->ndoomed++;
     doomed->index = index;
-    doomed->value = Py_NewRef(load_value(entry));
+    doomed->value = md_newref(load_value(entry));
     return 0;
 }
 

@@ -20,6 +20,7 @@ extern "C" {
 #include "hashtable.h"
 #include "htkeys.h"
 #include "identity.h"
+#include "refcount.h"
 #include "reflist.h"
 #include "unpack.h"
 #include "update_marks.h"
@@ -75,8 +76,8 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             // old_key/old_value decref deferred: see reflist_t
             PyObject* old_key = entry->key;
             PyObject* old_value = load_value(entry);
-            replace_key(kind, entry, Py_NewRef(key));
-            publish_value(entry, Py_NewRef(value));
+            replace_key(kind, entry, md_newref(key));
+            publish_value(entry, md_newref(value));
             md_watch_record(md,
                             MultiDict_EVENT_REPLACED,
                             identity,
@@ -285,8 +286,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         }
         /* lower() on a str subclass key runs Python code that can mutate
            other and free entry, so hold our own refs. */
-        key = Py_NewRef(entry->key);
-        value = Py_NewRef(entry->value);
+        key = md_newref(entry->key);
+        value = md_newref(entry->value);
         /* The key leaves as other's istr, whose canonical must be
            other's identity: md's is the unlowered key. */
         canonical =
@@ -460,7 +461,7 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
         }
         PyObject* value = args[nargs + i];  // borrowed
         if (md_add_with_hash_steal_refs(
-                md, hash, identity, key, Py_NewRef(value), fits) < 0) {
+                md, hash, identity, key, md_newref(value), fits) < 0) {
             Py_DECREF(value);
             Py_DECREF(identity);
             Py_DECREF(key);
@@ -582,11 +583,11 @@ _md_seq_prepare(PyObject* seq, seq_iter_t* it)
 
     if (PyList_CheckExact(seq)) {
         it->kind = SEQ_LIST;
-        it->obj = items != NULL ? items : Py_NewRef(seq);
+        it->obj = items != NULL ? items : md_newref(seq);
     } else if (PyTuple_CheckExact(seq)) {
         it->kind = SEQ_TUPLE;
         it->size = PyTuple_GET_SIZE(seq);
-        it->obj = items != NULL ? items : Py_NewRef(seq);
+        it->obj = items != NULL ? items : md_newref(seq);
     } else {
         it->kind = SEQ_ITER;
         it->obj = PyObject_GetIter(seq);
