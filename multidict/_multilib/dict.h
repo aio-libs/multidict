@@ -60,7 +60,7 @@ typedef struct {
 
 /* The multidict a proxy of the given class wraps for arg; NULL without an
    exception if arg is neither such a multidict nor a proxy of one. */
-static inline MultiDictObject*
+static MultiDictObject*
 multidict_proxy_target(mod_state* state, PyObject* arg, bool is_ci)
 {
     if (is_ci ? CIMultiDict_Check(state, arg)
