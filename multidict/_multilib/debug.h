@@ -16,7 +16,21 @@ extern "C" {
 
 #ifndef NDEBUG
 
-static inline int
+static void
+_md_check_entry(uint8_t kind, bool ci, const entry_t* entry)
+{
+    PyObject* identity = entry_identity(kind, ci, entry);
+    if (identity != NULL) {
+        assert(entry->key != NULL);
+        assert(entry->value != NULL);
+        assert(PyUnicode_CheckExact(identity));
+        assert(entry_hash(kind, ci, entry) == unicode_hash(identity));
+    } else {
+        assert(entry->key == NULL);
+    }
+}
+
+static int
 _md_check_consistency(const MultiDictObject* md)
 {
     bool ci = md->is_ci;
@@ -42,18 +56,15 @@ _md_check_consistency(const MultiDictObject* md)
         CHECK(DKIX_DUMMY <= ix && ix <= calc_usable);
     }
 
-    entry_t* entries = htkeys_entries(keys);
-    for (Py_ssize_t i = 0; i < calc_usable; i++) {
-        entry_t* entry = entry_at(keys->kind, entries, i);
-        PyObject* identity = entry_identity(keys->kind, ci, entry);
-
-        if (identity != NULL) {
-            CHECK(entry->key != NULL);
-            CHECK(entry->value != NULL);
-            CHECK(PyUnicode_CheckExact(identity));
-            CHECK(entry_hash(keys->kind, ci, entry) == unicode_hash(identity));
-        } else {
-            CHECK(entry->key == NULL);
+    if (kind_is_compact(keys->kind)) {
+        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
+        for (Py_ssize_t i = 0; i < calc_usable; i++) {
+            _md_check_entry(KIND_COMPACT, ci, entries + i);
+        }
+    } else {
+        anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
+        for (Py_ssize_t i = 0; i < calc_usable; i++) {
+            _md_check_entry(KIND_ANYSTR, ci, &entries[i].base);
         }
     }
     return 1;
@@ -61,7 +72,24 @@ _md_check_consistency(const MultiDictObject* md)
 #undef CHECK
 }
 
-static inline int
+static void
+_md_dump_entry(uint8_t kind, bool ci, Py_ssize_t i, const entry_t* entry)
+{
+    PyObject* identity = entry_identity(kind, ci, entry);
+    if (identity == NULL) {
+        printf("  %zd [deleted]\n", i);
+        return;
+    }
+    printf("  %zd h=%20zd, i=\'", i, entry_hash(kind, ci, entry));
+    PyObject_Print(identity, stdout, Py_PRINT_RAW);
+    printf("\', k=\'");
+    PyObject_Print(entry->key, stdout, Py_PRINT_RAW);
+    printf("\', v=\'");
+    PyObject_Print(entry->value, stdout, Py_PRINT_RAW);
+    printf("\'\n");
+}
+
+static int
 _md_dump(MultiDictObject* md)
 {
     bool ci = md->is_ci;
@@ -77,23 +105,15 @@ _md_dump(MultiDictObject* md)
         printf("  %zd -> %zd\n", i, ix);
     }
     printf("  --------\n");
-    entry_t* entries = htkeys_entries(keys);
-    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-        entry_t* entry = entry_at(keys->kind, entries, i);
-        PyObject* identity = entry_identity(keys->kind, ci, entry);
-
-        if (identity == NULL) {
-            printf("  %zd [deleted]\n", i);
-        } else {
-            printf(
-                "  %zd h=%20zd, i=\'", i, entry_hash(keys->kind, ci, entry));
-            PyObject_Print(
-                entry_identity(keys->kind, ci, entry), stdout, Py_PRINT_RAW);
-            printf("\', k=\'");
-            PyObject_Print(entry->key, stdout, Py_PRINT_RAW);
-            printf("\', v=\'");
-            PyObject_Print(entry->value, stdout, Py_PRINT_RAW);
-            printf("\'\n");
+    if (kind_is_compact(keys->kind)) {
+        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
+        for (Py_ssize_t i = 0; i < keys->nentries; i++) {
+            _md_dump_entry(KIND_COMPACT, ci, i, entries + i);
+        }
+    } else {
+        anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
+        for (Py_ssize_t i = 0; i < keys->nentries; i++) {
+            _md_dump_entry(KIND_ANYSTR, ci, i, &entries[i].base);
         }
     }
     printf("\n");

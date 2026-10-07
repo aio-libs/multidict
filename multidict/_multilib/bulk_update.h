@@ -50,17 +50,15 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     }
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
-    entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
-        if (iter.index < 0) {
-            continue;
+    entry_t* entry = NULL;
+    for (;;) {
+        HTKEYSITER_FIND(&iter, ci, identity, hash, entry);
+        if (entry == NULL) {
+            break;
         }
-        entry_t* entry = entry_at(kind, entries, iter.index);
-        if (hash != entry_hash(kind, ci, entry) ||
-            bitmap_test(&marks->updated, iter.index) ||
-            !str_cmp(identity, entry_identity(kind, ci, entry))) {
+        if (bitmap_test(&marks->updated, iter.index)) {
             continue;
         }
         if (!found) {
@@ -116,20 +114,15 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     }
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
-    entry_t* entries = htkeys_entries(md->keys);
-    uint8_t kind = md->keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
-        if (iter.index < 0) {
-            continue;
+    entry_t* entry = NULL;
+    for (;;) {
+        HTKEYSITER_FIND(&iter, ci, identity, hash, entry);
+        if (entry == NULL) {
+            break;
         }
-        entry_t* entry = entry_at(kind, entries, iter.index);
         /* An entry this batch added doesn't count as already present. */
-        if (hash != entry_hash(kind, ci, entry) ||
-            bitmap_test(&marks->updated, iter.index)) {
-            continue;
-        }
-        if (str_cmp(identity, entry_identity(kind, ci, entry))) {
+        if (!bitmap_test(&marks->updated, iter.index)) {
             return 0;
         }
     }
@@ -153,7 +146,6 @@ restart:
     }
     htkeys_t* keys = md->keys;
     uint64_t version = md->version;
-    entry_t* entries = htkeys_entries(keys);
     uint8_t kind = keys->kind;
     for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {
         doomed_entry_t* doomed = marks->doomed + i;
@@ -164,7 +156,9 @@ restart:
         }
         assert(pos < keys->nentries);
         bitmap_clear(&marks->deleted, pos);
-        entry_t* entry = entry_at(kind, entries, pos);
+        entry_t* entry = kind_is_compact(kind)
+                             ? HTKEYS_COMPACT_ENTRIES(keys) + pos
+                             : &HTKEYS_ANYSTR_ENTRIES(keys)[pos].base;
         // Python code run between items may have removed or rewritten it
         if (entry_is_hole(entry) || load_value(entry) != doomed->value) {
             continue;
@@ -251,38 +245,58 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         return -1;
     }
 
-    entry_t* entries = htkeys_entries(other->keys);
-    uint8_t kind = other->keys->kind;
-    Py_ssize_t nentries = other->keys->nentries;
-
     if (md->is_ci == other_ci) {
         /* other of md's class: nothing here runs Python code, so other's
            table and its kind hold throughout. */
-        entry_t* end = entry_at(kind, entries, nentries);
-        for (entry_t* entry = entries; entry < end;
-             entry = entry_next(kind, entry)) {
-            if (entry_is_hole(entry)) {
-                continue;
+        htkeys_t* keys = other->keys;
+        Py_ssize_t nentries = keys->nentries;
+        if (kind_is_compact(keys->kind)) {
+            entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
+            for (entry_t* end = entry + nentries; entry < end; entry++) {
+                if (entry_is_hole(entry)) {
+                    continue;
+                }
+                if (_md_update_item(
+                        md,
+                        op,
+                        entry_hash(KIND_COMPACT, other_ci, entry),
+                        entry_identity(KIND_COMPACT, other_ci, entry),
+                        entry->key,
+                        entry->value,
+                        defer,
+                        marks) < 0) {
+                    return -1;
+                }
             }
-            if (_md_update_item(md,
-                                op,
-                                entry_hash(kind, other_ci, entry),
-                                entry_identity(kind, other_ci, entry),
-                                entry->key,
-                                entry->value,
-                                defer,
-                                marks) < 0) {
-                return -1;
+        } else {
+            anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys);
+            for (anystr_entry_t* end = entry + nentries; entry < end;
+                 entry++) {
+                if (entry_is_hole(&entry->base)) {
+                    continue;
+                }
+                if (_md_update_item(md,
+                                    op,
+                                    entry->hash,
+                                    entry->identity,
+                                    entry->base.key,
+                                    entry->base.value,
+                                    defer,
+                                    marks) < 0) {
+                    return -1;
+                }
             }
         }
         return 0;
     }
 
+    Py_ssize_t nentries = other->keys->nentries;
     for (pos = 0; pos < nentries; pos++) {
-        entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(entry)) {
-            continue;
+        entry_t* entry = htkeys_next_live(other->keys, &pos);
+        if (entry == NULL || pos >= nentries) {
+            break;
         }
+        uint8_t kind = other->keys->kind;
         /* lower() on a str subclass key runs Python code that can mutate
            other and free entry, so hold our own refs. */
         key = Py_NewRef(entry->key);
@@ -314,8 +328,6 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         Py_DECREF(value);
         /* Both lower() and a finalizer run by the decrefs above can
            replace other's table. */
-        entries = htkeys_entries(other->keys);
-        kind = other->keys->kind;
         if (nentries > other->keys->nentries) {
             nentries = other->keys->nentries;
         }
@@ -338,20 +350,24 @@ md_extend_self(MultiDictObject* md)
     }
 
     bool ci = md->is_ci;
-    uint8_t kind = md->keys->kind;
-    entry_t* entry = htkeys_entries(md->keys);
-    entry_t* end = entry_at(kind, entry, md->keys->nentries);
-    for (; entry < end; entry = entry_next(kind, entry)) {
-        if (!entry_is_hole(entry)) {
-            PyObject* identity = entry_identity(kind, ci, entry);
-            if (md_add_with_hash(md,
-                                 entry_hash(kind, ci, entry),
-                                 identity,
-                                 entry->key,
-                                 entry->value,
-                                 md_key_fits(md, entry->key, identity)) < 0) {
-                return -1;
-            }
+    htkeys_t* keys = md->keys;
+    uint8_t kind = keys->kind;
+    Py_ssize_t nentries = keys->nentries;
+    for (Py_ssize_t pos = 0; pos < nentries; pos++) {
+        entry_t* entry = kind_is_compact(kind)
+                             ? HTKEYS_COMPACT_ENTRIES(keys) + pos
+                             : &HTKEYS_ANYSTR_ENTRIES(keys)[pos].base;
+        if (entry_is_hole(entry)) {
+            continue;
+        }
+        PyObject* identity = entry_identity(kind, ci, entry);
+        if (md_add_with_hash(md,
+                             entry_hash(kind, ci, entry),
+                             identity,
+                             entry->key,
+                             entry->value,
+                             md_key_fits(md, entry->key, identity)) < 0) {
+            return -1;
         }
     }
     return 0;

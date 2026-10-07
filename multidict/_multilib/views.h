@@ -584,14 +584,11 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
     bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
-    entry_t* entries = htkeys_entries(keys);
     uint8_t kind = keys->kind;
+    entry_t* entry;
 
-    for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
-        entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(entry)) {
-            continue;
-        }
+    for (Py_ssize_t pos = 0; (entry = htkeys_next_live(keys, &pos)) != NULL;
+         ++pos) {
         identity = Py_NewRef(entry_identity(kind, ci, entry));
         value = Py_NewRef(entry->value);
         key = md_ensure_key(md, entry);  // last entry access
@@ -1013,14 +1010,11 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
     bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeys_t* keys = md->keys;
-    entry_t* entries = htkeys_entries(keys);
     uint8_t kind = keys->kind;
+    entry_t* entry;
 
-    for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
-        entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(entry)) {
-            continue;
-        }
+    for (Py_ssize_t pos = 0; (entry = htkeys_next_live(keys, &pos)) != NULL;
+         ++pos) {
         identity = Py_NewRef(entry_identity(kind, ci, entry));
         key = md_ensure_key(md, entry);  // last entry access
         if (key == NULL) {

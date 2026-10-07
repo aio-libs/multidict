@@ -17,6 +17,7 @@ extern "C" {
 #include "dict.h"
 #include "htkeys.h"
 #include "identity.h"
+#include "str_cmp.h"
 
 /* Matches kept in the short list before starting the bitmap: MD_SEEN_FEW
    when the bitmap fits its inline buffer, MD_SEEN_MANY when it would need
@@ -103,17 +104,13 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
 {
     bool ci = md->is_ci;
     uint64_t version = md->version;
+    // the version check below keeps the table and its nentries in place
     htkeys_t* keys = md->keys;
     uint8_t kind = keys->kind;
-    entry_t* entry = htkeys_entries(keys);
-    // the version check below keeps the table and its nentries in place
-    entry_t* end = entry_at(kind, entry, keys->nentries);
     Py_ssize_t count = 0;
-    for (; entry < end; entry = entry_next(kind, entry)) {
-        if (entry_is_hole(entry)) {
-            continue;
-        }
-
+    entry_t* entry;
+    for (Py_ssize_t pos = 0; (entry = htkeys_next_live(keys, &pos)) != NULL;
+         pos++) {
         PyObject* identity = Py_NewRef(entry_identity(kind, ci, entry));
         Py_hash_t hash = entry_hash(kind, ci, entry);
         PyObject* value = Py_NewRef(entry->value);
@@ -165,11 +162,8 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 {
     bool ci = md->is_ci;
     uint64_t version = md->version;
-    htkeys_t* keys = md->keys;
-    entry_t* entries = htkeys_entries(keys);
-    uint8_t kind = keys->kind;
     htkeysiter_t iter;
-    HTKEYSITER_INIT(&iter, keys, hash);
+    HTKEYSITER_INIT(&iter, md->keys, hash);
 
     /* Not zero-initialized: the bitmap's inline buffer is 4 KB.
        The release below only needs `nfew`. */
@@ -177,18 +171,12 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     seen.nfew = 0;
 
     Py_ssize_t count = 0;
-    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
-        if (iter.index < 0) {
-            continue;
+    entry_t* entry = NULL;
+    for (;;) {
+        HTKEYSITER_FIND(&iter, ci, identity, hash, entry);
+        if (entry == NULL) {
+            break;
         }
-        entry_t* entry = entry_at(kind, entries, iter.index);
-        if (entry_hash(kind, ci, entry) != hash) {
-            continue;
-        }
-        if (!str_cmp(identity, entry_identity(kind, ci, entry))) {
-            continue;
-        }
-
         /* HTKEYSITER_NEXT() can repeat a slot already seen in this scan
            (see its doc comment), and this scan never marks the table. */
         int seen_before = _md_seen_test_and_add(&seen, md, iter.index);

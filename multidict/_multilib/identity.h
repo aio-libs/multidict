@@ -18,32 +18,6 @@ extern "C" {
 #include "istr.h"
 #include "state.h"
 
-static bool
-str_cmp(PyObject* s1, PyObject* s2)
-{
-    /* implementation is borrowed from PyUnicode_Equal() but without
-       type checks, arguments are identities that are always strings */
-    assert(PyUnicode_Check(s1));
-    assert(PyUnicode_Check(s2));
-
-    if (s1 == s2) {
-        return true;
-    }
-    Py_ssize_t len = PyUnicode_GET_LENGTH(s1);
-    if (PyUnicode_GET_LENGTH(s2) != len) {
-        return false;
-    }
-
-    int kind = PyUnicode_KIND(s1);
-    if (PyUnicode_KIND(s2) != kind) {
-        return false;
-    }
-
-    const void* data1 = PyUnicode_DATA(s1);
-    const void* data2 = PyUnicode_DATA(s2);
-    return (memcmp(data1, data2, (size_t)(len * kind)) == 0);
-}
-
 static PyObject*
 _err_key_type_cs(void)
 {

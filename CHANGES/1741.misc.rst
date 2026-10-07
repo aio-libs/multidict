@@ -1,0 +1,3 @@
+Replaced the ``entry_at()`` and ``anystr_entry_at()`` helpers of the C
+extension with typed access to each table kind's entries, and split the
+walks over a table into one loop per kind -- by :user:`asvetlov`.

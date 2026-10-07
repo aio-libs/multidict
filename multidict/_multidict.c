@@ -158,13 +158,10 @@ _multidict_init_kind(mod_state* state, bool is_ci, PyObject* arg,
     }
     PyObject* key = NULL;
     if (other != NULL) {
-        entry_t* entries = htkeys_entries(other->keys);
-        for (Py_ssize_t i = 0; i < other->keys->nentries; i++) {
-            entry_t* entry = entry_at(other->keys->kind, entries, i);
-            if (!entry_is_hole(entry)) {
-                key = entry->key;
-                break;
-            }
+        Py_ssize_t pos = 0;
+        entry_t* entry = htkeys_next_live(other->keys, &pos);
+        if (entry != NULL) {
+            key = entry->key;
         }
     } else if (arg == NULL) {
         return KIND_COMPACT;

@@ -229,6 +229,21 @@ RULES = (
         "#1675: out of line in d[key] = v once update() and merge() lost "
         "their per-class copies, and with it del d[key] +3% on CIMultiDict",
     ),
+    Rule(
+        "htkeys_next_live",
+        (
+            "multidict_tp_init",
+            "multidict_update",
+            "multidict_extend",
+            "multidict_tp_repr",
+            "multidict_to_dict",
+            "MultiDict_ForEach",
+        ),
+        BOTH,
+        "the per-kind scan for the next live entry behind the walks; "
+        "only cold ones (view set operations, a clone during a batch) "
+        "call it out of line",
+    ),
 )
 
 
