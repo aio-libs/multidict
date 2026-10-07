@@ -169,7 +169,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     entry_t* entries = htkeys_entries(keys);
     uint8_t kind = keys->kind;
     htkeysiter_t iter;
-    htkeysiter_init(&iter, keys, hash);
+    HTKEYSITER_INIT(&iter, keys, hash);
 
     /* Not zero-initialized: the bitmap's inline buffer is 4 KB.
        The release below only needs `nfew`. */
@@ -177,7 +177,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     seen.nfew = 0;
 
     Py_ssize_t count = 0;
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
         if (iter.index < 0) {
             continue;
         }
@@ -189,7 +189,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             continue;
         }
 
-        /* htkeysiter_next() can repeat a slot already seen in this scan
+        /* HTKEYSITER_NEXT() can repeat a slot already seen in this scan
            (see its doc comment), and this scan never marks the table. */
         int seen_before = _md_seen_test_and_add(&seen, md, iter.index);
         if (seen_before < 0) {

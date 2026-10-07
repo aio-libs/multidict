@@ -49,11 +49,11 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         return -1;
     }
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    HTKEYSITER_INIT(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
         if (iter.index < 0) {
             continue;
         }
@@ -115,11 +115,11 @@ _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         return -1;
     }
     htkeysiter_t iter;
-    htkeysiter_init(&iter, md->keys, hash);
+    HTKEYSITER_INIT(&iter, md->keys, hash);
     entry_t* entries = htkeys_entries(md->keys);
     uint8_t kind = md->keys->kind;
 
-    for (; iter.index != DKIX_EMPTY; htkeysiter_next(&iter)) {
+    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
         if (iter.index < 0) {
             continue;
         }
@@ -170,10 +170,10 @@ restart:
             continue;
         }
         htkeysiter_t iter;
-        htkeysiter_init(&iter, keys, entry_hash(kind, ci, entry));
+        HTKEYSITER_INIT(&iter, keys, entry_hash(kind, ci, entry));
         while (iter.index != pos) {
             assert(iter.index != DKIX_EMPTY);
-            htkeysiter_next(&iter);
+            HTKEYSITER_NEXT(&iter);
         }
         md_watch_record(md,
                         MultiDict_EVENT_DELETED,
