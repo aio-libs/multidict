@@ -1005,7 +1005,7 @@ md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_add(MultiDictObject* md, PyObject* key, PyObject* value)
 {
     PyObject* identity;
@@ -1249,7 +1249,7 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return ret;
 }
 
-COLD static int
+static int
 _md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                        removed_pairs_t* removed)
 {
@@ -1416,9 +1416,7 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
     return result;
 }
 
-/* Only a reader racing a writer gets here, so it stays out of line and
-   leaves the inlining budget to the lock-free loops. */
-NOINLINE static int
+static int
 _md_contains_retry_locked(MultiDictObject* md, PyObject* identity,
                           Py_hash_t hash)
 {
@@ -1462,7 +1460,7 @@ _md_contains_owned(MultiDictObject* md, PyObject* key)
     return result;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_contains(MultiDictObject* md, PyObject* key)
 {
     if (!PyUnicode_Check(key)) {
@@ -1575,8 +1573,7 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
     return result;
 }
 
-/* See _md_contains_retry_locked(). */
-NOINLINE static int
+static int
 _md_get_one_retry_locked(MultiDictObject* md, PyObject* identity,
                          Py_hash_t hash, PyObject** ret)
 {
@@ -1628,7 +1625,7 @@ _md_get_one_owned(MultiDictObject* md, PyObject* key)
     return ret;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     PyObject* identity = md_borrow_identity(md, key);
@@ -1647,7 +1644,7 @@ md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 }
 
 static int
-md_to_dict(MultiDictObject* md, PyObject** ret)
+_md_to_dict_locked(MultiDictObject* md, PyObject** ret)
 {
     bool ci = md->is_ci;
     PyObject* dict = PyDict_New();
@@ -1747,8 +1744,19 @@ fail:
     return -1;
 }
 
+static int
+md_to_dict(MultiDictObject* md, PyObject** ret)
+{
+    int tmp;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    tmp = _md_to_dict_locked(md, ret);
+    ASSERT_CONSISTENT(md);
+    Py_END_CRITICAL_SECTION();
+    return tmp;
+}
+
 // Caller holds md's critical section
-ALWAYS_INLINE static inline int
+static int
 _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                        PyObject* key, PyObject* value, PyObject** result)
 {
@@ -1787,7 +1795,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return 0;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
                PyObject** result)
 {
@@ -1858,7 +1866,7 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return 0;
 }
 
-COLD static int
+static int
 _md_pop_one_locked_watched(MultiDictObject* md, PyObject* identity,
                            Py_hash_t hash, PyObject** ret)
 {
@@ -1918,7 +1926,7 @@ _md_values_to_list(reflist_t* values, bool failed, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
-ALWAYS_INLINE static inline int
+static int
 md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     *ret = NULL;
@@ -2037,8 +2045,8 @@ _md_last_live(uint8_t kind, entry_t* entries, Py_ssize_t* ppos)
     return entry;
 }
 
-NOINLINE static PyObject*
-md_pop_item(MultiDictObject* md)
+static PyObject*
+_md_pop_item_locked(MultiDictObject* md)
 {
     bool ci = md->is_ci;
     if (md->used == 0) {
@@ -2107,6 +2115,19 @@ md_pop_item(MultiDictObject* md)
     }
     PyTuple_SET_ITEM(ret, 0, key);
     PyTuple_SET_ITEM(ret, 1, value);
+    return ret;
+}
+
+static PyObject*
+md_pop_item(MultiDictObject* md)
+{
+    PyObject* ret;
+    bool flush;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = _md_pop_item_locked(md);
+    flush = md_watch_pending(md);
+    Py_END_CRITICAL_SECTION();
+    md_watch_flush_if(md, flush);
     return ret;
 }
 
@@ -2441,8 +2462,8 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
     return ret;
 }
 
-NOINLINE static int
-md_eq_to_mapping(MultiDictObject* md, PyObject* other)
+static int
+_md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
 {
     Py_ssize_t other_len;
 
@@ -2510,8 +2531,19 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
     return 1;
 }
 
-NOINLINE static PyObject*
-md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
+static int
+md_eq_to_mapping(MultiDictObject* md, PyObject* other)
+{
+    int ret;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = _md_eq_to_mapping_locked(md, other);
+    Py_END_CRITICAL_SECTION();
+    return ret;
+}
+
+static PyObject*
+_md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
+                bool show_values)
 {
     int reprenter = Py_ReprEnter(obj);
     if (reprenter != 0) {
@@ -2643,11 +2675,22 @@ fail:
     return NULL;
 }
 
+static PyObject*
+md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
+{
+    PyObject* ret;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = _md_repr_locked(md, obj, show_keys, show_values);
+    Py_END_CRITICAL_SECTION();
+    return ret;
+}
+
 /***********************************************************************/
 
-ALWAYS_INLINE static inline int
-_md_traverse_entries(uint8_t kind, htkeys_t* keys, visitproc visit, void* arg)
+static int
+_md_traverse_entries(htkeys_t* keys, visitproc visit, void* arg)
 {
+    uint8_t kind = keys->kind;
     entry_t* entry = htkeys_entries(keys);
     entry_t* end = entry_at(kind, entry, keys->nentries);
     for (; entry < end; entry = entry_next(kind, entry)) {
@@ -2678,9 +2721,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
     for (htkeys_t* t = (htkeys_t*)atomic_load_ptr((void* const*)&md->retired);
          t != NULL;
          t = t->retired_next) {
-        int ret = kind_is_compact(t->kind)
-                      ? _md_traverse_entries(KIND_COMPACT, t, visit, arg)
-                      : _md_traverse_entries(KIND_ANYSTR, t, visit, arg);
+        int ret = _md_traverse_entries(t, visit, arg);
         if (ret != 0) {
             return ret;
         }
@@ -2691,10 +2732,7 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
         return 0;
     }
 
-    if (kind_is_compact(md->keys->kind)) {
-        return _md_traverse_entries(KIND_COMPACT, md->keys, visit, arg);
-    }
-    return _md_traverse_entries(KIND_ANYSTR, md->keys, visit, arg);
+    return _md_traverse_entries(md->keys, visit, arg);
 }
 
 // Out of line: inlined into dealloc and both clear() entry points, it costs

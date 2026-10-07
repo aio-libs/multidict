@@ -1,0 +1,3 @@
+Folded the ``_iter_scan()`` helper of the C extension into
+``_iter_next_entry()``, and dropped the forced inlining from the latter
+-- by :user:`asvetlov`.

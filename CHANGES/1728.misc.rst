@@ -1,0 +1,4 @@
+Moved the critical sections of the C extension's ``to_dict()``,
+``__repr__()``, mapping comparison and ``popitem()`` helpers into the
+helpers themselves, so their callers no longer take the lock -- by
+:user:`asvetlov`.
