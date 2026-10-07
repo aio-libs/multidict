@@ -98,6 +98,11 @@ atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
                                                         int##bits##_t value) \
     {                                                                        \
         __atomic_store_n(obj, value, __ATOMIC_RELAXED);                      \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_release(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        __atomic_store_n(obj, value, __ATOMIC_RELEASE);                      \
     }
 
 _MULTIDICT_DEFINE_INDEX_ATOMICS(8)
@@ -222,6 +227,12 @@ atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
     {                                                                        \
         atomic_store_explicit(                                               \
             (_Atomic(int##bits##_t)*)obj, value, memory_order_relaxed);      \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_release(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        atomic_store_explicit(                                               \
+            (_Atomic(int##bits##_t)*)obj, value, memory_order_release);      \
     }
 
 _MULTIDICT_DEFINE_INDEX_ATOMICS(8)
@@ -394,6 +405,12 @@ atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
 #endif
 }
 
+#if defined(_M_ARM64)
+#define _MULTIDICT_RELEASE_FENCE() __dmb(_ARM64_BARRIER_ISH)
+#else
+#define _MULTIDICT_RELEASE_FENCE() _ReadWriteBarrier()
+#endif
+
 #define _MULTIDICT_DEFINE_INDEX_ATOMICS(bits)                                \
     static inline int##bits##_t atomic_load_int##bits##_relaxed(             \
         const int##bits##_t* obj)                                            \
@@ -403,6 +420,12 @@ atomic_store_uint64_relaxed(uint64_t* obj, uint64_t value)
     static inline void atomic_store_int##bits##_relaxed(int##bits##_t* obj,  \
                                                         int##bits##_t value) \
     {                                                                        \
+        *(volatile int##bits##_t*)obj = value;                               \
+    }                                                                        \
+    static inline void atomic_store_int##bits##_release(int##bits##_t* obj,  \
+                                                        int##bits##_t value) \
+    {                                                                        \
+        _MULTIDICT_RELEASE_FENCE();                                          \
         *(volatile int##bits##_t*)obj = value;                               \
     }
 

@@ -361,6 +361,12 @@ htkeys_entries_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src,
     {                                                                         \
         atomic_store_int##bits##_relaxed(                                     \
             &((int##bits##_t*)(keys->indices))[i], (int##bits##_t)ix);        \
+    }                                                                         \
+    static inline void htkeys_publish_index##bits(                            \
+        htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
+    {                                                                         \
+        atomic_store_int##bits##_release(                                     \
+            &((int##bits##_t*)(keys->indices))[i], (int##bits##_t)ix);        \
     }
 #else
 #define _MD_DEFINE_INDEX_ACCESSORS(bits)                                      \
@@ -373,6 +379,11 @@ htkeys_entries_copy(const htkeys_t* keys, entry_t* dst, const entry_t* src,
         htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
     {                                                                         \
         ((int##bits##_t*)(keys->indices))[i] = (int##bits##_t)ix;             \
+    }                                                                         \
+    static inline void htkeys_publish_index##bits(                            \
+        htkeys_t* keys, Py_ssize_t i, Py_ssize_t ix)                          \
+    {                                                                         \
+        htkeys_store_index##bits(keys, i, ix);                                \
     }
 #endif
 
@@ -396,8 +407,8 @@ _MD_DEFINE_INDEX_ACCESSORS(64)
          ? (Py_ssize_t)htkeys_load_index64((keys), (i))                      \
          : (Py_ssize_t)htkeys_load_index32((keys), (i)))
 
-/* write to indices. */
-#define HTKEYS_SET_INDEX(keys, i, ix)               \
+/* write to indices; op is store or publish. */
+#define _HTKEYS_WRITE_INDEX(keys, i, ix, op)        \
     do {                                            \
         htkeys_t* _keys = (keys);                   \
         Py_ssize_t _i = (i);                        \
@@ -406,17 +417,25 @@ _MD_DEFINE_INDEX_ACCESSORS(64)
         assert(_ix >= DKIX_DUMMY);                  \
         if (_log2size < 8) {                        \
             assert(_ix <= 0x7f);                    \
-            htkeys_store_index8(_keys, _i, _ix);    \
+            htkeys_##op##_index8(_keys, _i, _ix);   \
         } else if (_log2size < 16) {                \
             assert(_ix <= 0x7fff);                  \
-            htkeys_store_index16(_keys, _i, _ix);   \
+            htkeys_##op##_index16(_keys, _i, _ix);  \
         } else if (_HTKEYS_IS_INDEX64(_log2size)) { \
-            htkeys_store_index64(_keys, _i, _ix);   \
+            htkeys_##op##_index64(_keys, _i, _ix);  \
         } else {                                    \
             assert(_ix <= 0x7fffffff);              \
-            htkeys_store_index32(_keys, _i, _ix);   \
+            htkeys_##op##_index32(_keys, _i, _ix);  \
         }                                           \
     } while (0)
+
+#define HTKEYS_SET_INDEX(keys, i, ix) _HTKEYS_WRITE_INDEX(keys, i, ix, store)
+
+/* For a slot pointing at an entry the caller has just filled with plain
+   stores: on FT the release orders the fill before the index, the only
+   way a lock-free walk reaches the entry. */
+#define HTKEYS_PUBLISH_INDEX(keys, i, ix) \
+    _HTKEYS_WRITE_INDEX(keys, i, ix, publish)
 
 /* USABLE_FRACTION is the maximum dictionary load.
  * Increasing this ratio makes dictionaries more dense resulting in more

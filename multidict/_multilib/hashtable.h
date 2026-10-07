@@ -802,14 +802,11 @@ md_len(MultiDictObject* md)
     return load_used(md);
 }
 
-/* Fill the entry past every live one, which the caller has indexed.
-   identity is published last: it's the field a lock-free reader checks
-   first (before ever touching hash/key/value), treating NULL as "not
-   populated yet, keep probing". See the comment above load_identity().
-   The GIL build has no reader to order against, so it just follows
-   along. The entry is carved out of the zeroed tail, so value is still
-   NULL and publish_value() is enough; nothing here has an old reference
-   to drop. */
+/* Fill the entry past every live one, which the caller indexes only
+   afterwards with HTKEYS_PUBLISH_INDEX(). Until then no lock-free reader
+   can reach the entry, so plain stores are enough; mark_shared() still
+   lets a reader take a reference once it does. The entry is carved out
+   of the zeroed tail, so nothing here has an old reference to drop. */
 static inline void
 _md_fill_anystr_entry(htkeys_t* keys, Py_hash_t hash, PyObject* identity,
                       PyObject* key, PyObject* value)
@@ -818,10 +815,12 @@ _md_fill_anystr_entry(htkeys_t* keys, Py_hash_t hash, PyObject* identity,
         entry_at(KIND_ANYSTR, htkeys_entries(keys), keys->nentries);
     assert(as_anystr(entry)->identity == NULL && entry->key == NULL &&
            entry->value == NULL);
+    mark_shared(identity);
+    mark_shared(value);
     entry->key = key;
-    store_hash(KIND_ANYSTR, entry, hash);
-    publish_value(entry, value);
-    publish_identity(KIND_ANYSTR, entry, identity);
+    entry->value = value;
+    as_anystr(entry)->hash = hash;
+    as_anystr(entry)->identity = identity;
 }
 
 /* For both compact kinds: the key's reference keeps the identity alive,
@@ -833,8 +832,10 @@ _md_fill_str_entry(htkeys_t* keys, PyObject* identity, PyObject* key,
     entry_t* entry =
         entry_at(KIND_COMPACT, htkeys_entries(keys), keys->nentries);
     assert(entry->key == NULL && entry->value == NULL);
-    publish_value(entry, value);
-    publish_identity(KIND_COMPACT, entry, key);
+    mark_shared(key);
+    mark_shared(value);
+    entry->key = key;
+    entry->value = value;
     Py_DECREF(identity);
 }
 
@@ -896,13 +897,13 @@ _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             }
             keys = md->keys;
         } else {
-            HTKEYS_SET_INDEX(keys, hashpos, keys->nentries);
             _md_fill_str_entry(keys, identity, key, value);
+            HTKEYS_PUBLISH_INDEX(keys, hashpos, keys->nentries);
             return keys;
         }
     }
-    HTKEYS_SET_INDEX(keys, hashpos, keys->nentries);
     _md_fill_anystr_entry(keys, hash, identity, key, value);
+    HTKEYS_PUBLISH_INDEX(keys, hashpos, keys->nentries);
     return keys;
 }
 
