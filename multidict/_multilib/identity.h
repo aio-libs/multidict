@@ -259,47 +259,58 @@ md_borrow_identity(MultiDictObject* md, PyObject* key)
 }
 
 #ifndef Py_GIL_DISABLED
-/* The set for `str`: Fibonacci hashing of the address, whose low bits are
-   alignment and whose high ones are shared by every object. */
+/* The set for a string hash: Fibonacci hashing, since a str hash may have
+   its entropy anywhere. */
 static inline istr_cache_entry_t*
-_istr_cache_set(mod_state* state, PyObject* str)
+_istr_cache_set(mod_state* state, Py_hash_t hash)
 {
-    uint64_t p = (uint64_t)(uintptr_t)str >> 4;
-    size_t set = (size_t)((p * UINT64_C(0x9E3779B97F4A7C15)) >>
+    size_t set = (size_t)(((uint64_t)hash * UINT64_C(0x9E3779B97F4A7C15)) >>
                           (64 - ISTR_CACHE_LOG2_SETS));
     return &state->istr_cache[set * ISTR_CACHE_WAYS];
 }
 #endif
 
-/* The istr cached for the exact str `key`, borrowed, or NULL. */
+/* The istr cached for a str equal to the exact str `key`, borrowed, or
+   NULL. Hashing an exact str cannot fail. */
 static inline PyObject*
 _istr_cache_get(mod_state* state, PyObject* key)
 {
 #ifdef Py_GIL_DISABLED
     return NULL;
 #else
-    istr_cache_entry_t* set = _istr_cache_set(state, key);
-    if (set[0].str == key) {
-        return set[0].istr;
+    Py_hash_t hash = unicode_hash(key);
+    istr_cache_entry_t* set = _istr_cache_set(state, hash);
+    for (int way = 0; way < ISTR_CACHE_WAYS; way++) {
+        if (set[way].str == key) {
+            return set[way].istr;
+        }
     }
-    return set[1].str == key ? set[1].istr : NULL;
+    for (int way = 0; way < ISTR_CACHE_WAYS; way++) {
+        if (set[way].str != NULL && set[way].hash == hash &&
+            str_cmp(set[way].str, key)) {
+            return set[way].istr;
+        }
+    }
+    return NULL;
 #endif
 }
 
 /* Builds and caches the istr for the exact str `key`, in the set's first
    way; the pair there moves to the second, whose pair is released. That
-   runs no Python code: they are an exact str and an istr. */
+   runs no Python code: an exact str and an istr. */
 static PyObject*
 _istr_cache_fill(mod_state* state, PyObject* key, PyObject* identity)
 {
     PyObject* ret = istr_create(state, key, identity);
 #ifndef Py_GIL_DISABLED
     if (ret != NULL) {
-        istr_cache_entry_t* set = _istr_cache_set(state, key);
+        Py_hash_t hash = unicode_hash(key);
+        istr_cache_entry_t* set = _istr_cache_set(state, hash);
         istr_cache_entry_t evicted = set[1];
         set[1] = set[0];
         set[0].str = Py_NewRef(key);
         set[0].istr = Py_NewRef(ret);
+        set[0].hash = hash;
         Py_XDECREF(evicted.str);
         Py_XDECREF(evicted.istr);
     }
@@ -352,8 +363,10 @@ md_calc_identity_key(MultiDictObject* md, PyObject* key, PyObject** pkey,
             *pkey = Py_NewRef(key);
             return Py_NewRef(((istrobject*)key)->canonical);
         }
-        // a cached istr also saves computing the identity
-        PyObject* cached = _istr_cache_get(md->state, key);
+        /* A cached istr also saves computing the identity. Exact str
+           only: a subclass may override lower(). */
+        PyObject* cached =
+            PyUnicode_CheckExact(key) ? _istr_cache_get(md->state, key) : NULL;
         if (cached != NULL) {
             *pkey = Py_NewRef(cached);
             return Py_NewRef(((istrobject*)cached)->canonical);

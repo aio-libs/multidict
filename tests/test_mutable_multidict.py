@@ -7,6 +7,7 @@ import sysconfig
 import weakref
 from collections import deque
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
 
 import pytest
@@ -1254,7 +1255,7 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
         else:
             failed = False
         del md, bound, call
-        # the istr cache keeps the str keys it has seen
+        # the istr cache keeps the str keys it was filled from
         c_ext._freelist_clear()
         assert [sys.getrefcount(obj) for obj in keys + values] == baseline
         # Not an if/elif: whether a call ever succeeds before the first
@@ -1693,11 +1694,11 @@ def test_ci_setitem_keeps_a_key_spelled_the_same(
 
 
 @pytest.mark.c_extension
+@pytest.mark.parametrize("write", _CI_WRITES)
 @pytest.mark.skipif(
     bool(sysconfig.get_config_var("Py_GIL_DISABLED")),
     reason="the istr cache is GIL-only",
 )
-@pytest.mark.parametrize("write", _CI_WRITES)
 def test_ci_reuses_the_istr_of_a_str_key(write: str) -> None:
     """Storing the same str object again takes the istr cached for it."""
     c_ext = pytest.importorskip("multidict._multidict")
@@ -1711,6 +1712,21 @@ def test_ci_reuses_the_istr_of_a_str_key(write: str) -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.skipif(
+    bool(sysconfig.get_config_var("Py_GIL_DISABLED")),
+    reason="the istr cache is GIL-only",
+)
+def test_ci_reuses_the_istr_of_an_equal_str() -> None:
+    """An equal str built afresh, as a parser builds header names, takes
+    the istr cached for the first one."""
+    c_ext = pytest.importorskip("multidict._multidict")
+    first = c_ext.CIMultiDict([("".join(["Content-", "Type"]), 1)])
+    second = c_ext.CIMultiDict([("".join(["Content", "-Type"]), 2)])
+    assert next(iter(second)) is next(iter(first))
+    assert second["content-type"] == 2
+
+
+@pytest.mark.c_extension
 def test_ci_istr_cache_eviction() -> None:
     """More str keys than the cache holds still store and look up right."""
     c_ext = pytest.importorskip("multidict._multidict")
@@ -1721,3 +1737,40 @@ def test_ci_istr_cache_eviction() -> None:
         assert all(type(k) is c_ext.istr for k in d)
         assert [d[k.upper()] for k in keys] == list(range(500))
         c_ext._freelist_clear()
+
+
+def test_ci_str_subclass_key_after_an_equal_str(
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+) -> None:
+    """A str subclass key keeps its own lower(), even right after an equal
+    exact str was stored."""
+
+    class CustomLower(str):
+        def lower(self) -> str:
+            return "custom"
+
+    case_insensitive_multidict_class([("Foo", 1)])
+    d = case_insensitive_multidict_class([(CustomLower("Foo"), 2)])
+    assert d["custom"] == 2
+    assert "foo" not in d
+
+
+@pytest.mark.c_extension
+def test_ci_istr_cache_shared_by_threads() -> None:
+    """Threads storing the same and equal str keys at once, more of them
+    than the cache holds, all get istrs that spell their keys."""
+    c_ext = pytest.importorskip("multidict._multidict")
+    keys = [f"Key-{i}" for i in range(400)]
+
+    def build(seed: int) -> None:
+        for n in range(20):
+            # every other round, equal strs built afresh
+            names = keys if (seed + n) % 2 else ["".join(list(k)) for k in keys]
+            d = c_ext.CIMultiDict((k, i) for i, k in enumerate(names))
+            assert [str(k) for k in d] == keys
+            assert d["KEY-7"] == 7
+
+    with ThreadPoolExecutor(8) as pool:
+        futures = [pool.submit(build, seed) for seed in range(8)]
+        for f in futures:
+            f.result(timeout=120)

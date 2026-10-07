@@ -3622,8 +3622,8 @@ def test_update_from_list_mutated_by_key_lookup() -> None:
 @pytest.mark.c_extension
 def test_ascii_identity_refcounts_are_balanced() -> None:
     """An already-lowercase ASCII key is the canonical form of the istr the
-    entry stores, and the str the istr cache maps to it, so it picks up
-    references and must give them all back."""
+    entry stores, and the istr cache keeps both, so it picks up references
+    and must give them all back."""
     key = "".join(("content", "-type"))
     before = sys.getrefcount(key)
 
