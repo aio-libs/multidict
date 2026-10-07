@@ -331,12 +331,7 @@ NOINLINE static PyObject*
 multidict_to_dict(MultiDictObject* self)
 {
     PyObject* result = NULL;
-    int tmp;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    tmp = md_to_dict(self, &result);
-    ASSERT_CONSISTENT(self);
-    Py_END_CRITICAL_SECTION();
-    if (tmp < 0) {
+    if (md_to_dict(self, &result) < 0) {
         return NULL;
     }
     return result;
@@ -485,11 +480,7 @@ ret:
 static PyObject*
 multidict_tp_repr(MultiDictObject* self)
 {
-    PyObject* ret;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    ret = md_repr(self, (PyObject*)self, true, true);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_repr(self, (PyObject*)self, true, true);
 }
 
 static Py_ssize_t
@@ -562,7 +553,6 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
         cmp = md_eq(self, other_md);
         Py_END_CRITICAL_SECTION2();
     } else {
-        Py_BEGIN_CRITICAL_SECTION(self);
         bool fits = false;
         fits = PyDict_Check(other);
         if (!fits) {
@@ -575,8 +565,7 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
                 PyErr_Clear();
             } else {
                 // propagate MemoryError / KeyboardInterrupt / etc.
-                cmp = -1;
-                goto done;
+                return NULL;
             }
         }
         if (fits) {
@@ -584,8 +573,6 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
         } else {
             cmp = 0;  // e.g., multidict is not equal to a list
         }
-    done:;
-        Py_END_CRITICAL_SECTION();
     }
     if (cmp < 0) {
         return NULL;
@@ -1026,14 +1013,7 @@ multidict_popall(MultiDictObject* self, PyObject* const* args,
 static PyObject*
 multidict_popitem(MultiDictObject* self)
 {
-    PyObject* ret;
-    bool flush;
-    Py_BEGIN_CRITICAL_SECTION(self);
-    ret = md_pop_item(self);
-    flush = md_watch_pending(self);
-    Py_END_CRITICAL_SECTION();
-    md_watch_flush_if(self, flush);
-    return ret;
+    return md_pop_item(self);
 }
 
 static PyObject*
@@ -1515,11 +1495,7 @@ multidict_proxy_tp_clear(MultiDictProxyObject* self)
 static PyObject*
 multidict_proxy_tp_repr(MultiDictProxyObject* self)
 {
-    PyObject* ret;
-    Py_BEGIN_CRITICAL_SECTION(self->md);
-    ret = md_repr(self->md, (PyObject*)self, true, true);
-    Py_END_CRITICAL_SECTION();
-    return ret;
+    return md_repr(self->md, (PyObject*)self, true, true);
 }
 
 static PyMethodDef multidict_proxy_methods[] = {

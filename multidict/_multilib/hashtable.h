@@ -1647,7 +1647,7 @@ md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 }
 
 static int
-md_to_dict(MultiDictObject* md, PyObject** ret)
+_md_to_dict_locked(MultiDictObject* md, PyObject** ret)
 {
     bool ci = md->is_ci;
     PyObject* dict = PyDict_New();
@@ -1745,6 +1745,17 @@ fail:
     Py_XDECREF(lst);
     Py_DECREF(dict);
     return -1;
+}
+
+static int
+md_to_dict(MultiDictObject* md, PyObject** ret)
+{
+    int tmp;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    tmp = _md_to_dict_locked(md, ret);
+    ASSERT_CONSISTENT(md);
+    Py_END_CRITICAL_SECTION();
+    return tmp;
 }
 
 // Caller holds md's critical section
@@ -2038,7 +2049,7 @@ _md_last_live(uint8_t kind, entry_t* entries, Py_ssize_t* ppos)
 }
 
 NOINLINE static PyObject*
-md_pop_item(MultiDictObject* md)
+_md_pop_item_locked(MultiDictObject* md)
 {
     bool ci = md->is_ci;
     if (md->used == 0) {
@@ -2107,6 +2118,19 @@ md_pop_item(MultiDictObject* md)
     }
     PyTuple_SET_ITEM(ret, 0, key);
     PyTuple_SET_ITEM(ret, 1, value);
+    return ret;
+}
+
+static PyObject*
+md_pop_item(MultiDictObject* md)
+{
+    PyObject* ret;
+    bool flush;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = _md_pop_item_locked(md);
+    flush = md_watch_pending(md);
+    Py_END_CRITICAL_SECTION();
+    md_watch_flush_if(md, flush);
     return ret;
 }
 
@@ -2442,7 +2466,7 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
 }
 
 NOINLINE static int
-md_eq_to_mapping(MultiDictObject* md, PyObject* other)
+_md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
 {
     Py_ssize_t other_len;
 
@@ -2510,8 +2534,19 @@ md_eq_to_mapping(MultiDictObject* md, PyObject* other)
     return 1;
 }
 
+static int
+md_eq_to_mapping(MultiDictObject* md, PyObject* other)
+{
+    int ret;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = _md_eq_to_mapping_locked(md, other);
+    Py_END_CRITICAL_SECTION();
+    return ret;
+}
+
 NOINLINE static PyObject*
-md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
+_md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
+                bool show_values)
 {
     int reprenter = Py_ReprEnter(obj);
     if (reprenter != 0) {
@@ -2641,6 +2676,16 @@ fail:
     PyUnicodeWriter_Discard(writer);
     Py_ReprLeave(obj);
     return NULL;
+}
+
+static PyObject*
+md_repr(MultiDictObject* md, PyObject* obj, bool show_keys, bool show_values)
+{
+    PyObject* ret;
+    Py_BEGIN_CRITICAL_SECTION(md);
+    ret = _md_repr_locked(md, obj, show_keys, show_values);
+    Py_END_CRITICAL_SECTION();
+    return ret;
 }
 
 /***********************************************************************/
