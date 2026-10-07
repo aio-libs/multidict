@@ -200,11 +200,11 @@ RULES = (
         "out of line once the constructor was pinned, cls() +5.5% on FT",
     ),
     Rule(
-        "md_calc_key",
+        "md_calc_identity_key",
         "*",
         BOTH,
-        "an out-of-line copy adds a call per key that popitem() and "
-        "update() from another class materialize",
+        "an out-of-line copy adds a call per stored key, which every "
+        "insert builds there",
     ),
     Rule(
         "md_borrow_identity",

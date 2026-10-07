@@ -119,69 +119,6 @@ done:
     return ret;
 }
 
-static PyObject*
-_dict_first_key(PyObject* arg)
-{
-    Py_ssize_t pos = 0;
-    PyObject* key = NULL;
-    PyObject* value;
-    PyDict_Next(arg, &pos, &key, &value);
-    return key;
-}
-
-/* The first item's key of a list or tuple of pairs, or NULL. */
-static PyObject*
-_seq_first_key(PyObject* first)
-{
-    if (PyTuple_CheckExact(first)) {
-        return PyTuple_GET_SIZE(first) == 2 ? PyTuple_GET_ITEM(first, 0)
-                                            : NULL;
-    }
-    if (PyList_CheckExact(first)) {
-        return PyList_GET_SIZE(first) == 2 ? PyList_GET_ITEM(first, 0) : NULL;
-    }
-    return NULL;
-}
-
-/* The kind a table pre-sized for `arg` and `nkwargs` keyword arguments
-   starts with: from the first key it will get, borrowed without running
-   any code. */
-static uint8_t
-_multidict_init_kind(mod_state* state, bool is_ci, PyObject* arg,
-                     MultiDictObject* other, Py_ssize_t nkwargs)
-{
-    if (!is_ci) {
-        return KIND_COMPACT;
-    }
-    if (nkwargs > 0) {
-        return KIND_ANYSTR;  // keyword names are str
-    }
-    PyObject* key = NULL;
-    if (other != NULL) {
-        entry_t* entries = htkeys_entries(other->keys);
-        for (Py_ssize_t i = 0; i < other->keys->nentries; i++) {
-            entry_t* entry = entry_at(other->keys->kind, entries, i);
-            if (!entry_is_hole(entry)) {
-                key = entry->key;
-                break;
-            }
-        }
-    } else if (arg == NULL) {
-        return KIND_COMPACT;
-    } else if (PyList_CheckExact(arg)) {
-        if (PyList_GET_SIZE(arg) > 0) {
-            key = _seq_first_key(PyList_GET_ITEM(arg, 0));
-        }
-    } else if (PyTuple_CheckExact(arg)) {
-        if (PyTuple_GET_SIZE(arg) > 0) {
-            key = _seq_first_key(PyTuple_GET_ITEM(arg, 0));
-        }
-    } else if (PyDict_CheckExact(arg)) {
-        key = _dict_first_key(arg);
-    }
-    return md_ci_kind_for_first_key(state, key);
-}
-
 static int
 _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                            PyObject* arg, PyObject* const* args,
@@ -205,11 +142,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 Py_END_CRITICAL_SECTION();
             } else {
                 Py_BEGIN_CRITICAL_SECTION(other);
-                ret = md_init(
-                    self,
-                    is_ci,
-                    md_len(other) + nkwargs,
-                    _multidict_init_kind(state, is_ci, arg, other, nkwargs));
+                ret = md_init(self, is_ci, md_len(other) + nkwargs);
                 if (ret == 0) {
                     ret = md_update_from_ht(self, other, Extend, NULL, NULL);
                     ASSERT_CONSISTENT(self);
@@ -218,11 +151,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
             }
         } else if (PyDict_CheckExact(arg)) {
             Py_BEGIN_CRITICAL_SECTION(arg);
-            ret = md_init(
-                self,
-                is_ci,
-                PyDict_GET_SIZE(arg) + nkwargs,
-                _multidict_init_kind(state, is_ci, arg, NULL, nkwargs));
+            ret = md_init(self, is_ci, PyDict_GET_SIZE(arg) + nkwargs);
             if (ret == 0) {
                 ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
                 ASSERT_CONSISTENT(self);
@@ -238,22 +167,14 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 extra = 0;
             }
 
-            ret = md_init(
-                self,
-                is_ci,
-                nkwargs + extra,
-                _multidict_init_kind(state, is_ci, arg, NULL, nkwargs));
+            ret = md_init(self, is_ci, nkwargs + extra);
             if (ret == 0) {
                 ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
                 ASSERT_CONSISTENT(self);
             }
         }
     } else {
-        // Keyword names are str: only those keep a CIMultiDict compact.
-        ret = md_init(self,
-                      is_ci,
-                      nkwargs,
-                      is_ci && nkwargs > 0 ? KIND_ANYSTR : KIND_COMPACT);
+        ret = md_init(self, is_ci, nkwargs);
     }
 
     if (ret == 0) {
@@ -645,27 +566,19 @@ _multidict_bulk_locked(MultiDictObject* self, UpdateOp op, bool reinit,
     int ret;
     bool from_self = source == BULK_FROM_SEQ && other != NULL;
     if (op != Extend) {
-        ret = md_reserve_batch(self, size, kwds != NULL);
+        ret = md_reserve(self, size);
         update_marks_init(marks, self);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
     } else {
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
         if (!reinit) {
-            ret = md_reserve_batch(self, size, kwds != NULL);
+            ret = md_reserve(self, size);
         } else if (from_self) {
             // re-init from itself: md_init() would drop the source
             assert(kwds != NULL);
-            ret = md_reserve_batch(self, PyDict_GET_SIZE(kwds), true);
+            ret = md_reserve(self, PyDict_GET_SIZE(kwds));
         } else {
-            ret = md_init(
-                self,
-                is_ci,
-                size,
-                _multidict_init_kind(self->state,
-                                     is_ci,
-                                     arg,
-                                     source == BULK_FROM_HT ? other : NULL,
-                                     kwds == NULL ? 0 : 1));
+            ret = md_init(self, is_ci, size);
         }
     }
     if (ret == 0) {
@@ -840,7 +753,7 @@ multidict_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     if (self == NULL) {
         return NULL;
     }
-    if (md_init(self, false, 0, KIND_COMPACT) < 0) {
+    if (md_init(self, false, 0) < 0) {
         Py_DECREF(self);
         return NULL;
     }

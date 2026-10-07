@@ -277,7 +277,7 @@ static PyType_Spec istr_spec = {
 };
 
 static PyObject*
-IStr_New(mod_state* state, PyObject* str, PyObject* canonical)
+istr_create(mod_state* state, PyObject* str, PyObject* canonical)
 {
     PyObject* res;
     if (PyUnicode_CheckExact(str)) {

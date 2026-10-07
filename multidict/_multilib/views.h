@@ -599,10 +599,7 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
         }
         identity = Py_NewRef(entry_identity(kind, ci, entry));
         value = Py_NewRef(entry->value);
-        key = md_ensure_key(md, entry);  // last entry access
-        if (key == NULL) {
-            goto fail;
-        }
+        key = Py_NewRef(entry->key);
         PyObject* tpl = PyTuple_Pack(2, identity, value);
         if (tpl == NULL) {
             goto fail;
@@ -1028,10 +1025,7 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
             continue;
         }
         identity = Py_NewRef(entry_identity(kind, ci, entry));
-        key = md_ensure_key(md, entry);  // last entry access
-        if (key == NULL) {
-            goto fail;
-        }
+        key = Py_NewRef(entry->key);
         int tmp = PySet_Contains(tmp_set, identity);
         if (tmp < 0) {
             goto fail;

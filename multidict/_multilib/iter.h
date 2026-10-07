@@ -157,14 +157,11 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
     Py_BEGIN_CRITICAL_SECTION(self->md);
     res = _iter_next_entry(self, &entry);
     if (res > 0) {
-        // not Py_NewRef(): see md_ensure_key()
+        // not Py_NewRef(): GCC leaves it out of line on FT builds
         value = entry->value;
         Py_INCREF(value);
-        key = md_ensure_key(self->md, entry);  // last entry access
-        if (key == NULL) {
-            Py_DECREF(value);
-            res = -1;
-        }
+        key = entry->key;
+        Py_INCREF(key);
     }
     Py_END_CRITICAL_SECTION();
     if (res < 0) {
@@ -246,10 +243,9 @@ multidict_keys_iter_tp_iternext(MultidictIter* self)
     Py_BEGIN_CRITICAL_SECTION(self->md);
     res = _iter_next_entry(self, &entry);
     if (res > 0) {
-        key = md_ensure_key(self->md, entry);  // last entry access
-        if (key == NULL) {
-            res = -1;
-        }
+        // not Py_NewRef(): GCC leaves it out of line on FT builds
+        key = entry->key;
+        Py_INCREF(key);
     }
     Py_END_CRITICAL_SECTION();
     if (res < 0) {

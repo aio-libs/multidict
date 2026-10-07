@@ -119,12 +119,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
         PyObject* value = Py_NewRef(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
-            key = md_ensure_key(md, entry);  // last entry access
-            if (key == NULL) {
-                Py_DECREF(value);
-                Py_DECREF(identity);
-                return -1;
-            }
+            key = Py_NewRef(entry->key);
         }
         count++;
         int ret = visitor(user_data, identity, hash, key, value);
@@ -135,7 +130,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
             assert(PyErr_Occurred());
             return -1;
         }
-        /* md_ensure_key() and the visitor can both run Python code. */
+        // the visitor can run Python code
         if (md_check_version(md, version) < 0) {
             return -1;
         }
@@ -203,12 +198,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         PyObject* value = Py_NewRef(entry->value);
         PyObject* key = NULL;
         if (with_keys) {
-            key = md_ensure_key(md, entry);  // last entry access
-            if (key == NULL) {
-                Py_DECREF(value);
-                count = -1;
-                break;
-            }
+            key = Py_NewRef(entry->key);
         }
         count++;
         int ret = visitor(user_data, identity, hash, key, value);
@@ -219,7 +209,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             count = -1;
             break;
         }
-        /* md_ensure_key() and the visitor can both run Python code. */
+        // the visitor can run Python code
         if (md_check_version(md, version) < 0) {
             count = -1;
             break;

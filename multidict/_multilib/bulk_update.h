@@ -264,8 +264,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     Py_ssize_t pos;
     Py_hash_t hash;
     PyObject* identity = NULL;
-    PyObject* canonical = NULL;
     PyObject* key = NULL;
+    PyObject* stored = NULL;
     PyObject* value = NULL;
 
     if (other->used == 0) {
@@ -300,31 +300,19 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
            other and free entry, so hold our own refs. */
         key = Py_NewRef(entry->key);
         value = Py_NewRef(entry->value);
-        /* The key leaves as other's istr, whose canonical must be
-           other's identity: md's is the unlowered key. */
-        canonical =
-            Py_XNewRef(other_ci ? entry_identity(kind, true, entry) : NULL);
-        identity = md_calc_identity(md, key);
-        if (identity == NULL) {
+        bool fits;
+        if (md_calc_identity_hash_key(
+                md, key, &identity, &hash, &stored, &fits) < 0) {
             goto fail;
         }
-        hash = unicode_hash(identity);
-        if (hash == -1) {
+        if (_md_update_item(
+                md, op, hash, identity, stored, value, defer, marks) < 0) {
             goto fail;
         }
-        /* materialize key */
-        Py_SETREF(key, md_calc_key(other, key, canonical));
-        Py_CLEAR(canonical);
-        if (key == NULL) {
-            goto fail;
-        }
-        if (_md_update_item(md, op, hash, identity, key, value, defer, marks) <
-            0) {
-            goto fail;
-        }
-        Py_DECREF(identity);
-        Py_DECREF(key);
-        Py_DECREF(value);
+        Py_CLEAR(identity);
+        Py_CLEAR(stored);
+        Py_CLEAR(key);
+        Py_CLEAR(value);
         /* Both lower() and a finalizer run by the decrefs above can
            replace other's table. */
         entries = htkeys_entries(other->keys);
@@ -335,8 +323,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     }
     return 0;
 fail:
-    Py_CLEAR(canonical);
     Py_CLEAR(identity);
+    Py_CLEAR(stored);
     Py_CLEAR(key);
     Py_CLEAR(value);
     return -1;
@@ -386,6 +374,7 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
     PyObject* key = NULL;
+    PyObject* stored = NULL;
     PyObject* value = NULL;
     bool owned = false;
 
@@ -403,43 +392,43 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
             Py_INCREF(value);
         }
         bool fits;
-        identity = md_calc_identity_fits(md, key, &fits);
-        if (identity == NULL) {
-            goto fail;
-        }
-        Py_hash_t hash = unicode_hash(identity);
-        if (hash == -1) {
+        Py_hash_t hash;
+        if (md_calc_identity_hash_key(
+                md, key, &identity, &hash, &stored, &fits) < 0) {
             goto fail;
         }
         switch (op) {
             case Update:
-                if (_md_update(
-                        md, hash, identity, key, value, defer, marks, fits) <
-                    0) {
+                if (_md_update(md,
+                               hash,
+                               identity,
+                               stored,
+                               value,
+                               defer,
+                               marks,
+                               fits) < 0) {
                     goto fail;
                 }
                 break;
             case Extend:
-                if (!owned) {
-                    Py_INCREF(key);
-                    Py_INCREF(value);
-                    owned = true;
-                }
                 if (md_add_with_hash_steal_refs(
-                        md, hash, identity, key, value, fits) < 0) {
+                        md, hash, identity, stored, Py_NewRef(value), fits) <
+                    0) {
+                    Py_DECREF(value);
                     goto fail;
                 }
                 identity = NULL;
-                owned = false;
+                stored = NULL;
                 break;
             case Merge:
-                if (_md_merge(md, hash, identity, key, value, marks, fits) <
+                if (_md_merge(md, hash, identity, stored, value, marks, fits) <
                     0) {
                     goto fail;
                 }
                 break;
         }
-        Py_XDECREF(identity);
+        Py_CLEAR(identity);
+        Py_CLEAR(stored);
         if (owned) {
             Py_DECREF(key);
             Py_DECREF(value);
@@ -448,6 +437,7 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
     return 0;
 fail:
     Py_CLEAR(identity);
+    Py_CLEAR(stored);
     if (owned) {
         Py_DECREF(key);
         Py_DECREF(value);
@@ -466,17 +456,11 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
     for (Py_ssize_t i = 0; i < nkwargs; i++) {
         PyObject* key = PyTuple_GET_ITEM(kwnames, i);  // borrowed
         assert(PyUnicode_Check(key));
-        Py_INCREF(key);
+        PyObject* identity;
+        Py_hash_t hash;
         bool fits;
-        PyObject* identity = md_calc_identity_fits(md, key, &fits);
-        if (identity == NULL) {
-            Py_DECREF(key);
-            return -1;
-        }
-        Py_hash_t hash = unicode_hash(identity);
-        if (hash == -1) {
-            Py_DECREF(identity);
-            Py_DECREF(key);
+        if (md_calc_identity_hash_key(md, key, &identity, &hash, &key, &fits) <
+            0) {
             return -1;
         }
         PyObject* value = args[nargs + i];  // borrowed
@@ -666,16 +650,14 @@ _md_seq_next(MultiDictObject* md, seq_iter_t* it, Py_ssize_t i,
         return -1;
     }
 
-    out->identity = md_calc_identity_fits(md, out->key, &out->fits);
-    if (out->identity == NULL) {
+    PyObject* stored;
+    if (md_calc_identity_hash_key(
+            md, out->key, &out->identity, &out->hash, &stored, &out->fits) <
+        0) {
         goto fail;
     }
-
-    out->hash = unicode_hash(out->identity);
-    if (out->hash == -1) {
-        Py_DECREF(out->identity);
-        goto fail;
-    }
+    // releasing the parsed key can run code, as its lower() could
+    Py_SETREF(out->key, stored);
     return 1;
 fail:
     Py_DECREF(item);

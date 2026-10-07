@@ -216,15 +216,6 @@ _key_to_identity_ci(mod_state* state, PyObject* key)
     return _str_to_identity_ci(state, key);
 }
 
-static inline PyObject*
-_arg_to_key_cs(mod_state* state, PyObject* key, PyObject* identity)
-{
-    if (UNLIKELY(!PyUnicode_Check(key))) {
-        return _err_key_type_cs();
-    }
-    return Py_NewRef(key);
-}
-
 /* A str subclass is copied to an exact str first: istr(), like str(), would
    call its __str__, which may spell a different string than the key. */
 NOINLINE static PyObject*
@@ -234,24 +225,9 @@ _subclass_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
     if (str == NULL) {
         return NULL;
     }
-    PyObject* ret = IStr_New(state, str, identity);
+    PyObject* ret = istr_create(state, str, identity);
     Py_DECREF(str);
     return ret;
-}
-
-static inline PyObject*
-_arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
-{
-    if (IStr_CheckExact(state, key)) {
-        return Py_NewRef(key);
-    }
-    if (PyUnicode_CheckExact(key)) {
-        return IStr_New(state, key, identity);
-    }
-    if (UNLIKELY(!PyUnicode_Check(key))) {
-        return _err_key_type_ci();
-    }
-    return _subclass_to_key_ci(state, key, identity);
 }
 
 ALWAYS_INLINE static inline PyObject*
@@ -282,21 +258,46 @@ md_borrow_identity(MultiDictObject* md, PyObject* key)
     return key;
 }
 
-/* md_calc_identity() that also says whether key fits a compact table (see
-   md_key_fits()): a CIMultiDict's istr test has just run here, so the
-   insert need not repeat it. */
+/* The key a CIMultiDict stores for a key that is not an exact istr. */
+static inline PyObject*
+str_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
+{
+    if (PyUnicode_CheckExact(key)) {
+        return istr_create(state, key, identity);
+    }
+    return _subclass_to_key_ci(state, key, identity);
+}
+
+/* md_calc_identity() for a key about to be stored: *pkey gets the key md
+   stores, a new reference, and *pfits whether it fits a compact table
+   (see md_key_fits()). A CIMultiDict stores only exact istr, which always
+   fit. */
 ALWAYS_INLINE static inline PyObject*
-md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits)
+md_calc_identity_key(MultiDictObject* md, PyObject* key, PyObject** pkey,
+                     bool* pfits)
 {
     if (md->is_ci) {
+        *pfits = true;
         if (IStr_CheckExact(md->state, key)) {
-            *pfits = true;
+            *pkey = Py_NewRef(key);
             return Py_NewRef(((istrobject*)key)->canonical);
         }
-        *pfits = false;
-        return _str_to_identity_ci(md->state, key);
+        PyObject* identity = _str_to_identity_ci(md->state, key);
+        if (identity == NULL) {
+            return NULL;
+        }
+        *pkey = str_to_key_ci(md->state, key, identity);
+        if (*pkey == NULL) {
+            Py_DECREF(identity);
+            return NULL;
+        }
+        return identity;
     }
     PyObject* identity = _key_to_identity_cs(md->state, key);
+    if (identity == NULL) {
+        return NULL;
+    }
+    *pkey = Py_NewRef(key);
     *pfits = identity == key;
     return identity;
 }
@@ -322,71 +323,26 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
     return 0;
 }
 
-/* md_calc_identity_hash() plus md_calc_identity_fits()'s *pfits. */
+/* md_calc_identity_hash() plus md_calc_identity_key()'s *pkey and
+ *pfits. */
 ALWAYS_INLINE static inline int
-md_calc_identity_hash_fits(MultiDictObject* md, PyObject* key,
-                           PyObject** pidentity, Py_hash_t* phash, bool* pfits)
+md_calc_identity_hash_key(MultiDictObject* md, PyObject* key,
+                          PyObject** pidentity, Py_hash_t* phash,
+                          PyObject** pkey, bool* pfits)
 {
-    PyObject* identity = md_calc_identity_fits(md, key, pfits);
+    PyObject* identity = md_calc_identity_key(md, key, pkey, pfits);
     if (identity == NULL) {
         return -1;
     }
     Py_hash_t hash = unicode_hash(identity);
     if (hash == -1) {
         Py_DECREF(identity);
+        Py_DECREF(*pkey);
         return -1;
     }
     *pidentity = identity;
     *phash = hash;
     return 0;
-}
-
-ALWAYS_INLINE static inline PyObject*
-md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
-{
-    if (md->is_ci) return _arg_to_key_ci(md->state, key, identity);
-    return _arg_to_key_cs(md->state, key, identity);
-}
-
-/* Building the istr allocates, which can run a collection whose finalizers
-   mutate md and free entry, so hold our own refs. Only an exact str is
-   replaced by its istr: releasing one runs no code, where a subclass's
-   __del__ could. Out of line, it makes key iteration of every multidict
-   10-15% cheaper. */
-NOINLINE static PyObject*
-_md_cache_key_ci(MultiDictObject* md, entry_t* entry)
-{
-    assert(md->is_ci);
-    uint64_t version = md->version;
-    PyObject* old_key = Py_NewRef(entry->key);
-    PyObject* identity =
-        Py_NewRef(entry_identity(md->keys->kind, true, entry));
-    PyObject* key = _arg_to_key_ci(md->state, old_key, identity);
-    if (key != NULL && md->version == version &&
-        PyUnicode_CheckExact(old_key)) {
-        entry->key = Py_NewRef(key);
-        Py_DECREF(old_key);
-    }
-    /* These can run __del__ or suspend the critical section, so the caller
-       must not touch entry after this returns. */
-    Py_DECREF(identity);
-    Py_DECREF(old_key);
-    return key;
-}
-
-/* A stored key was checked to be a str when it went in, so only a
-   CIMultiDict's plain str needs work. */
-static inline PyObject*
-md_ensure_key(MultiDictObject* md, entry_t* entry)
-{
-    assert(!entry_is_hole(entry));
-    PyObject* key = entry->key;
-    if (!md->is_ci || IStr_CheckExact(md->state, key)) {
-        // not Py_NewRef(): GCC leaves it out of line on FT builds
-        Py_INCREF(key);
-        return key;
-    }
-    return _md_cache_key_ci(md, entry);
 }
 
 #ifdef __cplusplus

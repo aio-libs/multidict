@@ -5,6 +5,7 @@ import string
 import sys
 import weakref
 from collections import deque
+from collections.abc import Callable
 from types import ModuleType
 
 import pytest
@@ -846,30 +847,6 @@ class TestCIMutableMultiDict:
         with pytest.raises(KeyError):
             d.popitem()
 
-    @pytest.mark.skipif(
-        sys.implementation.name == "pypy",
-        reason="__del__ does not run promptly on PyPy",
-    )
-    def test_popitem_add_from_key_finalizer(
-        self,
-        case_insensitive_multidict_class: type[CIMultiDict[str]],
-    ) -> None:
-        # The popped entry's key is released inside popitem() (the result
-        # carries a fresh istr), so its __del__ mutates the mapping while
-        # popitem() is still tidying up after itself.
-        d = case_insensitive_multidict_class()
-
-        class Key(str):
-            def __del__(self) -> None:
-                d.add("added", "late")
-
-        d.add("a", "1")
-        d.add(Key("b"), "2")
-        assert d.popitem() == ("b", "2")
-        assert list(d.items()) == [("a", "1"), ("added", "late")]
-        assert d.popitem() == ("added", "late")
-        assert list(d.items()) == [("a", "1")]
-
     def test_pop(
         self,
         case_insensitive_multidict_class: type[CIMultiDict[str]],
@@ -1569,6 +1546,9 @@ def test_remove_all_keeps_what_a_finalizer_adds(
 ) -> None:
     # The pairs a removed key or value adds back from its __del__ are new,
     # not among the ones the call was asked to remove.
+    if side == "key" and any_multidict_class.__name__ == "CIMultiDict":
+        pytest.skip("a CIMultiDict stores an istr copy, never the key itself")
+
     class Key(str):
         def __del__(self) -> None:
             d.add("a", "late")
@@ -1660,3 +1640,50 @@ def test_key_only_keyword_binds_like_positional(
     want = _outcome(expected, method_name, key)
     assert _outcome(actual, method_name, key=key) == want
     assert list(actual.items()) == list(expected.items())
+
+
+_CI_WRITES: dict[str, Callable[[CIMultiDict[int], type[MultiDict[int]]], object]] = {
+    "add": lambda d, cs: d.add("Key", 1),
+    "setitem": lambda d, cs: d.__setitem__("Key", 1),
+    "setitem_existing": lambda d, cs: (d.add("KEY", 0), d.__setitem__("Key", 1)),
+    "setdefault": lambda d, cs: d.setdefault("Key", 1),
+    "extend_seq": lambda d, cs: d.extend([("Key", 1)]),
+    "extend_dict": lambda d, cs: d.extend({"Key": 1}),
+    "extend_kwargs": lambda d, cs: d.extend(Key=1),
+    "extend_md": lambda d, cs: d.extend(cs([("Key", 1)])),
+    "update_existing": lambda d, cs: (d.add("KEY", 0), d.update([("Key", 1)])),
+    "merge": lambda d, cs: d.merge([("Key", 1)]),
+    "init": lambda d, cs: type(d).__init__(d, [("Key", 1)]),
+}
+
+
+@pytest.mark.parametrize("write", _CI_WRITES)
+def test_ci_stores_istr_keys(
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    case_sensitive_multidict_class: type[MultiDict[int]],
+    case_insensitive_str_class: type[str],
+    write: str,
+) -> None:
+    """Every write stores the key as an istr, which every read hands back."""
+    d = case_insensitive_multidict_class()
+    _CI_WRITES[write](d, case_sensitive_multidict_class)
+    (key,) = d.keys()
+    assert type(key) is case_insensitive_str_class
+    assert key == "Key"
+    assert next(iter(d)) is key
+    assert next(iter(d.items()))[0] is key
+
+
+def test_ci_setitem_keeps_a_key_spelled_the_same(
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    case_insensitive_str_class: type[str],
+) -> None:
+    d = case_insensitive_multidict_class([("Key", 1)])
+    (key,) = d.keys()
+    d["Key"] = 2
+    assert next(iter(d)) is key
+    d["KEY"] = 3
+    (new_key,) = d.keys()
+    assert type(new_key) is case_insensitive_str_class
+    assert new_key == "KEY"
+    assert list(d.items()) == [("KEY", 3)]

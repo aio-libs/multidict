@@ -58,7 +58,15 @@ class istr(str):
     # See also: https://github.com/aio-libs/multidict/pull/1386
 
     __is_istr__ = True
-    __istr_identity__: str | None = None
+    __istr_identity__: str
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
+        self = str.__new__(cls, *args, **kwargs)
+        self.__istr_identity__ = self.lower()
+        return self
+
+    def __reduce__(self) -> tuple[type[Self], tuple[str]]:
+        return (self.__class__, (str.__str__(self),))
 
 
 _V = TypeVar("_V")
@@ -271,7 +279,7 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 e = next(entries)
             except StopIteration:
                 return
-            yield self._md._key(e.key), e.value
+            yield e.key, e.value
 
     @reprlib.recursive_repr()
     @_locked_md
@@ -513,7 +521,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
                 e = next(entries)
             except StopIteration:
                 return
-            yield self._md._key(e.key)
+            yield e.key
 
     @reprlib.recursive_repr()
     @_locked_md
@@ -646,7 +654,7 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 class _CSMixin:
     _ci: ClassVar[bool] = False
 
-    def _key(self, key: str) -> str:
+    def _key(self, key: str, identity: str) -> str:
         return key
 
     def _identity(self, key: str) -> str:
@@ -660,22 +668,20 @@ class _CSMixin:
 class _CIMixin:
     _ci: ClassVar[bool] = True
 
-    def _key(self, key: str) -> str:
-        if type(key) is str:
-            return istr(key)
+    def _key(self, key: str, identity: str) -> str:
         if type(key) is istr:
             return key
-        # istr(key) would call a subclass's own __str__, which may spell a
-        # different string than the key
-        return istr(str.__str__(key))
+        if type(key) is not str:
+            # istr(key) would call a subclass's own __str__, which may spell
+            # a different string than the key
+            key = str.__str__(key)
+        ret = str.__new__(istr, key)
+        ret.__istr_identity__ = identity
+        return ret
 
     def _identity(self, key: str) -> str:
         if isinstance(key, istr):
-            ret = key.__istr_identity__
-            if ret is None:
-                ret = key.lower()
-                key.__istr_identity__ = ret
-            return ret
+            return key.__istr_identity__
         if isinstance(key, str):
             ret = key.lower()
             if type(ret) is not str:
@@ -1058,12 +1064,12 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             values = seen.get(e.identity)
             if values is None:
                 values = seen[e.identity] = [e.value]
-                result[self._key(e.key)] = values
+                result[e.key] = values
             else:
                 values.append(e.value)
             if self._version != version:
-                # Building and hashing a key both run a str subclass's own
-                # code, which must not mutate what is being converted.
+                # Hashing a key runs a str subclass's own code, which must
+                # not mutate what is being converted.
                 raise RuntimeError("Dictionary changed during iteration")
         return result
 
@@ -1071,7 +1077,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def add(self, key: str, value: _V) -> None:
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
-        self._add_with_hash(_Entry(hash_, identity, key, value))
+        self._add_with_hash(_Entry(hash_, identity, self._key(key, identity), value))
         self._incr_version()
 
     def copy(self) -> Self:
@@ -1097,6 +1103,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         kwargs: Mapping[str, _V],
     ) -> Iterator[int | _Entry[_V]]:
         identity_func = self._identity
+        key_func = self._key
         if isinstance(arg, MultiDictProxy):
             if arg._md is self:
                 arg = [(e.key, e.value) for e in self._keys.iter_entries()]
@@ -1108,14 +1115,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             if isinstance(arg, MultiDict):
                 yield len(arg) + len(kwargs)
                 if self._ci is not arg._ci:
-                    key_func = arg._key
                     for e in arg._keys.iter_entries():
-                        key = key_func(e.key)
-                        if key is not e.key:
-                            # a fresh istr keeps the source's identity, as a
-                            # str subclass may override lower()
-                            key.__istr_identity__ = e.identity  # type: ignore[attr-defined]
-                        identity = identity_func(key)
+                        identity = identity_func(e.key)
+                        key = key_func(e.key, identity)
                         yield _Entry(hash(identity) & MAXSIZE, identity, key, e.value)
                 else:
                     for e in arg._keys.iter_entries():
@@ -1123,6 +1125,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 if kwargs:
                     for key, value in kwargs.items():
                         identity = identity_func(key)
+                        key = key_func(key, identity)
                         yield _Entry(hash(identity) & MAXSIZE, identity, key, value)
             else:
                 if hasattr(arg, "keys"):
@@ -1156,11 +1159,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                             f"value could not be fetched"
                         ) from exc
                     identity = identity_func(key)
+                    key = key_func(key, identity)
                     yield _Entry(hash(identity) & MAXSIZE, identity, key, value)
         else:
             yield len(kwargs)
             for key, value in kwargs.items():
                 identity = identity_func(key)
+                key = key_func(key, identity)
                 yield _Entry(hash(identity) & MAXSIZE, identity, key, value)
 
     def _extend_items(self, items: Iterable[_Entry[_V]]) -> None:
@@ -1189,7 +1194,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             if e.identity == identity:  # pragma: no branch
                 if not found:
                     removed.append((e.key, e.value))
-                    e.key = key
+                    # a CIMultiDict keeps a stored key spelled the same
+                    if not self._ci or not str.__eq__(e.key, key):
+                        e.key = self._key(key, identity)
                     e.value = value
                     e.hash = hash_ | HASH_MARK
                     found = True
@@ -1199,7 +1206,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     removed.append(e)
 
         if not found:
-            self._add_with_hash(_Entry(hash_, identity, key, value))
+            self._add_with_hash(
+                _Entry(hash_, identity, self._key(key, identity), value)
+            )
         else:
             self._keys.restore_hash(hash_)
 
@@ -1320,8 +1329,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self._used -= 1
         self._incr_version()
 
-        # istr() runs a str subclass's __str__, which may mutate self.
-        return self._key(entry.key), entry.value
+        return entry.key, entry.value
 
     @_locked_pair_always
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
