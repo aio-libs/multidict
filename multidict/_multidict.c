@@ -452,7 +452,7 @@ multidict_values(MultiDictObject* self)
     return multidict_valuesview_new(self);
 }
 
-static PyObject*
+COLD static PyObject*
 multidict_reduce(MultiDictObject* self)
 {
     PyObject *items = NULL, *items_list = NULL, *args = NULL, *result = NULL;
@@ -1273,22 +1273,42 @@ static PyType_Spec cimultidict_spec = {
 
 /******************** MultiDictProxy ********************/
 
+COLD static int
+_err_proxy_target(bool is_ci, PyObject* arg)
+{
+    PyErr_Format(PyExc_TypeError,
+                 "ctor requires %s or %s instance, not <class '%s'>",
+                 is_ci ? "CIMultiDict" : "MultiDict",
+                 is_ci ? "CIMultiDictProxy" : "MultiDictProxy",
+                 Py_TYPE(arg)->tp_name);
+    return -1;
+}
+
 static int
 _multidict_proxy_set_target(mod_state* state, MultiDictProxyObject* self,
                             bool is_ci, PyObject* arg)
 {
     MultiDictObject* md = multidict_proxy_target(state, arg, is_ci);
     if (md == NULL) {
-        PyErr_Format(PyExc_TypeError,
-                     "ctor requires %s or %s instance, not <class '%s'>",
-                     is_ci ? "CIMultiDict" : "MultiDict",
-                     is_ci ? "CIMultiDictProxy" : "MultiDictProxy",
-                     Py_TYPE(arg)->tp_name);
-        return -1;
+        return _err_proxy_target(is_ci, arg);
     }
     Py_INCREF(md);
     Py_XSETREF(self->md, md);
     return 0;
+}
+
+COLD static int
+_err_proxy_init_args(bool missing_arg)
+{
+    if (missing_arg) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "__init__() missing 1 required positional argument: 'arg'");
+    } else {
+        PyErr_Format(PyExc_TypeError,
+                     "__init__() doesn't accept keyword arguments");
+    }
+    return -1;
 }
 
 /* Tail-called by both proxy classes' __init__(). */
@@ -1302,16 +1322,8 @@ _multidict_proxy_init(MultiDictProxyObject* self, PyObject* args,
     if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
         return -1;
     }
-    if (arg == NULL) {
-        PyErr_Format(
-            PyExc_TypeError,
-            "__init__() missing 1 required positional argument: 'arg'");
-        return -1;
-    }
-    if (kwds != NULL) {
-        PyErr_Format(PyExc_TypeError,
-                     "__init__() doesn't accept keyword arguments");
-        return -1;
+    if (arg == NULL || kwds != NULL) {
+        return _err_proxy_init_args(arg == NULL);
     }
     return _multidict_proxy_set_target(state, self, is_ci, arg);
 }
@@ -1709,7 +1721,7 @@ close_pools(mod_state* state)
    all, which hides it from a test that injects an allocation failure to
    check the recovery path. Draining first puts that path back in reach.
    For tests only, like getversion(). */
-static PyObject*
+COLD static PyObject*
 freelist_clear(PyObject* mod, PyObject* Py_UNUSED(ignored))
 {
     drain_pools(get_mod_state(mod));
@@ -1779,7 +1791,7 @@ module_clear(PyObject* mod)
     return 0;
 }
 
-static void
+COLD static void
 module_free(void* mod)
 {
     (void)module_clear((PyObject*)mod);

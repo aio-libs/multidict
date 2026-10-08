@@ -449,6 +449,27 @@ def _make_clear(cls: type, size: int) -> Case:
     return Case(setup, run, noop)
 
 
+def _make_iter_keys_dup(cls: type, size: int) -> Case:
+    keys = _keys(size // 2)
+    target = cls((k, k) for k in keys + keys)
+    sink = None
+
+    def setup() -> Any:
+        return target
+
+    def run(d: Any) -> None:
+        nonlocal sink
+        for k in d:
+            sink = k
+
+    def noop(d: Any) -> None:
+        nonlocal sink
+        for k in keys:
+            sink = k
+
+    return Case(setup, run, noop)
+
+
 def _make_iter_keys(cls: type, size: int) -> Case:
     keys = _keys(size)
     target = cls((k, k) for k in keys)
@@ -667,6 +688,14 @@ SHARED_OPERATIONS = (
 #: never rendered into the comparison tables.
 MULTIDICT_OPERATIONS = (
     Operation("add", "``d.add(key, v)``", Kind.MULTIDICT, _make_add, SIZE, (2, 6)),
+    Operation(
+        "iter_keys_dup",
+        "``for k in d``, every key twice",
+        Kind.MULTIDICT,
+        _make_iter_keys_dup,
+        SIZE // 2,
+        (2, 6),
+    ),
     Operation(
         "getall", "``d.getall(key)``", Kind.MULTIDICT, _make_getall, SIZE, (2, 6)
     ),

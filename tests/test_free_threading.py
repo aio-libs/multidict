@@ -59,6 +59,10 @@ def test_race_condition_iterator_vs_mutation(
             try:
                 list(target.items())
                 list(target.keys())
+                # keys skip later duplicates, probing the table per entry
+                list(reversed(target.keys()))  # type: ignore[call-overload]
+                len(target.keys())
+                repr(target.keys())
                 list(target.values())
                 # getall()/get() walk the table mid-mutation, which is
                 # what makes an unlocked consistency check observable.

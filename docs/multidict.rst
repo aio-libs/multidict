@@ -42,6 +42,9 @@ MultiDict
 
       Return the number of items in multidict *d*.
 
+      Every item counts, so when a key repeats this is larger than
+      ``len(d.keys())``.
+
    .. method:: d[key]
 
       Return the **first** item of *d* with key *key*.
@@ -70,8 +73,12 @@ MultiDict
 
    .. method:: iter(d)
 
-      Return an iterator over the keys of the dictionary.
+      Return an iterator over the keys of the dictionary, each key once.
       This is a shortcut for ``iter(d.keys())``.
+
+      .. versionchanged:: 7.1
+
+         A repeated key is yielded once, not once per item.
 
    .. method:: add(key, value)
 
@@ -108,15 +115,12 @@ MultiDict
          {'a': 1, 'b': 2}
 
       For :class:`CIMultiDict` the values are grouped by key identity, so
-      each key appears once under its first-seen spelling. That is what a
-      ``{k: d.getall(k) for k in d}`` comprehension gets wrong: it emits a
-      separate entry for every spelling, each holding the full list::
+      each key appears once under its first-seen spelling, the same keys
+      that :meth:`keys` yields::
 
          >>> ci = CIMultiDict([('A', '1'), ('a', '2')])
          >>> ci.to_dict()
          {'A': ['1', '2']}
-         >>> {k: ci.getall(k) for k in ci}
-         {'A': ['1', '2'], 'a': ['1', '2']}
 
       .. versionadded:: 6.9
 
@@ -150,7 +154,22 @@ MultiDict
 
       Return a new view of the dictionary's keys.
 
-      View contains all keys, possibly with duplicates.
+      View contains each key once, as spelled in its first item, so it
+      agrees with ``d[key]``, which also returns the first item. Use
+      :meth:`items` to see every item::
+
+         >>> d = CIMultiDict([('X-Foo', '1'), ('x-foo', '2'), ('B', '3')])
+         >>> list(d.keys())
+         ['X-Foo', 'B']
+         >>> len(d.keys()), len(d)
+         (2, 3)
+         >>> list(d.items())
+         [('X-Foo', '1'), ('x-foo', '2'), ('B', '3')]
+
+      .. versionchanged:: 7.1
+
+         The view used to contain every item's key, so a repeated key
+         showed up once per item, under each item's spelling.
 
    .. method:: items()
 
@@ -334,6 +353,9 @@ MultiDictProxy
 
       Return number of items in multidict *d*.
 
+      Every item counts, so when a key repeats this is larger than
+      ``len(d.keys())``.
+
    .. method:: d[key]
 
       Return the **first** item of *d* with key *key*.
@@ -350,8 +372,12 @@ MultiDictProxy
 
    .. method:: iter(d)
 
-      Return an iterator over the keys of the dictionary.
+      Return an iterator over the keys of the dictionary, each key once.
       This is a shortcut for ``iter(d.keys())``.
+
+      .. versionchanged:: 7.1
+
+         A repeated key is yielded once, not once per item.
 
    .. method:: copy()
 
@@ -394,7 +420,22 @@ MultiDictProxy
 
       Return a new view of the dictionary's keys.
 
-      View contains all keys, possibly with duplicates.
+      View contains each key once, as spelled in its first item, so it
+      agrees with ``d[key]``, which also returns the first item. Use
+      :meth:`items` to see every item::
+
+         >>> d = CIMultiDict([('X-Foo', '1'), ('x-foo', '2'), ('B', '3')])
+         >>> list(d.keys())
+         ['X-Foo', 'B']
+         >>> len(d.keys()), len(d)
+         (2, 3)
+         >>> list(d.items())
+         [('X-Foo', '1'), ('x-foo', '2'), ('B', '3')]
+
+      .. versionchanged:: 7.1
+
+         The view used to contain every item's key, so a repeated key
+         showed up once per item, under each item's spelling.
 
    .. method:: items()
 

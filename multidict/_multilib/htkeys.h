@@ -137,6 +137,11 @@ typedef struct _htkeys {
     /* An htkeys_kind_t, fixed for the table's lifetime. */
     uint8_t kind;
 
+    /* Set once an insert finds an equal hash on its probe chain, so two
+       entries may share an identity; until then keys() need not look
+       for an earlier entry of each key. Never cleared, only carried. */
+    uint8_t maybe_dups;
+
     /* Number of usable entries in dk_entries. */
     Py_ssize_t usable;
 
@@ -524,6 +529,7 @@ static const htkeys_t empty_htkeys = {
     /* Any kind would do: with no entries there is no layout to read, and
        a table replacing this one takes md_next_kind(), which ignores it. */
     .kind = KIND_ANYSTR,
+    .maybe_dups = 0,
     .usable = 0, /* immutable */
     .nentries = 0,
     .resume_slots = NULL,
@@ -677,6 +683,7 @@ htkeys_new_unfilled(pool_t* pools, uint8_t log2_size, uint8_t kind)
     keys->log2_size = log2_size;
     keys->log2_index_bytes = log2_bytes;
     keys->kind = kind;
+    keys->maybe_dups = 0;
     keys->resume_slots = NULL;
     keys->nentries = 0;
     keys->usable = USABLE_FRACTION((Py_ssize_t)((size_t)1 << log2_size));
@@ -888,6 +895,61 @@ htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
 }
 
 #undef _HT_FIND_EMPTY_SLOT
+
+/* The hash of the live entry at index `ix`, in a table of either kind. */
+static inline Py_hash_t
+htkeys_entry_hash(htkeys_t* keys, bool ci, Py_ssize_t ix)
+{
+    if (kind_is_compact(keys->kind)) {
+        entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys) + ix;
+        return ci ? compact_entry_hash_ci(entry)
+                  : compact_entry_hash_cs(entry);
+    }
+    return HTKEYS_ANYSTR_ENTRIES(keys)[ix].hash;
+}
+
+// The probe of htkeys_find_empty_slot_noting_dups() past a taken slot.
+static Py_ssize_t
+_htkeys_find_empty_slot_noting_dups(htkeys_t* keys, Py_hash_t hash, bool ci)
+{
+    const size_t mask = (size_t)_htkeys_mask(keys);
+    size_t i = (size_t)hash & mask;
+    size_t perturb = (size_t)hash;
+    Py_ssize_t ix;
+    while ((ix = HTKEYS_GET_INDEX(keys, (Py_ssize_t)i)) != DKIX_EMPTY) {
+        if (ix >= 0 && htkeys_entry_hash(keys, ci, ix) == hash) {
+            break;
+        }
+        perturb >>= HT_PERTURB_SHIFT;
+        i = (i * 5 + perturb + 1) & mask;
+        if (UNLIKELY(perturb == 0)) {
+            break;
+        }
+    }
+    if (ix == DKIX_EMPTY) {
+        return (Py_ssize_t)i;
+    }
+    keys->maybe_dups = 1;
+    return htkeys_find_empty_slot(keys, hash);
+}
+
+/* htkeys_find_empty_slot() that also sets maybe_dups on passing an entry
+   of the same hash, which is where an earlier entry of the new key's
+   identity would be. A probe long enough for the resume slots to take
+   over sets it without looking. Most inserts find their first slot empty,
+   so only a collision walks the chain. */
+static inline Py_ssize_t
+htkeys_find_empty_slot_noting_dups(htkeys_t* keys, Py_hash_t hash, bool ci)
+{
+    if (keys->maybe_dups) {
+        return htkeys_find_empty_slot(keys, hash);
+    }
+    size_t i = (size_t)hash & (size_t)_htkeys_mask(keys);
+    if (HTKEYS_GET_INDEX(keys, (Py_ssize_t)i) == DKIX_EMPTY) {
+        return (Py_ssize_t)i;
+    }
+    return _htkeys_find_empty_slot_noting_dups(keys, hash, ci);
+}
 
 /* Iterator over slots/indexes for given hash.
    N.B. The iterator MIGHT return the same slot

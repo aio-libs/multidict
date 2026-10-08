@@ -79,6 +79,26 @@ _md_check_consistency(const MultiDictObject* md)
                 &entries[i].base, entries[i].identity, entries[i].hash);
         }
     }
+
+    // keys() skips its duplicate probes while maybe_dups is clear
+    for (Py_ssize_t i = 0; !keys->maybe_dups && i < nentries; i++) {
+        bool hole =
+            kind_is_compact(keys->kind)
+                ? compact_entry_is_hole(HTKEYS_COMPACT_ENTRIES(keys) + i)
+                : anystr_entry_is_hole(HTKEYS_ANYSTR_ENTRIES(keys) + i);
+        if (hole) {
+            continue;
+        }
+        Py_hash_t hash = htkeys_entry_hash(keys, ci, i);
+        htkeysiter_t iter;
+        HTKEYSITER_INIT(&iter, keys, hash);
+        for (; iter.index != i; HTKEYSITER_NEXT(&iter)) {
+            CHECK(iter.index != DKIX_EMPTY);
+            if (iter.index >= 0) {
+                CHECK(htkeys_entry_hash(keys, ci, iter.index) != hash);
+            }
+        }
+    }
     return 1;
 
 #undef CHECK
