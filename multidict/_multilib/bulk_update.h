@@ -74,14 +74,21 @@ _md_update_matched(MultiDictObject* md, uint8_t kind, entry_t* entry,
     return push_ret;
 }
 
-/* _md_update()'s walk of the hash chain: 1 if the key was there, 0 if
-   not, 2 if not but this batch has added it already, -1 on error. One
-   loop per kind. */
-static inline int
-_md_update_replace(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-                   PyObject* key, PyObject* value, reflist_t* defer,
-                   update_marks_t* marks)
+/* Nothing here runs Python code or suspends the critical section: the
+ * replaced key and value go to `defer`. One loop per kind. */
+static int
+_md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
+           PyObject* key, PyObject* value, reflist_t* defer,
+           update_marks_t* marks, bool fits)
 {
+    assert(fits == md_key_fits(md, key, identity));
+    if (kind_is_compact(md->keys->kind) && UNLIKELY(!fits) &&
+        md_to_anystr(md) < 0) {
+        return -1;
+    }
+    if (update_marks_sync(marks, md) < 0) {
+        return -1;
+    }
     bool ci = md->is_ci;
     bool found = false;
     bool added = false;
@@ -171,37 +178,17 @@ _md_update_replace(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             }
         }
     }
-    return found ? 1 : added ? 2 : 0;
-}
-
-/* Nothing here runs Python code or suspends the critical section: the
- * replaced key and value go to `defer`. */
-static int
-_md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-           PyObject* key, PyObject* value, reflist_t* defer,
-           update_marks_t* marks, bool fits)
-{
-    assert(fits == md_key_fits(md, key, identity));
-    if (kind_is_compact(md->keys->kind) && UNLIKELY(!fits) &&
-        md_to_anystr(md) < 0) {
-        return -1;
+    if (found) {
+        return 0;
     }
-    if (update_marks_sync(marks, md) < 0) {
-        return -1;
-    }
-    int found =
-        _md_update_replace(md, hash, identity, key, value, defer, marks);
-    if (found == 0 || found == 2) {
-        return md_add_for_upd(md,
-                              hash,
-                              identity,
-                              key,
-                              value,
-                              marks,
-                              fits,
-                              found == 2 ? MD_SLOT_CHECK : MD_SLOT_FIND);
-    }
-    return found < 0 ? -1 : 0;
+    return md_add_for_upd(md,
+                          hash,
+                          identity,
+                          key,
+                          value,
+                          marks,
+                          fits,
+                          added ? MD_SLOT_CHECK : MD_SLOT_FIND);
 }
 
 /* Whether md has `identity` from before the batch: the insert's `slot`
