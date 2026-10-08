@@ -35,7 +35,8 @@ _multidict_view_alloc(MultiDictObject* md, PyTypeObject* tp)
     return mv;
 }
 
-static PyObject*
+/* Out of line: GCC otherwise copies it into all seven view getters. */
+NOINLINE static PyObject*
 _multidict_view_new(MultiDictObject* md, PyTypeObject* tp)
 {
     _Multidict_ViewObject* mv = _multidict_view_alloc(md, tp);
@@ -117,7 +118,11 @@ static PyObject*
 multidict_view_richcompare(_Multidict_ViewObject* self, PyObject* other,
                            int op)
 {
-    Py_ssize_t self_size = md_len(self->md);
+    // a keys view is shorter than its multidict when keys repeat
+    Py_ssize_t self_size = PyObject_Length((PyObject*)self);
+    if (self_size < 0) {
+        return NULL;
+    }
     Py_ssize_t size = PyObject_Length(other);
     if (size < 0) {
         if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
@@ -823,6 +828,12 @@ multidict_keysview_new(MultiDictObject* md)
     return _multidict_view_new(md, md->state->KeysViewType);
 }
 
+static Py_ssize_t
+multidict_keysview_sq_length(_Multidict_ViewObject* self)
+{
+    return md_keys_len(self->md);
+}
+
 static PyObject*
 multidict_keysview_tp_iter(_Multidict_ViewObject* self)
 {
@@ -958,6 +969,9 @@ _keysview_or_rht_visit(void* user_data, PyObject* identity, Py_hash_t hash,
     int tmp = PySet_Contains(state->seen, identity);
     if (tmp == 0) {
         tmp = PySet_Add(state->ret, key);
+    }
+    if (tmp == 0) {
+        tmp = PySet_Add(state->seen, identity);  // a later spelling skips
     }
     return tmp < 0 ? -1 : 1;
 }
@@ -1130,7 +1144,7 @@ static PyType_Slot multidict_keysview_slots[] = {
     {Py_nb_and, multidict_keysview_nb_and},
     {Py_nb_xor, multidict_keysview_xor},
     {Py_nb_or, multidict_keysview_nb_or},
-    {Py_sq_length, multidict_view_sq_length},
+    {Py_sq_length, multidict_keysview_sq_length},
     {Py_sq_contains, multidict_keysview_sq_contains},
     {Py_tp_getattro, PyObject_GenericGetAttr},
     {Py_tp_traverse, multidict_view_tp_traverse},

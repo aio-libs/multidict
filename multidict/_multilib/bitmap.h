@@ -153,16 +153,10 @@ _bitmap_dense_test(const bitmap_t* bm, Py_ssize_t i)
     return (bm->words[i >> BITMAP_WORD_SHIFT] >> (i & BITMAP_WORD_MASK)) & 1;
 }
 
-/* The word holding `i`, zeroed first if nothing has touched it yet, or
-   NULL with an exception set if heap storage couldn't be allocated. */
-static inline bitmap_word_t*
-_bitmap_word(bitmap_t* bm, Py_ssize_t i)
+/* _bitmap_word() for a bitmap that is not dense. */
+static bitmap_word_t*
+_bitmap_word_sparse(bitmap_t* bm, Py_ssize_t wi)
 {
-    assert(i >= 0 && i < bm->nwords * BITMAP_WORD_BITS);
-    Py_ssize_t wi = i >> BITMAP_WORD_SHIFT;
-    if (bm->dense) {
-        return bm->words + wi;
-    }
     if (UNLIKELY(bm->summary == NULL)) {
         if (_bitmap_start(bm) < 0) {
             return NULL;
@@ -178,6 +172,19 @@ _bitmap_word(bitmap_t* bm, Py_ssize_t i)
         bm->words[wi] = 0;
     }
     return bm->words + wi;
+}
+
+/* The word holding `i`, zeroed first if nothing has touched it yet, or
+   NULL with an exception set if heap storage couldn't be allocated. */
+static inline bitmap_word_t*
+_bitmap_word(bitmap_t* bm, Py_ssize_t i)
+{
+    assert(i >= 0 && i < bm->nwords * BITMAP_WORD_BITS);
+    Py_ssize_t wi = i >> BITMAP_WORD_SHIFT;
+    if (bm->dense) {
+        return bm->words + wi;
+    }
+    return _bitmap_word_sparse(bm, wi);
 }
 
 /* Moves `src` into `dst`, releasing what `dst` held. `src` is left

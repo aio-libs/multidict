@@ -18,7 +18,7 @@ extern "C" {
 #include "istr.h"
 #include "state.h"
 
-static PyObject*
+COLD static PyObject*
 _err_key_type_cs(void)
 {
     PyErr_SetString(PyExc_TypeError,
@@ -27,7 +27,7 @@ _err_key_type_cs(void)
     return NULL;
 }
 
-static PyObject*
+COLD static PyObject*
 _err_key_type_ci(void)
 {
     PyErr_SetString(PyExc_TypeError,

@@ -208,17 +208,23 @@ RULES = (
         "#1604: pinned after budget respend, popitem +1% on FT",
     ),
     Rule(
-        "_compact_entry_matches",
+        "_compact_entry_matches_cs",
         "*",
         (FT,),
         "#1653: out of line, MultiDict d[key] +6.9% and CIMultiDict "
         "key in d +6.5% on FT",
     ),
     Rule(
+        "_compact_entry_matches_ci",
+        "*",
+        (FT,),
+        "#1653: the CIMultiDict half of _compact_entry_matches_cs",
+    ),
+    Rule(
         "_full_entry_matches",
         "*",
         (FT,),
-        "#1653: pinned with _compact_entry_matches, its twin for the "
+        "#1653: pinned with _compact_entry_matches_cs, its twin for the "
         "full layout in the same lock-free probe loops",
     ),
     Rule(

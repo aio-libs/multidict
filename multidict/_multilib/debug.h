@@ -62,10 +62,14 @@ _md_check_consistency(const MultiDictObject* md)
             entry_t* entry = entries + i;
             if (compact_entry_is_hole(entry)) {
                 _md_check_entry(entry, NULL, 0);
+            } else if (ci) {
+                _md_check_entry(entry,
+                                compact_entry_identity_ci(entry),
+                                compact_entry_hash_ci(entry));
             } else {
                 _md_check_entry(entry,
-                                compact_entry_identity(ci, entry),
-                                compact_entry_hash(ci, entry));
+                                compact_entry_identity_cs(entry),
+                                compact_entry_hash_cs(entry));
             }
         }
     } else {
@@ -73,6 +77,26 @@ _md_check_consistency(const MultiDictObject* md)
         for (Py_ssize_t i = 0; i < calc_usable; i++) {
             _md_check_entry(
                 &entries[i].base, entries[i].identity, entries[i].hash);
+        }
+    }
+
+    // keys() skips its duplicate probes while maybe_dups is clear
+    for (Py_ssize_t i = 0; !keys->maybe_dups && i < nentries; i++) {
+        bool hole =
+            kind_is_compact(keys->kind)
+                ? compact_entry_is_hole(HTKEYS_COMPACT_ENTRIES(keys) + i)
+                : anystr_entry_is_hole(HTKEYS_ANYSTR_ENTRIES(keys) + i);
+        if (hole) {
+            continue;
+        }
+        Py_hash_t hash = htkeys_entry_hash(keys, ci, i);
+        htkeysiter_t iter;
+        HTKEYSITER_INIT(&iter, keys, hash);
+        for (; iter.index != i; HTKEYSITER_NEXT(&iter)) {
+            CHECK(iter.index != DKIX_EMPTY);
+            if (iter.index >= 0) {
+                CHECK(htkeys_entry_hash(keys, ci, iter.index) != hash);
+            }
         }
     }
     return 1;
@@ -121,11 +145,16 @@ _md_dump(MultiDictObject* md)
             entry_t* entry = entries + i;
             if (compact_entry_is_hole(entry)) {
                 _md_dump_entry(i, entry, NULL, 0);
+            } else if (ci) {
+                _md_dump_entry(i,
+                               entry,
+                               compact_entry_identity_ci(entry),
+                               compact_entry_hash_ci(entry));
             } else {
                 _md_dump_entry(i,
                                entry,
-                               compact_entry_identity(ci, entry),
-                               compact_entry_hash(ci, entry));
+                               compact_entry_identity_cs(entry),
+                               compact_entry_hash_cs(entry));
             }
         }
     } else {

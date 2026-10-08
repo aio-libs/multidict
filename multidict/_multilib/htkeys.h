@@ -137,6 +137,11 @@ typedef struct _htkeys {
     /* An htkeys_kind_t, fixed for the table's lifetime. */
     uint8_t kind;
 
+    /* Set once an insert finds an equal hash on its probe chain, so two
+       entries may share an identity; until then keys() need not look
+       for an earlier entry of each key. Never cleared, only carried. */
+    uint8_t maybe_dups;
+
     /* Number of usable entries in dk_entries. */
     Py_ssize_t usable;
 
@@ -213,12 +218,18 @@ istr_canonical(PyObject* key)
     return ((istrobject*)key)->canonical;
 }
 
-/* The identity of a compact entry's key, `ci` being whether the table
-   belongs to a CIMultiDict. */
+/* The identity of a compact entry's key: the key itself in a MultiDict's
+   table (_cs), the istr's canonical in a CIMultiDict's (_ci). */
 static inline PyObject*
-compact_key_identity(bool ci, PyObject* key)
+compact_key_identity_cs(PyObject* key)
 {
-    return ci ? istr_canonical(key) : key;
+    return key;
+}
+
+static inline PyObject*
+compact_key_identity_ci(PyObject* key)
+{
+    return istr_canonical(key);
 }
 
 static inline size_t
@@ -232,11 +243,17 @@ _htkeys_entry_size(uint8_t kind)
     return sizes[kind];
 }
 
-// The identity of a live compact entry; see compact_key_identity().
+// The identity of a live compact entry; see compact_key_identity_cs().
 static inline PyObject*
-compact_entry_identity(bool ci, const entry_t* entry)
+compact_entry_identity_cs(const entry_t* entry)
 {
-    return compact_key_identity(ci, entry->key);
+    return compact_key_identity_cs(entry->key);
+}
+
+static inline PyObject*
+compact_entry_identity_ci(const entry_t* entry)
+{
+    return compact_key_identity_ci(entry->key);
 }
 
 /* Whether entry is a hole (deleted or never filled). The key is NULL
@@ -269,21 +286,30 @@ _str_cached_hash(PyObject* str)
 /* The hash of a compact entry's identity, read from the key itself: a
    str's cached hash, or the canonical form's hash an istr keeps, set
    before the istr is shared. A lock-free reader holds a reference to the
-   key first; see _compact_entry_matches(). */
+   key first; see _compact_entry_matches_cs(). */
 static inline Py_hash_t
-compact_key_hash(bool ci, PyObject* key)
+compact_key_hash_cs(PyObject* key)
 {
-    if (ci) {
-        return ((istrobject*)key)->canonical_hash;
-    }
     return _str_cached_hash(key);
 }
 
-// The hash of a live compact entry's identity; see compact_key_hash().
 static inline Py_hash_t
-compact_entry_hash(bool ci, const entry_t* entry)
+compact_key_hash_ci(PyObject* key)
 {
-    return compact_key_hash(ci, entry->key);
+    return ((istrobject*)key)->canonical_hash;
+}
+
+// The hash of a live compact entry's identity; see compact_key_hash_cs().
+static inline Py_hash_t
+compact_entry_hash_cs(const entry_t* entry)
+{
+    return compact_key_hash_cs(entry->key);
+}
+
+static inline Py_hash_t
+compact_entry_hash_ci(const entry_t* entry)
+{
+    return compact_key_hash_ci(entry->key);
 }
 
 // Copies the first n entries of src, a table of dst's kind.
@@ -503,6 +529,7 @@ static const htkeys_t empty_htkeys = {
     /* Any kind would do: with no entries there is no layout to read, and
        a table replacing this one takes md_next_kind(), which ignores it. */
     .kind = KIND_ANYSTR,
+    .maybe_dups = 0,
     .usable = 0, /* immutable */
     .nentries = 0,
     .resume_slots = NULL,
@@ -656,6 +683,7 @@ htkeys_new_unfilled(pool_t* pools, uint8_t log2_size, uint8_t kind)
     keys->log2_size = log2_size;
     keys->log2_index_bytes = log2_bytes;
     keys->kind = kind;
+    keys->maybe_dups = 0;
     keys->resume_slots = NULL;
     keys->nentries = 0;
     keys->usable = USABLE_FRACTION((Py_ssize_t)((size_t)1 << log2_size));
@@ -785,12 +813,22 @@ htkeys_build_compact_indices(htkeys_t* keys, bool ci, Py_ssize_t n,
             keys->resume_slots, 0, htkeys_resume_slots_bytes(keys->log2_size));
     }
     entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
-    for (Py_ssize_t ix = 0; ix != n; ix++) {
-        entry_t* entry = entries + ix;
-        if (skip_holes && compact_entry_is_hole(entry)) {
-            continue;
+    if (ci) {
+        for (Py_ssize_t ix = 0; ix != n; ix++) {
+            entry_t* entry = entries + ix;
+            if (skip_holes && compact_entry_is_hole(entry)) {
+                continue;
+            }
+            _HTKEYS_BUILD_INDEX(keys, mask, compact_entry_hash_ci(entry), ix);
         }
-        _HTKEYS_BUILD_INDEX(keys, mask, compact_entry_hash(ci, entry), ix);
+    } else {
+        for (Py_ssize_t ix = 0; ix != n; ix++) {
+            entry_t* entry = entries + ix;
+            if (skip_holes && compact_entry_is_hole(entry)) {
+                continue;
+            }
+            _HTKEYS_BUILD_INDEX(keys, mask, compact_entry_hash_cs(entry), ix);
+        }
     }
 }
 
@@ -858,6 +896,61 @@ htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
 
 #undef _HT_FIND_EMPTY_SLOT
 
+/* The hash of the live entry at index `ix`, in a table of either kind. */
+static inline Py_hash_t
+htkeys_entry_hash(htkeys_t* keys, bool ci, Py_ssize_t ix)
+{
+    if (kind_is_compact(keys->kind)) {
+        entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys) + ix;
+        return ci ? compact_entry_hash_ci(entry)
+                  : compact_entry_hash_cs(entry);
+    }
+    return HTKEYS_ANYSTR_ENTRIES(keys)[ix].hash;
+}
+
+// The probe of htkeys_find_empty_slot_noting_dups() past a taken slot.
+static Py_ssize_t
+_htkeys_find_empty_slot_noting_dups(htkeys_t* keys, Py_hash_t hash, bool ci)
+{
+    const size_t mask = (size_t)_htkeys_mask(keys);
+    size_t i = (size_t)hash & mask;
+    size_t perturb = (size_t)hash;
+    Py_ssize_t ix;
+    while ((ix = HTKEYS_GET_INDEX(keys, (Py_ssize_t)i)) != DKIX_EMPTY) {
+        if (ix >= 0 && htkeys_entry_hash(keys, ci, ix) == hash) {
+            break;
+        }
+        perturb >>= HT_PERTURB_SHIFT;
+        i = (i * 5 + perturb + 1) & mask;
+        if (UNLIKELY(perturb == 0)) {
+            break;
+        }
+    }
+    if (ix == DKIX_EMPTY) {
+        return (Py_ssize_t)i;
+    }
+    keys->maybe_dups = 1;
+    return htkeys_find_empty_slot(keys, hash);
+}
+
+/* htkeys_find_empty_slot() that also sets maybe_dups on passing an entry
+   of the same hash, which is where an earlier entry of the new key's
+   identity would be. A probe long enough for the resume slots to take
+   over sets it without looking. Most inserts find their first slot empty,
+   so only a collision walks the chain. */
+static inline Py_ssize_t
+htkeys_find_empty_slot_noting_dups(htkeys_t* keys, Py_hash_t hash, bool ci)
+{
+    if (keys->maybe_dups) {
+        return htkeys_find_empty_slot(keys, hash);
+    }
+    size_t i = (size_t)hash & (size_t)_htkeys_mask(keys);
+    if (HTKEYS_GET_INDEX(keys, (Py_ssize_t)i) == DKIX_EMPTY) {
+        return (Py_ssize_t)i;
+    }
+    return _htkeys_find_empty_slot_noting_dups(keys, hash, ci);
+}
+
 /* Iterator over slots/indexes for given hash.
    N.B. The iterator MIGHT return the same slot
    multiple times, eiter consequently (1, 2, 2, 3)
@@ -908,34 +1001,38 @@ typedef struct _htkeysiter {
    hash, moving `iter` to its slot, or to NULL at the end of the chain. A
    non-NULL `entry` is the previous match, which it steps past first, so a
    probe loop starts with `entry` NULL and uses this at the top of every
-   pass. */
-#define HTKEYSITER_FIND_COMPACT(iter_, ci_, identity_, hash_, entry_)        \
-    do {                                                                     \
-        htkeysiter_t* _hf_iter = (iter_);                                    \
-        bool _hf_ci = (ci_);                                                 \
-        PyObject* _hf_identity = (identity_);                                \
-        Py_hash_t _hf_hash = (hash_);                                        \
-        entry_t* _hf_entries = HTKEYS_COMPACT_ENTRIES(_hf_iter->keys);       \
-        if ((entry_) != NULL) {                                              \
-            HTKEYSITER_NEXT(_hf_iter);                                       \
-        }                                                                    \
-        (entry_) = NULL;                                                     \
-        for (; _hf_iter->index != DKIX_EMPTY; HTKEYSITER_NEXT(_hf_iter)) {   \
-            if (UNLIKELY(_hf_iter->index < 0)) {                             \
-                continue;                                                    \
-            }                                                                \
-            entry_t* _hf_e = _hf_entries + _hf_iter->index;                  \
-            if (compact_key_hash(_hf_ci, _hf_e->key) == _hf_hash &&          \
-                (compact_key_identity(_hf_ci, _hf_e->key) == _hf_identity || \
-                 str_cmp(_hf_identity,                                       \
-                         compact_key_identity(_hf_ci, _hf_e->key)))) {       \
-                (entry_) = _hf_e;                                            \
-                break;                                                       \
-            }                                                                \
-        }                                                                    \
+   pass. _CS is for a MultiDict's table, _CI for a CIMultiDict's. */
+#define _HTKEYSITER_FIND_COMPACT(iter_, sfx, identity_, hash_, entry_)     \
+    do {                                                                   \
+        htkeysiter_t* _hf_iter = (iter_);                                  \
+        PyObject* _hf_identity = (identity_);                              \
+        Py_hash_t _hf_hash = (hash_);                                      \
+        entry_t* _hf_entries = HTKEYS_COMPACT_ENTRIES(_hf_iter->keys);     \
+        if ((entry_) != NULL) {                                            \
+            HTKEYSITER_NEXT(_hf_iter);                                     \
+        }                                                                  \
+        (entry_) = NULL;                                                   \
+        for (; _hf_iter->index != DKIX_EMPTY; HTKEYSITER_NEXT(_hf_iter)) { \
+            if (UNLIKELY(_hf_iter->index < 0)) {                           \
+                continue;                                                  \
+            }                                                              \
+            entry_t* _hf_e = _hf_entries + _hf_iter->index;                \
+            if (compact_entry_hash_##sfx(_hf_e) == _hf_hash &&             \
+                (compact_entry_identity_##sfx(_hf_e) == _hf_identity ||    \
+                 str_cmp(_hf_identity,                                     \
+                         compact_entry_identity_##sfx(_hf_e)))) {          \
+                (entry_) = _hf_e;                                          \
+                break;                                                     \
+            }                                                              \
+        }                                                                  \
     } while (0)
 
-// HTKEYSITER_FIND_COMPACT() for a KIND_ANYSTR table.
+#define HTKEYSITER_FIND_COMPACT_CS(iter_, identity_, hash_, entry_) \
+    _HTKEYSITER_FIND_COMPACT(iter_, cs, identity_, hash_, entry_)
+#define HTKEYSITER_FIND_COMPACT_CI(iter_, identity_, hash_, entry_) \
+    _HTKEYSITER_FIND_COMPACT(iter_, ci, identity_, hash_, entry_)
+
+// _HTKEYSITER_FIND_COMPACT() for a KIND_ANYSTR table.
 #define HTKEYSITER_FIND_ANYSTR(iter_, identity_, hash_, entry_)              \
     do {                                                                     \
         htkeysiter_t* _hf_iter = (iter_);                                    \

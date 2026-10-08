@@ -17,7 +17,7 @@ import pytest
 
 pytest.importorskip("hypothesis")
 
-from hypothesis import given, settings  # noqa: E402
+from hypothesis import assume, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 from hypothesis_helpers import pairs_lists  # noqa: E402
 
@@ -185,11 +185,14 @@ def test_iterator_raises_on_mutation(
 ) -> None:
     md = any_multidict_class(pairs)
     md.add(_MUTATION_MARKER_KEY, "initial")
-    it = _ITER_FACTORIES[kind](md)
     # See test_hypothesis_views.py: >=1 so the iterator has already started
-    # (pinning itself to the pre-mutation state), and <=len(pairs)-1 so a
+    # (pinning itself to the pre-mutation state), and <=size-1 so a
     # genuine untouched `pairs` entry always remains for the guard to find.
-    n = data.draw(st.integers(min_value=1, max_value=len(pairs) - 1))
+    # keys and iter(md) yield each key once, so count what they yield.
+    size = len(list(_ITER_FACTORIES[kind](md))) - 1
+    assume(size >= 2)
+    n = data.draw(st.integers(min_value=1, max_value=size - 1))
+    it = _ITER_FACTORIES[kind](md)
     for _ in range(n):
         next(it)
 

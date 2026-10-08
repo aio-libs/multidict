@@ -164,7 +164,7 @@ bump_version(MultiDictObject* md)
 
 /* The key of a compact entry, the field lock-free readers check first:
    what it holds is the identity only in a MultiDict's table. See
-   compact_key_identity(). */
+   compact_key_identity_cs(). */
 static inline PyObject*
 load_compact_identity(entry_t* entry)
 {
@@ -231,7 +231,7 @@ reset_value(entry_t* entry)
 /* _md_replace_locked()/_md_update() overwrite hash in place on a live entry,
    so a reader's plain read would race it. Relaxed is enough: it is
    read only after the identity check has ordered the rest. Only the full
-   layout has one; see _compact_entry_matches(). */
+   layout has one; see _compact_entry_matches_cs(). */
 static inline Py_hash_t
 load_hash(anystr_entry_t* entry)
 {
