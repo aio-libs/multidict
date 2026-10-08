@@ -1,3 +1,4 @@
+import sys
 from collections import deque
 from collections.abc import Callable, Iterator
 
@@ -447,3 +448,21 @@ def test_keys_from_cs_source_get_ci_identity(
     assert type(k) is case_insensitive_str_class
     assert k == "Foo"
     assert "foo" in case_insensitive_multidict_class([(k, 1)])
+
+
+@pytest.mark.parametrize("op", ["extend", "update", "merge"])
+def test_str_subclass_keys_from_dict_keep_refcounts(
+    case_insensitive_multidict_class: type[CIMultiDict[object]],
+    op: str,
+) -> None:
+    class Key(str):
+        pass
+
+    key = Key("Foo")
+    value = object()
+    before = (sys.getrefcount(key), sys.getrefcount(value))
+    d = case_insensitive_multidict_class()
+    getattr(d, op)({key: value})
+    assert d["foo"] is value
+    d.clear()
+    assert (sys.getrefcount(key), sys.getrefcount(value)) == before
