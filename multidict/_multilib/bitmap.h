@@ -139,7 +139,7 @@ bitmap_release(bitmap_t* bm)
     bm->words = NULL;
 }
 
-ALWAYS_INLINE static inline bool
+static inline bool
 _bitmap_word_ready(const bitmap_t* bm, Py_ssize_t wi)
 {
     return bm->dense ||
@@ -155,7 +155,7 @@ _bitmap_dense_test(const bitmap_t* bm, Py_ssize_t i)
 
 /* The word holding `i`, zeroed first if nothing has touched it yet, or
    NULL with an exception set if heap storage couldn't be allocated. */
-ALWAYS_INLINE static inline bitmap_word_t*
+static inline bitmap_word_t*
 _bitmap_word(bitmap_t* bm, Py_ssize_t i)
 {
     assert(i >= 0 && i < bm->nwords * BITMAP_WORD_BITS);
@@ -224,7 +224,7 @@ bitmap_nbits(const bitmap_t* bm)
     return bm->nwords << BITMAP_WORD_SHIFT;
 }
 
-ALWAYS_INLINE static inline bool
+static inline bool
 bitmap_test(const bitmap_t* bm, Py_ssize_t i)
 {
     assert(i >= 0 && i < bm->nwords * BITMAP_WORD_BITS);
@@ -238,7 +238,7 @@ bitmap_test(const bitmap_t* bm, Py_ssize_t i)
            _bitmap_dense_test(bm, i);
 }
 
-ALWAYS_INLINE static inline int
+static inline int
 bitmap_set(bitmap_t* bm, Py_ssize_t i)
 {
     bitmap_word_t* word = _bitmap_word(bm, i);
@@ -249,7 +249,7 @@ bitmap_set(bitmap_t* bm, Py_ssize_t i)
     return 0;
 }
 
-ALWAYS_INLINE static inline void
+static inline void
 bitmap_clear(bitmap_t* bm, Py_ssize_t i)
 {
     assert(i >= 0 && i < bm->nwords * BITMAP_WORD_BITS);
@@ -263,7 +263,7 @@ bitmap_clear(bitmap_t* bm, Py_ssize_t i)
 }
 
 /* 1 if `i` was already set, 0 if it wasn't (it is now), -1 on error. */
-ALWAYS_INLINE static inline int
+static inline int
 bitmap_test_and_set(bitmap_t* bm, Py_ssize_t i)
 {
     bitmap_word_t* word = _bitmap_word(bm, i);

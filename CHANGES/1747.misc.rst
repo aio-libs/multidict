@@ -1,0 +1,3 @@
+Stopped holding extra references to the keys and values of a :class:`dict`
+passed to the C extension's ``update()``, ``extend()`` and ``merge()``,
+which a key's ``lower()`` no longer needed -- by :user:`asvetlov`.

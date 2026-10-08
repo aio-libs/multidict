@@ -1493,20 +1493,16 @@ class TestCIMultiDict(BaseMultiDictTest):
         assert d["i\u0307"] == "1"
         assert d["\U0001e943"] == "2"
 
-    def test_str_subclass_lower_override_is_used(
+    def test_str_subclass_lower_override_is_ignored(
         self, cls: type[CIMultiDict[str]]
     ) -> None:
-        """A ``str`` subclass may override ``lower()``, so the identity of a
-        subclass instance has to come from the override.  This is what keeps
-        the C extension's ASCII fast path gated on an exact ``str``."""
+        class UpperLower(str):
+            lower = str.upper
 
-        class ConstantLower(str):
-            def lower(self) -> str:
-                return "x"
+        d = cls([(UpperLower("A"), "1"), (UpperLower("b"), "2")])
 
-        d = cls([(ConstantLower("a"), "1"), (ConstantLower("b"), "2")])
-
-        assert d.getall("x") == ["1", "2"]
+        assert d["a"] == "1"
+        assert d["B"] == "2"
 
     def test_key_outlives_the_multidict(self, cls: type[CIMultiDict[str]]) -> None:
         key = "content-type"
@@ -2353,12 +2349,12 @@ def test_popall_lock_free_get_thread_safety() -> None:
 
     Regression test for the free-threaded build: popall() (like
     popone()/__delitem__) rewrites the removed entry's hash table index
-    slot to DKIX_DUMMY via htkeys_set_index(), while a lock-free
+    slot to DKIX_DUMMY via HTKEYS_SET_INDEX(), while a lock-free
     get()/getone()/__getitem__ walks that same index array via
-    htkeysiter_next()/htkeys_get_index() and holds no lock at all.
+    HTKEYSITER_NEXT()/HTKEYS_GET_INDEX() and holds no lock at all.
     ThreadSanitizer flagged a genuine data race here between
-    multidict_popall() and multidict_get(): both htkeys_get_index() and
-    htkeys_set_index() used to be plain, non-atomic array accesses; they
+    multidict_popall() and multidict_get(): both HTKEYS_GET_INDEX() and
+    HTKEYS_SET_INDEX() used to be plain, non-atomic array accesses; they
     now go through relaxed atomics under Py_GIL_DISABLED. Deliberately
     uses popall() rather than pop()/popone() to target that call site
     specifically. This is a C-extension-only concern: the pure-Python
@@ -3603,18 +3599,24 @@ def test_extend_update_merge_self_reference() -> None:
 
 @pytest.mark.c_extension
 def test_update_from_list_mutated_by_key_lookup() -> None:
-    """A case-insensitive key whose ``.lower()`` shrinks the source list must
-    not read past the end.  The C list fast-path cached the size once and then
-    indexed with a stale value after the callback mutated the list."""
-    seq: list[list[object]] = []
+    """An item whose ``__getitem__()`` shrinks the source list must not read
+    past the end.  The C list fast-path cached the size once and then indexed
+    with a stale value after the callback mutated the list."""
+    seq: list[object] = []
 
-    class EvilKey(str):
-        def lower(self) -> str:
+    class EvilPair:
+        def __init__(self, key: str, value: int) -> None:
+            self.pair = (key, value)
+
+        def __len__(self) -> int:
+            return 2
+
+        def __getitem__(self, i: int) -> object:
             del seq[1:]  # shrink the list while it is being consumed
-            return "x"
+            return self.pair[i]
 
     for i in range(32):
-        seq.append([EvilKey(f"K{i}"), i])
+        seq.append(EvilPair(f"K{i}", i))
     # Must not segfault; the exact result is unspecified, only memory safety.
     multidict.CIMultiDict(seq)  # type: ignore[arg-type]
 
@@ -4125,12 +4127,11 @@ def test_str_subclass_overriding_str_dunder_lookup(
         _ = md["spoof"]
 
 
-def test_plain_str_subclass_lower_returns_subclass(
+def test_plain_str_subclass_lower_is_ignored(
     case_insensitive_multidict_class: type[CIMultiDict[object]],
 ) -> None:
     class SubclassLower(str):
-        def lower(self) -> _CustomStr:
-            return _CustomStr(super().lower())
+        lower = str.upper
 
     key = SubclassLower("AbC_Key")
     md = case_insensitive_multidict_class()
@@ -4155,10 +4156,9 @@ def test_plain_str_subclass_lower_returns_subclass(
 
 def test_pure_python_identity_exactness() -> None:
     # Verify that pure-Python _identity() always returns exact str,
-    # even when keys or lower() results are str subclasses.
+    # even when keys are str subclasses that override lower().
     class SubclassLower(str):
-        def lower(self) -> _CustomStr:
-            return _CustomStr(super().lower())
+        lower = str.upper
 
     class Token(str):
         def __str__(self) -> str:

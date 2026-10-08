@@ -71,7 +71,7 @@ typedef struct _pool {
 /* `capacity` is clamped rather than asserted: it is a tuning knob, and
    a caller asking for more than the array holds wants "as deep as
    possible", not a crash. */
-NOINLINE static void
+static void
 pool_init(pool_t* pool, uint8_t capacity)
 {
     pool->used = 0;
@@ -105,7 +105,7 @@ pool_push(pool_t* pool, void* block)
    buffer from PyMem_Malloc(), an object shell from PyObject_GC_Del(),
    which needs the shell's type to find the start of its allocation.
    Idempotent, because the GC can run m_clear more than once. */
-NOINLINE static void
+static void
 pool_clear(pool_t* pool, void (*release)(void*))
 {
     while (pool->used > 0) {
@@ -115,7 +115,7 @@ pool_clear(pool_t* pool, void (*release)(void*))
 
 #else
 
-NOINLINE static void
+static void
 pool_init(pool_t* pool, uint8_t capacity)
 {
     (void)pool;
@@ -137,7 +137,7 @@ pool_push(pool_t* pool, void* block)
     return false;
 }
 
-NOINLINE static void
+static void
 pool_clear(pool_t* pool, void (*release)(void*))
 {
     (void)pool;

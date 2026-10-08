@@ -60,7 +60,8 @@ IStr_FromUnicode(void* state_, PyObject* str)
     if (IStr_CheckExact(state, str)) {
         return Py_NewRef(str);
     }
-    PyObject* canonical = PyObject_CallMethodNoArgs(str, state->str_lower);
+    PyObject* canonical = PyObject_CallMethodOneArg(
+        (PyObject*)&PyUnicode_Type, state->str_lower, str);
     if (canonical == NULL) {
         return NULL;
     }
@@ -298,7 +299,7 @@ _md_foreach_all(MultiDictObject* md, MultiDict_ItemVisitor visitor,
     return count;
 }
 
-static Py_ssize_t
+COLD static Py_ssize_t
 _md_foreach_key(MultiDictObject* md, PyObject* key,
                 MultiDict_ItemVisitor visitor, void* user_data)
 {
@@ -479,7 +480,7 @@ _capsule_destructor(PyObject* o)
     _capsule_free(capi);
 }
 
-NOINLINE static PyObject*
+static PyObject*
 new_capsule(mod_state* state)
 {
     MultiDict_CAPI* capi =

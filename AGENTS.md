@@ -560,14 +560,12 @@ copies GCC makes today; it only shrinks.
 
 The rules are yours to maintain, not only to obey:
 
-- When it fails, fix the code, usually with `NOINLINE` on the code
-  you added or `ALWAYS_INLINE` on the helper that fell out, and
-  measure the result with the callgrind driver. If the new
+- When it fails, fix the code, usually by shrinking the helper
+  that fell out or its callers, and measure the result with the callgrind driver. If the new
   behaviour is the better trade, edit the rule in the same PR and
   put the measurement that justifies it in the PR body. Never
   delete or weaken a rule just to get CI green.
-- When you fix an inlining regression, or pin a helper with
-  `ALWAYS_INLINE` or `NOINLINE` for speed, add a rule for it in the
+- When you fix an inlining regression, add a rule for it in the
   same PR, with the PR number and the measured cost in its `why`, so
   the next change cannot undo it silently.
 - When a change removes the last copy of an entry in

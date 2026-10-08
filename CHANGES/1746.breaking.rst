@@ -1,0 +1,4 @@
+Stopped calling a :class:`str` subclass's own ``lower()`` for the
+case-insensitive identity of a key in :class:`~multidict.CIMultiDict` and in
+:c:func:`IStr_FromUnicode`; the identity came from :meth:`str.lower` instead,
+so computing it ran no user code -- by :user:`asvetlov`.
