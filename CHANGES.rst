@@ -51,11 +51,13 @@ Bug fixes
 ---------
 
 - Fixed building the C extension on platforms where ``char`` is unsigned,
-  such as ARM, PowerPC, s390x and RISC-V, which failed on a sign conversion
-  warning since ``-Wconversion`` took effect -- by :user:`asvetlov`.
+  such as ARM, PowerPC, s390x and RISC-V, and with GCC 9, which flags
+  CPython's own headers from 3.12 on; both failed on a sign conversion
+  warning since ``-Wconversion`` took effect. GCC 9 builds the extension
+  without ``-Wconversion`` -- by :user:`asvetlov`.
 
   *Related issues and pull requests on GitHub:*
-  :issue:`1759`.
+  :issue:`1759`, :issue:`1760`.
 
 - Fixed :func:`~multidict.getversion` returning only the low 32 bits of
   the version on Windows and on 32-bit platforms, where two different
