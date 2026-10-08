@@ -895,7 +895,7 @@ htkeys_find_empty_slot(htkeys_t* keys, Py_hash_t hash)
    or with different slots in the middle (1, 2, 3, 1).
 
    The caller is responsible for skipping repeats; md_walk() in
-   walk.h does it with a bitmap of visited entries.
+   walk.h skips any entry index not above its last match.
 */
 
 typedef struct _htkeysiter {

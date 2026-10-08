@@ -12,69 +12,11 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-#include "bitmap.h"
 #include "compiler.h"
 #include "dict.h"
 #include "htkeys.h"
 #include "identity.h"
 #include "str_cmp.h"
-
-/* Matches kept in the short list before starting the bitmap: MD_SEEN_FEW
-   when the bitmap fits its inline buffer, MD_SEEN_MANY when it would need
-   a heap allocation, which a longer list scan still beats. */
-#define MD_SEEN_FEW 8
-#define MD_SEEN_MANY 32
-
-/* Entry indices already handed to the visitor by one walk. */
-typedef struct _md_seen {
-    /* Most keys have a handful of values, so the first matches go in a
-       short list and the bitmap only starts past it. */
-    Py_ssize_t few[MD_SEEN_MANY];
-    Py_ssize_t nfew;
-    bitmap_t bitmap;
-} md_seen_t;
-
-/* Past this many matches, the short list is moved into the bitmap. */
-COLD static int
-_md_seen_spill(md_seen_t* seen, MultiDictObject* md)
-{
-    bitmap_init(&seen->bitmap, md->keys, md->keys->nentries);
-    Py_ssize_t n = seen->nfew;
-    seen->nfew = MD_SEEN_MANY + 1;
-    for (Py_ssize_t i = 0; i < n; i++) {
-        if (bitmap_set(&seen->bitmap, seen->few[i]) < 0) {
-            return -1;
-        }
-    }
-    return 0;
-}
-
-/* 1 if `index` was already returned by this walk, 0 if not (it is now
-   recorded), -1 on error. */
-static int
-_md_seen_test_and_add(md_seen_t* seen, MultiDictObject* md, Py_ssize_t index)
-{
-    Py_ssize_t n = seen->nfew;
-    if (n <= MD_SEEN_MANY) {
-        /* A repeat is most often the slot just returned, which the next
-           step re-examines, so the list is scanned from its end. */
-        for (Py_ssize_t i = n - 1; i >= 0; i--) {
-            if (seen->few[i] == index) {
-                return 1;
-            }
-        }
-        if (n < MD_SEEN_FEW ||
-            (n < MD_SEEN_MANY && md->keys->nentries > BITMAP_INLINE_BITS)) {
-            seen->few[n] = index;
-            seen->nfew = n + 1;
-            return 0;
-        }
-        if (_md_seen_spill(seen, md) < 0) {
-            return -1;
-        }
-    }
-    return bitmap_test_and_set(&seen->bitmap, index);
-}
 
 /* Visitor for md_walk().
 
@@ -127,8 +69,8 @@ _md_walk_visit(MultiDictObject* md, entry_t* entry, PyObject* identity,
    many entries were visited, or -1 with an exception set. The caller holds
    md's critical section.
 
-   The linear scan cannot reach an entry twice, so unlike md_walk() there is
-   no seen set to keep.
+   The linear scan cannot reach an entry twice, so unlike md_walk() it has
+   no repeats to skip.
 
    `visitor` must not call back into `md`, for the reason md_walk() gives. */
 static Py_ssize_t
@@ -194,27 +136,13 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
     return ret < 0 ? -1 : count;
 }
 
-#define _MD_WALK_SEEN 2
-
-/* A matched entry at `index` of md_walk_with_hash()'s chain: 1 once
-   visited, 0 if the visitor stopped the walk, _MD_WALK_SEEN if the walk
-   visited it already, -1 with an exception set. */
+/* A matched entry of md_walk_with_hash()'s chain: 1 once visited, 0 if
+   the visitor stopped the walk, -1 with an exception set. */
 static inline int
-_md_walk_matched(MultiDictObject* md, entry_t* entry, Py_ssize_t index,
-                 md_seen_t* seen, PyObject* identity, Py_hash_t hash,
-                 bool with_keys, md_item_visitor_t visitor, void* user_data,
-                 uint64_t version)
+_md_walk_matched(MultiDictObject* md, entry_t* entry, PyObject* identity,
+                 Py_hash_t hash, bool with_keys, md_item_visitor_t visitor,
+                 void* user_data, uint64_t version)
 {
-    /* HTKEYSITER_NEXT() can repeat a slot already seen in this scan
-       (see its doc comment), and this scan never marks the table. */
-    int seen_before = _md_seen_test_and_add(seen, md, index);
-    if (seen_before < 0) {
-        return -1;
-    }
-    if (seen_before) {
-        return _MD_WALK_SEEN;
-    }
-
     PyObject* value = Py_NewRef(entry->value);
     PyObject* key = NULL;
     if (with_keys) {
@@ -238,10 +166,17 @@ _md_walk_matched(MultiDictObject* md, entry_t* entry, Py_ssize_t index,
     return ret == 0 ? 0 : 1;
 }
 
-/* Calls `visitor` once for every entry whose identity is `identity`, in probe
-   order; `hash` is that identity's hash. Returns how many entries were
-   visited, or -1 with an exception set. The caller holds md's critical
+/* Calls `visitor` once for every entry whose identity is `identity`, in
+   insertion order; `hash` is that identity's hash. Returns how many entries
+   were visited, or -1 with an exception set. The caller holds md's critical
    section.
+
+   HTKEYSITER_NEXT() can repeat a slot (see its doc comment), but every
+   entry went into the first slot of its probe sequence that was empty at
+   the time, and a slot never becomes empty again: a rebuild starts over
+   and reinserts in entry order. So the matches are first reached in
+   increasing entry index, and one whose index is not above the last match
+   is a repeat.
 
    `visitor` gets `identity` and `hash` themselves rather than the matched
    entry's own; both always compare equal, since that is the match
@@ -260,12 +195,8 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
-    /* Not zero-initialized: the bitmap's inline buffer is 4 KB.
-       The release below only needs `nfew`. */
-    md_seen_t seen;
-    seen.nfew = 0;
-
     Py_ssize_t count = 0;
+    Py_ssize_t last = -1;
     int ret = 1;
     entry_t* entry = NULL;
     if (kind_is_compact(md->keys->kind) && ci) {
@@ -274,17 +205,19 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             if (entry == NULL) {
                 break;
             }
+            if (iter.index <= last) {
+                continue;
+            }
+            last = iter.index;
             ret = _md_walk_matched(md,
                                    entry,
-                                   iter.index,
-                                   &seen,
                                    identity,
                                    hash,
                                    with_keys,
                                    visitor,
                                    user_data,
                                    version);
-            count += ret == 0 || ret == 1;
+            count += ret >= 0;
         }
     } else if (kind_is_compact(md->keys->kind)) {
         while (ret > 0) {
@@ -292,17 +225,19 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             if (entry == NULL) {
                 break;
             }
+            if (iter.index <= last) {
+                continue;
+            }
+            last = iter.index;
             ret = _md_walk_matched(md,
                                    entry,
-                                   iter.index,
-                                   &seen,
                                    identity,
                                    hash,
                                    with_keys,
                                    visitor,
                                    user_data,
                                    version);
-            count += ret == 0 || ret == 1;
+            count += ret >= 0;
         }
     } else {
         while (ret > 0) {
@@ -310,26 +245,23 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             if (entry == NULL) {
                 break;
             }
+            if (iter.index <= last) {
+                continue;
+            }
+            last = iter.index;
             ret = _md_walk_matched(md,
                                    entry,
-                                   iter.index,
-                                   &seen,
                                    identity,
                                    hash,
                                    with_keys,
                                    visitor,
                                    user_data,
                                    version);
-            count += ret == 0 || ret == 1;
+            count += ret >= 0;
         }
-    }
-    if (seen.nfew > MD_SEEN_MANY) {
-        bitmap_release(&seen.bitmap);
     }
     return ret < 0 ? -1 : count;
 }
-
-#undef _MD_WALK_SEEN
 
 /* md_walk_with_hash() for callers that have no hash at hand yet. */
 static Py_ssize_t

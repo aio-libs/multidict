@@ -81,10 +81,11 @@ changeing and if the number of DKIX_DUMMY slots grows to 1/4 of the total
 amount.
 
 The iteration for operations like getall() is a little tricky. The next index
-calculation could return the already visited index before reaching the end. To
-eliminate duplicates, the code records visited entry indices in a bitmap
-private to the walk (see bitmap.h); the table itself is never marked. Double
-iteration over the indices still has O(1) amortized time, it is ok.
+calculation could return the already visited index before reaching the end.
+Equal keys are reached first in insertion order, though, so the walk skips any
+entry index not above the last match (see md_walk_with_hash() in walk.h); the
+table itself is never marked. Double iteration over the indices still has O(1)
+amortized time, it is ok.
 
 `.add()`, `val = md[key]`, `md[key] = val`, `md.setdefault()` all have O(1).
 `.getall()` / `.popall()` have O(N) where N is the amount of returned items.
