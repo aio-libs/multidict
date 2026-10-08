@@ -87,9 +87,32 @@ _md_update_replace(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind)) {
+    if (kind_is_compact(md->keys->kind) && ci) {
         for (;;) {
-            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                break;
+            }
+            if (bitmap_test(&marks->updated, iter.index)) {
+                continue;
+            }
+            if (_md_update_matched(md,
+                                   KIND_COMPACT,
+                                   entry,
+                                   iter.index,
+                                   &found,
+                                   hash,
+                                   identity,
+                                   key,
+                                   value,
+                                   defer,
+                                   marks) < 0) {
+                return -1;
+            }
+        }
+    } else if (kind_is_compact(md->keys->kind)) {
+        for (;;) {
+            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
             if (entry == NULL) {
                 break;
             }
@@ -171,9 +194,19 @@ _md_merge_present(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 
     /* An entry this batch added doesn't count as already present. */
     entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind)) {
+    if (kind_is_compact(md->keys->kind) && ci) {
         for (;;) {
-            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                return false;
+            }
+            if (!bitmap_test(&marks->updated, iter.index)) {
+                return true;
+            }
+        }
+    } else if (kind_is_compact(md->keys->kind)) {
+        for (;;) {
+            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
             if (entry == NULL) {
                 return false;
             }

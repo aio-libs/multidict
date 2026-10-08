@@ -1278,9 +1278,30 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(keys->kind)) {
+    if (kind_is_compact(keys->kind) && ci) {
         for (;;) {
-            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                break;
+            }
+            ret = _md_del_matched(md,
+                                  keys,
+                                  KIND_COMPACT,
+                                  iter.slot,
+                                  entry,
+                                  identity,
+                                  hash,
+                                  removed,
+                                  watched,
+                                  !found);
+            found = true;
+            if (ret < 0) {
+                break;
+            }
+        }
+    } else if (kind_is_compact(keys->kind)) {
+        for (;;) {
+            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
             if (entry == NULL) {
                 break;
             }
@@ -1384,8 +1405,10 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+    if (kind_is_compact(iter.keys->kind) && ci) {
+        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+    } else if (kind_is_compact(iter.keys->kind)) {
+        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
     } else {
         HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
     }
@@ -1487,42 +1510,54 @@ _full_entry_matches(entry_t* entry, PyObject* identity, Py_hash_t hash)
     return matched;
 }
 
-/* _md_lockfree_find()'s loop over a KIND_COMPACT table, `sfx` being cs or
-   ci as for compact_key_identity_cs(). */
-#define _MD_LOCKFREE_FIND_COMPACT_LOOP(sfx)                                 \
-    do {                                                                    \
-        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                    \
-        for (; iter->index != DKIX_EMPTY; HTKEYSITER_NEXT_ACQUIRE(iter)) {  \
-            if (UNLIKELY(iter->index < 0)) {                                \
-                continue;                                                   \
-            }                                                               \
-            entry_t* entry = entries + iter->index;                         \
-            int matched =                                                   \
-                _compact_entry_matches_##sfx(entry, probe, identity, hash); \
-            if (matched != 0) {                                             \
-                *pentry = entry;                                            \
-                return matched;                                             \
-            }                                                               \
-        }                                                                   \
-    } while (0)
-
-/* The lock-free HTKEYSITER_FIND_COMPACT() and
-   HTKEYSITER_FIND_ANYSTR(): 1 with the match in *pentry, 0 at the
-   end of the chain, -1 racing a writer. */
+/* The lock-free HTKEYSITER_FIND_COMPACT_CS(): 1 with the match in *pentry,
+   0 at the end of the chain, -1 racing a writer. One function per table
+   kind, so each stays small enough for GCC to inline into the lookups. */
 static inline int
-_md_lockfree_find(htkeysiter_t* iter, bool ci, PyObject* probe,
-                  PyObject* identity, Py_hash_t hash, entry_t** pentry)
+_md_lockfree_find_cs(htkeysiter_t* iter, PyObject* probe, PyObject* identity,
+                     Py_hash_t hash, entry_t** pentry)
 {
-    htkeys_t* keys = iter->keys;
-    if (kind_is_compact(keys->kind)) {
-        if (ci) {
-            _MD_LOCKFREE_FIND_COMPACT_LOOP(ci);
-        } else {
-            _MD_LOCKFREE_FIND_COMPACT_LOOP(cs);
+    entry_t* entries = HTKEYS_COMPACT_ENTRIES(iter->keys);
+    for (; iter->index != DKIX_EMPTY; HTKEYSITER_NEXT_ACQUIRE(iter)) {
+        if (UNLIKELY(iter->index < 0)) {
+            continue;
         }
-        return 0;
+        entry_t* entry = entries + iter->index;
+        int matched = _compact_entry_matches_cs(entry, probe, identity, hash);
+        if (matched != 0) {
+            *pentry = entry;
+            return matched;
+        }
     }
-    anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
+    return 0;
+}
+
+// _md_lockfree_find_cs() for a CIMultiDict's table.
+static inline int
+_md_lockfree_find_ci(htkeysiter_t* iter, PyObject* probe, PyObject* identity,
+                     Py_hash_t hash, entry_t** pentry)
+{
+    entry_t* entries = HTKEYS_COMPACT_ENTRIES(iter->keys);
+    for (; iter->index != DKIX_EMPTY; HTKEYSITER_NEXT_ACQUIRE(iter)) {
+        if (UNLIKELY(iter->index < 0)) {
+            continue;
+        }
+        entry_t* entry = entries + iter->index;
+        int matched = _compact_entry_matches_ci(entry, probe, identity, hash);
+        if (matched != 0) {
+            *pentry = entry;
+            return matched;
+        }
+    }
+    return 0;
+}
+
+// _md_lockfree_find_cs() for a KIND_ANYSTR table.
+static inline int
+_md_lockfree_find_anystr(htkeysiter_t* iter, PyObject* identity,
+                         Py_hash_t hash, entry_t** pentry)
+{
+    anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(iter->keys);
     for (; iter->index != DKIX_EMPTY; HTKEYSITER_NEXT_ACQUIRE(iter)) {
         if (UNLIKELY(iter->index < 0)) {
             continue;
@@ -1537,7 +1572,18 @@ _md_lockfree_find(htkeysiter_t* iter, bool ci, PyObject* probe,
     return 0;
 }
 
-#undef _MD_LOCKFREE_FIND_COMPACT_LOOP
+static inline int
+_md_lockfree_find(htkeysiter_t* iter, bool ci, PyObject* probe,
+                  PyObject* identity, Py_hash_t hash, entry_t** pentry)
+{
+    if (!kind_is_compact(iter->keys->kind)) {
+        return _md_lockfree_find_anystr(iter, identity, hash, pentry);
+    }
+    if (ci) {
+        return _md_lockfree_find_ci(iter, probe, identity, hash, pentry);
+    }
+    return _md_lockfree_find_cs(iter, probe, identity, hash, pentry);
+}
 
 static inline int
 _md_contains_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
@@ -1649,8 +1695,10 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+    if (kind_is_compact(iter.keys->kind) && ci) {
+        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+    } else if (kind_is_compact(iter.keys->kind)) {
+        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
     } else {
         HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
     }
@@ -1805,8 +1853,9 @@ _md_to_dict_store(MultiDictObject* md, PyObject* dict, entry_t* entry,
 }
 
 /* _md_to_dict_locked()'s loop over a KIND_COMPACT table, `sfx` being cs
-   or ci as for compact_entry_identity_cs(). */
-#define _MD_TO_DICT_COMPACT_LOOP(sfx)                                       \
+   or ci as for compact_entry_identity_cs(), and `find` its
+   HTKEYSITER_FIND_COMPACT_CS() or _CI(). */
+#define _MD_TO_DICT_COMPACT_LOOP(sfx, find)                                 \
     do {                                                                    \
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                    \
         for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {             \
@@ -1821,7 +1870,7 @@ _md_to_dict_store(MultiDictObject* md, PyObject* dict, entry_t* entry,
             HTKEYSITER_INIT(&iter, keys, hash);                             \
             entry_t* e = NULL;                                              \
             for (;;) {                                                      \
-                HTKEYSITER_FIND_COMPACT_SFX(&iter, sfx, identity, hash, e); \
+                find(&iter, identity, hash, e);                             \
                 if (e == NULL) {                                            \
                     break;                                                  \
                 }                                                           \
@@ -1863,9 +1912,9 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
 
     if (kind_is_compact(keys->kind)) {
         if (md->is_ci) {
-            _MD_TO_DICT_COMPACT_LOOP(ci);
+            _MD_TO_DICT_COMPACT_LOOP(ci, HTKEYSITER_FIND_COMPACT_CI);
         } else {
-            _MD_TO_DICT_COMPACT_LOOP(cs);
+            _MD_TO_DICT_COMPACT_LOOP(cs, HTKEYSITER_FIND_COMPACT_CS);
         }
     } else {
         anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
@@ -1935,8 +1984,10 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+    if (kind_is_compact(iter.keys->kind) && ci) {
+        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+    } else if (kind_is_compact(iter.keys->kind)) {
+        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
     } else {
         HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
     }
@@ -1996,8 +2047,10 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+    if (kind_is_compact(iter.keys->kind) && ci) {
+        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+    } else if (kind_is_compact(iter.keys->kind)) {
+        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
     } else {
         HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
     }
@@ -2145,9 +2198,28 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind)) {
+    if (kind_is_compact(md->keys->kind) && ci) {
         for (;;) {
-            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                break;
+            }
+            ret = _md_pop_all_matched(md,
+                                      KIND_COMPACT,
+                                      iter.slot,
+                                      entry,
+                                      identity,
+                                      hash,
+                                      values,
+                                      removed,
+                                      &begun);
+            if (ret < 0) {
+                break;
+            }
+        }
+    } else if (kind_is_compact(md->keys->kind)) {
+        for (;;) {
+            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
             if (entry == NULL) {
                 break;
             }
@@ -2450,9 +2522,49 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
     int ret = 0;
 
     entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind)) {
+    if (kind_is_compact(md->keys->kind) && ci) {
         while (ret == 0) {
-            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                break;
+            }
+            if (iter.index == replaced) {
+                continue;
+            }
+            if (skip_first || !*pfound) {
+                /* Checked only where the key gets stored: a miss leaves
+                   it to md_add_with_hash(), and the same key object fits
+                   by definition. */
+                if (!skip_first && key != entry->key &&
+                    UNLIKELY(!md_key_fits(md, key, identity))) {
+                    if (md_to_anystr(md) < 0) {
+                        return -1;
+                    }
+                    return _MD_REPLACE_STALE;  // entry is in the old table
+                }
+                replaced = iter.index;
+                if (skip_first) {
+                    skip_first = false;
+                    continue;
+                }
+            }
+            ret = _md_replace_matched(md,
+                                      KIND_COMPACT,
+                                      iter.slot,
+                                      entry,
+                                      key,
+                                      value,
+                                      identity,
+                                      hash,
+                                      old_key_out,
+                                      old_value_out,
+                                      dups,
+                                      watched,
+                                      pfound);
+        }
+    } else if (kind_is_compact(md->keys->kind)) {
+        while (ret == 0) {
+            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
             if (entry == NULL) {
                 break;
             }

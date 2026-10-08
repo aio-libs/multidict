@@ -939,8 +939,8 @@ typedef struct _htkeysiter {
    hash, moving `iter` to its slot, or to NULL at the end of the chain. A
    non-NULL `entry` is the previous match, which it steps past first, so a
    probe loop starts with `entry` NULL and uses this at the top of every
-   pass. `sfx` is cs or ci, as for compact_key_identity_cs(). */
-#define HTKEYSITER_FIND_COMPACT_SFX(iter_, sfx, identity_, hash_, entry_)  \
+   pass. _CS is for a MultiDict's table, _CI for a CIMultiDict's. */
+#define _HTKEYSITER_FIND_COMPACT(iter_, sfx, identity_, hash_, entry_)     \
     do {                                                                   \
         htkeysiter_t* _hf_iter = (iter_);                                  \
         PyObject* _hf_identity = (identity_);                              \
@@ -965,17 +965,12 @@ typedef struct _htkeysiter {
         }                                                                  \
     } while (0)
 
-// HTKEYSITER_FIND_COMPACT_SFX() with one probe loop per value of `ci`.
-#define HTKEYSITER_FIND_COMPACT(iter_, ci_, identity_, hash_, entry_)         \
-    do {                                                                      \
-        if (ci_) {                                                            \
-            HTKEYSITER_FIND_COMPACT_SFX(iter_, ci, identity_, hash_, entry_); \
-        } else {                                                              \
-            HTKEYSITER_FIND_COMPACT_SFX(iter_, cs, identity_, hash_, entry_); \
-        }                                                                     \
-    } while (0)
+#define HTKEYSITER_FIND_COMPACT_CS(iter_, identity_, hash_, entry_) \
+    _HTKEYSITER_FIND_COMPACT(iter_, cs, identity_, hash_, entry_)
+#define HTKEYSITER_FIND_COMPACT_CI(iter_, identity_, hash_, entry_) \
+    _HTKEYSITER_FIND_COMPACT(iter_, ci, identity_, hash_, entry_)
 
-// HTKEYSITER_FIND_COMPACT() for a KIND_ANYSTR table.
+// _HTKEYSITER_FIND_COMPACT() for a KIND_ANYSTR table.
 #define HTKEYSITER_FIND_ANYSTR(iter_, identity_, hash_, entry_)              \
     do {                                                                     \
         htkeysiter_t* _hf_iter = (iter_);                                    \

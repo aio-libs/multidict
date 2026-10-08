@@ -268,9 +268,27 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     Py_ssize_t count = 0;
     int ret = 1;
     entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind)) {
+    if (kind_is_compact(md->keys->kind) && ci) {
         while (ret > 0) {
-            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                break;
+            }
+            ret = _md_walk_matched(md,
+                                   entry,
+                                   iter.index,
+                                   &seen,
+                                   identity,
+                                   hash,
+                                   with_keys,
+                                   visitor,
+                                   user_data,
+                                   version);
+            count += ret == 0 || ret == 1;
+        }
+    } else if (kind_is_compact(md->keys->kind)) {
+        while (ret > 0) {
+            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
             if (entry == NULL) {
                 break;
             }
