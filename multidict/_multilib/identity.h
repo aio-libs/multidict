@@ -18,32 +18,6 @@ extern "C" {
 #include "istr.h"
 #include "state.h"
 
-static bool
-str_cmp(PyObject* s1, PyObject* s2)
-{
-    /* implementation is borrowed from PyUnicode_Equal() but without
-       type checks, arguments are identities that are always strings */
-    assert(PyUnicode_Check(s1));
-    assert(PyUnicode_Check(s2));
-
-    if (s1 == s2) {
-        return true;
-    }
-    Py_ssize_t len = PyUnicode_GET_LENGTH(s1);
-    if (PyUnicode_GET_LENGTH(s2) != len) {
-        return false;
-    }
-
-    int kind = PyUnicode_KIND(s1);
-    if (PyUnicode_KIND(s2) != kind) {
-        return false;
-    }
-
-    const void* data1 = PyUnicode_DATA(s1);
-    const void* data2 = PyUnicode_DATA(s2);
-    return (memcmp(data1, data2, (size_t)(len * kind)) == 0);
-}
-
 static PyObject*
 _err_key_type_cs(void)
 {
@@ -346,14 +320,15 @@ md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
    mutate md and free entry, so hold our own refs. Only an exact str is
    replaced by its istr: releasing one runs no code, where a subclass's
    __del__ could. */
-static PyObject*
+COLD static PyObject*
 _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
 {
     assert(md->is_ci);
     uint64_t version = md->version;
     PyObject* old_key = Py_NewRef(entry->key);
-    PyObject* identity =
-        Py_NewRef(entry_identity(md->keys->kind, true, entry));
+    PyObject* identity = Py_NewRef(kind_is_compact(md->keys->kind)
+                                       ? compact_entry_identity(true, entry)
+                                       : as_anystr(entry)->identity);
     PyObject* key = _arg_to_key_ci(md->state, old_key, identity);
     if (key != NULL && md->version == version &&
         PyUnicode_CheckExact(old_key)) {
@@ -372,7 +347,7 @@ _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
 static inline PyObject*
 md_ensure_key(MultiDictObject* md, entry_t* entry)
 {
-    assert(!entry_is_hole(entry));
+    assert(entry->key != NULL);
     PyObject* key = entry->key;
     if (!md->is_ci || IStr_CheckExact(md->state, key)) {
         // not Py_NewRef(): GCC leaves it out of line on FT builds

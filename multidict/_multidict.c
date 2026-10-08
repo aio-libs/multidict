@@ -158,12 +158,16 @@ _multidict_init_kind(mod_state* state, bool is_ci, PyObject* arg,
     }
     PyObject* key = NULL;
     if (other != NULL) {
-        entry_t* entries = htkeys_entries(other->keys);
-        for (Py_ssize_t i = 0; i < other->keys->nentries; i++) {
-            entry_t* entry = entry_at(other->keys->kind, entries, i);
-            if (!entry_is_hole(entry)) {
-                key = entry->key;
-                break;
+        htkeys_t* keys = other->keys;
+        if (kind_is_compact(keys->kind)) {
+            entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
+            for (Py_ssize_t i = 0; key == NULL && i < keys->nentries; i++) {
+                key = entries[i].key;
+            }
+        } else {
+            anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
+            for (Py_ssize_t i = 0; key == NULL && i < keys->nentries; i++) {
+                key = entries[i].base.key;
             }
         }
     } else if (arg == NULL) {
@@ -524,7 +528,7 @@ multidict_tp_iter(MultiDictObject* self)
 }
 
 /* Tail-called by the MultiDictProxy copy. */
-static PyObject*
+COLD static PyObject*
 multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
 {
     int cmp;

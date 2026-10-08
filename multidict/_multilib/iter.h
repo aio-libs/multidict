@@ -58,14 +58,14 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         return -1;
     }
     htkeys_t* keys = md->keys;
-    entry_t* entries = htkeys_entries(keys);
     /* One loop per kind and direction, so each steps by a constant entry
        size. */
     if (kind_is_compact(keys->kind)) {
+        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
         if (self->reverse) {
             for (; self->pos >= 0; --self->pos) {
-                entry_t* entry = entry_at(KIND_COMPACT, entries, self->pos);
-                if (!entry_is_hole(entry)) {
+                entry_t* entry = entries + self->pos;
+                if (!compact_entry_is_hole(entry)) {
                     --self->pos;
                     *pentry = entry;
                     return 1;
@@ -74,8 +74,8 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
             return 0;
         }
         for (; self->pos < keys->nentries; ++self->pos) {
-            entry_t* entry = entry_at(KIND_COMPACT, entries, self->pos);
-            if (!entry_is_hole(entry)) {
+            entry_t* entry = entries + self->pos;
+            if (!compact_entry_is_hole(entry)) {
                 ++self->pos;
                 *pentry = entry;
                 return 1;
@@ -83,22 +83,23 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         }
         return 0;
     }
+    anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
     if (self->reverse) {
         for (; self->pos >= 0; --self->pos) {
-            entry_t* entry = entry_at(KIND_ANYSTR, entries, self->pos);
-            if (!entry_is_hole(entry)) {
+            anystr_entry_t* entry = entries + self->pos;
+            if (!anystr_entry_is_hole(entry)) {
                 --self->pos;
-                *pentry = entry;
+                *pentry = &entry->base;
                 return 1;
             }
         }
         return 0;
     }
     for (; self->pos < keys->nentries; ++self->pos) {
-        entry_t* entry = entry_at(KIND_ANYSTR, entries, self->pos);
-        if (!entry_is_hole(entry)) {
+        anystr_entry_t* entry = entries + self->pos;
+        if (!anystr_entry_is_hole(entry)) {
             ++self->pos;
-            *pentry = entry;
+            *pentry = &entry->base;
             return 1;
         }
     }

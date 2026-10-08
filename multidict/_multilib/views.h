@@ -654,7 +654,7 @@ multidict_itemsview_xor(PyObject* lft, PyObject* rht)
     return _view_binop(lft, rht, true, false, _view_xor);
 }
 
-static int
+COLD static int
 _multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
 {
     PyObject* identity = NULL;
@@ -1061,7 +1061,7 @@ multidict_keysview_sq_contains(_Multidict_ViewObject* self, PyObject* key)
     return md_contains(self->md, key);
 }
 
-static PyObject*
+COLD static PyObject*
 _multidict_keysview_isdisjoint_impl(_Multidict_ViewObject* self,
                                     PyObject* other)
 {

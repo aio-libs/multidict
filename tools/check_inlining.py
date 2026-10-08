@@ -150,20 +150,19 @@ RULES = (
         "3-5 Ir per popitem()",
     ),
     Rule(
-        "entry_next",
-        "*",
-        BOTH,
-        "#1676: the step of every per-kind pointer walk; out of line it "
-        "loses the constant entry size",
-    ),
-    Rule(
         "_md_copy_live",
         "*",
         BOTH,
         "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
     ),
     Rule(
-        "entry_is_hole",
+        "compact_entry_is_hole",
+        "*",
+        BOTH,
+        "#1674: a single load tested once per entry in every walk",
+    ),
+    Rule(
+        "anystr_entry_is_hole",
         "*",
         BOTH,
         "#1674: a single load tested once per entry in every walk",

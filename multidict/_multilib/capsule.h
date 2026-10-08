@@ -299,7 +299,7 @@ _md_foreach_all(MultiDictObject* md, MultiDict_ItemVisitor visitor,
     return count;
 }
 
-static Py_ssize_t
+COLD static Py_ssize_t
 _md_foreach_key(MultiDictObject* md, PyObject* key,
                 MultiDict_ItemVisitor visitor, void* user_data)
 {

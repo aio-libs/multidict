@@ -17,6 +17,7 @@ extern "C" {
 #include "dict.h"
 #include "htkeys.h"
 #include "identity.h"
+#include "str_cmp.h"
 
 /* Matches kept in the short list before starting the bitmap: MD_SEEN_FEW
    when the bitmap fits its inline buffer, MD_SEEN_MANY when it would need
@@ -89,6 +90,39 @@ typedef int (*md_item_visitor_t)(void* user_data, PyObject* identity,
                                  Py_hash_t hash, PyObject* key,
                                  PyObject* value);
 
+/* Hands md_walk_all()'s visitor one live entry: 1 to go on, 0 if the
+   visitor stopped the walk, -1 with an exception set. */
+static inline int
+_md_walk_visit(MultiDictObject* md, entry_t* entry, PyObject* identity,
+               Py_hash_t hash, bool with_keys, md_item_visitor_t visitor,
+               void* user_data, uint64_t version)
+{
+    Py_INCREF(identity);
+    PyObject* value = Py_NewRef(entry->value);
+    PyObject* key = NULL;
+    if (with_keys) {
+        key = md_ensure_key(md, entry);  // last entry access
+        if (key == NULL) {
+            Py_DECREF(value);
+            Py_DECREF(identity);
+            return -1;
+        }
+    }
+    int ret = visitor(user_data, identity, hash, key, value);
+    Py_XDECREF(key);
+    Py_DECREF(value);
+    Py_DECREF(identity);
+    if (ret < 0) {
+        assert(PyErr_Occurred());
+        return -1;
+    }
+    /* md_ensure_key() and the visitor can both run Python code. */
+    if (md_check_version(md, version) < 0) {
+        return -1;
+    }
+    return ret == 0 ? 0 : 1;
+}
+
 /* Calls `visitor` once for every live entry, in insertion order. Returns how
    many entries were visited, or -1 with an exception set. The caller holds
    md's critical section.
@@ -103,47 +137,89 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
 {
     bool ci = md->is_ci;
     uint64_t version = md->version;
+    // the version check in _md_walk_visit() keeps the table in place
     htkeys_t* keys = md->keys;
-    uint8_t kind = keys->kind;
-    entry_t* entry = htkeys_entries(keys);
-    // the version check below keeps the table and its nentries in place
-    entry_t* end = entry_at(kind, entry, keys->nentries);
     Py_ssize_t count = 0;
-    for (; entry < end; entry = entry_next(kind, entry)) {
-        if (entry_is_hole(entry)) {
-            continue;
-        }
-
-        PyObject* identity = Py_NewRef(entry_identity(kind, ci, entry));
-        Py_hash_t hash = entry_hash(kind, ci, entry);
-        PyObject* value = Py_NewRef(entry->value);
-        PyObject* key = NULL;
-        if (with_keys) {
-            key = md_ensure_key(md, entry);  // last entry access
-            if (key == NULL) {
-                Py_DECREF(value);
-                Py_DECREF(identity);
-                return -1;
+    int ret = 1;
+    if (kind_is_compact(keys->kind)) {
+        entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
+        for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
+             entry++) {
+            if (!compact_entry_is_hole(entry)) {
+                count++;
+                ret = _md_walk_visit(md,
+                                     entry,
+                                     compact_entry_identity(ci, entry),
+                                     compact_entry_hash(ci, entry),
+                                     with_keys,
+                                     visitor,
+                                     user_data,
+                                     version);
             }
         }
-        count++;
-        int ret = visitor(user_data, identity, hash, key, value);
-        Py_XDECREF(key);
-        Py_DECREF(value);
-        Py_DECREF(identity);
-        if (ret < 0) {
-            assert(PyErr_Occurred());
-            return -1;
-        }
-        /* md_ensure_key() and the visitor can both run Python code. */
-        if (md_check_version(md, version) < 0) {
-            return -1;
-        }
-        if (ret == 0) {
-            break;
+    } else {
+        anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys);
+        for (anystr_entry_t* end = entry + keys->nentries;
+             ret > 0 && entry < end;
+             entry++) {
+            if (!anystr_entry_is_hole(entry)) {
+                count++;
+                ret = _md_walk_visit(md,
+                                     &entry->base,
+                                     entry->identity,
+                                     entry->hash,
+                                     with_keys,
+                                     visitor,
+                                     user_data,
+                                     version);
+            }
         }
     }
-    return count;
+    return ret < 0 ? -1 : count;
+}
+
+#define _MD_WALK_SEEN 2
+
+/* A matched entry at `index` of md_walk_with_hash()'s chain: 1 once
+   visited, 0 if the visitor stopped the walk, _MD_WALK_SEEN if the walk
+   visited it already, -1 with an exception set. */
+static inline int
+_md_walk_matched(MultiDictObject* md, entry_t* entry, Py_ssize_t index,
+                 md_seen_t* seen, PyObject* identity, Py_hash_t hash,
+                 bool with_keys, md_item_visitor_t visitor, void* user_data,
+                 uint64_t version)
+{
+    /* HTKEYSITER_NEXT() can repeat a slot already seen in this scan
+       (see its doc comment), and this scan never marks the table. */
+    int seen_before = _md_seen_test_and_add(seen, md, index);
+    if (seen_before < 0) {
+        return -1;
+    }
+    if (seen_before) {
+        return _MD_WALK_SEEN;
+    }
+
+    PyObject* value = Py_NewRef(entry->value);
+    PyObject* key = NULL;
+    if (with_keys) {
+        key = md_ensure_key(md, entry);  // last entry access
+        if (key == NULL) {
+            Py_DECREF(value);
+            return -1;
+        }
+    }
+    int ret = visitor(user_data, identity, hash, key, value);
+    Py_XDECREF(key);
+    Py_DECREF(value);
+    if (ret < 0) {
+        assert(PyErr_Occurred());
+        return -1;
+    }
+    /* md_ensure_key() and the visitor can both run Python code. */
+    if (md_check_version(md, version) < 0) {
+        return -1;
+    }
+    return ret == 0 ? 0 : 1;
 }
 
 /* Calls `visitor` once for every entry whose identity is `identity`, in probe
@@ -165,11 +241,8 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 {
     bool ci = md->is_ci;
     uint64_t version = md->version;
-    htkeys_t* keys = md->keys;
-    entry_t* entries = htkeys_entries(keys);
-    uint8_t kind = keys->kind;
     htkeysiter_t iter;
-    HTKEYSITER_INIT(&iter, keys, hash);
+    HTKEYSITER_INIT(&iter, md->keys, hash);
 
     /* Not zero-initialized: the bitmap's inline buffer is 4 KB.
        The release below only needs `nfew`. */
@@ -177,62 +250,52 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     seen.nfew = 0;
 
     Py_ssize_t count = 0;
-    for (; iter.index != DKIX_EMPTY; HTKEYSITER_NEXT(&iter)) {
-        if (iter.index < 0) {
-            continue;
-        }
-        entry_t* entry = entry_at(kind, entries, iter.index);
-        if (entry_hash(kind, ci, entry) != hash) {
-            continue;
-        }
-        if (!str_cmp(identity, entry_identity(kind, ci, entry))) {
-            continue;
-        }
-
-        /* HTKEYSITER_NEXT() can repeat a slot already seen in this scan
-           (see its doc comment), and this scan never marks the table. */
-        int seen_before = _md_seen_test_and_add(&seen, md, iter.index);
-        if (seen_before < 0) {
-            count = -1;
-            break;
-        }
-        if (seen_before) {
-            continue;
-        }
-
-        PyObject* value = Py_NewRef(entry->value);
-        PyObject* key = NULL;
-        if (with_keys) {
-            key = md_ensure_key(md, entry);  // last entry access
-            if (key == NULL) {
-                Py_DECREF(value);
-                count = -1;
+    int ret = 1;
+    entry_t* entry = NULL;
+    if (kind_is_compact(md->keys->kind)) {
+        while (ret > 0) {
+            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+            if (entry == NULL) {
                 break;
             }
+            ret = _md_walk_matched(md,
+                                   entry,
+                                   iter.index,
+                                   &seen,
+                                   identity,
+                                   hash,
+                                   with_keys,
+                                   visitor,
+                                   user_data,
+                                   version);
+            count += ret == 0 || ret == 1;
         }
-        count++;
-        int ret = visitor(user_data, identity, hash, key, value);
-        Py_XDECREF(key);
-        Py_DECREF(value);
-        if (ret < 0) {
-            assert(PyErr_Occurred());
-            count = -1;
-            break;
-        }
-        /* md_ensure_key() and the visitor can both run Python code. */
-        if (md_check_version(md, version) < 0) {
-            count = -1;
-            break;
-        }
-        if (ret == 0) {
-            break;
+    } else {
+        while (ret > 0) {
+            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                break;
+            }
+            ret = _md_walk_matched(md,
+                                   entry,
+                                   iter.index,
+                                   &seen,
+                                   identity,
+                                   hash,
+                                   with_keys,
+                                   visitor,
+                                   user_data,
+                                   version);
+            count += ret == 0 || ret == 1;
         }
     }
     if (seen.nfew > MD_SEEN_MANY) {
         bitmap_release(&seen.bitmap);
     }
-    return count;
+    return ret < 0 ? -1 : count;
 }
+
+#undef _MD_WALK_SEEN
 
 /* md_walk_with_hash() for callers that have no hash at hand yet. */
 static Py_ssize_t

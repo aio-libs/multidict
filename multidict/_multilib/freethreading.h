@@ -27,13 +27,13 @@ extern "C" {
 #endif
 
 /*
-The identity slot (see entry_identity_slot(): the key of a compact entry,
-the identity of an anystr one) is the "slot is populated" signal for a
-lock-free walk, so deletion clears it first. Insertion fills a fresh
-entry with plain stores and publishes its index slot last, with release
-order (HTKEYS_PUBLISH_INDEX()); the walk reaches the entry only through
+The identity slot (the key of a compact entry, the identity of an anystr
+one; see load_compact_identity() and load_anystr_identity()) is the "slot is
+populated" signal for a lock-free walk, so deletion clears it first. Insertion
+fills a fresh entry with plain stores and publishes its index slot last, with
+release order (HTKEYS_PUBLISH_INDEX()); the walk reaches the entry only through
 that slot. It never goes from one non-NULL identity to another; a compact
-entry's key may be replaced (replace_key()), but only by a key with an
+entry's key may be replaced (replace_compact_key()), but only by a key with an
 equal identity. That orders the fields but does not keep the objects
 alive: a concurrent delete or replace drops its reference without
 waiting for readers, so reading the slot's or value's contents needs
@@ -162,11 +162,19 @@ bump_version(MultiDictObject* md)
     return version;
 }
 
+/* The key of a compact entry, the field lock-free readers check first:
+   what it holds is the identity only in a MultiDict's table. See
+   compact_key_identity(). */
 static inline PyObject*
-load_identity(uint8_t kind, entry_t* entry)
+load_compact_identity(entry_t* entry)
 {
-    return (PyObject*)atomic_load_ptr(
-        (void* const*)entry_identity_slot(kind, entry));
+    return (PyObject*)atomic_load_ptr((void* const*)&entry->key);
+}
+
+static inline PyObject*
+load_anystr_identity(anystr_entry_t* entry)
+{
+    return (PyObject*)atomic_load_ptr((void* const*)&entry->identity);
 }
 
 /* Lets a lock-free reader take a reference with try_get_ref(). The GIL
@@ -177,19 +185,27 @@ mark_shared(PyObject* obj)
     PyUnstable_EnableTryIncRef(obj);
 }
 
+/* A new key for a live compact entry, published like an identity since
+   it is the field lock-free readers check first. */
 static inline void
-publish_identity(uint8_t kind, entry_t* entry, PyObject* identity)
+replace_compact_key(entry_t* entry, PyObject* key)
 {
-    mark_shared(identity);
-    atomic_store_ptr((void**)entry_identity_slot(kind, entry), identity);
+    mark_shared(key);
+    atomic_store_ptr((void**)&entry->key, key);
 }
 
-/* Leaves the old reference to the caller, which decrefs it only once
-   md's bookkeeping is consistent again. */
+/* Leave the old reference to the caller, which decrefs it only once md's
+   bookkeeping is consistent again. */
 static inline void
-reset_identity(uint8_t kind, entry_t* entry)
+reset_compact_identity(entry_t* entry)
 {
-    atomic_store_ptr((void**)entry_identity_slot(kind, entry), NULL);
+    atomic_store_ptr((void**)&entry->key, NULL);
+}
+
+static inline void
+reset_anystr_identity(anystr_entry_t* entry)
+{
+    atomic_store_ptr((void**)&entry->identity, NULL);
 }
 
 static inline PyObject*
@@ -330,9 +346,15 @@ bump_version(MultiDictObject* md)
 }
 
 static inline PyObject*
-load_identity(uint8_t kind, entry_t* entry)
+load_compact_identity(entry_t* entry)
 {
-    return *entry_identity_slot(kind, entry);
+    return entry->key;
+}
+
+static inline PyObject*
+load_anystr_identity(anystr_entry_t* entry)
+{
+    return entry->identity;
 }
 
 static inline void
@@ -342,15 +364,21 @@ mark_shared(PyObject* obj)
 }
 
 static inline void
-publish_identity(uint8_t kind, entry_t* entry, PyObject* identity)
+replace_compact_key(entry_t* entry, PyObject* key)
 {
-    *entry_identity_slot(kind, entry) = identity;
+    entry->key = key;
 }
 
 static inline void
-reset_identity(uint8_t kind, entry_t* entry)
+reset_compact_identity(entry_t* entry)
 {
-    *entry_identity_slot(kind, entry) = NULL;
+    entry->key = NULL;
+}
+
+static inline void
+reset_anystr_identity(anystr_entry_t* entry)
+{
+    entry->identity = NULL;
 }
 
 static inline PyObject*
@@ -413,16 +441,12 @@ retire_watcher(mod_state* state, int watcher_id)
 
 #endif /* Py_GIL_DISABLED */
 
-/* A new key for a live entry. A compact kind's key is the field lock-free
-   readers check first, so it is published like an identity. */
+/* A new key for a live anystr entry: readers check the identity, which
+   stays. */
 static inline void
-replace_key(uint8_t kind, entry_t* entry, PyObject* key)
+replace_anystr_key(anystr_entry_t* entry, PyObject* key)
 {
-    if (kind_is_compact(kind)) {
-        publish_identity(kind, entry, key);
-    } else {
-        entry->key = key;
-    }
+    entry->base.key = key;
 }
 
 /* Leaves the old reference to the caller, which decrefs it only once
