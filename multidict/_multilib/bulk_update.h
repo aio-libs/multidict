@@ -32,30 +32,21 @@ typedef enum _UpdateOp {
     Merge,
 } UpdateOp;
 
-/* Nothing here runs Python code or suspends the critical section: the
- * replaced key and value go to `defer`. */
-static int
-_md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-           PyObject* key, PyObject* value, reflist_t* defer,
-           update_marks_t* marks, bool fits)
+/* _md_update()'s walk of the hash chain, `kind` a constant at each call:
+   1 if the key was there, 0 if not, -1 on error. */
+static inline int
+_md_update_replace(MultiDictObject* md, uint8_t kind, Py_hash_t hash,
+                   PyObject* identity, PyObject* key, PyObject* value,
+                   reflist_t* defer, update_marks_t* marks)
 {
     bool ci = md->is_ci;
-    assert(fits == md_key_fits(md, key, identity));
     bool found = false;
-    if (kind_is_compact(md->keys->kind) && UNLIKELY(!fits) &&
-        md_to_anystr(md) < 0) {
-        return -1;
-    }
-    if (update_marks_sync(marks, md) < 0) {
-        return -1;
-    }
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
-    uint8_t kind = md->keys->kind;
 
     entry_t* entry = NULL;
     for (;;) {
-        if (kind_is_compact(iter.keys->kind)) {
+        if (kind_is_compact(kind)) {
             HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
         } else {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
@@ -102,60 +93,93 @@ _md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             return -1;
         }
     }
+    return found;
+}
 
-    if (!found) {
+/* Nothing here runs Python code or suspends the critical section: the
+ * replaced key and value go to `defer`. */
+static int
+_md_update(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
+           PyObject* key, PyObject* value, reflist_t* defer,
+           update_marks_t* marks, bool fits)
+{
+    assert(fits == md_key_fits(md, key, identity));
+    if (kind_is_compact(md->keys->kind) && UNLIKELY(!fits) &&
+        md_to_anystr(md) < 0) {
+        return -1;
+    }
+    if (update_marks_sync(marks, md) < 0) {
+        return -1;
+    }
+    int found =
+        kind_is_compact(md->keys->kind)
+            ? _md_update_replace(
+                  md, KIND_COMPACT, hash, identity, key, value, defer, marks)
+            : _md_update_replace(
+                  md, KIND_ANYSTR, hash, identity, key, value, defer, marks);
+    if (found == 0) {
         return md_add_for_upd(md, hash, identity, key, value, marks, fits);
     }
-    return 0;
+    return found < 0 ? -1 : 0;
+}
+
+/* Whether md has `identity` from before the batch, `kind` a constant at
+   each call. */
+static inline bool
+_md_merge_present(MultiDictObject* md, uint8_t kind, Py_hash_t hash,
+                  PyObject* identity, update_marks_t* marks)
+{
+    bool ci = md->is_ci;
+    htkeysiter_t iter;
+    HTKEYSITER_INIT(&iter, md->keys, hash);
+
+    entry_t* entry = NULL;
+    for (;;) {
+        if (kind_is_compact(kind)) {
+            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+        } else {
+            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
+        }
+        if (entry == NULL) {
+            return false;
+        }
+        /* An entry this batch added doesn't count as already present. */
+        if (!bitmap_test(&marks->updated, iter.index)) {
+            return true;
+        }
+    }
 }
 
 static int
 _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
           PyObject* key, PyObject* value, update_marks_t* marks, bool fits)
 {
-    bool ci = md->is_ci;
     if (update_marks_sync(marks, md) < 0) {
         return -1;
     }
-    htkeysiter_t iter;
-    HTKEYSITER_INIT(&iter, md->keys, hash);
-
-    entry_t* entry = NULL;
-    for (;;) {
-        if (kind_is_compact(iter.keys->kind)) {
-            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
-        } else {
-            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-        }
-        if (entry == NULL) {
-            break;
-        }
-        /* An entry this batch added doesn't count as already present. */
-        if (!bitmap_test(&marks->updated, iter.index)) {
-            return 0;
-        }
+    bool present =
+        kind_is_compact(md->keys->kind)
+            ? _md_merge_present(md, KIND_COMPACT, hash, identity, marks)
+            : _md_merge_present(md, KIND_ANYSTR, hash, identity, marks);
+    if (present) {
+        return 0;
     }
-
     return md_add_for_upd(md, hash, identity, key, value, marks, fits);
 }
 
-/* Removes the entries update() doomed and nothing has written since. Only
-   an out-of-memory fallback decref in _md_del_at_deferred() can run Python
-   here; the walk then starts over, which each record leaving the set as it
-   goes makes safe. */
+#define _MD_POST_UPDATE_RESTART 2
+
+/* One pass of _md_post_update_deleted() over md's table, whose kind is
+   `kind`, a constant at each call: 0 when done, -1 when done but a delete
+   failed, _MD_POST_UPDATE_RESTART when a failed delete moved the table. */
 static int
-_md_post_update_deleted(MultiDictObject* md, reflist_t* defer,
-                        update_marks_t* marks)
+_md_post_update_pass(MultiDictObject* md, uint8_t kind, reflist_t* defer,
+                     update_marks_t* marks)
 {
     bool ci = md->is_ci;
     int ret = 0;
-restart:
-    if (update_marks_sync(marks, md) < 0) {
-        return -1;
-    }
     htkeys_t* keys = md->keys;
     uint64_t version = md->version;
-    uint8_t kind = keys->kind;
     for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {
         doomed_entry_t* doomed = marks->doomed + i;
         Py_ssize_t pos = doomed->index;
@@ -188,12 +212,38 @@ restart:
         if (_md_del_at_deferred(md, iter.slot, entry, defer) < 0) {
             ret = -1;
             if (md->keys != keys || md->version != version) {
-                goto restart;
+                return _MD_POST_UPDATE_RESTART;
             }
         }
     }
     return ret;
 }
+
+/* Removes the entries update() doomed and nothing has written since. Only
+   an out-of-memory fallback decref in _md_del_at_deferred() can run Python
+   here; the walk then starts over, which each record leaving the set as it
+   goes makes safe. */
+static int
+_md_post_update_deleted(MultiDictObject* md, reflist_t* defer,
+                        update_marks_t* marks)
+{
+    int ret = 0;
+    int pass;
+    do {
+        if (update_marks_sync(marks, md) < 0) {
+            return -1;
+        }
+        pass = kind_is_compact(md->keys->kind)
+                   ? _md_post_update_pass(md, KIND_COMPACT, defer, marks)
+                   : _md_post_update_pass(md, KIND_ANYSTR, defer, marks);
+        if (pass != 0) {
+            ret = -1;
+        }
+    } while (pass == _MD_POST_UPDATE_RESTART);
+    return ret;
+}
+
+#undef _MD_POST_UPDATE_RESTART
 
 /* Ends the batch; the caller holds md's critical section. */
 static int
@@ -296,17 +346,13 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     return md_walk_all(other, true, _md_update_visit, &state) < 0 ? -1 : 0;
 }
 
-// d.extend(d) is rare: one copy, the class read at run time
+/* md_extend_self()'s copy, `kind` a constant at each call; md_reserve()
+   keeps the table, and md's own keys always fit it. */
 static int
-md_extend_self(MultiDictObject* md)
+_md_extend_self_kind(MultiDictObject* md, uint8_t kind)
 {
-    if (md_reserve(md, md->keys->nentries) < 0) {
-        return -1;
-    }
-
     bool ci = md->is_ci;
     htkeys_t* keys = md->keys;
-    uint8_t kind = keys->kind;
     Py_ssize_t nentries = keys->nentries;
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         entry_t* entry = kind_is_compact(kind)
@@ -326,6 +372,18 @@ md_extend_self(MultiDictObject* md)
         }
     }
     return 0;
+}
+
+// d.extend(d) is rare: the class is read at run time
+static int
+md_extend_self(MultiDictObject* md)
+{
+    if (md_reserve(md, md->keys->nentries) < 0) {
+        return -1;
+    }
+    return kind_is_compact(md->keys->kind)
+               ? _md_extend_self_kind(md, KIND_COMPACT)
+               : _md_extend_self_kind(md, KIND_ANYSTR);
 }
 
 static int

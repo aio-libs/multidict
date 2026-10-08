@@ -1204,9 +1204,10 @@ _md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
  * `watched` is a constant at both call sites, so the unwatched copy
  * carries no watch code at all: testing md->watch inside the loop costs a
  * reload per record, since every decref and store may alias it. */
-static int
-_md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-               removed_pairs_t* removed, bool watched)
+/* _md_del_locked() for a table of kind `kind`, a constant at each call. */
+static inline int
+_md_del_locked_kind(MultiDictObject* md, uint8_t kind, PyObject* identity,
+                    Py_hash_t hash, removed_pairs_t* removed, bool watched)
 {
     bool ci = md->is_ci;
     bool found = false;
@@ -1215,11 +1216,10 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     htkeys_t* keys = md->keys;
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, keys, hash);
-    uint8_t kind = keys->kind;
 
     entry_t* entry = NULL;
     for (;;) {
-        if (kind_is_compact(iter.keys->kind)) {
+        if (kind_is_compact(kind)) {
             HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
         } else {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
@@ -1257,6 +1257,17 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     }
     ASSERT_CONSISTENT(md);
     return ret;
+}
+
+static int
+_md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+               removed_pairs_t* removed, bool watched)
+{
+    return kind_is_compact(md->keys->kind)
+               ? _md_del_locked_kind(
+                     md, KIND_COMPACT, identity, hash, removed, watched)
+               : _md_del_locked_kind(
+                     md, KIND_ANYSTR, identity, hash, removed, watched);
 }
 
 static int
@@ -1648,16 +1659,15 @@ md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
     return _md_get_one_identity(md, key, identity, hash, ret);
 }
 
-static int
-_md_to_dict_locked(MultiDictObject* md, PyObject** ret)
+/* _md_to_dict_locked() for a table of kind `kind`, a constant at each call. */
+static inline int
+_md_to_dict_locked_kind(MultiDictObject* md, uint8_t kind, PyObject** ret)
 {
     bool ci = md->is_ci;
     PyObject* dict = PyDict_New();
     if (dict == NULL) {
         return -1;
     }
-    uint8_t kind =
-        kind_is_compact(md->keys->kind) ? KIND_COMPACT : KIND_ANYSTR;
     PyObject* key = NULL;
     PyObject* lst = NULL;
     uint64_t version = md->version;
@@ -1686,7 +1696,7 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
         HTKEYSITER_INIT(&iter, md->keys, hash);
         entry_t* e = NULL;
         for (;;) {
-            if (kind_is_compact(iter.keys->kind)) {
+            if (kind_is_compact(kind)) {
                 HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, e);
             } else {
                 HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, e);
@@ -1748,6 +1758,14 @@ fail:
     Py_XDECREF(lst);
     Py_DECREF(dict);
     return -1;
+}
+
+static int
+_md_to_dict_locked(MultiDictObject* md, PyObject** ret)
+{
+    return kind_is_compact(md->keys->kind)
+               ? _md_to_dict_locked_kind(md, KIND_COMPACT, ret)
+               : _md_to_dict_locked_kind(md, KIND_ANYSTR, ret);
 }
 
 static int
@@ -1942,9 +1960,11 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 
 /* Caller holds md's critical section. The removed pairs go to `removed`,
  * as in _md_del_locked(); `values` collects the result. */
-static int
-_md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                   reflist_t* values, removed_pairs_t* removed)
+/* _md_pop_all_locked() for a table of kind `kind`, a constant at each call. */
+static inline int
+_md_pop_all_locked_kind(MultiDictObject* md, uint8_t kind, PyObject* identity,
+                        Py_hash_t hash, reflist_t* values,
+                        removed_pairs_t* removed)
 {
     bool ci = md->is_ci;
     if (md_len(md) == 0) {
@@ -1956,11 +1976,10 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
-    uint8_t kind = md->keys->kind;
 
     entry_t* entry = NULL;
     for (;;) {
-        if (kind_is_compact(iter.keys->kind)) {
+        if (kind_is_compact(kind)) {
             HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
         } else {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
@@ -1996,6 +2015,17 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     }
     ASSERT_CONSISTENT(md);
     return ret;
+}
+
+static int
+_md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                   reflist_t* values, removed_pairs_t* removed)
+{
+    return kind_is_compact(md->keys->kind)
+               ? _md_pop_all_locked_kind(
+                     md, KIND_COMPACT, identity, hash, values, removed)
+               : _md_pop_all_locked_kind(
+                     md, KIND_ANYSTR, identity, hash, values, removed);
 }
 
 static int
@@ -2164,6 +2194,107 @@ _md_replace_free_dups(reflist_t* dups)
     PyMem_Free(dups);
 }
 
+#define _MD_REPLACE_STALE 2
+
+/* One attempt of _md_replace_locked() on a table of kind `kind`, a
+   constant at each call: 1 if `key` isn't there, 0 once it is replaced,
+   -1 on error, _MD_REPLACE_STALE when md's table moved under it. *pfound
+   carries over to the next attempt. */
+static inline int
+_md_replace_pass(MultiDictObject* md, uint8_t kind, PyObject* key,
+                 PyObject* value, PyObject* identity, Py_hash_t hash,
+                 PyObject** old_key_out, PyObject** old_value_out,
+                 reflist_t** dups, bool watched, bool* pfound)
+{
+    bool ci = md->is_ci;
+    htkeysiter_t iter;
+    HTKEYSITER_INIT(&iter, md->keys, hash);
+    /* The one entry to keep. Later matches are deleted, which turns
+       their slots into DKIX_DUMMY, so only this one can show up again
+       when HTKEYSITER_NEXT() repeats a slot. */
+    Py_ssize_t replaced = -1;
+    /* Equal keys sit on their hash chain in insertion order, before
+       and after a resize alike, so on a retry the first match is the
+       entry an earlier attempt already replaced. */
+    bool skip_first = *pfound;
+
+    entry_t* entry = NULL;
+    for (;;) {
+        if (kind_is_compact(kind)) {
+            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+        } else {
+            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
+        }
+        if (entry == NULL) {
+            break;
+        }
+        if (iter.index == replaced) {
+            continue;
+        }
+#ifdef Py_GIL_DISABLED
+        htkeys_t* keys_before = md->keys;
+        uint64_t version_before = md->version;
+#endif
+        if (skip_first) {
+            skip_first = false;
+            replaced = iter.index;
+            continue;
+        }
+        if (!*pfound) {
+            /* Checked only here, where the key gets stored: a miss
+               leaves it to md_add_with_hash(), and the same key
+               object fits by definition. */
+            PyObject* old_key = entry->key;
+            if (kind_is_compact(kind) && key != old_key &&
+                UNLIKELY(!md_key_fits(md, key, identity))) {
+                if (md_to_anystr(md) < 0) {
+                    return -1;
+                }
+                return _MD_REPLACE_STALE;  // entry is in the old table
+            }
+            *pfound = true;
+            replaced = iter.index;
+            /* old_key/old_value decref deferred to the caller, past
+               the critical section -- see reflist_t */
+            PyObject* old_value = load_value(entry);
+            /* The same key object needs no store, and in a compact
+               table no new publication either. */
+            if (key == old_key) {
+                old_key = NULL;
+            } else {
+                replace_key(kind, entry, Py_NewRef(key));
+            }
+            publish_value(entry, Py_NewRef(value));
+            if (watched) {
+                md_watch_record(md,
+                                MultiDict_EVENT_REPLACED,
+                                identity,
+                                hash,
+                                key,
+                                value,
+                                old_value);
+            }
+            *old_key_out = old_key;
+            *old_value_out = old_value;
+        } else if (_md_replace_del_dup(
+                       md, iter.slot, entry, kind, hash, watched, dups) < 0) {
+            return -1;
+        }
+#ifdef Py_GIL_DISABLED
+        /* Checking the pointer alone isn't enough: a freed table
+           can get reallocated at the very same address by a later
+           resize (same size class, common in practice), which
+           would make a pointer-only check miss the change. Every
+           mutation bumps md->version, including ones that don't
+           otherwise touch md->keys, so compare both. */
+        if (md->keys != keys_before || md->version != version_before) {
+            return _MD_REPLACE_STALE;
+        }
+#endif
+    }
+    return *pfound ? 0 : 1;
+}
+
 /* Returns 1 when `key` isn't there, leaving the add to the caller.
  * `watched` is a constant at both call sites; see _md_del_locked(). */
 static int
@@ -2171,113 +2302,42 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
                    PyObject* identity, Py_hash_t hash, PyObject** old_key_out,
                    PyObject** old_value_out, reflist_t** dups, bool watched)
 {
-    bool ci = md->is_ci;
     bool found = false;
-
-    /* Retries on a concurrent resize (Py_GIL_DISABLED only); deferred
-     * decrefs mean nothing here can trigger one, so this shouldn't loop. */
-    for (;;) {
-        htkeysiter_t iter;
-        HTKEYSITER_INIT(&iter, md->keys, hash);
-        /* The one entry to keep. Later matches are deleted, which turns
-           their slots into DKIX_DUMMY, so only this one can show up again
-           when HTKEYSITER_NEXT() repeats a slot. */
-        Py_ssize_t replaced = -1;
-        /* Equal keys sit on their hash chain in insertion order, before
-           and after a resize alike, so on a retry the first match is the
-           entry an earlier attempt already replaced. */
-        bool skip_first = found;
-        bool stale = false;
-
-        entry_t* entry = NULL;
-        for (;;) {
-            if (kind_is_compact(iter.keys->kind)) {
-                HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
-            } else {
-                HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-            }
-            if (entry == NULL) {
-                break;
-            }
-            if (iter.index == replaced) {
-                continue;
-            }
-#ifdef Py_GIL_DISABLED
-            htkeys_t* keys_before = md->keys;
-            uint64_t version_before = md->version;
-#endif
-            uint8_t kind = md->keys->kind;
-            if (skip_first) {
-                skip_first = false;
-                replaced = iter.index;
-                continue;
-            }
-            if (!found) {
-                /* Checked only here, where the key gets stored: a miss
-                   leaves it to md_add_with_hash(), and the same key
-                   object fits by definition. */
-                PyObject* old_key = entry->key;
-                if (kind_is_compact(kind) && key != old_key &&
-                    UNLIKELY(!md_key_fits(md, key, identity))) {
-                    if (md_to_anystr(md) < 0) {
-                        return -1;
-                    }
-                    stale = true;  // entry is in the old table
-                    break;
-                }
-                found = true;
-                replaced = iter.index;
-                /* old_key/old_value decref deferred to the caller, past
-                   the critical section -- see reflist_t */
-                PyObject* old_value = load_value(entry);
-                /* The same key object needs no store, and in a compact
-                   table no new publication either. */
-                if (key == old_key) {
-                    old_key = NULL;
-                } else {
-                    replace_key(kind, entry, Py_NewRef(key));
-                }
-                publish_value(entry, Py_NewRef(value));
-                if (watched) {
-                    md_watch_record(md,
-                                    MultiDict_EVENT_REPLACED,
-                                    identity,
-                                    hash,
-                                    key,
-                                    value,
-                                    old_value);
-                }
-                *old_key_out = old_key;
-                *old_value_out = old_value;
-            } else if (_md_replace_del_dup(
-                           md, iter.slot, entry, kind, hash, watched, dups) <
-                       0) {
-                return -1;
-            }
-#ifdef Py_GIL_DISABLED
-            /* Checking the pointer alone isn't enough: a freed table
-               can get reallocated at the very same address by a later
-               resize (same size class, common in practice), which
-               would make a pointer-only check miss the change. Every
-               mutation bumps md->version, including ones that don't
-               otherwise touch md->keys, so compare both. */
-            if (md->keys != keys_before || md->version != version_before) {
-                stale = true;
-                break;
-            }
-#endif
-        }
-        if (stale) {
-            continue;
-        }
-
-        if (!found) {
-            return 1;
-        }
+    int ret;
+    /* Retries on a concurrent resize (Py_GIL_DISABLED only), or after
+     * md_to_anystr(); deferred decrefs mean nothing here can trigger a
+     * resize, so this shouldn't loop more than once. */
+    do {
+        ret = kind_is_compact(md->keys->kind) ? _md_replace_pass(md,
+                                                                 KIND_COMPACT,
+                                                                 key,
+                                                                 value,
+                                                                 identity,
+                                                                 hash,
+                                                                 old_key_out,
+                                                                 old_value_out,
+                                                                 dups,
+                                                                 watched,
+                                                                 &found)
+                                              : _md_replace_pass(md,
+                                                                 KIND_ANYSTR,
+                                                                 key,
+                                                                 value,
+                                                                 identity,
+                                                                 hash,
+                                                                 old_key_out,
+                                                                 old_value_out,
+                                                                 dups,
+                                                                 watched,
+                                                                 &found);
+    } while (ret == _MD_REPLACE_STALE);
+    if (ret == 0) {
         bump_version(md);
-        return 0;
     }
+    return ret;
 }
+
+#undef _MD_REPLACE_STALE
 
 /* The fit is checked only here, where a key is stored, not carried from
    the identity: kept live across the replace loop, it cost d[key] = v up

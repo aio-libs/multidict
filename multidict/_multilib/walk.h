@@ -190,9 +190,11 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
    rechecked after every visitor call, so a reentrant mutation ends the walk
    with "MultiDict is changed during iteration" instead of walking a table
    that moved. */
-static Py_ssize_t
-md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                  bool with_keys, md_item_visitor_t visitor, void* user_data)
+/* md_walk_with_hash() for a table of kind `kind`, a constant at each call. */
+static inline Py_ssize_t
+_md_walk_with_hash_kind(MultiDictObject* md, uint8_t kind, PyObject* identity,
+                        Py_hash_t hash, bool with_keys,
+                        md_item_visitor_t visitor, void* user_data)
 {
     bool ci = md->is_ci;
     uint64_t version = md->version;
@@ -207,7 +209,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     Py_ssize_t count = 0;
     entry_t* entry = NULL;
     for (;;) {
-        if (kind_is_compact(iter.keys->kind)) {
+        if (kind_is_compact(kind)) {
             HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
         } else {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
@@ -258,6 +260,27 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         bitmap_release(&seen.bitmap);
     }
     return count;
+}
+
+static Py_ssize_t
+md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                  bool with_keys, md_item_visitor_t visitor, void* user_data)
+{
+    return kind_is_compact(md->keys->kind)
+               ? _md_walk_with_hash_kind(md,
+                                         KIND_COMPACT,
+                                         identity,
+                                         hash,
+                                         with_keys,
+                                         visitor,
+                                         user_data)
+               : _md_walk_with_hash_kind(md,
+                                         KIND_ANYSTR,
+                                         identity,
+                                         hash,
+                                         with_keys,
+                                         visitor,
+                                         user_data);
 }
 
 /* md_walk_with_hash() for callers that have no hash at hand yet. */
