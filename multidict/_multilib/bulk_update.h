@@ -410,8 +410,6 @@ _md_update_visit(void* user_data, PyObject* identity, Py_hash_t hash,
                    ? -1
                    : 1;
     }
-    /* lower() on a str subclass key runs Python code; the walk fails if
-       that mutates other. */
     PyObject* own = md_calc_identity(md, key);
     if (own == NULL) {
         return -1;
@@ -500,30 +498,19 @@ static int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                     reflist_t* defer, update_marks_t* marks)
 {
-    bool ci = md->is_ci;
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
     PyObject* key = NULL;
     PyObject* value = NULL;
-    bool owned = false;
 
     assert(PyDict_CheckExact(kwds));
 
-    // PyDict_Next returns borrowed refs
+    // PyDict_Next returns borrowed refs, which kwds keeps alive
     while (PyDict_Next(kwds, &pos, &key, &value)) {
-        /* Only lower() on a str subclass key runs Python code here, and it
-           can clear kwds and free both; any other key keeps them alive
-           through kwds. */
-        owned = ci && !PyUnicode_CheckExact(key) &&
-                !IStr_CheckExact(md->state, key);
-        if (UNLIKELY(owned)) {
-            Py_INCREF(key);
-            Py_INCREF(value);
-        }
         bool fits;
         identity = md_calc_identity_fits(md, key, &fits);
         if (identity == NULL) {
-            goto fail;
+            return -1;
         }
         Py_hash_t hash = unicode_hash(identity);
         if (hash == -1) {
@@ -538,17 +525,15 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                 }
                 break;
             case Extend:
-                if (!owned) {
-                    Py_INCREF(key);
-                    Py_INCREF(value);
-                    owned = true;
-                }
+                Py_INCREF(key);
+                Py_INCREF(value);
                 if (md_add_with_hash_steal_refs(
                         md, hash, identity, key, value, fits) < 0) {
+                    Py_DECREF(key);
+                    Py_DECREF(value);
                     goto fail;
                 }
                 identity = NULL;
-                owned = false;
                 break;
             case Merge:
                 if (_md_merge(md, hash, identity, key, value, marks, fits) <
@@ -558,18 +543,10 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                 break;
         }
         Py_XDECREF(identity);
-        if (owned) {
-            Py_DECREF(key);
-            Py_DECREF(value);
-        }
     }
     return 0;
 fail:
-    Py_CLEAR(identity);
-    if (owned) {
-        Py_DECREF(key);
-        Py_DECREF(value);
-    }
+    Py_DECREF(identity);
     return -1;
 }
 
@@ -745,10 +722,10 @@ _md_seq_next(MultiDictObject* md, seq_iter_t* it, Py_ssize_t i,
 
     switch (it->kind) {
         case SEQ_LIST:
-            /* Re-read the length every iteration.  Building the identity
-               can run arbitrary Python (a str-subclass key's .lower(), an
-               __eq__), which may shrink seq; a stale cached size would let
-               PyList_GET_ITEM read past the end. */
+            /* Re-read the length every iteration.  Parsing an item, or
+               dropping it afterwards, can run arbitrary Python (an item's
+               __getitem__(), a __del__), which may shrink seq; a stale cached
+               size would let PyList_GET_ITEM read past the end. */
             if (i >= PyList_GET_SIZE(it->obj)) {
                 return 0;
             }

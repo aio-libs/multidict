@@ -677,10 +677,8 @@ class _CIMixin:
                 key.__istr_identity__ = ret
             return ret
         if isinstance(key, str):
-            ret = key.lower()
-            if type(ret) is not str:
-                return str.__str__(ret)
-            return ret
+            # never a subclass's own lower()
+            return str.lower(key)
         else:
             raise TypeError("MultiDict keys should be either str or subclasses of str")
 
@@ -1109,17 +1107,12 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 yield len(arg) + len(kwargs)
                 if self._ci is not arg._ci:
                     key_func = arg._key
-                    version = arg._version
                     for e in arg._keys.iter_entries():
                         key = key_func(e.key)
                         if key is not e.key:
-                            # a fresh istr keeps the source's identity, as a
-                            # str subclass may override lower()
+                            # a fresh istr keeps the source's identity
                             key.__istr_identity__ = e.identity  # type: ignore[attr-defined]
                         identity = identity_func(key)
-                        if arg._version != version:
-                            # a str subclass's lower() mutated the source
-                            raise RuntimeError("Dictionary changed during iteration")
                         yield _Entry(hash(identity) & MAXSIZE, identity, key, e.value)
                 else:
                     for e in arg._keys.iter_entries():

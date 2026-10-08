@@ -120,28 +120,35 @@ _ascii_lower(const Py_UCS1* data, Py_ssize_t len)
     return ret;
 }
 
+static PyObject*
+_str_to_identity_ci(mod_state* state, PyObject* key);
+
 /* Anything but an ASCII exact str: rare enough in keys to keep off the
    straight line. */
 COLD static PyObject*
 _str_call_lower_ci(mod_state* state, PyObject* key)
 {
+    if (PyUnicode_CheckExact(key)) {
+        return PyObject_CallMethodNoArgs(key, state->str_lower);
+    }
     if (!PyUnicode_Check(key)) {
         return _err_key_type_ci();
     }
-    PyObject* ret = PyObject_CallMethodNoArgs(key, state->str_lower);
-    if (ret == NULL || PyUnicode_CheckExact(ret)) {
-        return ret;
+    /* str.__str__(key).lower(), never a subclass's own lower(): no Python
+       code runs, and the exact copy takes the ASCII path. */
+    PyObject* str = PyUnicode_FromObject(key);
+    if (str == NULL) {
+        return NULL;
     }
-    PyObject* tmp = PyUnicode_FromObject(ret);
-    Py_DECREF(ret);
-    return tmp;
+    PyObject* ret = _str_to_identity_ci(state, str);
+    Py_DECREF(str);
+    return ret;
 }
 
 static PyObject*
 _str_to_identity_ci(mod_state* state, PyObject* key)
 {
-    /* Exact str only: a str subclass may override lower(), and callers rely
-       on the override running. */
+    /* Exact str only: a subclass's identity must be a fresh exact str. */
     if (PyUnicode_CheckExact(key) && PyUnicode_IS_ASCII(key)) {
         Py_ssize_t len = PyUnicode_GET_LENGTH(key);
         const Py_UCS1* data = (const Py_UCS1*)PyUnicode_DATA(key);

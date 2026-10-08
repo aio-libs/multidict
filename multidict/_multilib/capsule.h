@@ -60,7 +60,8 @@ IStr_FromUnicode(void* state_, PyObject* str)
     if (IStr_CheckExact(state, str)) {
         return Py_NewRef(str);
     }
-    PyObject* canonical = PyObject_CallMethodNoArgs(str, state->str_lower);
+    PyObject* canonical = PyObject_CallMethodOneArg(
+        (PyObject*)&PyUnicode_Type, state->str_lower, str);
     if (canonical == NULL) {
         return NULL;
     }

@@ -1050,91 +1050,12 @@ class TestCIMutableMultiDict:
     def test_update_with_crash_in_the_middle(
         self, case_insensitive_multidict_class: type[CIMultiDict[str]]
     ) -> None:
-        class Hack(str):
-            def lower(self) -> str:
-                raise RuntimeError
-
         d = case_insensitive_multidict_class([("a", "a"), ("b", "b")])
-        with pytest.raises(RuntimeError):
-            lst = [("c", "c"), ("a", "a2"), (Hack("b"), "b2")]
-            d.update(lst)
+        with pytest.raises(TypeError):
+            lst = [("c", "c"), ("a", "a2"), (1, "b2")]
+            d.update(lst)  # type: ignore[arg-type]
 
         assert [("a", "a2"), ("b", "b"), ("c", "c")] == list(d.items())
-
-    @pytest.mark.parametrize("op", ["init", "extend", "update", "merge"])
-    def test_key_lower_mutates_source(
-        self,
-        case_insensitive_multidict_class: type[CIMultiDict[object]],
-        op: str,
-    ) -> None:
-        """The source's entries must stay alive across a key's lower()."""
-
-        class Key(str):
-            def lower(self) -> str:
-                src.clear()
-                for i in range(100):
-                    src[f"x{i}"] = object()
-                return str.lower(self)
-
-        # Built at runtime so that only the source owns a reference.
-        src: dict[str, object] = {
-            Key("A"): "".join(["val", "ue"]),
-            Key("B"): object(),
-        }
-        if op == "init":
-            d = case_insensitive_multidict_class(src)
-        else:
-            d = case_insensitive_multidict_class()
-            getattr(d, op)(src)
-
-        assert d.getone("a") == "value"
-
-    @pytest.mark.parametrize("op", ["init", "extend", "update", "merge"])
-    def test_key_lower_mutates_multidict_source(
-        self,
-        case_sensitive_multidict_class: type[MultiDict[object]],
-        case_insensitive_multidict_class: type[CIMultiDict[object]],
-        op: str,
-    ) -> None:
-        class Key(str):
-            def lower(self) -> str:
-                src.clear()
-                for i in range(100):
-                    src[f"x{i}"] = object()
-                return str.lower(self)
-
-        src = case_sensitive_multidict_class(
-            [(Key("A"), "".join(["val", "ue"])), (Key("B"), object())]
-        )
-        with pytest.raises(RuntimeError, match="changed during iteration"):
-            if op == "init":
-                case_insensitive_multidict_class(src)
-            else:
-                getattr(case_insensitive_multidict_class(), op)(src)
-        assert list(src) == [f"x{i}" for i in range(100)]
-
-    def test_value_finalizer_mutates_source(
-        self,
-        case_insensitive_multidict_class: type[CIMultiDict[object]],
-    ) -> None:
-        """merge() drops a value for a present key, whose __del__ runs."""
-
-        class Key(str):
-            def lower(self) -> str:
-                src.clear()
-                src["y0"] = src["y1"] = object()
-                return str.lower(self)
-
-        class Value:
-            def __del__(self) -> None:
-                for i in range(100):
-                    src[f"x{i}"] = object()
-
-        src: dict[str, object] = {Key("A"): Value(), Key("B"): object()}
-        d = case_insensitive_multidict_class(a="kept")
-        d.merge(src)
-
-        assert d.getone("a") == "kept"
 
 
 def test_multidict_shrink_regression() -> None:
