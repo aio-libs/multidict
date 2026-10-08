@@ -313,3 +313,21 @@ def test_update_and_merge_in_one_batch(any_multidict_class: _MD_Classes) -> None
     assert d.getall("u") == ["1", "2"]
     assert d["k1"] == "y"
     assert list(d).count("u") == 1
+
+
+def test_merge_keeps_present_keys(
+    any_multidict_class: _MD_Classes, any_multidict_class_name: str
+) -> None:
+    d = any_multidict_class([("a", "1"), ("b", "2")])
+    d.merge(any_multidict_class([("a", "x"), ("b", "y"), ("c", "3")]))
+    assert list(d.items()) == [("a", "1"), ("b", "2"), ("c", "3")]
+    d.merge({"A": "z"})
+    assert len(d) == (3 if any_multidict_class_name == "CIMultiDict" else 4)
+
+
+def test_update_repeating_a_key_in_one_batch(any_multidict_class: _MD_Classes) -> None:
+    d = any_multidict_class([("a", "1")])
+    d.update([("a", "2"), ("a", "3"), ("a", "4")])
+    assert d.getall("a") == ["2", "3", "4"]
+    assert list(d) == ["a"]
+    assert len(d.keys()) == 1

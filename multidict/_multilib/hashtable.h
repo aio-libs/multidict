@@ -1430,8 +1430,8 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                                   watched,
                                   !found);
             found = true;
-            if (ret < 0) {
-                break;
+            if (ret < 0 || !keys->maybe_dups) {
+                break;  // on error, or past the key's only entry
             }
         }
     } else if (kind_is_compact(keys->kind)) {
@@ -2390,8 +2390,8 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                                       values,
                                       removed,
                                       &begun);
-            if (ret < 0) {
-                break;
+            if (ret < 0 || !md->keys->maybe_dups) {
+                break;  // on error, or past the key's only entry
             }
         }
     } else if (kind_is_compact(md->keys->kind)) {
@@ -2738,6 +2738,9 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
                                       dups,
                                       watched,
                                       pfound);
+            if (!md->keys->maybe_dups) {
+                break;  // the key's only entry
+            }
         }
     } else if (kind_is_compact(md->keys->kind)) {
         while (ret == 0) {

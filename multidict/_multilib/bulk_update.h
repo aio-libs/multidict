@@ -96,6 +96,7 @@ _md_update_replace(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                 break;
             }
             if (bitmap_test(&marks->updated, iter.index)) {
+                added = true;
                 continue;
             }
             if (_md_update_matched(md,
@@ -110,6 +111,9 @@ _md_update_replace(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                                    defer,
                                    marks) < 0) {
                 return -1;
+            }
+            if (!md->keys->maybe_dups) {
+                break;  // the key's only entry
             }
         }
     } else if (kind_is_compact(md->keys->kind)) {
@@ -220,11 +224,12 @@ _md_merge_present(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         for (;;) {
             HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
             if (entry == NULL) {
-                return false;
+                return slot;
             }
             if (!bitmap_test(&marks->updated, iter.index)) {
-                return true;
+                return MD_SLOT_PRESENT;
             }
+            slot = MD_SLOT_CHECK;
         }
     } else if (kind_is_compact(md->keys->kind)) {
         for (;;) {
