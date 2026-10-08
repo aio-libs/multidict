@@ -212,12 +212,6 @@ kind_is_compact(uint8_t kind)
     return kind == KIND_COMPACT;
 }
 
-static inline PyObject*
-istr_canonical(PyObject* key)
-{
-    return ((istrobject*)key)->canonical;
-}
-
 /* The identity of a compact entry's key: the key itself in a MultiDict's
    table (_cs), the istr's canonical in a CIMultiDict's (_ci). */
 static inline PyObject*
