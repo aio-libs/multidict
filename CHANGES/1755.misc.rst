@@ -1,5 +1,0 @@
-Stopped :meth:`~multidict.MultiDict.update` and
-:meth:`~multidict.MultiDict.merge` from growing the table up front when it
-could hold the argument even empty, as :meth:`dict.update` does; the first
-added key makes the room instead. An update of keys already present needed
-13% to 29% fewer instructions -- by :user:`asvetlov`.

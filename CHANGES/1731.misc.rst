@@ -1,2 +1,0 @@
-Folded the ``_md_extend_self_scan()`` and ``_md_update_from_ht_scan()`` helpers
-of the C extension into their only callers -- by :user:`asvetlov`.

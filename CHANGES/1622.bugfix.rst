@@ -1,5 +1,0 @@
-Fixed ``MultiDict.__init__()`` called on a :class:`~multidict.CIMultiDict` making it
-case-sensitive in the C extension, and ``CIMultiDict.__init__()``
-rejecting a :class:`~multidict.MultiDict` there, by taking the mode from the
-instance rather than from the class whose ``__init__()`` was called, as
-the pure-Python implementation already did -- by :user:`asvetlov`.

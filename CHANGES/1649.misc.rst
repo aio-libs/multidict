@@ -1,2 +1,0 @@
-Set the kind of the shared empty hash table explicitly instead of
-leaving it to zero initialization -- by :user:`asvetlov`.

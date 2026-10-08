@@ -1,4 +1,0 @@
-Moved the argument parsing of the C extension's ``get()``, ``getall()``,
-``getone()``, ``add()``, ``setdefault()``, ``pop()`` and ``popone()``
-from their shared helpers into the method entry points themselves
--- by :user:`asvetlov`.

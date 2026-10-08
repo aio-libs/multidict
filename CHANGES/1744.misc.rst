@@ -1,3 +1,0 @@
-Rewrote the C extension's update from another multidict on top of the shared
-walk over all entries; a key whose ``lower()`` mutated the source multidict
-raised :exc:`RuntimeError` -- by :user:`asvetlov`.

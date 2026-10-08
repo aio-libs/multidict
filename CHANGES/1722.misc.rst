@@ -1,3 +1,0 @@
-Made the remaining two walk helpers of the C extension plain ``static``
-functions, and removed the inlining rule that kept the walk used by
-:meth:`~multidict.MultiDict.getall` inline -- by :user:`asvetlov`.

@@ -1,3 +1,0 @@
-Merged the bodies of ``__init__()``, ``extend()``, ``update()`` and
-``merge()`` in the C extension, which were four copies of the same three
-locking arms, into one shared helper -- by :user:`asvetlov`.
