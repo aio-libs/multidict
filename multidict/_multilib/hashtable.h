@@ -2471,44 +2471,30 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
     return ret;
 }
 
-/* One live entry of _md_eq_to_mapping_locked(): 1 if `other` has an equal
-   value for its key, 0 if not, -1 with an exception set. */
-static inline int
-_md_eq_to_mapping_entry(MultiDictObject* md, entry_t* entry, PyObject* other,
-                        uint64_t version)
+typedef struct _md_eq_to_mapping_state {
+    PyObject* other;
+    bool eq;
+} md_eq_to_mapping_state_t;
+
+static int
+_md_eq_to_mapping_visit(void* user_data, PyObject* identity, Py_hash_t hash,
+                        PyObject* key, PyObject* value)
 {
-    PyObject* bvalue;
-    PyObject* avalue = Py_NewRef(entry->value);
-    PyObject* key = md_ensure_key(md, entry);  // last entry access
-    if (key == NULL) {
-        Py_DECREF(avalue);
-        return -1;
+    (void)identity;
+    (void)hash;
+    md_eq_to_mapping_state_t* state = (md_eq_to_mapping_state_t*)user_data;
+    PyObject* other_value;
+    int ret = PyMapping_GetOptionalItem(state->other, key, &other_value);
+    if (ret <= 0) {
+        state->eq = false;
+        return ret;
     }
-    int ret = PyMapping_GetOptionalItem(other, key, &bvalue);
-    Py_DECREF(key);
-    if (ret < 0) {
-        Py_DECREF(avalue);
-        return -1;
+    ret = PyObject_RichCompareBool(value, other_value, Py_EQ);
+    Py_DECREF(other_value);
+    if (ret == 0) {
+        state->eq = false;
     }
-
-    if (bvalue == NULL) {
-        Py_DECREF(avalue);
-        return 0;
-    }
-
-    int eq = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
-    Py_DECREF(bvalue);
-    Py_DECREF(avalue);
-
-    if (eq <= 0) {
-        return eq;
-    }
-    /* Every mutation and resize bumps the version, so the caller's table
-       is still md's once it checks out. */
-    if (md_check_version(md, version) < 0) {
-        return -1;
-    }
-    return 1;
+    return ret;
 }
 
 static int
@@ -2531,29 +2517,11 @@ _md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
         return 0;
     }
 
-    uint64_t version = md->version;
-    htkeys_t* keys = md->keys;
-    int ret = 1;
-    if (kind_is_compact(keys->kind)) {
-        entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
-        for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
-             entry++) {
-            if (!entry_is_hole(entry)) {
-                ret = _md_eq_to_mapping_entry(md, entry, other, version);
-            }
-        }
-    } else {
-        anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys);
-        for (anystr_entry_t* end = entry + keys->nentries;
-             ret > 0 && entry < end;
-             entry++) {
-            if (!entry_is_hole(&entry->base)) {
-                ret =
-                    _md_eq_to_mapping_entry(md, &entry->base, other, version);
-            }
-        }
+    md_eq_to_mapping_state_t state = {other, true};
+    if (md_walk_all(md, true, _md_eq_to_mapping_visit, &state) < 0) {
+        return -1;
     }
-    return ret;
+    return state.eq;
 }
 
 static int
