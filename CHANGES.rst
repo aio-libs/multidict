@@ -50,6 +50,13 @@ identity and hash per entry, which cuts their size by about 45%.
 Bug fixes
 ---------
 
+- Fixed building the C extension on platforms where ``char`` is unsigned,
+  such as ARM, PowerPC, s390x and RISC-V, which failed on a sign conversion
+  warning since ``-Wconversion`` took effect -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1759`.
+
 - Fixed :func:`~multidict.getversion` returning only the low 32 bits of
   the version on Windows and on 32-bit platforms, where two different
   versions could compare equal, and fixed a race in the pure-Python
