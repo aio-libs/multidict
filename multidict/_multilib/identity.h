@@ -18,33 +18,7 @@ extern "C" {
 #include "istr.h"
 #include "state.h"
 
-static bool
-str_cmp(PyObject* s1, PyObject* s2)
-{
-    /* implementation is borrowed from PyUnicode_Equal() but without
-       type checks, arguments are identities that are always strings */
-    assert(PyUnicode_Check(s1));
-    assert(PyUnicode_Check(s2));
-
-    if (s1 == s2) {
-        return true;
-    }
-    Py_ssize_t len = PyUnicode_GET_LENGTH(s1);
-    if (PyUnicode_GET_LENGTH(s2) != len) {
-        return false;
-    }
-
-    int kind = PyUnicode_KIND(s1);
-    if (PyUnicode_KIND(s2) != kind) {
-        return false;
-    }
-
-    const void* data1 = PyUnicode_DATA(s1);
-    const void* data2 = PyUnicode_DATA(s2);
-    return (memcmp(data1, data2, (size_t)(len * kind)) == 0);
-}
-
-NOINLINE static PyObject*
+static PyObject*
 _err_key_type_cs(void)
 {
     PyErr_SetString(PyExc_TypeError,
@@ -53,7 +27,7 @@ _err_key_type_cs(void)
     return NULL;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 _err_key_type_ci(void)
 {
     PyErr_SetString(PyExc_TypeError,
@@ -62,11 +36,6 @@ _err_key_type_ci(void)
     return NULL;
 }
 
-/* Forced on FT builds only, where GCC drops it from d[key] = v; forced
-   on GIL builds it costs the constructor an instruction per item. */
-#ifdef Py_GIL_DISABLED
-ALWAYS_INLINE
-#endif
 static inline PyObject*
 _key_to_identity_cs(mod_state* state, PyObject* key)
 {
@@ -101,7 +70,7 @@ _word_has_upper(const Py_UCS1* p)
 }
 
 /* True if s[0:len] holds an ASCII uppercase byte. */
-ALWAYS_INLINE static inline bool
+static inline bool
 _ascii_has_upper(const Py_UCS1* s, Py_ssize_t len)
 {
     /* Too short for a word.  A compact ASCII str is allocated as its header
@@ -151,34 +120,35 @@ _ascii_lower(const Py_UCS1* data, Py_ssize_t len)
     return ret;
 }
 
+static PyObject*
+_str_to_identity_ci(mod_state* state, PyObject* key);
+
 /* Anything but an ASCII exact str: rare enough in keys to keep off the
    straight line. */
 COLD static PyObject*
 _str_call_lower_ci(mod_state* state, PyObject* key)
 {
+    if (PyUnicode_CheckExact(key)) {
+        return PyObject_CallMethodNoArgs(key, state->str_lower);
+    }
     if (!PyUnicode_Check(key)) {
         return _err_key_type_ci();
     }
-    PyObject* ret = PyObject_CallMethodNoArgs(key, state->str_lower);
-    if (ret == NULL || PyUnicode_CheckExact(ret)) {
-        return ret;
+    /* str.__str__(key).lower(), never a subclass's own lower(): no Python
+       code runs, and the exact copy takes the ASCII path. */
+    PyObject* str = PyUnicode_FromObject(key);
+    if (str == NULL) {
+        return NULL;
     }
-    PyObject* tmp = PyUnicode_FromObject(ret);
-    Py_DECREF(ret);
-    return tmp;
+    PyObject* ret = _str_to_identity_ci(state, str);
+    Py_DECREF(str);
+    return ret;
 }
 
-/* Out of line on purpose.  md_calc_identity() carries this whole function
-   into every md_*() that takes a key, and inlining it there costs more than
-   it saves: the extra size pushes md_contains() and the iterators' step
-   past the inliner's budget at their own call sites, which slowed
-   keys().isdisjoint() by 31% even on a case-sensitive MultiDict, whose keys
-   never reach here. */
-NOINLINE static PyObject*
+static PyObject*
 _str_to_identity_ci(mod_state* state, PyObject* key)
 {
-    /* Exact str only: a str subclass may override lower(), and callers rely
-       on the override running. */
+    /* Exact str only: a subclass's identity must be a fresh exact str. */
     if (PyUnicode_CheckExact(key) && PyUnicode_IS_ASCII(key)) {
         Py_ssize_t len = PyUnicode_GET_LENGTH(key);
         const Py_UCS1* data = (const Py_UCS1*)PyUnicode_DATA(key);
@@ -194,9 +164,8 @@ _str_to_identity_ci(mod_state* state, PyObject* key)
 }
 
 /* An exact ASCII str with no uppercase is its own identity in a
-   CIMultiDict, the key itself; NULL for any other key.  Out of line for the
-   reason given above _str_to_identity_ci(). */
-NOINLINE static PyObject*
+   CIMultiDict, the key itself; NULL for any other key. */
+static PyObject*
 _str_borrow_identity_ci(PyObject* key)
 {
     if (PyUnicode_CheckExact(key) && PyUnicode_IS_ASCII(key) &&
@@ -218,7 +187,7 @@ _key_to_identity_ci(mod_state* state, PyObject* key)
 
 /* A str subclass is copied to an exact str first: istr(), like str(), would
    call its __str__, which may spell a different string than the key. */
-NOINLINE static PyObject*
+static PyObject*
 _subclass_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 {
     PyObject* str = PyUnicode_FromObject(key);
@@ -230,7 +199,7 @@ _subclass_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
     return ret;
 }
 
-ALWAYS_INLINE static inline PyObject*
+static inline PyObject*
 md_calc_identity(MultiDictObject* md, PyObject* key)
 {
     if (md->is_ci) return _key_to_identity_ci(md->state, key);
@@ -243,7 +212,7 @@ md_calc_identity(MultiDictObject* md, PyObject* key)
    which never changes, are kept alive by the caller's reference to the
    key.  A borrowed identity keeps the owned one's decref off the lookup's
    exit, which cost key in d 4% in taken branches. */
-ALWAYS_INLINE static inline PyObject*
+static inline PyObject*
 md_borrow_identity(MultiDictObject* md, PyObject* key)
 {
     if (md->is_ci) {
@@ -353,7 +322,7 @@ str_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
    stores, a new reference, and *pfits whether it fits a compact table
    (see md_key_fits()). A CIMultiDict stores only exact istr, which always
    fit. */
-ALWAYS_INLINE static inline PyObject*
+static inline PyObject*
 md_calc_identity_key(MultiDictObject* md, PyObject* key, PyObject** pkey,
                      bool* pfits)
 {
@@ -364,7 +333,7 @@ md_calc_identity_key(MultiDictObject* md, PyObject* key, PyObject** pkey,
             return Py_NewRef(((istrobject*)key)->canonical);
         }
         /* A cached istr also saves computing the identity. Exact str
-           only: a subclass may override lower(). */
+           only, which unicode_hash() takes. */
         PyObject* cached =
             PyUnicode_CheckExact(key) ? _istr_cache_get(md->state, key) : NULL;
         if (cached != NULL) {
@@ -392,9 +361,8 @@ md_calc_identity_key(MultiDictObject* md, PyObject* key, PyObject** pkey,
 }
 
 /* Reads only `key`, md->is_ci and md->state, all fixed for md's lifetime,
-   so the caller need not hold md's critical section. Always inlined: left
-   to itself GCC emits it out of line, and every caller pays the call. */
-ALWAYS_INLINE static inline int
+   so the caller need not hold md's critical section. */
+static inline int
 md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
                       Py_hash_t* phash)
 {
@@ -414,7 +382,7 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
 
 /* md_calc_identity_hash() plus md_calc_identity_key()'s *pkey and
  *pfits. */
-ALWAYS_INLINE static inline int
+static inline int
 md_calc_identity_hash_key(MultiDictObject* md, PyObject* key,
                           PyObject** pidentity, Py_hash_t* phash,
                           PyObject** pkey, bool* pfits)

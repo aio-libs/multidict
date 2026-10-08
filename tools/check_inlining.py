@@ -48,8 +48,7 @@ reading a failure, pass ``--show``::
     tools/check_inlining.py --show multidict_get --show MultiDict_GetItem
 
 Rules describe what the current code achieves on the compilers CI uses.
-A fix for a new inlining regression, or a helper pinned with
-``ALWAYS_INLINE`` or ``NOINLINE`` for speed, adds a rule in the same
+A fix for a new inlining regression adds a rule in the same
 change; a regression that is accepted on purpose edits its rule there
 too, with the measurement that justified it.
 """
@@ -136,12 +135,6 @@ RULES = (
         "#1614: out of line in getall on FT with GCC 13",
     ),
     Rule(
-        "md_walk_with_hash",
-        GETALL_ENTRIES,
-        BOTH,
-        "#1701: out of line the visitor call is indirect, getall +6-8%",
-    ),
-    Rule(
         "_iter_next_entry",
         ITERNEXT_ENTRIES,
         BOTH,
@@ -157,20 +150,19 @@ RULES = (
         "3-5 Ir per popitem()",
     ),
     Rule(
-        "entry_next",
-        "*",
-        BOTH,
-        "#1676: the step of every per-kind pointer walk; out of line it "
-        "loses the constant entry size",
-    ),
-    Rule(
         "_md_copy_live",
         "*",
         BOTH,
         "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
     ),
     Rule(
-        "entry_is_hole",
+        "compact_entry_is_hole",
+        "*",
+        BOTH,
+        "#1674: a single load tested once per entry in every walk",
+    ),
+    Rule(
+        "anystr_entry_is_hole",
         "*",
         BOTH,
         "#1674: a single load tested once per entry in every walk",
@@ -210,35 +202,10 @@ RULES = (
         "MultiDict(items) item on FT",
     ),
     Rule(
-        "md_add_with_hash_steal_refs",
-        "*",
-        BOTH,
-        "#1644: per-kind layouts pushed it out of the constructor's loop, "
-        "CIMultiDict(items) +10%",
-    ),
-    Rule(
-        "htkeysiter_init",
-        "*",
-        BOTH,
-        "#1554: a call on every probe, get_miss -23% once inlined",
-    ),
-    Rule(
         "_md_del_at",
         "*",
         BOTH,
         "#1604: pinned after budget respend, popitem +1% on FT",
-    ),
-    Rule(
-        "htkeys_get_index",
-        "*",
-        BOTH,
-        "#1651: per-class getall took it out of htkeysiter_init on FT, 4 Ir per d[key]",
-    ),
-    Rule(
-        "htkeys_set_index",
-        "*",
-        BOTH,
-        "#1604/#1605: pinned after budget respend, ctor +60 Ir on FT",
     ),
     Rule(
         "_compact_entry_matches",

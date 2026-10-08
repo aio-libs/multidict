@@ -51,7 +51,7 @@ typedef enum {
    here. *plen is only written for UNPACK_LENGTH, which is an error path
    in both callers; the general path is not an option for an exact list,
    whose items have to be read through list_getitem_ref(). */
-ALWAYS_INLINE static inline unpack_t
+static inline unpack_t
 unpack_pair(PyObject* obj, PyObject** pkey, PyObject** pvalue,
             Py_ssize_t* plen)
 {

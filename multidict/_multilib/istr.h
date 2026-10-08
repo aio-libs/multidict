@@ -209,7 +209,7 @@ istr_create(mod_state* state, PyObject* str, PyObject* canonical)
     return res;
 }
 
-NOINLINE static int
+static int
 istr_init(PyObject* module, mod_state* state)
 {
     PyObject* tpl = PyTuple_Pack(1, (PyObject*)&PyUnicode_Type);

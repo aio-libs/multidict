@@ -19,7 +19,7 @@ typedef struct multidict_iter {
 } MultidictIter;
 
 /* See _multidict_view_alloc() on what a pooled shell still holds. */
-NOINLINE static MultidictIter*
+static MultidictIter*
 _multidict_iter_alloc(MultiDictObject* md, PyTypeObject* tp)
 {
     MultidictIter* it = pool_pop(&md->state->iter_pool);
@@ -58,14 +58,14 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         return -1;
     }
     htkeys_t* keys = md->keys;
-    entry_t* entries = htkeys_entries(keys);
     /* One loop per kind and direction, so each steps by a constant entry
        size. */
     if (kind_is_compact(keys->kind)) {
+        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
         if (self->reverse) {
             for (; self->pos >= 0; --self->pos) {
-                entry_t* entry = entry_at(KIND_COMPACT, entries, self->pos);
-                if (!entry_is_hole(entry)) {
+                entry_t* entry = entries + self->pos;
+                if (!compact_entry_is_hole(entry)) {
                     --self->pos;
                     *pentry = entry;
                     return 1;
@@ -74,8 +74,8 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
             return 0;
         }
         for (; self->pos < keys->nentries; ++self->pos) {
-            entry_t* entry = entry_at(KIND_COMPACT, entries, self->pos);
-            if (!entry_is_hole(entry)) {
+            entry_t* entry = entries + self->pos;
+            if (!compact_entry_is_hole(entry)) {
                 ++self->pos;
                 *pentry = entry;
                 return 1;
@@ -83,31 +83,30 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         }
         return 0;
     }
+    anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
     if (self->reverse) {
         for (; self->pos >= 0; --self->pos) {
-            entry_t* entry = entry_at(KIND_ANYSTR, entries, self->pos);
-            if (!entry_is_hole(entry)) {
+            anystr_entry_t* entry = entries + self->pos;
+            if (!anystr_entry_is_hole(entry)) {
                 --self->pos;
-                *pentry = entry;
+                *pentry = &entry->base;
                 return 1;
             }
         }
         return 0;
     }
     for (; self->pos < keys->nentries; ++self->pos) {
-        entry_t* entry = entry_at(KIND_ANYSTR, entries, self->pos);
-        if (!entry_is_hole(entry)) {
+        anystr_entry_t* entry = entries + self->pos;
+        if (!anystr_entry_is_hole(entry)) {
             ++self->pos;
-            *pentry = entry;
+            *pentry = &entry->base;
             return 1;
         }
     }
     return 0;
 }
 
-/* The three constructors are out of line: each has several callers, and
-   allocation dominates the cost of the call. */
-NOINLINE static PyObject*
+static PyObject*
 multidict_items_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it = _multidict_iter_alloc(md, md->state->ItemsIterType);
@@ -127,7 +126,7 @@ multidict_items_iter_new(MultiDictObject* md, int reverse)
     return (PyObject*)it;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keys_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it = _multidict_iter_alloc(md, md->state->KeysIterType);
@@ -141,7 +140,7 @@ multidict_keys_iter_new(MultiDictObject* md, int reverse)
     return (PyObject*)it;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_values_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it = _multidict_iter_alloc(md, md->state->ValuesIterType);
@@ -155,7 +154,7 @@ multidict_values_iter_new(MultiDictObject* md, int reverse)
     return (PyObject*)it;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_items_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;
@@ -219,7 +218,7 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
     return ret;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_values_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* value = NULL;
@@ -243,7 +242,7 @@ multidict_values_iter_tp_iternext(MultidictIter* self)
     return value;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_keys_iter_tp_iternext(MultidictIter* self)
 {
     PyObject* key = NULL;
@@ -269,7 +268,7 @@ multidict_keys_iter_tp_iternext(MultidictIter* self)
     return key;
 }
 
-NOINLINE static void
+static void
 multidict_iter_tp_dealloc(MultidictIter* self)
 {
     PyTypeObject* tp = Py_TYPE(self);
@@ -286,7 +285,7 @@ multidict_iter_tp_dealloc(MultidictIter* self)
     Py_DECREF(tp);
 }
 
-NOINLINE static int
+static int
 multidict_iter_tp_traverse(MultidictIter* self, visitproc visit, void* arg)
 {
     Py_VISIT(Py_TYPE(self));
@@ -295,7 +294,7 @@ multidict_iter_tp_traverse(MultidictIter* self, visitproc visit, void* arg)
     return 0;
 }
 
-NOINLINE static int
+static int
 multidict_iter_tp_clear(MultidictIter* self)
 {
     Py_CLEAR(self->md);
@@ -303,7 +302,7 @@ multidict_iter_tp_clear(MultidictIter* self)
     return 0;
 }
 
-NOINLINE static PyObject*
+static PyObject*
 multidict_iter_len(MultidictIter* self)
 {
     return PyLong_FromLong(md_len(self->md));
@@ -376,7 +375,7 @@ static PyType_Spec multidict_keys_iter_spec = {
     .slots = multidict_keys_iter_slots,
 };
 
-NOINLINE static int
+static int
 multidict_iter_init(PyObject* module, mod_state* state)
 {
     PyObject* tmp;

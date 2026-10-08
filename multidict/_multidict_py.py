@@ -683,10 +683,8 @@ class _CIMixin:
         if isinstance(key, istr):
             return key.__istr_identity__
         if isinstance(key, str):
-            ret = key.lower()
-            if type(ret) is not str:
-                return str.__str__(ret)
-            return ret
+            # never a subclass's own lower()
+            return str.lower(key)
         else:
             raise TypeError("MultiDict keys should be either str or subclasses of str")
 
