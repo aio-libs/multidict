@@ -315,16 +315,12 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             if item is None:
                 continue
             hash_, identity, key, value = item
-            marked = hash_ | HASH_MARK
             matches = []
+            last = -1
             for slot, idx, e in self._md._keys.iter_hash(hash_):
-                e.hash = marked
-                if e.identity == identity:  # pragma: no branch
+                if idx > last and e.identity == identity:
                     matches.append((e.key, e.value))
-            self._md._keys.restore_hash(hash_)
-            # Compare values only after restore_hash(): a custom __eq__
-            # here could reenter this MultiDict via getall() and must not
-            # see entries this walk still has marked.
+                    last = idx
             for e_key, e_value in matches:
                 if e_value == value:
                     ret.add((e_key, e_value))
@@ -985,21 +981,18 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """Return a list of all values matching the key."""
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
-        marked = hash_ | HASH_MARK
         res = []
-        restore = []
+        # Equal keys are first reached in insertion order; see
+        # md_walk_with_hash() in _multilib/walk.h.
+        last = -1
         for slot, idx, e in self._keys.iter_hash(hash_):
-            if e.identity == identity:  # pragma: no branch
+            if idx > last and e.identity == identity:
                 res.append(e.value)
-                e.hash = marked
-                restore.append(idx)
+                last = idx
                 if not self._keys.maybe_dups:
                     break  # the key's only entry
 
         if res:
-            entries = self._keys.entries
-            for idx in restore:
-                entries[idx].hash = hash_  # type: ignore[union-attr]
             return res
         if default is not sentinel:
             return default

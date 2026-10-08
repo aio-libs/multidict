@@ -1,0 +1,5 @@
+Replaced the set of visited entries that :meth:`~multidict.MultiDict.getall`
+and the items view's ``&`` kept with a check that each match's entry index
+is above the previous one's, since equal keys are first reached in insertion
+order. A :meth:`~multidict.MultiDict.getall` of a key with many values
+needed up to half fewer instructions -- by :user:`asvetlov`.

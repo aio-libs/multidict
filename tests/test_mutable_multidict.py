@@ -1,6 +1,7 @@
 import functools
 import gc
 import itertools
+import random
 import string
 import sys
 import weakref
@@ -1135,6 +1136,29 @@ def test_add_many_duplicate_keys_after_delete(
 
     md.update([("a", str(-i)) for i in range(1300)])
     assert md.getall("a") == [str(-i) for i in range(1300)]
+
+
+def test_getall_in_insertion_order_after_mixed_mutations(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    """getall() skips a repeated probe slot by its entry index alone."""
+    rnd = random.Random(0)
+    keys = [f"k{i}" for i in range(8)]
+    md = any_multidict_class()
+    for step in range(3000):
+        key = rnd.choice(keys)
+        op = rnd.randrange(10)
+        if op < 6:
+            md.add(key, str(step))
+        elif op < 8:
+            md.popone(key, None)
+        elif op == 8:
+            md.popall(key, None)
+        else:
+            md = md.copy()
+        expected = [v for k, v in md.items() if k == key]
+        assert md.getall(key, []) == expected
+        assert md.items() & {(key, v) for v in expected} == {(key, v) for v in expected}
 
 
 def test_create_with_many_duplicate_keys(
