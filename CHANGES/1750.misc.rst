@@ -1,0 +1,4 @@
+Restored the ``NOINLINE`` macro and used it to move the view, shell and
+iterator constructors' shared helpers and ``md_clear()`` out of line
+again, and split the sparse path out of the bitmap's word lookup -- by
+:user:`asvetlov`.

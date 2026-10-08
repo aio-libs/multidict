@@ -3184,7 +3184,9 @@ multidict_tp_traverse(MultiDictObject* md, visitproc visit, void* arg)
     return _md_traverse_entries(md->keys, visit, arg);
 }
 
-static int
+/* Out of line: GCC otherwise copies it into dealloc and both clear()
+   entry points on GIL builds. */
+NOINLINE static int
 md_clear(MultiDictObject* md)
 {
     if (md->keys == NULL || md->keys == &empty_htkeys) {
