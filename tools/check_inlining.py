@@ -231,33 +231,15 @@ RULES = (
     ),
     Rule(
         "htkeys_compact_next_live",
-        (
-            "multidict_tp_init",
-            "multidict_update",
-            "multidict_extend",
-            "multidict_tp_repr",
-            "multidict_to_dict",
-            "MultiDict_ForEach",
-        ),
+        "*",
         BOTH,
-        "the scan for the next live entry behind the walks; "
-        "only cold ones (view set operations, a clone during a batch) "
-        "call it out of line",
+        "the scan for the next live entry in to_dict()",
     ),
     Rule(
         "htkeys_anystr_next_live",
-        (
-            "multidict_tp_init",
-            "multidict_update",
-            "multidict_extend",
-            "multidict_tp_repr",
-            "multidict_to_dict",
-            "MultiDict_ForEach",
-        ),
+        "*",
         BOTH,
-        "the scan for the next live entry behind the walks; "
-        "only cold ones (view set operations, a clone during a batch) "
-        "call it out of line",
+        "the scan for the next live entry in to_dict()",
     ),
 )
 

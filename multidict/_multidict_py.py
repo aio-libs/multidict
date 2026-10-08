@@ -1109,6 +1109,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 yield len(arg) + len(kwargs)
                 if self._ci is not arg._ci:
                     key_func = arg._key
+                    version = arg._version
                     for e in arg._keys.iter_entries():
                         key = key_func(e.key)
                         if key is not e.key:
@@ -1116,6 +1117,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                             # str subclass may override lower()
                             key.__istr_identity__ = e.identity  # type: ignore[attr-defined]
                         identity = identity_func(key)
+                        if arg._version != version:
+                            # a str subclass's lower() mutated the source
+                            raise RuntimeError("Dictionary changed during iteration")
                         yield _Entry(hash(identity) & MAXSIZE, identity, key, e.value)
                 else:
                     for e in arg._keys.iter_entries():

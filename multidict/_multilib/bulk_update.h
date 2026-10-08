@@ -23,6 +23,7 @@ extern "C" {
 #include "reflist.h"
 #include "unpack.h"
 #include "update_marks.h"
+#include "walk.h"
 #include "watch.h"
 
 typedef enum _UpdateOp {
@@ -230,18 +231,53 @@ _md_update_item(MultiDictObject* md, UpdateOp op, Py_hash_t hash,
     Py_UNREACHABLE();
 }
 
+typedef struct _md_update_state {
+    MultiDictObject* md;
+    UpdateOp op;
+    reflist_t* defer;
+    update_marks_t* marks;
+    bool same_class;
+} md_update_state_t;
+
+static int
+_md_update_visit(void* user_data, PyObject* identity, Py_hash_t hash,
+                 PyObject* key, PyObject* value)
+{
+    md_update_state_t* state = (md_update_state_t*)user_data;
+    MultiDictObject* md = state->md;
+    if (state->same_class) {
+        // other's identities and hashes are md's own
+        return _md_update_item(md,
+                               state->op,
+                               hash,
+                               identity,
+                               key,
+                               value,
+                               state->defer,
+                               state->marks) < 0
+                   ? -1
+                   : 1;
+    }
+    /* lower() on a str subclass key runs Python code; the walk fails if
+       that mutates other. */
+    PyObject* own = md_calc_identity(md, key);
+    if (own == NULL) {
+        return -1;
+    }
+    int ret = -1;
+    hash = unicode_hash(own);
+    if (hash != -1) {
+        ret = _md_update_item(
+            md, state->op, hash, own, key, value, state->defer, state->marks);
+    }
+    Py_DECREF(own);
+    return ret < 0 ? -1 : 1;
+}
+
 static int
 md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
                   reflist_t* defer, update_marks_t* marks)
 {
-    bool other_ci = other->is_ci;
-    Py_ssize_t pos;
-    Py_hash_t hash;
-    PyObject* identity = NULL;
-    PyObject* canonical = NULL;
-    PyObject* key = NULL;
-    PyObject* value = NULL;
-
     if (other->used == 0) {
         return 0;
     }
@@ -253,102 +289,11 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         return -1;
     }
 
-    if (md->is_ci == other_ci) {
-        /* other of md's class: nothing here runs Python code, so other's
-           table and its kind hold throughout. */
-        htkeys_t* keys = other->keys;
-        Py_ssize_t nentries = keys->nentries;
-        if (kind_is_compact(keys->kind)) {
-            entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
-            for (entry_t* end = entry + nentries; entry < end; entry++) {
-                if (entry_is_hole(entry)) {
-                    continue;
-                }
-                if (_md_update_item(
-                        md,
-                        op,
-                        entry_hash(KIND_COMPACT, other_ci, entry),
-                        entry_identity(KIND_COMPACT, other_ci, entry),
-                        entry->key,
-                        entry->value,
-                        defer,
-                        marks) < 0) {
-                    return -1;
-                }
-            }
-        } else {
-            anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys);
-            for (anystr_entry_t* end = entry + nentries; entry < end;
-                 entry++) {
-                if (entry_is_hole(&entry->base)) {
-                    continue;
-                }
-                if (_md_update_item(md,
-                                    op,
-                                    entry->hash,
-                                    entry->identity,
-                                    entry->base.key,
-                                    entry->base.value,
-                                    defer,
-                                    marks) < 0) {
-                    return -1;
-                }
-            }
-        }
-        return 0;
-    }
-
-    Py_ssize_t nentries = other->keys->nentries;
-    for (pos = 0; pos < nentries; pos++) {
-        entry_t* entry = (kind_is_compact(other->keys->kind)
-                              ? htkeys_compact_next_live(other->keys, &pos)
-                              : htkeys_anystr_next_live(other->keys, &pos));
-        if (entry == NULL || pos >= nentries) {
-            break;
-        }
-        uint8_t kind = other->keys->kind;
-        /* lower() on a str subclass key runs Python code that can mutate
-           other and free entry, so hold our own refs. */
-        key = Py_NewRef(entry->key);
-        value = Py_NewRef(entry->value);
-        /* The key leaves as other's istr, whose canonical must be
-           other's identity: md's is the unlowered key. */
-        canonical =
-            Py_XNewRef(other_ci ? entry_identity(kind, true, entry) : NULL);
-        identity = md_calc_identity(md, key);
-        if (identity == NULL) {
-            goto fail;
-        }
-        hash = unicode_hash(identity);
-        if (hash == -1) {
-            goto fail;
-        }
-        /* materialize key */
-        Py_SETREF(key, md_calc_key(other, key, canonical));
-        Py_CLEAR(canonical);
-        if (key == NULL) {
-            goto fail;
-        }
-        if (_md_update_item(md, op, hash, identity, key, value, defer, marks) <
-            0) {
-            goto fail;
-        }
-        Py_DECREF(identity);
-        Py_DECREF(key);
-        Py_DECREF(value);
-        /* Both lower() and a finalizer run by the decrefs above can
-           replace other's table. */
-        if (nentries > other->keys->nentries) {
-            nentries = other->keys->nentries;
-        }
-    }
-    return 0;
-fail:
-    Py_CLEAR(canonical);
-    Py_CLEAR(identity);
-    Py_CLEAR(key);
-    Py_CLEAR(value);
-    return -1;
+    /* The keys come materialized as other's: a CIMultiDict's istr keeps
+       other's identity as its canonical, md's is the unlowered key. */
+    md_update_state_t state = {
+        md, op, defer, marks, md->is_ci == other->is_ci};
+    return md_walk_all(other, true, _md_update_visit, &state) < 0 ? -1 : 0;
 }
 
 // d.extend(d) is rare: one copy, the class read at run time
