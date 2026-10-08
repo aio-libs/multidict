@@ -1390,7 +1390,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Update the dictionary, overwriting existing keys."""
         it = self._parse_args(arg, kwargs)
-        self._reserve(cast(int, next(it)))
+        reserve = self._reserve_batch(cast(int, next(it)))
         # The entries this call wrote and those it doomed, by id(): kept
         # out of the table, they survive whatever runs between items. They
         # and `replaced` also hold the dropped pairs until the call ends.
@@ -1399,7 +1399,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         replaced: list[tuple[str, _V]] = []
         try:
             self._update_items(
-                cast(Iterator[_Entry[_V]], it), updated, deleted, replaced
+                cast(Iterator[_Entry[_V]], it), updated, deleted, replaced, reserve
             )
         finally:
             self._post_update(deleted)
@@ -1410,6 +1410,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         updated: dict[int, _Entry[_V]],
         deleted: dict[int, tuple[_Entry[_V], _V]],
         replaced: list[tuple[str, _V]],
+        reserve: int,
     ) -> None:
         for entry in items:
             found = False
@@ -1431,6 +1432,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     # with what it holds now: a write since is kept
                     deleted[eid] = (e, e.value)
             if not found:
+                if reserve:
+                    self._reserve(reserve)
+                    reserve = 0
                 self._add_with_hash(entry)
                 updated[id(entry)] = entry
 
@@ -1456,13 +1460,13 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def merge(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
         """Merge into the dictionary, adding non-existing keys."""
         it = self._parse_args(arg, kwargs)
-        self._reserve(cast(int, next(it)))
+        reserve = self._reserve_batch(cast(int, next(it)))
         try:
-            self._merge_items(cast(Iterator[_Entry[_V]], it))
+            self._merge_items(cast(Iterator[_Entry[_V]], it), reserve)
         finally:
             self._incr_version()
 
-    def _merge_items(self, items: Iterator[_Entry[_V]]) -> None:
+    def _merge_items(self, items: Iterator[_Entry[_V]], reserve: int) -> None:
         # See update()
         added: dict[int, _Entry[_V]] = {}
         for entry in items:
@@ -1471,6 +1475,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 if e.identity == identity and id(e) not in added:
                     break
             else:
+                if reserve:
+                    self._reserve(reserve)
+                    reserve = 0
                 self._add_with_hash(entry)
                 added[id(entry)] = entry
 
@@ -1489,6 +1496,15 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     def _reserve(self, extra: int) -> None:
         if self._keys.usable < extra:
             self._resize(estimate_log2_keysize(self._used + extra))
+
+    def _reserve_batch(self, extra: int) -> int:
+        # update() and merge() often find their keys there already: see
+        # md_reserve_batch(). Returns the room their first add makes.
+        keys = self._keys
+        n = len(keys.entries)
+        if n != self._used or n + keys.usable < extra:
+            self._reserve(extra)
+        return extra
 
     def _resize(self, log2_newsize: int) -> None:
         oldkeys = self._keys

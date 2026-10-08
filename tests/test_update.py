@@ -330,6 +330,51 @@ def test_update_marks_outgrow_the_table(
     assert list(d.items()) == [("a", 1), ("a", 2)] + items[1:-1]
 
 
+_SOURCES: dict[str, Callable[[list[tuple[str, int]]], object]] = {
+    "dict": dict,
+    "list": list,
+    "md": MultiDict,
+}
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="getsizeof() is not implemented on PyPy",
+)
+@pytest.mark.parametrize("op", ["update", "merge"])
+@pytest.mark.parametrize("source", list(_SOURCES))
+def test_update_of_present_keys_keeps_the_table(
+    any_multidict_class: _MD_Classes, op: str, source: str
+) -> None:
+    # As in dict.update(), a table that could hold the argument even empty
+    # does not grow up front: its keys may all be there already.
+    old = [(f"k{i}", i) for i in range(100)]
+    new = [(f"k{i}", -i) for i in range(100)]
+    d = any_multidict_class(old)
+    size = sys.getsizeof(d)
+    getattr(d, op)(_SOURCES[source](new))
+    assert sys.getsizeof(d) == size
+    assert list(d.items()) == (new if op == "update" else old)
+
+
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy",
+    reason="getsizeof() is not implemented on PyPy",
+)
+@pytest.mark.parametrize("op", ["update", "merge"])
+@pytest.mark.parametrize("source", list(_SOURCES))
+def test_update_of_new_keys_makes_room_for_all(
+    any_multidict_class: _MD_Classes, op: str, source: str
+) -> None:
+    # The first add makes the room the up-front check left out.
+    old = [(f"k{i}", i) for i in range(100)]
+    new = [("k0", 0)] + [(f"n{i}", i) for i in range(99)]
+    d = any_multidict_class(old)
+    getattr(d, op)(_SOURCES[source](new))
+    assert list(d.items()) == old + new[1:]
+    assert sys.getsizeof(d) == sys.getsizeof(any_multidict_class(old + new[1:]))
+
+
 @pytest.mark.parametrize("nested", ["update", "setitem", "merge", "read"])
 def test_update_keeps_what_code_between_items_wrote(
     any_multidict_class: type[MultiDict[object]], nested: str

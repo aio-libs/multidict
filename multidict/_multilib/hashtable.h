@@ -567,7 +567,8 @@ _md_publish_compacted(MultiDictObject* md, htkeys_t* oldkeys,
 static int
 _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
 {
-    if (UNLIKELY(md->batches != 0)) {
+    // without holes, compacting keeps every index anyway
+    if (UNLIKELY(md->batches != 0) && md->keys->nentries != md->used) {
         return _md_rebuild_keeping_indices(md, log2_newsize);
     }
     if (!htkeys_size_fits(log2_newsize)) {
@@ -669,15 +670,26 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
 /* md_reserve() for extend(), update() or merge(), before their batch
    starts. Keyword names are plain str, which never fit a CIMultiDict's
    compact table, so with any the table is moved while it grows; moved
-   later, it cost update(istr_items, **kwargs) a second copy, 18%. */
+   later, it cost update(istr_items, **kwargs) a second copy, 18%.
+
+   update() and merge() often find their keys there already, so, like
+   dict.update(), they grow only a table that could not hold `extra_size`
+   entries even empty. Any other growth waits for the batch's first add,
+   which then makes room for them all, unless deletions left holes: those
+   the batch would have to keep. */
 static int
-md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs)
+md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs,
+                 bool overlap)
 {
     if (UNLIKELY(kwargs) && md->is_ci && kind_is_compact(md->keys->kind) &&
         md->used > 0 && md->batches == 0 &&
         extra_size <= (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
         return _md_rebuild_to_anystr(
             md, estimate_log2_keysize(extra_size + md->used));
+    }
+    if (overlap && md->keys->nentries == md->used &&
+        md->keys->nentries + md->keys->usable >= extra_size) {
+        return 0;
     }
     return md_reserve(md, extra_size);
 }
@@ -1140,21 +1152,37 @@ md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
+/* Room for a batch's add: on the first add that is short of the room
+   update_marks_init() asked for, all of it. */
+static int
+_md_grow_for_upd(MultiDictObject* md, update_marks_t* marks)
+{
+    Py_ssize_t extra = marks->reserve;
+    marks->reserve = 0;
+    if (extra > 0 && md_reserve(md, extra) < 0) {
+        return -1;
+    }
+    // md_reserve() ignores an extra too large to be real
+    htkeys_t* keys = md->keys;
+    if ((keys->usable <= 0 || keys == &empty_htkeys) &&
+        _md_resize_for_add(md) < 0) {
+        return -1;
+    }
+    return update_marks_sync(marks, md);
+}
+
 static int
 _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
                            PyObject* identity, PyObject* key, PyObject* value,
                            update_marks_t* marks, bool fits, Py_ssize_t slot)
 {
     htkeys_t* keys = md->keys;
-    if (keys->usable <= 0 || keys == &empty_htkeys) {
-        /* Need to resize. */
-        if (_md_resize_for_add(md) < 0) {
+    // a reserve still pending is no more than the room left
+    if (keys->usable <= marks->reserve || keys == &empty_htkeys) {
+        if (_md_grow_for_upd(md, marks) < 0) {
             return -1;
         }
-        keys = md->keys;  // updated by resizing
-        if (update_marks_sync(marks, md) < 0) {
-            return -1;
-        }
+        keys = md->keys;
     }
     if (bitmap_set(&marks->updated, keys->nentries) < 0) {
         return -1;
