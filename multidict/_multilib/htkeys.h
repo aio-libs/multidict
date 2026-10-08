@@ -518,14 +518,14 @@ static const htkeys_t empty_htkeys = {
     .num_readers = 0,
     .retired_next = NULL,
 #endif
-    .indices = {DKIX_EMPTY,
-                DKIX_EMPTY,
-                DKIX_EMPTY,
-                DKIX_EMPTY,
-                DKIX_EMPTY,
-                DKIX_EMPTY,
-                DKIX_EMPTY,
-                DKIX_EMPTY},
+    .indices = {(char)DKIX_EMPTY,
+                (char)DKIX_EMPTY,
+                (char)DKIX_EMPTY,
+                (char)DKIX_EMPTY,
+                (char)DKIX_EMPTY,
+                (char)DKIX_EMPTY,
+                (char)DKIX_EMPTY,
+                (char)DKIX_EMPTY},
 };
 
 /* resume_slots[i] is 0 or 1 + the last slot used by a probe that reached slot
