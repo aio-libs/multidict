@@ -11,6 +11,7 @@
 #include "_multilib/parser.h"
 #include "_multilib/pythoncapi_compat.h"
 #include "_multilib/state.h"
+#include "_multilib/to_dict.h"
 #include "_multilib/views.h"
 #include "_multilib/watch.h"
 
