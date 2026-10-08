@@ -33,7 +33,9 @@ _multidict_iter_alloc(MultiDictObject* md, PyTypeObject* tp)
     return it;
 }
 
-static void
+/* Out of line: GCC otherwise copies it, critical section and all, into
+   every iterator constructor. */
+NOINLINE static void
 _init_iter(MultidictIter* it, MultiDictObject* md, int reverse)
 {
     Py_INCREF(md);

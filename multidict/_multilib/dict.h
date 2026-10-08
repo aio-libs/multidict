@@ -112,7 +112,8 @@ _md_pool_for(mod_state* state, PyTypeObject* tp)
     return NULL;
 }
 
-static PyObject*
+/* Out of line: GCC otherwise copies it into every constructor. */
+NOINLINE static PyObject*
 md_shell_alloc(mod_state* state, PyTypeObject* tp)
 {
     pool_t* pool = _md_pool_for(state, tp);

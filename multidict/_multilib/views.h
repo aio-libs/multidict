@@ -35,7 +35,8 @@ _multidict_view_alloc(MultiDictObject* md, PyTypeObject* tp)
     return mv;
 }
 
-static PyObject*
+/* Out of line: GCC otherwise copies it into all seven view getters. */
+NOINLINE static PyObject*
 _multidict_view_new(MultiDictObject* md, PyTypeObject* tp)
 {
     _Multidict_ViewObject* mv = _multidict_view_alloc(md, tp);
