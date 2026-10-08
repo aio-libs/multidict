@@ -523,6 +523,29 @@ fail:
     return NULL;
 }
 
+typedef struct _view_unmatched {
+    PyObject* seen;  // other's keys or pairs, by identity
+    PyObject* ret;
+} view_unmatched_t;
+
+static int
+_itemsview_unmatched_visit(void* user_data, PyObject* identity, Py_hash_t hash,
+                           PyObject* key, PyObject* value)
+{
+    (void)hash;
+    view_unmatched_t* state = (view_unmatched_t*)user_data;
+    PyObject* tpl = PyTuple_Pack(2, identity, value);
+    if (tpl == NULL) {
+        return -1;
+    }
+    int tmp = PySet_Contains(state->seen, tpl);
+    Py_DECREF(tpl);
+    if (tmp == 0) {
+        tmp = _set_add(state->ret, key, value);
+    }
+    return tmp < 0 ? -1 : 1;
+}
+
 /* The view's pairs that `other` has no equal item for, added to other's
    own if `with_other`: `other | view`, or `view - other`. */
 COLD static PyObject*
@@ -531,7 +554,6 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
 {
     PyObject* identity = NULL;
     PyObject* iter = NULL;
-    PyObject* key = NULL;
     PyObject* value = NULL;
     PyObject* arg = NULL;
     PyObject* tmp_set = NULL;
@@ -580,53 +602,15 @@ _itemsview_unmatched(_Multidict_ViewObject* self, PyObject* other,
     }
     Py_CLEAR(iter);
 
-    MultiDictObject* md = self->md;
-    bool ci = md->is_ci;
-    uint64_t version = md->version;
-    htkeys_t* keys = md->keys;
-    entry_t* entries = htkeys_entries(keys);
-    uint8_t kind = keys->kind;
-
-    for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
-        entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(entry)) {
-            continue;
-        }
-        identity = Py_NewRef(entry_identity(kind, ci, entry));
-        value = Py_NewRef(entry->value);
-        key = md_ensure_key(md, entry);  // last entry access
-        if (key == NULL) {
-            goto fail;
-        }
-        PyObject* tpl = PyTuple_Pack(2, identity, value);
-        if (tpl == NULL) {
-            goto fail;
-        }
-        int tmp = PySet_Contains(tmp_set, tpl);
-        Py_DECREF(tpl);
-        if (tmp < 0) {
-            goto fail;
-        }
-        if (tmp == 0) {
-            if (_set_add(ret, key, value) < 0) {
-                goto fail;
-            }
-        }
-        Py_CLEAR(identity);
-        Py_CLEAR(key);
-        Py_CLEAR(value);
-        /* Hashing and comparing run Python code; once the version checks
-           out, `keys` is still md's table. */
-        if (md_check_version(md, version) < 0) {
-            goto fail;
-        }
+    view_unmatched_t state = {tmp_set, ret};
+    if (md_walk_all(self->md, true, _itemsview_unmatched_visit, &state) < 0) {
+        goto fail;
     }
     Py_DECREF(tmp_set);
     return ret;
 fail:
     Py_CLEAR(arg);
     Py_CLEAR(identity);
-    Py_CLEAR(key);
     Py_CLEAR(value);
     Py_CLEAR(iter);
     Py_CLEAR(ret);
@@ -964,6 +948,20 @@ fail:
     return NULL;
 }
 
+static int
+_keysview_or_rht_visit(void* user_data, PyObject* identity, Py_hash_t hash,
+                       PyObject* key, PyObject* value)
+{
+    (void)hash;
+    (void)value;
+    view_unmatched_t* state = (view_unmatched_t*)user_data;
+    int tmp = PySet_Contains(state->seen, identity);
+    if (tmp == 0) {
+        tmp = PySet_Add(state->ret, key);
+    }
+    return tmp < 0 ? -1 : 1;
+}
+
 // other | view
 COLD static PyObject*
 _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
@@ -1009,38 +1007,9 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
     }
     Py_CLEAR(iter);
 
-    MultiDictObject* md = self->md;
-    bool ci = md->is_ci;
-    uint64_t version = md->version;
-    htkeys_t* keys = md->keys;
-    entry_t* entries = htkeys_entries(keys);
-    uint8_t kind = keys->kind;
-
-    for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
-        entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(entry)) {
-            continue;
-        }
-        identity = Py_NewRef(entry_identity(kind, ci, entry));
-        key = md_ensure_key(md, entry);  // last entry access
-        if (key == NULL) {
-            goto fail;
-        }
-        int tmp = PySet_Contains(tmp_set, identity);
-        if (tmp < 0) {
-            goto fail;
-        }
-        if (tmp == 0) {
-            if (PySet_Add(ret, key) < 0) {
-                goto fail;
-            }
-        }
-        Py_CLEAR(identity);
-        Py_CLEAR(key);
-        // See _itemsview_unmatched().
-        if (md_check_version(md, version) < 0) {
-            goto fail;
-        }
+    view_unmatched_t state = {tmp_set, ret};
+    if (md_walk_all(self->md, true, _keysview_or_rht_visit, &state) < 0) {
+        goto fail;
     }
     Py_DECREF(tmp_set);
     return ret;
