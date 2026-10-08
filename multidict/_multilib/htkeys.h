@@ -909,29 +909,30 @@ typedef struct _htkeysiter {
    non-NULL `entry` is the previous match, which it steps past first, so a
    probe loop starts with `entry` NULL and uses this at the top of every
    pass. */
-#define HTKEYSITER_FIND_COMPACT(iter_, ci_, identity_, hash_, entry_)      \
-    do {                                                                   \
-        htkeysiter_t* _hf_iter = (iter_);                                  \
-        bool _hf_ci = (ci_);                                               \
-        PyObject* _hf_identity = (identity_);                              \
-        Py_hash_t _hf_hash = (hash_);                                      \
-        entry_t* _hf_entries = HTKEYS_COMPACT_ENTRIES(_hf_iter->keys);     \
-        if ((entry_) != NULL) {                                            \
-            HTKEYSITER_NEXT(_hf_iter);                                     \
-        }                                                                  \
-        (entry_) = NULL;                                                   \
-        for (; _hf_iter->index != DKIX_EMPTY; HTKEYSITER_NEXT(_hf_iter)) { \
-            if (UNLIKELY(_hf_iter->index < 0)) {                           \
-                continue;                                                  \
-            }                                                              \
-            entry_t* _hf_e = _hf_entries + _hf_iter->index;                \
-            if (compact_key_hash(_hf_ci, _hf_e->key) == _hf_hash &&        \
-                str_cmp(_hf_identity,                                      \
-                        compact_key_identity(_hf_ci, _hf_e->key))) {       \
-                (entry_) = _hf_e;                                          \
-                break;                                                     \
-            }                                                              \
-        }                                                                  \
+#define HTKEYSITER_FIND_COMPACT(iter_, ci_, identity_, hash_, entry_)        \
+    do {                                                                     \
+        htkeysiter_t* _hf_iter = (iter_);                                    \
+        bool _hf_ci = (ci_);                                                 \
+        PyObject* _hf_identity = (identity_);                                \
+        Py_hash_t _hf_hash = (hash_);                                        \
+        entry_t* _hf_entries = HTKEYS_COMPACT_ENTRIES(_hf_iter->keys);       \
+        if ((entry_) != NULL) {                                              \
+            HTKEYSITER_NEXT(_hf_iter);                                       \
+        }                                                                    \
+        (entry_) = NULL;                                                     \
+        for (; _hf_iter->index != DKIX_EMPTY; HTKEYSITER_NEXT(_hf_iter)) {   \
+            if (UNLIKELY(_hf_iter->index < 0)) {                             \
+                continue;                                                    \
+            }                                                                \
+            entry_t* _hf_e = _hf_entries + _hf_iter->index;                  \
+            if (compact_key_hash(_hf_ci, _hf_e->key) == _hf_hash &&          \
+                (compact_key_identity(_hf_ci, _hf_e->key) == _hf_identity || \
+                 str_cmp(_hf_identity,                                       \
+                         compact_key_identity(_hf_ci, _hf_e->key)))) {       \
+                (entry_) = _hf_e;                                            \
+                break;                                                       \
+            }                                                                \
+        }                                                                    \
     } while (0)
 
 // HTKEYSITER_FIND_COMPACT() for a KIND_ANYSTR table.
@@ -951,7 +952,8 @@ typedef struct _htkeysiter {
             }                                                                \
             anystr_entry_t* _hf_e = _hf_entries + _hf_iter->index;           \
             if (_hf_e->hash == _hf_hash &&                                   \
-                str_cmp(_hf_identity, _hf_e->identity)) {                    \
+                (_hf_e->identity == _hf_identity ||                          \
+                 str_cmp(_hf_identity, _hf_e->identity))) {                  \
                 (entry_) = &_hf_e->base;                                     \
                 break;                                                       \
             }                                                                \

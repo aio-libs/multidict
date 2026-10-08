@@ -320,7 +320,7 @@ md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
    mutate md and free entry, so hold our own refs. Only an exact str is
    replaced by its istr: releasing one runs no code, where a subclass's
    __del__ could. */
-static PyObject*
+COLD static PyObject*
 _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
 {
     assert(md->is_ci);

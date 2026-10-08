@@ -193,7 +193,7 @@ _md_merge_present(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     }
 }
 
-static int
+COLD static int
 _md_merge(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
           PyObject* key, PyObject* value, update_marks_t* marks, bool fits)
 {
@@ -327,7 +327,7 @@ _md_post_update_pass(MultiDictObject* md, reflist_t* defer,
    an out-of-memory fallback decref in _md_del_at_deferred() can run Python
    here; the walk then starts over, which each record leaving the set as it
    goes makes safe. */
-static int
+COLD static int
 _md_post_update_deleted(MultiDictObject* md, reflist_t* defer,
                         update_marks_t* marks)
 {
@@ -446,7 +446,9 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     return md_walk_all(other, true, _md_update_visit, &state) < 0 ? -1 : 0;
 }
 
-// d.extend(d) is rare; md_reserve() keeps the table, and md's keys fit it
+/* d.extend(d) is rare. The loops walk the table they add to: md_reserve()
+   leaves room for every entry and md's own keys always fit, so it is
+   never replaced, which the kind chosen up front relies on. */
 static int
 md_extend_self(MultiDictObject* md)
 {
@@ -472,6 +474,7 @@ md_extend_self(MultiDictObject* md)
                                  md_key_fits(md, entry->key, identity)) < 0) {
                 return -1;
             }
+            assert(md->keys == keys);
         }
         return 0;
     }
@@ -490,6 +493,7 @@ md_extend_self(MultiDictObject* md)
                 md_key_fits(md, entry->base.key, entry->identity)) < 0) {
             return -1;
         }
+        assert(md->keys == keys);
     }
     return 0;
 }

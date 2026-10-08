@@ -528,7 +528,7 @@ multidict_tp_iter(MultiDictObject* self)
 }
 
 /* Tail-called by the MultiDictProxy copy. */
-static PyObject*
+COLD static PyObject*
 multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
 {
     int cmp;

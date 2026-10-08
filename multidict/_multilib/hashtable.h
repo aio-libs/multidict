@@ -1743,7 +1743,7 @@ _md_to_dict_store(MultiDictObject* md, PyObject* dict, entry_t* entry,
    first spelling; a hash chain walk is not insertion-ordered. Equal keys
    sit on one hash chain in insertion order. One loop per kind; the
    version checks keep md's table in place. */
-static int
+COLD static int
 _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
 {
     bool ci = md->is_ci;
@@ -2051,7 +2051,7 @@ _md_pop_all_matched(MultiDictObject* md, uint8_t kind, size_t slot,
 
 /* Caller holds md's critical section. The removed pairs go to `removed`,
  * as in _md_del_locked(); `values` collects the result. */
-static int
+COLD static int
 _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                    reflist_t* values, removed_pairs_t* removed)
 {
@@ -2114,7 +2114,7 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return ret;
 }
 
-static int
+COLD static int
 md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     PyObject* identity;
@@ -2592,10 +2592,10 @@ _md_eq_values(PyObject* value1, PyObject* value2)
    when a value's __eq__ ran, after which the caller carries on from
    *ppos1 and *ppos2 under the tables and kinds they have now. */
 #define _MD_DEFINE_EQ_SCAN(K1, K2)                                      \
-    static int _md_eq_scan_##K1##_##K2(MultiDictObject* md,             \
-                                       MultiDictObject* other,          \
-                                       Py_ssize_t* ppos1,               \
-                                       Py_ssize_t* ppos2)               \
+    COLD static int _md_eq_scan_##K1##_##K2(MultiDictObject* md,        \
+                                            MultiDictObject* other,     \
+                                            Py_ssize_t* ppos1,          \
+                                            Py_ssize_t* ppos2)          \
     {                                                                   \
         bool ci = md->is_ci;                                            \
         bool other_ci = other->is_ci;                                   \
@@ -2753,7 +2753,7 @@ _md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
     return state.eq;
 }
 
-static int
+COLD static int
 md_eq_to_mapping(MultiDictObject* md, PyObject* other)
 {
     int ret;
