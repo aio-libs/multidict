@@ -1,0 +1,4 @@
+Merged the C extension's walk of the hash chain for each
+:meth:`~multidict.MultiDict.update` item into its caller, which saved a
+function call per item: an update needed 3% to 10% fewer instructions
+-- by :user:`asvetlov`.
