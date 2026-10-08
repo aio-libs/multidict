@@ -621,7 +621,8 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
     PyObject* value = NULL;
 
     assert(PyDict_CheckExact(kwds));
-    // a dict's keys are distinct strings, so unique in an empty MultiDict
+    /* Distinct exact str keys stay unique in an empty MultiDict; a str
+       subclass's own __eq__ can let a dict hold an equal one too. */
     Py_ssize_t slot =
         !md->is_ci && md->used == 0 ? MD_SLOT_FIND : MD_SLOT_CHECK;
 
@@ -645,6 +646,9 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                 }
                 break;
             case Extend:
+                if (!PyUnicode_CheckExact(key)) {
+                    slot = MD_SLOT_CHECK;
+                }
                 Py_INCREF(key);
                 Py_INCREF(value);
                 if (md_add_with_hash_steal_refs(
@@ -675,7 +679,7 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
                        Py_ssize_t nargs, PyObject* kwnames)
 {
     Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
-    // keyword names are distinct, so unique in an empty MultiDict
+    // as in md_update_from_dict()
     Py_ssize_t slot =
         !md->is_ci && md->used == 0 ? MD_SLOT_FIND : MD_SLOT_CHECK;
     if (md_reserve(md, nkwargs) < 0) {
@@ -684,6 +688,9 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
     for (Py_ssize_t i = 0; i < nkwargs; i++) {
         PyObject* key = PyTuple_GET_ITEM(kwnames, i);  // borrowed
         assert(PyUnicode_Check(key));
+        if (!PyUnicode_CheckExact(key)) {
+            slot = MD_SLOT_CHECK;
+        }
         Py_INCREF(key);
         bool fits;
         PyObject* identity = md_calc_identity_fits(md, key, &fits);

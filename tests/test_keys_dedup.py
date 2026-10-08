@@ -331,3 +331,25 @@ def test_update_repeating_a_key_in_one_batch(any_multidict_class: _MD_Classes) -
     assert d.getall("a") == ["2", "3", "4"]
     assert list(d) == ["a"]
     assert len(d.keys()) == 1
+
+
+class _OtherHashStr(str):
+    def __hash__(self) -> int:
+        return 12345
+
+
+@pytest.mark.parametrize("subclass_first", [False, True])
+def test_from_dict_and_kwargs_with_an_equal_str_subclass_key(
+    any_multidict_class: _MD_Classes, subclass_first: bool
+) -> None:
+    pairs = [("a", "1"), (_OtherHashStr("a"), "2")]
+    if subclass_first:
+        pairs.reverse()
+    src = dict(pairs)
+    assert len(src) == 2
+    extended = any_multidict_class()
+    extended.extend(src)
+    for d in (any_multidict_class(src), any_multidict_class(**src), extended):
+        assert [str(k) for k in d] == ["a"]
+        assert len(d.keys()) == 1
+        assert d.getall("a") == [v for _, v in pairs]
