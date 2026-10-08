@@ -253,6 +253,39 @@ _md_post_update_delete(MultiDictObject* md, htkeys_t* keys, Py_ssize_t pos,
     return 0;
 }
 
+/* _md_post_update_pass()'s loop over a KIND_COMPACT table, `sfx` being cs
+   or ci as for compact_entry_identity_cs(). */
+#define _MD_POST_UPDATE_COMPACT_LOOP(sfx)                                   \
+    do {                                                                    \
+        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                    \
+        for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {                   \
+            Py_ssize_t pos = _md_post_update_take(marks, keys, i);          \
+            if (pos < 0) {                                                  \
+                continue;                                                   \
+            }                                                               \
+            entry_t* entry = entries + pos;                                 \
+            if (compact_entry_is_hole(entry) ||                             \
+                load_value(entry) != marks->doomed[i].value) {              \
+                continue;                                                   \
+            }                                                               \
+            int del =                                                       \
+                _md_post_update_delete(md,                                  \
+                                       keys,                                \
+                                       pos,                                 \
+                                       entry,                               \
+                                       compact_entry_identity_##sfx(entry), \
+                                       compact_entry_hash_##sfx(entry),     \
+                                       defer,                               \
+                                       version);                            \
+            if (del == _MD_POST_UPDATE_RESTART) {                           \
+                return del;                                                 \
+            }                                                               \
+            if (del < 0) {                                                  \
+                ret = -1;                                                   \
+            }                                                               \
+        }                                                                   \
+    } while (0)
+
 /* One pass of _md_post_update_deleted() over md's table, one loop per
    kind: 0 when done, -1 when done but a delete failed,
    _MD_POST_UPDATE_RESTART when a failed delete moved the table. */
@@ -260,37 +293,15 @@ static int
 _md_post_update_pass(MultiDictObject* md, reflist_t* defer,
                      update_marks_t* marks)
 {
-    bool ci = md->is_ci;
     int ret = 0;
     htkeys_t* keys = md->keys;
     uint64_t version = md->version;
     // Python code run between items may have removed or rewritten each one
     if (kind_is_compact(keys->kind)) {
-        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
-        for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {
-            Py_ssize_t pos = _md_post_update_take(marks, keys, i);
-            if (pos < 0) {
-                continue;
-            }
-            entry_t* entry = entries + pos;
-            if (compact_entry_is_hole(entry) ||
-                load_value(entry) != marks->doomed[i].value) {
-                continue;
-            }
-            int del = _md_post_update_delete(md,
-                                             keys,
-                                             pos,
-                                             entry,
-                                             compact_entry_identity(ci, entry),
-                                             compact_entry_hash(ci, entry),
-                                             defer,
-                                             version);
-            if (del == _MD_POST_UPDATE_RESTART) {
-                return del;
-            }
-            if (del < 0) {
-                ret = -1;
-            }
+        if (md->is_ci) {
+            _MD_POST_UPDATE_COMPACT_LOOP(ci);
+        } else {
+            _MD_POST_UPDATE_COMPACT_LOOP(cs);
         }
         return ret;
     }
@@ -322,6 +333,8 @@ _md_post_update_pass(MultiDictObject* md, reflist_t* defer,
     }
     return ret;
 }
+
+#undef _MD_POST_UPDATE_COMPACT_LOOP
 
 /* Removes the entries update() doomed and nothing has written since. Only
    an out-of-memory fallback decref in _md_del_at_deferred() can run Python
@@ -446,6 +459,30 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     return md_walk_all(other, true, _md_update_visit, &state) < 0 ? -1 : 0;
 }
 
+/* md_extend_self()'s loop over a KIND_COMPACT table, `sfx` being cs or ci
+   as for compact_entry_identity_cs(). */
+#define _MD_EXTEND_SELF_COMPACT_LOOP(sfx)                                 \
+    do {                                                                  \
+        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                  \
+        for (Py_ssize_t pos = 0; pos < nentries; pos++) {                 \
+            entry_t* entry = entries + pos;                               \
+            if (compact_entry_is_hole(entry)) {                           \
+                continue;                                                 \
+            }                                                             \
+            PyObject* identity = compact_entry_identity_##sfx(entry);     \
+            if (md_add_with_hash(md,                                      \
+                                 compact_entry_hash_##sfx(entry),         \
+                                 identity,                                \
+                                 entry->key,                              \
+                                 entry->value,                            \
+                                 md_key_fits(md, entry->key, identity)) < \
+                0) {                                                      \
+                return -1;                                                \
+            }                                                             \
+            assert(md->keys == keys);                                     \
+        }                                                                 \
+    } while (0)
+
 /* d.extend(d) is rare. The loops walk the table they add to: md_reserve()
    leaves room for every entry and md's own keys always fit, so it is
    never replaced, which the kind chosen up front relies on. */
@@ -455,26 +492,13 @@ md_extend_self(MultiDictObject* md)
     if (md_reserve(md, md->keys->nentries) < 0) {
         return -1;
     }
-    bool ci = md->is_ci;
     htkeys_t* keys = md->keys;
     Py_ssize_t nentries = keys->nentries;
     if (kind_is_compact(keys->kind)) {
-        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
-        for (Py_ssize_t pos = 0; pos < nentries; pos++) {
-            entry_t* entry = entries + pos;
-            if (compact_entry_is_hole(entry)) {
-                continue;
-            }
-            PyObject* identity = compact_entry_identity(ci, entry);
-            if (md_add_with_hash(md,
-                                 compact_entry_hash(ci, entry),
-                                 identity,
-                                 entry->key,
-                                 entry->value,
-                                 md_key_fits(md, entry->key, identity)) < 0) {
-                return -1;
-            }
-            assert(md->keys == keys);
+        if (md->is_ci) {
+            _MD_EXTEND_SELF_COMPACT_LOOP(ci);
+        } else {
+            _MD_EXTEND_SELF_COMPACT_LOOP(cs);
         }
         return 0;
     }
@@ -497,6 +521,8 @@ md_extend_self(MultiDictObject* md)
     }
     return 0;
 }
+
+#undef _MD_EXTEND_SELF_COMPACT_LOOP
 
 static int
 md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,

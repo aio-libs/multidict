@@ -13,7 +13,7 @@ typedef struct {
     PyUnicodeObject str;
     PyObject* canonical;
     /* canonical's hash, set with it: a compact CIMultiDict entry keeps
-       none, so it is read from the key (see compact_key_hash()). */
+       none, so it is read from the key (see compact_key_hash_ci()). */
     Py_hash_t canonical_hash;
 } istrobject;
 

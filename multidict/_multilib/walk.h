@@ -141,7 +141,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
     htkeys_t* keys = md->keys;
     Py_ssize_t count = 0;
     int ret = 1;
-    if (kind_is_compact(keys->kind)) {
+    if (kind_is_compact(keys->kind) && ci) {
         entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
         for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
              entry++) {
@@ -149,8 +149,24 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
                 count++;
                 ret = _md_walk_visit(md,
                                      entry,
-                                     compact_entry_identity(ci, entry),
-                                     compact_entry_hash(ci, entry),
+                                     compact_entry_identity_ci(entry),
+                                     compact_entry_hash_ci(entry),
+                                     with_keys,
+                                     visitor,
+                                     user_data,
+                                     version);
+            }
+        }
+    } else if (kind_is_compact(keys->kind)) {
+        entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
+        for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
+             entry++) {
+            if (!compact_entry_is_hole(entry)) {
+                count++;
+                ret = _md_walk_visit(md,
+                                     entry,
+                                     compact_entry_identity_cs(entry),
+                                     compact_entry_hash_cs(entry),
                                      with_keys,
                                      visitor,
                                      user_data,

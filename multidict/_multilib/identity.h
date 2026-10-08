@@ -327,7 +327,7 @@ _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
     uint64_t version = md->version;
     PyObject* old_key = Py_NewRef(entry->key);
     PyObject* identity = Py_NewRef(kind_is_compact(md->keys->kind)
-                                       ? compact_entry_identity(true, entry)
+                                       ? compact_entry_identity_ci(entry)
                                        : as_anystr(entry)->identity);
     PyObject* key = _arg_to_key_ci(md->state, old_key, identity);
     if (key != NULL && md->version == version &&
