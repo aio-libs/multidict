@@ -3,8 +3,11 @@ import gc
 import itertools
 import string
 import sys
+import sysconfig
 import weakref
 from collections import deque
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
 
 import pytest
@@ -846,30 +849,6 @@ class TestCIMutableMultiDict:
         with pytest.raises(KeyError):
             d.popitem()
 
-    @pytest.mark.skipif(
-        sys.implementation.name == "pypy",
-        reason="__del__ does not run promptly on PyPy",
-    )
-    def test_popitem_add_from_key_finalizer(
-        self,
-        case_insensitive_multidict_class: type[CIMultiDict[str]],
-    ) -> None:
-        # The popped entry's key is released inside popitem() (the result
-        # carries a fresh istr), so its __del__ mutates the mapping while
-        # popitem() is still tidying up after itself.
-        d = case_insensitive_multidict_class()
-
-        class Key(str):
-            def __del__(self) -> None:
-                d.add("added", "late")
-
-        d.add("a", "1")
-        d.add(Key("b"), "2")
-        assert d.popitem() == ("b", "2")
-        assert list(d.items()) == [("a", "1"), ("added", "late")]
-        assert d.popitem() == ("added", "late")
-        assert list(d.items()) == [("a", "1")]
-
     def test_pop(
         self,
         case_insensitive_multidict_class: type[CIMultiDict[str]],
@@ -1206,6 +1185,8 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
         else:
             failed = False
         del md, bound, call
+        # the istr cache keeps the str keys it was filled from
+        c_ext._freelist_clear()
         assert [sys.getrefcount(obj) for obj in keys + values] == baseline
         # Not an if/elif: whether a call ever succeeds before the first
         # failure depends on the Python version, which would leave a branch
@@ -1499,6 +1480,9 @@ def test_remove_all_keeps_what_a_finalizer_adds(
 ) -> None:
     # The pairs a removed key or value adds back from its __del__ are new,
     # not among the ones the call was asked to remove.
+    if side == "key" and any_multidict_class.__name__ == "CIMultiDict":
+        pytest.skip("a CIMultiDict stores an istr copy, never the key itself")
+
     class Key(str):
         def __del__(self) -> None:
             d.add("a", "late")
@@ -1590,3 +1574,117 @@ def test_key_only_keyword_binds_like_positional(
     want = _outcome(expected, method_name, key)
     assert _outcome(actual, method_name, key=key) == want
     assert list(actual.items()) == list(expected.items())
+
+
+_CI_WRITES: dict[str, Callable[[CIMultiDict[int], type[MultiDict[int]]], object]] = {
+    "add": lambda d, cs: d.add("Key", 1),
+    "setitem": lambda d, cs: d.__setitem__("Key", 1),
+    "setitem_existing": lambda d, cs: (d.add("KEY", 0), d.__setitem__("Key", 1)),
+    "setdefault": lambda d, cs: d.setdefault("Key", 1),
+    "extend_seq": lambda d, cs: d.extend([("Key", 1)]),
+    "extend_dict": lambda d, cs: d.extend({"Key": 1}),
+    "extend_kwargs": lambda d, cs: d.extend(Key=1),
+    "extend_md": lambda d, cs: d.extend(cs([("Key", 1)])),
+    "update_existing": lambda d, cs: (d.add("KEY", 0), d.update([("Key", 1)])),
+    "merge": lambda d, cs: d.merge([("Key", 1)]),
+    "init": lambda d, cs: type(d).__init__(d, [("Key", 1)]),
+}
+
+
+@pytest.mark.parametrize("write", _CI_WRITES)
+def test_ci_stores_istr_keys(
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    case_sensitive_multidict_class: type[MultiDict[int]],
+    case_insensitive_str_class: type[str],
+    write: str,
+) -> None:
+    """Every write stores the key as an istr, which every read hands back."""
+    d = case_insensitive_multidict_class()
+    _CI_WRITES[write](d, case_sensitive_multidict_class)
+    (key,) = d.keys()
+    assert type(key) is case_insensitive_str_class
+    assert key == "Key"
+    assert next(iter(d)) is key
+    assert next(iter(d.items()))[0] is key
+
+
+def test_ci_setitem_keeps_a_key_spelled_the_same(
+    case_insensitive_multidict_class: type[CIMultiDict[int]],
+    case_insensitive_str_class: type[str],
+) -> None:
+    d = case_insensitive_multidict_class([("Key", 1)])
+    (key,) = d.keys()
+    d["Key"] = 2
+    assert next(iter(d)) is key
+    d["KEY"] = 3
+    (new_key,) = d.keys()
+    assert type(new_key) is case_insensitive_str_class
+    assert new_key == "KEY"
+    assert list(d.items()) == [("KEY", 3)]
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize("write", _CI_WRITES)
+@pytest.mark.skipif(
+    bool(sysconfig.get_config_var("Py_GIL_DISABLED")),
+    reason="the istr cache is GIL-only",
+)
+def test_ci_reuses_the_istr_of_a_str_key(write: str) -> None:
+    """Storing the same str object again takes the istr cached for it."""
+    c_ext = pytest.importorskip("multidict._multidict")
+    first: CIMultiDict[int] = c_ext.CIMultiDict()
+    _CI_WRITES[write](first, c_ext.MultiDict)
+    second: CIMultiDict[int] = c_ext.CIMultiDict()
+    _CI_WRITES[write](second, c_ext.MultiDict)
+    (key,) = first.keys()
+    assert next(iter(second)) is key
+    assert second["key"] == second["KEY"] == 1
+
+
+@pytest.mark.c_extension
+@pytest.mark.skipif(
+    bool(sysconfig.get_config_var("Py_GIL_DISABLED")),
+    reason="the istr cache is GIL-only",
+)
+def test_ci_reuses_the_istr_of_an_equal_str() -> None:
+    """An equal str built afresh, as a parser builds header names, takes
+    the istr cached for the first one."""
+    c_ext = pytest.importorskip("multidict._multidict")
+    first = c_ext.CIMultiDict([("".join(["Content-", "Type"]), 1)])
+    second = c_ext.CIMultiDict([("".join(["Content", "-Type"]), 2)])
+    assert next(iter(second)) is next(iter(first))
+    assert second["content-type"] == 2
+
+
+@pytest.mark.c_extension
+def test_ci_istr_cache_eviction() -> None:
+    """More str keys than the cache holds still store and look up right."""
+    c_ext = pytest.importorskip("multidict._multidict")
+    keys = [f"Key-{i}" for i in range(500)]
+    for _ in range(2):
+        d = c_ext.CIMultiDict((k, i) for i, k in enumerate(keys))
+        assert [str(k) for k in d] == keys
+        assert all(type(k) is c_ext.istr for k in d)
+        assert [d[k.upper()] for k in keys] == list(range(500))
+        c_ext._freelist_clear()
+
+
+@pytest.mark.c_extension
+def test_ci_istr_cache_shared_by_threads() -> None:
+    """Threads storing the same and equal str keys at once, more of them
+    than the cache holds, all get istrs that spell their keys."""
+    c_ext = pytest.importorskip("multidict._multidict")
+    keys = [f"Key-{i}" for i in range(400)]
+
+    def build(seed: int) -> None:
+        for n in range(20):
+            # every other round, equal strs built afresh
+            names = keys if (seed + n) % 2 else ["".join(list(k)) for k in keys]
+            d = c_ext.CIMultiDict((k, i) for i, k in enumerate(names))
+            assert [str(k) for k in d] == keys
+            assert d["KEY-7"] == 7
+
+    with ThreadPoolExecutor(8) as pool:
+        futures = [pool.submit(build, seed) for seed in range(8)]
+        for f in futures:
+            f.result(timeout=120)

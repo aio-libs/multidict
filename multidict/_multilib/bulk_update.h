@@ -489,24 +489,23 @@ _md_update_visit(void* user_data, PyObject* identity, Py_hash_t hash,
                    ? -1
                    : 1;
     }
-    PyObject* own = md_calc_identity(md, key);
-    if (own == NULL) {
+    PyObject* own;
+    PyObject* stored;
+    bool fits;
+    if (md_calc_identity_hash_key(md, key, &own, &hash, &stored, &fits) < 0) {
         return -1;
     }
-    int ret = -1;
-    hash = unicode_hash(own);
-    if (hash != -1) {
-        ret = _md_update_item(md,
+    int ret = _md_update_item(md,
                               state->op,
                               hash,
                               own,
-                              key,
+                              stored,
                               value,
                               state->defer,
                               state->marks,
                               MD_SLOT_CHECK);
-    }
     Py_DECREF(own);
+    Py_DECREF(stored);
     return ret < 0 ? -1 : 1;
 }
 
@@ -525,17 +524,16 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         return -1;
     }
 
-    /* The keys come materialized as other's: a CIMultiDict's istr keeps
-       other's identity as its canonical, md's is the unlowered key. */
+    /* A key of the other class gets md's identity and md's form: an istr
+       for a CIMultiDict, other's istr as is for a MultiDict. */
     bool same_class = md->is_ci == other->is_ci;
-    /* Keys repeated in other repeat here. Unique ones stay unique in an
-       empty MultiDict; a CIMultiDict's walk can build an istr, which can
-       run a collection whose finalizers add to md. */
+    // keys repeated in other repeat here; unique ones stay unique in an empty
+    // md
     Py_ssize_t slot = MD_SLOT_CHECK;
     if (op == Extend && same_class) {
         if (other->keys->maybe_dups) {
             md->keys->maybe_dups = 1;
-        } else if (md->used == 0 && !md->is_ci) {
+        } else if (md->used == 0) {
             slot = MD_SLOT_FIND;
         }
     }
@@ -617,8 +615,9 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
 {
     Py_ssize_t pos = 0;
     PyObject* identity = NULL;
-    PyObject* key = NULL;
-    PyObject* value = NULL;
+    PyObject* stored = NULL;
+    PyObject* key;
+    PyObject* value;
 
     assert(PyDict_CheckExact(kwds));
     /* Distinct exact str keys stay unique in an empty MultiDict; a str
@@ -629,19 +628,21 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
     // PyDict_Next returns borrowed refs, which kwds keeps alive
     while (PyDict_Next(kwds, &pos, &key, &value)) {
         bool fits;
-        identity = md_calc_identity_fits(md, key, &fits);
-        if (identity == NULL) {
+        Py_hash_t hash;
+        if (md_calc_identity_hash_key(
+                md, key, &identity, &hash, &stored, &fits) < 0) {
             return -1;
-        }
-        Py_hash_t hash = unicode_hash(identity);
-        if (hash == -1) {
-            goto fail;
         }
         switch (op) {
             case Update:
-                if (_md_update(
-                        md, hash, identity, key, value, defer, marks, fits) <
-                    0) {
+                if (_md_update(md,
+                               hash,
+                               identity,
+                               stored,
+                               value,
+                               defer,
+                               marks,
+                               fits) < 0) {
                     goto fail;
                 }
                 break;
@@ -649,28 +650,33 @@ md_update_from_dict(MultiDictObject* md, PyObject* kwds, UpdateOp op,
                 if (!PyUnicode_CheckExact(key)) {
                     slot = MD_SLOT_CHECK;
                 }
-                Py_INCREF(key);
-                Py_INCREF(value);
-                if (md_add_with_hash_steal_refs(
-                        md, hash, identity, key, value, fits, slot) < 0) {
-                    Py_DECREF(key);
+                if (md_add_with_hash_steal_refs(md,
+                                                hash,
+                                                identity,
+                                                stored,
+                                                Py_NewRef(value),
+                                                fits,
+                                                slot) < 0) {
                     Py_DECREF(value);
                     goto fail;
                 }
                 identity = NULL;
+                stored = NULL;
                 break;
             case Merge:
-                if (_md_merge(md, hash, identity, key, value, marks, fits) <
+                if (_md_merge(md, hash, identity, stored, value, marks, fits) <
                     0) {
                     goto fail;
                 }
                 break;
         }
-        Py_XDECREF(identity);
+        Py_CLEAR(identity);
+        Py_CLEAR(stored);
     }
     return 0;
 fail:
-    Py_DECREF(identity);
+    Py_CLEAR(identity);
+    Py_CLEAR(stored);
     return -1;
 }
 
@@ -691,17 +697,11 @@ md_update_from_kwnames(MultiDictObject* md, PyObject* const* args,
         if (!PyUnicode_CheckExact(key)) {
             slot = MD_SLOT_CHECK;
         }
-        Py_INCREF(key);
+        PyObject* identity;
+        Py_hash_t hash;
         bool fits;
-        PyObject* identity = md_calc_identity_fits(md, key, &fits);
-        if (identity == NULL) {
-            Py_DECREF(key);
-            return -1;
-        }
-        Py_hash_t hash = unicode_hash(identity);
-        if (hash == -1) {
-            Py_DECREF(identity);
-            Py_DECREF(key);
+        if (md_calc_identity_hash_key(md, key, &identity, &hash, &key, &fits) <
+            0) {
             return -1;
         }
         PyObject* value = args[nargs + i];  // borrowed
@@ -891,16 +891,14 @@ _md_seq_next(MultiDictObject* md, seq_iter_t* it, Py_ssize_t i,
         return -1;
     }
 
-    out->identity = md_calc_identity_fits(md, out->key, &out->fits);
-    if (out->identity == NULL) {
+    PyObject* stored;
+    if (md_calc_identity_hash_key(
+            md, out->key, &out->identity, &out->hash, &stored, &out->fits) <
+        0) {
         goto fail;
     }
-
-    out->hash = unicode_hash(out->identity);
-    if (out->hash == -1) {
-        Py_DECREF(out->identity);
-        goto fail;
-    }
+    // releasing the parsed key can run a str subclass's __del__
+    Py_SETREF(out->key, stored);
     return 1;
 fail:
     Py_DECREF(item);

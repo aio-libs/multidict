@@ -3623,16 +3623,18 @@ def test_update_from_list_mutated_by_key_lookup() -> None:
 
 @pytest.mark.c_extension
 def test_ascii_identity_refcounts_are_balanced() -> None:
-    """An already-lowercase ASCII key is stored as both the entry's key and
-    its identity, so it picks up two references and must give both back."""
+    """An already-lowercase ASCII key is the canonical form of the istr the
+    entry stores, and the istr cache keeps both, so it picks up references
+    and must give them all back."""
     key = "".join(("content", "-type"))
     before = sys.getrefcount(key)
 
     d: multidict.CIMultiDict[str] = multidict.CIMultiDict()
     d[key] = "value"
-    assert sys.getrefcount(key) - before == 2
+    assert sys.getrefcount(key) > before
 
     del d[key]
+    sys.modules[_C_MODULE]._freelist_clear()
     assert sys.getrefcount(key) == before
 
 
@@ -3960,27 +3962,6 @@ def test_items_contains_list_shrunk_by_another_thread() -> None:
         t.join()
 
 
-def test_items_iter_key_finalizer_mutates(
-    case_insensitive_multidict_class: type[CIMultiDict[str]],
-) -> None:
-    """A str subclass key whose __del__ mutates the multidict; the C iterator
-    used to release it when caching the istr, then read the freed entry."""
-
-    class Key(str):
-        def __del__(self) -> None:
-            d.clear()
-
-    d = case_insensitive_multidict_class()
-    d[Key("a")] = "v"
-    d["b"] = "w"
-    it = iter(d.items())
-    assert next(it) == ("a", "v")
-    with contextlib.suppress(RuntimeError):
-        next(it)
-    d.clear()
-    assert not d
-
-
 @pytest.mark.parametrize(
     "read",
     [
@@ -4016,11 +3997,12 @@ def test_ci_key_ignores_str_subclass_dunder_str(
     sys.implementation.name == "pypy",
     reason="__del__ does not run promptly on PyPy",
 )
-def test_ci_read_keeps_str_subclass_key(
+def test_ci_stores_an_istr_of_a_str_subclass_key(
     case_insensitive_multidict_class: type[CIMultiDict[int]],
+    case_insensitive_str_class: type[str],
 ) -> None:
-    """Reading a str subclass key never releases it, so its __del__ cannot
-    run inside the read."""
+    """A str subclass key is stored as an istr copy, so the multidict never
+    keeps the key itself alive."""
     released: list[bool] = []
 
     class Key(str):
@@ -4028,12 +4010,9 @@ def test_ci_read_keeps_str_subclass_key(
             released.append(True)
 
     d = case_insensitive_multidict_class([(Key("a"), 1)])
-    assert list(d) == ["a"]
-    assert list(d.items()) == [("a", 1)]
-    assert d.to_dict() == {"a": [1]}
-    assert not released
-    d.clear()
     assert released == [True]
+    assert [type(k) for k in d] == [case_insensitive_str_class]
+    assert list(d.items()) == [("a", 1)]
 
 
 @pytest.mark.c_extension
