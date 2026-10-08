@@ -48,12 +48,6 @@ as_anystr(entry_t* entry)
     return (anystr_entry_t*)entry;
 }
 
-static inline const anystr_entry_t*
-as_const_anystr(const entry_t* entry)
-{
-    return (const anystr_entry_t*)entry;
-}
-
 /* How a table stores its entries. KIND_ANYSTR stores an anystr_entry_t.
    KIND_COMPACT stores only the key and the value, and the class decides
    what the identity is: in a MultiDict every key is an exact str that is
@@ -271,18 +265,6 @@ anystr_entry_is_hole(const anystr_entry_t* entry)
     return entry->base.key == NULL;
 }
 
-// The str caches its hash, set when the key went in.
-static inline Py_hash_t
-_str_cached_hash(PyObject* str)
-{
-    PyASCIIObject* ascii = (PyASCIIObject*)str;
-#ifdef Py_GIL_DISABLED
-    return atomic_load_ssize_relaxed(&ascii->hash);
-#else
-    return ascii->hash;
-#endif
-}
-
 /* The hash of a compact entry's identity, read from the key itself: a
    str's cached hash, or the canonical form's hash an istr keeps, set
    before the istr is shared. A lock-free reader holds a reference to the
@@ -290,7 +272,12 @@ _str_cached_hash(PyObject* str)
 static inline Py_hash_t
 compact_key_hash_cs(PyObject* key)
 {
-    return _str_cached_hash(key);
+    PyASCIIObject* ascii = (PyASCIIObject*)key;
+#ifdef Py_GIL_DISABLED
+    return atomic_load_ssize_relaxed(&ascii->hash);
+#else
+    return ascii->hash;
+#endif
 }
 
 static inline Py_hash_t
@@ -527,7 +514,7 @@ static const htkeys_t empty_htkeys = {
     .log2_size = 0,
     .log2_index_bytes = 3,
     /* Any kind would do: with no entries there is no layout to read, and
-       a table replacing this one takes md_next_kind(), which ignores it. */
+       a table replacing this one takes _md_next_kind(), which ignores it. */
     .kind = KIND_ANYSTR,
     .maybe_dups = 0,
     .usable = 0, /* immutable */

@@ -57,7 +57,7 @@ typedef struct _update_marks {
 } update_marks_t;
 
 static Py_ssize_t
-md_entries_capacity(const htkeys_t* keys)
+_md_entries_capacity(const htkeys_t* keys)
 {
     return keys->nentries + keys->usable;
 }
@@ -67,7 +67,7 @@ md_entries_capacity(const htkeys_t* keys)
 static void
 update_marks_init(update_marks_t* marks, MultiDictObject* md)
 {
-    Py_ssize_t capacity = md_entries_capacity(md->keys);
+    Py_ssize_t capacity = _md_entries_capacity(md->keys);
     bitmap_init(&marks->updated, md->keys, capacity);
     bitmap_init(&marks->deleted, md->keys, capacity);
     marks->doomed = NULL;
@@ -143,7 +143,7 @@ COLD static int
 _update_marks_widen(update_marks_t* marks, MultiDictObject* md)
 {
     marks->layout_gen = md->layout_gen;
-    Py_ssize_t capacity = md_entries_capacity(md->keys);
+    Py_ssize_t capacity = _md_entries_capacity(md->keys);
     if (bitmap_nbits(&marks->updated) >= capacity) {
         return 0;
     }
