@@ -1,0 +1,3 @@
+Marked the proxy constructors' error paths, ``__reduce__()``, the
+module's ``m_free`` hook and the test-only ``_freelist_clear()`` cold --
+by :user:`asvetlov`.
