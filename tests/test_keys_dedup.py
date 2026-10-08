@@ -1,10 +1,14 @@
 """keys() and iter() yield each key once, under its first-seen spelling."""
 
+import platform
+
 import pytest
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
 
 _MD_Classes = type[MultiDict[str]] | type[CIMultiDict[str]]
+
+IS_PYPY = platform.python_implementation() == "PyPy"
 
 
 def test_iter_keys_and_len(any_multidict_class: _MD_Classes) -> None:
@@ -338,18 +342,37 @@ class _OtherHashStr(str):
         return 12345
 
 
-@pytest.mark.parametrize("subclass_first", [False, True])
-def test_from_dict_and_kwargs_with_an_equal_str_subclass_key(
-    any_multidict_class: _MD_Classes, subclass_first: bool
-) -> None:
+def _pairs_with_an_equal_str_subclass_key(
+    subclass_first: bool,
+) -> list[tuple[str, str]]:
     pairs = [("a", "1"), (_OtherHashStr("a"), "2")]
     if subclass_first:
         pairs.reverse()
+    return pairs
+
+
+@pytest.mark.parametrize("subclass_first", [False, True])
+def test_from_dict_with_an_equal_str_subclass_key(
+    any_multidict_class: _MD_Classes, subclass_first: bool
+) -> None:
+    pairs = _pairs_with_an_equal_str_subclass_key(subclass_first)
     src = dict(pairs)
     assert len(src) == 2
     extended = any_multidict_class()
     extended.extend(src)
-    for d in (any_multidict_class(src), any_multidict_class(**src), extended):
+    for d in (any_multidict_class(src), extended):
         assert [str(k) for k in d] == ["a"]
         assert len(d.keys()) == 1
         assert d.getall("a") == [v for _, v in pairs]
+
+
+@pytest.mark.skipif(IS_PYPY, reason="PyPy rejects equal keyword names")
+@pytest.mark.parametrize("subclass_first", [False, True])
+def test_from_kwargs_with_an_equal_str_subclass_key(
+    any_multidict_class: _MD_Classes, subclass_first: bool
+) -> None:
+    pairs = _pairs_with_an_equal_str_subclass_key(subclass_first)
+    d = any_multidict_class(**dict(pairs))
+    assert [str(k) for k in d] == ["a"]
+    assert len(d.keys()) == 1
+    assert d.getall("a") == [v for _, v in pairs]
