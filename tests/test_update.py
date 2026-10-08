@@ -450,6 +450,9 @@ def test_keys_from_cs_source_get_ci_identity(
     assert "foo" in case_insensitive_multidict_class([(k, 1)])
 
 
+@pytest.mark.skipif(
+    sys.implementation.name == "pypy", reason="getrefcount is not supported on PyPy"
+)
 @pytest.mark.parametrize("op", ["extend", "update", "merge"])
 def test_str_subclass_keys_from_dict_keep_refcounts(
     case_insensitive_multidict_class: type[CIMultiDict[object]],
