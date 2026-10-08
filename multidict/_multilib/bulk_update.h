@@ -521,7 +521,8 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     // callers handle md itself: md_extend_self(), or a no-op
     assert(md != other);
 
-    if (md_reserve(md, other->used) < 0) {
+    // update() and merge() reserved as md_reserve_batch() does for them
+    if (op == Extend && md_reserve(md, other->used) < 0) {
         return -1;
     }
 

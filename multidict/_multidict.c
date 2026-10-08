@@ -649,17 +649,17 @@ _multidict_bulk_locked(MultiDictObject* self, UpdateOp op, bool reinit,
     int ret;
     bool from_self = source == BULK_FROM_SEQ && other != NULL;
     if (op != Extend) {
-        ret = md_reserve_batch(self, size, kwds != NULL);
-        update_marks_init(marks, self);
+        ret = md_reserve_batch(self, size, kwds != NULL, true);
+        update_marks_init(marks, self, size);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
     } else {
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
         if (!reinit) {
-            ret = md_reserve_batch(self, size, kwds != NULL);
+            ret = md_reserve_batch(self, size, kwds != NULL, false);
         } else if (from_self) {
             // re-init from itself: md_init() would drop the source
             assert(kwds != NULL);
-            ret = md_reserve_batch(self, PyDict_GET_SIZE(kwds), true);
+            ret = md_reserve_batch(self, PyDict_GET_SIZE(kwds), true, false);
         } else {
             ret = md_init(
                 self,

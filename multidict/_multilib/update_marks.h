@@ -53,6 +53,7 @@ typedef struct _update_marks {
     doomed_entry_t* doomed;
     Py_ssize_t ndoomed;
     Py_ssize_t doomed_capacity;
+    Py_ssize_t reserve;  // room the first add makes; see md_reserve_batch()
     uint32_t layout_gen;
 } update_marks_t;
 
@@ -62,10 +63,10 @@ _md_entries_capacity(const htkeys_t* keys)
     return keys->nentries + keys->usable;
 }
 
-/* Starts a batch; the caller holds md's critical section until the
-   matching update_marks_end(). */
+/* Starts a batch of `size` items; the caller holds md's critical section
+   until the matching update_marks_end(). */
 static void
-update_marks_init(update_marks_t* marks, MultiDictObject* md)
+update_marks_init(update_marks_t* marks, MultiDictObject* md, Py_ssize_t size)
 {
     Py_ssize_t capacity = _md_entries_capacity(md->keys);
     bitmap_init(&marks->updated, md->keys, capacity);
@@ -73,6 +74,7 @@ update_marks_init(update_marks_t* marks, MultiDictObject* md)
     marks->doomed = NULL;
     marks->ndoomed = 0;
     marks->doomed_capacity = 0;
+    marks->reserve = size;
     marks->layout_gen = md->layout_gen;
     assert(md->batches < UINT16_MAX);
     md->batches++;
