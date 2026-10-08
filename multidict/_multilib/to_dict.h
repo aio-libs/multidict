@@ -63,6 +63,19 @@ _md_to_dict_store(MultiDictObject* md, PyObject* dict, entry_t* entry,
     return md_check_version(md, version);
 }
 
+/* Stores the value of `entry`, the only one of its key, as a list of one. */
+static inline int
+_md_to_dict_single(MultiDictObject* md, PyObject* dict, entry_t* entry,
+                   uint64_t version)
+{
+    PyObject* lst = NULL;
+    if (_md_to_dict_append(md, &lst, entry, version) < 0) {
+        Py_XDECREF(lst);
+        return -1;
+    }
+    return _md_to_dict_store(md, dict, entry, lst, version);
+}
+
 /* _md_to_dict_locked()'s walk of the hash chain of the entry at `pos`,
    the first one of its key, `find` being one of the HTKEYSITER_FIND_*()
    macros. Equal keys are first reached in increasing entry index, so the
@@ -144,20 +157,23 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
     if (!keys->maybe_dups) {
         /* Every key has one entry, so nothing to group; a mutation that
            adds a second is refused. */
-        bool compact = kind_is_compact(keys->kind);
-        for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
-            entry_t* entry = compact ? HTKEYS_COMPACT_ENTRIES(keys) + pos
-                                     : &HTKEYS_ANYSTR_ENTRIES(keys)[pos].base;
-            if (compact_entry_is_hole(entry)) {
-                continue;
+        if (kind_is_compact(keys->kind)) {
+            entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
+            for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
+                entry_t* entry = entries + pos;
+                if (!compact_entry_is_hole(entry) &&
+                    _md_to_dict_single(md, dict, entry, version) < 0) {
+                    goto fail;
+                }
             }
-            if (_md_to_dict_append(md, &lst, entry, version) < 0) {
-                goto fail;
-            }
-            int stored = _md_to_dict_store(md, dict, entry, lst, version);
-            lst = NULL;
-            if (stored < 0) {
-                goto fail;
+        } else {
+            anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
+            for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
+                anystr_entry_t* entry = entries + pos;
+                if (!anystr_entry_is_hole(entry) &&
+                    _md_to_dict_single(md, dict, &entry->base, version) < 0) {
+                    goto fail;
+                }
             }
         }
     } else if (kind_is_compact(keys->kind)) {
