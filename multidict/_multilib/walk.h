@@ -268,6 +268,8 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     Py_ssize_t count = 0;
     int ret = 1;
     entry_t* entry = NULL;
+    // otherwise the first match is the key's only entry
+    bool dups = md->keys->maybe_dups;
     if (kind_is_compact(md->keys->kind) && ci) {
         while (ret > 0) {
             HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
@@ -285,6 +287,9 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                                    user_data,
                                    version);
             count += ret == 0 || ret == 1;
+            if (!dups) {
+                break;
+            }
         }
     } else if (kind_is_compact(md->keys->kind)) {
         while (ret > 0) {
@@ -303,6 +308,9 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                                    user_data,
                                    version);
             count += ret == 0 || ret == 1;
+            if (!dups) {
+                break;
+            }
         }
     } else {
         while (ret > 0) {
@@ -321,6 +329,9 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                                    user_data,
                                    version);
             count += ret == 0 || ret == 1;
+            if (!dups) {
+                break;
+            }
         }
     }
     if (seen.nfew > MD_SEEN_MANY) {

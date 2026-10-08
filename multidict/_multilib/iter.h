@@ -108,6 +108,52 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
     return 0;
 }
 
+/* The keys iterator's step once its table may hold a key twice: the next
+   first entry of a key, as a new reference to its key, or NULL at the end
+   or with an exception set. The caller holds md's critical section. Out
+   of line, finishing the step here, so the iterator for a table without
+   repeats keeps nothing live across a call. */
+COLD static PyObject*
+_iter_next_first_key(MultidictIter* self)
+{
+    MultiDictObject* md = self->md;
+    if (md_check_version(md, self->version) < 0) {
+        return NULL;
+    }
+    htkeys_t* keys = md->keys;
+    bool ci = md->is_ci;
+    Py_ssize_t step = self->reverse ? -1 : 1;
+    for (; self->pos >= 0 && self->pos < keys->nentries; self->pos += step) {
+        Py_ssize_t pos = self->pos;
+        entry_t* entry;
+        Py_hash_t hash;
+        PyObject* identity;
+        if (kind_is_compact(keys->kind)) {
+            entry = HTKEYS_COMPACT_ENTRIES(keys) + pos;
+            if (compact_entry_is_hole(entry)) {
+                continue;
+            }
+            hash = (ci ? compact_entry_hash_ci(entry)
+                       : compact_entry_hash_cs(entry));
+            identity = (ci ? compact_entry_identity_ci(entry)
+                           : compact_entry_identity_cs(entry));
+        } else {
+            anystr_entry_t* e = HTKEYS_ANYSTR_ENTRIES(keys) + pos;
+            if (anystr_entry_is_hole(e)) {
+                continue;
+            }
+            entry = &e->base;
+            hash = e->hash;
+            identity = e->identity;
+        }
+        if (md_is_first_key(keys, ci, hash, identity, pos)) {
+            self->pos += step;
+            return md_ensure_key(md, entry);  // last entry access
+        }
+    }
+    return NULL;
+}
+
 static PyObject*
 multidict_items_iter_new(MultiDictObject* md, int reverse)
 {
@@ -255,11 +301,16 @@ multidict_keys_iter_tp_iternext(MultidictIter* self)
 
     int res;
     Py_BEGIN_CRITICAL_SECTION(self->md);
-    res = _iter_next_entry(self, &entry);
-    if (res > 0) {
-        key = md_ensure_key(self->md, entry);  // last entry access
-        if (key == NULL) {
-            res = -1;
+    if (self->md->keys->maybe_dups) {
+        key = _iter_next_first_key(self);
+        res = key != NULL ? 1 : PyErr_Occurred() ? -1 : 0;
+    } else {
+        res = _iter_next_entry(self, &entry);
+        if (res > 0) {
+            key = md_ensure_key(self->md, entry);  // last entry access
+            if (key == NULL) {
+                res = -1;
+            }
         }
     }
     Py_END_CRITICAL_SECTION();
