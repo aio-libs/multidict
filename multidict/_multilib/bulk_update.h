@@ -55,7 +55,11 @@ _md_update_matched(MultiDictObject* md, uint8_t kind, entry_t* entry,
     // old_key/old_value decref deferred: see reflist_t
     PyObject* old_key = entry->key;
     PyObject* old_value = load_value(entry);
-    replace_key(kind, entry, Py_NewRef(key));
+    if (kind_is_compact(kind)) {
+        replace_compact_key(entry, Py_NewRef(key));
+    } else {
+        replace_anystr_key(as_anystr(entry), Py_NewRef(key));
+    }
     publish_value(entry, Py_NewRef(value));
     md_watch_record(
         md, MultiDict_EVENT_REPLACED, identity, hash, key, value, old_value);

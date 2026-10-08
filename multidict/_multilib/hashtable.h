@@ -1058,15 +1058,15 @@ _md_unlink_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry,
               PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
 {
     if (kind_is_compact(kind)) {
-        *pkey = load_identity(KIND_COMPACT, entry);
+        *pkey = load_compact_identity(entry);
         *pidentity = NULL;
         *pvalue = load_value(entry);
-        reset_identity(KIND_COMPACT, entry);
+        reset_compact_identity(entry);
     } else {
-        *pidentity = load_identity(KIND_ANYSTR, entry);
+        *pidentity = load_anystr_identity(as_anystr(entry));
         *pkey = entry->key;
         *pvalue = load_value(entry);
-        reset_identity(KIND_ANYSTR, entry);
+        reset_anystr_identity(as_anystr(entry));
         entry->key = NULL;
     }
     reset_value(entry);
@@ -1095,7 +1095,7 @@ _md_del_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry)
        a no-op on that build), which would otherwise expose a
        half-deleted entry -- see #1489. entry->key is read/written as
        a plain pointer: unlike identity/value, no lock-free reader
-       ever touches it (see the comment above load_identity()). */
+       ever touches it (see the identity slot comment in freethreading.h). */
     PyObject* identity;
     PyObject* key;
     PyObject* value;
@@ -1182,12 +1182,12 @@ _md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
     PyObject* key;
     PyObject* identity = NULL;
     if (kind_is_compact(kind)) {
-        key = load_identity(KIND_COMPACT, entry);
-        reset_identity(KIND_COMPACT, entry);
+        key = load_compact_identity(entry);
+        reset_compact_identity(entry);
     } else {
-        identity = load_identity(KIND_ANYSTR, entry);
+        identity = load_anystr_identity(as_anystr(entry));
         key = entry->key;
-        reset_identity(KIND_ANYSTR, entry);
+        reset_anystr_identity(as_anystr(entry));
         entry->key = NULL;
     }
     PyObject* value = load_value(entry);
@@ -1391,7 +1391,7 @@ static inline int
 _compact_entry_matches(entry_t* entry, PyObject* probe, PyObject* identity,
                        Py_hash_t hash, bool ci)
 {
-    PyObject* key = load_identity(KIND_COMPACT, entry);
+    PyObject* key = load_compact_identity(entry);
     if (key == NULL) {
         return 0;  // not populated (or deleted)
     }
@@ -1400,7 +1400,7 @@ _compact_entry_matches(entry_t* entry, PyObject* probe, PyObject* identity,
     }
     key = try_get_ref(&entry->key);
     if (key == NULL) {
-        return load_identity(KIND_COMPACT, entry) == NULL ? 0 : -1;
+        return load_compact_identity(entry) == NULL ? 0 : -1;
     }
     bool matched = compact_key_hash(ci, key) == hash &&
                    str_cmp(identity, compact_key_identity(ci, key));
@@ -1419,7 +1419,7 @@ _full_entry_matches(entry_t* entry, PyObject* identity, Py_hash_t hash)
     if (load_hash(as_anystr(entry)) != hash) {
         return 0;
     }
-    PyObject* held = load_identity(KIND_ANYSTR, entry);
+    PyObject* held = load_anystr_identity(as_anystr(entry));
     if (held == NULL) {
         return 0;  // not populated (or deleted)
     }
@@ -1428,7 +1428,7 @@ _full_entry_matches(entry_t* entry, PyObject* identity, Py_hash_t hash)
     }
     held = try_get_ref(&as_anystr(entry)->identity);
     if (held == NULL) {
-        return load_identity(KIND_ANYSTR, entry) == NULL ? 0 : -1;
+        return load_anystr_identity(as_anystr(entry)) == NULL ? 0 : -1;
     }
     bool matched = str_cmp(identity, held);
     Py_DECREF(held);
@@ -2311,7 +2311,11 @@ _md_replace_matched(MultiDictObject* md, uint8_t kind, size_t slot,
         if (key == old_key) {
             old_key = NULL;
         } else {
-            replace_key(kind, entry, Py_NewRef(key));
+            if (kind_is_compact(kind)) {
+                replace_compact_key(entry, Py_NewRef(key));
+            } else {
+                replace_anystr_key(as_anystr(entry), Py_NewRef(key));
+            }
         }
         publish_value(entry, Py_NewRef(value));
         if (watched) {
