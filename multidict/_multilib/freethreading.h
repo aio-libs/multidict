@@ -40,6 +40,15 @@ waiting for readers, so reading the slot's or value's contents needs
 try_get_ref().
 */
 
+/* The field lock-free readers check first: the key in a compact table, so
+   what it holds is the identity only in a MultiDict's. See
+   compact_key_identity(). */
+static inline PyObject**
+entry_identity_slot(uint8_t kind, entry_t* entry)
+{
+    return kind_is_compact(kind) ? &entry->key : &as_anystr(entry)->identity;
+}
+
 #ifdef Py_GIL_DISABLED
 
 /* getversion() reads this without md's critical section. */

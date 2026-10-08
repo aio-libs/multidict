@@ -16,24 +16,15 @@ extern "C" {
 
 #ifndef NDEBUG
 
+// `identity` and `hash` are the entry's own, `identity` NULL for a hole.
 static void
-_md_check_entry(uint8_t kind, bool ci, const entry_t* entry)
+_md_check_entry(const entry_t* entry, PyObject* identity, Py_hash_t hash)
 {
-    PyObject* identity;
-    if (kind_is_compact(kind)) {
-        identity = compact_entry_is_hole(entry)
-                       ? NULL
-                       : compact_entry_identity(ci, entry);
-    } else {
-        identity = as_const_anystr(entry)->identity;
-    }
     if (identity != NULL) {
         assert(entry->key != NULL);
         assert(entry->value != NULL);
         assert(PyUnicode_CheckExact(identity));
-        assert((kind_is_compact(kind)
-                    ? compact_entry_hash(ci, entry)
-                    : as_const_anystr(entry)->hash) == unicode_hash(identity));
+        assert(hash == unicode_hash(identity));
     } else {
         assert(entry->key == NULL);
     }
@@ -68,12 +59,20 @@ _md_check_consistency(const MultiDictObject* md)
     if (kind_is_compact(keys->kind)) {
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < calc_usable; i++) {
-            _md_check_entry(KIND_COMPACT, ci, entries + i);
+            entry_t* entry = entries + i;
+            if (compact_entry_is_hole(entry)) {
+                _md_check_entry(entry, NULL, 0);
+            } else {
+                _md_check_entry(entry,
+                                compact_entry_identity(ci, entry),
+                                compact_entry_hash(ci, entry));
+            }
         }
     } else {
         anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < calc_usable; i++) {
-            _md_check_entry(KIND_ANYSTR, ci, &entries[i].base);
+            _md_check_entry(
+                &entries[i].base, entries[i].identity, entries[i].hash);
         }
     }
     return 1;
@@ -84,22 +83,13 @@ _md_check_consistency(const MultiDictObject* md)
 /* For a debugger: nothing calls these, and inline keeps the unused copies
    from warning. */
 static inline void
-_md_dump_entry(uint8_t kind, bool ci, Py_ssize_t i, const entry_t* entry)
+_md_dump_entry(Py_ssize_t i, const entry_t* entry, PyObject* identity,
+               Py_hash_t hash)
 {
-    PyObject* identity;
-    if (kind_is_compact(kind)) {
-        identity = compact_entry_is_hole(entry)
-                       ? NULL
-                       : compact_entry_identity(ci, entry);
-    } else {
-        identity = as_const_anystr(entry)->identity;
-    }
     if (identity == NULL) {
         printf("  %zd [deleted]\n", i);
         return;
     }
-    Py_hash_t hash = kind_is_compact(kind) ? compact_entry_hash(ci, entry)
-                                           : as_const_anystr(entry)->hash;
     printf("  %zd h=%20zd, i=\'", i, hash);
     PyObject_Print(identity, stdout, Py_PRINT_RAW);
     printf("\', k=\'");
@@ -128,12 +118,21 @@ _md_dump(MultiDictObject* md)
     if (kind_is_compact(keys->kind)) {
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-            _md_dump_entry(KIND_COMPACT, ci, i, entries + i);
+            entry_t* entry = entries + i;
+            if (compact_entry_is_hole(entry)) {
+                _md_dump_entry(i, entry, NULL, 0);
+            } else {
+                _md_dump_entry(i,
+                               entry,
+                               compact_entry_identity(ci, entry),
+                               compact_entry_hash(ci, entry));
+            }
         }
     } else {
         anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-            _md_dump_entry(KIND_ANYSTR, ci, i, &entries[i].base);
+            _md_dump_entry(
+                i, &entries[i].base, entries[i].identity, entries[i].hash);
         }
     }
     printf("\n");

@@ -150,13 +150,6 @@ RULES = (
         "3-5 Ir per popitem()",
     ),
     Rule(
-        "entry_next",
-        "*",
-        BOTH,
-        "#1676: the step of every per-kind pointer walk; out of line it "
-        "loses the constant entry size",
-    ),
-    Rule(
         "_md_copy_live",
         "*",
         BOTH,
@@ -234,18 +227,6 @@ RULES = (
         (FT,),
         "#1675: out of line in d[key] = v once update() and merge() lost "
         "their per-class copies, and with it del d[key] +3% on CIMultiDict",
-    ),
-    Rule(
-        "htkeys_compact_next_live",
-        "*",
-        BOTH,
-        "the scan for the next live entry in to_dict()",
-    ),
-    Rule(
-        "htkeys_anystr_next_live",
-        "*",
-        BOTH,
-        "the scan for the next live entry in to_dict()",
     ),
 )
 

@@ -178,6 +178,50 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
     return ret < 0 ? -1 : count;
 }
 
+#define _MD_WALK_SEEN 2
+
+/* A matched entry at `index` of md_walk_with_hash()'s chain: 1 once
+   visited, 0 if the visitor stopped the walk, _MD_WALK_SEEN if the walk
+   visited it already, -1 with an exception set. */
+static inline int
+_md_walk_matched(MultiDictObject* md, entry_t* entry, Py_ssize_t index,
+                 md_seen_t* seen, PyObject* identity, Py_hash_t hash,
+                 bool with_keys, md_item_visitor_t visitor, void* user_data,
+                 uint64_t version)
+{
+    /* HTKEYSITER_NEXT() can repeat a slot already seen in this scan
+       (see its doc comment), and this scan never marks the table. */
+    int seen_before = _md_seen_test_and_add(seen, md, index);
+    if (seen_before < 0) {
+        return -1;
+    }
+    if (seen_before) {
+        return _MD_WALK_SEEN;
+    }
+
+    PyObject* value = Py_NewRef(entry->value);
+    PyObject* key = NULL;
+    if (with_keys) {
+        key = md_ensure_key(md, entry);  // last entry access
+        if (key == NULL) {
+            Py_DECREF(value);
+            return -1;
+        }
+    }
+    int ret = visitor(user_data, identity, hash, key, value);
+    Py_XDECREF(key);
+    Py_DECREF(value);
+    if (ret < 0) {
+        assert(PyErr_Occurred());
+        return -1;
+    }
+    /* md_ensure_key() and the visitor can both run Python code. */
+    if (md_check_version(md, version) < 0) {
+        return -1;
+    }
+    return ret == 0 ? 0 : 1;
+}
+
 /* Calls `visitor` once for every entry whose identity is `identity`, in probe
    order; `hash` is that identity's hash. Returns how many entries were
    visited, or -1 with an exception set. The caller holds md's critical
@@ -191,11 +235,9 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
    rechecked after every visitor call, so a reentrant mutation ends the walk
    with "MultiDict is changed during iteration" instead of walking a table
    that moved. */
-/* md_walk_with_hash() for a table of kind `kind`, a constant at each call. */
-static inline Py_ssize_t
-_md_walk_with_hash_kind(MultiDictObject* md, uint8_t kind, PyObject* identity,
-                        Py_hash_t hash, bool with_keys,
-                        md_item_visitor_t visitor, void* user_data)
+static Py_ssize_t
+md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                  bool with_keys, md_item_visitor_t visitor, void* user_data)
 {
     bool ci = md->is_ci;
     uint64_t version = md->version;
@@ -208,81 +250,52 @@ _md_walk_with_hash_kind(MultiDictObject* md, uint8_t kind, PyObject* identity,
     seen.nfew = 0;
 
     Py_ssize_t count = 0;
+    int ret = 1;
     entry_t* entry = NULL;
-    for (;;) {
-        if (kind_is_compact(kind)) {
+    if (kind_is_compact(md->keys->kind)) {
+        while (ret > 0) {
             HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
-        } else {
-            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-        }
-        if (entry == NULL) {
-            break;
-        }
-        /* HTKEYSITER_NEXT() can repeat a slot already seen in this scan
-           (see its doc comment), and this scan never marks the table. */
-        int seen_before = _md_seen_test_and_add(&seen, md, iter.index);
-        if (seen_before < 0) {
-            count = -1;
-            break;
-        }
-        if (seen_before) {
-            continue;
-        }
-
-        PyObject* value = Py_NewRef(entry->value);
-        PyObject* key = NULL;
-        if (with_keys) {
-            key = md_ensure_key(md, entry);  // last entry access
-            if (key == NULL) {
-                Py_DECREF(value);
-                count = -1;
+            if (entry == NULL) {
                 break;
             }
+            ret = _md_walk_matched(md,
+                                   entry,
+                                   iter.index,
+                                   &seen,
+                                   identity,
+                                   hash,
+                                   with_keys,
+                                   visitor,
+                                   user_data,
+                                   version);
+            count += ret == 0 || ret == 1;
         }
-        count++;
-        int ret = visitor(user_data, identity, hash, key, value);
-        Py_XDECREF(key);
-        Py_DECREF(value);
-        if (ret < 0) {
-            assert(PyErr_Occurred());
-            count = -1;
-            break;
-        }
-        /* md_ensure_key() and the visitor can both run Python code. */
-        if (md_check_version(md, version) < 0) {
-            count = -1;
-            break;
-        }
-        if (ret == 0) {
-            break;
+    } else {
+        while (ret > 0) {
+            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                break;
+            }
+            ret = _md_walk_matched(md,
+                                   entry,
+                                   iter.index,
+                                   &seen,
+                                   identity,
+                                   hash,
+                                   with_keys,
+                                   visitor,
+                                   user_data,
+                                   version);
+            count += ret == 0 || ret == 1;
         }
     }
     if (seen.nfew > MD_SEEN_MANY) {
         bitmap_release(&seen.bitmap);
     }
-    return count;
+    return ret < 0 ? -1 : count;
 }
 
-static Py_ssize_t
-md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                  bool with_keys, md_item_visitor_t visitor, void* user_data)
-{
-    return kind_is_compact(md->keys->kind)
-               ? _md_walk_with_hash_kind(md,
-                                         KIND_COMPACT,
-                                         identity,
-                                         hash,
-                                         with_keys,
-                                         visitor,
-                                         user_data)
-               : _md_walk_with_hash_kind(md,
-                                         KIND_ANYSTR,
-                                         identity,
-                                         hash,
-                                         with_keys,
-                                         visitor,
-                                         user_data);
-}
+#undef _MD_WALK_SEEN
 
 /* md_walk_with_hash() for callers that have no hash at hand yet. */
 static Py_ssize_t
