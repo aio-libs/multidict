@@ -1,0 +1,2 @@
+Moved ``istr_canonical()`` next to the ``istrobject`` struct and used it
+for every read of an istr's canonical form -- by :user:`asvetlov`.

@@ -180,7 +180,7 @@ static inline PyObject*
 _key_to_identity_ci(mod_state* state, PyObject* key)
 {
     if (IStr_CheckExact(state, key)) {
-        return Py_NewRef(((istrobject*)key)->canonical);
+        return Py_NewRef(istr_canonical(key));
     }
     return _str_to_identity_ci(state, key);
 }
@@ -241,7 +241,7 @@ md_borrow_identity(MultiDictObject* md, PyObject* key)
 {
     if (md->is_ci) {
         if (IStr_CheckExact(md->state, key)) {
-            return ((istrobject*)key)->canonical;
+            return istr_canonical(key);
         }
         return _str_borrow_identity_ci(key);
     }
@@ -260,7 +260,7 @@ md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits)
     if (md->is_ci) {
         if (IStr_CheckExact(md->state, key)) {
             *pfits = true;
-            return Py_NewRef(((istrobject*)key)->canonical);
+            return Py_NewRef(istr_canonical(key));
         }
         *pfits = false;
         return _str_to_identity_ci(md->state, key);
