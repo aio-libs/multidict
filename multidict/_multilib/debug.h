@@ -19,12 +19,21 @@ extern "C" {
 static void
 _md_check_entry(uint8_t kind, bool ci, const entry_t* entry)
 {
-    PyObject* identity = entry_identity(kind, ci, entry);
+    PyObject* identity;
+    if (kind_is_compact(kind)) {
+        identity = compact_entry_is_hole(entry)
+                       ? NULL
+                       : compact_entry_identity(ci, entry);
+    } else {
+        identity = as_const_anystr(entry)->identity;
+    }
     if (identity != NULL) {
         assert(entry->key != NULL);
         assert(entry->value != NULL);
         assert(PyUnicode_CheckExact(identity));
-        assert(entry_hash(kind, ci, entry) == unicode_hash(identity));
+        assert((kind_is_compact(kind)
+                    ? compact_entry_hash(ci, entry)
+                    : as_const_anystr(entry)->hash) == unicode_hash(identity));
     } else {
         assert(entry->key == NULL);
     }
@@ -77,12 +86,21 @@ _md_check_consistency(const MultiDictObject* md)
 static inline void
 _md_dump_entry(uint8_t kind, bool ci, Py_ssize_t i, const entry_t* entry)
 {
-    PyObject* identity = entry_identity(kind, ci, entry);
+    PyObject* identity;
+    if (kind_is_compact(kind)) {
+        identity = compact_entry_is_hole(entry)
+                       ? NULL
+                       : compact_entry_identity(ci, entry);
+    } else {
+        identity = as_const_anystr(entry)->identity;
+    }
     if (identity == NULL) {
         printf("  %zd [deleted]\n", i);
         return;
     }
-    printf("  %zd h=%20zd, i=\'", i, entry_hash(kind, ci, entry));
+    Py_hash_t hash = kind_is_compact(kind) ? compact_entry_hash(ci, entry)
+                                           : as_const_anystr(entry)->hash;
+    printf("  %zd h=%20zd, i=\'", i, hash);
     PyObject_Print(identity, stdout, Py_PRINT_RAW);
     printf("\', k=\'");
     PyObject_Print(entry->key, stdout, Py_PRINT_RAW);

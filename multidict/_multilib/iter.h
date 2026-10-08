@@ -65,7 +65,7 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         if (self->reverse) {
             for (; self->pos >= 0; --self->pos) {
                 entry_t* entry = entries + self->pos;
-                if (!entry_is_hole(entry)) {
+                if (!compact_entry_is_hole(entry)) {
                     --self->pos;
                     *pentry = entry;
                     return 1;
@@ -75,7 +75,7 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         }
         for (; self->pos < keys->nentries; ++self->pos) {
             entry_t* entry = entries + self->pos;
-            if (!entry_is_hole(entry)) {
+            if (!compact_entry_is_hole(entry)) {
                 ++self->pos;
                 *pentry = entry;
                 return 1;
@@ -86,20 +86,20 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
     anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
     if (self->reverse) {
         for (; self->pos >= 0; --self->pos) {
-            entry_t* entry = &entries[self->pos].base;
-            if (!entry_is_hole(entry)) {
+            anystr_entry_t* entry = entries + self->pos;
+            if (!anystr_entry_is_hole(entry)) {
                 --self->pos;
-                *pentry = entry;
+                *pentry = &entry->base;
                 return 1;
             }
         }
         return 0;
     }
     for (; self->pos < keys->nentries; ++self->pos) {
-        entry_t* entry = &entries[self->pos].base;
-        if (!entry_is_hole(entry)) {
+        anystr_entry_t* entry = entries + self->pos;
+        if (!anystr_entry_is_hole(entry)) {
             ++self->pos;
-            *pentry = entry;
+            *pentry = &entry->base;
             return 1;
         }
     }

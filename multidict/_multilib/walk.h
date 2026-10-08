@@ -93,13 +93,11 @@ typedef int (*md_item_visitor_t)(void* user_data, PyObject* identity,
 /* Hands md_walk_all()'s visitor one live entry: 1 to go on, 0 if the
    visitor stopped the walk, -1 with an exception set. */
 static inline int
-_md_walk_visit(MultiDictObject* md, uint8_t kind, entry_t* entry,
-               bool with_keys, md_item_visitor_t visitor, void* user_data,
-               uint64_t version)
+_md_walk_visit(MultiDictObject* md, entry_t* entry, PyObject* identity,
+               Py_hash_t hash, bool with_keys, md_item_visitor_t visitor,
+               void* user_data, uint64_t version)
 {
-    bool ci = md->is_ci;
-    PyObject* identity = Py_NewRef(entry_identity(kind, ci, entry));
-    Py_hash_t hash = entry_hash(kind, ci, entry);
+    Py_INCREF(identity);
     PyObject* value = Py_NewRef(entry->value);
     PyObject* key = NULL;
     if (with_keys) {
@@ -137,6 +135,7 @@ static Py_ssize_t
 md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
             void* user_data)
 {
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     // the version check in _md_walk_visit() keeps the table in place
     htkeys_t* keys = md->keys;
@@ -146,11 +145,12 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
         entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
         for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
              entry++) {
-            if (!entry_is_hole(entry)) {
+            if (!compact_entry_is_hole(entry)) {
                 count++;
                 ret = _md_walk_visit(md,
-                                     KIND_COMPACT,
                                      entry,
+                                     compact_entry_identity(ci, entry),
+                                     compact_entry_hash(ci, entry),
                                      with_keys,
                                      visitor,
                                      user_data,
@@ -162,11 +162,12 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
         for (anystr_entry_t* end = entry + keys->nentries;
              ret > 0 && entry < end;
              entry++) {
-            if (!entry_is_hole(&entry->base)) {
+            if (!anystr_entry_is_hole(entry)) {
                 count++;
                 ret = _md_walk_visit(md,
-                                     KIND_ANYSTR,
                                      &entry->base,
+                                     entry->identity,
+                                     entry->hash,
                                      with_keys,
                                      visitor,
                                      user_data,

@@ -193,19 +193,25 @@ _md_post_update_pass(MultiDictObject* md, uint8_t kind, reflist_t* defer,
                              ? HTKEYS_COMPACT_ENTRIES(keys) + pos
                              : &HTKEYS_ANYSTR_ENTRIES(keys)[pos].base;
         // Python code run between items may have removed or rewritten it
-        if (entry_is_hole(entry) || load_value(entry) != doomed->value) {
+        if ((kind_is_compact(kind) ? compact_entry_is_hole(entry)
+                                   : anystr_entry_is_hole(as_anystr(entry))) ||
+            load_value(entry) != doomed->value) {
             continue;
         }
+        Py_hash_t hash = kind_is_compact(kind) ? compact_entry_hash(ci, entry)
+                                               : as_anystr(entry)->hash;
         htkeysiter_t iter;
-        HTKEYSITER_INIT(&iter, keys, entry_hash(kind, ci, entry));
+        HTKEYSITER_INIT(&iter, keys, hash);
         while (iter.index != pos) {
             assert(iter.index != DKIX_EMPTY);
             HTKEYSITER_NEXT(&iter);
         }
         md_watch_record(md,
                         MultiDict_EVENT_DELETED,
-                        entry_identity(kind, ci, entry),
-                        entry_hash(kind, ci, entry),
+                        kind_is_compact(kind)
+                            ? compact_entry_identity(ci, entry)
+                            : as_anystr(entry)->identity,
+                        hash,
                         entry->key,
                         entry->value,
                         NULL);
@@ -358,12 +364,17 @@ _md_extend_self_kind(MultiDictObject* md, uint8_t kind)
         entry_t* entry = kind_is_compact(kind)
                              ? HTKEYS_COMPACT_ENTRIES(keys) + pos
                              : &HTKEYS_ANYSTR_ENTRIES(keys)[pos].base;
-        if (entry_is_hole(entry)) {
+        if ((kind_is_compact(kind) ? compact_entry_is_hole(entry)
+                                   : anystr_entry_is_hole(as_anystr(entry)))) {
             continue;
         }
-        PyObject* identity = entry_identity(kind, ci, entry);
+        PyObject* identity = kind_is_compact(kind)
+                                 ? compact_entry_identity(ci, entry)
+                                 : as_anystr(entry)->identity;
         if (md_add_with_hash(md,
-                             entry_hash(kind, ci, entry),
+                             kind_is_compact(kind)
+                                 ? compact_entry_hash(ci, entry)
+                                 : as_anystr(entry)->hash,
                              identity,
                              entry->key,
                              entry->value,

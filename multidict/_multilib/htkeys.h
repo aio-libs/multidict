@@ -242,24 +242,26 @@ entry_index(uint8_t kind, const entry_t* entries, const entry_t* entry)
                         _htkeys_entry_size(kind));
 }
 
-/* NULL for a hole. */
+// The identity of a live compact entry; see compact_key_identity().
 static inline PyObject*
-entry_identity(uint8_t kind, bool ci, const entry_t* entry)
+compact_entry_identity(bool ci, const entry_t* entry)
 {
-    if (kind_is_compact(kind)) {
-        PyObject* key = entry->key;
-        return key == NULL ? NULL : compact_key_identity(ci, key);
-    }
-    return as_const_anystr(entry)->identity;
+    return compact_key_identity(ci, entry->key);
 }
 
 /* Whether entry is a hole (deleted or never filled). The key is NULL
    exactly when the identity is, in every kind, for a caller holding md's
    critical section; a lock-free reader checks the identity slot instead. */
 static inline bool
-entry_is_hole(const entry_t* entry)
+compact_entry_is_hole(const entry_t* entry)
 {
     return entry->key == NULL;
+}
+
+static inline bool
+anystr_entry_is_hole(const anystr_entry_t* entry)
+{
+    return entry->base.key == NULL;
 }
 
 /* The first live entry at or after *ppos in a KIND_COMPACT table, which
@@ -270,7 +272,7 @@ htkeys_compact_next_live(htkeys_t* keys, Py_ssize_t* ppos)
     entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
     Py_ssize_t n = keys->nentries;
     for (Py_ssize_t pos = *ppos; pos < n; pos++) {
-        if (!entry_is_hole(entries + pos)) {
+        if (!compact_entry_is_hole(entries + pos)) {
             *ppos = pos;
             return entries + pos;
         }
@@ -286,7 +288,7 @@ htkeys_anystr_next_live(htkeys_t* keys, Py_ssize_t* ppos)
     anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
     Py_ssize_t n = keys->nentries;
     for (Py_ssize_t pos = *ppos; pos < n; pos++) {
-        if (!entry_is_hole(&entries[pos].base)) {
+        if (!anystr_entry_is_hole(entries + pos)) {
             *ppos = pos;
             return &entries[pos].base;
         }
@@ -329,13 +331,11 @@ compact_key_hash(bool ci, PyObject* key)
     return _str_cached_hash(key);
 }
 
+// The hash of a live compact entry's identity; see compact_key_hash().
 static inline Py_hash_t
-entry_hash(uint8_t kind, bool ci, const entry_t* entry)
+compact_entry_hash(bool ci, const entry_t* entry)
 {
-    if (kind_is_compact(kind)) {
-        return compact_key_hash(ci, entry->key);
-    }
-    return as_const_anystr(entry)->hash;
+    return compact_key_hash(ci, entry->key);
 }
 
 static inline void
@@ -839,41 +839,40 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 Internal routine used by ht_resize() to build a hashtable of the first `n`
 entries. One loop per kind, so each steps by a constant entry size.
 */
-#define _HTKEYS_BUILD_INDICES(ht_keys, ci, n, skip_holes)              \
-    do {                                                               \
-        htkeys_t* _bi_keys = (ht_keys);                                \
-        bool _bi_ci = (ci);                                            \
-        Py_ssize_t _bi_n = (n);                                        \
-        size_t _bi_mask = (size_t)_htkeys_mask(_bi_keys);              \
-        if (_bi_keys->resume_slots != NULL) {                          \
-            memset(_bi_keys->resume_slots,                             \
-                   0,                                                  \
-                   htkeys_resume_slots_bytes(_bi_keys->log2_size));    \
-        }                                                              \
-        if (kind_is_compact(_bi_keys->kind)) {                         \
-            entry_t* _bi_ep = HTKEYS_COMPACT_ENTRIES(_bi_keys);        \
-            for (Py_ssize_t _bi_ix = 0; _bi_ix != _bi_n; _bi_ix++) {   \
-                entry_t* _bi_entry = _bi_ep + _bi_ix;                  \
-                if ((skip_holes) && entry_is_hole(_bi_entry)) {        \
-                    continue;                                          \
-                }                                                      \
-                _HTKEYS_BUILD_INDEX(                                   \
-                    _bi_keys,                                          \
-                    _bi_mask,                                          \
-                    entry_hash(KIND_COMPACT, _bi_ci, _bi_entry),       \
-                    _bi_ix);                                           \
-            }                                                          \
-        } else {                                                       \
-            anystr_entry_t* _bi_ep = HTKEYS_ANYSTR_ENTRIES(_bi_keys);  \
-            for (Py_ssize_t _bi_ix = 0; _bi_ix != _bi_n; _bi_ix++) {   \
-                anystr_entry_t* _bi_entry = _bi_ep + _bi_ix;           \
-                if ((skip_holes) && entry_is_hole(&_bi_entry->base)) { \
-                    continue;                                          \
-                }                                                      \
-                _HTKEYS_BUILD_INDEX(                                   \
-                    _bi_keys, _bi_mask, _bi_entry->hash, _bi_ix);      \
-            }                                                          \
-        }                                                              \
+#define _HTKEYS_BUILD_INDICES(ht_keys, ci, n, skip_holes)                  \
+    do {                                                                   \
+        htkeys_t* _bi_keys = (ht_keys);                                    \
+        bool _bi_ci = (ci);                                                \
+        Py_ssize_t _bi_n = (n);                                            \
+        size_t _bi_mask = (size_t)_htkeys_mask(_bi_keys);                  \
+        if (_bi_keys->resume_slots != NULL) {                              \
+            memset(_bi_keys->resume_slots,                                 \
+                   0,                                                      \
+                   htkeys_resume_slots_bytes(_bi_keys->log2_size));        \
+        }                                                                  \
+        if (kind_is_compact(_bi_keys->kind)) {                             \
+            entry_t* _bi_ep = HTKEYS_COMPACT_ENTRIES(_bi_keys);            \
+            for (Py_ssize_t _bi_ix = 0; _bi_ix != _bi_n; _bi_ix++) {       \
+                entry_t* _bi_entry = _bi_ep + _bi_ix;                      \
+                if ((skip_holes) && compact_entry_is_hole(_bi_entry)) {    \
+                    continue;                                              \
+                }                                                          \
+                _HTKEYS_BUILD_INDEX(_bi_keys,                              \
+                                    _bi_mask,                              \
+                                    compact_entry_hash(_bi_ci, _bi_entry), \
+                                    _bi_ix);                               \
+            }                                                              \
+        } else {                                                           \
+            anystr_entry_t* _bi_ep = HTKEYS_ANYSTR_ENTRIES(_bi_keys);      \
+            for (Py_ssize_t _bi_ix = 0; _bi_ix != _bi_n; _bi_ix++) {       \
+                anystr_entry_t* _bi_entry = _bi_ep + _bi_ix;               \
+                if ((skip_holes) && anystr_entry_is_hole(_bi_entry)) {     \
+                    continue;                                              \
+                }                                                          \
+                _HTKEYS_BUILD_INDEX(                                       \
+                    _bi_keys, _bi_mask, _bi_entry->hash, _bi_ix);          \
+            }                                                              \
+        }                                                                  \
     } while (0)
 
 static void
