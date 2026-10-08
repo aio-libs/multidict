@@ -2459,6 +2459,32 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
     return ret;
 }
 
+typedef struct _md_eq_to_mapping_state {
+    PyObject* other;
+    bool eq;
+} md_eq_to_mapping_state_t;
+
+static int
+_md_eq_to_mapping_visit(void* user_data, PyObject* identity, Py_hash_t hash,
+                        PyObject* key, PyObject* value)
+{
+    (void)identity;
+    (void)hash;
+    md_eq_to_mapping_state_t* state = (md_eq_to_mapping_state_t*)user_data;
+    PyObject* other_value;
+    int ret = PyMapping_GetOptionalItem(state->other, key, &other_value);
+    if (ret <= 0) {
+        state->eq = false;
+        return ret;
+    }
+    ret = PyObject_RichCompareBool(value, other_value, Py_EQ);
+    Py_DECREF(other_value);
+    if (ret == 0) {
+        state->eq = false;
+    }
+    return ret;
+}
+
 static int
 _md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
 {
@@ -2479,53 +2505,11 @@ _md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
         return 0;
     }
 
-    PyObject* key = NULL;
-    PyObject* avalue = NULL;
-    PyObject* bvalue;
-
-    uint64_t version = md->version;
-    htkeys_t* keys = md->keys;
-    uint8_t kind = keys->kind;
-    entry_t* entries = htkeys_entries(keys);
-
-    for (Py_ssize_t pos = 0; pos < keys->nentries; ++pos) {
-        entry_t* entry = entry_at(kind, entries, pos);
-        if (entry_is_hole(entry)) {
-            continue;
-        }
-        avalue = Py_NewRef(entry->value);
-        key = md_ensure_key(md, entry);  // last entry access
-        if (key == NULL) {
-            Py_DECREF(avalue);
-            return -1;
-        }
-        int ret = PyMapping_GetOptionalItem(other, key, &bvalue);
-        Py_DECREF(key);
-        if (ret < 0) {
-            Py_CLEAR(avalue);
-            return -1;
-        }
-
-        if (bvalue == NULL) {
-            Py_DECREF(avalue);
-            return 0;
-        }
-
-        int eq = PyObject_RichCompareBool(avalue, bvalue, Py_EQ);
-        Py_DECREF(bvalue);
-        Py_DECREF(avalue);
-
-        if (eq <= 0) {
-            return eq;
-        }
-        /* Every mutation and resize bumps the version, so `keys` is still
-           md's table once it checks out. */
-        if (md_check_version(md, version) < 0) {
-            return -1;
-        }
+    md_eq_to_mapping_state_t state = {other, true};
+    if (md_walk_all(md, true, _md_eq_to_mapping_visit, &state) < 0) {
+        return -1;
     }
-
-    return 1;
+    return state.eq;
 }
 
 static int
