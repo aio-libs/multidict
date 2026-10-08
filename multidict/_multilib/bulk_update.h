@@ -256,8 +256,6 @@ _md_update_visit(void* user_data, PyObject* identity, Py_hash_t hash,
                    ? -1
                    : 1;
     }
-    /* lower() on a str subclass key runs Python code; the walk fails if
-       that mutates other. */
     PyObject* own = md_calc_identity(md, key);
     if (own == NULL) {
         return -1;

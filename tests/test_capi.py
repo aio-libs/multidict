@@ -358,6 +358,16 @@ def test_istr_from_unicode(api: object) -> None:
     assert s.lower() == "header"
 
 
+def test_istr_from_unicode_ignores_subclass_lower(api: object) -> None:
+    class UpperLower(str):
+        lower = str.upper
+
+    s = api.istr_from_unicode(UpperLower("Header"))
+    md: CIMultiDictStr = multidict.CIMultiDict()
+    md[s] = "value"
+    assert md["header"] == "value"
+
+
 def test_istr_from_unicode_passthrough(api: object) -> None:
     # Matches istr(existing_istr): the same object is returned, not a copy.
     s1 = multidict.istr("Header")

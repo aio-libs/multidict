@@ -404,12 +404,11 @@ def test_keys_from_ci_source_keep_ci_identity(
 
 
 class _CustomLower(str):
-    def lower(self) -> str:
-        return "custom"
+    lower = str.upper
 
 
 @pytest.mark.parametrize("op", ["ctor", "extend", "update", "merge"])
-def test_keys_from_ci_source_keep_custom_lower_identity(
+def test_keys_from_ci_source_ignore_custom_lower(
     case_sensitive_multidict_class: type[MultiDict[int]],
     case_insensitive_multidict_class: type[CIMultiDict[int]],
     op: str,
@@ -426,7 +425,7 @@ def test_keys_from_ci_source_keep_custom_lower_identity(
     d = case_insensitive_multidict_class([(k, 1)])
     assert d[key] == 1
     assert d[k] == 1
-    assert "foo" not in d
+    assert d["foo"] == 1
 
 
 @pytest.mark.parametrize("op", ["ctor", "extend", "update", "merge"])
