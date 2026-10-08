@@ -74,7 +74,7 @@ multidict_proxy_target(mod_state* state, PyObject* arg, bool is_ci)
     return NULL;
 }
 
-static int
+COLD static int
 _err_version_changed(void)
 {
     PyErr_SetString(PyExc_RuntimeError,
