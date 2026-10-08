@@ -1,3 +1,0 @@
-Stopped inlining the hash table resize and the GIL build's in-place
-shrink into their callers, so the C extension kept a single copy of each
--- by :user:`asvetlov`.

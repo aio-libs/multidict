@@ -1,2 +1,0 @@
-Changed the C extension to tell a deleted entry by its key alone, which
-every table kind clears together with the identity -- by :user:`asvetlov`.

@@ -1,5 +1,0 @@
-Added a check to ``tools/check_inlining.py`` that fails when an inline
-function from the CPython headers or from ``pythoncapi_compat.h``, such
-as ``Py_DECREF()``, gets an out-of-line copy, except for a list of the
-copies GCC makes today
--- by :user:`asvetlov`.

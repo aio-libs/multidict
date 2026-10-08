@@ -1,4 +1,0 @@
-Split the C extension's compact table helpers into separate
-:class:`~multidict.MultiDict` and :class:`~multidict.CIMultiDict`
-versions, and gave each loop over a compact table one copy per class
-instead of testing the class on every entry -- by :user:`asvetlov`.

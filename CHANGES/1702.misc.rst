@@ -1,3 +1,0 @@
-Dropped ``inline`` from two rarely run hash table helpers of the C
-extension, which the compiler then keeps out of line
--- by :user:`asvetlov`.

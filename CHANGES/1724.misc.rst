@@ -1,3 +1,0 @@
-Made ``md_set_default()`` and ``_md_set_default_locked()`` plain ``static``
-functions instead of forcing them inline into ``setdefault()`` and
-``MultiDict_SetDefault()`` -- by :user:`asvetlov`.

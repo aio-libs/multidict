@@ -1,4 +1,0 @@
-Moved :meth:`~multidict.MultiDict.to_dict` into its own C header and
-stopped marking the first entry of every key in its set of collected
-entries, skipping repeated probe slots by entry index the way
-:meth:`~multidict.MultiDict.getall` does -- by :user:`asvetlov`.

@@ -1,3 +1,0 @@
-Stopped inlining the ``MultiDict`` versions of ``copy()``, ``to_dict()``
-and the rich comparison of the C extension into their ``MultiDictProxy``
-copies, which became tail calls -- by :user:`asvetlov`.

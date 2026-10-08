@@ -1,4 +1,0 @@
-Gave the re-initialization stress test against lock-free readers five
-minutes to drain rather than one, since under coverage's C tracer on
-Python 3.10 to 3.12 its reader threads contend for the tracer's lock and
-Windows CI runners needed over three minutes -- by :user:`asvetlov`.

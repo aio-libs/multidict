@@ -1,3 +1,0 @@
-Replaced the stepping helpers of the C extension's hash table entries
-with indexed access and added a typed accessor for the entries of a table
-that stores hashes and identities -- by :user:`asvetlov`.

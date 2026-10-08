@@ -1,3 +1,0 @@
-Dropped ``ALWAYS_INLINE`` and ``inline`` from three C helpers that GCC and
-clang inline without them, leaving the compiled code byte-identical
--- by :user:`asvetlov`.

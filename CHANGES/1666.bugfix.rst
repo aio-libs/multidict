@@ -1,4 +1,0 @@
-Fixed the C extension dropping the existing items when a multidict was
-re-initialized from itself, or from a proxy of itself, together with keyword
-arguments, as in ``d.__init__(d, key=value)``; the pure-Python
-implementation was not affected -- by :user:`asvetlov`.

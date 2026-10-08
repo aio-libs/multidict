@@ -1,1 +1,0 @@
-Outlined the ``_md_replace_locked`` function -- by :user:`asvetlov`

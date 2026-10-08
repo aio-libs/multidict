@@ -1,3 +1,0 @@
-Added the ``benchmarks/`` scripts to the source distribution, so that the
-test suite run from an unpacked sdist also covers the benchmark driver
--- by :user:`asvetlov`.

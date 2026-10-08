@@ -1,3 +1,0 @@
-Moved the C extension's error-raising helpers out of line, so the update,
-argument-parsing, key-checking and iteration hot paths no longer carry the
-code that builds their exception messages -- by :user:`asvetlov`.

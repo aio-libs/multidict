@@ -1,3 +1,0 @@
-Made the bulk update helpers of the C extension plain ``static``
-functions, and folded the ``to_dict()`` scan into its caller
--- by :user:`asvetlov`.

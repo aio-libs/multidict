@@ -1,3 +1,0 @@
-Renamed the C extension's header-local helpers to carry a leading
-underscore, folded a single-caller wrapper into its caller and removed
-an unused helper -- by :user:`asvetlov`.

@@ -1,9 +1,0 @@
-Fixed the :class:`~multidict.istr` keys that
-:meth:`~multidict.MultiDict.extend`, :meth:`~multidict.MultiDict.update`,
-:meth:`~multidict.MultiDict.merge` and the :class:`~multidict.MultiDict`
-constructor took from a :class:`~multidict.CIMultiDict`: they carried the
-key's own spelling as their case-insensitive identity instead of its
-lower-cased form, so a :class:`~multidict.CIMultiDict` keyed by one of them
-found it under no spelling of the key. Changed the pure-Python
-implementation to hand over those keys as :class:`~multidict.istr` too, as
-the C extension did -- by :user:`asvetlov`.

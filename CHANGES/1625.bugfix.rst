@@ -1,7 +1,0 @@
-Fixed a use-after-free in :meth:`~multidict.MultiDict.popitem` when
-building the result ran Python code that mutated the multidict: a
-:class:`str` subclass key's ``__str__()`` on
-:class:`~multidict.CIMultiDict`, or on Python 3.10 and 3.11 a garbage
-collection's finalizers, by removing the pair first, and fixed the
-pure-Python ``popitem()`` miscounting :func:`len` in the same case
--- by :user:`asvetlov`.

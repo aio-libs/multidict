@@ -1,2 +1,0 @@
-Rewrote the C extension's comparison of a multidict with a plain mapping on
-top of the shared walk over all entries -- by :user:`asvetlov`.
