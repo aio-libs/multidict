@@ -186,7 +186,7 @@ _bitmap_word(bitmap_t* bm, Py_ssize_t i)
 /* Moves `src` into `dst`, releasing what `dst` held. `src` is left
    released. */
 static void
-bitmap_move(bitmap_t* dst, bitmap_t* src)
+_bitmap_move(bitmap_t* dst, bitmap_t* src)
 {
     bitmap_release(dst);
     dst->nwords = src->nwords;
@@ -311,7 +311,7 @@ _bitmap_ctz(bitmap_word_t w)
 /* The first set index at or after `start`, or -1 if there is none.
    Untouched words are skipped a whole summary word at a time. */
 static Py_ssize_t
-bitmap_next(const bitmap_t* bm, Py_ssize_t start)
+_bitmap_next(const bitmap_t* bm, Py_ssize_t start)
 {
     assert(start >= 0);
     Py_ssize_t wi = start >> BITMAP_WORD_SHIFT;
@@ -363,14 +363,14 @@ bitmap_grow(bitmap_t* bm, Py_ssize_t nbits)
     assert(nbits > bitmap_nbits(bm));
     bitmap_t fresh;
     bitmap_init(&fresh, bm->keys, nbits);
-    for (Py_ssize_t i = bitmap_next(bm, 0); i >= 0;
-         i = bitmap_next(bm, i + 1)) {
+    for (Py_ssize_t i = _bitmap_next(bm, 0); i >= 0;
+         i = _bitmap_next(bm, i + 1)) {
         if (bitmap_set(&fresh, i) < 0) {
             bitmap_release(&fresh);
             return -1;
         }
     }
-    bitmap_move(bm, &fresh);
+    _bitmap_move(bm, &fresh);
     return 0;
 }
 

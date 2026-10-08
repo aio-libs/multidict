@@ -307,7 +307,7 @@ _md_post_update_delete(MultiDictObject* md, htkeys_t* keys, Py_ssize_t pos,
                     entry->key,
                     entry->value,
                     NULL);
-    if (_md_del_at_deferred(md, iter.slot, entry, defer) < 0) {
+    if (md_del_at_deferred(md, iter.slot, entry, defer) < 0) {
         if (md->keys != keys || md->version != version) {
             return _MD_POST_UPDATE_RESTART;
         }
@@ -400,7 +400,7 @@ _md_post_update_pass(MultiDictObject* md, reflist_t* defer,
 #undef _MD_POST_UPDATE_COMPACT_LOOP
 
 /* Removes the entries update() doomed and nothing has written since. Only
-   an out-of-memory fallback decref in _md_del_at_deferred() can run Python
+   an out-of-memory fallback decref in md_del_at_deferred() can run Python
    here; the walk then starts over, which each record leaving the set as it
    goes makes safe. */
 COLD static int

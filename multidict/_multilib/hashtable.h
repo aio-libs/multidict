@@ -32,7 +32,7 @@ extern "C" {
 
 /* The kind a new, empty table of md starts with. */
 static uint8_t
-md_fresh_kind(const MultiDictObject* md)
+_md_fresh_kind(const MultiDictObject* md)
 {
     /* A table starts compact and moves to KIND_ANYSTR on the first key
        that does not fit (see md_key_fits()). */
@@ -42,9 +42,9 @@ md_fresh_kind(const MultiDictObject* md)
 /* The kind of a table replacing `old`: a table with no entries yet starts
    afresh, so a clear() lets md return to the compact kind. */
 static uint8_t
-md_next_kind(const MultiDictObject* md, const htkeys_t* old)
+_md_next_kind(const MultiDictObject* md, const htkeys_t* old)
 {
-    return old->nentries == 0 ? md_fresh_kind(md) : old->kind;
+    return old->nentries == 0 ? _md_fresh_kind(md) : old->kind;
 }
 
 /* Whether a compact table of md can hold `key`: a MultiDict's key must be
@@ -95,7 +95,7 @@ in the left and right arguments.
 `.copy()` and constuction from multidict is super fast.
 */
 
-/* GROWTH_RATE. Growth rate upon hitting maximum load.
+/* _growth_rate(). Growth rate upon hitting maximum load.
  * Currently set to used*3.
  * This means that dicts double in size when growing without deletions,
  * but have more head room when the number of deletions is on a par with the
@@ -106,7 +106,7 @@ in the left and right arguments.
  * GROWTH_RATE was set to used*2 + capacity/2 in 3.4.0-3.6.0.
  */
 static inline Py_ssize_t
-GROWTH_RATE(const MultiDictObject* md)
+_growth_rate(const MultiDictObject* md)
 {
     return md->used * 3;
 }
@@ -472,7 +472,7 @@ _md_rebuild_keeping_indices(MultiDictObject* md, uint8_t log2_newsize)
     }
 
     htkeys_t* newkeys = htkeys_new_unfilled(
-        MD_POOLS(md), log2_newsize, md_next_kind(md, oldkeys));
+        MD_POOLS(md), log2_newsize, _md_next_kind(md, oldkeys));
     if (newkeys == NULL) {
         return -1;
     }
@@ -579,7 +579,7 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
     /* The copy below writes the front of the entries array, so only
        what it leaves over has to be zeroed. */
     htkeys_t* newkeys = htkeys_new_unfilled(
-        MD_POOLS(md), log2_newsize, md_next_kind(md, md->keys));
+        MD_POOLS(md), log2_newsize, _md_next_kind(md, md->keys));
     if (newkeys == NULL) {
         return -1;
     }
@@ -600,7 +600,7 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
 static int
 _md_resize_for_add(MultiDictObject* md)
 {
-    return _md_rebuild(md, calculate_log2_keysize(GROWTH_RATE(md)));
+    return _md_rebuild(md, calculate_log2_keysize(_growth_rate(md)));
 }
 
 static int
@@ -735,7 +735,7 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused, uint8_t kind)
 
         new_keys = htkeys_new(MD_POOLS(md), log2_newsize, kind);
         if (new_keys == NULL) return -1;
-    } else if (minused > 0 && kind != md_fresh_kind(md)) {
+    } else if (minused > 0 && kind != _md_fresh_kind(md)) {
         /* The first insert would allocate this table anyway, but of the
            fresh kind, only to move it at once. */
         new_keys = htkeys_new(MD_POOLS(md), HT_LOG_MINSIZE, kind);
@@ -1275,8 +1275,8 @@ _md_del_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry)
 /* _md_del_at() variant that defers the decref (see reflist_t);
  * used by _md_replace_locked()'s duplicate-cleanup path on both builds. */
 static int
-_md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
-                    reflist_t* defer)
+md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
+                   reflist_t* defer)
 {
     assert(md->keys != &empty_htkeys);
     PyObject* identity;
@@ -1306,7 +1306,7 @@ typedef struct _removed_pairs {
 } removed_pairs_t;
 
 static inline void
-removed_pairs_init(removed_pairs_t* removed)
+_removed_pairs_init(removed_pairs_t* removed)
 {
     removed->key = NULL;
     removed->value = NULL;
@@ -1314,7 +1314,7 @@ removed_pairs_init(removed_pairs_t* removed)
 }
 
 static void
-removed_pairs_release(removed_pairs_t* removed)
+_removed_pairs_release(removed_pairs_t* removed)
 {
     Py_XDECREF(removed->key);
     Py_XDECREF(removed->value);
@@ -1509,7 +1509,7 @@ md_del(MultiDictObject* md, PyObject* key)
     }
     int found;
     removed_pairs_t removed;
-    removed_pairs_init(&removed);
+    _removed_pairs_init(&removed);
     /* Unwatched on entry means nothing gets recorded, even if a __del__
        run by the delete attaches a watcher, so there is nothing to
        flush; a mutation that __del__ makes flushes its own records. */
@@ -1522,7 +1522,7 @@ md_del(MultiDictObject* md, PyObject* key)
         found = _md_del_locked(md, identity, hash, &removed, false);
     }
     Py_END_CRITICAL_SECTION();
-    removed_pairs_release(&removed);
+    _removed_pairs_release(&removed);
     Py_DECREF(identity);
     md_watch_flush_if(md, flush);
     if (found == 0) {
@@ -2453,14 +2453,14 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     reflist_t values;
     reflist_init(&values);
     removed_pairs_t removed;
-    removed_pairs_init(&removed);
+    _removed_pairs_init(&removed);
     int tmp;
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
     tmp = _md_pop_all_locked(md, identity, hash, &values, &removed);
     flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
-    removed_pairs_release(&removed);
+    _removed_pairs_release(&removed);
     Py_DECREF(identity);
     md_watch_flush_if(md, flush);
     return _md_values_to_list(&values, tmp < 0, ret);
@@ -2603,7 +2603,7 @@ _md_replace_del_dup(MultiDictObject* md, size_t slot, entry_t* entry,
                         entry->value,
                         NULL);
     }
-    return _md_del_at_deferred(md, slot, entry, *dups);
+    return md_del_at_deferred(md, slot, entry, *dups);
 }
 
 COLD static void
@@ -3424,7 +3424,7 @@ md_clear(MultiDictObject* md)
     htkeys_t* old_keys = md->keys;
     htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
     if (UNLIKELY(md->batches != 0)) {
-        new_keys = _md_new_keys_after_holes(md, 0, md_fresh_kind(md));
+        new_keys = _md_new_keys_after_holes(md, 0, _md_fresh_kind(md));
         if (new_keys == NULL) {
             return -1;
         }
