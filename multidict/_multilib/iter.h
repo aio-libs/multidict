@@ -131,8 +131,10 @@ _iter_next_first_key(MultidictIter* self)
             if (compact_entry_is_hole(entry)) {
                 continue;
             }
-            hash = compact_entry_hash(ci, entry);
-            identity = compact_entry_identity(ci, entry);
+            hash = (ci ? compact_entry_hash_ci(entry)
+                       : compact_entry_hash_cs(entry));
+            identity = (ci ? compact_entry_identity_ci(entry)
+                           : compact_entry_identity_cs(entry));
         } else {
             anystr_entry_t* e = HTKEYS_ANYSTR_ENTRIES(keys) + pos;
             if (anystr_entry_is_hole(e)) {
