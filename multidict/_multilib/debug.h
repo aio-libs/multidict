@@ -62,10 +62,14 @@ _md_check_consistency(const MultiDictObject* md)
             entry_t* entry = entries + i;
             if (compact_entry_is_hole(entry)) {
                 _md_check_entry(entry, NULL, 0);
+            } else if (ci) {
+                _md_check_entry(entry,
+                                compact_entry_identity_ci(entry),
+                                compact_entry_hash_ci(entry));
             } else {
                 _md_check_entry(entry,
-                                compact_entry_identity(ci, entry),
-                                compact_entry_hash(ci, entry));
+                                compact_entry_identity_cs(entry),
+                                compact_entry_hash_cs(entry));
             }
         }
     } else {
@@ -121,11 +125,16 @@ _md_dump(MultiDictObject* md)
             entry_t* entry = entries + i;
             if (compact_entry_is_hole(entry)) {
                 _md_dump_entry(i, entry, NULL, 0);
+            } else if (ci) {
+                _md_dump_entry(i,
+                               entry,
+                               compact_entry_identity_ci(entry),
+                               compact_entry_hash_ci(entry));
             } else {
                 _md_dump_entry(i,
                                entry,
-                               compact_entry_identity(ci, entry),
-                               compact_entry_hash(ci, entry));
+                               compact_entry_identity_cs(entry),
+                               compact_entry_hash_cs(entry));
             }
         }
     } else {

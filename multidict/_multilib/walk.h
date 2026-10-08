@@ -141,7 +141,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
     htkeys_t* keys = md->keys;
     Py_ssize_t count = 0;
     int ret = 1;
-    if (kind_is_compact(keys->kind)) {
+    if (kind_is_compact(keys->kind) && ci) {
         entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
         for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
              entry++) {
@@ -149,8 +149,24 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
                 count++;
                 ret = _md_walk_visit(md,
                                      entry,
-                                     compact_entry_identity(ci, entry),
-                                     compact_entry_hash(ci, entry),
+                                     compact_entry_identity_ci(entry),
+                                     compact_entry_hash_ci(entry),
+                                     with_keys,
+                                     visitor,
+                                     user_data,
+                                     version);
+            }
+        }
+    } else if (kind_is_compact(keys->kind)) {
+        entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
+        for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
+             entry++) {
+            if (!compact_entry_is_hole(entry)) {
+                count++;
+                ret = _md_walk_visit(md,
+                                     entry,
+                                     compact_entry_identity_cs(entry),
+                                     compact_entry_hash_cs(entry),
                                      with_keys,
                                      visitor,
                                      user_data,
@@ -252,9 +268,27 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     Py_ssize_t count = 0;
     int ret = 1;
     entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind)) {
+    if (kind_is_compact(md->keys->kind) && ci) {
         while (ret > 0) {
-            HTKEYSITER_FIND_COMPACT(&iter, ci, identity, hash, entry);
+            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                break;
+            }
+            ret = _md_walk_matched(md,
+                                   entry,
+                                   iter.index,
+                                   &seen,
+                                   identity,
+                                   hash,
+                                   with_keys,
+                                   visitor,
+                                   user_data,
+                                   version);
+            count += ret == 0 || ret == 1;
+        }
+    } else if (kind_is_compact(md->keys->kind)) {
+        while (ret > 0) {
+            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
             if (entry == NULL) {
                 break;
             }
