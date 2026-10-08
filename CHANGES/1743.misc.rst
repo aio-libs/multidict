@@ -1,0 +1,3 @@
+Rewrote the C extension's ``|`` and ``-`` of a multidict's keys and items
+views with another set on top of the shared walk over all entries -- by
+:user:`asvetlov`.
