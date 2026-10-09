@@ -53,6 +53,7 @@ def _big_pairs() -> list[tuple[str, int]]:
     return pairs
 
 
+@pytest.mark.expensive
 def test_getall_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     pairs = _big_pairs()
     md = any_multidict_class(pairs)
@@ -64,6 +65,7 @@ def test_getall_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     assert ("dup", 1) not in md.items()
 
 
+@pytest.mark.expensive
 def test_to_dict_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     pairs = _big_pairs()
     md = any_multidict_class(pairs)
@@ -73,6 +75,7 @@ def test_to_dict_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     assert d["k39999"] == [39999]
 
 
+@pytest.mark.expensive
 def test_setitem_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     md = any_multidict_class(_big_pairs())
     md["dup"] = 7
@@ -81,6 +84,7 @@ def test_setitem_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     assert next(iter(md.items())) == ("dup", 7)
 
 
+@pytest.mark.expensive
 def test_update_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
     pairs = _big_pairs()
     new_pairs = [("dup", 1), ("k5", 5), ("dup", 2), ("new", 3), ("new", 4)]
@@ -91,6 +95,7 @@ def test_update_large_table(any_multidict_class: type[MultiDict[int]]) -> None:
 
 @pytest.mark.parametrize("size", [8, 3000])
 @pytest.mark.parametrize("deleted", [0, 3])
+@pytest.mark.expensive
 def test_update_resizes_mid_batch(
     any_multidict_class: type[MultiDict[int]], deleted: int, size: int
 ) -> None:

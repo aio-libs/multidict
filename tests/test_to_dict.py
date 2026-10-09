@@ -73,6 +73,7 @@ def test_to_dict_order_preservation(
     assert d.to_dict()["x"] == ["3", "1", "2"]
 
 
+@pytest.mark.expensive
 def test_to_dict_large_data(
     any_multidict_class: type[MultiDict[str]] | type[CIMultiDict[str]],
 ) -> None:
