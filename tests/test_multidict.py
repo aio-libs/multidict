@@ -1973,6 +1973,7 @@ def test_update_extend_merge_thread_safety() -> None:
     assert len(d2) == 200
 
 
+@pytest.mark.threaded
 def test_clear_thread_safety() -> None:
     """Concurrent clear() alongside extend() must not crash or corrupt state.
 
@@ -2034,6 +2035,7 @@ def test_popitem_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_clear_finalizer_thread_safety() -> None:
     """Concurrent clear() alongside update() must not crash or corrupt state.
 
@@ -2215,6 +2217,7 @@ def test_single_item_ops_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_view_set_ops_thread_safety() -> None:
     """Concurrent items()/keys() set-algebra (&, |, -, ^, in, isdisjoint())
     alongside mutation must not crash.
@@ -2631,6 +2634,7 @@ def test_del_pop_vs_update_same_key_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_to_dict_vs_lock_free_reads_thread_safety() -> None:
     """Concurrent to_dict() alongside lock-free contains()/get() on the
     same, never-deleted keys must not crash and must never observe a
@@ -2713,6 +2717,7 @@ def test_version_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_reader_exit_drains_retired_thread_safety() -> None:
     """A retired hash table must eventually be freed by reader traffic
     alone, with no further mutation. Regression test for
@@ -3891,6 +3896,7 @@ def test_update_from_list_shrunk_by_another_thread() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_update_from_pair_list_shrunk_by_another_thread() -> None:
     """A ``[key, value]`` item that shrinks between its length check and the
     reads must not be indexed past its end; the update either succeeds,
@@ -3926,6 +3932,7 @@ def test_update_from_pair_list_shrunk_by_another_thread() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_items_contains_list_shrunk_by_another_thread() -> None:
     """A probe list that shrinks between the length check and the reads must
     not be indexed past its end; the check either answers or reports the

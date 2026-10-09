@@ -11,6 +11,8 @@ from multidict import (
     istr,
 )
 
+pytestmark = pytest.mark.expensive
+
 # The CodSpeed CI job is split in two by the benchmark_shard_2 mark, which
 # goes on the bulk update()/extend()/merge() and removal benchmarks here and
 # on the whole of test_views_benchmarks.py. Rebalance when adding a heavy one.

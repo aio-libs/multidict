@@ -1070,12 +1070,25 @@ jobs:
       # CIBW_ARCHS_LINUX: Build emulated architectures if QEMU, else "auto"
       # CIBW_BUILD_FRONTEND: override pyproject.toml's `build[uv]` because
       # the pypa odd-arch containers do not ship `uv` preinstalled
+      # CIBW_TEST_COMMAND: under QEMU, skip the pure-Python runs of the tests
+      # marked `expensive`, and the `threaded` ones on GIL builds; they took
+      # manylinux riscv64 past its timeout
       environment-variables: |-
         CIBW_ARCHS_LINUX=${{ matrix.qemu }}
 
         CIBW_ARCHS_MACOS=x86_64 arm64 universal2
 
         CIBW_BUILD_FRONTEND=build
+
+        CIBW_TEST_COMMAND=pytest --no-cov {project}/tests -m "${{
+          !matrix.native-arch
+          && format(
+            '{0} and {1} and ',
+            'not (pure_python and expensive)',
+            'not (gil_build and threaded)'
+          )
+          || ''
+        }}not leaks and not hypothesis and not capi"
 
         CIBW_SKIP=${{
           (matrix.tag == 'musllinux')
