@@ -1,0 +1,3 @@
+Changed the C extension's bulk update helpers to take the batch's state
+as one structure instead of the multidict, the operation, the deferred
+references and the update marks one by one -- by :user:`asvetlov`.

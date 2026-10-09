@@ -216,7 +216,8 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                     md_len(other) + nkwargs,
                     _multidict_init_kind(state, is_ci, arg, other, nkwargs));
                 if (ret == 0) {
-                    ret = md_update_from_ht(self, other, Extend, NULL, NULL);
+                    md_update_state_t st = {.md = self, .op = Extend};
+                    ret = md_update_from_ht(&st, other);
                     ASSERT_CONSISTENT(self);
                 }
                 Py_END_CRITICAL_SECTION();
@@ -229,7 +230,8 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 PyDict_GET_SIZE(arg) + nkwargs,
                 _multidict_init_kind(state, is_ci, arg, NULL, nkwargs));
             if (ret == 0) {
-                ret = md_update_from_dict(self, arg, Extend, NULL, NULL);
+                md_update_state_t st = {.md = self, .op = Extend};
+                ret = md_update_from_dict(&st, arg);
                 ASSERT_CONSISTENT(self);
             }
             Py_END_CRITICAL_SECTION();
@@ -249,7 +251,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 nkwargs + extra,
                 _multidict_init_kind(state, is_ci, arg, NULL, nkwargs));
             if (ret == 0) {
-                ret = md_update_from_seq(self, arg, Extend, NULL, NULL);
+                ret = md_extend_from_seq(self, arg);
                 ASSERT_CONSISTENT(self);
             }
         }
@@ -642,16 +644,17 @@ typedef enum {
 
 /* The locked part of _multidict_bulk(). */
 static int
-_multidict_bulk_locked(MultiDictObject* self, UpdateOp op, bool reinit,
-                       bulk_source source, PyObject* arg,
-                       MultiDictObject* other, PyObject* kwds, Py_ssize_t size,
-                       bool is_ci, reflist_t* defer, update_marks_t* marks)
+_multidict_bulk_locked(md_update_state_t* st, bool reinit, bulk_source source,
+                       PyObject* arg, MultiDictObject* other, PyObject* kwds,
+                       Py_ssize_t size, bool is_ci)
 {
+    MultiDictObject* self = st->md;
+    UpdateOp op = st->op;
     int ret;
     bool from_self = source == BULK_FROM_SEQ && other != NULL;
     if (op != Extend) {
         ret = md_reserve_batch(self, size, kwds != NULL, true);
-        update_marks_init(marks, self, size);
+        update_marks_init(st->marks, self, size);
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
     } else {
         md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
@@ -676,10 +679,10 @@ _multidict_bulk_locked(MultiDictObject* self, UpdateOp op, bool reinit,
     if (ret == 0) {
         switch (source) {
             case BULK_FROM_HT:
-                ret = md_update_from_ht(self, other, op, defer, marks);
+                ret = md_update_from_ht(st, other);
                 break;
             case BULK_FROM_DICT:
-                ret = md_update_from_dict(self, arg, op, defer, marks);
+                ret = md_update_from_dict(st, arg);
                 break;
             case BULK_FROM_SEQ:
                 if (from_self) {
@@ -689,17 +692,17 @@ _multidict_bulk_locked(MultiDictObject* self, UpdateOp op, bool reinit,
                         ret = md_extend_self(self);
                     }
                 } else if (arg != NULL) {
-                    ret = md_update_from_seq(self, arg, op, defer, marks);
+                    ret = md_update_from_seq(st, arg);
                 }
                 break;
         }
         if (ret == 0 && kwds != NULL) {
-            ret = md_update_from_dict(self, kwds, op, defer, marks);
+            ret = md_update_from_dict(st, kwds);
         }
         ASSERT_CONSISTENT(self);
     }
     if (op != Extend) {
-        if (md_post_update(self, defer, marks) < 0 && ret == 0) {
+        if (md_post_update(st) < 0 && ret == 0) {
             ret = -1;
         }
     } else {
@@ -758,49 +761,24 @@ _multidict_bulk(MultiDictObject* self, PyObject* args, PyObject* kwds,
     if (defer != NULL) {
         reflist_init(defer);
     }
+    md_update_state_t st = {
+        .md = self, .op = op, .defer = defer, .marks = marks};
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
-        ret = _multidict_bulk_locked(self,
-                                     op,
-                                     reinit,
-                                     BULK_FROM_HT,
-                                     arg,
-                                     other,
-                                     kwds,
-                                     size,
-                                     is_ci,
-                                     defer,
-                                     marks);
+        ret = _multidict_bulk_locked(
+            &st, reinit, BULK_FROM_HT, arg, other, kwds, size, is_ci);
         flush = md_watch_pending(self);
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
-        ret = _multidict_bulk_locked(self,
-                                     op,
-                                     reinit,
-                                     BULK_FROM_DICT,
-                                     arg,
-                                     NULL,
-                                     kwds,
-                                     size,
-                                     is_ci,
-                                     defer,
-                                     marks);
+        ret = _multidict_bulk_locked(
+            &st, reinit, BULK_FROM_DICT, arg, NULL, kwds, size, is_ci);
         flush = md_watch_pending(self);
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
-        ret = _multidict_bulk_locked(self,
-                                     op,
-                                     reinit,
-                                     BULK_FROM_SEQ,
-                                     arg,
-                                     other,
-                                     kwds,
-                                     size,
-                                     is_ci,
-                                     defer,
-                                     marks);
+        ret = _multidict_bulk_locked(
+            &st, reinit, BULK_FROM_SEQ, arg, other, kwds, size, is_ci);
         flush = md_watch_pending(self);
         Py_END_CRITICAL_SECTION();
     }
