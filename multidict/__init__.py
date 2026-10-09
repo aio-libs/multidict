@@ -25,7 +25,7 @@ __all__ = (
     "istr",
 )
 
-__version__ = "7.1.0"
+__version__ = "7.1.1.dev0"
 
 
 if TYPE_CHECKING or not USE_EXTENSIONS:
