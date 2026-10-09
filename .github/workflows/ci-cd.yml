@@ -239,6 +239,8 @@ jobs:
     strategy:
       matrix:
         pyver:
+        - 3.15t
+        - 3.15
         - 3.14t
         - 3.14
         # Skipping 3.13t because cibuildwheel dropped support
