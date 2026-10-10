@@ -194,6 +194,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
 {
     int ret;
     Py_ssize_t nkwargs = kwnames == NULL ? 0 : PyTuple_GET_SIZE(kwnames);
+    md_update_state_t st = md_update_state(self, Extend, NULL, NULL);
 
     if (arg != NULL) {
         MultiDictObject* other = NULL;
@@ -216,7 +217,6 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                     md_len(other) + nkwargs,
                     _multidict_init_kind(state, is_ci, arg, other, nkwargs));
                 if (ret == 0) {
-                    md_update_state_t st = {.md = self, .op = Extend};
                     ret = md_update_from_ht(&st, other);
                     ASSERT_CONSISTENT(self);
                 }
@@ -230,7 +230,6 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 PyDict_GET_SIZE(arg) + nkwargs,
                 _multidict_init_kind(state, is_ci, arg, NULL, nkwargs));
             if (ret == 0) {
-                md_update_state_t st = {.md = self, .op = Extend};
                 ret = md_update_from_dict(&st, arg);
                 ASSERT_CONSISTENT(self);
             }
@@ -251,7 +250,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 nkwargs + extra,
                 _multidict_init_kind(state, is_ci, arg, NULL, nkwargs));
             if (ret == 0) {
-                ret = md_extend_from_seq(self, arg);
+                ret = md_update_from_seq(&st, arg);
                 ASSERT_CONSISTENT(self);
             }
         }
@@ -265,7 +264,7 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
 
     if (ret == 0) {
         if (nkwargs > 0) {
-            ret = md_update_from_kwnames(self, args, nargs, kwnames);
+            ret = md_update_from_kwnames(&st, args, nargs, kwnames);
         }
     }
     return ret;
@@ -761,8 +760,7 @@ _multidict_bulk(MultiDictObject* self, PyObject* args, PyObject* kwds,
     if (defer != NULL) {
         reflist_init(defer);
     }
-    md_update_state_t st = {
-        .md = self, .op = op, .defer = defer, .marks = marks};
+    md_update_state_t st = md_update_state(self, op, defer, marks);
     if (other != NULL && other != self) {
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = _multidict_bulk_locked(
