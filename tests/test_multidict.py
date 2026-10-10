@@ -3817,7 +3817,7 @@ def test_overflowing_length_hint_is_ignored(
     any_multidict_class: type[MultiDict[str]], method: str
 ) -> None:
     """A ``__length_hint__`` too large to reserve for without overflowing
-    the size arithmetic is ignored, as ``list.extend()`` ignores it."""
+    the size arithmetic does not break the update."""
     md = any_multidict_class([("z", "0")])
     getattr(md, method)(_HugeHint(sys.maxsize))
     assert list(md.items()) == [("z", "0"), ("a", "1")]
@@ -3838,16 +3838,42 @@ def test_overflowing_length_hint_plus_kwargs_is_ignored(method: str) -> None:
 @pytest.mark.c_extension
 @pytest.mark.parametrize("method", ("extend", "update", "merge"))
 @pytest.mark.parametrize(
-    "hint", (sys.maxsize // 3 - 1, sys.maxsize // 8), ids=("largest", "eighth")
+    "hint",
+    (sys.maxsize // 3 - 1, sys.maxsize // 8, 2**40),
+    ids=("largest", "eighth", "unallocatable"),
 )
-def test_unallocatable_length_hint_raises_memory_error(method: str, hint: int) -> None:
-    """A hint that survives the overflow check still asks for a table whose
-    byte size cannot be represented, which must fail before any shift or
-    sum past the width of ``size_t``."""
+def test_huge_length_hint_is_capped(method: str, hint: int) -> None:
+    """A hint reserves no more than the largest table the constructor
+    presizes, 2**17 slots, so a wild one costs neither a
+    :exc:`MemoryError` nor a giant table."""
+    capped = multidict.MultiDict(z="0")
+    getattr(capped, method)(_HugeHint((2**17 * 2) // 3))
     md = multidict.MultiDict(z="0")
-    with pytest.raises(MemoryError):
-        getattr(md, method)(_HugeHint(hint))
-    assert list(md.items()) == [("z", "0")]
+    getattr(md, method)(_HugeHint(hint))
+    assert list(md.items()) == [("z", "0"), ("a", "1")]
+    assert sys.getsizeof(md) == sys.getsizeof(capped)
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize("method", ("extend", "update", "merge"))
+def test_capped_length_hint_still_takes_every_item(method: str) -> None:
+    """The cap limits only the reservation: items past it grow the table
+    as any add does."""
+    count = 100_000  # past the 87381 entries a capped hint reserves
+
+    class Many:
+        def __iter__(self) -> Iterator[tuple[str, int]]:
+            return ((f"k{i}", i) for i in range(count))
+
+        def __length_hint__(self) -> int:
+            return sys.maxsize // 8
+
+    md: MultiDict[int] = multidict.MultiDict(z=-1)
+    getattr(md, method)(Many())
+    assert len(md) == count + 1
+    assert md["z"] == -1
+    assert md["k0"] == 0
+    assert md[f"k{count - 1}"] == count - 1
 
 
 @pytest.mark.parametrize(

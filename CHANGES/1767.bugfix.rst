@@ -1,0 +1,5 @@
+Stopped a huge ``__length_hint__()`` from raising :exc:`MemoryError` in
+:meth:`~multidict.MultiDict.extend`, :meth:`~multidict.MultiDict.update`
+and :meth:`~multidict.MultiDict.merge`; the C extension capped the room
+it reserved for the hint at the largest table the constructor allocates
+up front -- by :user:`asvetlov`.

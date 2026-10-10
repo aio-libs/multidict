@@ -64,7 +64,10 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
                 // preallocation estimate, so fall back to no hint
                 PyErr_Clear();
             } else {
-                size += s;
+                /* An estimate, perhaps wild: reserve no more for it than
+                   md_init() would. */
+                size += Py_MIN(
+                    s, USABLE_FRACTION((Py_ssize_t)1 << HT_LOG_MAX_PRESIZE));
             }
         }
     } else {
@@ -74,8 +77,7 @@ _multidict_extend_parse_args(mod_state* state, PyObject* args, PyObject* kwds,
     if (kwds != NULL) {
         assert((PyDict_CheckExact(kwds)));
         s = PyDict_GET_SIZE(kwds);
-        /* size may already hold an arbitrary __length_hint__. */
-        size = s > PY_SSIZE_T_MAX - size ? PY_SSIZE_T_MAX : size + s;
+        size += s;
     }
 
     return size;
