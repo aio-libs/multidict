@@ -46,6 +46,8 @@ struct _md_update_state {
     MultiDictObject* md;
     UpdateOp op;
     md_update_action_t action;
+    // as `action`, but owns `identity`, `key` and `value`, even on failure
+    md_update_action_t steal;
     reflist_t* defer;
     update_marks_t* marks;
     Py_ssize_t slot;  // _md_extend()'s, set by _md_update_source()
@@ -445,16 +447,13 @@ md_post_update(md_update_state_t* st)
 }
 
 static int
-_md_extend(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
-           PyObject* key, PyObject* value, bool fits)
+_md_extend_steal(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
+                 PyObject* key, PyObject* value, bool fits)
 {
     // a str subclass's own __eq__ can make two keys equal
     if (st->slot == MD_SLOT_FIND && !PyUnicode_CheckExact(key)) {
         st->slot = MD_SLOT_CHECK;
     }
-    Py_INCREF(identity);
-    Py_INCREF(key);
-    Py_INCREF(value);
     if (md_add_with_hash_steal_refs(
             st->md, hash, identity, key, value, fits, st->slot) < 0) {
         Py_DECREF(identity);
@@ -465,24 +464,64 @@ _md_extend(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
+static int
+_md_extend(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
+           PyObject* key, PyObject* value, bool fits)
+{
+    Py_INCREF(identity);
+    Py_INCREF(key);
+    Py_INCREF(value);
+    return _md_extend_steal(st, hash, identity, key, value, fits);
+}
+
+static int
+_md_update_steal(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
+                 PyObject* key, PyObject* value, bool fits)
+{
+    int ret = _md_update(st, hash, identity, key, value, fits);
+    Py_DECREF(identity);
+    Py_DECREF(key);
+    Py_DECREF(value);
+    return ret;
+}
+
+static int
+_md_merge_steal(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
+                PyObject* key, PyObject* value, bool fits)
+{
+    int ret = _md_merge(st, hash, identity, key, value, fits);
+    Py_DECREF(identity);
+    Py_DECREF(key);
+    Py_DECREF(value);
+    return ret;
+}
+
 static inline md_update_state_t
 md_update_state(MultiDictObject* md, UpdateOp op, reflist_t* defer,
                 update_marks_t* marks)
 {
     md_update_action_t action = NULL;
+    md_update_action_t steal = NULL;
     switch (op) {
         case Extend:
             action = _md_extend;
+            steal = _md_extend_steal;
             break;
         case Update:
             action = _md_update;
+            steal = _md_update_steal;
             break;
         case Merge:
             action = _md_merge;
+            steal = _md_merge_steal;
             break;
     }
-    md_update_state_t st = {
-        .md = md, .op = op, .action = action, .defer = defer, .marks = marks};
+    md_update_state_t st = {.md = md,
+                            .op = op,
+                            .action = action,
+                            .steal = steal,
+                            .defer = defer,
+                            .marks = marks};
     return st;
 }
 
@@ -517,6 +556,28 @@ _md_update_visit(void* user_data, PyObject* identity, Py_hash_t hash,
     }
     Py_DECREF(own);
     return ret < 0 ? -1 : 1;
+}
+
+/* As _md_update_visit() for a source that hands over its own `key` and
+   `value`, which go to md or are released. */
+static inline int
+_md_update_visit_steal(md_update_state_t* st, PyObject* key, PyObject* value)
+{
+    bool fits;
+    PyObject* own = md_calc_identity_fits(st->md, key, &fits);
+    if (own == NULL) {
+        goto fail;
+    }
+    Py_hash_t hash = unicode_hash(own);
+    if (hash == -1) {
+        Py_DECREF(own);
+        goto fail;
+    }
+    return st->steal(st, hash, own, key, value, fits);
+fail:
+    Py_DECREF(key);
+    Py_DECREF(value);
+    return -1;
 }
 
 /* A copy of `st` for one source: `slot` is MD_SLOT_FIND when its distinct
@@ -666,7 +727,8 @@ md_update_from_kwnames(md_update_state_t* st, PyObject* const* args,
     for (Py_ssize_t i = 0; i < nkwargs; i++) {
         PyObject* key = PyTuple_GET_ITEM(kwnames, i);  // borrowed
         assert(PyUnicode_Check(key));
-        if (_md_update_visit(&item, NULL, -1, key, args[nargs + i]) < 0) {
+        if (_md_update_visit_steal(
+                &item, Py_NewRef(key), Py_NewRef(args[nargs + i])) < 0) {
             return -1;
         }
     }
@@ -862,9 +924,7 @@ md_update_from_seq(md_update_state_t* st, PyObject* seq)
         if (ret <= 0) {
             break;
         }
-        ret = _md_update_visit(&source, NULL, -1, item.key, item.value);
-        Py_DECREF(item.key);
-        Py_DECREF(item.value);
+        ret = _md_update_visit_steal(&source, item.key, item.value);
         Py_DECREF(item.pair);
         if (ret < 0) {
             break;

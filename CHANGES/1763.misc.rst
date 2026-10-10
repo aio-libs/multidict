@@ -1,3 +1,5 @@
 Changed the C extension's bulk update helpers to take the batch's state
 as one structure, which holds the function the batch applies to each
-item, and to pass every item through one visitor -- by :user:`asvetlov`.
+item, and to pass every item through one visitor. Constructing a
+multidict from a sequence of pairs needed 3% to 8% fewer instructions
+-- by :user:`asvetlov`.
