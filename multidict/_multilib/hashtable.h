@@ -607,11 +607,6 @@ _md_resize_for_add(MultiDictObject* md)
 static int
 md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 {
-    if (extra_size > (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
-        /* Only a __length_hint__ can claim this much; ignore it, as
-           list.extend() does, rather than overflow the estimate. */
-        return 0;
-    }
     if (md->keys->usable >= extra_size) {
         return 0;
     }
@@ -682,8 +677,7 @@ md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs,
                  bool overlap)
 {
     if (UNLIKELY(kwargs) && md->is_ci && kind_is_compact(md->keys->kind) &&
-        md->used > 0 && md->batches == 0 &&
-        extra_size <= (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
+        md->used > 0 && md->batches == 0) {
         return _md_rebuild_to_anystr(
             md, estimate_log2_keysize(extra_size + md->used));
     }
@@ -732,15 +726,13 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused, uint8_t kind)
             return -1;
         }
     } else if (minused > USABLE_FRACTION(HT_MINSIZE)) {
-        const uint8_t log2_max_presize = 17;
-        const Py_ssize_t max_presize = ((Py_ssize_t)1) << log2_max_presize;
         uint8_t log2_newsize;
         /* There are no strict guarantee that returned dict can contain minused
          * items without resize.  So we create medium size dict instead of very
          * large dict or MemoryError.
          */
-        if (minused > USABLE_FRACTION(max_presize)) {
-            log2_newsize = log2_max_presize;
+        if (minused > USABLE_FRACTION((Py_ssize_t)1 << HT_LOG_MAX_PRESIZE)) {
+            log2_newsize = HT_LOG_MAX_PRESIZE;
         } else {
             log2_newsize = estimate_log2_keysize(minused);
         }
@@ -1162,7 +1154,6 @@ _md_grow_for_upd(MultiDictObject* md, update_marks_t* marks)
     if (extra > 0 && md_reserve(md, extra) < 0) {
         return -1;
     }
-    // md_reserve() ignores an extra too large to be real
     htkeys_t* keys = md->keys;
     if ((keys->usable <= 0 || keys == &empty_htkeys) &&
         _md_resize_for_add(md) < 0) {
