@@ -1,5 +1,6 @@
-Changed the C extension's bulk update helpers to take the batch's state
-as one structure, which holds the function the batch applies to each
-item, and to pass every item through one visitor. Constructing a
-multidict from a sequence of pairs needed 3% to 8% fewer instructions
+Changed the C extension's update and merge helpers to take the batch's
+state as one structure, which holds the function the batch applies to
+each item, and to pass every item through one visitor; extending got
+its own helpers, which need no state. Constructing a multidict from a
+sequence of pairs needed 2% to 18% fewer instructions
 -- by :user:`asvetlov`.
