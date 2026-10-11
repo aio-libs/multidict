@@ -1212,15 +1212,10 @@ md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-static int
-md_add(MultiDictObject* md, PyObject* key, PyObject* value)
+static inline int
+_md_add_identity(MultiDictObject* md, PyObject* key, PyObject* value,
+                 PyObject* identity, Py_hash_t hash, bool fits)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    bool fits;
-    if (md_calc_identity_hash_fits(md, key, &identity, &hash, &fits) < 0) {
-        return -1;
-    }
     int ret;
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
@@ -1229,9 +1224,40 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
     ASSERT_CONSISTENT(md);
     flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
-    Py_DECREF(identity);
     md_watch_flush_if(md, flush);
     return ret;
+}
+
+/* A key that md_borrow_identity() turns down fits no compact table: its
+   identity is a new object, or, in a CIMultiDict, the key is no istr. */
+static int
+_md_add_owned(MultiDictObject* md, PyObject* key, PyObject* value)
+{
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
+    }
+    int ret = _md_add_identity(md, key, value, identity, hash, false);
+    Py_DECREF(identity);
+    return ret;
+}
+
+/* The borrowed identity is the key itself, which fits a compact table
+   only in a MultiDict, or an istr's canonical, which always does. */
+static int
+md_add(MultiDictObject* md, PyObject* key, PyObject* value)
+{
+    PyObject* identity = md_borrow_identity(md, key);
+    if (identity == NULL) {
+        return _md_add_owned(md, key, value);
+    }
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash == -1) {
+        return -1;
+    }
+    return _md_add_identity(
+        md, key, value, identity, hash, !md->is_ci || identity != key);
 }
 
 /* Removes entry, whose index is at `slot`, and hands its references to the
@@ -1518,14 +1544,10 @@ _md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return _md_del_locked(md, identity, hash, removed, true);
 }
 
-static int
-md_del(MultiDictObject* md, PyObject* key)
+static inline int
+_md_del_identity(MultiDictObject* md, PyObject* key, PyObject* identity,
+                 Py_hash_t hash)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
     int found;
     removed_pairs_t removed;
     _removed_pairs_init(&removed);
@@ -1542,13 +1564,42 @@ md_del(MultiDictObject* md, PyObject* key)
     }
     Py_END_CRITICAL_SECTION();
     _removed_pairs_release(&removed);
-    Py_DECREF(identity);
     md_watch_flush_if(md, flush);
     if (found == 0) {
         PyErr_SetObject(PyExc_KeyError, key);
         return -1;
     }
     return found < 0 ? -1 : 0;
+}
+
+// See _md_contains_owned().
+static int
+_md_del_owned(MultiDictObject* md, PyObject* key)
+{
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
+    }
+    int ret = _md_del_identity(md, key, identity, hash);
+    Py_DECREF(identity);
+    return ret;
+}
+
+/* The caller's reference to key keeps a borrowed identity alive through
+   the finalizers that releasing the removed pairs can run. */
+static int
+md_del(MultiDictObject* md, PyObject* key)
+{
+    PyObject* identity = md_borrow_identity(md, key);
+    if (identity == NULL) {
+        return _md_del_owned(md, key);
+    }
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash == -1) {
+        return -1;
+    }
+    return _md_del_identity(md, key, identity, hash);
 }
 
 static int
@@ -2129,15 +2180,10 @@ _md_values_to_list(reflist_t* values, bool failed, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
-static int
-md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+static inline int
+_md_get_all_identity(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                     PyObject** ret)
 {
-    *ret = NULL;
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
     reflist_t values;
     reflist_init(&values);
     Py_ssize_t count = 0;
@@ -2152,7 +2198,6 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
             md, identity, hash, false, _md_getall_visit, &values);
     }
     Py_END_CRITICAL_SECTION();
-    Py_DECREF(identity);
     if (single >= 0) {
         if (single == 0) {
             return 0;
@@ -2166,6 +2211,35 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         return 1;
     }
     return _md_values_to_list(&values, count < 0, ret);
+}
+
+// See _md_contains_owned().
+static int
+_md_get_all_owned(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
+    }
+    int found = _md_get_all_identity(md, identity, hash, ret);
+    Py_DECREF(identity);
+    return found;
+}
+
+static int
+md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    *ret = NULL;
+    PyObject* identity = md_borrow_identity(md, key);
+    if (identity == NULL) {
+        return _md_get_all_owned(md, key, ret);
+    }
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash == -1) {
+        return -1;
+    }
+    return _md_get_all_identity(md, identity, hash, ret);
 }
 
 /* Pops the match of _md_pop_all_locked() at `slot`. The batch begins with
@@ -2724,14 +2798,10 @@ _md_replace_watched(MultiDictObject* md, PyObject* key, PyObject* value,
     return ret;
 }
 
-static int
-md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
+static inline int
+_md_replace_identity(MultiDictObject* md, PyObject* key, PyObject* value,
+                     PyObject* identity, Py_hash_t hash)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
     // The one replaced entry's refs; later matches go to dups
     PyObject* old_key = NULL;
     PyObject* old_value = NULL;
@@ -2765,9 +2835,37 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     if (UNLIKELY(dups != NULL)) {
         _md_replace_free_dups(dups);
     }
-    Py_DECREF(identity);
     md_watch_flush_if(md, flush);
     return ret;
+}
+
+// See _md_contains_owned().
+static int
+_md_replace_owned(MultiDictObject* md, PyObject* key, PyObject* value)
+{
+    PyObject* identity;
+    Py_hash_t hash;
+    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+        return -1;
+    }
+    int ret = _md_replace_identity(md, key, value, identity, hash);
+    Py_DECREF(identity);
+    return ret;
+}
+
+// See md_del() on the borrowed identity.
+static int
+md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
+{
+    PyObject* identity = md_borrow_identity(md, key);
+    if (identity == NULL) {
+        return _md_replace_owned(md, key, value);
+    }
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash == -1) {
+        return -1;
+    }
+    return _md_replace_identity(md, key, value, identity, hash);
 }
 
 /* Compares two values of matching entries: 1 if equal, 0 if not, -1 on
