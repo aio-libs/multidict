@@ -1,0 +1,3 @@
+Split the release publishing and signing across four parallel jobs, so
+that each one finishes well within the lifetime of its short-lived PyPI
+upload token -- by :user:`asvetlov`.

@@ -65,6 +65,8 @@ typedef enum {
 
 #define HT_LOG_MINSIZE 3
 #define HT_MINSIZE 8
+/* The largest table a size estimate alone may allocate. */
+#define HT_LOG_MAX_PRESIZE 17
 #define HT_PERTURB_SHIFT 5
 
 /* Tables are pooled by size class, since a block is reusable only for

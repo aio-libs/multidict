@@ -533,6 +533,7 @@ class TestMutableMultiDict:
         cls = d.values().__class__.__name__
         assert repr(d.values()) == f"<{cls}(1, 3)>"
 
+    @pytest.mark.expensive
     def test_huge_md(
         self,
         case_sensitive_multidict_class: type[MultiDict[int]],
@@ -541,6 +542,7 @@ class TestMutableMultiDict:
         d = case_sensitive_multidict_class((str(i), i) for i in range(size))
         assert d[str(size // 2)] == size // 2
 
+    @pytest.mark.expensive
     def test_update_resizes_mid_update_on_capped_huge_md(
         self,
         case_sensitive_multidict_class: type[MultiDict[int]],
@@ -1124,6 +1126,7 @@ def test_add_many_duplicate_keys(
     assert md.getall("a") == [str(i) for i in range(1000)]
 
 
+@pytest.mark.expensive
 def test_add_many_duplicate_keys_after_delete(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
@@ -1138,6 +1141,7 @@ def test_add_many_duplicate_keys_after_delete(
     assert md.getall("a") == [str(-i) for i in range(1300)]
 
 
+@pytest.mark.expensive
 def test_getall_in_insertion_order_after_mixed_mutations(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
@@ -1161,6 +1165,7 @@ def test_getall_in_insertion_order_after_mixed_mutations(
         assert md.items() & {(key, v) for v in expected} == {(key, v) for v in expected}
 
 
+@pytest.mark.expensive
 def test_create_with_many_duplicate_keys(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:

@@ -1,0 +1,6 @@
+Restored the speed of :meth:`~multidict.MultiDict.add`,
+:meth:`~multidict.MultiDict.getall`, ``md[key] = value`` and
+``del md[key]`` for a :class:`~multidict.CIMultiDict` key holding
+uppercase letters, which had become 1% to 4% slower when these methods
+started to borrow the key's identity; such a key is now checked only once
+-- by :user:`asvetlov`.

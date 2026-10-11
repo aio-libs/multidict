@@ -91,6 +91,7 @@ def test_race_condition_iterator_vs_mutation(
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_race_condition_extend_vs_source_mutation(
     any_multidict_class: type[CIMultiDict[str] | MultiDict[str]],
 ) -> None:
@@ -271,6 +272,7 @@ def test_items_iterator_shared_between_threads(
 
 @pytest.mark.c_extension
 @pytest.mark.parametrize("cls_name", ["MultiDict", "CIMultiDict"])
+@pytest.mark.threaded
 def test_reinit_finalizer_vs_lock_free_readers(
     cls_name: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:

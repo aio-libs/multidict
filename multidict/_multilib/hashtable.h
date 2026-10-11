@@ -607,11 +607,6 @@ _md_resize_for_add(MultiDictObject* md)
 static int
 md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 {
-    if (extra_size > (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
-        /* Only a __length_hint__ can claim this much; ignore it, as
-           list.extend() does, rather than overflow the estimate. */
-        return 0;
-    }
     if (md->keys->usable >= extra_size) {
         return 0;
     }
@@ -682,8 +677,7 @@ md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs,
                  bool overlap)
 {
     if (UNLIKELY(kwargs) && md->is_ci && kind_is_compact(md->keys->kind) &&
-        md->used > 0 && md->batches == 0 &&
-        extra_size <= (PY_SSIZE_T_MAX - 1) / 3 - md->used) {
+        md->used > 0 && md->batches == 0) {
         return _md_rebuild_to_anystr(
             md, estimate_log2_keysize(extra_size + md->used));
     }
@@ -732,15 +726,13 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused, uint8_t kind)
             return -1;
         }
     } else if (minused > USABLE_FRACTION(HT_MINSIZE)) {
-        const uint8_t log2_max_presize = 17;
-        const Py_ssize_t max_presize = ((Py_ssize_t)1) << log2_max_presize;
         uint8_t log2_newsize;
         /* There are no strict guarantee that returned dict can contain minused
          * items without resize.  So we create medium size dict instead of very
          * large dict or MemoryError.
          */
-        if (minused > USABLE_FRACTION(max_presize)) {
-            log2_newsize = log2_max_presize;
+        if (minused > USABLE_FRACTION((Py_ssize_t)1 << HT_LOG_MAX_PRESIZE)) {
+            log2_newsize = HT_LOG_MAX_PRESIZE;
         } else {
             log2_newsize = estimate_log2_keysize(minused);
         }
@@ -1162,7 +1154,6 @@ _md_grow_for_upd(MultiDictObject* md, update_marks_t* marks)
     if (extra > 0 && md_reserve(md, extra) < 0) {
         return -1;
     }
-    // md_reserve() ignores an extra too large to be real
     htkeys_t* keys = md->keys;
     if ((keys->usable <= 0 || keys == &empty_htkeys) &&
         _md_resize_for_add(md) < 0) {
@@ -1221,15 +1212,10 @@ md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-static int
-md_add(MultiDictObject* md, PyObject* key, PyObject* value)
+static inline int
+_md_add_identity(MultiDictObject* md, PyObject* key, PyObject* value,
+                 PyObject* identity, Py_hash_t hash, bool fits)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    bool fits;
-    if (md_calc_identity_hash_fits(md, key, &identity, &hash, &fits) < 0) {
-        return -1;
-    }
     int ret;
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
@@ -1238,8 +1224,29 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
     ASSERT_CONSISTENT(md);
     flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
-    Py_DECREF(identity);
     md_watch_flush_if(md, flush);
+    return ret;
+}
+
+/* A borrowed identity is the key itself, which fits a compact table only
+   in a MultiDict, or an istr's canonical, which always does. A key whose
+   identity has to be computed fits none. */
+static int
+md_add(MultiDictObject* md, PyObject* key, PyObject* value)
+{
+    PyObject* identity = md_identity_or_new(md, key);
+    if (identity == NULL) {
+        return -1;
+    }
+    int ret = -1;
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash != -1) {
+        ret = _md_add_identity(
+            md, key, value, identity, hash, md_key_fits(md, key, identity));
+    }
+    if (md_identity_is_new(md, key, identity)) {
+        Py_DECREF(identity);
+    }
     return ret;
 }
 
@@ -1527,14 +1534,10 @@ _md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return _md_del_locked(md, identity, hash, removed, true);
 }
 
-static int
-md_del(MultiDictObject* md, PyObject* key)
+static inline int
+_md_del_identity(MultiDictObject* md, PyObject* key, PyObject* identity,
+                 Py_hash_t hash)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
     int found;
     removed_pairs_t removed;
     _removed_pairs_init(&removed);
@@ -1551,13 +1554,32 @@ md_del(MultiDictObject* md, PyObject* key)
     }
     Py_END_CRITICAL_SECTION();
     _removed_pairs_release(&removed);
-    Py_DECREF(identity);
     md_watch_flush_if(md, flush);
     if (found == 0) {
         PyErr_SetObject(PyExc_KeyError, key);
         return -1;
     }
     return found < 0 ? -1 : 0;
+}
+
+/* The caller's reference to key keeps a borrowed identity alive through
+   the finalizers that releasing the removed pairs can run. */
+static int
+md_del(MultiDictObject* md, PyObject* key)
+{
+    PyObject* identity = md_identity_or_new(md, key);
+    if (identity == NULL) {
+        return -1;
+    }
+    int ret = -1;
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash != -1) {
+        ret = _md_del_identity(md, key, identity, hash);
+    }
+    if (md_identity_is_new(md, key, identity)) {
+        Py_DECREF(identity);
+    }
+    return ret;
 }
 
 static int
@@ -2138,15 +2160,10 @@ _md_values_to_list(reflist_t* values, bool failed, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
-static int
-md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+static inline int
+_md_get_all_identity(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                     PyObject** ret)
 {
-    *ret = NULL;
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
     reflist_t values;
     reflist_init(&values);
     Py_ssize_t count = 0;
@@ -2161,7 +2178,6 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
             md, identity, hash, false, _md_getall_visit, &values);
     }
     Py_END_CRITICAL_SECTION();
-    Py_DECREF(identity);
     if (single >= 0) {
         if (single == 0) {
             return 0;
@@ -2175,6 +2191,25 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         return 1;
     }
     return _md_values_to_list(&values, count < 0, ret);
+}
+
+static int
+md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
+{
+    *ret = NULL;
+    PyObject* identity = md_identity_or_new(md, key);
+    if (identity == NULL) {
+        return -1;
+    }
+    int found = -1;
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash != -1) {
+        found = _md_get_all_identity(md, identity, hash, ret);
+    }
+    if (md_identity_is_new(md, key, identity)) {
+        Py_DECREF(identity);
+    }
+    return found;
 }
 
 /* Pops the match of _md_pop_all_locked() at `slot`. The batch begins with
@@ -2733,14 +2768,10 @@ _md_replace_watched(MultiDictObject* md, PyObject* key, PyObject* value,
     return ret;
 }
 
-static int
-md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
+static inline int
+_md_replace_identity(MultiDictObject* md, PyObject* key, PyObject* value,
+                     PyObject* identity, Py_hash_t hash)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
     // The one replaced entry's refs; later matches go to dups
     PyObject* old_key = NULL;
     PyObject* old_value = NULL;
@@ -2774,8 +2805,26 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     if (UNLIKELY(dups != NULL)) {
         _md_replace_free_dups(dups);
     }
-    Py_DECREF(identity);
     md_watch_flush_if(md, flush);
+    return ret;
+}
+
+// See md_del() on the borrowed identity.
+static int
+md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
+{
+    PyObject* identity = md_identity_or_new(md, key);
+    if (identity == NULL) {
+        return -1;
+    }
+    int ret = -1;
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash != -1) {
+        ret = _md_replace_identity(md, key, value, identity, hash);
+    }
+    if (md_identity_is_new(md, key, identity)) {
+        Py_DECREF(identity);
+    }
     return ret;
 }
 
