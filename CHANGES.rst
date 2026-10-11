@@ -372,6 +372,15 @@ Packaging updates and notes for downstreams
 Contributor-facing changes
 --------------------------
 
+- Stopped the wheel jobs that run under QEMU from running the pure-Python
+  half of the tests marked ``expensive``, and the tests marked ``threaded``
+  on GIL builds, which had grown enough since 7.0.0 to take the manylinux
+  riscv64 job past its two-hour timeout; native jobs still run them
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1762`.
+
 - Added ``tools/check_inlining.py`` and an ``Inlining`` CI job, which
   fail when GCC stops inlining a helper that a hot path depends on, or
   makes an out-of-line copy of an inline function from the CPython headers
