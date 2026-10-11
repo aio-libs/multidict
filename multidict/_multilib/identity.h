@@ -251,6 +251,54 @@ md_borrow_identity(MultiDictObject* md, PyObject* key)
     return key;
 }
 
+/* A CIMultiDict key that is no exact istr: the key itself when it is its
+   own identity, else a new reference to a lowercased copy, never to the
+   key. */
+static PyObject*
+_str_identity_or_new_ci(mod_state* state, PyObject* key)
+{
+    if (PyUnicode_CheckExact(key) && PyUnicode_IS_ASCII(key)) {
+        Py_ssize_t len = PyUnicode_GET_LENGTH(key);
+        const Py_UCS1* data = (const Py_UCS1*)PyUnicode_DATA(key);
+        if (!_ascii_has_upper(data, len)) {
+            return key;
+        }
+        return _ascii_lower(data, len);
+    }
+    PyObject* identity = _str_call_lower_ci(state, key);
+    if (identity == key) {
+        Py_DECREF(identity);
+    }
+    return identity;
+}
+
+/* md_borrow_identity() for a call that computes the identity when it
+   cannot borrow it, with each test of the key run once: the identity is
+   borrowed unless md_identity_is_new() says otherwise. NULL with an
+   exception set on error. */
+static inline PyObject*
+md_identity_or_new(MultiDictObject* md, PyObject* key)
+{
+    if (md->is_ci) {
+        if (IStr_CheckExact(md->state, key)) {
+            return istr_canonical(key);
+        }
+        return _str_identity_or_new_ci(md->state, key);
+    }
+    if (UNLIKELY(!PyUnicode_CheckExact(key))) {
+        return _key_to_identity_cs(md->state, key);
+    }
+    return key;
+}
+
+/* Whether md_identity_or_new() handed out a new reference: only the key
+   itself and an exact istr's canonical are borrowed. */
+static inline bool
+md_identity_is_new(MultiDictObject* md, PyObject* key, PyObject* identity)
+{
+    return identity != key && !(md->is_ci && IStr_CheckExact(md->state, key));
+}
+
 /* md_calc_identity() that also says whether key fits a compact table (see
    md_key_fits()): a CIMultiDict's istr test has just run here, so the
    insert need not repeat it. */
