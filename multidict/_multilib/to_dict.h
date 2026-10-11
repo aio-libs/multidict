@@ -112,7 +112,7 @@ _md_to_dict_single(MultiDictObject* md, PyObject* dict, entry_t* entry,
     } while (0)
 
 /* _md_to_dict_locked()'s loop over a KIND_COMPACT table, `sfx` being cs
-   or ci as for compact_entry_identity_cs(), and `find` its
+   or ci as for compact_key_identity_cs(), and `find` its
    HTKEYSITER_FIND_COMPACT_CS() or _CI(). */
 #define _MD_TO_DICT_COMPACT_LOOP(sfx, find)                                \
     do {                                                                   \
@@ -123,8 +123,8 @@ _md_to_dict_single(MultiDictObject* md, PyObject* dict, entry_t* entry,
                 continue; /* deleted, or collected under its first key */  \
             }                                                              \
             _MD_TO_DICT_COLLECT(find,                                      \
-                                compact_entry_identity_##sfx(entry),       \
-                                compact_entry_hash_##sfx(entry),           \
+                                compact_key_identity_##sfx(entry->key),    \
+                                compact_key_hash_##sfx(entry->key),        \
                                 pos);                                      \
             int stored = _md_to_dict_store(md, dict, entry, lst, version); \
             lst = NULL;                                                    \

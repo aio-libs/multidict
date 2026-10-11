@@ -766,10 +766,10 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
         entry_t* src = HTKEYS_COMPACT_ENTRIES(src_keys);
         for (entry_t* end = src + src_keys->nentries; src < end; src++) {
             if (!entry_is_hole(src)) {
-                dst->identity = Py_NewRef(compact_entry_identity_ci(src));
+                dst->identity = Py_NewRef(compact_key_identity_ci(src->key));
                 dst->base.key = Py_NewRef(src->key);
                 dst->base.value = Py_NewRef(src->value);
-                dst->hash = compact_entry_hash_ci(src);
+                dst->hash = compact_key_hash_ci(src->key);
                 dst++;
             }
         }
@@ -777,10 +777,10 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
         entry_t* src = HTKEYS_COMPACT_ENTRIES(src_keys);
         for (entry_t* end = src + src_keys->nentries; src < end; src++) {
             if (!entry_is_hole(src)) {
-                dst->identity = Py_NewRef(compact_entry_identity_cs(src));
+                dst->identity = Py_NewRef(compact_key_identity_cs(src->key));
                 dst->base.key = Py_NewRef(src->key);
                 dst->base.value = Py_NewRef(src->value);
-                dst->hash = compact_entry_hash_cs(src);
+                dst->hash = compact_key_hash_cs(src->key);
                 dst++;
             }
         }
@@ -890,10 +890,10 @@ _md_is_first_key_probe(htkeys_t* keys, bool ci, Py_hash_t hash,
         PyObject* other;
         if (compact) {
             entry_t* e = HTKEYS_COMPACT_ENTRIES(keys) + iter->index;
-            other_hash =
-                (ci ? compact_entry_hash_ci(e) : compact_entry_hash_cs(e));
-            other = (ci ? compact_entry_identity_ci(e)
-                        : compact_entry_identity_cs(e));
+            other_hash = (ci ? compact_key_hash_ci(e->key)
+                             : compact_key_hash_cs(e->key));
+            other = (ci ? compact_key_identity_ci((e)->key)
+                        : compact_key_identity_cs(e->key));
         } else {
             anystr_entry_t* e = HTKEYS_ANYSTR_ENTRIES(keys) + iter->index;
             other_hash = e->hash;
@@ -939,13 +939,13 @@ md_keys_len(MultiDictObject* md)
         for (Py_ssize_t i = 0; i < keys->nentries; i++) {
             entry_t* e = entries + i;
             if (!entry_is_hole(e) &&
-                md_is_first_key(
-                    keys,
-                    ci,
-                    (ci ? compact_entry_hash_ci(e) : compact_entry_hash_cs(e)),
-                    (ci ? compact_entry_identity_ci(e)
-                        : compact_entry_identity_cs(e)),
-                    i)) {
+                md_is_first_key(keys,
+                                ci,
+                                (ci ? compact_key_hash_ci(e->key)
+                                    : compact_key_hash_cs(e->key)),
+                                (ci ? compact_key_identity_ci((e)->key)
+                                    : compact_key_identity_cs(e->key)),
+                                i)) {
                 ++ret;
             }
         }
@@ -2375,8 +2375,8 @@ _md_pop_item_locked(MultiDictObject* md)
     entry_t* entry = _md_last_live(keys, &pos);
 
     Py_hash_t hash = !kind_is_compact(kind) ? as_anystr(entry)->hash
-                     : ci                   ? compact_entry_hash_ci(entry)
-                                            : compact_entry_hash_cs(entry);
+                     : ci                   ? compact_key_hash_ci(entry->key)
+                                            : compact_key_hash_cs(entry->key);
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, keys, hash);
 
@@ -2385,8 +2385,8 @@ _md_pop_item_locked(MultiDictObject* md)
     md_watch_record(md,
                     MultiDict_EVENT_DELETED,
                     !kind_is_compact(kind) ? as_anystr(entry)->identity
-                    : ci                   ? compact_entry_identity_ci(entry)
-                                           : compact_entry_identity_cs(entry),
+                    : ci ? compact_key_identity_ci(entry->key)
+                         : compact_key_identity_cs(entry->key),
                     hash,
                     entry->key,
                     entry->value,
@@ -2844,14 +2844,14 @@ _md_eq_values(PyObject* value1, PyObject* value2)
 #define _MD_EQ_CS_T entry_t
 #define _MD_EQ_CS_ENTRIES(keys) HTKEYS_COMPACT_ENTRIES(keys)
 #define _MD_EQ_CS_IS_HOLE(e) entry_is_hole(e)
-#define _MD_EQ_CS_HASH(e) compact_entry_hash_cs(e)
-#define _MD_EQ_CS_IDENTITY(e) compact_entry_identity_cs(e)
+#define _MD_EQ_CS_HASH(e) compact_key_hash_cs((e)->key)
+#define _MD_EQ_CS_IDENTITY(e) compact_key_identity_cs((e)->key)
 #define _MD_EQ_CS_BASE(e) (e)
 #define _MD_EQ_CI_T entry_t
 #define _MD_EQ_CI_ENTRIES(keys) HTKEYS_COMPACT_ENTRIES(keys)
 #define _MD_EQ_CI_IS_HOLE(e) entry_is_hole(e)
-#define _MD_EQ_CI_HASH(e) compact_entry_hash_ci(e)
-#define _MD_EQ_CI_IDENTITY(e) compact_entry_identity_ci(e)
+#define _MD_EQ_CI_HASH(e) compact_key_hash_ci((e)->key)
+#define _MD_EQ_CI_IDENTITY(e) compact_key_identity_ci((e)->key)
 #define _MD_EQ_CI_BASE(e) (e)
 #define _MD_EQ_ANYSTR_T anystr_entry_t
 #define _MD_EQ_ANYSTR_ENTRIES(keys) HTKEYS_ANYSTR_ENTRIES(keys)
