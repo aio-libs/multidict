@@ -64,12 +64,12 @@ _md_check_consistency(const MultiDictObject* md)
                 _md_check_entry(entry, NULL, 0);
             } else if (ci) {
                 _md_check_entry(entry,
-                                compact_entry_identity_ci(entry),
-                                compact_entry_hash_ci(entry));
+                                compact_key_identity_ci(entry->key),
+                                compact_key_hash_ci(entry->key));
             } else {
                 _md_check_entry(entry,
-                                compact_entry_identity_cs(entry),
-                                compact_entry_hash_cs(entry));
+                                compact_key_identity_cs(entry->key),
+                                compact_key_hash_cs(entry->key));
             }
         }
     } else {
@@ -149,13 +149,13 @@ _md_dump(MultiDictObject* md)
             } else if (ci) {
                 _md_dump_entry(i,
                                entry,
-                               compact_entry_identity_ci(entry),
-                               compact_entry_hash_ci(entry));
+                               compact_key_identity_ci(entry->key),
+                               compact_key_hash_ci(entry->key));
             } else {
                 _md_dump_entry(i,
                                entry,
-                               compact_entry_identity_cs(entry),
-                               compact_entry_hash_cs(entry));
+                               compact_key_identity_cs(entry->key),
+                               compact_key_hash_cs(entry->key));
             }
         }
     } else {
