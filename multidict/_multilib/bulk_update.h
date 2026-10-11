@@ -484,12 +484,16 @@ _md_update_visit(void* user_data, PyObject* identity, Py_hash_t hash,
                  PyObject* key, PyObject* value)
 {
     md_update_state_t* st = (md_update_state_t*)user_data;
-    PyObject* own;
     bool fits;
-    if (md_calc_identity_hash_fits(st->md, key, &own, &hash, &fits) < 0) {
+    PyObject* own = md_calc_identity_fits(st->md, key, &fits);
+    if (own == NULL) {
         return -1;
     }
-    int ret = st->action(st, hash, own, key, value, fits);
+    int ret = -1;
+    hash = unicode_hash(own);
+    if (hash != -1) {
+        ret = st->action(st, hash, own, key, value, fits);
+    }
     Py_DECREF(own);
     return ret < 0 ? -1 : 1;
 }
