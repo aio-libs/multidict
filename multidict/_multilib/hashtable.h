@@ -1228,36 +1228,26 @@ _md_add_identity(MultiDictObject* md, PyObject* key, PyObject* value,
     return ret;
 }
 
-/* A key that md_borrow_identity() turns down fits no compact table: its
-   identity is a new object, or, in a CIMultiDict, the key is no istr. */
-static int
-_md_add_owned(MultiDictObject* md, PyObject* key, PyObject* value)
-{
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
-    int ret = _md_add_identity(md, key, value, identity, hash, false);
-    Py_DECREF(identity);
-    return ret;
-}
-
-/* The borrowed identity is the key itself, which fits a compact table
-   only in a MultiDict, or an istr's canonical, which always does. */
+/* A borrowed identity is the key itself, which fits a compact table only
+   in a MultiDict, or an istr's canonical, which always does. A key whose
+   identity has to be computed fits none. */
 static int
 md_add(MultiDictObject* md, PyObject* key, PyObject* value)
 {
-    PyObject* identity = md_borrow_identity(md, key);
+    PyObject* identity = md_identity_or_new(md, key);
     if (identity == NULL) {
-        return _md_add_owned(md, key, value);
-    }
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash == -1) {
         return -1;
     }
-    return _md_add_identity(
-        md, key, value, identity, hash, !md->is_ci || identity != key);
+    int ret = -1;
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash != -1) {
+        ret = _md_add_identity(
+            md, key, value, identity, hash, md_key_fits(md, key, identity));
+    }
+    if (md_identity_is_new(md, key, identity)) {
+        Py_DECREF(identity);
+    }
+    return ret;
 }
 
 /* Removes entry, whose index is at `slot`, and hands its references to the
@@ -1572,34 +1562,24 @@ _md_del_identity(MultiDictObject* md, PyObject* key, PyObject* identity,
     return found < 0 ? -1 : 0;
 }
 
-// See _md_contains_owned().
-static int
-_md_del_owned(MultiDictObject* md, PyObject* key)
-{
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
-    int ret = _md_del_identity(md, key, identity, hash);
-    Py_DECREF(identity);
-    return ret;
-}
-
 /* The caller's reference to key keeps a borrowed identity alive through
    the finalizers that releasing the removed pairs can run. */
 static int
 md_del(MultiDictObject* md, PyObject* key)
 {
-    PyObject* identity = md_borrow_identity(md, key);
+    PyObject* identity = md_identity_or_new(md, key);
     if (identity == NULL) {
-        return _md_del_owned(md, key);
-    }
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash == -1) {
         return -1;
     }
-    return _md_del_identity(md, key, identity, hash);
+    int ret = -1;
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash != -1) {
+        ret = _md_del_identity(md, key, identity, hash);
+    }
+    if (md_identity_is_new(md, key, identity)) {
+        Py_DECREF(identity);
+    }
+    return ret;
 }
 
 static int
@@ -2213,33 +2193,23 @@ _md_get_all_identity(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return _md_values_to_list(&values, count < 0, ret);
 }
 
-// See _md_contains_owned().
-static int
-_md_get_all_owned(MultiDictObject* md, PyObject* key, PyObject** ret)
-{
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
-    int found = _md_get_all_identity(md, identity, hash, ret);
-    Py_DECREF(identity);
-    return found;
-}
-
 static int
 md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     *ret = NULL;
-    PyObject* identity = md_borrow_identity(md, key);
+    PyObject* identity = md_identity_or_new(md, key);
     if (identity == NULL) {
-        return _md_get_all_owned(md, key, ret);
-    }
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash == -1) {
         return -1;
     }
-    return _md_get_all_identity(md, identity, hash, ret);
+    int found = -1;
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash != -1) {
+        found = _md_get_all_identity(md, identity, hash, ret);
+    }
+    if (md_identity_is_new(md, key, identity)) {
+        Py_DECREF(identity);
+    }
+    return found;
 }
 
 /* Pops the match of _md_pop_all_locked() at `slot`. The batch begins with
@@ -2839,33 +2809,23 @@ _md_replace_identity(MultiDictObject* md, PyObject* key, PyObject* value,
     return ret;
 }
 
-// See _md_contains_owned().
-static int
-_md_replace_owned(MultiDictObject* md, PyObject* key, PyObject* value)
-{
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return -1;
-    }
-    int ret = _md_replace_identity(md, key, value, identity, hash);
-    Py_DECREF(identity);
-    return ret;
-}
-
 // See md_del() on the borrowed identity.
 static int
 md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
 {
-    PyObject* identity = md_borrow_identity(md, key);
+    PyObject* identity = md_identity_or_new(md, key);
     if (identity == NULL) {
-        return _md_replace_owned(md, key, value);
-    }
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash == -1) {
         return -1;
     }
-    return _md_replace_identity(md, key, value, identity, hash);
+    int ret = -1;
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash != -1) {
+        ret = _md_replace_identity(md, key, value, identity, hash);
+    }
+    if (md_identity_is_new(md, key, identity)) {
+        Py_DECREF(identity);
+    }
+    return ret;
 }
 
 /* Compares two values of matching entries: 1 if equal, 0 if not, -1 on
