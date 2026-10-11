@@ -119,7 +119,10 @@ in the GitHub UI. Nothing is published before that click; use the
 wait to watch the matrix, and approve once it is green. Once
 approved, `deploy` creates the GitHub Release from the `CHANGES.rst`
 section matching the tag, publishes to PyPI through trusted
-publishing, and signs the artifacts with Sigstore.
+publishing, and signs the artifacts with Sigstore. `deploy` is a
+matrix of four groups, each publishing a quarter of the dists so that
+it stays within the 15 minute lifetime of its PyPI upload token; all
+four are pending together and a single review approves them.
 
 ## 5. Verify
 
@@ -131,8 +134,8 @@ publishing, and signs the artifacts with Sigstore.
   `pip install multidict` both work in a throwaway virtualenv, so
   that the sdist and a wheel are each proven installable.
 
-If the `deploy` job fails partway, re-run it rather than tagging
-again. It is written to be idempotent: the GitHub Release is only
+If a `deploy` group fails partway, re-run it rather than tagging
+again; the groups that succeeded do not need to run again. It is written to be idempotent: the GitHub Release is only
 created when it does not already exist, PyPI uploads skip what is
 already published, and asset uploads skip files already attached.
 
