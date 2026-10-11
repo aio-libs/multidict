@@ -733,6 +733,9 @@ md_extend_from_dict(MultiDictObject* md, PyObject* kwds)
 
     assert(PyDict_CheckExact(kwds));
     Py_ssize_t slot = _md_extend_slot(md);
+    if (md_reserve(md, PyDict_GET_SIZE(kwds)) < 0) {
+        return -1;
+    }
     // PyDict_Next returns borrowed refs, which kwds keeps alive
     while (PyDict_Next(kwds, &pos, &key, &value)) {
         slot = _md_extend_key_slot(slot, key);

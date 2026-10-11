@@ -250,6 +250,10 @@ _multidict_vectorcall_impl(mod_state* state, MultiDictObject* self, bool is_ci,
                 is_ci,
                 nkwargs + extra,
                 _multidict_init_kind(state, is_ci, arg, NULL, nkwargs));
+            // md_init() caps its presize; an exact size can go past it
+            if (ret == 0) {
+                ret = md_reserve(self, nkwargs + extra);
+            }
             if (ret == 0) {
                 ret = md_extend_from_seq(self, arg);
                 ASSERT_CONSISTENT(self);
