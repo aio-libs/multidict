@@ -39,9 +39,9 @@ typedef int (*md_update_action_t)(md_update_state_t* st, Py_hash_t hash,
                                   PyObject* identity, PyObject* key,
                                   PyObject* value, bool fits);
 
-/* One update() or merge() batch, set up by md_update_state_init() and
-   update_marks_init(), torn down by md_update_state_release(); extend()
-   has none. */
+/* One update() or merge() batch, set up by md_update_state_init() and,
+   under md's critical section, update_marks_init(); torn down by
+   md_update_state_release() either way. extend() has none. */
 struct _md_update_state {
     MultiDictObject* md;
     md_update_action_t action;
@@ -451,6 +451,11 @@ md_update_state_init(md_update_state_t* st, MultiDictObject* md, UpdateOp op)
     st->md = md;
     st->action = op == Update ? _md_update : _md_merge;
     reflist_init(&st->defer);
+    // nothing for update_marks_release() to free until update_marks_init()
+    st->marks.updated.summary = NULL;
+    st->marks.deleted.summary = NULL;
+    st->marks.doomed = NULL;
+    st->marks.ndoomed = 0;
 }
 
 static inline void
@@ -479,16 +484,12 @@ _md_update_visit(void* user_data, PyObject* identity, Py_hash_t hash,
                  PyObject* key, PyObject* value)
 {
     md_update_state_t* st = (md_update_state_t*)user_data;
+    PyObject* own;
     bool fits;
-    PyObject* own = md_calc_identity_fits(st->md, key, &fits);
-    if (own == NULL) {
+    if (md_calc_identity_hash_fits(st->md, key, &own, &hash, &fits) < 0) {
         return -1;
     }
-    int ret = -1;
-    hash = unicode_hash(own);
-    if (hash != -1) {
-        ret = st->action(st, hash, own, key, value, fits);
-    }
+    int ret = st->action(st, hash, own, key, value, fits);
     Py_DECREF(own);
     return ret < 0 ? -1 : 1;
 }
@@ -512,11 +513,10 @@ md_update_from_ht(md_update_state_t* st, MultiDictObject* other)
 }
 
 /* One extend() item from a source that hands over `key` and `value`,
-   which go to md or are released. `*slot` is MD_SLOT_FIND while the
-   source's keys are distinct and md had none of them. */
+   which go to md or are released. */
 static int
 _md_extend_item(MultiDictObject* md, PyObject* key, PyObject* value,
-                Py_ssize_t* slot)
+                Py_ssize_t slot)
 {
     bool fits;
     PyObject* identity = md_calc_identity_fits(md, key, &fits);
@@ -527,12 +527,8 @@ _md_extend_item(MultiDictObject* md, PyObject* key, PyObject* value,
     if (hash == -1) {
         goto fail_identity;
     }
-    // a str subclass's own __eq__ can make two keys equal
-    if (*slot == MD_SLOT_FIND && !PyUnicode_CheckExact(key)) {
-        *slot = MD_SLOT_CHECK;
-    }
     if (md_add_with_hash_steal_refs(
-            md, hash, identity, key, value, fits, *slot) < 0) {
+            md, hash, identity, key, value, fits, slot) < 0) {
         goto fail_identity;
     }
     return 0;
@@ -550,6 +546,13 @@ static inline Py_ssize_t
 _md_extend_slot(MultiDictObject* md)
 {
     return !md->is_ci && md->used == 0 ? MD_SLOT_FIND : MD_SLOT_CHECK;
+}
+
+// a str subclass's own __eq__ can make two keys equal
+static inline Py_ssize_t
+_md_extend_key_slot(Py_ssize_t slot, PyObject* key)
+{
+    return PyUnicode_CheckExact(key) ? slot : MD_SLOT_CHECK;
 }
 
 /* md_extend_from_ht()'s visitors, `user_data` being md: one for a
@@ -587,11 +590,10 @@ static int
 _md_extend_visit(void* user_data, PyObject* identity, Py_hash_t hash,
                  PyObject* key, PyObject* value)
 {
-    Py_ssize_t slot = MD_SLOT_CHECK;
     return _md_extend_item((MultiDictObject*)user_data,
                            Py_NewRef(key),
                            Py_NewRef(value),
-                           &slot) < 0
+                           MD_SLOT_CHECK) < 0
                ? -1
                : 1;
 }
@@ -723,7 +725,8 @@ md_extend_from_dict(MultiDictObject* md, PyObject* kwds)
     Py_ssize_t slot = _md_extend_slot(md);
     // PyDict_Next returns borrowed refs, which kwds keeps alive
     while (PyDict_Next(kwds, &pos, &key, &value)) {
-        if (_md_extend_item(md, Py_NewRef(key), Py_NewRef(value), &slot) < 0) {
+        slot = _md_extend_key_slot(slot, key);
+        if (_md_extend_item(md, Py_NewRef(key), Py_NewRef(value), slot) < 0) {
             return -1;
         }
     }
@@ -742,8 +745,9 @@ md_extend_from_kwnames(MultiDictObject* md, PyObject* const* args,
     for (Py_ssize_t i = 0; i < nkwargs; i++) {
         PyObject* key = PyTuple_GET_ITEM(kwnames, i);  // borrowed
         assert(PyUnicode_Check(key));
+        slot = _md_extend_key_slot(slot, key);
         if (_md_extend_item(
-                md, Py_NewRef(key), Py_NewRef(args[nargs + i]), &slot) < 0) {
+                md, Py_NewRef(key), Py_NewRef(args[nargs + i]), slot) < 0) {
             return -1;
         }
     }
@@ -935,14 +939,13 @@ _md_seq_walk(MultiDictObject* md, md_update_state_t* st, PyObject* seq)
     if (_md_seq_prepare(seq, &it) < 0) {
         return -1;
     }
-    Py_ssize_t slot = MD_SLOT_CHECK;
     for (Py_ssize_t i = 0;; ++i) {
         ret = _md_seq_next(&it, i, &item);
         if (ret <= 0) {
             break;
         }
         if (st == NULL) {
-            ret = _md_extend_item(md, item.key, item.value, &slot);
+            ret = _md_extend_item(md, item.key, item.value, MD_SLOT_CHECK);
         } else {
             ret = _md_update_visit(st, NULL, -1, item.key, item.value);
             Py_DECREF(item.key);
