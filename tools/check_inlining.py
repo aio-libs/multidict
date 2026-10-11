@@ -156,13 +156,7 @@ RULES = (
         "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
     ),
     Rule(
-        "compact_entry_is_hole",
-        "*",
-        BOTH,
-        "#1674: a single load tested once per entry in every walk",
-    ),
-    Rule(
-        "anystr_entry_is_hole",
+        "entry_is_hole",
         "*",
         BOTH,
         "#1674: a single load tested once per entry in every walk",

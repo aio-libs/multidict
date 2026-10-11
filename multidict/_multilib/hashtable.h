@@ -379,8 +379,9 @@ _md_has_equal_hashes(htkeys_t* keys, bool ci)
     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
         bool hole =
             kind_is_compact(keys->kind)
-                ? compact_entry_is_hole(HTKEYS_COMPACT_ENTRIES(keys) + i)
-                : anystr_entry_is_hole(HTKEYS_ANYSTR_ENTRIES(keys) + i);
+                ? entry_is_hole(HTKEYS_COMPACT_ENTRIES(keys) + i)
+                : entry_is_hole(
+                      (const entry_t*)(HTKEYS_ANYSTR_ENTRIES(keys) + i));
         if (hole) {
             continue;
         }
@@ -510,7 +511,7 @@ _md_copy_live(htkeys_t* dst, const htkeys_t* src)
         for (entry_t *ep = HTKEYS_COMPACT_ENTRIES(src), *end = ep + n;
              ep < end;
              ep++) {
-            if (!compact_entry_is_hole(ep)) {
+            if (!entry_is_hole(ep)) {
                 *out++ = *ep;
             }
         }
@@ -521,7 +522,7 @@ _md_copy_live(htkeys_t* dst, const htkeys_t* src)
     for (anystr_entry_t *ep = HTKEYS_ANYSTR_ENTRIES(src), *end = ep + n;
          ep < end;
          ep++) {
-        if (!anystr_entry_is_hole(ep)) {
+        if (!entry_is_hole((const entry_t*)ep)) {
             *out++ = *ep;
         }
     }
@@ -764,7 +765,7 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
     if (kind_is_compact(src_keys->kind) && other_ci) {
         entry_t* src = HTKEYS_COMPACT_ENTRIES(src_keys);
         for (entry_t* end = src + src_keys->nentries; src < end; src++) {
-            if (!compact_entry_is_hole(src)) {
+            if (!entry_is_hole(src)) {
                 dst->identity = Py_NewRef(compact_entry_identity_ci(src));
                 dst->base.key = Py_NewRef(src->key);
                 dst->base.value = Py_NewRef(src->value);
@@ -775,7 +776,7 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
     } else if (kind_is_compact(src_keys->kind)) {
         entry_t* src = HTKEYS_COMPACT_ENTRIES(src_keys);
         for (entry_t* end = src + src_keys->nentries; src < end; src++) {
-            if (!compact_entry_is_hole(src)) {
+            if (!entry_is_hole(src)) {
                 dst->identity = Py_NewRef(compact_entry_identity_cs(src));
                 dst->base.key = Py_NewRef(src->key);
                 dst->base.value = Py_NewRef(src->value);
@@ -787,7 +788,7 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
         anystr_entry_t* src = HTKEYS_ANYSTR_ENTRIES(src_keys);
         for (anystr_entry_t* end = src + src_keys->nentries; src < end;
              src++) {
-            if (!anystr_entry_is_hole(src)) {
+            if (!entry_is_hole((const entry_t*)src)) {
                 dst->identity = Py_NewRef(src->identity);
                 dst->base.key = Py_NewRef(src->base.key);
                 dst->base.value = Py_NewRef(src->base.value);
@@ -937,7 +938,7 @@ md_keys_len(MultiDictObject* md)
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < keys->nentries; i++) {
             entry_t* e = entries + i;
-            if (!compact_entry_is_hole(e) &&
+            if (!entry_is_hole(e) &&
                 md_is_first_key(
                     keys,
                     ci,
@@ -952,7 +953,7 @@ md_keys_len(MultiDictObject* md)
         anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < keys->nentries; i++) {
             anystr_entry_t* e = entries + i;
-            if (!anystr_entry_is_hole(e) &&
+            if (!entry_is_hole((const entry_t*)e) &&
                 md_is_first_key(keys, ci, e->hash, e->identity, i)) {
                 ++ret;
             }
@@ -2342,13 +2343,13 @@ _md_last_live(htkeys_t* keys, Py_ssize_t* ppos)
     entry_t* entry;
     if (kind_is_compact(keys->kind)) {
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
-        while (compact_entry_is_hole(entries + pos)) {
+        while (entry_is_hole(entries + pos)) {
             pos--;
         }
         entry = entries + pos;
     } else {
         anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
-        while (anystr_entry_is_hole(entries + pos)) {
+        while (entry_is_hole((const entry_t*)(entries + pos))) {
             pos--;
         }
         entry = &entries[pos].base;
@@ -2842,19 +2843,19 @@ _md_eq_values(PyObject* value1, PyObject* value2)
    table of a MultiDict and of a CIMultiDict. */
 #define _MD_EQ_CS_T entry_t
 #define _MD_EQ_CS_ENTRIES(keys) HTKEYS_COMPACT_ENTRIES(keys)
-#define _MD_EQ_CS_IS_HOLE(e) compact_entry_is_hole(e)
+#define _MD_EQ_CS_IS_HOLE(e) entry_is_hole(e)
 #define _MD_EQ_CS_HASH(e) compact_entry_hash_cs(e)
 #define _MD_EQ_CS_IDENTITY(e) compact_entry_identity_cs(e)
 #define _MD_EQ_CS_BASE(e) (e)
 #define _MD_EQ_CI_T entry_t
 #define _MD_EQ_CI_ENTRIES(keys) HTKEYS_COMPACT_ENTRIES(keys)
-#define _MD_EQ_CI_IS_HOLE(e) compact_entry_is_hole(e)
+#define _MD_EQ_CI_IS_HOLE(e) entry_is_hole(e)
 #define _MD_EQ_CI_HASH(e) compact_entry_hash_ci(e)
 #define _MD_EQ_CI_IDENTITY(e) compact_entry_identity_ci(e)
 #define _MD_EQ_CI_BASE(e) (e)
 #define _MD_EQ_ANYSTR_T anystr_entry_t
 #define _MD_EQ_ANYSTR_ENTRIES(keys) HTKEYS_ANYSTR_ENTRIES(keys)
-#define _MD_EQ_ANYSTR_IS_HOLE(e) anystr_entry_is_hole(e)
+#define _MD_EQ_ANYSTR_IS_HOLE(e) entry_is_hole((const entry_t*)(e))
 #define _MD_EQ_ANYSTR_HASH(e) ((e)->hash)
 #define _MD_EQ_ANYSTR_IDENTITY(e) ((e)->identity)
 #define _MD_EQ_ANYSTR_BASE(e) (&(e)->base)
@@ -3226,7 +3227,7 @@ _md_traverse_entries(htkeys_t* keys, visitproc visit, void* arg)
     if (kind_is_compact(keys->kind)) {
         entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
         for (entry_t* end = entry + keys->nentries; entry < end; entry++) {
-            if (!compact_entry_is_hole(entry)) {
+            if (!entry_is_hole(entry)) {
                 Py_VISIT(entry->key);
                 Py_VISIT(entry->value);
             }
@@ -3235,7 +3236,7 @@ _md_traverse_entries(htkeys_t* keys, visitproc visit, void* arg)
         anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys);
         for (anystr_entry_t* end = entry + keys->nentries; entry < end;
              entry++) {
-            if (!anystr_entry_is_hole(entry)) {
+            if (!entry_is_hole((const entry_t*)entry)) {
                 Py_VISIT(entry->base.key);
                 Py_VISIT(entry->base.value);
             }

@@ -60,7 +60,7 @@ _md_check_consistency(const MultiDictObject* md)
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < calc_usable; i++) {
             entry_t* entry = entries + i;
-            if (compact_entry_is_hole(entry)) {
+            if (entry_is_hole(entry)) {
                 _md_check_entry(entry, NULL, 0);
             } else if (ci) {
                 _md_check_entry(entry,
@@ -84,8 +84,9 @@ _md_check_consistency(const MultiDictObject* md)
     for (Py_ssize_t i = 0; !keys->maybe_dups && i < nentries; i++) {
         bool hole =
             kind_is_compact(keys->kind)
-                ? compact_entry_is_hole(HTKEYS_COMPACT_ENTRIES(keys) + i)
-                : anystr_entry_is_hole(HTKEYS_ANYSTR_ENTRIES(keys) + i);
+                ? entry_is_hole(HTKEYS_COMPACT_ENTRIES(keys) + i)
+                : entry_is_hole(
+                      (const entry_t*)(HTKEYS_ANYSTR_ENTRIES(keys) + i));
         if (hole) {
             continue;
         }
@@ -143,7 +144,7 @@ _md_dump(MultiDictObject* md)
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < keys->nentries; i++) {
             entry_t* entry = entries + i;
-            if (compact_entry_is_hole(entry)) {
+            if (entry_is_hole(entry)) {
                 _md_dump_entry(i, entry, NULL, 0);
             } else if (ci) {
                 _md_dump_entry(i,

@@ -1,0 +1,2 @@
+Merged the two per-kind checks for a deleted entry in the C extension
+into a single one -- by :user:`asvetlov`.
