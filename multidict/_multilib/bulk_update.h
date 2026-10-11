@@ -314,7 +314,7 @@ _md_post_update_delete(MultiDictObject* md, htkeys_t* keys, Py_ssize_t pos,
                 continue;                                                   \
             }                                                               \
             entry_t* entry = entries + pos;                                 \
-            if (compact_entry_is_hole(entry) ||                             \
+            if (entry_is_hole(entry) ||                                     \
                 load_value(entry) != marks->doomed[i].value) {              \
                 continue;                                                   \
             }                                                               \
@@ -362,7 +362,7 @@ _md_post_update_pass(MultiDictObject* md, reflist_t* defer,
             continue;
         }
         anystr_entry_t* entry = entries + pos;
-        if (anystr_entry_is_hole(entry) ||
+        if (entry_is_hole((const entry_t*)entry) ||
             load_value(&entry->base) != marks->doomed[i].value) {
             continue;
         }
@@ -538,7 +538,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                \
         for (Py_ssize_t pos = 0; pos < nentries; pos++) {               \
             entry_t* entry = entries + pos;                             \
-            if (compact_entry_is_hole(entry)) {                         \
+            if (entry_is_hole(entry)) {                                 \
                 continue;                                               \
             }                                                           \
             PyObject* identity = compact_entry_identity_##sfx(entry);   \
@@ -580,7 +580,7 @@ md_extend_self(MultiDictObject* md)
     anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         anystr_entry_t* entry = entries + pos;
-        if (anystr_entry_is_hole(entry)) {
+        if (entry_is_hole((const entry_t*)entry)) {
             continue;
         }
         if (md_add_with_hash(md,

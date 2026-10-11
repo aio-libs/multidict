@@ -87,7 +87,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
         entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
         for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
              entry++) {
-            if (!compact_entry_is_hole(entry)) {
+            if (!entry_is_hole(entry)) {
                 count++;
                 ret = _md_walk_visit(md,
                                      entry,
@@ -103,7 +103,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
         entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
         for (entry_t* end = entry + keys->nentries; ret > 0 && entry < end;
              entry++) {
-            if (!compact_entry_is_hole(entry)) {
+            if (!entry_is_hole(entry)) {
                 count++;
                 ret = _md_walk_visit(md,
                                      entry,
@@ -120,7 +120,7 @@ md_walk_all(MultiDictObject* md, bool with_keys, md_item_visitor_t visitor,
         for (anystr_entry_t* end = entry + keys->nentries;
              ret > 0 && entry < end;
              entry++) {
-            if (!anystr_entry_is_hole(entry)) {
+            if (!entry_is_hole((const entry_t*)entry)) {
                 count++;
                 ret = _md_walk_visit(md,
                                      &entry->base,

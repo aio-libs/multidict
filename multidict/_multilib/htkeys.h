@@ -250,15 +250,9 @@ compact_entry_identity_ci(const entry_t* entry)
    exactly when the identity is, in every kind, for a caller holding md's
    critical section; a lock-free reader checks the identity slot instead. */
 static inline bool
-compact_entry_is_hole(const entry_t* entry)
+entry_is_hole(const entry_t* entry)
 {
     return entry->key == NULL;
-}
-
-static inline bool
-anystr_entry_is_hole(const anystr_entry_t* entry)
-{
-    return entry->base.key == NULL;
 }
 
 /* The hash of a compact entry's identity, read from the key itself: a
@@ -799,7 +793,7 @@ htkeys_build_compact_indices(htkeys_t* keys, bool ci, Py_ssize_t n,
     if (ci) {
         for (Py_ssize_t ix = 0; ix != n; ix++) {
             entry_t* entry = entries + ix;
-            if (skip_holes && compact_entry_is_hole(entry)) {
+            if (skip_holes && entry_is_hole(entry)) {
                 continue;
             }
             _HTKEYS_BUILD_INDEX(keys, mask, compact_entry_hash_ci(entry), ix);
@@ -807,7 +801,7 @@ htkeys_build_compact_indices(htkeys_t* keys, bool ci, Py_ssize_t n,
     } else {
         for (Py_ssize_t ix = 0; ix != n; ix++) {
             entry_t* entry = entries + ix;
-            if (skip_holes && compact_entry_is_hole(entry)) {
+            if (skip_holes && entry_is_hole(entry)) {
                 continue;
             }
             _HTKEYS_BUILD_INDEX(keys, mask, compact_entry_hash_cs(entry), ix);
@@ -827,7 +821,7 @@ htkeys_build_anystr_indices(htkeys_t* keys, Py_ssize_t n, bool skip_holes)
     anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++) {
         anystr_entry_t* entry = entries + ix;
-        if (skip_holes && anystr_entry_is_hole(entry)) {
+        if (skip_holes && entry_is_hole((const entry_t*)entry)) {
             continue;
         }
         _HTKEYS_BUILD_INDEX(keys, mask, entry->hash, ix);
