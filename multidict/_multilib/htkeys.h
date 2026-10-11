@@ -510,7 +510,7 @@ static const htkeys_t empty_htkeys = {
     .log2_size = 0,
     .log2_index_bytes = 3,
     /* Any kind would do: with no entries there is no layout to read, and
-       a table replacing this one takes _md_next_kind(), which ignores it. */
+       a table replacing one with no entries starts compact. */
     .kind = KIND_ANYSTR,
     .maybe_dups = 0,
     .usable = 0, /* immutable */

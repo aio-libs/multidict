@@ -30,23 +30,6 @@ extern "C" {
 
 #define MD_POOLS(md) ((md)->state->htkeys_pools)
 
-/* The kind a new, empty table of md starts with. */
-static uint8_t
-_md_fresh_kind(const MultiDictObject* md)
-{
-    /* A table starts compact and moves to KIND_ANYSTR on the first key
-       that does not fit (see md_key_fits()). */
-    return KIND_COMPACT;
-}
-
-/* The kind of a table replacing `old`: a table with no entries yet starts
-   afresh, so a clear() lets md return to the compact kind. */
-static uint8_t
-_md_next_kind(const MultiDictObject* md, const htkeys_t* old)
-{
-    return old->nentries == 0 ? _md_fresh_kind(md) : old->kind;
-}
-
 /* Whether a compact table of md can hold `key`: a MultiDict's key must be
    its own identity, a CIMultiDict's an exact istr, whose identity is then
    its canonical form. */
@@ -472,7 +455,9 @@ _md_rebuild_keeping_indices(MultiDictObject* md, uint8_t log2_newsize)
     }
 
     htkeys_t* newkeys = htkeys_new_unfilled(
-        MD_POOLS(md), log2_newsize, _md_next_kind(md, oldkeys));
+        MD_POOLS(md),
+        log2_newsize,
+        oldkeys->nentries == 0 ? KIND_COMPACT : oldkeys->kind);
     if (newkeys == NULL) {
         return -1;
     }
@@ -577,10 +562,13 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
     }
     assert(log2_newsize >= HT_LOG_MINSIZE);
 
+    /* A table starts compact and moves to KIND_ANYSTR on the first key
+       that does not fit (see md_key_fits()); one with no entries yet
+       starts afresh, so a clear() lets md return to the compact kind. */
+    uint8_t kind = md->keys->nentries == 0 ? KIND_COMPACT : md->keys->kind;
     /* The copy below writes the front of the entries array, so only
        what it leaves over has to be zeroed. */
-    htkeys_t* newkeys = htkeys_new_unfilled(
-        MD_POOLS(md), log2_newsize, _md_next_kind(md, md->keys));
+    htkeys_t* newkeys = htkeys_new_unfilled(MD_POOLS(md), log2_newsize, kind);
     if (newkeys == NULL) {
         return -1;
     }
@@ -739,9 +727,9 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused, uint8_t kind)
 
         new_keys = htkeys_new(MD_POOLS(md), log2_newsize, kind);
         if (new_keys == NULL) return -1;
-    } else if (minused > 0 && kind != _md_fresh_kind(md)) {
-        /* The first insert would allocate this table anyway, but of the
-           fresh kind, only to move it at once. */
+    } else if (minused > 0 && kind != KIND_COMPACT) {
+        /* The first insert would allocate this table anyway, but compact,
+           only to move it at once. */
         new_keys = htkeys_new(MD_POOLS(md), HT_LOG_MINSIZE, kind);
         if (new_keys == NULL) return -1;
     }
@@ -3317,7 +3305,7 @@ md_clear(MultiDictObject* md)
     htkeys_t* old_keys = md->keys;
     htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
     if (UNLIKELY(md->batches != 0)) {
-        new_keys = _md_new_keys_after_holes(md, 0, _md_fresh_kind(md));
+        new_keys = _md_new_keys_after_holes(md, 0, KIND_COMPACT);
         if (new_keys == NULL) {
             return -1;
         }
