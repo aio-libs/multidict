@@ -1605,8 +1605,8 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 #ifdef Py_GIL_DISABLED
 
 /* Sentinel meaning "could not complete lock-free"; never returned to
-   md_contains()'s or md_get_one()'s own caller. Distinct from 1 (found) /
-   0 (not found) / -1 (error). */
+   md_contains()'s, md_get_one()'s or md_get_all()'s own caller. Distinct
+   from 1 (found) / 0 (not found) / -1 (error). */
 #define _MD_NEED_LOCK 2
 
 /* A compact entry keeps no hash of its own: it is read from the key, and
@@ -1886,28 +1886,36 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
 #ifdef Py_GIL_DISABLED
 
+// The caller is a registered reader of keys.
 static inline int
-_md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
-                     Py_hash_t hash, PyObject** ret)
+_md_lockfree_get(htkeys_t* keys, bool ci, PyObject* probe, PyObject* identity,
+                 Py_hash_t hash, PyObject** ret)
 {
-    bool ci = md->is_ci;
-    htkeys_t* keys = _md_reader_enter(md);
     htkeysiter_t iter;
     HTKEYSITER_INIT_ACQUIRE(&iter, keys, hash);
 
     entry_t* entry;
     int result = _md_lockfree_find(&iter, ci, probe, identity, hash, &entry);
     if (result < 0) {
-        result = _MD_NEED_LOCK;  // racing a concurrent change
-    } else if (result > 0) {
+        return _MD_NEED_LOCK;  // racing a concurrent change
+    }
+    if (result > 0) {
         PyObject* value = try_get_ref(&entry->value);
         if (value == NULL) {
-            result = _MD_NEED_LOCK;
-        } else {
-            *ret = value;
+            return _MD_NEED_LOCK;
         }
+        *ret = value;
     }
+    return result;
+}
 
+static inline int
+_md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
+                     Py_hash_t hash, PyObject** ret)
+{
+    bool ci = md->is_ci;
+    htkeys_t* keys = _md_reader_enter(md);
+    int result = _md_lockfree_get(keys, ci, probe, identity, hash, ret);
     _md_reader_exit(md, keys);
     return result;
 }
@@ -1934,7 +1942,21 @@ _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
     return result;
 }
 
-#undef _MD_NEED_LOCK
+/* getall() on a table without duplicate keys is a get(); one with them
+   takes the critical section. */
+static inline int
+_md_get_all_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
+                     Py_hash_t hash, PyObject** ret)
+{
+    bool ci = md->is_ci;
+    htkeys_t* keys = _md_reader_enter(md);
+    int result = _MD_NEED_LOCK;
+    if (!htkeys_maybe_dups(keys)) {
+        result = _md_lockfree_get(keys, ci, probe, identity, hash, ret);
+    }
+    _md_reader_exit(md, keys);
+    return result;
+}
 
 #else /* !Py_GIL_DISABLED */
 
@@ -2149,9 +2171,22 @@ _md_values_to_list(reflist_t* values, bool failed, PyObject** ret)
     return *ret != NULL ? 1 : -1;
 }
 
+// The getall() of a single value, whose reference it steals.
 static inline int
-_md_get_all_identity(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                     PyObject** ret)
+_md_single_value_list(PyObject* value, PyObject** ret)
+{
+    *ret = PyList_New(1);
+    if (*ret == NULL) {
+        Py_DECREF(value);
+        return -1;
+    }
+    PyList_SET_ITEM(*ret, 0, value);
+    return 1;
+}
+
+static inline int
+_md_get_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                   PyObject** ret)
 {
     reflist_t values;
     reflist_init(&values);
@@ -2171,16 +2206,31 @@ _md_get_all_identity(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         if (single == 0) {
             return 0;
         }
-        *ret = PyList_New(1);
-        if (*ret == NULL) {
-            Py_DECREF(value);
-            return -1;
-        }
-        PyList_SET_ITEM(*ret, 0, value);
-        return 1;
+        return _md_single_value_list(value, ret);
     }
     return _md_values_to_list(&values, count < 0, ret);
 }
+
+static inline int
+_md_get_all_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
+                     Py_hash_t hash, PyObject** ret)
+{
+#ifdef Py_GIL_DISABLED
+    PyObject* value;
+    int single = _md_get_all_lockfree(md, probe, identity, hash, &value);
+    if (single == 1) {
+        return _md_single_value_list(value, ret);
+    }
+    if (single == 0) {
+        return 0;
+    }
+#else
+    (void)probe;
+#endif
+    return _md_get_all_locked(md, identity, hash, ret);
+}
+
+#undef _MD_NEED_LOCK
 
 static int
 md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
@@ -2193,7 +2243,7 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     int found = -1;
     Py_hash_t hash = unicode_hash(identity);
     if (hash != -1) {
-        found = _md_get_all_identity(md, identity, hash, ret);
+        found = _md_get_all_identity(md, key, identity, hash, ret);
     }
     if (md_identity_is_new(md, key, identity)) {
         Py_DECREF(identity);

@@ -522,7 +522,7 @@ md_update_from_ht(MultiDictObject* md, MultiDictObject* other, UpdateOp op,
     Py_ssize_t slot = MD_SLOT_CHECK;
     if (op == Extend && same_class) {
         if (other->keys->maybe_dups) {
-            md->keys->maybe_dups = 1;
+            htkeys_set_maybe_dups(md->keys);
         } else if (md->used == 0 && !md->is_ci) {
             slot = MD_SLOT_FIND;
         }
@@ -565,7 +565,7 @@ md_extend_self(MultiDictObject* md)
         return -1;
     }
     if (md->used > 0) {
-        md->keys->maybe_dups = 1;  // every key gets a second entry
+        htkeys_set_maybe_dups(md->keys);  // every key gets a second entry
     }
     htkeys_t* keys = md->keys;
     Py_ssize_t nentries = keys->nentries;

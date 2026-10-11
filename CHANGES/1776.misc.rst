@@ -1,0 +1,3 @@
+Stopped taking the multidict's lock in :meth:`~multidict.MultiDict.getall`
+on the free-threaded build for a multidict without repeated keys, the way
+:meth:`~multidict.MultiDict.get` already avoided it -- by :user:`asvetlov`.

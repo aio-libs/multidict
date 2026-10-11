@@ -2432,6 +2432,38 @@ def test_getall_update_vs_lock_free_reads_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+def test_getall_lock_free_vs_duplicates_thread_safety(
+    any_multidict_class_name: str,
+) -> None:
+    """getall() reads a table without duplicate keys lock-free; a writer
+    adding and dropping a second value must never make it miss either."""
+    cls: type[MultiDict[int]] = getattr(multidict, any_multidict_class_name)
+    d = cls((str(i), i) for i in range(100))
+    stop = threading.Event()
+
+    def reader() -> None:
+        while not stop.is_set():
+            for i in range(100):
+                assert d.getall(str(i)) in ([i], [i, -1])
+            assert d.getall("gone", None) is None
+
+    with ThreadPoolExecutor(4) as pool:
+        readers = [pool.submit(reader) for _ in range(4)]
+        try:
+            for n in range(2000):
+                key = str(n % 100)
+                d.add(key, -1)
+                d[key] = n % 100
+                d.add(f"fresh-{n}", n)
+                del d[f"fresh-{n}"]
+        finally:
+            stop.set()
+        for f in readers:
+            f.result(timeout=60)
+    assert list(d.items()) == [(str(i), i) for i in range(100)]
+
+
+@pytest.mark.c_extension
 def test_update_vs_update_same_key_thread_safety() -> None:
     """Regression for #1483/#1489: concurrent update()/__setitem__/merge()
     on the same key must not lose it, duplicate it, or crash (GIL build:
