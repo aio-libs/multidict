@@ -2,5 +2,5 @@ Changed the C extension's update and merge helpers to take the batch's
 state as one structure, which holds the function the batch applies to
 each item, and to pass every item through one visitor; extending got
 its own helpers, which need no state. On the GIL build, constructing a
-multidict from a sequence of pairs needed 6% to 9% fewer instructions
+multidict from a sequence of pairs needed 8% to 10% fewer instructions
 -- by :user:`asvetlov`.
