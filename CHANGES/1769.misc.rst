@@ -1,0 +1,7 @@
+Stopped the C extension from computing a key's identity for
+:meth:`~multidict.MultiDict.add`, :meth:`~multidict.MultiDict.getall`,
+``md[key] = value`` and ``del md[key]`` when the key, or an
+:class:`~multidict.istr`'s canonical form, already serves as one, as
+``md[key]`` did: on the GIL build ``del md[key]`` needed 7% fewer
+instructions and ``md[key] = value`` up to 3% fewer
+-- by :user:`asvetlov`.

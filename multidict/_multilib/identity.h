@@ -290,25 +290,6 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
     return 0;
 }
 
-/* md_calc_identity_hash() plus md_calc_identity_fits()'s *pfits. */
-static inline int
-md_calc_identity_hash_fits(MultiDictObject* md, PyObject* key,
-                           PyObject** pidentity, Py_hash_t* phash, bool* pfits)
-{
-    PyObject* identity = md_calc_identity_fits(md, key, pfits);
-    if (identity == NULL) {
-        return -1;
-    }
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash == -1) {
-        Py_DECREF(identity);
-        return -1;
-    }
-    *pidentity = identity;
-    *phash = hash;
-    return 0;
-}
-
 static inline PyObject*
 md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
 {
