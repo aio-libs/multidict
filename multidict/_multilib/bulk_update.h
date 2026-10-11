@@ -474,7 +474,7 @@ _md_update_visit_own(void* user_data, PyObject* identity, Py_hash_t hash,
 
 /* One item of an update() or merge(), as an md_item_visitor_t: `identity`
    and `hash` are ignored and computed from `key`. */
-static inline int
+static int
 _md_update_visit(void* user_data, PyObject* identity, Py_hash_t hash,
                  PyObject* key, PyObject* value)
 {
@@ -514,7 +514,7 @@ md_update_from_ht(md_update_state_t* st, MultiDictObject* other)
 /* One extend() item from a source that hands over `key` and `value`,
    which go to md or are released. `*slot` is MD_SLOT_FIND while the
    source's keys are distinct and md had none of them. */
-static inline int
+static int
 _md_extend_item(MultiDictObject* md, PyObject* key, PyObject* value,
                 Py_ssize_t* slot)
 {
@@ -875,7 +875,7 @@ _md_seq_prepare(PyObject* seq, seq_iter_t* it)
     return 0;
 }
 
-static inline int
+static int
 _md_seq_next(seq_iter_t* it, Py_ssize_t i, seq_item_t* out)
 {
     PyObject* item = NULL;
@@ -923,35 +923,10 @@ _md_seq_next(seq_iter_t* it, Py_ssize_t i, seq_item_t* out)
     return 1;
 }
 
+/* The one loop over a sequence's pairs: an update() or merge() with
+   `st`, an extend() of md without. */
 static int
-md_update_from_seq(md_update_state_t* st, PyObject* seq)
-{
-    seq_iter_t it;
-    seq_item_t item;
-    int ret;
-
-    if (_md_seq_prepare(seq, &it) < 0) {
-        return -1;
-    }
-    for (Py_ssize_t i = 0;; ++i) {
-        ret = _md_seq_next(&it, i, &item);
-        if (ret <= 0) {
-            break;
-        }
-        ret = _md_update_visit(st, NULL, -1, item.key, item.value);
-        Py_DECREF(item.key);
-        Py_DECREF(item.value);
-        Py_DECREF(item.pair);
-        if (ret < 0) {
-            break;
-        }
-    }
-    Py_DECREF(it.obj);
-    return ret < 0 ? -1 : 0;
-}
-
-static int
-md_extend_from_seq(MultiDictObject* md, PyObject* seq)
+_md_seq_walk(MultiDictObject* md, md_update_state_t* st, PyObject* seq)
 {
     seq_iter_t it;
     seq_item_t item;
@@ -966,14 +941,32 @@ md_extend_from_seq(MultiDictObject* md, PyObject* seq)
         if (ret <= 0) {
             break;
         }
-        ret = _md_extend_item(md, item.key, item.value, &slot);
+        if (st == NULL) {
+            ret = _md_extend_item(md, item.key, item.value, &slot);
+        } else {
+            ret = _md_update_visit(st, NULL, -1, item.key, item.value);
+            Py_DECREF(item.key);
+            Py_DECREF(item.value);
+        }
         Py_DECREF(item.pair);
         if (ret < 0) {
             break;
         }
     }
     Py_DECREF(it.obj);
-    return ret;
+    return ret < 0 ? -1 : 0;
+}
+
+static int
+md_update_from_seq(md_update_state_t* st, PyObject* seq)
+{
+    return _md_seq_walk(st->md, st, seq);
+}
+
+static int
+md_extend_from_seq(MultiDictObject* md, PyObject* seq)
+{
+    return _md_seq_walk(md, NULL, seq);
 }
 #ifdef __cplusplus
 }

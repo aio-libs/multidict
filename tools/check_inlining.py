@@ -228,6 +228,20 @@ RULES = (
         "full layout in the same lock-free probe loops",
     ),
     Rule(
+        "md_calc_identity_hash",
+        GETITEM_ENTRIES,
+        BOTH,
+        "#1763: out of line in d[key] on GIL once a second sequence loop "
+        "grew the unit, MultiDict d[istr] +3.5%",
+    ),
+    Rule(
+        "_md_unlink_at",
+        "*",
+        BOTH,
+        "#1763: out of line under _md_del_at() on FT once a second "
+        "sequence loop grew the unit, pop() +4%",
+    ),
+    Rule(
         "_key_to_identity_cs",
         "*",
         (FT,),
