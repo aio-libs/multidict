@@ -1314,6 +1314,31 @@ multidict_proxy_tp_init(MultiDictProxyObject* self, PyObject* args,
         self, args, kwds, "multidict._multidict.MultiDictProxy", false);
 }
 
+/* Takes the target too, so that a proxy built by __new__() alone, without
+   __init__(), never forwards to a NULL multidict.  Cold: the proxy types
+   themselves are constructed through tp_vectorcall. */
+COLD static PyObject*
+_multidict_proxy_new(PyTypeObject* type, PyObject* args, PyObject* kwds,
+                     initproc init)
+{
+    PyObject* self = type->tp_alloc(type, 0);
+    if (self == NULL) {
+        return NULL;
+    }
+    if (init(self, args, kwds) < 0) {
+        Py_DECREF(self);
+        return NULL;
+    }
+    return self;
+}
+
+static PyObject*
+multidict_proxy_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    return _multidict_proxy_new(
+        type, args, kwds, (initproc)multidict_proxy_tp_init);
+}
+
 /* tp_vectorcall is never inherited: `type` is MultiDictProxy or
    CIMultiDictProxy. */
 static PyObject*
@@ -1561,7 +1586,7 @@ static PyType_Slot multidict_proxy_slots[] = {
     {Py_tp_methods, multidict_proxy_methods},
     {Py_tp_init, multidict_proxy_tp_init},
     {Py_tp_alloc, PyType_GenericAlloc},
-    {Py_tp_new, PyType_GenericNew},
+    {Py_tp_new, multidict_proxy_tp_new},
     {Py_tp_free, PyObject_GC_Del},
 
 #if PY_VERSION_HEX >= 0x030e00f0
@@ -1595,12 +1620,20 @@ cimultidict_proxy_tp_init(MultiDictProxyObject* self, PyObject* args,
         self, args, kwds, "multidict._multidict.CIMultiDictProxy", true);
 }
 
+static PyObject*
+cimultidict_proxy_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    return _multidict_proxy_new(
+        type, args, kwds, (initproc)cimultidict_proxy_tp_init);
+}
+
 PyDoc_STRVAR(cimultidict_proxy_doc,
              "Read-only proxy for CIMultiDict instance.");
 
 static PyType_Slot cimultidict_proxy_slots[] = {
     {Py_tp_doc, (void*)cimultidict_proxy_doc},
     {Py_tp_methods, multidict_proxy_methods},  // see cimultidict_slots
+    {Py_tp_new, cimultidict_proxy_tp_new},
     {Py_tp_init, cimultidict_proxy_tp_init},
 #if PY_VERSION_HEX >= 0x030e00f0
     {Py_tp_vectorcall, multidict_proxy_tp_vectorcall},

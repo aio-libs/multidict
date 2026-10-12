@@ -1544,7 +1544,15 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 
     _md: MultiDict[_V]
 
+    def __new__(cls, arg: "MultiDict[_V] | MultiDictProxy[_V]") -> Self:
+        self = super().__new__(cls)
+        self._set_target(arg)
+        return self
+
     def __init__(self, arg: "MultiDict[_V] | MultiDictProxy[_V]"):
+        self._set_target(arg)
+
+    def _set_target(self, arg: "MultiDict[_V] | MultiDictProxy[_V]") -> None:
         if not isinstance(arg, (MultiDict, MultiDictProxy)):
             raise TypeError(
                 f"ctor requires MultiDict or MultiDictProxy instance, not {type(arg)}"
@@ -1639,14 +1647,14 @@ class MultiDictProxy(_CSMixin, MultiMapping[_V]):
 class CIMultiDictProxy(_CIMixin, MultiDictProxy[_V]):
     """Read-only proxy for CIMultiDict instance."""
 
-    def __init__(self, arg: MultiDict[_V] | MultiDictProxy[_V]):
+    def _set_target(self, arg: MultiDict[_V] | MultiDictProxy[_V]) -> None:
         if not isinstance(arg, (CIMultiDict, CIMultiDictProxy)):
             raise TypeError(
                 "ctor requires CIMultiDict or CIMultiDictProxy instance"
                 f", not {type(arg)}"
             )
 
-        super().__init__(arg)
+        super()._set_target(arg)
 
     def copy(self) -> CIMultiDict[_V]:
         """Return a copy of itself."""

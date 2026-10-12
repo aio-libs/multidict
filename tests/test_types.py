@@ -167,6 +167,59 @@ def test_create_multidict_proxy_too_many_args(
         proxy_class(d, d)
 
 
+@pytest.mark.parametrize("proxy_class_name", ("MultiDictProxy", "CIMultiDictProxy"))
+def test_new_multidict_proxy_requires_target(
+    multidict_module: types.ModuleType,
+    proxy_class_name: str,
+) -> None:
+    """``__new__()`` without ``__init__()`` must not leave a proxy with
+    nothing to forward to."""
+    proxy_class = getattr(multidict_module, proxy_class_name)
+    with pytest.raises(TypeError, match="missing 1 required positional argument"):
+        proxy_class.__new__(proxy_class)
+    with pytest.raises(TypeError, match="ctor requires"):
+        proxy_class.__new__(proxy_class, {})
+
+
+def test_new_cimultidict_proxy_rejects_multidict(
+    multidict_module: types.ModuleType,
+) -> None:
+    proxy_class = multidict_module.CIMultiDictProxy
+    with pytest.raises(TypeError, match="ctor requires CIMultiDict"):
+        proxy_class.__new__(proxy_class, multidict_module.MultiDict())
+
+
+@pytest.mark.parametrize(
+    ("dict_class_name", "proxy_class_name"),
+    (("MultiDict", "MultiDictProxy"), ("CIMultiDict", "CIMultiDictProxy")),
+)
+def test_new_multidict_proxy_without_init(
+    multidict_module: types.ModuleType,
+    dict_class_name: str,
+    proxy_class_name: str,
+) -> None:
+    d = getattr(multidict_module, dict_class_name)([("k", "1"), ("k", "2")])
+    proxy_class = getattr(multidict_module, proxy_class_name)
+
+    class Sub(proxy_class):  # type: ignore[valid-type, misc]
+        def __init__(self, arg: object) -> None:
+            pass
+
+    for proxy in (
+        proxy_class.__new__(proxy_class, d),
+        proxy_class.__new__(proxy_class, proxy_class(d)),
+        Sub(d),
+    ):
+        assert len(proxy) == 2
+        assert proxy.get("k") == "1"
+        assert proxy.getone("k") == "1"
+        assert proxy["k"] == "1"
+        assert list(proxy) == list(d)
+        assert list(proxy.items()) == [("k", "1"), ("k", "2")]
+        assert "k" in proxy
+        assert "missing" not in proxy
+
+
 @pytest.mark.c_extension
 @pytest.mark.parametrize("proxy_class_name", ("MultiDictProxy", "CIMultiDictProxy"))
 def test_create_multidict_proxy_rejects_kwargs(proxy_class_name: str) -> None:
