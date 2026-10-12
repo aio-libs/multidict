@@ -394,10 +394,11 @@ multidict_getone(MultiDictObject* self, PyObject* const* args,
                &_default) < 0) {
         return NULL;
     }
-    PyObject* val = NULL;
-    if (md_get_one(self, key, &val) < 0) {
+    lookup_t found = md_get_one(self, key);
+    if (found.result < 0) {
         return NULL;
     }
+    PyObject* val = found.value;
     if (val == NULL) {
         if (_default != NULL) {
             return Py_NewRef(_default);
@@ -424,10 +425,11 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
                &_default) < 0) {
         return NULL;
     }
-    PyObject* val = NULL;
-    if (md_get_one(self, key, &val) < 0) {
+    lookup_t found = md_get_one(self, key);
+    if (found.result < 0) {
         return NULL;
     }
+    PyObject* val = found.value;
     if (val != NULL) {
         return val;
     }
@@ -500,10 +502,11 @@ multidict_mp_length(MultiDictObject* self)
 static PyObject*
 multidict_mp_subscript(MultiDictObject* self, PyObject* key)
 {
-    PyObject* val = NULL;
-    if (md_get_one(self, key, &val) < 0) {
+    lookup_t found = md_get_one(self, key);
+    if (found.result < 0) {
         return NULL;
     }
+    PyObject* val = found.value;
     if (val == NULL) {
         PyErr_SetObject(PyExc_KeyError, key);
     }

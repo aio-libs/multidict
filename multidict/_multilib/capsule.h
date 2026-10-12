@@ -202,7 +202,9 @@ MultiDict_GetItem(void* state_, PyObject* self, PyObject* key,
     *result = NULL;
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
-    return md_get_one(md, key, result);
+    lookup_t found = md_get_one(md, key);
+    *result = found.value;
+    return found.result;
 }
 
 /* ================= Setters ================= */
@@ -303,9 +305,10 @@ COLD static Py_ssize_t
 _md_foreach_key(MultiDictObject* md, PyObject* key,
                 MultiDict_ItemVisitor visitor, void* user_data)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+    identity_hash_t ih = md_calc_identity_hash(md, key);
+    PyObject* identity = ih.identity;
+    Py_hash_t hash = ih.hash;
+    if (identity == NULL) {
         return -1;
     }
     Py_ssize_t count;
