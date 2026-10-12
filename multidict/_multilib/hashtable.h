@@ -1079,12 +1079,13 @@ _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             keys = md->keys;
         } else {
             _md_fill_str_entry(keys, identity, key, value);
-            HTKEYS_PUBLISH_INDEX(keys, hashpos, keys->nentries);
+            HTKEYS_PUBLISH_INDEX(
+                keys, keys->log2_size, hashpos, keys->nentries);
             return keys;
         }
     }
     _md_fill_anystr_entry(keys, hash, identity, key, value);
-    HTKEYS_PUBLISH_INDEX(keys, hashpos, keys->nentries);
+    HTKEYS_PUBLISH_INDEX(keys, keys->log2_size, hashpos, keys->nentries);
     return keys;
 }
 
@@ -1260,7 +1261,8 @@ _md_unlink_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry,
         entry->key = NULL;
     }
     reset_value(entry);
-    HTKEYS_SET_INDEX(md->keys, (Py_ssize_t)slot, DKIX_DUMMY);
+    HTKEYS_SET_INDEX(
+        md->keys, md->keys->log2_size, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 }
 
@@ -1382,7 +1384,7 @@ _md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
     }
     PyObject* value = load_value(entry);
     reset_value(entry);
-    HTKEYS_SET_INDEX(keys, (Py_ssize_t)slot, DKIX_DUMMY);
+    HTKEYS_SET_INDEX(keys, keys->log2_size, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 
     // an exact str: freeing it runs no code
