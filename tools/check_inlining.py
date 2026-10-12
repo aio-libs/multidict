@@ -156,13 +156,7 @@ RULES = (
         "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
     ),
     Rule(
-        "compact_entry_is_hole",
-        "*",
-        BOTH,
-        "#1674: a single load tested once per entry in every walk",
-    ),
-    Rule(
-        "anystr_entry_is_hole",
+        "entry_is_hole",
         "*",
         BOTH,
         "#1674: a single load tested once per entry in every walk",
@@ -226,6 +220,21 @@ RULES = (
         (FT,),
         "#1653: pinned with _compact_entry_matches_cs, its twin for the "
         "full layout in the same lock-free probe loops",
+    ),
+    Rule(
+        "md_calc_identity_hash",
+        tuple(e for e in GETITEM_ENTRIES if e != "MultiDict_GetItem"),
+        BOTH,
+        "#1763: out of line in d[key] on GIL with GCC 15 once the bulk "
+        "update grew, MultiDict d[istr] +3.5%; GCC 13 keeps it out of "
+        "MultiDict_GetItem() already",
+    ),
+    Rule(
+        "_md_unlink_at",
+        "*",
+        (GIL,),
+        "#1763: out of line under _md_del_at() on FT with GCC 15 once the "
+        "bulk update grew, pop() +4%; GCC 13 FT has the copy already",
     ),
     Rule(
         "_key_to_identity_cs",
