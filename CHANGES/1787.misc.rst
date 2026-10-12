@@ -1,0 +1,2 @@
+Moved the C extension's equality comparison out of the hash table
+header into a header of its own -- by :user:`asvetlov`.

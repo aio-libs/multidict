@@ -5,6 +5,7 @@
 #include "_multilib/capsule.h"
 #include "_multilib/debug.h"
 #include "_multilib/dict.h"
+#include "_multilib/eq.h"
 #include "_multilib/hashtable.h"
 #include "_multilib/istr.h"
 #include "_multilib/iter.h"
