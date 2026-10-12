@@ -222,6 +222,21 @@ RULES = (
         "full layout in the same lock-free probe loops",
     ),
     Rule(
+        "md_calc_identity_hash",
+        tuple(e for e in GETITEM_ENTRIES if e != "MultiDict_GetItem"),
+        BOTH,
+        "#1763: out of line in d[key] on GIL with GCC 15 once the bulk "
+        "update grew, MultiDict d[istr] +3.5%; GCC 13 keeps it out of "
+        "MultiDict_GetItem() already",
+    ),
+    Rule(
+        "_md_unlink_at",
+        "*",
+        (GIL,),
+        "#1763: out of line under _md_del_at() on FT with GCC 15 once the "
+        "bulk update grew, pop() +4%; GCC 13 FT has the copy already",
+    ),
+    Rule(
         "_key_to_identity_cs",
         "*",
         (FT,),
