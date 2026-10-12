@@ -2804,10 +2804,19 @@ _md_replace_watched(MultiDictObject* md, PyObject* key, PyObject* value,
     return ret;
 }
 
-static inline int
-_md_replace_identity(MultiDictObject* md, PyObject* key, PyObject* value,
-                     PyObject* identity, Py_hash_t hash)
+// See md_del() on the borrowed identity.
+static int
+md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
 {
+    PyObject* identity = md_identity_or_new(md, key);
+    if (identity == NULL) {
+        return -1;
+    }
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash == -1) {
+        md_identity_release(md, key, identity);
+        return -1;
+    }
     // The one replaced entry's refs; later matches go to dups
     PyObject* old_key = NULL;
     PyObject* old_value = NULL;
@@ -2842,22 +2851,6 @@ _md_replace_identity(MultiDictObject* md, PyObject* key, PyObject* value,
         _md_replace_free_dups(dups);
     }
     md_watch_flush_if(md, flush);
-    return ret;
-}
-
-// See md_del() on the borrowed identity.
-static int
-md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
-{
-    PyObject* identity = md_identity_or_new(md, key);
-    if (identity == NULL) {
-        return -1;
-    }
-    int ret = -1;
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash != -1) {
-        ret = _md_replace_identity(md, key, value, identity, hash);
-    }
     md_identity_release(md, key, identity);
     return ret;
 }
