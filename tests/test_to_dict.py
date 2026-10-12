@@ -276,7 +276,7 @@ def test_to_dict_refuses_mutation_from_key_hash(
 def test_to_dict_refuses_mutation_from_a_collection(
     any_multidict_class: type[MultiDict[object]],
 ) -> None:
-    """On 3.10 and 3.11, allocating the result's lists can run a collection
+    """On 3.11, allocating the result's lists can run a collection
     whose finalizers mutate the multidict; that is refused. Each round
     arms the collection one allocation later, so some land inside the
     call and some after it."""

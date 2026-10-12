@@ -31,7 +31,7 @@ _md_to_dict_append(MultiDictObject* md, PyObject** plst, entry_t* e,
     if (*plst == NULL) {
         return -1;
     }
-    /* On 3.10 and 3.11, allocating a tracked object can run a collection
+    /* On 3.11, allocating a tracked object can run a collection
        whose finalizers mutate md: refused as below, before `e` is read
        again. */
     if (md_check_version(md, version) < 0) {

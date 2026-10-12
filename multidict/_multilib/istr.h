@@ -29,7 +29,7 @@ istr_tp_dealloc(istrobject* self)
    dealloc frees it with: PyObject_Malloc() up to 3.12, PyMem_Malloc()
    from 3.13. The C extension is never built for PyPy.
 
-   Checked for 3.10 to 3.15 against their unicode_subtype_new() and
+   Checked for 3.11 to 3.15 against their unicode_subtype_new() and
    unicode_dealloc(). A newer CPython must be checked the same way, and
    the tests run under PYTHONMALLOC=debug, before the limit is raised. */
 #if PY_VERSION_HEX >= 0x03100000

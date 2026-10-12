@@ -1212,8 +1212,8 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
     baseline = [sys.getrefcount(obj) for obj in keys + values]
 
     # Fail the n-th allocation, for each n, until the call gets through.
-    # Some failures are swallowed inside CPython (3.10's length hint
-    # lookup, for one), so only a success after a failure ends the loop.
+    # Some failures are swallowed inside CPython, so only a success
+    # after a failure ends the loop.
     n = 0
     failures = 0
     while True:
@@ -1479,7 +1479,7 @@ def test_base_init_keeps_case_mode(multidict_module: ModuleType, is_ci: bool) ->
 def test_popitem_collection_mutates(
     any_multidict_class: type[MultiDict[object]], delay: int
 ) -> None:
-    """On 3.10 and 3.11, building popitem()'s result can run a collection
+    """On 3.11, building popitem()'s result can run a collection
     whose finalizers mutate the multidict. `delay` moves the collection
     across the allocations popitem() makes."""
     old = [(f"k{i}", [i]) for i in range(10)]
