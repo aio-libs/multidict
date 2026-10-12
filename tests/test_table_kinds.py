@@ -186,8 +186,10 @@ def test_lookups_race_deletes_that_free_keys() -> None:
             for i, k in enumerate(probes):
                 assert d.get(k) == i
                 assert d[k] == i
+                assert d.getall(k) == [i]
                 assert k in d
             assert d.get("gone") is None
+            assert d.getall("gone", None) is None
             assert "gone" not in d
 
     with ThreadPoolExecutor(4) as pool:
@@ -379,8 +381,10 @@ def test_ci_lookups_race_deletes_that_free_keys() -> None:
             for i, k in enumerate(ISTR_KEYS):
                 assert d.get(k) == i
                 assert d[k] == i
+                assert d.getall(k) == [i]
                 assert k in d
             assert d.get("gone") is None
+            assert d.getall("gone", None) is None
             assert "gone" not in d
 
     with ThreadPoolExecutor(4) as pool:

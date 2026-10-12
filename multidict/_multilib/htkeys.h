@@ -334,6 +334,28 @@ _MD_DEFINE_INDEX_ACCESSORS(32)
 _MD_DEFINE_INDEX_ACCESSORS(64)
 #undef _MD_DEFINE_INDEX_ACCESSORS
 
+/* A lock-free getall() reads maybe_dups, which inserts set on a live
+   table. */
+static inline bool
+htkeys_maybe_dups(const htkeys_t* keys)
+{
+#ifdef Py_GIL_DISABLED
+    return atomic_load_int8_relaxed((const int8_t*)&keys->maybe_dups) != 0;
+#else
+    return keys->maybe_dups != 0;
+#endif
+}
+
+static inline void
+htkeys_set_maybe_dups(htkeys_t* keys)
+{
+#ifdef Py_GIL_DISABLED
+    atomic_store_int8_relaxed((int8_t*)&keys->maybe_dups, 1);
+#else
+    keys->maybe_dups = 1;
+#endif
+}
+
 #if SIZEOF_VOID_P > 4
 #define _HTKEYS_IS_INDEX64(log2size) ((log2size) >= 32)
 #else
@@ -891,7 +913,7 @@ _htkeys_find_empty_slot_noting_dups(htkeys_t* keys, Py_hash_t hash, bool ci)
     if (ix == DKIX_EMPTY) {
         return (Py_ssize_t)i;
     }
-    keys->maybe_dups = 1;
+    htkeys_set_maybe_dups(keys);
     return htkeys_find_empty_slot(keys, hash);
 }
 
