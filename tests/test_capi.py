@@ -247,6 +247,29 @@ def test_md_getitem_ciproxy(api: object) -> None:
     assert api.md_getitem(proxy, "key") == (True, "value")
 
 
+@pytest.mark.parametrize(
+    "dict_cls, proxy_cls",
+    [
+        (multidict.MultiDict, multidict.MultiDictProxy),
+        (multidict.CIMultiDict, multidict.CIMultiDictProxy),
+    ],
+    ids=["proxy", "ciproxy"],
+)
+def test_proxy_new_without_init(
+    api: object,
+    dict_cls: type[MultiDictStr],
+    proxy_cls: type[multidict.MultiDictProxy[str]],
+) -> None:
+    with pytest.raises(TypeError, match="missing 1 required positional argument"):
+        proxy_cls.__new__(proxy_cls)  # type: ignore[call-arg]
+    md = dict_cls([("key", "value1"), ("key", "value2")])
+    proxy = proxy_cls.__new__(proxy_cls, md)
+    assert api.md_size(proxy) == 2
+    assert api.md_contains(proxy, "key") is True
+    assert api.md_getitem(proxy, "key") == (True, "value1")
+    assert api.md_getversion(proxy) == api.md_getversion(md)
+
+
 def test_md_getitem_missing(api: object) -> None:
     # Unlike PyObject *self[key], this reports "not found" via the return
     # code rather than raising KeyError -- the PyDict_GetItemRef design.
