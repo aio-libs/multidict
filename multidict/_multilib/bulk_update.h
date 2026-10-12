@@ -488,9 +488,7 @@ _md_update_key(md_update_state_t* st, PyObject* key, PyObject* value)
         ret = st->action(
             st, hash, identity, key, value, md_key_fits(md, key, identity));
     }
-    if (md_identity_is_new(md, key, identity)) {
-        Py_DECREF(identity);
-    }
+    md_identity_release(md, key, identity);
     return ret < 0 ? -1 : 0;
 }
 
