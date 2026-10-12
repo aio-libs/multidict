@@ -8,6 +8,7 @@ extern "C" {
 #include "debug.h"
 #include "dict.h"
 #include "hashtable.h"
+#include "repr.h"
 #include "state.h"
 #include "unpack.h"
 
