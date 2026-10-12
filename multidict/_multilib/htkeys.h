@@ -591,7 +591,7 @@ htkeys_size_fits(uint8_t log2_size)
 
 /* The same number as _htkeys_alloc_size(keys->log2_size), read back off
    the table rather than recomputed. */
-static inline Py_ssize_t
+static Py_ssize_t
 htkeys_sizeof(const htkeys_t* keys)
 {
     Py_ssize_t usable =
