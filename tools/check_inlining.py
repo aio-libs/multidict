@@ -196,12 +196,6 @@ RULES = (
         "MultiDict(items) item on FT",
     ),
     Rule(
-        "_md_del_at",
-        "*",
-        BOTH,
-        "#1604: pinned after budget respend, popitem +1% on FT",
-    ),
-    Rule(
         "_compact_entry_matches_cs",
         "*",
         (FT,),
@@ -233,7 +227,7 @@ RULES = (
         "_md_unlink_at",
         "*",
         (GIL,),
-        "#1763: out of line under _md_del_at() on FT with GCC 15 once the "
+        "#1763: out of line on FT with GCC 15 once the "
         "bulk update grew, pop() +4%; GCC 13 FT has the copy already",
     ),
     Rule(

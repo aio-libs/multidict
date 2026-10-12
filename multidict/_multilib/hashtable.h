@@ -1158,24 +1158,27 @@ _md_grow_for_upd(MultiDictObject* md, update_marks_t* marks)
 }
 
 static int
-_md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
-                           PyObject* identity, PyObject* key, PyObject* value,
-                           update_marks_t* marks, bool fits, Py_ssize_t slot)
+md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
+               PyObject* key, PyObject* value, update_marks_t* marks,
+               bool fits, Py_ssize_t slot)
 {
+    Py_INCREF(identity);
+    Py_INCREF(key);
+    Py_INCREF(value);
     htkeys_t* keys = md->keys;
     // a reserve still pending is no more than the room left
     if (keys->usable <= marks->reserve || keys == &empty_htkeys) {
         if (_md_grow_for_upd(md, marks) < 0) {
-            return -1;
+            goto fail;
         }
         keys = md->keys;
     }
     if (bitmap_set(&marks->updated, keys->nentries) < 0) {
-        return -1;
+        goto fail;
     }
     keys = _md_store_new_entry(md, hash, identity, key, value, fits, slot);
     if (keys == NULL) {
-        return -1;
+        goto fail;
     }
 
     bump_version(md);
@@ -1185,42 +1188,13 @@ _md_add_for_upd_steal_refs(MultiDictObject* md, Py_hash_t hash,
     md_watch_record(
         md, MultiDict_EVENT_ADDED, identity, hash, key, value, NULL);
     return 0;
-}
-
-static int
-md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-               PyObject* key, PyObject* value, update_marks_t* marks,
-               bool fits, Py_ssize_t slot)
-{
-    Py_INCREF(identity);
-    Py_INCREF(key);
-    Py_INCREF(value);
-    if (_md_add_for_upd_steal_refs(
-            md, hash, identity, key, value, marks, fits, slot) < 0) {
-        /* Not deferred: the caller still holds its own references, so
-           none of these can drop to zero and run __del__. */
-        Py_DECREF(identity);
-        Py_DECREF(key);
-        Py_DECREF(value);
-        return -1;
-    }
-    return 0;
-}
-
-static inline int
-_md_add_identity(MultiDictObject* md, PyObject* key, PyObject* value,
-                 PyObject* identity, Py_hash_t hash, bool fits)
-{
-    int ret;
-    bool flush;
-    Py_BEGIN_CRITICAL_SECTION(md);
-    ret =
-        md_add_with_hash(md, hash, identity, key, value, fits, MD_SLOT_CHECK);
-    ASSERT_CONSISTENT(md);
-    flush = md_watch_pending(md);
-    Py_END_CRITICAL_SECTION();
-    md_watch_flush_if(md, flush);
-    return ret;
+fail:
+    /* Not deferred: the caller still holds its own references, so
+       none of these can drop to zero and run __del__. */
+    Py_DECREF(identity);
+    Py_DECREF(key);
+    Py_DECREF(value);
+    return -1;
 }
 
 /* A borrowed identity is the key itself, which fits a compact table only
@@ -1236,8 +1210,15 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
     int ret = -1;
     Py_hash_t hash = unicode_hash(identity);
     if (hash != -1) {
-        ret = _md_add_identity(
-            md, key, value, identity, hash, md_key_fits(md, key, identity));
+        bool fits = md_key_fits(md, key, identity);
+        bool flush;
+        Py_BEGIN_CRITICAL_SECTION(md);
+        ret = md_add_with_hash(
+            md, hash, identity, key, value, fits, MD_SLOT_CHECK);
+        ASSERT_CONSISTENT(md);
+        flush = md_watch_pending(md);
+        Py_END_CRITICAL_SECTION();
+        md_watch_flush_if(md, flush);
     }
     if (md_identity_is_new(md, key, identity)) {
         Py_DECREF(identity);
@@ -1246,9 +1227,27 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
 }
 
 /* Removes entry, whose index is at `slot`, and hands its references to the
-   caller; see _md_del_at() on the order. A compact entry has no identity
-   reference of its own, so *pidentity is NULL for one. `kind` is
-   md->keys->kind, read once by the caller. */
+   caller. A compact entry has no identity reference of its own, so
+   *pidentity is NULL for one. `kind` is md->keys->kind, read once by the
+   caller.
+
+   Every field is nulled out and md's bookkeeping (index, used) finished
+   before the caller drops any reference. Freeing an object can run a
+   finalizer or weakref callback, which can hit a safepoint and
+   transiently suspend this thread's critical section (PyMem_Malloc
+   itself never does, see #1469), letting a concurrent resize run in
+   between. If that resize caught this entry with some fields already
+   NULL and others (or md->used, or the index) not yet updated, it would
+   see md in a state that is neither "entry still there" nor "entry gone"
+   and corrupt itself. Handing the objects to the caller, which decrefs
+   them only once md is already fully self-consistent, means a concurrent
+   resize always sees a coherent view. The GIL build needs the same order
+   for its own reason: a __del__ there can release the GIL
+   (Py_BEGIN_CRITICAL_SECTION is a no-op on that build), which would
+   otherwise expose a half-deleted entry -- see #1489. entry->key is
+   read/written as a plain pointer: unlike identity/value, no lock-free
+   reader ever touches it (see the identity slot comment in
+   freethreading.h). */
 static inline void
 _md_unlink_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry,
               PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
@@ -1271,39 +1270,7 @@ _md_unlink_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry,
     add_used(md, -1);
 }
 
-static inline void
-_md_del_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry)
-{
-    assert(md->keys != &empty_htkeys);
-    /* Null out every field and finish md's bookkeeping (index, used)
-       before dropping any reference. Freeing an object below can run
-       a finalizer or weakref callback, which can hit a safepoint and
-       transiently suspend this thread's critical section (PyMem_Malloc
-       itself never does, see #1469), letting a concurrent resize run
-       in between. If that resize caught this entry with some fields
-       already NULL and others (or md->used, or the index) not yet
-       updated, it would see md in a state that is neither "entry
-       still there" nor "entry gone" and corrupt itself. Saving the
-       objects locally and decref'ing them only once md is already
-       fully self-consistent means a concurrent resize -- however far
-       into this function it catches us -- always sees a coherent
-       view. The GIL build needs the same order for its own reason: a
-       __del__ there can release the GIL (Py_BEGIN_CRITICAL_SECTION is
-       a no-op on that build), which would otherwise expose a
-       half-deleted entry -- see #1489. entry->key is read/written as
-       a plain pointer: unlike identity/value, no lock-free reader
-       ever touches it (see the identity slot comment in freethreading.h). */
-    PyObject* identity;
-    PyObject* key;
-    PyObject* value;
-    _md_unlink_at(md, kind, slot, entry, &identity, &key, &value);
-
-    Py_XDECREF(identity);
-    Py_XDECREF(key);
-    Py_XDECREF(value);
-}
-
-/* _md_del_at() variant that defers the decref (see reflist_t);
+/* Deletes the entry at `slot`, deferring the decref (see reflist_t);
  * used by _md_replace_locked()'s duplicate-cleanup path on both builds. */
 static int
 md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
@@ -1368,8 +1335,8 @@ _removed_pairs_spill(removed_pairs_t* removed, PyObject* key, PyObject* value)
     return ret;
 }
 
-/* _md_del_at() variant that hands the key and value to `removed`. Not
-   through _md_unlink_at(), which costs del d[key] up to 3 instructions. */
+/* Deletes the entry at `slot`, handing the key and value to `removed`.
+   Not through _md_unlink_at(), which costs del d[key] up to 3 instructions. */
 static inline int
 _md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
                 entry_t* entry, removed_pairs_t* removed)
@@ -2108,7 +2075,19 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                             value,
                             NULL);
         }
-        _md_del_at(md, md->keys->kind, iter.slot, entry);
+        PyObject* old_identity;
+        PyObject* old_key;
+        PyObject* old_value;
+        _md_unlink_at(md,
+                      md->keys->kind,
+                      iter.slot,
+                      entry,
+                      &old_identity,
+                      &old_key,
+                      &old_value);
+        Py_XDECREF(old_identity);
+        Py_XDECREF(old_key);
+        Py_XDECREF(old_value);
         *ret = value;
         bump_version(md);
         ASSERT_CONSISTENT(md);

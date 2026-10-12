@@ -712,9 +712,6 @@ unicode_hash(PyObject* o)
 #endif
     if (hash == -1) {
         hash = PyUnicode_Type.tp_hash(o);
-        if (hash == -1) {
-            return -1;
-        }
     }
     return hash;
 }
