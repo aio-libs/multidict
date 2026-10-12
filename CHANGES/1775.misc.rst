@@ -1,0 +1,5 @@
+Sped up ``len(md.keys())`` and iterating over the keys of a
+:class:`~multidict.MultiDict` or :class:`~multidict.CIMultiDict` that
+holds a key more than once by 4% to 13%, by keeping the duplicate check's
+probe state out of memory for an entry found in its first slot
+-- by :user:`asvetlov`.
