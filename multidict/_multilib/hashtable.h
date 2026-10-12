@@ -979,41 +979,6 @@ md_keys_len(MultiDictObject* md)
     return ret;
 }
 
-/* Fill the entry past every live one, which the caller indexes only
-   afterwards with HTKEYS_PUBLISH_INDEX(). Until then no lock-free reader
-   can reach the entry, so plain stores are enough; mark_shared() still
-   lets a reader take a reference once it does. The entry is carved out
-   of the zeroed tail, so nothing here has an old reference to drop. */
-static inline void
-_md_fill_anystr_entry(htkeys_t* keys, Py_hash_t hash, PyObject* identity,
-                      PyObject* key, PyObject* value)
-{
-    anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys) + keys->nentries;
-    assert(entry->identity == NULL && entry->base.key == NULL &&
-           entry->base.value == NULL);
-    mark_shared(identity);
-    mark_shared(value);
-    entry->base.key = key;
-    entry->base.value = value;
-    entry->hash = hash;
-    entry->identity = identity;
-}
-
-/* For both compact kinds: the key's reference keeps the identity alive,
-   being either the key itself or the istr's canonical form. */
-static inline void
-_md_fill_str_entry(htkeys_t* keys, PyObject* identity, PyObject* key,
-                   PyObject* value)
-{
-    entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys) + keys->nentries;
-    assert(entry->key == NULL && entry->value == NULL);
-    mark_shared(key);
-    mark_shared(value);
-    entry->key = key;
-    entry->value = value;
-    Py_DECREF(identity);
-}
-
 /* md_to_anystr()'s loop, `sfx` being cs or ci as for
    compact_key_identity_cs(). */
 #define _MD_TO_ANYSTR_LOOP(sfx)                                         \
@@ -1102,7 +1067,13 @@ _md_prepare_add(MultiDictObject* md, bool fits)
 }
 
 /* Stores a new entry at the end of md's table, which _md_prepare_add()
-   has readied for it. Returns the table. */
+   has readied for it, past every live one. Until HTKEYS_PUBLISH_INDEX()
+   no lock-free reader can reach the entry, so plain stores are enough;
+   mark_shared() still lets a reader take a reference once it does. The
+   entry is carved out of the zeroed tail, so nothing here has an old
+   reference to drop. A compact entry drops the identity it was given: the
+   key's reference keeps it alive, being either the key itself or the
+   istr's canonical form. Returns the table. */
 static inline htkeys_t*
 _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                     PyObject* key, PyObject* value, Py_ssize_t slot)
@@ -1114,9 +1085,23 @@ _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             : htkeys_find_empty_slot(keys, hash);
     if (kind_is_compact(keys->kind)) {
         assert(md_key_fits(md, key, identity));
-        _md_fill_str_entry(keys, identity, key, value);
+        entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys) + keys->nentries;
+        assert(entry->key == NULL && entry->value == NULL);
+        mark_shared(key);
+        mark_shared(value);
+        entry->key = key;
+        entry->value = value;
+        Py_DECREF(identity);
     } else {
-        _md_fill_anystr_entry(keys, hash, identity, key, value);
+        anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys) + keys->nentries;
+        assert(entry->identity == NULL && entry->base.key == NULL &&
+               entry->base.value == NULL);
+        mark_shared(identity);
+        mark_shared(value);
+        entry->base.key = key;
+        entry->base.value = value;
+        entry->hash = hash;
+        entry->identity = identity;
     }
     HTKEYS_PUBLISH_INDEX(keys, keys->log2_size, hashpos, keys->nentries);
     return keys;
