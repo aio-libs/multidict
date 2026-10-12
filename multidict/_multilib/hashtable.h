@@ -588,12 +588,6 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
 }
 
 static int
-_md_resize_for_add(MultiDictObject* md)
-{
-    return _md_rebuild(md, calculate_log2_keysize(_growth_rate(md)));
-}
-
-static int
 md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 {
     if (md->keys->usable >= extra_size) {
@@ -622,12 +616,14 @@ md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
 
 /* md_reserve() into a KIND_ANYSTR table: grows and moves a compact table
    in one rebuild, where md_reserve() and then md_to_anystr() would copy
-   it twice. Holes are dropped, so no batch may be in flight. */
+   it twice. Holes are dropped, so with a batch in flight there must be
+   none. */
 static int
 _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
 {
     htkeys_t* oldkeys = md->keys;
-    assert(md->batches == 0 && kind_is_compact(oldkeys->kind));
+    assert(md->batches == 0 || oldkeys->nentries == md->used);
+    assert(kind_is_compact(oldkeys->kind) || oldkeys->nentries == 0);
     if (!htkeys_size_fits(log2_newsize)) {
         PyErr_NoMemory();
         return -1;
@@ -650,6 +646,21 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
 }
 
 #undef _MD_REBUILD_TO_ANYSTR_LOOP
+
+/* _md_rebuild() for an add of a key that fits a compact table or not:
+   one that does not moves md to KIND_ANYSTR in the same rebuild. A table
+   with no entries counts as compact, since _md_rebuild() would restart
+   it so. */
+static int
+_md_grow_for_add(MultiDictObject* md, uint8_t log2_newsize, bool fits)
+{
+    htkeys_t* keys = md->keys;
+    if (!fits && (keys->nentries == 0 || kind_is_compact(keys->kind)) &&
+        (md->batches == 0 || keys->nentries == md->used)) {
+        return _md_rebuild_to_anystr(md, log2_newsize);
+    }
+    return _md_rebuild(md, log2_newsize);
+}
 
 /* md_reserve() for extend(), update() or merge(), before their batch
    starts. Keyword names are plain str, which never fit a CIMultiDict's
@@ -1062,34 +1073,51 @@ md_to_anystr(MultiDictObject* md)
 #define MD_SLOT_CHECK ((Py_ssize_t) - 1)
 #define MD_SLOT_FIND ((Py_ssize_t) - 2)
 
-/* Stores a new entry at the end of md's table, after moving the table
-   to KIND_ANYSTR if the key does not fit a compact one; the move keeps
-   every index, so the slot found first stays valid. One test on the kind
-   covers both the fit and the layout. Returns the table, NULL on error. */
+/* Whether md's table must change before an add: it is full, or it is
+   compact and the key does not fit. */
+static inline bool
+_md_add_needs_new_table(MultiDictObject* md, Py_ssize_t room, bool fits)
+{
+    htkeys_t* keys = md->keys;
+    return keys->usable <= room || keys == &empty_htkeys ||
+           (UNLIKELY(!fits) && kind_is_compact(keys->kind));
+}
+
+/* Makes room in md's table for one more entry, of a key that fits a
+   compact table or not, in one rebuild where both are due. */
+COLD static int
+_md_prepare_add(MultiDictObject* md, bool fits)
+{
+    htkeys_t* keys = md->keys;
+    if (keys->usable <= 0 || keys == &empty_htkeys) {
+        uint8_t log2_newsize = calculate_log2_keysize(_growth_rate(md));
+        if (_md_grow_for_add(md, log2_newsize, fits) < 0) {
+            return -1;
+        }
+    }
+    if (!fits && kind_is_compact(md->keys->kind)) {
+        return md_to_anystr(md);
+    }
+    return 0;
+}
+
+/* Stores a new entry at the end of md's table, which _md_prepare_add()
+   has readied for it. Returns the table. */
 static inline htkeys_t*
 _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-                    PyObject* key, PyObject* value, bool fits, Py_ssize_t slot)
+                    PyObject* key, PyObject* value, Py_ssize_t slot)
 {
-    assert(fits == md_key_fits(md, key, identity));
     htkeys_t* keys = md->keys;
     Py_ssize_t hashpos =
         slot == MD_SLOT_CHECK
             ? htkeys_find_empty_slot_noting_dups(keys, hash, md->is_ci)
             : htkeys_find_empty_slot(keys, hash);
     if (kind_is_compact(keys->kind)) {
-        if (UNLIKELY(!fits)) {
-            if (md_to_anystr(md) < 0) {
-                return NULL;
-            }
-            keys = md->keys;
-        } else {
-            _md_fill_str_entry(keys, identity, key, value);
-            HTKEYS_PUBLISH_INDEX(
-                keys, keys->log2_size, hashpos, keys->nentries);
-            return keys;
-        }
+        assert(md_key_fits(md, key, identity));
+        _md_fill_str_entry(keys, identity, key, value);
+    } else {
+        _md_fill_anystr_entry(keys, hash, identity, key, value);
     }
-    _md_fill_anystr_entry(keys, hash, identity, key, value);
     HTKEYS_PUBLISH_INDEX(keys, keys->log2_size, hashpos, keys->nentries);
     return keys;
 }
@@ -1099,19 +1127,12 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
                             PyObject* identity, PyObject* key, PyObject* value,
                             bool fits, Py_ssize_t slot)
 {
-    htkeys_t* keys = md->keys;
-    if (keys->usable <= 0 || keys == &empty_htkeys) {
-        /* Need to resize. */
-        if (_md_resize_for_add(md) < 0) {
-            return -1;
-        }
-        keys = md->keys;  // updated by resizing
-    }
-
-    keys = _md_store_new_entry(md, hash, identity, key, value, fits, slot);
-    if (keys == NULL) {
+    assert(fits == md_key_fits(md, key, identity));
+    if (_md_add_needs_new_table(md, 0, fits) &&
+        _md_prepare_add(md, fits) < 0) {
         return -1;
     }
+    htkeys_t* keys = _md_store_new_entry(md, hash, identity, key, value, slot);
 
     bump_version(md);
     add_used(md, 1);
@@ -1139,19 +1160,19 @@ md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return 0;
 }
 
-/* Room for a batch's add: on the first add that is short of the room
-   update_marks_init() asked for, all of it. */
+/* _md_prepare_add() for a batch's add: on the first add that is short of
+   the room update_marks_init() asked for, all of it. */
 static int
-_md_grow_for_upd(MultiDictObject* md, update_marks_t* marks)
+_md_prepare_add_for_upd(MultiDictObject* md, update_marks_t* marks, bool fits)
 {
     Py_ssize_t extra = marks->reserve;
     marks->reserve = 0;
-    if (extra > 0 && md_reserve(md, extra) < 0) {
+    if (extra > 0 && md->keys->usable < extra &&
+        _md_grow_for_add(md, estimate_log2_keysize(extra + md->used), fits) <
+            0) {
         return -1;
     }
-    htkeys_t* keys = md->keys;
-    if ((keys->usable <= 0 || keys == &empty_htkeys) &&
-        _md_resize_for_add(md) < 0) {
+    if (_md_prepare_add(md, fits) < 0) {
         return -1;
     }
     return update_marks_sync(marks, md);
@@ -1162,24 +1183,19 @@ md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                PyObject* key, PyObject* value, update_marks_t* marks,
                bool fits, Py_ssize_t slot)
 {
+    assert(fits == md_key_fits(md, key, identity));
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
-    htkeys_t* keys = md->keys;
     // a reserve still pending is no more than the room left
-    if (keys->usable <= marks->reserve || keys == &empty_htkeys) {
-        if (_md_grow_for_upd(md, marks) < 0) {
-            goto fail;
-        }
-        keys = md->keys;
-    }
-    if (bitmap_set(&marks->updated, keys->nentries) < 0) {
+    if (_md_add_needs_new_table(md, marks->reserve, fits) &&
+        _md_prepare_add_for_upd(md, marks, fits) < 0) {
         goto fail;
     }
-    keys = _md_store_new_entry(md, hash, identity, key, value, fits, slot);
-    if (keys == NULL) {
+    if (bitmap_set(&marks->updated, md->keys->nentries) < 0) {
         goto fail;
     }
+    htkeys_t* keys = _md_store_new_entry(md, hash, identity, key, value, slot);
 
     bump_version(md);
     add_used(md, 1);
