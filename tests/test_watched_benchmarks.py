@@ -3,7 +3,8 @@
 Each one mirrors a mutation benchmark in test_multidict_benchmarks.py, with
 a no-op watcher attached, so the pair shows what watching adds on top of
 the operation itself. A copy is not watched, so every copy is watched
-inside the timed loop.
+inside the timed loop, except in the clear benchmark, which copies and
+watches in its untimed setup.
 """
 
 from collections.abc import Callable, Iterator
@@ -149,14 +150,19 @@ def test_watched_delitem_str(
 def test_watched_clear_str(
     benchmark: BenchmarkFixture, watched_class: type[MultiDict[str]], watch: Watch
 ) -> None:
-    md_base = watched_class((str(i), str(i)) for i in range(100))
+    bases = [watched_class((str(i), str(i)) for i in range(n)) for n in range(100)]
 
-    @benchmark
-    def _run() -> None:
-        for _ in range(100):
-            md = md_base.copy()
+    def setup() -> tuple[tuple[list[MultiDict[str]]], dict[str, object]]:
+        mds = [md.copy() for _ in range(10) for md in bases]
+        for md in mds:
             watch(md)
+        return (mds,), {}
+
+    def run(mds: list[MultiDict[str]]) -> None:
+        for md in mds:
             md.clear()
+
+    benchmark.pedantic(run, setup=setup)
 
 
 def test_watched_update_str(
