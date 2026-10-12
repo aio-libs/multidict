@@ -1,0 +1,2 @@
+Moved the C extension's ``repr()`` of multidicts, proxies and views out
+of the hash table header into its own header -- by :user:`asvetlov`.
