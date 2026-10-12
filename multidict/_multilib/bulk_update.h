@@ -323,35 +323,35 @@ _md_post_update_delete(md_update_state_t* st, htkeys_t* keys, Py_ssize_t pos,
 }
 
 /* _md_post_update_pass()'s loop over a KIND_COMPACT table, `sfx` being cs
-   or ci as for compact_entry_identity_cs(). */
-#define _MD_POST_UPDATE_COMPACT_LOOP(sfx)                                   \
-    do {                                                                    \
-        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                    \
-        for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {                   \
-            Py_ssize_t pos = _md_post_update_take(marks, keys, i);          \
-            if (pos < 0) {                                                  \
-                continue;                                                   \
-            }                                                               \
-            entry_t* entry = entries + pos;                                 \
-            if (compact_entry_is_hole(entry) ||                             \
-                load_value(entry) != marks->doomed[i].value) {              \
-                continue;                                                   \
-            }                                                               \
-            int del =                                                       \
-                _md_post_update_delete(st,                                  \
-                                       keys,                                \
-                                       pos,                                 \
-                                       entry,                               \
-                                       compact_entry_identity_##sfx(entry), \
-                                       compact_entry_hash_##sfx(entry),     \
-                                       version);                            \
-            if (del == _MD_POST_UPDATE_RESTART) {                           \
-                return del;                                                 \
-            }                                                               \
-            if (del < 0) {                                                  \
-                ret = -1;                                                   \
-            }                                                               \
-        }                                                                   \
+   or ci as for compact_key_identity_cs(). */
+#define _MD_POST_UPDATE_COMPACT_LOOP(sfx)                          \
+    do {                                                           \
+        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);           \
+        for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {          \
+            Py_ssize_t pos = _md_post_update_take(marks, keys, i); \
+            if (pos < 0) {                                         \
+                continue;                                          \
+            }                                                      \
+            entry_t* entry = entries + pos;                        \
+            if (entry_is_hole(entry) ||                            \
+                load_value(entry) != marks->doomed[i].value) {     \
+                continue;                                          \
+            }                                                      \
+            int del = _md_post_update_delete(                      \
+                st,                                                \
+                keys,                                              \
+                pos,                                               \
+                entry,                                             \
+                compact_key_identity_##sfx(entry->key),            \
+                compact_key_hash_##sfx(entry->key),                \
+                version);                                          \
+            if (del == _MD_POST_UPDATE_RESTART) {                  \
+                return del;                                        \
+            }                                                      \
+            if (del < 0) {                                         \
+                ret = -1;                                          \
+            }                                                      \
+        }                                                          \
     } while (0)
 
 /* One pass of _md_post_update_deleted() over md's table, one loop per
@@ -381,7 +381,7 @@ _md_post_update_pass(md_update_state_t* st)
             continue;
         }
         anystr_entry_t* entry = entries + pos;
-        if (anystr_entry_is_hole(entry) ||
+        if (entry_is_hole((const entry_t*)entry) ||
             load_value(&entry->base) != marks->doomed[i].value) {
             continue;
         }
@@ -640,27 +640,27 @@ md_extend_from_ht(MultiDictObject* md, MultiDictObject* other)
 }
 
 /* md_extend_self()'s loop over a KIND_COMPACT table, `sfx` being cs or ci
-   as for compact_entry_identity_cs(). */
-#define _MD_EXTEND_SELF_COMPACT_LOOP(sfx)                               \
-    do {                                                                \
-        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                \
-        for (Py_ssize_t pos = 0; pos < nentries; pos++) {               \
-            entry_t* entry = entries + pos;                             \
-            if (compact_entry_is_hole(entry)) {                         \
-                continue;                                               \
-            }                                                           \
-            PyObject* identity = compact_entry_identity_##sfx(entry);   \
-            if (md_add_with_hash(md,                                    \
-                                 compact_entry_hash_##sfx(entry),       \
-                                 identity,                              \
-                                 entry->key,                            \
-                                 entry->value,                          \
-                                 md_key_fits(md, entry->key, identity), \
-                                 MD_SLOT_CHECK) < 0) {                  \
-                return -1;                                              \
-            }                                                           \
-            assert(md->keys == keys);                                   \
-        }                                                               \
+   as for compact_key_identity_cs(). */
+#define _MD_EXTEND_SELF_COMPACT_LOOP(sfx)                                \
+    do {                                                                 \
+        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                 \
+        for (Py_ssize_t pos = 0; pos < nentries; pos++) {                \
+            entry_t* entry = entries + pos;                              \
+            if (entry_is_hole(entry)) {                                  \
+                continue;                                                \
+            }                                                            \
+            PyObject* identity = compact_key_identity_##sfx(entry->key); \
+            if (md_add_with_hash(md,                                     \
+                                 compact_key_hash_##sfx(entry->key),     \
+                                 identity,                               \
+                                 entry->key,                             \
+                                 entry->value,                           \
+                                 md_key_fits(md, entry->key, identity),  \
+                                 MD_SLOT_CHECK) < 0) {                   \
+                return -1;                                               \
+            }                                                            \
+            assert(md->keys == keys);                                    \
+        }                                                                \
     } while (0)
 
 /* d.extend(d) is rare. The loops walk the table they add to: md_reserve()
@@ -688,7 +688,7 @@ md_extend_self(MultiDictObject* md)
     anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
     for (Py_ssize_t pos = 0; pos < nentries; pos++) {
         anystr_entry_t* entry = entries + pos;
-        if (anystr_entry_is_hole(entry)) {
+        if (entry_is_hole((const entry_t*)entry)) {
             continue;
         }
         if (md_add_with_hash(md,

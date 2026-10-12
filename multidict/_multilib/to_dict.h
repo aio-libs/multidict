@@ -112,20 +112,19 @@ _md_to_dict_single(MultiDictObject* md, PyObject* dict, entry_t* entry,
     } while (0)
 
 /* _md_to_dict_locked()'s loop over a KIND_COMPACT table, `sfx` being cs
-   or ci as for compact_entry_identity_cs(), and `find` its
+   or ci as for compact_key_identity_cs(), and `find` its
    HTKEYSITER_FIND_COMPACT_CS() or _CI(). */
 #define _MD_TO_DICT_COMPACT_LOOP(sfx, find)                                \
     do {                                                                   \
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                   \
         for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {            \
             entry_t* entry = entries + pos;                                \
-            if (compact_entry_is_hole(entry) ||                            \
-                bitmap_test(&collected, pos)) {                            \
+            if (entry_is_hole(entry) || bitmap_test(&collected, pos)) {    \
                 continue; /* deleted, or collected under its first key */  \
             }                                                              \
             _MD_TO_DICT_COLLECT(find,                                      \
-                                compact_entry_identity_##sfx(entry),       \
-                                compact_entry_hash_##sfx(entry),           \
+                                compact_key_identity_##sfx(entry->key),    \
+                                compact_key_hash_##sfx(entry->key),        \
                                 pos);                                      \
             int stored = _md_to_dict_store(md, dict, entry, lst, version); \
             lst = NULL;                                                    \
@@ -161,7 +160,7 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
             entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
             for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
                 entry_t* entry = entries + pos;
-                if (!compact_entry_is_hole(entry) &&
+                if (!entry_is_hole(entry) &&
                     _md_to_dict_single(md, dict, entry, version) < 0) {
                     goto fail;
                 }
@@ -170,7 +169,7 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
             anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
             for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
                 anystr_entry_t* entry = entries + pos;
-                if (!anystr_entry_is_hole(entry) &&
+                if (!entry_is_hole((const entry_t*)entry) &&
                     _md_to_dict_single(md, dict, &entry->base, version) < 0) {
                     goto fail;
                 }
@@ -186,7 +185,8 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
         anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
         for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
             anystr_entry_t* entry = entries + pos;
-            if (anystr_entry_is_hole(entry) || bitmap_test(&collected, pos)) {
+            if (entry_is_hole((const entry_t*)entry) ||
+                bitmap_test(&collected, pos)) {
                 continue;  // deleted, or collected under its first key
             }
             _MD_TO_DICT_COLLECT(
