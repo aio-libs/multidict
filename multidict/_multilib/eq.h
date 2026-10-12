@@ -225,7 +225,7 @@ _md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
 {
     Py_ssize_t other_len;
 
-    if (!PyMapping_Check(other)) {
+    if (UNLIKELY(!PyMapping_Check(other))) {
         PyErr_Format(PyExc_TypeError,
                      "other argument must be a mapping, not %s",
                      Py_TYPE(other)->tp_name);
@@ -233,7 +233,7 @@ _md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
     }
 
     other_len = PyMapping_Size(other);
-    if (other_len < 0) {
+    if (UNLIKELY(other_len < 0)) {
         return -1;
     }
     if (md_len(md) != other_len) {
@@ -241,7 +241,7 @@ _md_eq_to_mapping_locked(MultiDictObject* md, PyObject* other)
     }
 
     md_eq_to_mapping_state_t state = {other, true};
-    if (md_walk_all(md, true, _md_eq_to_mapping_visit, &state) < 0) {
+    if (UNLIKELY(md_walk_all(md, true, _md_eq_to_mapping_visit, &state) < 0)) {
         return -1;
     }
     return state.eq;

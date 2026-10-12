@@ -24,7 +24,7 @@ static inline PyObject*
 list_getitem_ref(PyObject* list, Py_ssize_t i)
 {
     PyObject* item = PyList_GetItemRef(list, i);
-    if (item == NULL && PyErr_ExceptionMatches(PyExc_IndexError)) {
+    if (UNLIKELY(item == NULL && PyErr_ExceptionMatches(PyExc_IndexError))) {
         PyErr_Clear();
         PyErr_SetString(PyExc_RuntimeError,
                         "list changed size during iteration");

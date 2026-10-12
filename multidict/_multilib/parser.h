@@ -124,7 +124,7 @@ _parse2_slow(const char* fname, PyObject* const* args, Py_ssize_t nargs,
         goto fail;
     }
     if (UNLIKELY(r.arg1 == NULL)) {
-        if (minargs == 2 && r.arg2 == NULL) {
+        if (UNLIKELY(minargs == 2 && r.arg2 == NULL)) {
             PyErr_Format(PyExc_TypeError,
                          "%.150s() missing 2 required positional arguments: "
                          "'%.150U' and '%.150U'",
@@ -161,7 +161,7 @@ parse2(const char* fname, PyObject* const* args, Py_ssize_t nargs,
     }
     parse2_t r =
         _parse2_slow(fname, args, nargs, kwnames, minargs, arg1name, arg2name);
-    if (r.arg1 == NULL) {
+    if (UNLIKELY(r.arg1 == NULL)) {
         return -1;
     }
     *arg1 = r.arg1;
