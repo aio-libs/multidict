@@ -233,32 +233,13 @@ _htkeys_entry_size(uint8_t kind)
     return sizes[kind];
 }
 
-// The identity of a live compact entry; see compact_key_identity_cs().
-static inline PyObject*
-compact_entry_identity_cs(const entry_t* entry)
-{
-    return compact_key_identity_cs(entry->key);
-}
-
-static inline PyObject*
-compact_entry_identity_ci(const entry_t* entry)
-{
-    return compact_key_identity_ci(entry->key);
-}
-
 /* Whether entry is a hole (deleted or never filled). The key is NULL
    exactly when the identity is, in every kind, for a caller holding md's
    critical section; a lock-free reader checks the identity slot instead. */
 static inline bool
-compact_entry_is_hole(const entry_t* entry)
+entry_is_hole(const entry_t* entry)
 {
     return entry->key == NULL;
-}
-
-static inline bool
-anystr_entry_is_hole(const anystr_entry_t* entry)
-{
-    return entry->base.key == NULL;
 }
 
 /* The hash of a compact entry's identity, read from the key itself: a
@@ -280,19 +261,6 @@ static inline Py_hash_t
 compact_key_hash_ci(PyObject* key)
 {
     return ((istrobject*)key)->canonical_hash;
-}
-
-// The hash of a live compact entry's identity; see compact_key_hash_cs().
-static inline Py_hash_t
-compact_entry_hash_cs(const entry_t* entry)
-{
-    return compact_key_hash_cs(entry->key);
-}
-
-static inline Py_hash_t
-compact_entry_hash_ci(const entry_t* entry)
-{
-    return compact_key_hash_ci(entry->key);
 }
 
 // Copies the first n entries of src, a table of dst's kind.
@@ -515,7 +483,7 @@ static const htkeys_t empty_htkeys = {
     .log2_size = 0,
     .log2_index_bytes = 3,
     /* Any kind would do: with no entries there is no layout to read, and
-       a table replacing this one takes _md_next_kind(), which ignores it. */
+       a table replacing one with no entries starts compact. */
     .kind = KIND_ANYSTR,
     .maybe_dups = 0,
     .usable = 0, /* immutable */
@@ -806,20 +774,20 @@ htkeys_build_compact_indices(htkeys_t* keys, bool ci, Py_ssize_t n,
     if (ci) {
         for (Py_ssize_t ix = 0; ix != n; ix++) {
             entry_t* entry = entries + ix;
-            if (skip_holes && compact_entry_is_hole(entry)) {
+            if (skip_holes && entry_is_hole(entry)) {
                 continue;
             }
             _HTKEYS_BUILD_INDEX(
-                log2size, keys, mask, compact_entry_hash_ci(entry), ix);
+                log2size, keys, mask, compact_key_hash_ci(entry->key), ix);
         }
     } else {
         for (Py_ssize_t ix = 0; ix != n; ix++) {
             entry_t* entry = entries + ix;
-            if (skip_holes && compact_entry_is_hole(entry)) {
+            if (skip_holes && entry_is_hole(entry)) {
                 continue;
             }
             _HTKEYS_BUILD_INDEX(
-                log2size, keys, mask, compact_entry_hash_cs(entry), ix);
+                log2size, keys, mask, compact_key_hash_cs(entry->key), ix);
         }
     }
 }
@@ -836,7 +804,7 @@ htkeys_build_anystr_indices(htkeys_t* keys, Py_ssize_t n, bool skip_holes)
     anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
     for (Py_ssize_t ix = 0; ix != n; ix++) {
         anystr_entry_t* entry = entries + ix;
-        if (skip_holes && anystr_entry_is_hole(entry)) {
+        if (skip_holes && entry_is_hole((const entry_t*)entry)) {
             continue;
         }
         _HTKEYS_BUILD_INDEX(log2size, keys, mask, entry->hash, ix);
@@ -894,8 +862,8 @@ htkeys_entry_hash(htkeys_t* keys, bool ci, Py_ssize_t ix)
 {
     if (kind_is_compact(keys->kind)) {
         entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys) + ix;
-        return ci ? compact_entry_hash_ci(entry)
-                  : compact_entry_hash_cs(entry);
+        return ci ? compact_key_hash_ci(entry->key)
+                  : compact_key_hash_cs(entry->key);
     }
     return HTKEYS_ANYSTR_ENTRIES(keys)[ix].hash;
 }
@@ -1013,10 +981,10 @@ typedef struct _htkeysiter {
                 continue;                                                  \
             }                                                              \
             entry_t* _hf_e = _hf_entries + _hf_iter->index;                \
-            if (compact_entry_hash_##sfx(_hf_e) == _hf_hash &&             \
-                (compact_entry_identity_##sfx(_hf_e) == _hf_identity ||    \
+            if (compact_key_hash_##sfx(_hf_e->key) == _hf_hash &&          \
+                (compact_key_identity_##sfx(_hf_e->key) == _hf_identity || \
                  str_cmp(_hf_identity,                                     \
-                         compact_entry_identity_##sfx(_hf_e)))) {          \
+                         compact_key_identity_##sfx(_hf_e->key)))) {       \
                 (entry_) = _hf_e;                                          \
                 break;                                                     \
             }                                                              \

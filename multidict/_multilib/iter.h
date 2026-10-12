@@ -67,7 +67,7 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         if (self->reverse) {
             for (; self->pos >= 0; --self->pos) {
                 entry_t* entry = entries + self->pos;
-                if (!compact_entry_is_hole(entry)) {
+                if (!entry_is_hole(entry)) {
                     --self->pos;
                     *pentry = entry;
                     return 1;
@@ -77,7 +77,7 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
         }
         for (; self->pos < keys->nentries; ++self->pos) {
             entry_t* entry = entries + self->pos;
-            if (!compact_entry_is_hole(entry)) {
+            if (!entry_is_hole(entry)) {
                 ++self->pos;
                 *pentry = entry;
                 return 1;
@@ -89,7 +89,7 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
     if (self->reverse) {
         for (; self->pos >= 0; --self->pos) {
             anystr_entry_t* entry = entries + self->pos;
-            if (!anystr_entry_is_hole(entry)) {
+            if (!entry_is_hole((const entry_t*)entry)) {
                 --self->pos;
                 *pentry = &entry->base;
                 return 1;
@@ -99,7 +99,7 @@ _iter_next_entry(MultidictIter* self, entry_t** pentry)
     }
     for (; self->pos < keys->nentries; ++self->pos) {
         anystr_entry_t* entry = entries + self->pos;
-        if (!anystr_entry_is_hole(entry)) {
+        if (!entry_is_hole((const entry_t*)entry)) {
             ++self->pos;
             *pentry = &entry->base;
             return 1;
@@ -130,16 +130,16 @@ _iter_next_first_key(MultidictIter* self)
         PyObject* identity;
         if (kind_is_compact(keys->kind)) {
             entry = HTKEYS_COMPACT_ENTRIES(keys) + pos;
-            if (compact_entry_is_hole(entry)) {
+            if (entry_is_hole(entry)) {
                 continue;
             }
-            hash = (ci ? compact_entry_hash_ci(entry)
-                       : compact_entry_hash_cs(entry));
-            identity = (ci ? compact_entry_identity_ci(entry)
-                           : compact_entry_identity_cs(entry));
+            hash = (ci ? compact_key_hash_ci(entry->key)
+                       : compact_key_hash_cs(entry->key));
+            identity = (ci ? compact_key_identity_ci(entry->key)
+                           : compact_key_identity_cs(entry->key));
         } else {
             anystr_entry_t* e = HTKEYS_ANYSTR_ENTRIES(keys) + pos;
-            if (anystr_entry_is_hole(e)) {
+            if (entry_is_hole((const entry_t*)e)) {
                 continue;
             }
             entry = &e->base;

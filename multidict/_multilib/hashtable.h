@@ -30,23 +30,6 @@ extern "C" {
 
 #define MD_POOLS(md) ((md)->state->htkeys_pools)
 
-/* The kind a new, empty table of md starts with. */
-static uint8_t
-_md_fresh_kind(const MultiDictObject* md)
-{
-    /* A table starts compact and moves to KIND_ANYSTR on the first key
-       that does not fit (see md_key_fits()). */
-    return KIND_COMPACT;
-}
-
-/* The kind of a table replacing `old`: a table with no entries yet starts
-   afresh, so a clear() lets md return to the compact kind. */
-static uint8_t
-_md_next_kind(const MultiDictObject* md, const htkeys_t* old)
-{
-    return old->nentries == 0 ? _md_fresh_kind(md) : old->kind;
-}
-
 /* Whether a compact table of md can hold `key`: a MultiDict's key must be
    its own identity, a CIMultiDict's an exact istr, whose identity is then
    its canonical form. */
@@ -396,8 +379,9 @@ _md_has_equal_hashes(htkeys_t* keys, bool ci)
     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
         bool hole =
             kind_is_compact(keys->kind)
-                ? compact_entry_is_hole(HTKEYS_COMPACT_ENTRIES(keys) + i)
-                : anystr_entry_is_hole(HTKEYS_ANYSTR_ENTRIES(keys) + i);
+                ? entry_is_hole(HTKEYS_COMPACT_ENTRIES(keys) + i)
+                : entry_is_hole(
+                      (const entry_t*)(HTKEYS_ANYSTR_ENTRIES(keys) + i));
         if (hole) {
             continue;
         }
@@ -472,7 +456,9 @@ _md_rebuild_keeping_indices(MultiDictObject* md, uint8_t log2_newsize)
     }
 
     htkeys_t* newkeys = htkeys_new_unfilled(
-        MD_POOLS(md), log2_newsize, _md_next_kind(md, oldkeys));
+        MD_POOLS(md),
+        log2_newsize,
+        oldkeys->nentries == 0 ? KIND_COMPACT : oldkeys->kind);
     if (newkeys == NULL) {
         return -1;
     }
@@ -525,7 +511,7 @@ _md_copy_live(htkeys_t* dst, const htkeys_t* src)
         for (entry_t *ep = HTKEYS_COMPACT_ENTRIES(src), *end = ep + n;
              ep < end;
              ep++) {
-            if (!compact_entry_is_hole(ep)) {
+            if (!entry_is_hole(ep)) {
                 *out++ = *ep;
             }
         }
@@ -536,7 +522,7 @@ _md_copy_live(htkeys_t* dst, const htkeys_t* src)
     for (anystr_entry_t *ep = HTKEYS_ANYSTR_ENTRIES(src), *end = ep + n;
          ep < end;
          ep++) {
-        if (!anystr_entry_is_hole(ep)) {
+        if (!entry_is_hole((const entry_t*)ep)) {
             *out++ = *ep;
         }
     }
@@ -577,10 +563,13 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
     }
     assert(log2_newsize >= HT_LOG_MINSIZE);
 
+    /* A table starts compact and moves to KIND_ANYSTR on the first key
+       that does not fit (see md_key_fits()); one with no entries yet
+       starts afresh, so a clear() lets md return to the compact kind. */
+    uint8_t kind = md->keys->nentries == 0 ? KIND_COMPACT : md->keys->kind;
     /* The copy below writes the front of the entries array, so only
        what it leaves over has to be zeroed. */
-    htkeys_t* newkeys = htkeys_new_unfilled(
-        MD_POOLS(md), log2_newsize, _md_next_kind(md, md->keys));
+    htkeys_t* newkeys = htkeys_new_unfilled(MD_POOLS(md), log2_newsize, kind);
     if (newkeys == NULL) {
         return -1;
     }
@@ -739,9 +728,9 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused, uint8_t kind)
 
         new_keys = htkeys_new(MD_POOLS(md), log2_newsize, kind);
         if (new_keys == NULL) return -1;
-    } else if (minused > 0 && kind != _md_fresh_kind(md)) {
-        /* The first insert would allocate this table anyway, but of the
-           fresh kind, only to move it at once. */
+    } else if (minused > 0 && kind != KIND_COMPACT) {
+        /* The first insert would allocate this table anyway, but compact,
+           only to move it at once. */
         new_keys = htkeys_new(MD_POOLS(md), HT_LOG_MINSIZE, kind);
         if (new_keys == NULL) return -1;
     }
@@ -776,22 +765,22 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
     if (kind_is_compact(src_keys->kind) && other_ci) {
         entry_t* src = HTKEYS_COMPACT_ENTRIES(src_keys);
         for (entry_t* end = src + src_keys->nentries; src < end; src++) {
-            if (!compact_entry_is_hole(src)) {
-                dst->identity = Py_NewRef(compact_entry_identity_ci(src));
+            if (!entry_is_hole(src)) {
+                dst->identity = Py_NewRef(compact_key_identity_ci(src->key));
                 dst->base.key = Py_NewRef(src->key);
                 dst->base.value = Py_NewRef(src->value);
-                dst->hash = compact_entry_hash_ci(src);
+                dst->hash = compact_key_hash_ci(src->key);
                 dst++;
             }
         }
     } else if (kind_is_compact(src_keys->kind)) {
         entry_t* src = HTKEYS_COMPACT_ENTRIES(src_keys);
         for (entry_t* end = src + src_keys->nentries; src < end; src++) {
-            if (!compact_entry_is_hole(src)) {
-                dst->identity = Py_NewRef(compact_entry_identity_cs(src));
+            if (!entry_is_hole(src)) {
+                dst->identity = Py_NewRef(compact_key_identity_cs(src->key));
                 dst->base.key = Py_NewRef(src->key);
                 dst->base.value = Py_NewRef(src->value);
-                dst->hash = compact_entry_hash_cs(src);
+                dst->hash = compact_key_hash_cs(src->key);
                 dst++;
             }
         }
@@ -799,7 +788,7 @@ _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
         anystr_entry_t* src = HTKEYS_ANYSTR_ENTRIES(src_keys);
         for (anystr_entry_t* end = src + src_keys->nentries; src < end;
              src++) {
-            if (!anystr_entry_is_hole(src)) {
+            if (!entry_is_hole((const entry_t*)src)) {
                 dst->identity = Py_NewRef(src->identity);
                 dst->base.key = Py_NewRef(src->base.key);
                 dst->base.value = Py_NewRef(src->base.value);
@@ -901,10 +890,10 @@ _md_is_first_key_probe(htkeys_t* keys, bool ci, Py_hash_t hash,
         PyObject* other;
         if (compact) {
             entry_t* e = HTKEYS_COMPACT_ENTRIES(keys) + iter->index;
-            other_hash =
-                (ci ? compact_entry_hash_ci(e) : compact_entry_hash_cs(e));
-            other = (ci ? compact_entry_identity_ci(e)
-                        : compact_entry_identity_cs(e));
+            other_hash = (ci ? compact_key_hash_ci(e->key)
+                             : compact_key_hash_cs(e->key));
+            other = (ci ? compact_key_identity_ci((e)->key)
+                        : compact_key_identity_cs(e->key));
         } else {
             anystr_entry_t* e = HTKEYS_ANYSTR_ENTRIES(keys) + iter->index;
             other_hash = e->hash;
@@ -949,14 +938,14 @@ md_keys_len(MultiDictObject* md)
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < keys->nentries; i++) {
             entry_t* e = entries + i;
-            if (!compact_entry_is_hole(e) &&
-                md_is_first_key(
-                    keys,
-                    ci,
-                    (ci ? compact_entry_hash_ci(e) : compact_entry_hash_cs(e)),
-                    (ci ? compact_entry_identity_ci(e)
-                        : compact_entry_identity_cs(e)),
-                    i)) {
+            if (!entry_is_hole(e) &&
+                md_is_first_key(keys,
+                                ci,
+                                (ci ? compact_key_hash_ci(e->key)
+                                    : compact_key_hash_cs(e->key)),
+                                (ci ? compact_key_identity_ci((e)->key)
+                                    : compact_key_identity_cs(e->key)),
+                                i)) {
                 ++ret;
             }
         }
@@ -964,7 +953,7 @@ md_keys_len(MultiDictObject* md)
         anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
         for (Py_ssize_t i = 0; i < keys->nentries; i++) {
             anystr_entry_t* e = entries + i;
-            if (!anystr_entry_is_hole(e) &&
+            if (!entry_is_hole((const entry_t*)e) &&
                 md_is_first_key(keys, ci, e->hash, e->identity, i)) {
                 ++ret;
             }
@@ -2356,13 +2345,13 @@ _md_last_live(htkeys_t* keys, Py_ssize_t* ppos)
     entry_t* entry;
     if (kind_is_compact(keys->kind)) {
         entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
-        while (compact_entry_is_hole(entries + pos)) {
+        while (entry_is_hole(entries + pos)) {
             pos--;
         }
         entry = entries + pos;
     } else {
         anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
-        while (anystr_entry_is_hole(entries + pos)) {
+        while (entry_is_hole((const entry_t*)(entries + pos))) {
             pos--;
         }
         entry = &entries[pos].base;
@@ -2388,8 +2377,8 @@ _md_pop_item_locked(MultiDictObject* md)
     entry_t* entry = _md_last_live(keys, &pos);
 
     Py_hash_t hash = !kind_is_compact(kind) ? as_anystr(entry)->hash
-                     : ci                   ? compact_entry_hash_ci(entry)
-                                            : compact_entry_hash_cs(entry);
+                     : ci                   ? compact_key_hash_ci(entry->key)
+                                            : compact_key_hash_cs(entry->key);
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, keys, hash);
 
@@ -2398,8 +2387,8 @@ _md_pop_item_locked(MultiDictObject* md)
     md_watch_record(md,
                     MultiDict_EVENT_DELETED,
                     !kind_is_compact(kind) ? as_anystr(entry)->identity
-                    : ci                   ? compact_entry_identity_ci(entry)
-                                           : compact_entry_identity_cs(entry),
+                    : ci ? compact_key_identity_ci(entry->key)
+                         : compact_key_identity_cs(entry->key),
                     hash,
                     entry->key,
                     entry->value,
@@ -2856,19 +2845,19 @@ _md_eq_values(PyObject* value1, PyObject* value2)
    table of a MultiDict and of a CIMultiDict. */
 #define _MD_EQ_CS_T entry_t
 #define _MD_EQ_CS_ENTRIES(keys) HTKEYS_COMPACT_ENTRIES(keys)
-#define _MD_EQ_CS_IS_HOLE(e) compact_entry_is_hole(e)
-#define _MD_EQ_CS_HASH(e) compact_entry_hash_cs(e)
-#define _MD_EQ_CS_IDENTITY(e) compact_entry_identity_cs(e)
+#define _MD_EQ_CS_IS_HOLE(e) entry_is_hole(e)
+#define _MD_EQ_CS_HASH(e) compact_key_hash_cs((e)->key)
+#define _MD_EQ_CS_IDENTITY(e) compact_key_identity_cs((e)->key)
 #define _MD_EQ_CS_BASE(e) (e)
 #define _MD_EQ_CI_T entry_t
 #define _MD_EQ_CI_ENTRIES(keys) HTKEYS_COMPACT_ENTRIES(keys)
-#define _MD_EQ_CI_IS_HOLE(e) compact_entry_is_hole(e)
-#define _MD_EQ_CI_HASH(e) compact_entry_hash_ci(e)
-#define _MD_EQ_CI_IDENTITY(e) compact_entry_identity_ci(e)
+#define _MD_EQ_CI_IS_HOLE(e) entry_is_hole(e)
+#define _MD_EQ_CI_HASH(e) compact_key_hash_ci((e)->key)
+#define _MD_EQ_CI_IDENTITY(e) compact_key_identity_ci((e)->key)
 #define _MD_EQ_CI_BASE(e) (e)
 #define _MD_EQ_ANYSTR_T anystr_entry_t
 #define _MD_EQ_ANYSTR_ENTRIES(keys) HTKEYS_ANYSTR_ENTRIES(keys)
-#define _MD_EQ_ANYSTR_IS_HOLE(e) anystr_entry_is_hole(e)
+#define _MD_EQ_ANYSTR_IS_HOLE(e) entry_is_hole((const entry_t*)(e))
 #define _MD_EQ_ANYSTR_HASH(e) ((e)->hash)
 #define _MD_EQ_ANYSTR_IDENTITY(e) ((e)->identity)
 #define _MD_EQ_ANYSTR_BASE(e) (&(e)->base)
@@ -3240,7 +3229,7 @@ _md_traverse_entries(htkeys_t* keys, visitproc visit, void* arg)
     if (kind_is_compact(keys->kind)) {
         entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys);
         for (entry_t* end = entry + keys->nentries; entry < end; entry++) {
-            if (!compact_entry_is_hole(entry)) {
+            if (!entry_is_hole(entry)) {
                 Py_VISIT(entry->key);
                 Py_VISIT(entry->value);
             }
@@ -3249,7 +3238,7 @@ _md_traverse_entries(htkeys_t* keys, visitproc visit, void* arg)
         anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys);
         for (anystr_entry_t* end = entry + keys->nentries; entry < end;
              entry++) {
-            if (!anystr_entry_is_hole(entry)) {
+            if (!entry_is_hole((const entry_t*)entry)) {
                 Py_VISIT(entry->base.key);
                 Py_VISIT(entry->base.value);
             }
@@ -3319,7 +3308,7 @@ md_clear(MultiDictObject* md)
     htkeys_t* old_keys = md->keys;
     htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
     if (UNLIKELY(md->batches != 0)) {
-        new_keys = _md_new_keys_after_holes(md, 0, _md_fresh_kind(md));
+        new_keys = _md_new_keys_after_holes(md, 0, KIND_COMPACT);
         if (new_keys == NULL) {
             return -1;
         }
