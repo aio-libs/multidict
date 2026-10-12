@@ -274,7 +274,7 @@ _str_identity_or_new_ci(mod_state* state, PyObject* key)
 
 /* md_borrow_identity() for a call that computes the identity when it
    cannot borrow it, with each test of the key run once: the identity is
-   borrowed unless md_identity_is_new() says otherwise. NULL with an
+   borrowed or new, and md_identity_release() drops it. NULL with an
    exception set on error. */
 static inline PyObject*
 md_identity_or_new(MultiDictObject* md, PyObject* key)
@@ -291,12 +291,15 @@ md_identity_or_new(MultiDictObject* md, PyObject* key)
     return key;
 }
 
-/* Whether md_identity_or_new() handed out a new reference: only the key
-   itself and an exact istr's canonical are borrowed. */
-static inline bool
-md_identity_is_new(MultiDictObject* md, PyObject* key, PyObject* identity)
+/* Drops the identity md_identity_or_new() handed out if it is a new
+   reference: only the key itself and an exact istr's canonical are
+   borrowed. */
+static inline void
+md_identity_release(MultiDictObject* md, PyObject* key, PyObject* identity)
 {
-    return identity != key && !(md->is_ci && IStr_CheckExact(md->state, key));
+    if (identity != key && !(md->is_ci && IStr_CheckExact(md->state, key))) {
+        Py_DECREF(identity);
+    }
 }
 
 /* md_calc_identity() that also says whether key fits a compact table (see

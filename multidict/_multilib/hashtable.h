@@ -1220,9 +1220,7 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
         Py_END_CRITICAL_SECTION();
         md_watch_flush_if(md, flush);
     }
-    if (md_identity_is_new(md, key, identity)) {
-        Py_DECREF(identity);
-    }
+    md_identity_release(md, key, identity);
     return ret;
 }
 
@@ -1539,9 +1537,7 @@ md_del(MultiDictObject* md, PyObject* key)
     if (hash != -1) {
         ret = _md_del_identity(md, key, identity, hash);
     }
-    if (md_identity_is_new(md, key, identity)) {
-        Py_DECREF(identity);
-    }
+    md_identity_release(md, key, identity);
     return ret;
 }
 
@@ -2246,9 +2242,7 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     if (hash != -1) {
         found = _md_get_all_identity(md, key, identity, hash, ret);
     }
-    if (md_identity_is_new(md, key, identity)) {
-        Py_DECREF(identity);
-    }
+    md_identity_release(md, key, identity);
     return found;
 }
 
@@ -2863,9 +2857,7 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     if (hash != -1) {
         ret = _md_replace_identity(md, key, value, identity, hash);
     }
-    if (md_identity_is_new(md, key, identity)) {
-        Py_DECREF(identity);
-    }
+    md_identity_release(md, key, identity);
     return ret;
 }
 
