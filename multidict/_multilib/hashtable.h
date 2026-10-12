@@ -874,28 +874,32 @@ md_len(MultiDictObject* md)
     return load_used(md);
 }
 
-/* The rest of md_is_first_key()'s chain walk, past the first slot. */
+/* md_is_first_key()'s chain walk, once the first slot did not match. */
 COLD static bool
 _md_is_first_key_probe(htkeys_t* keys, bool ci, Py_hash_t hash,
-                       PyObject* identity, Py_ssize_t index,
-                       htkeysiter_t* iter)
+                       PyObject* identity, Py_ssize_t index, Py_ssize_t first)
 {
     bool compact = kind_is_compact(keys->kind);
-    for (; iter->index != index; HTKEYSITER_NEXT(iter)) {
-        assert(iter->index != DKIX_EMPTY);
-        if (iter->index < 0) {
+    htkeysiter_t iter = {.keys = keys,
+                         .mask = (size_t)_htkeys_mask(keys),
+                         .perturb = (size_t)hash,
+                         .index = first};
+    iter.slot = (size_t)hash & iter.mask;
+    for (; iter.index != index; HTKEYSITER_NEXT(&iter)) {
+        assert(iter.index != DKIX_EMPTY);
+        if (iter.index < 0) {
             continue;
         }
         Py_hash_t other_hash;
         PyObject* other;
         if (compact) {
-            entry_t* e = HTKEYS_COMPACT_ENTRIES(keys) + iter->index;
+            entry_t* e = HTKEYS_COMPACT_ENTRIES(keys) + iter.index;
             other_hash = (ci ? compact_key_hash_ci(e->key)
                              : compact_key_hash_cs(e->key));
             other = (ci ? compact_key_identity_ci((e)->key)
                         : compact_key_identity_cs(e->key));
         } else {
-            anystr_entry_t* e = HTKEYS_ANYSTR_ENTRIES(keys) + iter->index;
+            anystr_entry_t* e = HTKEYS_ANYSTR_ENTRIES(keys) + iter.index;
             other_hash = e->hash;
             other = e->identity;
         }
@@ -916,12 +920,13 @@ static inline bool
 md_is_first_key(htkeys_t* keys, bool ci, Py_hash_t hash, PyObject* identity,
                 Py_ssize_t index)
 {
-    htkeysiter_t iter;
-    HTKEYSITER_INIT(&iter, keys, hash);
-    if (iter.index == index) {
+    size_t slot = (size_t)hash & (size_t)_htkeys_mask(keys);
+    Py_ssize_t first =
+        HTKEYS_GET_INDEX(keys, keys->log2_size, (Py_ssize_t)slot);
+    if (first == index) {
         return true;
     }
-    return _md_is_first_key_probe(keys, ci, hash, identity, index, &iter);
+    return _md_is_first_key_probe(keys, ci, hash, identity, index, first);
 }
 
 // The number of distinct keys, len(md.keys()).
