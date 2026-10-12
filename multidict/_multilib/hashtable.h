@@ -1784,7 +1784,8 @@ _md_contains_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
     return result;
 }
 
-static int
+/* COLD for the reason given at _md_get_one_retry_locked(). */
+COLD static int
 _md_contains_retry_locked(MultiDictObject* md, PyObject* identity,
                           Py_hash_t hash)
 {
@@ -1817,9 +1818,10 @@ _md_contains_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
 static int
 _md_contains_owned(MultiDictObject* md, PyObject* key)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+    identity_hash_t ih = md_calc_identity_hash(md, key);
+    PyObject* identity = ih.identity;
+    Py_hash_t hash = ih.hash;
+    if (identity == NULL) {
         return -1;
     }
     int result = _md_contains_identity(md, key, identity, hash);
@@ -1854,9 +1856,10 @@ md_find_key(MultiDictObject* md, PyObject* key, PyObject** pret)
         return 0;
     }
 
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+    identity_hash_t ih = md_calc_identity_hash(md, key);
+    PyObject* identity = ih.identity;
+    Py_hash_t hash = ih.hash;
+    if (identity == NULL) {
         return -1;
     }
 
@@ -1868,9 +1871,8 @@ md_find_key(MultiDictObject* md, PyObject* key, PyObject** pret)
     return result;
 }
 
-static int
-_md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                   PyObject** ret)
+static PyObject*
+_md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
 {
     bool ci = md->is_ci;
     htkeysiter_t iter;
@@ -1885,130 +1887,141 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
     }
     if (entry != NULL) {
-        *ret = Py_NewRef(entry->value);
-        return 1;
+        return Py_NewRef(entry->value);
     }
-    return 0;
+    return NULL;
 }
+
+/* A lookup's result: -1 on error, 0 if missing, 1 if found, or
+   _MD_NEED_LOCK inside the FT helpers.  value is a new reference when
+   result is 1 and NULL otherwise.  Returned by value for the reason given
+   at identity_hash_t. */
+typedef struct {
+    int result;
+    PyObject* value;
+} lookup_t;
 
 #ifdef Py_GIL_DISABLED
 
 // The caller is a registered reader of keys.
-static inline int
+static inline lookup_t
 _md_lockfree_get(htkeys_t* keys, bool ci, PyObject* probe, PyObject* identity,
-                 Py_hash_t hash, PyObject** ret)
+                 Py_hash_t hash)
 {
     htkeysiter_t iter;
     HTKEYSITER_INIT_ACQUIRE(&iter, keys, hash);
 
     entry_t* entry;
-    int result = _md_lockfree_find(&iter, ci, probe, identity, hash, &entry);
-    if (result < 0) {
-        return _MD_NEED_LOCK;  // racing a concurrent change
-    }
-    if (result > 0) {
-        PyObject* value = try_get_ref(&entry->value);
-        if (value == NULL) {
-            return _MD_NEED_LOCK;
+    lookup_t ret = {
+        _md_lockfree_find(&iter, ci, probe, identity, hash, &entry), NULL};
+    if (ret.result < 0) {
+        ret.result = _MD_NEED_LOCK;  // racing a concurrent change
+    } else if (ret.result > 0) {
+        ret.value = try_get_ref(&entry->value);
+        if (ret.value == NULL) {
+            ret.result = _MD_NEED_LOCK;
         }
-        *ret = value;
     }
-    return result;
+    return ret;
 }
 
-static inline int
+static inline lookup_t
 _md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
-                     Py_hash_t hash, PyObject** ret)
+                     Py_hash_t hash)
 {
     bool ci = md->is_ci;
     htkeys_t* keys = _md_reader_enter(md);
-    int result = _md_lockfree_get(keys, ci, probe, identity, hash, ret);
+    lookup_t ret = _md_lockfree_get(keys, ci, probe, identity, hash);
     _md_reader_exit(md, keys);
-    return result;
+    return ret;
 }
 
-static int
+/* COLD keeps the critical section's state, and so a stack canary, out of
+   every lookup that never needs the lock. */
+COLD static PyObject*
 _md_get_one_retry_locked(MultiDictObject* md, PyObject* identity,
-                         Py_hash_t hash, PyObject** ret)
+                         Py_hash_t hash)
 {
-    int result;
+    PyObject* ret;
     Py_BEGIN_CRITICAL_SECTION(md);
-    result = _md_get_one_locked(md, identity, hash, ret);
+    ret = _md_get_one_locked(md, identity, hash);
     Py_END_CRITICAL_SECTION();
-    return result;
+    return ret;
 }
 
-static inline int
+static inline lookup_t
 _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
-                     Py_hash_t hash, PyObject** ret)
+                     Py_hash_t hash)
 {
-    int result = _md_get_one_lockfree(md, probe, identity, hash, ret);
-    if (result == _MD_NEED_LOCK) {
-        result = _md_get_one_retry_locked(md, identity, hash, ret);
+    lookup_t ret = _md_get_one_lockfree(md, probe, identity, hash);
+    if (ret.result == _MD_NEED_LOCK) {
+        ret.value = _md_get_one_retry_locked(md, identity, hash);
+        ret.result = ret.value != NULL;
     }
-    return result;
+    return ret;
 }
 
 /* getall() on a table without duplicate keys is a get(); one with them
    takes the critical section. */
-static inline int
+static inline lookup_t
 _md_get_all_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
-                     Py_hash_t hash, PyObject** ret)
+                     Py_hash_t hash)
 {
     bool ci = md->is_ci;
     htkeys_t* keys = _md_reader_enter(md);
-    int result = _MD_NEED_LOCK;
+    lookup_t ret = {_MD_NEED_LOCK, NULL};
     if (!htkeys_maybe_dups(keys)) {
-        result = _md_lockfree_get(keys, ci, probe, identity, hash, ret);
+        ret = _md_lockfree_get(keys, ci, probe, identity, hash);
     }
     _md_reader_exit(md, keys);
-    return result;
+    return ret;
 }
 
 #else /* !Py_GIL_DISABLED */
 
-static inline int
+static inline lookup_t
 _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
-                     Py_hash_t hash, PyObject** ret)
+                     Py_hash_t hash)
 {
-    return _md_get_one_locked(md, identity, hash, ret);
+    lookup_t ret = {0, _md_get_one_locked(md, identity, hash)};
+    ret.result = ret.value != NULL;
+    return ret;
 }
 
 #endif /* Py_GIL_DISABLED */
 
-/* See _md_contains_owned().  Returns the value, or NULL, with an exception
-   set on error: an out-pointer into the caller's frame would make GCC put a
-   stack protector on every lookup slot. */
-static PyObject*
+/* A key whose identity has to be computed.  Open-codes
+   md_calc_identity_hash(), which GCC calls out of line here, failing its
+   rule in tools/check_inlining.py; keep the two in step. */
+static lookup_t
 _md_get_one_owned(MultiDictObject* md, PyObject* key)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
-        return NULL;
+    lookup_t ret = {-1, NULL};
+    PyObject* identity = md_calc_identity(md, key);
+    if (identity == NULL) {
+        return ret;
     }
-    PyObject* ret = NULL;
-    _md_get_one_identity(md, key, identity, hash, &ret);
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash != -1) {
+        ret = _md_get_one_identity(md, key, identity, hash);
+    }
     Py_DECREF(identity);
     return ret;
 }
 
-static int
-md_get_one(MultiDictObject* md, PyObject* key, PyObject** ret)
+static lookup_t
+md_get_one(MultiDictObject* md, PyObject* key)
 {
     PyObject* identity = md_borrow_identity(md, key);
     if (identity == NULL) {
-        *ret = _md_get_one_owned(md, key);
-        if (*ret != NULL) {
-            return 1;
-        }
-        return PyErr_Occurred() ? -1 : 0;
+        return _md_get_one_owned(md, key);
     }
     Py_hash_t hash = unicode_hash(identity);
     if (hash == -1) {
-        return -1;
+        lookup_t ret = {-1, NULL};
+        return ret;
     }
-    return _md_get_one_identity(md, key, identity, hash, ret);
+    return _md_get_one_identity(md, key, identity, hash);
 }
 
 // Caller holds md's critical section
@@ -2063,9 +2076,10 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
            3.12 could allocate on its first call. */
         value = md->state->none;
     }
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+    identity_hash_t ih = md_calc_identity_hash(md, key);
+    PyObject* identity = ih.identity;
+    Py_hash_t hash = ih.hash;
+    if (identity == NULL) {
         return -1;
     }
     int ret;
@@ -2128,9 +2142,10 @@ _md_pop_one_locked_watched(MultiDictObject* md, PyObject* identity,
 static int
 md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+    identity_hash_t ih = md_calc_identity_hash(md, key);
+    PyObject* identity = ih.identity;
+    Py_hash_t hash = ih.hash;
+    if (identity == NULL) {
         return -1;
     }
     int result;
@@ -2203,7 +2218,8 @@ _md_get_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     Py_BEGIN_CRITICAL_SECTION(md);
     if (!md->keys->maybe_dups) {
         // at most one entry: a plain lookup, without the walk's seen set
-        single = _md_get_one_locked(md, identity, hash, &value);
+        value = _md_get_one_locked(md, identity, hash);
+        single = value != NULL;
     } else {
         count = md_walk_with_hash(
             md, identity, hash, false, _md_getall_visit, &values);
@@ -2223,12 +2239,11 @@ _md_get_all_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
                      Py_hash_t hash, PyObject** ret)
 {
 #ifdef Py_GIL_DISABLED
-    PyObject* value;
-    int single = _md_get_all_lockfree(md, probe, identity, hash, &value);
-    if (single == 1) {
-        return _md_single_value_list(value, ret);
+    lookup_t single = _md_get_all_lockfree(md, probe, identity, hash);
+    if (single.result == 1) {
+        return _md_single_value_list(single.value, ret);
     }
-    if (single == 0) {
+    if (single.result == 0) {
         return 0;
     }
 #else
@@ -2370,9 +2385,10 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 COLD static int
 md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
-    PyObject* identity;
-    Py_hash_t hash;
-    if (md_calc_identity_hash(md, key, &identity, &hash) < 0) {
+    identity_hash_t ih = md_calc_identity_hash(md, key);
+    PyObject* identity = ih.identity;
+    Py_hash_t hash = ih.hash;
+    if (identity == NULL) {
         return -1;
     }
     reflist_t values;

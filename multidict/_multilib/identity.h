@@ -318,24 +318,29 @@ md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits)
     return identity;
 }
 
+/* Returned by value, like parse2_t: out-parameters would make the caller's
+   locals address-taken whenever GCC keeps the helper out of line, and
+   -fstack-protector-strong then gives the caller a canary.  identity is
+   NULL on error. */
+typedef struct {
+    PyObject* identity;
+    Py_hash_t hash;
+} identity_hash_t;
+
 /* Reads only `key`, md->is_ci and md->state, all fixed for md's lifetime,
    so the caller need not hold md's critical section. */
-static inline int
-md_calc_identity_hash(MultiDictObject* md, PyObject* key, PyObject** pidentity,
-                      Py_hash_t* phash)
+static inline identity_hash_t
+md_calc_identity_hash(MultiDictObject* md, PyObject* key)
 {
-    PyObject* identity = md_calc_identity(md, key);
-    if (identity == NULL) {
-        return -1;
+    identity_hash_t ret = {md_calc_identity(md, key), -1};
+    if (ret.identity == NULL) {
+        return ret;
     }
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash == -1) {
-        Py_DECREF(identity);
-        return -1;
+    ret.hash = unicode_hash(ret.identity);
+    if (ret.hash == -1) {
+        Py_CLEAR(ret.identity);
     }
-    *pidentity = identity;
-    *phash = hash;
-    return 0;
+    return ret;
 }
 
 static inline PyObject*

@@ -1,0 +1,5 @@
+Sped up ``md[key]``, :meth:`~multidict.MultiDict.get` and
+:meth:`~multidict.MultiDict.getone` by up to 7% by returning the lookup's
+result by value instead of through a pointer to the caller's local, which
+had made ``-fstack-protector-strong`` add a stack canary to every call
+-- by :user:`asvetlov`.
