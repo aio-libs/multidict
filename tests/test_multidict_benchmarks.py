@@ -181,13 +181,20 @@ def test_multidict_popitem_str(
 def test_multidict_clear_str(
     benchmark: BenchmarkFixture, any_multidict_class: type[MultiDict[str]]
 ) -> None:
-    md_base = any_multidict_class((str(i), str(i)) for i in range(100))
+    # Copying inside the timed loop made the run mostly copy(), and one
+    # small table per round left the result to wherever malloc put it.
+    bases = [
+        any_multidict_class((str(i), str(i)) for i in range(n)) for n in range(100)
+    ]
 
-    @benchmark
-    def _run() -> None:
-        for _ in range(100):
-            md = md_base.copy()
+    def setup() -> tuple[tuple[list[MultiDict[str]]], dict[str, object]]:
+        return ([md.copy() for _ in range(10) for md in bases],), {}
+
+    def run(mds: list[MultiDict[str]]) -> None:
+        for md in mds:
             md.clear()
+
+    benchmark.pedantic(run, setup=setup)
 
 
 @pytest.mark.benchmark_shard_2
