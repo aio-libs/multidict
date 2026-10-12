@@ -1,0 +1,2 @@
+Dropped support for Python 3.10 as it has reached end of life
+-- by :user:`asvetlov`.

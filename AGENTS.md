@@ -618,10 +618,10 @@ Design tests so every line runs:
 
 ## Code style
 
-- `pyproject.toml` sets `[tool.ruff]` `target-version = "py310"` with
+- `pyproject.toml` sets `[tool.ruff]` `target-version = "py311"` with
   the `UP` (pyupgrade) and `I` (import sorting) lint groups enabled.
   Do not enable other lint groups as a drive-by; that is its own PR.
-- Minimum Python is **3.10**. Match the surrounding file's import
+- Minimum Python is **3.11**. Match the surrounding file's import
   and typing conventions; do not introduce `from __future__ import
   annotations` to files that do not already use it.
 - Do not add docstrings or comments that just restate the code.

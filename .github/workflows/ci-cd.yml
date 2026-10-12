@@ -247,14 +247,13 @@ jobs:
         - 3.13
         - 3.12
         - 3.11
-        - "3.10"
         no-extensions: ['', 'Y']
         debug: ['', 'Y']
         exclude:
         - no-extensions: Y
           debug: Y
         include:
-        - pyver: pypy-3.10
+        - pyver: pypy-3.11
           no-extensions: Y
           debug: ''
       fail-fast: false

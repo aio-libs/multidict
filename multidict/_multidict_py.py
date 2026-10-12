@@ -21,6 +21,7 @@ from typing import (
     ClassVar,
     Generic,
     NoReturn,
+    Self,
     TypeVar,
     cast,
     final,
@@ -28,11 +29,6 @@ from typing import (
 )
 
 from ._abc import MDArg, MultiMapping, MutableMultiMapping, SupportsKeys
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
 
 MAXSIZE = sys.maxsize
 

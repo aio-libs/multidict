@@ -2059,7 +2059,7 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
     if (value == NULL) {
         /* The caller wants the implicit None default.  Substituting it
            here keeps it out of the critical section below, where the
-           pythoncapi_compat shim for Py_GetConstant() used on 3.10 to
+           pythoncapi_compat shim for Py_GetConstant() used on 3.11 and
            3.12 could allocate on its first call. */
         value = md->state->none;
     }
@@ -2460,8 +2460,8 @@ _md_pop_item_locked(MultiDictObject* md)
         keys->nentries = pos;
     }
     /* The entry's refs, taken over: building the result below can run
-       Python code that mutates md (an istr key's __str__, or on 3.10 and
-       3.11 a collection the tuple triggers), so it runs once the pair is
+       Python code that mutates md (an istr key's __str__, or on 3.11 a
+       collection the tuple triggers), so it runs once the pair is
        gone. */
     PyObject* identity;
     PyObject* key;

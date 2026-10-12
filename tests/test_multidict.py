@@ -3729,7 +3729,7 @@ def test_iter_direct_instantiation_segfault() -> None:
         iter_type = type(iter(getattr(md, view_name)()))
         with pytest.raises(TypeError, match=f"cannot create '.*{iter_name}' instances"):
             iter_type()
-        # 3.10 refuses this in object.__new__'s safety check instead
+        # object.__new__'s safety check refuses this instead
         with pytest.raises(TypeError, match=iter_name):
             iter_type.__new__(iter_type)  # type: ignore[call-overload]
 
