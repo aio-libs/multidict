@@ -1226,9 +1226,8 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
 }
 
 /* Removes entry, whose index is at `slot`, and hands its references to the
-   caller. A compact entry has no identity reference of its own, so
-   *pidentity is NULL for one. `kind` is md->keys->kind, read once by the
-   caller.
+   caller, for a KIND_COMPACT table. A compact entry has no identity
+   reference of its own, so *pidentity is NULL.
 
    Every field is nulled out and md's bookkeeping (index, used) finished
    before the caller drops any reference. Freeing an object can run a
@@ -1248,22 +1247,30 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
    reader ever touches it (see the identity slot comment in
    freethreading.h). */
 static inline void
-_md_unlink_at(MultiDictObject* md, uint8_t kind, size_t slot, entry_t* entry,
-              PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
+_md_unlink_at_compact(MultiDictObject* md, size_t slot, entry_t* entry,
+                      PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
 {
-    if (kind_is_compact(kind)) {
-        *pkey = load_compact_identity(entry);
-        *pidentity = NULL;
-        *pvalue = load_value(entry);
-        reset_compact_identity(entry);
-    } else {
-        *pidentity = load_anystr_identity(as_anystr(entry));
-        *pkey = entry->key;
-        *pvalue = load_value(entry);
-        reset_anystr_identity(as_anystr(entry));
-        entry->key = NULL;
-    }
+    *pkey = load_compact_identity(entry);
+    *pidentity = NULL;
+    *pvalue = load_value(entry);
+    reset_compact_identity(entry);
     reset_value(entry);
+    HTKEYS_SET_INDEX(
+        md->keys, md->keys->log2_size, (Py_ssize_t)slot, DKIX_DUMMY);
+    add_used(md, -1);
+}
+
+/* The same for a KIND_ANYSTR table. */
+static inline void
+_md_unlink_at_anystr(MultiDictObject* md, size_t slot, anystr_entry_t* entry,
+                     PyObject** pidentity, PyObject** pkey, PyObject** pvalue)
+{
+    *pidentity = load_anystr_identity(entry);
+    *pkey = entry->base.key;
+    *pvalue = load_value(&entry->base);
+    reset_anystr_identity(entry);
+    entry->base.key = NULL;
+    reset_value(&entry->base);
     HTKEYS_SET_INDEX(
         md->keys, md->keys->log2_size, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
@@ -1279,7 +1286,12 @@ md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     PyObject* identity;
     PyObject* key;
     PyObject* value;
-    _md_unlink_at(md, md->keys->kind, slot, entry, &identity, &key, &value);
+    if (kind_is_compact(md->keys->kind)) {
+        _md_unlink_at_compact(md, slot, entry, &identity, &key, &value);
+    } else {
+        _md_unlink_at_anystr(
+            md, slot, as_anystr(entry), &identity, &key, &value);
+    }
 
     int ret = reflist_push(defer, identity);
     if (UNLIKELY(reflist_push(defer, key) < 0)) {
@@ -1346,8 +1358,8 @@ _removed_pairs_add(removed_pairs_t* removed, PyObject* key, PyObject* value)
 }
 
 /* Deletes the entry at `slot` of a KIND_COMPACT table, handing the key and
-   value to `removed`. Not through _md_unlink_at(), which costs del d[key]
-   up to 3 instructions. */
+   value to `removed`. Not through _md_unlink_at_compact(), which costs del
+   d[key] up to 3 instructions. */
 static inline int
 _md_del_at_held_compact(MultiDictObject* md, htkeys_t* keys, size_t slot,
                         entry_t* entry, removed_pairs_t* removed)
@@ -2052,6 +2064,25 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
     return ret;
 }
 
+/* A new reference to the value of the match of _md_pop_one_locked() in
+   `entry`, which the watcher hears of. */
+static inline PyObject*
+_md_pop_one_record(MultiDictObject* md, entry_t* entry, PyObject* identity,
+                   Py_hash_t hash, bool watched)
+{
+    PyObject* value = Py_NewRef(entry->value);
+    if (watched) {
+        md_watch_record(md,
+                        MultiDict_EVENT_DELETED,
+                        identity,
+                        hash,
+                        entry->key,
+                        value,
+                        NULL);
+    }
+    return value;
+}
+
 /* Caller holds md's critical section. `watched` is a constant at both
  * call sites; see _md_del_locked(). */
 static int
@@ -2062,45 +2093,46 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
-    entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind) && ci) {
-        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-    } else if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-    } else {
-        HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-    }
-    if (entry != NULL) {
-        PyObject* value = Py_NewRef(entry->value);
-        if (watched) {
-            md_watch_record(md,
-                            MultiDict_EVENT_DELETED,
-                            identity,
-                            hash,
-                            entry->key,
-                            value,
-                            NULL);
+    PyObject* value;
+    PyObject* old_identity;
+    PyObject* old_key;
+    PyObject* old_value;
+    if (kind_is_compact(iter.keys->kind)) {
+        entry_t* entry = NULL;
+        if (ci) {
+            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+        } else {
+            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
         }
-        PyObject* old_identity;
-        PyObject* old_key;
-        PyObject* old_value;
-        _md_unlink_at(md,
-                      md->keys->kind,
-                      iter.slot,
-                      entry,
-                      &old_identity,
-                      &old_key,
-                      &old_value);
-        Py_XDECREF(old_identity);
-        Py_XDECREF(old_key);
-        Py_XDECREF(old_value);
-        *ret = value;
-        bump_version(md);
-        ASSERT_CONSISTENT(md);
-        return 1;
+        if (entry == NULL) {
+            ASSERT_CONSISTENT(md);
+            return 0;
+        }
+        value = _md_pop_one_record(md, entry, identity, hash, watched);
+        _md_unlink_at_compact(
+            md, iter.slot, entry, &old_identity, &old_key, &old_value);
+    } else {
+        entry_t* entry = NULL;
+        HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
+        if (entry == NULL) {
+            ASSERT_CONSISTENT(md);
+            return 0;
+        }
+        value = _md_pop_one_record(md, entry, identity, hash, watched);
+        _md_unlink_at_anystr(md,
+                             iter.slot,
+                             as_anystr(entry),
+                             &old_identity,
+                             &old_key,
+                             &old_value);
     }
+    Py_XDECREF(old_identity);
+    Py_XDECREF(old_key);
+    Py_XDECREF(old_value);
+    *ret = value;
+    bump_version(md);
     ASSERT_CONSISTENT(md);
-    return 0;
+    return 1;
 }
 
 static int
@@ -2449,7 +2481,12 @@ _md_pop_item_locked(MultiDictObject* md)
     PyObject* identity;
     PyObject* key;
     PyObject* value;
-    _md_unlink_at(md, kind, iter.slot, entry, &identity, &key, &value);
+    if (kind_is_compact(kind)) {
+        _md_unlink_at_compact(md, iter.slot, entry, &identity, &key, &value);
+    } else {
+        _md_unlink_at_anystr(
+            md, iter.slot, as_anystr(entry), &identity, &key, &value);
+    }
     bump_version(md);
     ASSERT_CONSISTENT(md);
 

@@ -224,7 +224,14 @@ RULES = (
         "MultiDict_GetItem() already",
     ),
     Rule(
-        "_md_unlink_at",
+        "_md_unlink_at_compact",
+        "*",
+        (GIL,),
+        "#1763: out of line on FT with GCC 15 once the "
+        "bulk update grew, pop() +4%; GCC 13 FT has the copy already",
+    ),
+    Rule(
+        "_md_unlink_at_anystr",
         "*",
         (GIL,),
         "#1763: out of line on FT with GCC 15 once the "
