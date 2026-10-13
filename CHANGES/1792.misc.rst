@@ -1,3 +1,4 @@
-Moved the table-kind-specific part of the C extension helpers that
-handled a matched entry in ``pop()``, ``popall()``, item replacement and
-``update()`` into the per-kind lookup loops -- by :user:`asvetlov`.
+Split more C extension helpers per table kind, so that the lookup loops
+of ``pop()``, ``popall()``, item replacement and ``update()``, and the
+table rebuild, call the helper for their own kind instead of testing it
+again -- by :user:`asvetlov`.
