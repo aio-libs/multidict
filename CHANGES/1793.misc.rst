@@ -1,0 +1,3 @@
+Shared the argument parsing and the missing-key result of the
+``(key, default)`` methods of the C extension between them, instead of
+repeating them in each method -- by :user:`asvetlov`.
