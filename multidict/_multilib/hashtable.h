@@ -1496,10 +1496,20 @@ _md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return _md_del_locked(md, identity, hash, removed, true);
 }
 
-static inline int
-_md_del_identity(MultiDictObject* md, PyObject* key, PyObject* identity,
-                 Py_hash_t hash)
+/* The caller's reference to key keeps a borrowed identity alive through
+   the finalizers that releasing the removed pairs can run. */
+static int
+md_del(MultiDictObject* md, PyObject* key)
 {
+    PyObject* identity = md_identity_or_new(md, key);
+    if (identity == NULL) {
+        return -1;
+    }
+    Py_hash_t hash = unicode_hash(identity);
+    if (hash == -1) {
+        md_identity_release(md, key, identity);
+        return -1;
+    }
     int found;
     removed_pairs_t removed;
     _removed_pairs_init(&removed);
@@ -1517,26 +1527,12 @@ _md_del_identity(MultiDictObject* md, PyObject* key, PyObject* identity,
     Py_END_CRITICAL_SECTION();
     _removed_pairs_release(&removed);
     md_watch_flush_if(md, flush);
+    int ret = 0;
     if (found == 0) {
         PyErr_SetObject(PyExc_KeyError, key);
-        return -1;
-    }
-    return found < 0 ? -1 : 0;
-}
-
-/* The caller's reference to key keeps a borrowed identity alive through
-   the finalizers that releasing the removed pairs can run. */
-static int
-md_del(MultiDictObject* md, PyObject* key)
-{
-    PyObject* identity = md_identity_or_new(md, key);
-    if (identity == NULL) {
-        return -1;
-    }
-    int ret = -1;
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash != -1) {
-        ret = _md_del_identity(md, key, identity, hash);
+        ret = -1;
+    } else if (found < 0) {
+        ret = -1;
     }
     md_identity_release(md, key, identity);
     return ret;
