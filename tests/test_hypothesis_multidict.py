@@ -41,13 +41,17 @@ _Pairs = list[tuple[str, object]]
 
 # A small, colliding key pool so the stateful machine actually exercises
 # duplicate-key handling instead of drawing 25 essentially-unique keys.
-_STATEFUL_KEYS = st.sampled_from(["a", "b", "c", "A", "B", "aa", "", "k1", "k2"])
+# The keys that are no str include equal ones of different types.
+_STATEFUL_KEYS = st.sampled_from(
+    ["a", "b", "c", "A", "B", "aa", "", "k1", "k2", 1, 1.0, 2, None, (1, "a")]
+)
 _STATEFUL_VALUES = st.integers(min_value=0, max_value=50)
 _STATEFUL_PAIRS = st.lists(st.tuples(_STATEFUL_KEYS, _STATEFUL_VALUES), max_size=5)
 
 
 def _make_state_machine(cls: _MD_Classes, is_ci: bool) -> type[RuleBasedStateMachine]:
-    fold = str.lower if is_ci else (lambda s: s)
+    def fold(key: object) -> object:
+        return key.lower() if is_ci and isinstance(key, str) else key
 
     class MultiDictStateMachine(RuleBasedStateMachine):
         def __init__(self) -> None:

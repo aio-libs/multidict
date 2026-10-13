@@ -18,35 +18,15 @@ extern "C" {
 #include "istr.h"
 #include "state.h"
 
-COLD static PyObject*
-_err_key_type_cs(void)
-{
-    PyErr_SetString(PyExc_TypeError,
-                    "MultiDict keys should be either str "
-                    "or subclasses of str");
-    return NULL;
-}
-
-COLD static PyObject*
-_err_key_type_ci(void)
-{
-    PyErr_SetString(PyExc_TypeError,
-                    "CIMultiDict keys should be either str "
-                    "or subclasses of str");
-    return NULL;
-}
-
+/* A key that is no str is its own identity, in either class. */
 static inline PyObject*
 _key_to_identity_cs(mod_state* state, PyObject* key)
 {
     /* Inverted so the exact-str case is the fallthrough: left as written,
        GCC puts it out of line behind a taken branch and puts the subclass
        call on the straight line. */
-    if (UNLIKELY(!PyUnicode_CheckExact(key))) {
-        if (PyUnicode_Check(key)) {
-            return PyUnicode_FromObject(key);
-        }
-        return _err_key_type_cs();
+    if (UNLIKELY(!PyUnicode_CheckExact(key)) && PyUnicode_Check(key)) {
+        return PyUnicode_FromObject(key);
     }
     return Py_NewRef(key);
 }
@@ -132,7 +112,7 @@ _str_call_lower_ci(mod_state* state, PyObject* key)
         return PyObject_CallMethodNoArgs(key, state->str_lower);
     }
     if (!PyUnicode_Check(key)) {
-        return _err_key_type_ci();
+        return Py_NewRef(key);
     }
     /* str.__str__(key).lower(), never a subclass's own lower(): no Python
        code runs, and the exact copy takes the ASCII path. */
@@ -188,9 +168,6 @@ _key_to_identity_ci(mod_state* state, PyObject* key)
 static inline PyObject*
 _arg_to_key_cs(mod_state* state, PyObject* key, PyObject* identity)
 {
-    if (UNLIKELY(!PyUnicode_Check(key))) {
-        return _err_key_type_cs();
-    }
     return Py_NewRef(key);
 }
 
@@ -209,16 +186,36 @@ _subclass_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 }
 
 static inline PyObject*
+_arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity);
+
+/* A str key whose identity, from a KIND_GENERAL table, is an object of
+   another type that compares equal: its istr needs the lowercased str. */
+COLD static PyObject*
+_arg_to_key_ci_recompute(mod_state* state, PyObject* key)
+{
+    PyObject* identity = _str_to_identity_ci(state, key);
+    if (UNLIKELY(identity == NULL)) {
+        return NULL;
+    }
+    PyObject* ret = _arg_to_key_ci(state, key, identity);
+    Py_DECREF(identity);
+    return ret;
+}
+
+static inline PyObject*
 _arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 {
     if (IStr_CheckExact(state, key)) {
         return Py_NewRef(key);
     }
+    if (UNLIKELY(!PyUnicode_Check(key))) {
+        return Py_NewRef(key);
+    }
+    if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+        return _arg_to_key_ci_recompute(state, key);
+    }
     if (PyUnicode_CheckExact(key)) {
         return IStr_New(state, key, identity);
-    }
-    if (UNLIKELY(!PyUnicode_Check(key))) {
-        return _err_key_type_ci();
     }
     return _subclass_to_key_ci(state, key, identity);
 }
@@ -286,7 +283,8 @@ md_identity_or_new(MultiDictObject* md, PyObject* key)
         return _str_identity_or_new_ci(md->state, key);
     }
     if (UNLIKELY(!PyUnicode_CheckExact(key))) {
-        return _key_to_identity_cs(md->state, key);
+        // no str: its own identity, so borrowed like one
+        return PyUnicode_Check(key) ? PyUnicode_FromObject(key) : key;
     }
     return key;
 }
@@ -302,22 +300,24 @@ md_identity_release(MultiDictObject* md, PyObject* key, PyObject* identity)
     }
 }
 
-/* md_calc_identity() that also says whether key fits a compact table (see
-   md_key_fits()): a CIMultiDict's istr test has just run here, so the
+/* md_calc_identity() that also says what kind of table key needs (see
+   md_key_need()): a CIMultiDict's istr test has just run here, so the
    insert need not repeat it. */
 static inline PyObject*
-md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits)
+md_calc_identity_need(MultiDictObject* md, PyObject* key, uint8_t* pneed)
 {
     if (md->is_ci) {
         if (IStr_CheckExact(md->state, key)) {
-            *pfits = true;
+            *pneed = KIND_COMPACT;
             return Py_NewRef(istr_canonical(key));
         }
-        *pfits = false;
+        *pneed = PyUnicode_Check(key) ? KIND_ANYSTR : KIND_GENERAL;
         return _str_to_identity_ci(md->state, key);
     }
     PyObject* identity = _key_to_identity_cs(md->state, key);
-    *pfits = identity == key;
+    *pneed = identity != key                  ? KIND_ANYSTR
+             : PyUnicode_CheckExact(identity) ? KIND_COMPACT
+                                              : KIND_GENERAL;
     return identity;
 }
 
@@ -339,7 +339,7 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key)
     if (UNLIKELY(ret.identity == NULL)) {
         return ret;
     }
-    ret.hash = unicode_hash(ret.identity);
+    ret.hash = identity_hash(ret.identity);
     if (UNLIKELY(ret.hash == -1)) {
         Py_CLEAR(ret.identity);
     }
@@ -379,8 +379,9 @@ _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
     return key;
 }
 
-/* A stored key was checked to be a str when it went in, so only a
-   CIMultiDict's plain str needs work. */
+/* Only a CIMultiDict's plain str needs work; a key that is no str, which
+   only a KIND_GENERAL table holds, comes back as is from
+   _md_cache_key_ci(). */
 static inline PyObject*
 md_ensure_key(MultiDictObject* md, entry_t* entry)
 {

@@ -138,6 +138,98 @@ _MD_DEFINE_EQ_SCAN(ANYSTR, ANYSTR)
 #undef _MD_EQ_ANYSTR_IDENTITY
 #undef _MD_EQ_ANYSTR_BASE
 
+/* Entry `pos` of md's table, of any kind, with its identity and hash. */
+static inline entry_t*
+_md_eq_entry(MultiDictObject* md, Py_ssize_t pos, PyObject** pidentity,
+             Py_hash_t* phash)
+{
+    htkeys_t* keys = md->keys;
+    if (kind_is_compact(keys->kind)) {
+        entry_t* e = HTKEYS_COMPACT_ENTRIES(keys) + pos;
+        if (!entry_is_hole(e)) {
+            *pidentity = md->is_ci ? compact_key_identity_ci(e->key)
+                                   : compact_key_identity_cs(e->key);
+            *phash = md->is_ci ? compact_key_hash_ci(e->key)
+                               : compact_key_hash_cs(e->key);
+        }
+        return e;
+    }
+    anystr_entry_t* e = HTKEYS_ANYSTR_ENTRIES(keys) + pos;
+    *pidentity = e->identity;
+    *phash = e->hash;
+    return &e->base;
+}
+
+/* The scan for tables either of which is KIND_GENERAL, whose identities
+   need __eq__. One that ran holds its own references to both pairs, and
+   ends the call as a value's __eq__ does. */
+COLD static int
+_md_eq_scan_general(MultiDictObject* md, MultiDictObject* other,
+                    Py_ssize_t* ppos1, Py_ssize_t* ppos2)
+{
+    Py_ssize_t pos1 = *ppos1;
+    Py_ssize_t pos2 = *ppos2;
+    for (;; pos1++, pos2++) {
+        PyObject* identity1 = NULL;
+        PyObject* identity2 = NULL;
+        Py_hash_t hash1 = 0;
+        Py_hash_t hash2 = 0;
+        entry_t* entry1 = NULL;
+        entry_t* entry2 = NULL;
+        for (; pos1 < md->keys->nentries; pos1++) {
+            entry1 = _md_eq_entry(md, pos1, &identity1, &hash1);
+            if (!entry_is_hole(entry1)) {
+                break;
+            }
+        }
+        for (; pos2 < other->keys->nentries; pos2++) {
+            entry2 = _md_eq_entry(other, pos2, &identity2, &hash2);
+            if (!entry_is_hole(entry2)) {
+                break;
+            }
+        }
+        if (pos1 >= md->keys->nentries || pos2 >= other->keys->nentries) {
+            return 1;
+        }
+        if (hash1 != hash2) {
+            return 0;
+        }
+        if (identity1 == identity2 || (PyUnicode_CheckExact(identity1) &&
+                                       PyUnicode_CheckExact(identity2))) {
+            if (identity1 != identity2 && !str_cmp(identity1, identity2)) {
+                return 0;
+            }
+            int cmp = _md_eq_values(entry1->value, entry2->value);
+            if (cmp == _MD_EQ_RAN) {
+                *ppos1 = pos1 + 1;
+                *ppos2 = pos2 + 1;
+            }
+            if (cmp != 1) {
+                return cmp;
+            }
+            continue;
+        }
+        PyObject* value1 = Py_NewRef(entry1->value);
+        PyObject* value2 = Py_NewRef(entry2->value);
+        Py_INCREF(identity1);
+        Py_INCREF(identity2);
+        int cmp = PyObject_RichCompareBool(identity1, identity2, Py_EQ);
+        if (cmp > 0) {
+            cmp = _md_eq_values(value1, value2);
+        }
+        Py_DECREF(identity1);
+        Py_DECREF(identity2);
+        Py_DECREF(value1);
+        Py_DECREF(value2);
+        if (cmp <= 0) {
+            return cmp;
+        }
+        *ppos1 = pos1 + 1;
+        *ppos2 = pos2 + 1;
+        return _MD_EQ_RAN;
+    }
+}
+
 // The _MD_EQ_ kind of md's table: 0 is CS, 1 is CI, 2 is ANYSTR.
 static inline int
 _md_eq_kind(MultiDictObject* md)
@@ -150,6 +242,10 @@ static int
 _md_eq_scan(MultiDictObject* md, MultiDictObject* other, Py_ssize_t* ppos1,
             Py_ssize_t* ppos2)
 {
+    if (UNLIKELY(md->keys->kind == KIND_GENERAL ||
+                 other->keys->kind == KIND_GENERAL)) {
+        return _md_eq_scan_general(md, other, ppos1, ppos2);
+    }
     switch (_md_eq_kind(md) * 3 + _md_eq_kind(other)) {
         case 0:
             return _md_eq_scan_CS_CS(md, other, ppos1, ppos2);

@@ -16,6 +16,7 @@ extern "C" {
 #include "dict.h"
 #include "htkeys.h"
 #include "identity.h"
+#include "resolve.h"
 #include "str_cmp.h"
 
 /* Visitor for md_walk().
@@ -191,6 +192,13 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                   bool with_keys, md_item_visitor_t visitor, void* user_data)
 {
     bool ci = md->is_ci;
+    PyObject* probe = identity;
+    int resolved = md_resolve_probe(md, &identity, hash);
+    if (resolved <= 0) {
+        return resolved;
+    }
+    // the table's own, which the visitors could free
+    PyObject* held = identity != probe ? Py_NewRef(identity) : NULL;
     uint64_t version = md->version;
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
@@ -249,7 +257,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                 }
             }
         }
-    } else {
+    } else if (md->keys->kind == KIND_ANYSTR) {
         entry_t* entry = NULL;
         while (ret > 0) {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
@@ -273,7 +281,32 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                 break;
             }
         }
+    } else {
+        entry_t* entry = NULL;
+        while (ret > 0) {
+            HTKEYSITER_FIND_GENERAL(&iter, identity, hash, entry);
+            if (entry == NULL) {
+                break;
+            }
+            if (iter.index <= last) {
+                continue;
+            }
+            last = iter.index;
+            ret = _md_walk_matched(md,
+                                   entry,
+                                   identity,
+                                   hash,
+                                   with_keys,
+                                   visitor,
+                                   user_data,
+                                   version);
+            count += ret >= 0;
+            if (!dups) {
+                break;
+            }
+        }
     }
+    Py_XDECREF(held);
     return ret < 0 ? -1 : count;
 }
 
@@ -282,7 +315,7 @@ static Py_ssize_t
 md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
         md_item_visitor_t visitor, void* user_data)
 {
-    Py_hash_t hash = unicode_hash(identity);
+    Py_hash_t hash = identity_hash(identity);
     if (UNLIKELY(hash == -1)) {
         return -1;
     }

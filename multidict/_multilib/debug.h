@@ -16,15 +16,17 @@ extern "C" {
 
 #ifndef NDEBUG
 
-// `identity` and `hash` are the entry's own, `identity` NULL for a hole.
+/* `identity` and `hash` are the entry's own, `identity` NULL for a hole;
+   only a KIND_GENERAL table's identity can be no str, and is not hashed
+   again here, which would run Python code. */
 static void
 _md_check_entry(const entry_t* entry, PyObject* identity, Py_hash_t hash)
 {
     if (identity != NULL) {
         assert(entry->key != NULL);
         assert(entry->value != NULL);
-        assert(PyUnicode_CheckExact(identity));
-        assert(hash == unicode_hash(identity));
+        assert(!PyUnicode_CheckExact(identity) ||
+               hash == unicode_hash(identity));
     } else {
         assert(entry->key == NULL);
     }
@@ -77,6 +79,10 @@ _md_check_consistency(const MultiDictObject* md)
         for (Py_ssize_t i = 0; i < calc_usable; i++) {
             _md_check_entry(
                 &entries[i].base, entries[i].identity, entries[i].hash);
+            // only a KIND_GENERAL table holds keys that are no str
+            CHECK(keys->kind == KIND_GENERAL || entries[i].identity == NULL ||
+                  (PyUnicode_CheckExact(entries[i].identity) &&
+                   PyUnicode_Check(entries[i].base.key)));
         }
     }
 

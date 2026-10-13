@@ -134,6 +134,27 @@ _md_to_dict_single(MultiDictObject* md, PyObject* dict, entry_t* entry,
         }                                                                  \
     } while (0)
 
+/* The same over a KIND_ANYSTR or KIND_GENERAL table, `find` being its
+   HTKEYSITER_FIND_ANYSTR() or _GENERAL(). */
+#define _MD_TO_DICT_ANYSTR_LOOP(find)                                     \
+    do {                                                                  \
+        anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);            \
+        for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {           \
+            anystr_entry_t* entry = entries + pos;                        \
+            if (entry_is_hole((const entry_t*)entry) ||                   \
+                bitmap_test(&collected, pos)) {                           \
+                continue; /* deleted, or collected under its first key */ \
+            }                                                             \
+            _MD_TO_DICT_COLLECT(find, entry->identity, entry->hash, pos); \
+            int stored =                                                  \
+                _md_to_dict_store(md, dict, &entry->base, lst, version);  \
+            lst = NULL;                                                   \
+            if (UNLIKELY(stored < 0)) {                                   \
+                goto fail;                                                \
+            }                                                             \
+        }                                                                 \
+    } while (0)
+
 /* Walks the entries in insertion order, so every key is collected at its
    first spelling; a hash chain walk is not insertion-ordered. Equal keys
    sit on one hash chain in insertion order. One loop per kind; the
@@ -183,23 +204,10 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
         } else {
             _MD_TO_DICT_COMPACT_LOOP(cs, HTKEYSITER_FIND_COMPACT_CS);
         }
+    } else if (keys->kind == KIND_ANYSTR) {
+        _MD_TO_DICT_ANYSTR_LOOP(HTKEYSITER_FIND_ANYSTR);
     } else {
-        anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
-        for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
-            anystr_entry_t* entry = entries + pos;
-            if (entry_is_hole((const entry_t*)entry) ||
-                bitmap_test(&collected, pos)) {
-                continue;  // deleted, or collected under its first key
-            }
-            _MD_TO_DICT_COLLECT(
-                HTKEYSITER_FIND_ANYSTR, entry->identity, entry->hash, pos);
-            int stored =
-                _md_to_dict_store(md, dict, &entry->base, lst, version);
-            lst = NULL;
-            if (UNLIKELY(stored < 0)) {
-                goto fail;
-            }
-        }
+        _MD_TO_DICT_ANYSTR_LOOP(HTKEYSITER_FIND_GENERAL);
     }
 
     bitmap_release(&collected);
@@ -213,6 +221,7 @@ fail:
 }
 
 #undef _MD_TO_DICT_COMPACT_LOOP
+#undef _MD_TO_DICT_ANYSTR_LOOP
 #undef _MD_TO_DICT_COLLECT
 
 static int
