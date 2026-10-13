@@ -1,3 +1,0 @@
-Rewrote the C extension's ``repr()`` of multidicts and their views on top of
-the shared walk over all entries, and stopped inlining the helper that
-appends a new entry -- by :user:`asvetlov`.

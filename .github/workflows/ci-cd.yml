@@ -239,20 +239,21 @@ jobs:
     strategy:
       matrix:
         pyver:
+        - 3.15t
+        - 3.15
         - 3.14t
         - 3.14
         # Skipping 3.13t because cibuildwheel dropped support
         - 3.13
         - 3.12
         - 3.11
-        - "3.10"
         no-extensions: ['', 'Y']
         debug: ['', 'Y']
         exclude:
         - no-extensions: Y
           debug: Y
         include:
-        - pyver: pypy-3.10
+        - pyver: pypy-3.11
           no-extensions: Y
           debug: ''
       fail-fast: false
@@ -1070,12 +1071,25 @@ jobs:
       # CIBW_ARCHS_LINUX: Build emulated architectures if QEMU, else "auto"
       # CIBW_BUILD_FRONTEND: override pyproject.toml's `build[uv]` because
       # the pypa odd-arch containers do not ship `uv` preinstalled
+      # CIBW_TEST_COMMAND: under QEMU, skip the pure-Python runs of the tests
+      # marked `expensive`, and the `threaded` ones on GIL builds; they took
+      # manylinux riscv64 past its timeout
       environment-variables: |-
         CIBW_ARCHS_LINUX=${{ matrix.qemu }}
 
         CIBW_ARCHS_MACOS=x86_64 arm64 universal2
 
         CIBW_BUILD_FRONTEND=build
+
+        CIBW_TEST_COMMAND=pytest --no-cov {project}/tests -m "${{
+          !matrix.native-arch
+          && format(
+            '{0} and {1} and ',
+            'not (pure_python and expensive)',
+            'not (gil_build and threaded)'
+          )
+          || ''
+        }}not leaks and not hypothesis and not capi"
 
         CIBW_SKIP=${{
           (matrix.tag == 'musllinux')
@@ -1116,7 +1130,7 @@ jobs:
         CIBW_TEST_SKIP=*
 
   deploy:
-    name: Deploy
+    name: Deploy (${{ matrix.group }})
     needs:
     - build-linux-wheels
     - build-pure-python-dists
@@ -1133,12 +1147,43 @@ jobs:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
       id-token: write  # IMPORTANT: mandatory for trusted publishing & sigstore
 
+    env:
+      TAG: ${{ github.ref_name }}
+
     environment:
       name: pypi
       url: https://pypi.org/p/${{ env.PROJECT_NAME }}
 
+    strategy:
+      # The PyPI publish mints one short-lived (15 minute) upload token per
+      # job and reuses it for every file, and the Sigstore step does the same
+      # with its OIDC identity. Publishing all 170+ dists from one job takes
+      # about 14 minutes even without PyPI hiccups, so a single retried
+      # upload makes the token expire partway through
+      # (pypa/gh-action-pypi-publish#307). Each group is its own job with
+      # fresh tokens and only handles its share of the dists.
+      #
+      # All groups target the pypi environment, so they are pending at the
+      # same time and a reviewer approves them in one review. The first group
+      # (job-index 0) creates the GitHub Release and the others wait for it.
+      # Shares are disjoint, and every step is idempotent, so a failed group
+      # can be re-run on its own.
+      #
+      # Each "N of M" label encodes its own position and the group count.
+      # Keep `group` the only matrix axis, so that job-index 0 stays the
+      # first label.
+      fail-fast: false
+      matrix:
+        group:
+        - 1 of 4
+        - 2 of 4
+        - 3 of 4
+        - 4 of 4
+
     steps:
     - name: Retrieve the project source from an sdist inside the GHA artifact
+      # Only the group that creates the Release reads the source tree.
+      if: ${{ strategy.job-index == 0 }}
       uses: re-actors/checkout-python-sdist@release/v2
       with:
         source-tarball-name: >-
@@ -1152,8 +1197,34 @@ jobs:
         pattern: ${{ needs.pre-setup.outputs.dists-artifact-name }}*
         merge-multiple: true
         path: dist
-    - run: |
-        tree
+    - name: Select this group's distributions
+      # A byte-order sort puts every dist in the same group on each run, so
+      # re-running one group only ever touches its own share.
+      id: group
+      shell: bash
+      env:
+        GROUP: ${{ matrix.group }}
+      run: |
+        set -euo pipefail
+        index=$(( ${GROUP%% of *} - 1 ))
+        count=${GROUP##* of }
+        shopt -s nullglob
+        mapfile -t all < <(
+          printf '%s\n' dist/*.whl dist/*.tar.gz | LC_ALL=C sort
+        )
+        i=0
+        inputs=()
+        for f in "${all[@]}"; do
+          if [ "$(( i % count ))" -eq "${index}" ]; then
+            inputs+=("${f}")
+          else
+            rm -f -- "${f}"
+          fi
+          i=$(( i + 1 ))
+        done
+        echo "Group ${GROUP} keeps ${#inputs[@]} of ${#all[@]} dist(s):"
+        printf '  %s\n' "${inputs[@]}"
+        echo "sigstore-inputs=${inputs[*]}" >> "${GITHUB_OUTPUT}"
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
@@ -1161,29 +1232,33 @@ jobs:
       # Allows re-running the deploy job after a partial failure (e.g. PyPI
       # upload error) without the Make Release step failing with HTTP 422
       # because the tag/release was created on a prior attempt. Treat
-      # only the literal `release not found` reply as "does not exist";
-      # other failures (auth, rate-limit, network) re-raise so the job
-      # fails loudly instead of falling through to Make Release.
+      # only an HTTP 404 reply as "does not exist"; other failures (auth,
+      # rate-limit, network) re-raise so the job fails loudly instead of
+      # falling through to Make Release.
+      if: ${{ strategy.job-index == 0 }}
       id: gh-release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAG: ${{ github.ref_name }}
       run: |
-        if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
-            >/dev/null 2>err; then
+        if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
+            --silent 2>err; then
           echo 'exists=true' >> "${GITHUB_OUTPUT}"
-        elif grep -qx 'release not found' err; then
+        elif grep -q 'HTTP 404' err; then
           echo 'exists=false' >> "${GITHUB_OUTPUT}"
         else
           cat err >&2
           exit 1
         fi
     - name: Convert the changelog roles to Markdown for the release body
-      if: steps.gh-release.outputs.exists != 'true'
+      if: >-
+        strategy.job-index == 0
+        && steps.gh-release.outputs.exists != 'true'
       run: |
         python3 tools/release_notes_md.py CHANGES.rst CHANGES.md
     - name: Make Release
-      if: steps.gh-release.outputs.exists != 'true'
+      if: >-
+        strategy.job-index == 0
+        && steps.gh-release.outputs.exists != 'true'
       uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.md
@@ -1198,6 +1273,27 @@ jobs:
           :issue:`(\d+)`
         fix_issue_repl: >-
           #\1
+    - name: Wait for the GitHub Release
+      # The other groups publish nothing until the first group has created
+      # the Release, so a failure to create it also blocks the PyPI upload.
+      # Only a 404 counts as "not yet"; any other failure re-raises.
+      if: ${{ strategy.job-index != 0 }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        for _ in $(seq 1 150); do
+          if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
+              --silent 2>err; then
+            exit 0
+          fi
+          if ! grep -q 'HTTP 404' err; then
+            cat err >&2
+            exit 1
+          fi
+          sleep 2
+        done
+        echo "GitHub Release ${TAG} did not appear in time" >&2
+        exit 1
 
     - name: >-
         Publish 🐍📦 to PyPI
@@ -1210,9 +1306,7 @@ jobs:
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v3.5.0
       with:
-        inputs: >-
-          ./dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
-          ./dist/*.whl
+        inputs: ${{ steps.group.outputs.sigstore-inputs }}
 
     - name: Upload artifact signatures to GitHub Release
       # Upload one file at a time: a parallel burst of 500+ assets trips
@@ -1220,7 +1314,6 @@ jobs:
       # skipped so a re-run only fills in what a previous attempt missed.
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAG: ${{ github.ref_name }}
       run: |
         gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
           --json assets --jq '.assets[].name' > "${RUNNER_TEMP}/existing"

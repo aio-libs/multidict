@@ -91,6 +91,7 @@ def test_race_condition_iterator_vs_mutation(
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_race_condition_extend_vs_source_mutation(
     any_multidict_class: type[CIMultiDict[str] | MultiDict[str]],
 ) -> None:
@@ -271,6 +272,7 @@ def test_items_iterator_shared_between_threads(
 
 @pytest.mark.c_extension
 @pytest.mark.parametrize("cls_name", ["MultiDict", "CIMultiDict"])
+@pytest.mark.threaded
 def test_reinit_finalizer_vs_lock_free_readers(
     cls_name: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -360,7 +362,7 @@ def test_reinit_finalizer_vs_lock_free_readers(
     with ThreadPoolExecutor(max_workers=n_readers + 1) as executor:
         futures = [executor.submit(reader) for _ in range(n_readers)]
         # Generous, but inside the CI job's 15 minutes: under coverage's C
-        # tracer (3.10 to 3.12) every traced line takes a lock the threads
+        # tracer (3.11 and 3.12) every traced line takes a lock the threads
         # share, and the readers still run the finalizers of generations
         # their snapshots outlived after the writer is done. Windows runners
         # have needed over three minutes.

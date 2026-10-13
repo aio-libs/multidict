@@ -156,13 +156,7 @@ RULES = (
         "#1676: the constant kind made adding to a table with holes 5-8% cheaper",
     ),
     Rule(
-        "compact_entry_is_hole",
-        "*",
-        BOTH,
-        "#1674: a single load tested once per entry in every walk",
-    ),
-    Rule(
-        "anystr_entry_is_hole",
+        "entry_is_hole",
         "*",
         BOTH,
         "#1674: a single load tested once per entry in every walk",
@@ -181,7 +175,7 @@ RULES = (
         "out of line once the constructor was pinned, cls() +5.5% on FT",
     ),
     Rule(
-        "md_calc_identity_key",
+        "md_store_key",
         "*",
         BOTH,
         "an out-of-line copy adds a call per stored key, which every "
@@ -202,12 +196,6 @@ RULES = (
         "MultiDict(items) item on FT",
     ),
     Rule(
-        "_md_del_at",
-        "*",
-        BOTH,
-        "#1604: pinned after budget respend, popitem +1% on FT",
-    ),
-    Rule(
         "_compact_entry_matches_cs",
         "*",
         (FT,),
@@ -226,6 +214,28 @@ RULES = (
         (FT,),
         "#1653: pinned with _compact_entry_matches_cs, its twin for the "
         "full layout in the same lock-free probe loops",
+    ),
+    Rule(
+        "md_calc_identity_hash",
+        tuple(e for e in GETITEM_ENTRIES if e != "MultiDict_GetItem"),
+        BOTH,
+        "#1763: out of line in d[key] on GIL with GCC 15 once the bulk "
+        "update grew, MultiDict d[istr] +3.5%; GCC 13 keeps it out of "
+        "MultiDict_GetItem() already",
+    ),
+    Rule(
+        "_md_unlink_at_compact",
+        "*",
+        (GIL,),
+        "#1763: out of line on FT with GCC 15 once the "
+        "bulk update grew, pop() +4%; GCC 13 FT has the copy already",
+    ),
+    Rule(
+        "_md_unlink_at_anystr",
+        "*",
+        (GIL,),
+        "#1763: out of line on FT with GCC 15 once the "
+        "bulk update grew, pop() +4%; GCC 13 FT has the copy already",
     ),
     Rule(
         "_key_to_identity_cs",

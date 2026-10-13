@@ -48,14 +48,10 @@ typedef size_t bitmap_word_t;
 #define BITMAP_ONE ((bitmap_word_t)1)
 #define BITMAP_ALL (~(bitmap_word_t)0)
 
-/* The inline buffer sits in the caller's frame: once in md_walk(), which
-   is always inlined, so it lands in getall(), the views' match collector
-   and the C API's foreach-key; once in md_to_dict(); and twice over
-   inside update_marks_t, on every update(). Past about 1 KB it costs
-   those callers more in the inlining it crowds out than it saves in
-   allocations: dropping it from 4096 takes 2.7% off a getall() that
-   hits, 1.4% off one over a 16384-entry table, and nothing off anything
-   else. */
+/* The inline buffer sits in the caller's frame: once in md_to_dict(),
+   and twice over inside update_marks_t, on every update(). Past about
+   1 KB it costs those callers more in the inlining it crowds out than it
+   saves in allocations. */
 #define BITMAP_INLINE_BYTES 1024
 #define BITMAP_DENSE_WORDS 64
 #define BITMAP_INLINE_WORDS (BITMAP_INLINE_BYTES / sizeof(bitmap_word_t))
@@ -95,7 +91,7 @@ _bitmap_alloc(bitmap_t* bm, Py_ssize_t nsummary)
 {
     bitmap_word_t* block =
         PyMem_Malloc((size_t)(nsummary + bm->nwords) * sizeof(bitmap_word_t));
-    if (block == NULL) {
+    if (UNLIKELY(block == NULL)) {
         PyErr_NoMemory();
         return -1;
     }
@@ -120,7 +116,7 @@ _bitmap_start(bitmap_t* bm)
     if ((size_t)bm->nwords <= BITMAP_INLINE_WORDS) {
         bm->summary = bm->inline_summary;
         bm->words = bm->inline_words;
-    } else if (_bitmap_alloc(bm, nsummary) < 0) {
+    } else if (UNLIKELY(_bitmap_alloc(bm, nsummary) < 0)) {
         return -1;
     }
     memset(bm->summary, 0, (size_t)nsummary * sizeof(bitmap_word_t));
@@ -158,7 +154,7 @@ static bitmap_word_t*
 _bitmap_word_sparse(bitmap_t* bm, Py_ssize_t wi)
 {
     if (UNLIKELY(bm->summary == NULL)) {
-        if (_bitmap_start(bm) < 0) {
+        if (UNLIKELY(_bitmap_start(bm) < 0)) {
             return NULL;
         }
         if (bm->dense) {
@@ -190,7 +186,7 @@ _bitmap_word(bitmap_t* bm, Py_ssize_t i)
 /* Moves `src` into `dst`, releasing what `dst` held. `src` is left
    released. */
 static void
-bitmap_move(bitmap_t* dst, bitmap_t* src)
+_bitmap_move(bitmap_t* dst, bitmap_t* src)
 {
     bitmap_release(dst);
     dst->nwords = src->nwords;
@@ -249,7 +245,7 @@ static inline int
 bitmap_set(bitmap_t* bm, Py_ssize_t i)
 {
     bitmap_word_t* word = _bitmap_word(bm, i);
-    if (word == NULL) {
+    if (UNLIKELY(word == NULL)) {
         return -1;
     }
     *word |= BITMAP_ONE << (i & BITMAP_WORD_MASK);
@@ -274,7 +270,7 @@ static inline int
 bitmap_test_and_set(bitmap_t* bm, Py_ssize_t i)
 {
     bitmap_word_t* word = _bitmap_word(bm, i);
-    if (word == NULL) {
+    if (UNLIKELY(word == NULL)) {
         return -1;
     }
     bitmap_word_t bit = BITMAP_ONE << (i & BITMAP_WORD_MASK);
@@ -315,7 +311,7 @@ _bitmap_ctz(bitmap_word_t w)
 /* The first set index at or after `start`, or -1 if there is none.
    Untouched words are skipped a whole summary word at a time. */
 static Py_ssize_t
-bitmap_next(const bitmap_t* bm, Py_ssize_t start)
+_bitmap_next(const bitmap_t* bm, Py_ssize_t start)
 {
     assert(start >= 0);
     Py_ssize_t wi = start >> BITMAP_WORD_SHIFT;
@@ -367,14 +363,14 @@ bitmap_grow(bitmap_t* bm, Py_ssize_t nbits)
     assert(nbits > bitmap_nbits(bm));
     bitmap_t fresh;
     bitmap_init(&fresh, bm->keys, nbits);
-    for (Py_ssize_t i = bitmap_next(bm, 0); i >= 0;
-         i = bitmap_next(bm, i + 1)) {
-        if (bitmap_set(&fresh, i) < 0) {
+    for (Py_ssize_t i = _bitmap_next(bm, 0); i >= 0;
+         i = _bitmap_next(bm, i + 1)) {
+        if (UNLIKELY(bitmap_set(&fresh, i) < 0)) {
             bitmap_release(&fresh);
             return -1;
         }
     }
-    bitmap_move(bm, &fresh);
+    _bitmap_move(bm, &fresh);
     return 0;
 }
 

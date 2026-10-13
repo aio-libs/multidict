@@ -65,7 +65,7 @@ static inline bool
 _watchlog_grow(watchlog_t* log)
 {
     watchlog_block_t* block = PyMem_Malloc(sizeof(watchlog_block_t));
-    if (block == NULL) {
+    if (UNLIKELY(block == NULL)) {
         return false;
     }
     block->next = NULL;
@@ -93,7 +93,7 @@ watchlog_append(watchlog_t* log, MultiDict_WatchEvent event,
         return;
     }
     if (UNLIKELY(log->tail == NULL || log->tail->count == WATCHLOG_BLOCK)) {
-        if (!_watchlog_grow(log)) {
+        if (UNLIKELY(!_watchlog_grow(log))) {
             log->overflowed = true;
             return;
         }

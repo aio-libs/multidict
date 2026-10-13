@@ -1,3 +1,0 @@
-Added benchmarks for re-initializing a populated multidict with
-``d.__init__(items)`` and ``d.__init__(other)``, at 20 and 200 items, to the
-benchmark registry and to the CodSpeed suite -- by :user:`asvetlov`.

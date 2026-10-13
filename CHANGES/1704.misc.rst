@@ -1,2 +1,0 @@
-Stopped forcing the C extension's bulk update helpers inline or out of
-line, leaving the choice to the compiler -- by :user:`asvetlov`.

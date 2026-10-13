@@ -1,6 +1,7 @@
 import functools
 import gc
 import itertools
+import random
 import string
 import sys
 import sysconfig
@@ -535,6 +536,7 @@ class TestMutableMultiDict:
         cls = d.values().__class__.__name__
         assert repr(d.values()) == f"<{cls}(1, 3)>"
 
+    @pytest.mark.expensive
     def test_huge_md(
         self,
         case_sensitive_multidict_class: type[MultiDict[int]],
@@ -543,6 +545,7 @@ class TestMutableMultiDict:
         d = case_sensitive_multidict_class((str(i), i) for i in range(size))
         assert d[str(size // 2)] == size // 2
 
+    @pytest.mark.expensive
     def test_update_resizes_mid_update_on_capped_huge_md(
         self,
         case_sensitive_multidict_class: type[MultiDict[int]],
@@ -1102,6 +1105,7 @@ def test_add_many_duplicate_keys(
     assert md.getall("a") == [str(i) for i in range(1000)]
 
 
+@pytest.mark.expensive
 def test_add_many_duplicate_keys_after_delete(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
@@ -1116,6 +1120,31 @@ def test_add_many_duplicate_keys_after_delete(
     assert md.getall("a") == [str(-i) for i in range(1300)]
 
 
+@pytest.mark.expensive
+def test_getall_in_insertion_order_after_mixed_mutations(
+    any_multidict_class: type[MultiDict[str]],
+) -> None:
+    """getall() skips a repeated probe slot by its entry index alone."""
+    rnd = random.Random(0)
+    keys = [f"k{i}" for i in range(8)]
+    md = any_multidict_class()
+    for step in range(3000):
+        key = rnd.choice(keys)
+        op = rnd.randrange(10)
+        if op < 6:
+            md.add(key, str(step))
+        elif op < 8:
+            md.popone(key, None)
+        elif op == 8:
+            md.popall(key, None)
+        else:
+            md = md.copy()
+        expected = [v for k, v in md.items() if k == key]
+        assert md.getall(key, []) == expected
+        assert md.items() & {(key, v) for v in expected} == {(key, v) for v in expected}
+
+
+@pytest.mark.expensive
 def test_create_with_many_duplicate_keys(
     any_multidict_class: type[MultiDict[str]],
 ) -> None:
@@ -1162,8 +1191,8 @@ def test_no_refleak_on_memory_error(cls: type[MultiDict[object]], method: str) -
     baseline = [sys.getrefcount(obj) for obj in keys + values]
 
     # Fail the n-th allocation, for each n, until the call gets through.
-    # Some failures are swallowed inside CPython (3.10's length hint
-    # lookup, for one), so only a success after a failure ends the loop.
+    # Some failures are swallowed inside CPython, so only a success
+    # after a failure ends the loop.
     n = 0
     failures = 0
     while True:
@@ -1431,7 +1460,7 @@ def test_base_init_keeps_case_mode(multidict_module: ModuleType, is_ci: bool) ->
 def test_popitem_collection_mutates(
     any_multidict_class: type[MultiDict[object]], delay: int
 ) -> None:
-    """On 3.10 and 3.11, building popitem()'s result can run a collection
+    """On 3.11, building popitem()'s result can run a collection
     whose finalizers mutate the multidict. `delay` moves the collection
     across the allocations popitem() makes."""
     old = [(f"k{i}", [i]) for i in range(10)]

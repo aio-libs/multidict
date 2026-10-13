@@ -1,3 +1,0 @@
-Dropped ``inline`` from a C helper that removes all values of a key,
-leaving the inlining decision to the compiler
--- by :user:`asvetlov`.

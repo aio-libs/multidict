@@ -1,0 +1,2 @@
+Added the CPython 3.15 trove classifier and started testing the
+GIL and free-threaded 3.15 builds in CI -- by :user:`asvetlov`.

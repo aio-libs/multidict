@@ -1,2 +1,0 @@
-Moved the equality comparison of the C extension out of line
--- by :user:`asvetlov`.

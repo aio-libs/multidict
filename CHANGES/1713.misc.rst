@@ -1,2 +1,0 @@
-Made the ``MultiDict`` and ``CIMultiDict`` constructor helpers of the C
-extension plain ``static`` functions -- by :user:`asvetlov`.

@@ -1,0 +1,2 @@
+Folded the two helpers that filled a new entry, one per table kind, into
+the function that stores it, their only caller -- by :user:`asvetlov`.

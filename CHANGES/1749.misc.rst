@@ -1,3 +1,0 @@
-Marked the C extension's error-raising helpers cold, so GCC moved them
-out of line again after the ``NOINLINE`` macro was dropped -- by
-:user:`asvetlov`.

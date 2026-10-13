@@ -1973,6 +1973,7 @@ def test_update_extend_merge_thread_safety() -> None:
     assert len(d2) == 200
 
 
+@pytest.mark.threaded
 def test_clear_thread_safety() -> None:
     """Concurrent clear() alongside extend() must not crash or corrupt state.
 
@@ -2034,6 +2035,7 @@ def test_popitem_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_clear_finalizer_thread_safety() -> None:
     """Concurrent clear() alongside update() must not crash or corrupt state.
 
@@ -2215,6 +2217,7 @@ def test_single_item_ops_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_view_set_ops_thread_safety() -> None:
     """Concurrent items()/keys() set-algebra (&, |, -, ^, in, isdisjoint())
     alongside mutation must not crash.
@@ -2429,6 +2432,38 @@ def test_getall_update_vs_lock_free_reads_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+def test_getall_lock_free_vs_duplicates_thread_safety(
+    any_multidict_class_name: str,
+) -> None:
+    """getall() reads a table without duplicate keys lock-free; a writer
+    adding and dropping a second value must never make it miss either."""
+    cls: type[MultiDict[int]] = getattr(multidict, any_multidict_class_name)
+    d = cls((str(i), i) for i in range(100))
+    stop = threading.Event()
+
+    def reader() -> None:
+        while not stop.is_set():
+            for i in range(100):
+                assert d.getall(str(i)) in ([i], [i, -1])
+            assert d.getall("gone", None) is None
+
+    with ThreadPoolExecutor(4) as pool:
+        readers = [pool.submit(reader) for _ in range(4)]
+        try:
+            for n in range(2000):
+                key = str(n % 100)
+                d.add(key, -1)
+                d[key] = n % 100
+                d.add(f"fresh-{n}", n)
+                del d[f"fresh-{n}"]
+        finally:
+            stop.set()
+        for f in readers:
+            f.result(timeout=60)
+    assert list(d.items()) == [(str(i), i) for i in range(100)]
+
+
+@pytest.mark.c_extension
 def test_update_vs_update_same_key_thread_safety() -> None:
     """Regression for #1483/#1489: concurrent update()/__setitem__/merge()
     on the same key must not lose it, duplicate it, or crash (GIL build:
@@ -2631,6 +2666,7 @@ def test_del_pop_vs_update_same_key_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_to_dict_vs_lock_free_reads_thread_safety() -> None:
     """Concurrent to_dict() alongside lock-free contains()/get() on the
     same, never-deleted keys must not crash and must never observe a
@@ -2713,6 +2749,7 @@ def test_version_thread_safety() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_reader_exit_drains_retired_thread_safety() -> None:
     """A retired hash table must eventually be freed by reader traffic
     alone, with no further mutation. Regression test for
@@ -3694,7 +3731,7 @@ def test_iter_direct_instantiation_segfault() -> None:
         iter_type = type(iter(getattr(md, view_name)()))
         with pytest.raises(TypeError, match=f"cannot create '.*{iter_name}' instances"):
             iter_type()
-        # 3.10 refuses this in object.__new__'s safety check instead
+        # object.__new__'s safety check refuses this instead
         with pytest.raises(TypeError, match=iter_name):
             iter_type.__new__(iter_type)  # type: ignore[call-overload]
 
@@ -3814,7 +3851,7 @@ def test_overflowing_length_hint_is_ignored(
     any_multidict_class: type[MultiDict[str]], method: str
 ) -> None:
     """A ``__length_hint__`` too large to reserve for without overflowing
-    the size arithmetic is ignored, as ``list.extend()`` ignores it."""
+    the size arithmetic does not break the update."""
     md = any_multidict_class([("z", "0")])
     getattr(md, method)(_HugeHint(sys.maxsize))
     assert list(md.items()) == [("z", "0"), ("a", "1")]
@@ -3835,16 +3872,42 @@ def test_overflowing_length_hint_plus_kwargs_is_ignored(method: str) -> None:
 @pytest.mark.c_extension
 @pytest.mark.parametrize("method", ("extend", "update", "merge"))
 @pytest.mark.parametrize(
-    "hint", (sys.maxsize // 3 - 1, sys.maxsize // 8), ids=("largest", "eighth")
+    "hint",
+    (sys.maxsize // 3 - 1, sys.maxsize // 8, 2**40),
+    ids=("largest", "eighth", "unallocatable"),
 )
-def test_unallocatable_length_hint_raises_memory_error(method: str, hint: int) -> None:
-    """A hint that survives the overflow check still asks for a table whose
-    byte size cannot be represented, which must fail before any shift or
-    sum past the width of ``size_t``."""
+def test_huge_length_hint_is_capped(method: str, hint: int) -> None:
+    """A hint reserves no more than the largest table the constructor
+    presizes, 2**17 slots, so a wild one costs neither a
+    :exc:`MemoryError` nor a giant table."""
+    capped = multidict.MultiDict(z="0")
+    getattr(capped, method)(_HugeHint((2**17 * 2) // 3))
     md = multidict.MultiDict(z="0")
-    with pytest.raises(MemoryError):
-        getattr(md, method)(_HugeHint(hint))
-    assert list(md.items()) == [("z", "0")]
+    getattr(md, method)(_HugeHint(hint))
+    assert list(md.items()) == [("z", "0"), ("a", "1")]
+    assert sys.getsizeof(md) == sys.getsizeof(capped)
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize("method", ("extend", "update", "merge"))
+def test_capped_length_hint_still_takes_every_item(method: str) -> None:
+    """The cap limits only the reservation: items past it grow the table
+    as any add does."""
+    count = 100_000  # past the 87381 entries a capped hint reserves
+
+    class Many:
+        def __iter__(self) -> Iterator[tuple[str, int]]:
+            return ((f"k{i}", i) for i in range(count))
+
+        def __length_hint__(self) -> int:
+            return sys.maxsize // 8
+
+    md: MultiDict[int] = multidict.MultiDict(z=-1)
+    getattr(md, method)(Many())
+    assert len(md) == count + 1
+    assert md["z"] == -1
+    assert md["k0"] == 0
+    assert md[f"k{count - 1}"] == count - 1
 
 
 @pytest.mark.parametrize(
@@ -3893,6 +3956,7 @@ def test_update_from_list_shrunk_by_another_thread() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_update_from_pair_list_shrunk_by_another_thread() -> None:
     """A ``[key, value]`` item that shrinks between its length check and the
     reads must not be indexed past its end; the update either succeeds,
@@ -3928,6 +3992,7 @@ def test_update_from_pair_list_shrunk_by_another_thread() -> None:
 
 
 @pytest.mark.c_extension
+@pytest.mark.threaded
 def test_items_contains_list_shrunk_by_another_thread() -> None:
     """A probe list that shrinks between the length check and the reads must
     not be indexed past its end; the check either answers or reports the

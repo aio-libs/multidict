@@ -17,6 +17,12 @@ typedef struct {
     Py_hash_t canonical_hash;
 } istrobject;
 
+static inline PyObject*
+istr_canonical(PyObject* key)
+{
+    return ((istrobject*)key)->canonical;
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -143,8 +143,8 @@ _md_watch_call(mod_state* state, uint32_t bits, const watch_slot_t* slots,
                again, or being cleared right now. */
             continue;
         }
-        if (callback(watcher_data, slots[id].user_data, info) < 0 ||
-            PyErr_Occurred()) {
+        if (UNLIKELY(callback(watcher_data, slots[id].user_data, info) < 0 ||
+                     PyErr_Occurred())) {
             /* The mutation already happened and cannot be undone, so a
                failing callback can only be reported, never propagated.
                Same rule as CPython's _PyDict_SendEvent(). */
@@ -313,7 +313,7 @@ md_watch_attach(MultiDictObject* md, int watcher_id, void* user_data,
         int size = watcher_id + 1;
         watch = PyMem_Realloc(
             watch, sizeof(md_watch_t) + sizeof(watch_slot_t) * (size_t)size);
-        if (watch == NULL) {
+        if (UNLIKELY(watch == NULL)) {
             PyErr_NoMemory();
             return -1;
         }

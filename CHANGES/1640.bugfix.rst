@@ -1,7 +1,0 @@
-Fixed :class:`~multidict.CIMultiDict` returning a key added as a
-:class:`str` subclass with the spelling of the subclass's own
-:meth:`~object.__str__` instead of the key's, and stopped the C extension from
-replacing such a key with its :class:`~multidict.istr` while reading it, which
-could run the key's finalizer inside the read. Documented that
-:class:`~multidict.CIMultiDict` converts keys to :class:`~multidict.istr`
--- by :user:`asvetlov`.

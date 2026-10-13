@@ -1,4 +1,0 @@
-Changed the C extension to walk a table's entries in one loop per table
-kind, stepping a pointer by the kind's entry size, in the walks that
-compare, copy, extend, merge, rebuild and traverse a multidict --
-by :user:`asvetlov`.

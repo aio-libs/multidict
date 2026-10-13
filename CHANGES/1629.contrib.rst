@@ -1,3 +1,0 @@
-Removed the ``update`` argument of the debug-only ``ASSERT_CONSISTENT()``
-check, which stopped doing anything once :meth:`~multidict.MultiDict.update`
-kept its doomed entries whole -- by :user:`asvetlov`.

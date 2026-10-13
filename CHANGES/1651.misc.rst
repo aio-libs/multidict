@@ -1,7 +1,0 @@
-Stopped taking an extra reference to the key when a compact
-:class:`~multidict.MultiDict` entry is deleted, made ``popitem()`` return
-such an entry's stored key without rebuilding it, and gave
-:class:`~multidict.CIMultiDict` its own ``getall()``, cutting
-``popitem()`` by about 4% and ``pop()`` by about 4% on both builds, and
-``del d[key]`` by about 3% on the GIL build
--- by :user:`asvetlov`.

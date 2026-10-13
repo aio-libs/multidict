@@ -1,8 +1,11 @@
 import os
 import platform
+import re
+import subprocess
 import sys
 
 from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
 
 NO_EXTENSIONS = bool(os.environ.get("MULTIDICT_NO_EXTENSIONS"))
 DEBUG_BUILD = bool(os.environ.get("MULTIDICT_DEBUG_BUILD"))
@@ -67,6 +70,39 @@ extensions = [
 ]
 
 
+def _gcc_major(compiler):
+    """GCC's major version, or None for clang, MSVC and anything unknown."""
+    cc = getattr(compiler, "compiler_so", None)
+    if not cc:
+        return None
+    try:
+        out = subprocess.run(
+            [*cc, "-dM", "-E", "-x", "c", os.devnull],
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    gnuc = re.search(r"^#define __GNUC__ (\d+)$", out, re.M)
+    if gnuc is None or re.search(r"^#define __clang__ ", out, re.M):
+        return None
+    return int(gnuc.group(1))
+
+
+class BuildExt(build_ext):
+    def build_extensions(self):
+        major = _gcc_major(self.compiler)
+        if major is not None and major < 10:
+            # GCC 9 flags _PyLong_CompactValue() in CPython 3.12+'s own
+            # headers under -Wsign-conversion.
+            for ext in self.extensions:
+                ext.extra_compile_args = [
+                    f for f in ext.extra_compile_args if f != "-Wconversion"
+                ]
+        super().build_extensions()
+
+
 if not NO_EXTENSIONS:
     try:
         from Cython.Build import cythonize
@@ -96,7 +132,7 @@ if not NO_EXTENSIONS:
     print("*********************")
     print("* Accelerated build *")
     print("*********************")
-    setup(ext_modules=extensions)
+    setup(ext_modules=extensions, cmdclass={"build_ext": BuildExt})
 else:
     print("*********************")
     print("* Pure Python build *")

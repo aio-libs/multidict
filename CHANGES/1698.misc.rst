@@ -1,3 +1,0 @@
-Folded the keyword argument binder of the C extension into its only
-caller, and removed ``ALWAYS_INLINE`` from its name comparison helper
--- by :user:`asvetlov`.

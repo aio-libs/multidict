@@ -1,4 +1,0 @@
-Dropped the per-class copies of the C extension's entry points and
-helpers, which now read the class of the multidict at run time, and
-folded the helpers left with a single caller into it
--- by :user:`asvetlov`.

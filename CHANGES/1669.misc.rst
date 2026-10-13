@@ -1,4 +1,0 @@
-Rewrote the set operators and comparisons of the keys and items views of
-the C extension around shared helpers, which removed about 700 lines and
-made the compiled extension about 6% smaller. The operators are compiled
-for size and became up to 17% slower -- by :user:`asvetlov`.

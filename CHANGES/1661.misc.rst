@@ -1,3 +1,0 @@
-Marked the C extension's ``__sizeof__`` as cold, so GCC compiles it for
-size and stops spending the module's inlining budget on it -- by
-:user:`asvetlov`.

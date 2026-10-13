@@ -53,26 +53,28 @@ typedef struct _update_marks {
     doomed_entry_t* doomed;
     Py_ssize_t ndoomed;
     Py_ssize_t doomed_capacity;
+    Py_ssize_t reserve;  // room the first add makes; see md_reserve_batch()
     uint32_t layout_gen;
 } update_marks_t;
 
 static Py_ssize_t
-md_entries_capacity(const htkeys_t* keys)
+_md_entries_capacity(const htkeys_t* keys)
 {
     return keys->nentries + keys->usable;
 }
 
-/* Starts a batch; the caller holds md's critical section until the
-   matching update_marks_end(). */
+/* Starts a batch of `size` items; the caller holds md's critical section
+   until the matching update_marks_end(). */
 static void
-update_marks_init(update_marks_t* marks, MultiDictObject* md)
+update_marks_init(update_marks_t* marks, MultiDictObject* md, Py_ssize_t size)
 {
-    Py_ssize_t capacity = md_entries_capacity(md->keys);
+    Py_ssize_t capacity = _md_entries_capacity(md->keys);
     bitmap_init(&marks->updated, md->keys, capacity);
     bitmap_init(&marks->deleted, md->keys, capacity);
     marks->doomed = NULL;
     marks->ndoomed = 0;
     marks->doomed_capacity = 0;
+    marks->reserve = size;
     marks->layout_gen = md->layout_gen;
     assert(md->batches < UINT16_MAX);
     md->batches++;
@@ -111,7 +113,7 @@ _update_marks_grow_doomed(update_marks_t* marks)
     }
     doomed_entry_t* doomed = PyMem_Realloc(
         marks->doomed, (size_t)capacity * sizeof(doomed_entry_t));
-    if (doomed == NULL) {
+    if (UNLIKELY(doomed == NULL)) {
         PyErr_NoMemory();
         return -1;
     }
@@ -129,7 +131,7 @@ update_marks_doom(update_marks_t* marks, Py_ssize_t index, entry_t* entry)
         return seen < 0 ? -1 : 0;
     }
     if (marks->ndoomed == marks->doomed_capacity &&
-        _update_marks_grow_doomed(marks) < 0) {
+        UNLIKELY(_update_marks_grow_doomed(marks) < 0)) {
         bitmap_clear(&marks->deleted, index);
         return -1;
     }
@@ -143,11 +145,11 @@ COLD static int
 _update_marks_widen(update_marks_t* marks, MultiDictObject* md)
 {
     marks->layout_gen = md->layout_gen;
-    Py_ssize_t capacity = md_entries_capacity(md->keys);
+    Py_ssize_t capacity = _md_entries_capacity(md->keys);
     if (bitmap_nbits(&marks->updated) >= capacity) {
         return 0;
     }
-    if (bitmap_grow(&marks->updated, capacity) < 0) {
+    if (UNLIKELY(bitmap_grow(&marks->updated, capacity) < 0)) {
         return -1;
     }
     return bitmap_grow(&marks->deleted, capacity);

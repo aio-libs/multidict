@@ -1,7 +1,0 @@
-Sped up :meth:`~multidict.MultiDict.getall`, ``del d[key]``, replacing a
-key with ``d[key] = value`` and :meth:`~multidict.MultiDict.update` by 5
-to 14 percent, and up to 26 percent in the pure-Python implementation,
-when no key repeats, which each hash table started to track; the
-tracking made :meth:`~multidict.MultiDict.add` up to 10 percent slower,
-and building a small multidict from items up to 18 percent, both up to
-16 percent in the pure-Python implementation -- by :user:`asvetlov`.

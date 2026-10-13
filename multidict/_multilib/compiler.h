@@ -1,7 +1,6 @@
 #ifndef _MULTIDICT_COMPILER_H
 #define _MULTIDICT_COMPILER_H
 
-/* Py_NO_INLINE is 3.11+ */
 #if defined(__GNUC__) || defined(__clang__)
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #define COLD __attribute__((cold, noinline))

@@ -1,6 +1,0 @@
-Fixed adding to a full table of the C extension, which compacted it in
-place whenever it held deleted entries and so regained only as many
-slots as were deleted: a delete-then-add loop on a full table rebuilt
-it on every add. The table was resized by the number of live entries
-instead, as the pure-Python implementation did, which also let it
-shrink after deletions -- by :user:`asvetlov`.

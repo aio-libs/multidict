@@ -1,2 +1,0 @@
-Made the ``str_cmp()`` identity comparison helper of the C extension a plain
-``static`` function -- by :user:`asvetlov`.

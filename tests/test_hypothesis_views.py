@@ -6,9 +6,8 @@ via the existing fixtures in ``tests/conftest.py``. See
 ``tests/test_hypothesis_iters.py`` for the iterator objects themselves.
 """
 
-import sys
 from collections.abc import Callable
-from typing import Literal
+from typing import Literal, assert_never
 
 import pytest
 
@@ -19,14 +18,6 @@ from hypothesis import strategies as st  # noqa: E402
 from hypothesis_helpers import pairs_lists, simple_values, text_keys  # noqa: E402
 
 from multidict import CIMultiDict, MultiDict, MutableMultiMapping  # noqa: E402
-
-if sys.version_info >= (3, 11):
-    from typing import assert_never
-else:  # pragma: no cover
-    # This file only ever runs under >=3.11 (the hypothesis-gil/
-    # hypothesis-ft CI jobs pin 3.13/3.14t), unlike the
-    # multidict package itself, which is tested down to 3.10.
-    from typing_extensions import assert_never
 
 pytestmark = pytest.mark.hypothesis
 

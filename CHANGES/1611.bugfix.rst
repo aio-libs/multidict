@@ -1,4 +1,0 @@
-Fixed ``in`` on an items view truncating the length of a non-tuple,
-non-list operand to 32 bits in the C extension, which let an object
-reporting ``2**32 + 2`` items be indexed as a pair and raise
-:exc:`TypeError` instead of returning ``False`` -- by :user:`asvetlov`.

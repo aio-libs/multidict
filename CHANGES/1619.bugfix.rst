@@ -1,4 +1,0 @@
-Fixed calling ``__init__()`` again on a live multidict losing and leaking
-whatever a finalizer of an old value added to it, by releasing the old
-pairs only after installing the new contents, as the pure-Python
-implementation already did -- by :user:`asvetlov`.

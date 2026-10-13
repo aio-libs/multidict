@@ -1,4 +1,0 @@
-Made ``d[key] = value`` in the C extension keep the collector for
-duplicate keys off the stack until a duplicate turns up, which made
-replacing a key about 4-6% and adding a new one about 2-3% cheaper in
-instructions -- by :user:`asvetlov`.

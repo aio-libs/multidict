@@ -1,3 +1,0 @@
-Dropped ``NOINLINE`` from the C extension's table reservation helpers, which
-the compiler keeps out of line where it matters without it
--- by :user:`asvetlov`.

@@ -1,8 +1,0 @@
-Made :class:`~multidict.CIMultiDict` in the C extension store a mapping
-whose keys are all exact :class:`~multidict.istr` in the compact layout,
-taking each identity from the key's canonical form, which cut its size by
-about 45% and made copying it about 55% cheaper in instructions; a lookup
-also stopped taking a reference to the identity of an exact :class:`str`
-or :class:`~multidict.istr` key, which made ``d[key]`` and ``key in d`` up
-to 7% faster on the GIL build and up to 20% cheaper in instructions on the
-free-threaded one -- by :user:`asvetlov`.

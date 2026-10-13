@@ -1,5 +1,0 @@
-Routed every read of an entry's identity and hash, and every step from one
-entry to another, through helpers that take the entry's table, so that
-tables can later lay their entries out differently; the emitted code did not
-change
--- by :user:`asvetlov`.

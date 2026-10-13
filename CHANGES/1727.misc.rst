@@ -1,1 +1,0 @@
-Outlined the ``md_get_all`` function -- by :user:`asvetlov`

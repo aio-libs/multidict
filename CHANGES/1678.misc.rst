@@ -1,3 +1,0 @@
-Merged the repeated tails of the table rebuilds and of ``getall()`` and
-``popall()`` in the C extension's hash table
--- by :user:`asvetlov`.

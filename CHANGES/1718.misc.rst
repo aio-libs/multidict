@@ -1,3 +1,0 @@
-Made the ``__getitem__``, ``__contains__``, ``get()``, ``getone()`` and
-``getall()`` entry points of the C extension plain ``static`` functions,
-which the ``MultiDictProxy`` copies tail-call -- by :user:`asvetlov`.
