@@ -1,0 +1,2 @@
+Replaced the two copies of the lock-free compact entry match of the FT
+build of the C extension with one macro -- by :user:`asvetlov`.

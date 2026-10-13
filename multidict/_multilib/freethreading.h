@@ -231,7 +231,7 @@ reset_value(entry_t* entry)
 /* _md_replace_locked()/_md_update() overwrite hash in place on a live entry,
    so a reader's plain read would race it. Relaxed is enough: it is
    read only after the identity check has ordered the rest. Only the full
-   layout has one; see _compact_entry_matches_cs(). */
+   layout has one; see _COMPACT_ENTRY_MATCHES(). */
 static inline Py_hash_t
 load_hash(anystr_entry_t* entry)
 {

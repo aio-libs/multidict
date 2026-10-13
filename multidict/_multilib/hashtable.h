@@ -1781,15 +1781,7 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind) && ci) {
-        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-    } else if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-    } else if (iter.keys->kind == KIND_ANYSTR) {
-        HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-    } else {
-        HTKEYSITER_FIND_GENERAL(&iter, identity, hash, entry);
-    }
+    HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
     if (entry != NULL) {
         if (pret != NULL) {
             *pret = md_ensure_key(md, entry);
@@ -1812,54 +1804,33 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
    from 1 (found) / 0 (not found) / -1 (error). */
 #define _MD_NEED_LOCK 2
 
-/* A compact entry keeps no hash of its own: it is read from the key, and
-   a concurrent delete can free the key, so nothing is read through it
-   until a reference is held, as in CPython's dict lookup on its
-   unicode-only tables. A key that is the probe's own needs none: the
-   caller's reference keeps that address from being reused. 1 is a match,
-   0 means keep probing, -1 racing a writer. */
-static inline int
-_compact_entry_matches_cs(entry_t* entry, PyObject* probe, PyObject* identity,
-                          Py_hash_t hash)
-{
-    PyObject* key = load_compact_identity(entry);
-    if (key == NULL) {
-        return 0;  // not populated (or deleted)
-    }
-    if (key == probe) {
-        return 1;
-    }
-    key = try_get_ref(&entry->key);
-    if (key == NULL) {
-        return load_compact_identity(entry) == NULL ? 0 : -1;
-    }
-    bool matched = compact_key_hash_cs(key) == hash &&
-                   str_cmp(identity, compact_key_identity_cs(key));
-    Py_DECREF(key);
-    return matched;
-}
-
-// _compact_entry_matches_cs() for a CIMultiDict's table.
-static inline int
-_compact_entry_matches_ci(entry_t* entry, PyObject* probe, PyObject* identity,
-                          Py_hash_t hash)
-{
-    PyObject* key = load_compact_identity(entry);
-    if (key == NULL) {
-        return 0;  // not populated (or deleted)
-    }
-    if (key == probe) {
-        return 1;
-    }
-    key = try_get_ref(&entry->key);
-    if (key == NULL) {
-        return load_compact_identity(entry) == NULL ? 0 : -1;
-    }
-    bool matched = compact_key_hash_ci(key) == hash &&
-                   str_cmp(identity, compact_key_identity_ci(key));
-    Py_DECREF(key);
-    return matched;
-}
+/* Sets `matched_` to 1 if a compact entry matches, 0 to keep probing,
+   -1 racing a writer. A compact entry keeps no hash of its own: it is
+   read from the key, and a concurrent delete can free the key, so nothing
+   is read through it until a reference is held, as in CPython's dict
+   lookup on its unicode-only tables. A key that is the probe's own needs
+   none: the caller's reference keeps that address from being reused.
+   `sfx` is cs or ci as for compact_key_identity_cs(). */
+#define _COMPACT_ENTRY_MATCHES(                                              \
+    sfx, entry_, probe_, identity_, hash_, matched_)                         \
+    do {                                                                     \
+        PyObject* _em_key = load_compact_identity(entry_);                   \
+        if (_em_key == NULL) {                                               \
+            (matched_) = 0; /* not populated (or deleted) */                 \
+        } else if (_em_key == (probe_)) {                                    \
+            (matched_) = 1;                                                  \
+        } else {                                                             \
+            _em_key = try_get_ref(&(entry_)->key);                           \
+            if (_em_key == NULL) {                                           \
+                (matched_) = load_compact_identity(entry_) == NULL ? 0 : -1; \
+            } else {                                                         \
+                (matched_) = compact_key_hash_##sfx(_em_key) == (hash_) &&   \
+                             str_cmp((identity_),                            \
+                                     compact_key_identity_##sfx(_em_key));   \
+                Py_DECREF(_em_key);                                          \
+            }                                                                \
+        }                                                                    \
+    } while (0)
 
 /* The full layout keeps the hash in the entry, so it goes first and a
    mismatch costs no reference traffic; then a pointer-equal identity is a
@@ -1901,7 +1872,8 @@ _md_lockfree_find_cs(htkeysiter_t* iter, PyObject* probe, PyObject* identity,
             continue;
         }
         entry_t* entry = entries + iter->index;
-        int matched = _compact_entry_matches_cs(entry, probe, identity, hash);
+        int matched;
+        _COMPACT_ENTRY_MATCHES(cs, entry, probe, identity, hash, matched);
         if (matched != 0) {
             *pentry = entry;
             return matched;
@@ -1921,7 +1893,8 @@ _md_lockfree_find_ci(htkeysiter_t* iter, PyObject* probe, PyObject* identity,
             continue;
         }
         entry_t* entry = entries + iter->index;
-        int matched = _compact_entry_matches_ci(entry, probe, identity, hash);
+        int matched;
+        _COMPACT_ENTRY_MATCHES(ci, entry, probe, identity, hash, matched);
         if (matched != 0) {
             *pentry = entry;
             return matched;
@@ -2088,15 +2061,7 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind) && ci) {
-        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-    } else if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-    } else if (iter.keys->kind == KIND_ANYSTR) {
-        HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-    } else {
-        HTKEYSITER_FIND_GENERAL(&iter, identity, hash, entry);
-    }
+    HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
     if (entry != NULL) {
         ret.value = Py_NewRef(entry->value);
     } else {
@@ -2241,15 +2206,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     if (resolved > 0) {
         htkeysiter_t iter;
         HTKEYSITER_INIT(&iter, md->keys, hash);
-        if (kind_is_compact(iter.keys->kind) && ci) {
-            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-        } else if (kind_is_compact(iter.keys->kind)) {
-            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-        } else if (iter.keys->kind == KIND_ANYSTR) {
-            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-        } else {
-            HTKEYSITER_FIND_GENERAL(&iter, identity, hash, entry);
-        }
+        HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
     }
     if (entry != NULL) {
         ASSERT_CONSISTENT(md);

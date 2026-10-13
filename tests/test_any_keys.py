@@ -14,6 +14,8 @@ from typing import Any
 
 import pytest
 
+import multidict._multidict_py as _pure
+
 # keys of any type, which the annotations do not describe yet
 _Class = Any
 
@@ -315,6 +317,10 @@ def test_eq_mutating_the_multidict(
 
 @pytest.mark.threaded
 def test_threads_mixing_key_types(any_multidict_class: _Class) -> None:
+    if any_multidict_class.__module__ == _pure.__name__ and not _pure._FREE_THREADED:
+        # the pure-Python reads are unlocked on GIL builds; see
+        # _gil_build_race_skip in test_multidict.py
+        pytest.skip("pure-Python reads race writers on GIL builds")
     # The table moves between kinds as str-only content is cleared and
     # other keys come back, under lookups that resolve their probes.
     d = any_multidict_class((f"s{i}", i) for i in range(8))
