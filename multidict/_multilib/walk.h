@@ -198,56 +198,59 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     Py_ssize_t count = 0;
     Py_ssize_t last = -1;
     int ret = 1;
-    entry_t* entry = NULL;
     // otherwise the first match is the key's only entry
     bool dups = md->keys->maybe_dups;
-    if (kind_is_compact(md->keys->kind) && ci) {
-        while (ret > 0) {
-            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
+    if (kind_is_compact(md->keys->kind)) {
+        entry_t* entry = NULL;
+        if (ci) {
+            while (ret > 0) {
+                HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
+                }
+                if (iter.index <= last) {
+                    continue;
+                }
+                last = iter.index;
+                ret = _md_walk_matched(md,
+                                       entry,
+                                       identity,
+                                       hash,
+                                       with_keys,
+                                       visitor,
+                                       user_data,
+                                       version);
+                count += ret >= 0;
+                if (!dups) {
+                    break;
+                }
             }
-            if (iter.index <= last) {
-                continue;
-            }
-            last = iter.index;
-            ret = _md_walk_matched(md,
-                                   entry,
-                                   identity,
-                                   hash,
-                                   with_keys,
-                                   visitor,
-                                   user_data,
-                                   version);
-            count += ret >= 0;
-            if (!dups) {
-                break;
-            }
-        }
-    } else if (kind_is_compact(md->keys->kind)) {
-        while (ret > 0) {
-            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
-            }
-            if (iter.index <= last) {
-                continue;
-            }
-            last = iter.index;
-            ret = _md_walk_matched(md,
-                                   entry,
-                                   identity,
-                                   hash,
-                                   with_keys,
-                                   visitor,
-                                   user_data,
-                                   version);
-            count += ret >= 0;
-            if (!dups) {
-                break;
+        } else {
+            while (ret > 0) {
+                HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
+                }
+                if (iter.index <= last) {
+                    continue;
+                }
+                last = iter.index;
+                ret = _md_walk_matched(md,
+                                       entry,
+                                       identity,
+                                       hash,
+                                       with_keys,
+                                       visitor,
+                                       user_data,
+                                       version);
+                count += ret >= 0;
+                if (!dups) {
+                    break;
+                }
             }
         }
     } else {
+        entry_t* entry = NULL;
         while (ret > 0) {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
             if (entry == NULL) {

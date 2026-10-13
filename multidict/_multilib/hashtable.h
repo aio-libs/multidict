@@ -1365,16 +1365,16 @@ _md_del_at_held_compact(MultiDictObject* md, htkeys_t* keys, size_t slot,
 /* The same for a KIND_ANYSTR table. */
 static inline int
 _md_del_at_held_anystr(MultiDictObject* md, htkeys_t* keys, size_t slot,
-                       entry_t* entry, removed_pairs_t* removed)
+                       anystr_entry_t* entry, removed_pairs_t* removed)
 {
     assert(keys == md->keys && !kind_is_compact(keys->kind));
     assert(keys != &empty_htkeys);
-    PyObject* identity = load_anystr_identity(as_anystr(entry));
-    PyObject* key = entry->key;
-    reset_anystr_identity(as_anystr(entry));
-    entry->key = NULL;
-    PyObject* value = load_value(entry);
-    reset_value(entry);
+    PyObject* identity = load_anystr_identity(entry);
+    PyObject* key = entry->base.key;
+    reset_anystr_identity(entry);
+    entry->base.key = NULL;
+    PyObject* value = load_value(&entry->base);
+    reset_value(&entry->base);
     HTKEYS_SET_INDEX(keys, keys->log2_size, (Py_ssize_t)slot, DKIX_DUMMY);
     add_used(md, -1);
 
@@ -1423,41 +1423,47 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, keys, hash);
 
-    entry_t* entry = NULL;
-    if (kind_is_compact(keys->kind) && ci) {
-        for (;;) {
-            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
+    if (kind_is_compact(keys->kind)) {
+        entry_t* entry = NULL;
+        if (ci) {
+            for (;;) {
+                HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
+                }
+                _md_del_record(md, entry, identity, hash, watched, !found);
+                ret = _md_del_at_held_compact(
+                    md, keys, iter.slot, entry, removed);
+                found = true;
+                if (ret < 0 || !keys->maybe_dups) {
+                    break;  // on error, or past the key's only entry
+                }
             }
-            _md_del_record(md, entry, identity, hash, watched, !found);
-            ret = _md_del_at_held_compact(md, keys, iter.slot, entry, removed);
-            found = true;
-            if (ret < 0 || !keys->maybe_dups) {
-                break;  // on error, or past the key's only entry
-            }
-        }
-    } else if (kind_is_compact(keys->kind)) {
-        for (;;) {
-            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
-            }
-            _md_del_record(md, entry, identity, hash, watched, !found);
-            ret = _md_del_at_held_compact(md, keys, iter.slot, entry, removed);
-            found = true;
-            if (ret < 0 || !keys->maybe_dups) {
-                break;  // on error, or past the key's only entry
+        } else {
+            for (;;) {
+                HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
+                }
+                _md_del_record(md, entry, identity, hash, watched, !found);
+                ret = _md_del_at_held_compact(
+                    md, keys, iter.slot, entry, removed);
+                found = true;
+                if (ret < 0 || !keys->maybe_dups) {
+                    break;  // on error, or past the key's only entry
+                }
             }
         }
     } else {
+        entry_t* entry = NULL;
         for (;;) {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
             if (entry == NULL) {
                 break;
             }
             _md_del_record(md, entry, identity, hash, watched, !found);
-            ret = _md_del_at_held_anystr(md, keys, iter.slot, entry, removed);
+            ret = _md_del_at_held_anystr(
+                md, keys, iter.slot, as_anystr(entry), removed);
             found = true;
             if (ret < 0 || !keys->maybe_dups) {
                 break;  // on error, or past the key's only entry
@@ -2236,12 +2242,12 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     return found;
 }
 
-/* Pops the match of _md_pop_all_locked() at `slot`. The batch begins with
-   the first match that gets past the push, which sets *pbegun. */
+/* Collects the value of the match of _md_pop_all_locked() in `entry` and
+   tells the watcher of it. The batch begins with the first match that
+   gets past the push, which sets *pbegun. */
 static inline int
-_md_pop_all_matched(MultiDictObject* md, uint8_t kind, size_t slot,
-                    entry_t* entry, PyObject* identity, Py_hash_t hash,
-                    reflist_t* values, removed_pairs_t* removed, bool* pbegun)
+_md_pop_all_record(MultiDictObject* md, entry_t* entry, PyObject* identity,
+                   Py_hash_t hash, reflist_t* values, bool* pbegun)
 {
     if (UNLIKELY(reflist_push(values, Py_NewRef(entry->value)) < 0)) {
         return -1;
@@ -2258,10 +2264,7 @@ _md_pop_all_matched(MultiDictObject* md, uint8_t kind, size_t slot,
                     entry->key,
                     entry->value,
                     NULL);
-    if (kind_is_compact(kind)) {
-        return _md_del_at_held_compact(md, md->keys, slot, entry, removed);
-    }
-    return _md_del_at_held_anystr(md, md->keys, slot, entry, removed);
+    return 0;
 }
 
 /* Caller holds md's critical section. The removed pairs go to `removed`,
@@ -2277,65 +2280,63 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 
     bool begun = false;
     int ret = 0;
+    htkeys_t* keys = md->keys;
 
     htkeysiter_t iter;
-    HTKEYSITER_INIT(&iter, md->keys, hash);
+    HTKEYSITER_INIT(&iter, keys, hash);
 
-    entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind) && ci) {
-        for (;;) {
-            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
+    if (kind_is_compact(keys->kind)) {
+        entry_t* entry = NULL;
+        if (ci) {
+            for (;;) {
+                HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
+                }
+                ret = _md_pop_all_record(
+                    md, entry, identity, hash, values, &begun);
+                if (UNLIKELY(ret < 0)) {
+                    break;
+                }
+                ret = _md_del_at_held_compact(
+                    md, keys, iter.slot, entry, removed);
+                if (ret < 0 || !keys->maybe_dups) {
+                    break;  // on error, or past the key's only entry
+                }
             }
-            ret = _md_pop_all_matched(md,
-                                      KIND_COMPACT,
-                                      iter.slot,
-                                      entry,
-                                      identity,
-                                      hash,
-                                      values,
-                                      removed,
-                                      &begun);
-            if (ret < 0 || !md->keys->maybe_dups) {
-                break;  // on error, or past the key's only entry
-            }
-        }
-    } else if (kind_is_compact(md->keys->kind)) {
-        for (;;) {
-            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
-            }
-            ret = _md_pop_all_matched(md,
-                                      KIND_COMPACT,
-                                      iter.slot,
-                                      entry,
-                                      identity,
-                                      hash,
-                                      values,
-                                      removed,
-                                      &begun);
-            if (ret < 0 || !md->keys->maybe_dups) {
-                break;  // on error, or past the key's only entry
+        } else {
+            for (;;) {
+                HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
+                }
+                ret = _md_pop_all_record(
+                    md, entry, identity, hash, values, &begun);
+                if (UNLIKELY(ret < 0)) {
+                    break;
+                }
+                ret = _md_del_at_held_compact(
+                    md, keys, iter.slot, entry, removed);
+                if (ret < 0 || !keys->maybe_dups) {
+                    break;  // on error, or past the key's only entry
+                }
             }
         }
     } else {
+        entry_t* entry = NULL;
         for (;;) {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
             if (entry == NULL) {
                 break;
             }
-            ret = _md_pop_all_matched(md,
-                                      KIND_ANYSTR,
-                                      iter.slot,
-                                      entry,
-                                      identity,
-                                      hash,
-                                      values,
-                                      removed,
-                                      &begun);
-            if (ret < 0 || !md->keys->maybe_dups) {
+            ret =
+                _md_pop_all_record(md, entry, identity, hash, values, &begun);
+            if (UNLIKELY(ret < 0)) {
+                break;
+            }
+            ret = _md_del_at_held_anystr(
+                md, keys, iter.slot, as_anystr(entry), removed);
+            if (ret < 0 || !keys->maybe_dups) {
                 break;  // on error, or past the key's only entry
             }
         }
@@ -2522,16 +2523,39 @@ _md_replace_free_dups(reflist_t* dups)
 
 #define _MD_REPLACE_STALE 2
 
+/* Stores `key` into the first match of _md_replace_pass() in a
+   KIND_COMPACT table, handing the old key to *old_key_out. The same key
+   object needs no store, and in a compact table no new publication
+   either. */
+static inline void
+_md_replace_key_compact(entry_t* entry, PyObject* key, PyObject** old_key_out)
+{
+    if (key != entry->key) {
+        *old_key_out = entry->key;
+        replace_compact_key(entry, Py_NewRef(key));
+    }
+}
+
+/* The same for a KIND_ANYSTR table. */
+static inline void
+_md_replace_key_anystr(anystr_entry_t* entry, PyObject* key,
+                       PyObject** old_key_out)
+{
+    if (key != entry->base.key) {
+        *old_key_out = entry->base.key;
+        replace_anystr_key(entry, Py_NewRef(key));
+    }
+}
+
 /* A match of _md_replace_pass() at `slot`, past the one to keep: the
-   first gets the new key and value, the rest are deleted; *pfound tells
-   which. 0 on success, -1 on error, _MD_REPLACE_STALE when md's table
-   moved under it. */
+   first gets the new value, its key already stored by the caller, the
+   rest are deleted; *pfound tells which. 0 on success, -1 on error,
+   _MD_REPLACE_STALE when md's table moved under it. */
 static inline int
-_md_replace_matched(MultiDictObject* md, uint8_t kind, size_t slot,
-                    entry_t* entry, PyObject* key, PyObject* value,
-                    PyObject* identity, Py_hash_t hash, PyObject** old_key_out,
-                    PyObject** old_value_out, reflist_t** dups, bool watched,
-                    bool* pfound)
+_md_replace_matched(MultiDictObject* md, size_t slot, entry_t* entry,
+                    PyObject* key, PyObject* value, PyObject* identity,
+                    Py_hash_t hash, PyObject** old_value_out, reflist_t** dups,
+                    bool watched, bool* pfound)
 {
 #ifdef Py_GIL_DISABLED
     htkeys_t* keys_before = md->keys;
@@ -2539,21 +2563,9 @@ _md_replace_matched(MultiDictObject* md, uint8_t kind, size_t slot,
 #endif
     if (!*pfound) {
         *pfound = true;
-        /* old_key/old_value decref deferred to the caller, past the
-           critical section -- see reflist_t */
-        PyObject* old_key = entry->key;
+        /* old_value decref deferred to the caller, past the critical
+           section -- see reflist_t */
         PyObject* old_value = load_value(entry);
-        /* The same key object needs no store, and in a compact table no
-           new publication either. */
-        if (key == old_key) {
-            old_key = NULL;
-        } else {
-            if (kind_is_compact(kind)) {
-                replace_compact_key(entry, Py_NewRef(key));
-            } else {
-                replace_anystr_key(as_anystr(entry), Py_NewRef(key));
-            }
-        }
         publish_value(entry, Py_NewRef(value));
         if (watched) {
             md_watch_record(md,
@@ -2564,7 +2576,6 @@ _md_replace_matched(MultiDictObject* md, uint8_t kind, size_t slot,
                             value,
                             old_value);
         }
-        *old_key_out = old_key;
         *old_value_out = old_value;
     } else if (UNLIKELY(_md_replace_del_dup(
                             md, slot, entry, identity, hash, watched, dups) <
@@ -2607,94 +2618,99 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
     bool skip_first = *pfound;
     int ret = 0;
 
-    entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind) && ci) {
-        while (ret == 0) {
-            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
-            }
-            if (iter.index == replaced) {
-                continue;
-            }
-            if (skip_first || !*pfound) {
-                /* Checked only where the key gets stored: a miss leaves
-                   it to md_add_with_hash(), and the same key object fits
-                   by definition. */
-                if (!skip_first && key != entry->key &&
-                    UNLIKELY(!md_key_fits(md, key, identity))) {
-                    if (UNLIKELY(md_to_anystr(md) < 0)) {
-                        return -1;
-                    }
-                    return _MD_REPLACE_STALE;  // entry is in the old table
+    if (kind_is_compact(md->keys->kind)) {
+        entry_t* entry = NULL;
+        if (ci) {
+            while (ret == 0) {
+                HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
                 }
-                replaced = iter.index;
-                if (skip_first) {
-                    skip_first = false;
+                if (iter.index == replaced) {
                     continue;
                 }
-            }
-            ret = _md_replace_matched(md,
-                                      KIND_COMPACT,
-                                      iter.slot,
-                                      entry,
-                                      key,
-                                      value,
-                                      identity,
-                                      hash,
-                                      old_key_out,
-                                      old_value_out,
-                                      dups,
-                                      watched,
-                                      pfound);
-            if (!md->keys->maybe_dups) {
-                break;  // the key's only entry
-            }
-        }
-    } else if (kind_is_compact(md->keys->kind)) {
-        while (ret == 0) {
-            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
-            }
-            if (iter.index == replaced) {
-                continue;
-            }
-            if (skip_first || !*pfound) {
-                /* Checked only where the key gets stored: a miss leaves
-                   it to md_add_with_hash(), and the same key object fits
-                   by definition. */
-                if (!skip_first && key != entry->key &&
-                    UNLIKELY(!md_key_fits(md, key, identity))) {
-                    if (UNLIKELY(md_to_anystr(md) < 0)) {
-                        return -1;
+                if (skip_first || !*pfound) {
+                    /* Checked only where the key gets stored: a miss leaves
+                       it to md_add_with_hash(), and the same key object fits
+                       by definition. */
+                    if (!skip_first && key != entry->key &&
+                        UNLIKELY(!md_key_fits(md, key, identity))) {
+                        if (UNLIKELY(md_to_anystr(md) < 0)) {
+                            return -1;
+                        }
+                        return _MD_REPLACE_STALE;  // entry is in the old table
                     }
-                    return _MD_REPLACE_STALE;  // entry is in the old table
+                    replaced = iter.index;
+                    if (skip_first) {
+                        skip_first = false;
+                        continue;
+                    }
                 }
-                replaced = iter.index;
-                if (skip_first) {
-                    skip_first = false;
+                if (!*pfound) {
+                    _md_replace_key_compact(entry, key, old_key_out);
+                }
+                ret = _md_replace_matched(md,
+                                          iter.slot,
+                                          entry,
+                                          key,
+                                          value,
+                                          identity,
+                                          hash,
+                                          old_value_out,
+                                          dups,
+                                          watched,
+                                          pfound);
+                if (!md->keys->maybe_dups) {
+                    break;  // the key's only entry
+                }
+            }
+        } else {
+            while (ret == 0) {
+                HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
+                }
+                if (iter.index == replaced) {
                     continue;
                 }
-            }
-            ret = _md_replace_matched(md,
-                                      KIND_COMPACT,
-                                      iter.slot,
-                                      entry,
-                                      key,
-                                      value,
-                                      identity,
-                                      hash,
-                                      old_key_out,
-                                      old_value_out,
-                                      dups,
-                                      watched,
-                                      pfound);
-            if (!md->keys->maybe_dups) {
-                break;  // the key's only entry
+                if (skip_first || !*pfound) {
+                    /* Checked only where the key gets stored: a miss leaves
+                       it to md_add_with_hash(), and the same key object fits
+                       by definition. */
+                    if (!skip_first && key != entry->key &&
+                        UNLIKELY(!md_key_fits(md, key, identity))) {
+                        if (UNLIKELY(md_to_anystr(md) < 0)) {
+                            return -1;
+                        }
+                        return _MD_REPLACE_STALE;  // entry is in the old table
+                    }
+                    replaced = iter.index;
+                    if (skip_first) {
+                        skip_first = false;
+                        continue;
+                    }
+                }
+                if (!*pfound) {
+                    _md_replace_key_compact(entry, key, old_key_out);
+                }
+                ret = _md_replace_matched(md,
+                                          iter.slot,
+                                          entry,
+                                          key,
+                                          value,
+                                          identity,
+                                          hash,
+                                          old_value_out,
+                                          dups,
+                                          watched,
+                                          pfound);
+                if (!md->keys->maybe_dups) {
+                    break;  // the key's only entry
+                }
             }
         }
     } else {
+        entry_t* entry = NULL;
         while (ret == 0) {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
             if (entry == NULL) {
@@ -2710,15 +2726,16 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
                     continue;
                 }
             }
+            if (!*pfound) {
+                _md_replace_key_anystr(as_anystr(entry), key, old_key_out);
+            }
             ret = _md_replace_matched(md,
-                                      KIND_ANYSTR,
                                       iter.slot,
                                       entry,
                                       key,
                                       value,
                                       identity,
                                       hash,
-                                      old_key_out,
                                       old_value_out,
                                       dups,
                                       watched,

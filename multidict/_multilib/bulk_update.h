@@ -52,16 +52,13 @@ struct _md_update_state {
 };
 
 /* An entry on _md_update()'s chain with the key, not written by this
-   batch yet, at `index`: the first gets the new key and value, the rest
-   are doomed. -1 on error. */
+   batch yet, at `index`: the first is marked as written, 1, and gets the
+   new key and value from the caller; the rest are doomed, 0. -1 on
+   error. */
 static inline int
-_md_update_matched(md_update_state_t* st, uint8_t kind, entry_t* entry,
-                   Py_ssize_t index, bool* pfound, Py_hash_t hash,
-                   PyObject* identity, PyObject* key, PyObject* value)
+_md_update_mark(update_marks_t* marks, entry_t* entry, Py_ssize_t index,
+                bool* pfound)
 {
-    MultiDictObject* md = st->md;
-    reflist_t* defer = &st->defer;
-    update_marks_t* marks = &st->marks;
     if (*pfound) {
         return update_marks_doom(marks, index, entry);
     }
@@ -73,21 +70,31 @@ _md_update_matched(md_update_state_t* st, uint8_t kind, entry_t* entry,
         return -1;
     }
     bitmap_clear(&marks->deleted, index);
+    return 1;
+}
+
+/* Gives the entry _md_update_mark() marked its new value, once the caller
+   has replaced `old_key` with `key`. -1 on error. */
+static inline int
+_md_update_store(md_update_state_t* st, entry_t* entry, PyObject* old_key,
+                 Py_hash_t hash, PyObject* identity, PyObject* key,
+                 PyObject* value)
+{
     // old_key/old_value decref deferred: see reflist_t
-    PyObject* old_key = entry->key;
     PyObject* old_value = load_value(entry);
-    if (kind_is_compact(kind)) {
-        replace_compact_key(entry, Py_NewRef(key));
-    } else {
-        replace_anystr_key(as_anystr(entry), Py_NewRef(key));
-    }
     publish_value(entry, Py_NewRef(value));
-    md_watch_record(
-        md, MultiDict_EVENT_REPLACED, identity, hash, key, value, old_value);
+    md_watch_record(st->md,
+                    MultiDict_EVENT_REPLACED,
+                    identity,
+                    hash,
+                    key,
+                    value,
+                    old_value);
     /* Push both unconditionally, not with `||`: a failed first push
        already decref'd old_key itself (see reflist_push()'s doc comment),
        but short-circuiting past the second push would leak old_value --
        neither deferred nor decref'd. */
+    reflist_t* defer = &st->defer;
     int push_ret = reflist_push(defer, old_key);
     if (UNLIKELY(reflist_push(defer, old_value) < 0)) {
         push_ret = -1;
@@ -117,58 +124,69 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
-    entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind) && ci) {
-        for (;;) {
-            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
+    if (kind_is_compact(md->keys->kind)) {
+        entry_t* entry = NULL;
+        if (ci) {
+            for (;;) {
+                HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
+                }
+                if (bitmap_test(&marks->updated, iter.index)) {
+                    added = true;
+                    continue;
+                }
+                int marked = _md_update_mark(marks, entry, iter.index, &found);
+                if (UNLIKELY(marked < 0)) {
+                    return -1;
+                }
+                if (marked) {
+                    PyObject* old_key = entry->key;
+                    replace_compact_key(entry, Py_NewRef(key));
+                    if (UNLIKELY(_md_update_store(st,
+                                                  entry,
+                                                  old_key,
+                                                  hash,
+                                                  identity,
+                                                  key,
+                                                  value) < 0)) {
+                        return -1;
+                    }
+                }
+                if (!md->keys->maybe_dups) {
+                    break;  // the key's only entry
+                }
             }
-            if (bitmap_test(&marks->updated, iter.index)) {
-                added = true;
-                continue;
-            }
-            if (UNLIKELY(_md_update_matched(st,
-                                            KIND_COMPACT,
-                                            entry,
-                                            iter.index,
-                                            &found,
-                                            hash,
-                                            identity,
-                                            key,
-                                            value) < 0)) {
-                return -1;
-            }
-            if (!md->keys->maybe_dups) {
-                break;  // the key's only entry
-            }
-        }
-    } else if (kind_is_compact(md->keys->kind)) {
-        for (;;) {
-            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
-            }
-            if (bitmap_test(&marks->updated, iter.index)) {
-                added = true;
-                continue;
-            }
-            if (_md_update_matched(st,
-                                   KIND_COMPACT,
-                                   entry,
-                                   iter.index,
-                                   &found,
-                                   hash,
-                                   identity,
-                                   key,
-                                   value) < 0) {
-                return -1;
-            }
-            if (!md->keys->maybe_dups) {
-                break;  // the key's only entry
+        } else {
+            for (;;) {
+                HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    break;
+                }
+                if (bitmap_test(&marks->updated, iter.index)) {
+                    added = true;
+                    continue;
+                }
+                int marked = _md_update_mark(marks, entry, iter.index, &found);
+                if (marked < 0) {
+                    return -1;
+                }
+                if (marked) {
+                    PyObject* old_key = entry->key;
+                    replace_compact_key(entry, Py_NewRef(key));
+                    if (_md_update_store(
+                            st, entry, old_key, hash, identity, key, value) <
+                        0) {
+                        return -1;
+                    }
+                }
+                if (!md->keys->maybe_dups) {
+                    break;  // the key's only entry
+                }
             }
         }
     } else {
+        entry_t* entry = NULL;
         for (;;) {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
             if (entry == NULL) {
@@ -178,16 +196,17 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
                 added = true;
                 continue;
             }
-            if (_md_update_matched(st,
-                                   KIND_ANYSTR,
-                                   entry,
-                                   iter.index,
-                                   &found,
-                                   hash,
-                                   identity,
-                                   key,
-                                   value) < 0) {
+            int marked = _md_update_mark(marks, entry, iter.index, &found);
+            if (marked < 0) {
                 return -1;
+            }
+            if (marked) {
+                PyObject* old_key = entry->key;
+                replace_anystr_key(as_anystr(entry), Py_NewRef(key));
+                if (_md_update_store(
+                        st, entry, old_key, hash, identity, key, value) < 0) {
+                    return -1;
+                }
             }
             if (!md->keys->maybe_dups) {
                 break;  // the key's only entry
@@ -222,10 +241,35 @@ _md_merge_present(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     Py_ssize_t slot = MD_SLOT_FIND;
 
     /* An entry this batch added doesn't count as already present. */
-    entry_t* entry = NULL;
-    if (kind_is_compact(md->keys->kind) && ci) {
+    if (kind_is_compact(md->keys->kind)) {
+        entry_t* entry = NULL;
+        if (ci) {
+            for (;;) {
+                HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    return slot;
+                }
+                if (!bitmap_test(&marks->updated, iter.index)) {
+                    return MD_SLOT_PRESENT;
+                }
+                slot = MD_SLOT_CHECK;
+            }
+        } else {
+            for (;;) {
+                HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
+                if (entry == NULL) {
+                    return slot;
+                }
+                if (!bitmap_test(&marks->updated, iter.index)) {
+                    return MD_SLOT_PRESENT;
+                }
+                slot = MD_SLOT_CHECK;
+            }
+        }
+    } else {
+        entry_t* entry = NULL;
         for (;;) {
-            HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
+            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
             if (entry == NULL) {
                 return slot;
             }
@@ -234,27 +278,6 @@ _md_merge_present(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
             }
             slot = MD_SLOT_CHECK;
         }
-    } else if (kind_is_compact(md->keys->kind)) {
-        for (;;) {
-            HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                return slot;
-            }
-            if (!bitmap_test(&marks->updated, iter.index)) {
-                return MD_SLOT_PRESENT;
-            }
-            slot = MD_SLOT_CHECK;
-        }
-    }
-    for (;;) {
-        HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-        if (entry == NULL) {
-            return slot;
-        }
-        if (!bitmap_test(&marks->updated, iter.index)) {
-            return MD_SLOT_PRESENT;
-        }
-        slot = MD_SLOT_CHECK;
     }
 }
 
