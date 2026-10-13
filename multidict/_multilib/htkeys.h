@@ -1040,6 +1040,19 @@ typedef struct _htkeysiter {
         }                                                                    \
     } while (0)
 
+/* The first match in a table of any kind, for a lookup that needs no
+   other; `ci_` is true for a CIMultiDict's table. */
+#define HTKEYSITER_FIND_FIRST(iter_, ci_, identity_, hash_, entry_)      \
+    do {                                                                 \
+        if (kind_is_compact((iter_)->keys->kind) && (ci_)) {             \
+            HTKEYSITER_FIND_COMPACT_CI(iter_, identity_, hash_, entry_); \
+        } else if (kind_is_compact((iter_)->keys->kind)) {               \
+            HTKEYSITER_FIND_COMPACT_CS(iter_, identity_, hash_, entry_); \
+        } else {                                                         \
+            HTKEYSITER_FIND_ANYSTR(iter_, identity_, hash_, entry_);     \
+        }                                                                \
+    } while (0)
+
 #ifdef __cplusplus
 }
 #endif

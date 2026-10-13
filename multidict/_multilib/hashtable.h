@@ -1608,13 +1608,7 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind) && ci) {
-        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-    } else if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-    } else {
-        HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-    }
+    HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
     if (entry != NULL) {
         if (pret != NULL) {
             *pret = md_ensure_key(md, entry);
@@ -1900,13 +1894,7 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind) && ci) {
-        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-    } else if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-    } else {
-        HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-    }
+    HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
     if (entry != NULL) {
         return Py_NewRef(entry->value);
     }
@@ -2057,13 +2045,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    if (kind_is_compact(iter.keys->kind) && ci) {
-        HTKEYSITER_FIND_COMPACT_CI(&iter, identity, hash, entry);
-    } else if (kind_is_compact(iter.keys->kind)) {
-        HTKEYSITER_FIND_COMPACT_CS(&iter, identity, hash, entry);
-    } else {
-        HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-    }
+    HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
     if (entry != NULL) {
         ASSERT_CONSISTENT(md);
         *result = Py_NewRef(entry->value);
