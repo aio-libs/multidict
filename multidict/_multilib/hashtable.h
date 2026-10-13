@@ -568,22 +568,33 @@ _md_copy_live(htkeys_t* dst, const htkeys_t* src)
     return out - first;
 }
 
-/* Publishes newkeys, whose first `filled` entries hold all of md's and
-   nothing else. */
+/* Publishes newkeys, a KIND_COMPACT table whose first `filled` entries
+   hold all of md's and nothing else. */
 static inline void
-_md_publish_compacted(MultiDictObject* md, htkeys_t* oldkeys,
-                      htkeys_t* newkeys, Py_ssize_t filled)
+_md_publish_compacted_compact(MultiDictObject* md, htkeys_t* oldkeys,
+                              htkeys_t* newkeys, Py_ssize_t filled)
 {
     /* What the copy actually wrote, rather than md->used: the two agree,
        but taking the count from the copy means a table can never be
        published over entries nothing has written. */
     assert(filled == md->used);
+    assert(kind_is_compact(newkeys->kind));
     htkeys_zero_entries(newkeys, filled);
-    if (kind_is_compact(newkeys->kind)) {
-        htkeys_build_compact_indices(newkeys, md->is_ci, filled, false);
-    } else {
-        htkeys_build_anystr_indices(newkeys, filled, false);
-    }
+    htkeys_build_compact_indices(newkeys, md->is_ci, filled, false);
+    newkeys->usable -= filled;
+    newkeys->nentries = filled;
+    _md_publish_rebuilt(md, oldkeys, newkeys);
+}
+
+/* The same for a KIND_ANYSTR table. */
+static inline void
+_md_publish_compacted_anystr(MultiDictObject* md, htkeys_t* oldkeys,
+                             htkeys_t* newkeys, Py_ssize_t filled)
+{
+    assert(filled == md->used);
+    assert(!kind_is_compact(newkeys->kind));
+    htkeys_zero_entries(newkeys, filled);
+    htkeys_build_anystr_indices(newkeys, filled, false);
     newkeys->usable -= filled;
     newkeys->nentries = filled;
     _md_publish_rebuilt(md, oldkeys, newkeys);
@@ -622,7 +633,11 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
     } else {
         filled = _md_copy_live(newkeys, oldkeys);
     }
-    _md_publish_compacted(md, oldkeys, newkeys, filled);
+    if (kind_is_compact(kind)) {
+        _md_publish_compacted_compact(md, oldkeys, newkeys, filled);
+    } else {
+        _md_publish_compacted_anystr(md, oldkeys, newkeys, filled);
+    }
     return 0;
 }
 
@@ -680,7 +695,7 @@ _md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
     } else {
         _MD_REBUILD_TO_ANYSTR_LOOP(cs);
     }
-    _md_publish_compacted(md, oldkeys, newkeys, filled);
+    _md_publish_compacted_anystr(md, oldkeys, newkeys, filled);
     return 0;
 }
 
