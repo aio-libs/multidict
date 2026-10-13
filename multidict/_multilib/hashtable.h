@@ -1334,32 +1334,9 @@ _removed_pairs_spill(removed_pairs_t* removed, PyObject* key, PyObject* value)
     return ret;
 }
 
-/* Deletes the entry at `slot`, handing the key and value to `removed`.
-   Not through _md_unlink_at(), which costs del d[key] up to 3 instructions. */
 static inline int
-_md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
-                entry_t* entry, removed_pairs_t* removed)
+_removed_pairs_add(removed_pairs_t* removed, PyObject* key, PyObject* value)
 {
-    assert(keys == md->keys && kind == keys->kind);
-    assert(keys != &empty_htkeys);
-    PyObject* key;
-    PyObject* identity = NULL;
-    if (kind_is_compact(kind)) {
-        key = load_compact_identity(entry);
-        reset_compact_identity(entry);
-    } else {
-        identity = load_anystr_identity(as_anystr(entry));
-        key = entry->key;
-        reset_anystr_identity(as_anystr(entry));
-        entry->key = NULL;
-    }
-    PyObject* value = load_value(entry);
-    reset_value(entry);
-    HTKEYS_SET_INDEX(keys, keys->log2_size, (Py_ssize_t)slot, DKIX_DUMMY);
-    add_used(md, -1);
-
-    // an exact str: freeing it runs no code
-    Py_XDECREF(identity);
     if (removed->key == NULL) {
         removed->key = key;
         removed->value = value;
@@ -1368,20 +1345,50 @@ _md_del_at_held(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
     return _removed_pairs_spill(removed, key, value);
 }
 
-/* Caller holds md's critical section. Returns 1 if anything was removed,
- * 0 if not, -1 on error; md_del() raises the KeyError outside the section.
- * The removed pairs go to `removed`, so their finalizers run only once
- * every match is gone and cannot add one this call then removes.
- * `watched` is a constant at both call sites, so the unwatched copy
- * carries no watch code at all: testing md->watch inside the loop costs a
- * reload per record, since every decref and store may alias it. */
-/* Deletes the match of _md_del_locked() at `slot`; `first` is whether it
-   is the first one. The watcher hears of it under the probe's identity,
-   equal to the entry's. */
+/* Deletes the entry at `slot` of a KIND_COMPACT table, handing the key and
+   value to `removed`. Not through _md_unlink_at(), which costs del d[key]
+   up to 3 instructions. */
 static inline int
-_md_del_matched(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
-                entry_t* entry, PyObject* identity, Py_hash_t hash,
-                removed_pairs_t* removed, bool watched, bool first)
+_md_del_at_held_compact(MultiDictObject* md, htkeys_t* keys, size_t slot,
+                        entry_t* entry, removed_pairs_t* removed)
+{
+    assert(keys == md->keys && kind_is_compact(keys->kind));
+    PyObject* key = load_compact_identity(entry);
+    reset_compact_identity(entry);
+    PyObject* value = load_value(entry);
+    reset_value(entry);
+    HTKEYS_SET_INDEX(keys, keys->log2_size, (Py_ssize_t)slot, DKIX_DUMMY);
+    add_used(md, -1);
+    return _removed_pairs_add(removed, key, value);
+}
+
+/* The same for a KIND_ANYSTR table. */
+static inline int
+_md_del_at_held_anystr(MultiDictObject* md, htkeys_t* keys, size_t slot,
+                       entry_t* entry, removed_pairs_t* removed)
+{
+    assert(keys == md->keys && !kind_is_compact(keys->kind));
+    assert(keys != &empty_htkeys);
+    PyObject* identity = load_anystr_identity(as_anystr(entry));
+    PyObject* key = entry->key;
+    reset_anystr_identity(as_anystr(entry));
+    entry->key = NULL;
+    PyObject* value = load_value(entry);
+    reset_value(entry);
+    HTKEYS_SET_INDEX(keys, keys->log2_size, (Py_ssize_t)slot, DKIX_DUMMY);
+    add_used(md, -1);
+
+    // an exact str: freeing it runs no code
+    Py_XDECREF(identity);
+    return _removed_pairs_add(removed, key, value);
+}
+
+/* Tells the watcher of the match of _md_del_locked() in `entry`; `first`
+   is whether it is the first one. The watcher hears of it under the
+   probe's identity, equal to the entry's. */
+static inline void
+_md_del_record(MultiDictObject* md, entry_t* entry, PyObject* identity,
+               Py_hash_t hash, bool watched, bool first)
 {
     if (watched) {
         if (first) {
@@ -1395,9 +1402,15 @@ _md_del_matched(MultiDictObject* md, htkeys_t* keys, uint8_t kind, size_t slot,
                         entry->value,
                         NULL);
     }
-    return _md_del_at_held(md, keys, kind, slot, entry, removed);
 }
 
+/* Caller holds md's critical section. Returns 1 if anything was removed,
+ * 0 if not, -1 on error; md_del() raises the KeyError outside the section.
+ * The removed pairs go to `removed`, so their finalizers run only once
+ * every match is gone and cannot add one this call then removes.
+ * `watched` is a constant at both call sites, so the unwatched copy
+ * carries no watch code at all: testing md->watch inside the loop costs a
+ * reload per record, since every decref and store may alias it. */
 static int
 _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                removed_pairs_t* removed, bool watched)
@@ -1417,16 +1430,8 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             if (entry == NULL) {
                 break;
             }
-            ret = _md_del_matched(md,
-                                  keys,
-                                  KIND_COMPACT,
-                                  iter.slot,
-                                  entry,
-                                  identity,
-                                  hash,
-                                  removed,
-                                  watched,
-                                  !found);
+            _md_del_record(md, entry, identity, hash, watched, !found);
+            ret = _md_del_at_held_compact(md, keys, iter.slot, entry, removed);
             found = true;
             if (ret < 0 || !keys->maybe_dups) {
                 break;  // on error, or past the key's only entry
@@ -1438,16 +1443,8 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             if (entry == NULL) {
                 break;
             }
-            ret = _md_del_matched(md,
-                                  keys,
-                                  KIND_COMPACT,
-                                  iter.slot,
-                                  entry,
-                                  identity,
-                                  hash,
-                                  removed,
-                                  watched,
-                                  !found);
+            _md_del_record(md, entry, identity, hash, watched, !found);
+            ret = _md_del_at_held_compact(md, keys, iter.slot, entry, removed);
             found = true;
             if (ret < 0 || !keys->maybe_dups) {
                 break;  // on error, or past the key's only entry
@@ -1459,16 +1456,8 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
             if (entry == NULL) {
                 break;
             }
-            ret = _md_del_matched(md,
-                                  keys,
-                                  KIND_ANYSTR,
-                                  iter.slot,
-                                  entry,
-                                  identity,
-                                  hash,
-                                  removed,
-                                  watched,
-                                  !found);
+            _md_del_record(md, entry, identity, hash, watched, !found);
+            ret = _md_del_at_held_anystr(md, keys, iter.slot, entry, removed);
             found = true;
             if (ret < 0 || !keys->maybe_dups) {
                 break;  // on error, or past the key's only entry
@@ -2269,7 +2258,10 @@ _md_pop_all_matched(MultiDictObject* md, uint8_t kind, size_t slot,
                     entry->key,
                     entry->value,
                     NULL);
-    return _md_del_at_held(md, md->keys, kind, slot, entry, removed);
+    if (kind_is_compact(kind)) {
+        return _md_del_at_held_compact(md, md->keys, slot, entry, removed);
+    }
+    return _md_del_at_held_anystr(md, md->keys, slot, entry, removed);
 }
 
 /* Caller holds md's critical section. The removed pairs go to `removed`,
