@@ -245,7 +245,7 @@ entry_is_hole(const entry_t* entry)
 /* The hash of a compact entry's identity, read from the key itself: a
    str's cached hash, or the canonical form's hash an istr keeps, set
    before the istr is shared. A lock-free reader holds a reference to the
-   key first; see _compact_entry_matches_cs(). */
+   key first; see _COMPACT_ENTRY_MATCHES(). */
 static inline Py_hash_t
 compact_key_hash_cs(PyObject* key)
 {
