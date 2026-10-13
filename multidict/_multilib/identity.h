@@ -110,7 +110,7 @@ _ascii_lower(const Py_UCS1* data, Py_ssize_t len)
        uppercase byte, so the caller reuses it instead of calling here. */
     assert(len > 0);
     PyObject* ret = PyUnicode_New(len, 127);
-    if (ret == NULL) {
+    if (UNLIKELY(ret == NULL)) {
         return NULL;
     }
     Py_UCS1* dst = (Py_UCS1*)PyUnicode_DATA(ret);
@@ -137,7 +137,7 @@ _str_call_lower_ci(mod_state* state, PyObject* key)
     /* str.__str__(key).lower(), never a subclass's own lower(): no Python
        code runs, and the exact copy takes the ASCII path. */
     PyObject* str = PyUnicode_FromObject(key);
-    if (str == NULL) {
+    if (UNLIKELY(str == NULL)) {
         return NULL;
     }
     PyObject* ret = _str_to_identity_ci(state, str);
@@ -200,7 +200,7 @@ static PyObject*
 _subclass_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 {
     PyObject* str = PyUnicode_FromObject(key);
-    if (str == NULL) {
+    if (UNLIKELY(str == NULL)) {
         return NULL;
     }
     PyObject* ret = IStr_New(state, str, identity);
@@ -336,11 +336,11 @@ static inline identity_hash_t
 md_calc_identity_hash(MultiDictObject* md, PyObject* key)
 {
     identity_hash_t ret = {md_calc_identity(md, key), -1};
-    if (ret.identity == NULL) {
+    if (UNLIKELY(ret.identity == NULL)) {
         return ret;
     }
     ret.hash = unicode_hash(ret.identity);
-    if (ret.hash == -1) {
+    if (UNLIKELY(ret.hash == -1)) {
         Py_CLEAR(ret.identity);
     }
     return ret;

@@ -60,7 +60,7 @@ COLD static int
 _reflist_grow(reflist_t* lst)
 {
     reflist_block_t* block = PyMem_Malloc(sizeof(reflist_block_t));
-    if (block == NULL) {
+    if (UNLIKELY(block == NULL)) {
         PyErr_NoMemory();
         return -1;
     }
@@ -87,7 +87,7 @@ reflist_push(reflist_t* lst, PyObject* obj)
         return 0;
     }
     if (UNLIKELY(lst->count == lst->capacity)) {
-        if (_reflist_grow(lst) < 0) {
+        if (UNLIKELY(_reflist_grow(lst) < 0)) {
             Py_DECREF(obj);
             return -1;
         }
@@ -153,7 +153,7 @@ COLD static PyObject*
 _reflist_spilled_to_list(reflist_t* lst)
 {
     PyObject* ret = PyList_New(_reflist_spilled_size(lst));
-    if (ret == NULL) {
+    if (UNLIKELY(ret == NULL)) {
         _reflist_clear_spilled(lst);
         return NULL;
     }
@@ -185,7 +185,7 @@ reflist_to_list(reflist_t* lst)
         return _reflist_spilled_to_list(lst);
     }
     PyObject* ret = PyList_New(lst->count);
-    if (ret == NULL) {
+    if (UNLIKELY(ret == NULL)) {
         reflist_clear(lst);
         return NULL;
     }

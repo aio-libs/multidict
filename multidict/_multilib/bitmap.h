@@ -91,7 +91,7 @@ _bitmap_alloc(bitmap_t* bm, Py_ssize_t nsummary)
 {
     bitmap_word_t* block =
         PyMem_Malloc((size_t)(nsummary + bm->nwords) * sizeof(bitmap_word_t));
-    if (block == NULL) {
+    if (UNLIKELY(block == NULL)) {
         PyErr_NoMemory();
         return -1;
     }
@@ -116,7 +116,7 @@ _bitmap_start(bitmap_t* bm)
     if ((size_t)bm->nwords <= BITMAP_INLINE_WORDS) {
         bm->summary = bm->inline_summary;
         bm->words = bm->inline_words;
-    } else if (_bitmap_alloc(bm, nsummary) < 0) {
+    } else if (UNLIKELY(_bitmap_alloc(bm, nsummary) < 0)) {
         return -1;
     }
     memset(bm->summary, 0, (size_t)nsummary * sizeof(bitmap_word_t));
@@ -154,7 +154,7 @@ static bitmap_word_t*
 _bitmap_word_sparse(bitmap_t* bm, Py_ssize_t wi)
 {
     if (UNLIKELY(bm->summary == NULL)) {
-        if (_bitmap_start(bm) < 0) {
+        if (UNLIKELY(_bitmap_start(bm) < 0)) {
             return NULL;
         }
         if (bm->dense) {
@@ -245,7 +245,7 @@ static inline int
 bitmap_set(bitmap_t* bm, Py_ssize_t i)
 {
     bitmap_word_t* word = _bitmap_word(bm, i);
-    if (word == NULL) {
+    if (UNLIKELY(word == NULL)) {
         return -1;
     }
     *word |= BITMAP_ONE << (i & BITMAP_WORD_MASK);
@@ -270,7 +270,7 @@ static inline int
 bitmap_test_and_set(bitmap_t* bm, Py_ssize_t i)
 {
     bitmap_word_t* word = _bitmap_word(bm, i);
-    if (word == NULL) {
+    if (UNLIKELY(word == NULL)) {
         return -1;
     }
     bitmap_word_t bit = BITMAP_ONE << (i & BITMAP_WORD_MASK);
@@ -365,7 +365,7 @@ bitmap_grow(bitmap_t* bm, Py_ssize_t nbits)
     bitmap_init(&fresh, bm->keys, nbits);
     for (Py_ssize_t i = _bitmap_next(bm, 0); i >= 0;
          i = _bitmap_next(bm, i + 1)) {
-        if (bitmap_set(&fresh, i) < 0) {
+        if (UNLIKELY(bitmap_set(&fresh, i) < 0)) {
             bitmap_release(&fresh);
             return -1;
         }

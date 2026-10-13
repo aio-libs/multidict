@@ -40,7 +40,7 @@ _istr_from_exact_str(PyTypeObject* type, PyObject* str)
 {
     assert(PyUnicode_CheckExact(str));
 #if PY_VERSION_HEX < 0x030c0000
-    if (PyUnicode_READY(str) < 0) {
+    if (UNLIKELY(PyUnicode_READY(str) < 0)) {
         return NULL;
     }
 #endif
@@ -80,7 +80,7 @@ _istr_from_exact_str(PyTypeObject* type, PyObject* str)
 #else
     void* data = PyMem_Malloc(size);
 #endif
-    if (data == NULL) {
+    if (UNLIKELY(data == NULL)) {
         Py_DECREF(self);
         return PyErr_NoMemory();
     }
@@ -106,7 +106,7 @@ COLD static PyObject*
 _istr_from_object(PyTypeObject* type, PyObject* x)
 {
     PyObject* args = PyTuple_Pack(1, x);
-    if (args == NULL) {
+    if (UNLIKELY(args == NULL)) {
         return NULL;
     }
     PyObject* ret = PyUnicode_Type.tp_new(type, args, NULL);
@@ -119,13 +119,13 @@ static inline PyObject*
 _istr_finish(mod_state* state, PyObject* ret)
 {
     PyObject* canonical = PyObject_CallMethodNoArgs(ret, state->str_lower);
-    if (canonical == NULL) {
+    if (UNLIKELY(canonical == NULL)) {
         Py_DECREF(ret);
         return NULL;
     }
     ((istrobject*)ret)->canonical = canonical;
     ((istrobject*)ret)->canonical_hash = PyObject_Hash(canonical);
-    if (((istrobject*)ret)->canonical_hash == -1) {
+    if (UNLIKELY(((istrobject*)ret)->canonical_hash == -1)) {
         Py_DECREF(ret);
         return NULL;
     }
@@ -136,7 +136,7 @@ static PyObject*
 istr_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     PyObject* mod = PyType_GetModuleByDef(type, &multidict_module);
-    if (mod == NULL) {
+    if (UNLIKELY(mod == NULL)) {
         return NULL;
     }
     mod_state* state = get_mod_state(mod);
@@ -147,8 +147,8 @@ istr_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     PyObject* errors = NULL;
     PyObject* ret = NULL;
 
-    if (!PyArg_ParseTupleAndKeywords(
-            args, kwds, "|OOO:str", kwlist, &x, &encoding, &errors)) {
+    if (UNLIKELY(!PyArg_ParseTupleAndKeywords(
+            args, kwds, "|OOO:str", kwlist, &x, &encoding, &errors))) {
         return NULL;
     }
     if (x != NULL && IStr_CheckExact(state, x)) {
@@ -156,7 +156,7 @@ istr_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         return x;
     }
     ret = PyUnicode_Type.tp_new(type, args, kwds);
-    if (ret == NULL) {
+    if (UNLIKELY(ret == NULL)) {
         return NULL;
     }
     return _istr_finish(state, ret);
@@ -171,7 +171,7 @@ _istr_slow_vectorcall(PyTypeObject* type, PyObject* const* args,
     PyObject* ret = NULL;
     PyObject* kwds = NULL;
     PyObject* tpl = PyTuple_New(nargs);
-    if (tpl == NULL) {
+    if (UNLIKELY(tpl == NULL)) {
         goto done;
     }
     for (Py_ssize_t i = 0; i < nargs; i++) {
@@ -179,13 +179,14 @@ _istr_slow_vectorcall(PyTypeObject* type, PyObject* const* args,
     }
     if (kwnames != NULL) {
         kwds = PyDict_New();
-        if (kwds == NULL) {
+        if (UNLIKELY(kwds == NULL)) {
             goto done;
         }
         Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
         for (Py_ssize_t i = 0; i < nkwargs; i++) {
-            if (PyDict_SetItem(
-                    kwds, PyTuple_GET_ITEM(kwnames, i), args[nargs + i]) < 0) {
+            if (UNLIKELY(PyDict_SetItem(kwds,
+                                        PyTuple_GET_ITEM(kwnames, i),
+                                        args[nargs + i]) < 0)) {
                 goto done;
             }
         }
@@ -208,7 +209,7 @@ istr_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
         return _istr_slow_vectorcall(tp, args, nargs, kwnames);
     }
     PyObject* mod = PyType_GetModuleByDef(tp, &multidict_module);
-    if (mod == NULL) {
+    if (UNLIKELY(mod == NULL)) {
         return NULL;
     }
     mod_state* state = get_mod_state(mod);
@@ -224,7 +225,7 @@ istr_tp_vectorcall(PyObject* type, PyObject* const* args, size_t nargsf,
     } else {
         ret = _istr_from_object(tp, x);
     }
-    if (ret == NULL) {
+    if (UNLIKELY(ret == NULL)) {
         return NULL;
     }
     return _istr_finish(state, ret);
@@ -238,11 +239,11 @@ istr_reduce(PyObject* self)
     PyObject* result = NULL;
 
     str = PyUnicode_FromObject(self);
-    if (str == NULL) {
+    if (UNLIKELY(str == NULL)) {
         goto ret;
     }
     args = PyTuple_Pack(1, str);
-    if (args == NULL) {
+    if (UNLIKELY(args == NULL)) {
         goto ret;
     }
     result = PyTuple_Pack(2, Py_TYPE(self), args);
@@ -285,13 +286,13 @@ IStr_New(mod_state* state, PyObject* str, PyObject* canonical)
     } else {
         res = _istr_from_object(state->IStrType, str);
     }
-    if (res == NULL) {
+    if (UNLIKELY(res == NULL)) {
         return NULL;
     }
     Py_INCREF(canonical);
     ((istrobject*)res)->canonical = canonical;
     ((istrobject*)res)->canonical_hash = PyObject_Hash(canonical);
-    if (((istrobject*)res)->canonical_hash == -1) {
+    if (UNLIKELY(((istrobject*)res)->canonical_hash == -1)) {
         Py_CLEAR(res);
     }
     return res;
@@ -301,12 +302,12 @@ static int
 istr_init(PyObject* module, mod_state* state)
 {
     PyObject* tpl = PyTuple_Pack(1, (PyObject*)&PyUnicode_Type);
-    if (tpl == NULL) {
+    if (UNLIKELY(tpl == NULL)) {
         return -1;
     }
     PyObject* tmp = PyType_FromModuleAndSpec(module, &istr_spec, tpl);
     Py_DECREF(tpl);
-    if (tmp == NULL) {
+    if (UNLIKELY(tmp == NULL)) {
         return -1;
     }
     state->IStrType = (PyTypeObject*)tmp;

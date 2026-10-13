@@ -113,7 +113,7 @@ _update_marks_grow_doomed(update_marks_t* marks)
     }
     doomed_entry_t* doomed = PyMem_Realloc(
         marks->doomed, (size_t)capacity * sizeof(doomed_entry_t));
-    if (doomed == NULL) {
+    if (UNLIKELY(doomed == NULL)) {
         PyErr_NoMemory();
         return -1;
     }
@@ -131,7 +131,7 @@ update_marks_doom(update_marks_t* marks, Py_ssize_t index, entry_t* entry)
         return seen < 0 ? -1 : 0;
     }
     if (marks->ndoomed == marks->doomed_capacity &&
-        _update_marks_grow_doomed(marks) < 0) {
+        UNLIKELY(_update_marks_grow_doomed(marks) < 0)) {
         bitmap_clear(&marks->deleted, index);
         return -1;
     }
@@ -149,7 +149,7 @@ _update_marks_widen(update_marks_t* marks, MultiDictObject* md)
     if (bitmap_nbits(&marks->updated) >= capacity) {
         return 0;
     }
-    if (bitmap_grow(&marks->updated, capacity) < 0) {
+    if (UNLIKELY(bitmap_grow(&marks->updated, capacity) < 0)) {
         return -1;
     }
     return bitmap_grow(&marks->deleted, capacity);

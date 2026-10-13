@@ -36,15 +36,15 @@ _md_repr_visit(void* user_data, PyObject* identity, Py_hash_t hash,
         if (seen != 0) {
             return seen < 0 ? -1 : 1;
         }
-        if (PySet_Add(state->shown, identity) < 0) {
+        if (UNLIKELY(PySet_Add(state->shown, identity) < 0)) {
             return -1;
         }
     }
     if (state->comma) {
-        if (PyUnicodeWriter_WriteChar(writer, ',') < 0) {
+        if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, ',') < 0)) {
             return -1;
         }
-        if (PyUnicodeWriter_WriteChar(writer, ' ') < 0) {
+        if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, ' ') < 0)) {
             return -1;
         }
     }
@@ -70,35 +70,37 @@ _md_repr_visit(void* user_data, PyObject* identity, Py_hash_t hash,
             }
         }
         if (fast) {
-            if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
+            if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, '\'') < 0)) {
                 return -1;
             }
             /* WriteStr() copies an istr through str(). */
-            if ((PyUnicode_CheckExact(key)
-                     ? PyUnicodeWriter_WriteStr(writer, key)
-                     : PyUnicodeWriter_WriteSubstring(
-                           writer, key, 0, PyUnicode_GET_LENGTH(key))) < 0) {
+            if (UNLIKELY(
+                    (PyUnicode_CheckExact(key)
+                         ? PyUnicodeWriter_WriteStr(writer, key)
+                         : PyUnicodeWriter_WriteSubstring(
+                               writer, key, 0, PyUnicode_GET_LENGTH(key))) <
+                    0)) {
                 return -1;
             }
-            if (PyUnicodeWriter_WriteChar(writer, '\'') < 0) {
+            if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, '\'') < 0)) {
                 return -1;
             }
         } else {
-            if (PyUnicodeWriter_WriteRepr(writer, key) < 0) {
+            if (UNLIKELY(PyUnicodeWriter_WriteRepr(writer, key) < 0)) {
                 return -1;
             }
         }
     }
     if (state->show_keys && state->show_values) {
-        if (PyUnicodeWriter_WriteChar(writer, ':') < 0) {
+        if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, ':') < 0)) {
             return -1;
         }
-        if (PyUnicodeWriter_WriteChar(writer, ' ') < 0) {
+        if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, ' ') < 0)) {
             return -1;
         }
     }
     if (state->show_values) {
-        if (PyUnicodeWriter_WriteRepr(writer, value) < 0) {
+        if (UNLIKELY(PyUnicodeWriter_WriteRepr(writer, value) < 0)) {
             return -1;
         }
     }
@@ -116,25 +118,25 @@ _md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
 
     PyObject* name =
         PyObject_GetAttr((PyObject*)Py_TYPE(obj), md->state->str_name);
-    if (name == NULL) {
+    if (UNLIKELY(name == NULL)) {
         Py_ReprLeave(obj);
         return NULL;
     }
 
     PyUnicodeWriter* writer = PyUnicodeWriter_Create(1024);
-    if (writer == NULL) {
+    if (UNLIKELY(writer == NULL)) {
         Py_CLEAR(name);
         Py_ReprLeave(obj);
         return NULL;
     }
 
-    if (PyUnicodeWriter_WriteChar(writer, '<') < 0) {
+    if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, '<') < 0)) {
         goto fail;
     }
-    if (PyUnicodeWriter_WriteStr(writer, name) < 0) {
+    if (UNLIKELY(PyUnicodeWriter_WriteStr(writer, name) < 0)) {
         goto fail;
     }
-    if (PyUnicodeWriter_WriteChar(writer, '(') < 0) {
+    if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, '(') < 0)) {
         goto fail;
     }
 
@@ -142,20 +144,20 @@ _md_repr_locked(MultiDictObject* md, PyObject* obj, bool show_keys,
     // only a keys view hides values, and it lists each key once
     if (!show_values && md->keys->maybe_dups) {
         state.shown = PySet_New(NULL);
-        if (state.shown == NULL) {
+        if (UNLIKELY(state.shown == NULL)) {
             goto fail;
         }
     }
     Py_ssize_t walked = md_walk_all(md, show_keys, _md_repr_visit, &state);
     Py_XDECREF(state.shown);
-    if (walked < 0) {
+    if (UNLIKELY(walked < 0)) {
         goto fail;
     }
 
-    if (PyUnicodeWriter_WriteChar(writer, ')') < 0) {
+    if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, ')') < 0)) {
         goto fail;
     }
-    if (PyUnicodeWriter_WriteChar(writer, '>') < 0) {
+    if (UNLIKELY(PyUnicodeWriter_WriteChar(writer, '>') < 0)) {
         goto fail;
     }
     Py_DECREF(name);

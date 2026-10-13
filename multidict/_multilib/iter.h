@@ -56,7 +56,7 @@ static inline int
 _iter_next_entry(MultidictIter* self, entry_t** pentry)
 {
     MultiDictObject* md = self->md;
-    if (md_check_version(md, self->version) < 0) {
+    if (UNLIKELY(md_check_version(md, self->version) < 0)) {
         return -1;
     }
     htkeys_t* keys = md->keys;
@@ -117,7 +117,7 @@ COLD static PyObject*
 _iter_next_first_key(MultidictIter* self)
 {
     MultiDictObject* md = self->md;
-    if (md_check_version(md, self->version) < 0) {
+    if (UNLIKELY(md_check_version(md, self->version) < 0)) {
         return NULL;
     }
     htkeys_t* keys = md->keys;
@@ -158,14 +158,14 @@ static PyObject*
 multidict_items_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it = _multidict_iter_alloc(md, md->state->ItemsIterType);
-    if (it == NULL) {
+    if (UNLIKELY(it == NULL)) {
         return NULL;
     }
 
     _init_iter(it, md, reverse);
     /* None placeholders, so the first reuse has something to release. */
     it->result = PyTuple_Pack(2, Py_None, Py_None);
-    if (it->result == NULL) {
+    if (UNLIKELY(it->result == NULL)) {
         Py_DECREF(it);
         return NULL;
     }
@@ -178,7 +178,7 @@ static PyObject*
 multidict_keys_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it = _multidict_iter_alloc(md, md->state->KeysIterType);
-    if (it == NULL) {
+    if (UNLIKELY(it == NULL)) {
         return NULL;
     }
 
@@ -192,7 +192,7 @@ static PyObject*
 multidict_values_iter_new(MultiDictObject* md, int reverse)
 {
     MultidictIter* it = _multidict_iter_alloc(md, md->state->ValuesIterType);
-    if (it == NULL) {
+    if (UNLIKELY(it == NULL)) {
         return NULL;
     }
 
@@ -218,13 +218,13 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
         value = entry->value;
         Py_INCREF(value);
         key = md_ensure_key(self->md, entry);  // last entry access
-        if (key == NULL) {
+        if (UNLIKELY(key == NULL)) {
             Py_DECREF(value);
             res = -1;
         }
     }
     Py_END_CRITICAL_SECTION();
-    if (res < 0) {
+    if (UNLIKELY(res < 0)) {
         return NULL;
     }
     if (res == 0) {
@@ -259,7 +259,7 @@ multidict_items_iter_tp_iternext(MultidictIter* self)
         return ret;
     }
     ret = PyTuple_New(2);
-    if (ret == NULL) {
+    if (UNLIKELY(ret == NULL)) {
         Py_DECREF(key);
         Py_DECREF(value);
         return NULL;
@@ -282,7 +282,7 @@ multidict_values_iter_tp_iternext(MultidictIter* self)
         value = Py_NewRef(entry->value);
     }
     Py_END_CRITICAL_SECTION();
-    if (res < 0) {
+    if (UNLIKELY(res < 0)) {
         return NULL;
     }
     if (res == 0) {
@@ -314,7 +314,7 @@ multidict_keys_iter_tp_iternext(MultidictIter* self)
         }
     }
     Py_END_CRITICAL_SECTION();
-    if (res < 0) {
+    if (UNLIKELY(res < 0)) {
         return NULL;
     }
     if (res == 0) {
@@ -437,19 +437,19 @@ multidict_iter_init(PyObject* module, mod_state* state)
 {
     PyObject* tmp;
     tmp = PyType_FromModuleAndSpec(module, &multidict_items_iter_spec, NULL);
-    if (tmp == NULL) {
+    if (UNLIKELY(tmp == NULL)) {
         return -1;
     }
     state->ItemsIterType = (PyTypeObject*)tmp;
 
     tmp = PyType_FromModuleAndSpec(module, &multidict_values_iter_spec, NULL);
-    if (tmp == NULL) {
+    if (UNLIKELY(tmp == NULL)) {
         return -1;
     }
     state->ValuesIterType = (PyTypeObject*)tmp;
 
     tmp = PyType_FromModuleAndSpec(module, &multidict_keys_iter_spec, NULL);
-    if (tmp == NULL) {
+    if (UNLIKELY(tmp == NULL)) {
         return -1;
     }
     state->KeysIterType = (PyTypeObject*)tmp;

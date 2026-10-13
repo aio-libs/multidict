@@ -149,7 +149,7 @@ static MultiDictObject*
 md_shell_new(mod_state* state, PyTypeObject* tp)
 {
     MultiDictObject* md = (MultiDictObject*)md_shell_alloc(state, tp);
-    if (md == NULL) {
+    if (UNLIKELY(md == NULL)) {
         return NULL;
     }
     md->state = state;
