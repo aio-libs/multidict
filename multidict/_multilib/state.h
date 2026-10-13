@@ -91,7 +91,7 @@ get_mod_state_by_def_checked(PyObject* self, mod_state** ret)
 {
     PyTypeObject* tp = Py_TYPE(self);
     PyObject* mod = PyType_GetModuleByDef(tp, &multidict_module);
-    if (mod == NULL) {
+    if (UNLIKELY(mod == NULL)) {
         *ret = NULL;
         if (PyErr_ExceptionMatches(PyExc_TypeError)) {
             PyErr_Clear();

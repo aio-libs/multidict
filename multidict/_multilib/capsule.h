@@ -50,7 +50,7 @@ static PyObject*
 IStr_FromUnicode(void* state_, PyObject* str)
 {
     mod_state* state = (mod_state*)state_;
-    if (!PyUnicode_Check(str)) {
+    if (UNLIKELY(!PyUnicode_Check(str))) {
         PyErr_Format(PyExc_TypeError,
                      "str argument should be a str instance not %s",
                      Py_TYPE(str)->tp_name);
@@ -62,7 +62,7 @@ IStr_FromUnicode(void* state_, PyObject* str)
     }
     PyObject* canonical = PyObject_CallMethodOneArg(
         (PyObject*)&PyUnicode_Type, state->str_lower, str);
-    if (canonical == NULL) {
+    if (UNLIKELY(canonical == NULL)) {
         return NULL;
     }
     PyObject* ret = IStr_New(state, str, canonical);
@@ -117,10 +117,10 @@ _md_new(mod_state* state, PyTypeObject* tp, bool is_ci,
         Py_ssize_t prealloc_size)
 {
     MultiDictObject* md = md_shell_new(state, tp);
-    if (md == NULL) {
+    if (UNLIKELY(md == NULL)) {
         return NULL;
     }
-    if (md_init(md, is_ci, prealloc_size, KIND_COMPACT) < 0) {
+    if (UNLIKELY(md_init(md, is_ci, prealloc_size, KIND_COMPACT) < 0)) {
         Py_DECREF(md);
         return NULL;
     }
@@ -145,7 +145,7 @@ static PyObject*
 _proxy_new(mod_state* state, PyObject* arg, bool is_ci)
 {
     MultiDictObject* md = multidict_proxy_target(state, arg, is_ci);
-    if (md == NULL) {
+    if (UNLIKELY(md == NULL)) {
         const char* name = is_ci ? "CIMultiDict" : "MultiDict";
         PyErr_Format(PyExc_TypeError,
                      "%sProxy requires a %s or %sProxy instance, not %s",
@@ -158,7 +158,7 @@ _proxy_new(mod_state* state, PyObject* arg, bool is_ci)
     MultiDictProxyObject* self = (MultiDictProxyObject*)md_shell_alloc(
         state,
         is_ci ? state->CIMultiDictProxyType : state->MultiDictProxyType);
-    if (self == NULL) {
+    if (UNLIKELY(self == NULL)) {
         return NULL;
     }
     self->md = (MultiDictObject*)Py_NewRef(md);
@@ -308,7 +308,7 @@ _md_foreach_key(MultiDictObject* md, PyObject* key,
     identity_hash_t ih = md_calc_identity_hash(md, key);
     PyObject* identity = ih.identity;
     Py_hash_t hash = ih.hash;
-    if (identity == NULL) {
+    if (UNLIKELY(identity == NULL)) {
         return -1;
     }
     Py_ssize_t count;
@@ -354,7 +354,7 @@ MultiDict_AddWatcher(void* state_, MultiDict_WatchCallback callback,
                      void* watcher_data)
 {
     mod_state* state = (mod_state*)state_;
-    if (callback == NULL) {
+    if (UNLIKELY(callback == NULL)) {
         PyErr_SetString(PyExc_ValueError, "callback must not be NULL");
         return -1;
     }
@@ -369,7 +369,7 @@ MultiDict_AddWatcher(void* state_, MultiDict_WatchCallback callback,
         }
     }
     _WATCHERS_UNLOCK(state);
-    if (ret < 0) {
+    if (UNLIKELY(ret < 0)) {
         PyErr_SetString(PyExc_RuntimeError,
                         "no more multidict watcher IDs available");
     }
@@ -392,13 +392,13 @@ _multidict_check_watcher_id(mod_state* state, int watcher_id,
 {
     int ret = 0;
     _WATCHERS_LOCK(state);
-    if (!_watcher_registered(state, watcher_id)) {
+    if (UNLIKELY(!_watcher_registered(state, watcher_id))) {
         ret = -1;
     } else if (generation != NULL) {
         *generation = load_watcher_generation(state, watcher_id);
     }
     _WATCHERS_UNLOCK(state);
-    if (ret < 0) {
+    if (UNLIKELY(ret < 0)) {
         PyErr_Format(PyExc_ValueError, "invalid watcher ID %d", watcher_id);
     }
     return ret;
@@ -410,7 +410,7 @@ MultiDict_ClearWatcher(void* state_, int watcher_id)
     mod_state* state = (mod_state*)state_;
     int ret = 0;
     _WATCHERS_LOCK(state);
-    if (!_watcher_registered(state, watcher_id)) {
+    if (UNLIKELY(!_watcher_registered(state, watcher_id))) {
         ret = -1;
     } else {
         /* Multidicts still carrying the bit keep it: nothing enumerates
@@ -419,7 +419,7 @@ MultiDict_ClearWatcher(void* state_, int watcher_id)
         retire_watcher(state, watcher_id);
     }
     _WATCHERS_UNLOCK(state);
-    if (ret < 0) {
+    if (UNLIKELY(ret < 0)) {
         PyErr_Format(PyExc_ValueError, "invalid watcher ID %d", watcher_id);
     }
     return ret;
@@ -431,8 +431,8 @@ MultiDict_Watch(void* state_, int watcher_id, PyObject* self, void* user_data)
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
     uint64_t generation;
-    if (_multidict_check_watcher_id(
-            (mod_state*)state_, watcher_id, &generation) < 0) {
+    if (UNLIKELY(_multidict_check_watcher_id(
+                     (mod_state*)state_, watcher_id, &generation) < 0)) {
         return -1;
     }
     int ret;
@@ -457,8 +457,8 @@ MultiDict_Unwatch(void* state_, int watcher_id, PyObject* self)
 {
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
-    if (_multidict_check_watcher_id((mod_state*)state_, watcher_id, NULL) <
-        0) {
+    if (UNLIKELY(_multidict_check_watcher_id(
+                     (mod_state*)state_, watcher_id, NULL) < 0)) {
         return -1;
     }
     Py_BEGIN_CRITICAL_SECTION(md);
@@ -488,7 +488,7 @@ new_capsule(mod_state* state)
 {
     MultiDict_CAPI* capi =
         (MultiDict_CAPI*)PyMem_Malloc(sizeof(MultiDict_CAPI));
-    if (capi == NULL) {
+    if (UNLIKELY(capi == NULL)) {
         PyErr_NoMemory();
         return NULL;
     }
@@ -530,7 +530,7 @@ new_capsule(mod_state* state)
 
     PyObject* ret =
         PyCapsule_New(capi, MultiDict_CAPSULE_NAME, _capsule_destructor);
-    if (ret == NULL) {
+    if (UNLIKELY(ret == NULL)) {
         _capsule_free(capi);
     }
     return ret;

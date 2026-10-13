@@ -617,7 +617,7 @@ htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, uint8_t kind, size_t size)
     htkeys_t* keys = pool == NULL ? NULL : pool_pop(pool);
     if (keys == NULL) {
         keys = PyMem_Malloc(size);
-        if (keys == NULL) {
+        if (UNLIKELY(keys == NULL)) {
             PyErr_NoMemory();
             return NULL;
         }
@@ -654,7 +654,7 @@ htkeys_new_unfilled(pool_t* pools, uint8_t log2_size, uint8_t kind)
     uint8_t log2_bytes = _htkeys_log2_index_bytes(log2_size);
 
     htkeys_t* keys = _htkeys_alloc_raw(pools, log2_size, kind);
-    if (keys == NULL) {
+    if (UNLIKELY(keys == NULL)) {
         return NULL;
     }
 
