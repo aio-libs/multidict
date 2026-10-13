@@ -371,32 +371,71 @@ _md_release_keys(MultiDictObject* md, htkeys_t* keys)
 #endif
 }
 
-/* Whether a live entry has another of the same hash before it on its
-   probe chain, which is where an earlier entry of its key would sit. */
-COLD static bool
-_md_has_equal_hashes(htkeys_t* keys, bool ci)
+static inline Py_hash_t
+_compact_entry_hash(const entry_t* entry, bool ci)
 {
+    return ci ? compact_key_hash_ci(entry->key)
+              : compact_key_hash_cs(entry->key);
+}
+
+/* _md_has_equal_hashes() for a KIND_COMPACT table; `ci` is a constant at
+   both call sites. */
+static inline bool
+_md_has_equal_hashes_compact(htkeys_t* keys, bool ci)
+{
+    entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);
     for (Py_ssize_t i = 0; i < keys->nentries; i++) {
-        bool hole =
-            kind_is_compact(keys->kind)
-                ? entry_is_hole(HTKEYS_COMPACT_ENTRIES(keys) + i)
-                : entry_is_hole(
-                      (const entry_t*)(HTKEYS_ANYSTR_ENTRIES(keys) + i));
-        if (hole) {
+        if (entry_is_hole(entries + i)) {
             continue;
         }
-        Py_hash_t hash = htkeys_entry_hash(keys, ci, i);
+        Py_hash_t hash = _compact_entry_hash(entries + i, ci);
         htkeysiter_t iter;
         HTKEYSITER_INIT(&iter, keys, hash);
         for (; iter.index != i; HTKEYSITER_NEXT(&iter)) {
             assert(iter.index != DKIX_EMPTY);
             if (iter.index >= 0 &&
-                htkeys_entry_hash(keys, ci, iter.index) == hash) {
+                _compact_entry_hash(entries + iter.index, ci) == hash) {
                 return true;
             }
         }
     }
     return false;
+}
+
+/* The same for a KIND_ANYSTR table. */
+static inline bool
+_md_has_equal_hashes_anystr(htkeys_t* keys)
+{
+    anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
+    for (Py_ssize_t i = 0; i < keys->nentries; i++) {
+        if (entry_is_hole((const entry_t*)(entries + i))) {
+            continue;
+        }
+        Py_hash_t hash = entries[i].hash;
+        htkeysiter_t iter;
+        HTKEYSITER_INIT(&iter, keys, hash);
+        for (; iter.index != i; HTKEYSITER_NEXT(&iter)) {
+            assert(iter.index != DKIX_EMPTY);
+            if (iter.index >= 0 && entries[iter.index].hash == hash) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/* Whether a live entry has another of the same hash before it on its
+   probe chain, which is where an earlier entry of its key would sit. */
+COLD static bool
+_md_has_equal_hashes(htkeys_t* keys, bool ci)
+{
+    if (!kind_is_compact(keys->kind)) {
+        return _md_has_equal_hashes_anystr(keys);
+    }
+    if (ci) {
+        return _md_has_equal_hashes_compact(keys, true);
+    }
+    return _md_has_equal_hashes_compact(keys, false);
 }
 
 /* Publishes a rebuilt table: the old one's entries have all moved over.
