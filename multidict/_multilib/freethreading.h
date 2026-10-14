@@ -120,15 +120,11 @@ store_keys(MultiDictObject* md, htkeys_t* keys)
 #define VERSION_BATCH 65536
 #define VERSION_BLOCK 256
 
-MD_SHARED uint64_t global_version;
+static uint64_t global_version;
 /* The last block this thread handed out. No block starts at a multiple
    of VERSION_BATCH, so reaching one means the batch is spent; starting
    one block short of it makes the first call refill. */
-#ifdef MULTIDICT_GENERAL_UNIT
-MD_SHARED THREAD_LOCAL uint64_t version_block;
-#else
-MD_SHARED THREAD_LOCAL uint64_t version_block = VERSION_BATCH - VERSION_BLOCK;
-#endif
+static THREAD_LOCAL uint64_t version_block = VERSION_BATCH - VERSION_BLOCK;
 
 static COLD uint64_t
 _refill_version_batch(void)

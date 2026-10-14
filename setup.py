@@ -56,7 +56,7 @@ if platform.system() != "Windows":
 extensions = [
     Extension(
         "multidict._multidict",
-        ["multidict/_multidict.c", "multidict/_multidict_general.c"],
+        ["multidict/_multidict.c"],
         extra_compile_args=CFLAGS,
         extra_link_args=LDFLAGS,
     ),

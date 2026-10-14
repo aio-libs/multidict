@@ -203,9 +203,6 @@ MultiDict_GetItem(void* state_, PyObject* self, PyObject* key,
     MultiDictObject* md;
     __MULTIDICT_RESOLVE_ANY(self, state_, md, -1);
     lookup_t found = md_get_one(md, key);
-    if (found.value == NULL) {
-        found = md_get_one_miss(md, key, found);
-    }
     *result = found.value;
     return found.result;
 }

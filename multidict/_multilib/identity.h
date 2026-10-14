@@ -186,16 +186,36 @@ _subclass_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 }
 
 static inline PyObject*
+_arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity);
+
+/* A str key whose identity, from a KIND_GENERAL table, is an object of
+   another type that compares equal: its istr needs the lowercased str. */
+COLD static PyObject*
+_arg_to_key_ci_recompute(mod_state* state, PyObject* key)
+{
+    PyObject* identity = _str_to_identity_ci(state, key);
+    if (UNLIKELY(identity == NULL)) {
+        return NULL;
+    }
+    PyObject* ret = _arg_to_key_ci(state, key, identity);
+    Py_DECREF(identity);
+    return ret;
+}
+
+static inline PyObject*
 _arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
 {
     if (IStr_CheckExact(state, key)) {
         return Py_NewRef(key);
     }
-    if (PyUnicode_CheckExact(key)) {
-        return IStr_New(state, key, identity);
-    }
     if (UNLIKELY(!PyUnicode_Check(key))) {
         return Py_NewRef(key);
+    }
+    if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+        return _arg_to_key_ci_recompute(state, key);
+    }
+    if (PyUnicode_CheckExact(key)) {
+        return IStr_New(state, key, identity);
     }
     return _subclass_to_key_ci(state, key, identity);
 }
@@ -333,11 +353,6 @@ md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
     return _arg_to_key_cs(md->state, key, identity);
 }
 
-/* md_calc_key() of a key whose identity is computed afresh, for a
-   KIND_GENERAL table's entry whose identity is no str. */
-MD_GENERAL_API PyObject*
-md_calc_key_general(MultiDictObject* md, PyObject* key);
-
 /* Building the istr allocates, which can run a collection whose finalizers
    mutate md and free entry, so hold our own refs. Only an exact str is
    replaced by its istr: releasing one runs no code, where a subclass's
@@ -351,11 +366,7 @@ _md_cache_key_ci(MultiDictObject* md, entry_t* entry)
     PyObject* identity = Py_NewRef(kind_is_compact(md->keys->kind)
                                        ? compact_key_identity_ci(entry->key)
                                        : as_anystr(entry)->identity);
-    /* A KIND_GENERAL table's identity of a str key can be an object of
-       another type that compares equal, no use to an istr. */
-    PyObject* key = PyUnicode_CheckExact(identity)
-                        ? _arg_to_key_ci(md->state, old_key, identity)
-                        : md_calc_key_general(md, old_key);
+    PyObject* key = _arg_to_key_ci(md->state, old_key, identity);
     if (key != NULL && md->version == version &&
         PyUnicode_CheckExact(old_key)) {
         entry->key = Py_NewRef(key);
