@@ -21,7 +21,7 @@ In a KIND_COMPACT or KIND_ANYSTR table, identity always has exact
 PyUnicode_Type type, not a subclass. It guarantees that identity hashing
 and comparison never calls Python code back, and these operations has no
 weird side effects, e.g. deletion the key from multidict. A KIND_GENERAL
-table compares identities by address alone; see md_resolve_probe().
+table compares identities by address alone; see md_resolve().
 
 Taking into account the fact that all multidict operations except
 repr(md), repr(md_proxy), or repr(view) never access to the key
@@ -1068,7 +1068,7 @@ typedef struct _htkeysiter {
 
 /* _HTKEYSITER_FIND_COMPACT() for a KIND_GENERAL table, whose entries of
    one key share one identity object: `identity_` must be that object,
-   as md_resolve_probe() leaves it. */
+   as md_resolve() finds it. */
 #define HTKEYSITER_FIND_GENERAL(iter_, identity_, hash_, entry_)             \
     do {                                                                     \
         htkeysiter_t* _hf_iter = (iter_);                                    \
@@ -1092,8 +1092,11 @@ typedef struct _htkeysiter {
     } while (0)
 
 /* The first match in a table of any kind, for a lookup that needs no
-   other; `ci_` is true for a CIMultiDict's table. */
-#define HTKEYSITER_FIND_FIRST(iter_, ci_, identity_, hash_, entry_)      \
+   other; `ci_` is true for a CIMultiDict's table. A KIND_GENERAL table
+   runs `on_general_` instead, as its probe must be resolved first (see
+   md_find_first_general()). */
+#define HTKEYSITER_FIND_FIRST(                                           \
+    iter_, ci_, identity_, hash_, entry_, on_general_)                   \
     do {                                                                 \
         if (kind_is_compact((iter_)->keys->kind) && (ci_)) {             \
             HTKEYSITER_FIND_COMPACT_CI(iter_, identity_, hash_, entry_); \
@@ -1102,7 +1105,7 @@ typedef struct _htkeysiter {
         } else if ((iter_)->keys->kind == KIND_ANYSTR) {                 \
             HTKEYSITER_FIND_ANYSTR(iter_, identity_, hash_, entry_);     \
         } else {                                                         \
-            HTKEYSITER_FIND_GENERAL(iter_, identity_, hash_, entry_);    \
+            on_general_;                                                 \
         }                                                                \
     } while (0)
 

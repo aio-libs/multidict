@@ -167,6 +167,12 @@ _md_walk_matched(MultiDictObject* md, entry_t* entry, PyObject* identity,
     return ret == 0 ? 0 : 1;
 }
 
+/* md_walk_with_hash() for a KIND_GENERAL table, or a probe whose identity
+   is no exact str: resolved first, which can run __eq__. */
+COLD static Py_ssize_t
+md_walk_general(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                bool with_keys, md_item_visitor_t visitor, void* user_data);
+
 /* Calls `visitor` once for every entry whose identity is `identity`, in
    insertion order; `hash` is that identity's hash. Returns how many entries
    were visited, or -1 with an exception set. The caller holds md's critical
@@ -191,14 +197,12 @@ static Py_ssize_t
 md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                   bool with_keys, md_item_visitor_t visitor, void* user_data)
 {
-    bool ci = md->is_ci;
-    PyObject* probe = identity;
-    int resolved = md_resolve_probe(md, &identity, hash);
-    if (resolved <= 0) {
-        return resolved;
+    if (UNLIKELY(!PyUnicode_CheckExact(identity)) ||
+        UNLIKELY(md->keys->kind == KIND_GENERAL)) {
+        return md_walk_general(
+            md, identity, hash, with_keys, visitor, user_data);
     }
-    // the table's own, which the visitors could free
-    PyObject* held = identity != probe ? Py_NewRef(identity) : NULL;
+    bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
@@ -257,7 +261,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                 }
             }
         }
-    } else if (md->keys->kind == KIND_ANYSTR) {
+    } else {
         entry_t* entry = NULL;
         while (ret > 0) {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
@@ -281,32 +285,7 @@ md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                 break;
             }
         }
-    } else {
-        entry_t* entry = NULL;
-        while (ret > 0) {
-            HTKEYSITER_FIND_GENERAL(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
-            }
-            if (iter.index <= last) {
-                continue;
-            }
-            last = iter.index;
-            ret = _md_walk_matched(md,
-                                   entry,
-                                   identity,
-                                   hash,
-                                   with_keys,
-                                   visitor,
-                                   user_data,
-                                   version);
-            count += ret >= 0;
-            if (!dups) {
-                break;
-            }
-        }
     }
-    Py_XDECREF(held);
     return ret < 0 ? -1 : count;
 }
 

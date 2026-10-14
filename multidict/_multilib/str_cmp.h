@@ -11,7 +11,7 @@ extern "C" {
 #include <stdbool.h>
 #include <string.h>
 
-static bool
+static inline bool
 str_cmp(PyObject* s1, PyObject* s2)
 {
     /* implementation is borrowed from PyUnicode_Equal() but without
