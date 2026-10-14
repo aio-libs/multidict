@@ -5,14 +5,17 @@
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #define COLD __attribute__((cold, noinline))
 #define NOINLINE __attribute__((noinline))
+#define ALWAYS_INLINE inline __attribute__((always_inline))
 #elif defined(_MSC_VER)
 #define UNLIKELY(x) (x)
 #define COLD __declspec(noinline)
 #define NOINLINE __declspec(noinline)
+#define ALWAYS_INLINE __forceinline
 #else
 #define UNLIKELY(x) (x)
 #define COLD
 #define NOINLINE
+#define ALWAYS_INLINE inline
 #endif
 
 /* Not initial-exec, the TLS model that reaches a variable at a fixed
