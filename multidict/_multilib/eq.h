@@ -18,9 +18,9 @@ extern "C" {
 #include "walk.h"
 
 /* Compares two values of matching entries: 1 if equal, 0 if not, -1 on
-   error, _MD_EQ_RAN when they compared equal through a value's __eq__,
+   error, MD_EQ_RAN when they compared equal through a value's __eq__,
    which can mutate either dict and free its keys. */
-#define _MD_EQ_RAN 2
+#define MD_EQ_RAN 2
 
 static inline int
 _md_eq_values(PyObject* value1, PyObject* value2)
@@ -36,7 +36,7 @@ _md_eq_values(PyObject* value1, PyObject* value2)
     int cmp = PyObject_RichCompareBool(value1, value2, Py_EQ);
     Py_DECREF(value1);
     Py_DECREF(value2);
-    return cmp > 0 ? _MD_EQ_RAN : cmp;
+    return cmp > 0 ? MD_EQ_RAN : cmp;
 }
 
 /* The per-kind parts of _MD_DEFINE_EQ_SCAN(): CS and CI are a KIND_COMPACT
@@ -61,7 +61,7 @@ _md_eq_values(PyObject* value1, PyObject* value2)
 #define _MD_EQ_ANYSTR_BASE(e) (&(e)->base)
 
 /* md_eq()'s scan of md's table, of kind K1, against other's, of kind K2,
-   from *ppos1 and *ppos2: 1 if equal, 0 if not, -1 on error, _MD_EQ_RAN
+   from *ppos1 and *ppos2: 1 if equal, 0 if not, -1 on error, MD_EQ_RAN
    when a value's __eq__ ran, after which the caller carries on from
    *ppos1 and *ppos2 under the tables and kinds they have now. */
 #define _MD_DEFINE_EQ_SCAN(K1, K2)                                          \
@@ -95,7 +95,7 @@ _md_eq_values(PyObject* value1, PyObject* value2)
             }                                                               \
             int cmp = _md_eq_values(_MD_EQ_##K1##_BASE(entry1)->value,      \
                                     _MD_EQ_##K2##_BASE(entry2)->value);     \
-            if (cmp == _MD_EQ_RAN) {                                        \
+            if (cmp == MD_EQ_RAN) {                                         \
                 *ppos1 = entry1 - first1 + 1;                               \
                 *ppos2 = entry2 - first2 + 1;                               \
                 return cmp;                                                 \
@@ -138,97 +138,12 @@ _MD_DEFINE_EQ_SCAN(ANYSTR, ANYSTR)
 #undef _MD_EQ_ANYSTR_IDENTITY
 #undef _MD_EQ_ANYSTR_BASE
 
-/* Entry `pos` of md's table, of any kind, with its identity and hash. */
-static inline entry_t*
-_md_eq_entry(MultiDictObject* md, Py_ssize_t pos, PyObject** pidentity,
-             Py_hash_t* phash)
-{
-    htkeys_t* keys = md->keys;
-    if (kind_is_compact(keys->kind)) {
-        entry_t* e = HTKEYS_COMPACT_ENTRIES(keys) + pos;
-        if (!entry_is_hole(e)) {
-            *pidentity = md->is_ci ? compact_key_identity_ci(e->key)
-                                   : compact_key_identity_cs(e->key);
-            *phash = md->is_ci ? compact_key_hash_ci(e->key)
-                               : compact_key_hash_cs(e->key);
-        }
-        return e;
-    }
-    anystr_entry_t* e = HTKEYS_ANYSTR_ENTRIES(keys) + pos;
-    *pidentity = e->identity;
-    *phash = e->hash;
-    return &e->base;
-}
-
 /* The scan for tables either of which is KIND_GENERAL, whose identities
    need __eq__. One that ran holds its own references to both pairs, and
    ends the call as a value's __eq__ does. */
-COLD static int
-_md_eq_scan_general(MultiDictObject* md, MultiDictObject* other,
-                    Py_ssize_t* ppos1, Py_ssize_t* ppos2)
-{
-    Py_ssize_t pos1 = *ppos1;
-    Py_ssize_t pos2 = *ppos2;
-    for (;; pos1++, pos2++) {
-        PyObject* identity1 = NULL;
-        PyObject* identity2 = NULL;
-        Py_hash_t hash1 = 0;
-        Py_hash_t hash2 = 0;
-        entry_t* entry1 = NULL;
-        entry_t* entry2 = NULL;
-        for (; pos1 < md->keys->nentries; pos1++) {
-            entry1 = _md_eq_entry(md, pos1, &identity1, &hash1);
-            if (!entry_is_hole(entry1)) {
-                break;
-            }
-        }
-        for (; pos2 < other->keys->nentries; pos2++) {
-            entry2 = _md_eq_entry(other, pos2, &identity2, &hash2);
-            if (!entry_is_hole(entry2)) {
-                break;
-            }
-        }
-        if (pos1 >= md->keys->nentries || pos2 >= other->keys->nentries) {
-            return 1;
-        }
-        if (hash1 != hash2) {
-            return 0;
-        }
-        if (identity1 == identity2 || (PyUnicode_CheckExact(identity1) &&
-                                       PyUnicode_CheckExact(identity2))) {
-            if (identity1 != identity2 && !str_cmp(identity1, identity2)) {
-                return 0;
-            }
-            int cmp = _md_eq_values(entry1->value, entry2->value);
-            if (cmp == _MD_EQ_RAN) {
-                *ppos1 = pos1 + 1;
-                *ppos2 = pos2 + 1;
-            }
-            if (cmp != 1) {
-                return cmp;
-            }
-            continue;
-        }
-        PyObject* value1 = Py_NewRef(entry1->value);
-        PyObject* value2 = Py_NewRef(entry2->value);
-        Py_INCREF(identity1);
-        Py_INCREF(identity2);
-        int cmp = PyObject_RichCompareBool(identity1, identity2, Py_EQ);
-        if (cmp > 0) {
-            cmp = _md_eq_values(value1, value2);
-        }
-        Py_DECREF(identity1);
-        Py_DECREF(identity2);
-        Py_DECREF(value1);
-        Py_DECREF(value2);
-        if (cmp <= 0) {
-            return cmp;
-        }
-        *ppos1 = pos1 + 1;
-        *ppos2 = pos2 + 1;
-        return _MD_EQ_RAN;
-    }
-}
+MD_GENERAL_API int
+md_eq_scan_general(MultiDictObject* md, MultiDictObject* other,
+                   Py_ssize_t* ppos1, Py_ssize_t* ppos2);
 
 // The _MD_EQ_ kind of md's table: 0 is CS, 1 is CI, 2 is ANYSTR.
 static inline int
@@ -244,7 +159,7 @@ _md_eq_scan(MultiDictObject* md, MultiDictObject* other, Py_ssize_t* ppos1,
 {
     if (UNLIKELY(md->keys->kind == KIND_GENERAL ||
                  other->keys->kind == KIND_GENERAL)) {
-        return _md_eq_scan_general(md, other, ppos1, ppos2);
+        return md_eq_scan_general(md, other, ppos1, ppos2);
     }
     switch (_md_eq_kind(md) * 3 + _md_eq_kind(other)) {
         case 0:
@@ -284,11 +199,9 @@ md_eq(MultiDictObject* md, MultiDictObject* other)
     int ret;
     do {
         ret = _md_eq_scan(md, other, &pos1, &pos2);
-    } while (ret == _MD_EQ_RAN);
+    } while (ret == MD_EQ_RAN);
     return ret;
 }
-
-#undef _MD_EQ_RAN
 
 typedef struct _md_eq_to_mapping_state {
     PyObject* other;

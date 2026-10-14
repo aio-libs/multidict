@@ -408,11 +408,17 @@ multidict_getone(MultiDictObject* self, PyObject* const* args,
         return NULL;
     }
     lookup_t found = md_get_one(self, key);
-    if (found.result < 0) {
-        return NULL;
-    }
     PyObject* val = found.value;
     if (val == NULL) {
+        found = md_get_one_miss(self, key, found);
+        val = found.value;
+        if (val != NULL) {
+            return val;
+        }
+        // an error leaves no value too, so a hit tests nothing else
+        if (found.result < 0) {
+            return NULL;
+        }
         return _multidict_default_or_raise(key, _default);
     }
     return val;
@@ -428,12 +434,16 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
         return NULL;
     }
     lookup_t found = md_get_one(self, key);
-    if (found.result < 0) {
-        return NULL;
-    }
     PyObject* val = found.value;
     if (val != NULL) {
         return val;
+    }
+    found = md_get_one_miss(self, key, found);
+    if (found.value != NULL) {
+        return found.value;
+    }
+    if (found.result < 0) {
+        return NULL;
     }
     if (_default != NULL) {
         return Py_NewRef(_default);
@@ -505,12 +515,13 @@ static PyObject*
 multidict_mp_subscript(MultiDictObject* self, PyObject* key)
 {
     lookup_t found = md_get_one(self, key);
-    if (found.result < 0) {
-        return NULL;
-    }
     PyObject* val = found.value;
     if (val == NULL) {
-        PyErr_SetObject(PyExc_KeyError, key);
+        found = md_get_one_miss(self, key, found);
+        val = found.value;
+        if (val == NULL && found.result == 0) {
+            PyErr_SetObject(PyExc_KeyError, key);
+        }
     }
     return val;
 }

@@ -155,6 +155,11 @@ _md_to_dict_single(MultiDictObject* md, PyObject* dict, entry_t* entry,
         }                                                                 \
     } while (0)
 
+/* _md_to_dict_locked() for a KIND_GENERAL table that may hold a key
+   twice. */
+MD_GENERAL_API int
+md_to_dict_general(MultiDictObject* md, PyObject** ret);
+
 /* Walks the entries in insertion order, so every key is collected at its
    first spelling; a hash chain walk is not insertion-ordered. Equal keys
    sit on one hash chain in insertion order. One loop per kind; the
@@ -162,6 +167,9 @@ _md_to_dict_single(MultiDictObject* md, PyObject* dict, entry_t* entry,
 COLD static int
 _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
 {
+    if (md->keys->kind == KIND_GENERAL && md->keys->maybe_dups) {
+        return md_to_dict_general(md, ret);
+    }
     PyObject* dict = PyDict_New();
     if (UNLIKELY(dict == NULL)) {
         return -1;
@@ -204,10 +212,8 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
         } else {
             _MD_TO_DICT_COMPACT_LOOP(cs, HTKEYSITER_FIND_COMPACT_CS);
         }
-    } else if (keys->kind == KIND_ANYSTR) {
-        _MD_TO_DICT_ANYSTR_LOOP(HTKEYSITER_FIND_ANYSTR);
     } else {
-        _MD_TO_DICT_ANYSTR_LOOP(HTKEYSITER_FIND_GENERAL);
+        _MD_TO_DICT_ANYSTR_LOOP(HTKEYSITER_FIND_ANYSTR);
     }
 
     bitmap_release(&collected);
@@ -220,9 +226,11 @@ fail:
     return -1;
 }
 
+#ifndef MULTIDICT_GENERAL_UNIT  // md_to_dict_general() uses them
 #undef _MD_TO_DICT_COMPACT_LOOP
 #undef _MD_TO_DICT_ANYSTR_LOOP
 #undef _MD_TO_DICT_COLLECT
+#endif
 
 static int
 md_to_dict(MultiDictObject* md, PyObject** ret)

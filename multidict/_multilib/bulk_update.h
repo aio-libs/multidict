@@ -102,21 +102,21 @@ _md_update_store(md_update_state_t* st, entry_t* entry, PyObject* old_key,
     return push_ret;
 }
 
-/* Past md_resolve_probe(), which can run __eq__, nothing here runs Python
- * code or suspends the critical section: the replaced key and value go to
- * `defer`. One loop per kind. */
+MD_GENERAL_API int
+md_update_general(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
+                  PyObject* key, PyObject* value, uint8_t need);
+
+/* Nothing here runs Python code or suspends the critical section: the
+ * replaced key and value go to `defer`. One loop per kind. */
 static int
 _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
            PyObject* key, PyObject* value, uint8_t need)
 {
+    if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+        return md_update_general(st, hash, identity, key, value, need);
+    }
     MultiDictObject* md = st->md;
     update_marks_t* marks = &st->marks;
-    // a miss adds under the identity computed from key
-    PyObject* computed = identity;
-    int resolved = md_resolve_probe(md, &identity, hash);
-    if (UNLIKELY(resolved < 0)) {
-        return -1;
-    }
     if (UNLIKELY(md->keys->kind < need) &&
         UNLIKELY(md_to_kind(md, need) < 0)) {
         return -1;
@@ -129,9 +129,6 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
     bool added = false;
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
-    if (resolved == 0) {
-        goto add;
-    }
 
     if (kind_is_compact(md->keys->kind)) {
         entry_t* entry = NULL;
@@ -222,40 +219,14 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
             }
         }
     } else {
-        entry_t* entry = NULL;
-        for (;;) {
-            HTKEYSITER_FIND_GENERAL(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                break;
-            }
-            if (bitmap_test(&marks->updated, iter.index)) {
-                added = true;
-                continue;
-            }
-            int marked = _md_update_mark(marks, entry, iter.index, &found);
-            if (marked < 0) {
-                return -1;
-            }
-            if (marked) {
-                PyObject* old_key = entry->key;
-                replace_anystr_key(as_anystr(entry), Py_NewRef(key));
-                if (_md_update_store(
-                        st, entry, old_key, hash, identity, key, value) < 0) {
-                    return -1;
-                }
-            }
-            if (!md->keys->maybe_dups) {
-                break;  // the key's only entry
-            }
-        }
+        return md_update_general(st, hash, identity, key, value, need);
     }
     if (found) {
         return 0;
     }
-add:
     return md_add_for_upd(md,
                           hash,
-                          computed,
+                          identity,
                           key,
                           value,
                           marks,
@@ -268,17 +239,22 @@ add:
    MD_SLOT_CHECK; MD_SLOT_PRESENT if so; MD_SLOT_ERROR if __eq__ raised.
    One loop per kind. */
 #define MD_SLOT_PRESENT ((Py_ssize_t) - 3)
-#define MD_SLOT_ERROR ((Py_ssize_t) - 4)
+
+/* _md_merge_present() for a KIND_GENERAL table, or a key that is no str:
+   its probe resolved first, which can run __eq__. */
+MD_GENERAL_API Py_ssize_t
+md_merge_present_general(MultiDictObject* md, Py_hash_t hash,
+                         PyObject* identity, update_marks_t* marks);
 
 static inline Py_ssize_t
 _md_merge_present(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                   update_marks_t* marks)
 {
-    bool ci = md->is_ci;
-    int resolved = md_resolve_probe(md, &identity, hash);
-    if (resolved <= 0) {
-        return resolved < 0 ? MD_SLOT_ERROR : MD_SLOT_FIND;
+    if (UNLIKELY(!PyUnicode_CheckExact(identity)) ||
+        UNLIKELY(md->keys->kind == KIND_GENERAL)) {
+        return md_merge_present_general(md, hash, identity, marks);
     }
+    bool ci = md->is_ci;
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
     Py_ssize_t slot = MD_SLOT_FIND;
@@ -309,22 +285,10 @@ _md_merge_present(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                 slot = MD_SLOT_CHECK;
             }
         }
-    } else if (md->keys->kind == KIND_ANYSTR) {
-        entry_t* entry = NULL;
-        for (;;) {
-            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
-            if (entry == NULL) {
-                return slot;
-            }
-            if (!bitmap_test(&marks->updated, iter.index)) {
-                return MD_SLOT_PRESENT;
-            }
-            slot = MD_SLOT_CHECK;
-        }
     } else {
         entry_t* entry = NULL;
         for (;;) {
-            HTKEYSITER_FIND_GENERAL(&iter, identity, hash, entry);
+            HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
             if (entry == NULL) {
                 return slot;
             }
@@ -628,7 +592,7 @@ _md_extend_item(MultiDictObject* md, PyObject* key, PyObject* value,
         goto fail_identity;
     }
     if (md_add_with_hash_steal_refs(
-            md, hash, &identity, key, value, need, slot) < 0) {
+            md, hash, identity, key, value, need, slot) < 0) {
         goto fail_identity;
     }
     return 0;
