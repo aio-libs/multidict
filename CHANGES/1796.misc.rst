@@ -1,0 +1,4 @@
+Forced inlining of the atomic and thread-safety helpers in the C
+extension, which changed the compiler's inlining choices on the FT build
+and sped up :meth:`~multidict.MultiDict.clear` there by 6% -- by
+:user:`asvetlov`.
