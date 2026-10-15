@@ -69,7 +69,7 @@ _watch_ctz(uint32_t bits)
 #endif
 }
 
-static const char*
+NOINLINE static const char*
 _md_watch_event_name(MultiDict_WatchEvent event)
 {
     switch (event) {

@@ -118,7 +118,7 @@ watchlog_take(watchlog_t* log, watchlog_t* out)
 }
 
 // Drops a taken snapshot without delivering it.
-static inline void
+static void
 watchlog_drain(watchlog_t* log)
 {
     for (watchlog_block_t* block = log->head; block != NULL;) {
