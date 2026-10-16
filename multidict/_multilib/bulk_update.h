@@ -84,16 +84,7 @@ _md_update_store(md_update_state_t* st, entry_t* entry, PyObject* old_key,
                     key,
                     value,
                     old_value);
-    /* Push both unconditionally, not with `||`: a failed first push
-       already decref'd old_key itself (see reflist_push()'s doc comment),
-       but short-circuiting past the second push would leak old_value --
-       neither deferred nor decref'd. */
-    reflist_t* defer = &st->defer;
-    int push_ret = reflist_push(defer, old_key);
-    if (UNLIKELY(reflist_push(defer, old_value) < 0)) {
-        push_ret = -1;
-    }
-    return push_ret;
+    return reflist_push2(&st->defer, old_key, old_value);
 }
 
 /* Nothing here runs Python code or suspends the critical section: the

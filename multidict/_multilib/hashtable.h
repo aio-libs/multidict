@@ -1348,10 +1348,7 @@ md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     }
 
     int ret = reflist_push(defer, identity);
-    if (UNLIKELY(reflist_push(defer, key) < 0)) {
-        ret = -1;
-    }
-    if (UNLIKELY(reflist_push(defer, value) < 0)) {
+    if (UNLIKELY(reflist_push2(defer, key, value) < 0)) {
         ret = -1;
     }
     return ret;
@@ -1393,11 +1390,7 @@ _removed_pairs_spill(removed_pairs_t* removed, PyObject* key, PyObject* value)
         reflist_init(&removed->more);
         removed->spilled = true;
     }
-    int ret = reflist_push(&removed->more, key);
-    if (UNLIKELY(reflist_push(&removed->more, value) < 0)) {
-        ret = -1;
-    }
-    return ret;
+    return reflist_push2(&removed->more, key, value);
 }
 
 static inline int
