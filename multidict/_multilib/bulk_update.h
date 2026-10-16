@@ -51,18 +51,12 @@ struct _md_update_state {
     reflist_t defer;
 };
 
-/* An entry on _md_update()'s chain with the key, not written by this
-   batch yet, at `index`: the first is marked as written, 1, and gets the
-   new key and value from the caller; the rest are doomed, 0. -1 on
-   error. */
+/* Marks the entry at `index` as written: the first on _md_update()'s
+   chain with the key that this batch has not written yet, which gets the
+   new key and value from the caller. -1 on error. */
 static inline int
-_md_update_mark(update_marks_t* marks, entry_t* entry, Py_ssize_t index,
-                bool* pfound)
+_md_update_claim(update_marks_t* marks, Py_ssize_t index)
 {
-    if (*pfound) {
-        return update_marks_doom(marks, index, entry);
-    }
-    *pfound = true;
     /* Marked first: nothing below can fail half-way after the entry has
        changed. An entry an earlier item of this batch doomed is reused,
        which keeps the key at its position. */
@@ -70,10 +64,10 @@ _md_update_mark(update_marks_t* marks, entry_t* entry, Py_ssize_t index,
         return -1;
     }
     bitmap_clear(&marks->deleted, index);
-    return 1;
+    return 0;
 }
 
-/* Gives the entry _md_update_mark() marked its new value, once the caller
+/* Gives the entry _md_update_claim() marked its new value, once the caller
    has replaced `old_key` with `key`. -1 on error. */
 static inline int
 _md_update_store(md_update_state_t* st, entry_t* entry, PyObject* old_key,
@@ -136,11 +130,16 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
                     added = true;
                     continue;
                 }
-                int marked = _md_update_mark(marks, entry, iter.index, &found);
-                if (UNLIKELY(marked < 0)) {
-                    return -1;
-                }
-                if (marked) {
+                if (found) {
+                    if (UNLIKELY(update_marks_doom(marks, iter.index, entry) <
+                                 0)) {
+                        return -1;
+                    }
+                } else {
+                    if (UNLIKELY(_md_update_claim(marks, iter.index) < 0)) {
+                        return -1;
+                    }
+                    found = true;
                     PyObject* old_key = entry->key;
                     replace_compact_key(entry, Py_NewRef(key));
                     if (UNLIKELY(_md_update_store(st,
@@ -167,11 +166,15 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
                     added = true;
                     continue;
                 }
-                int marked = _md_update_mark(marks, entry, iter.index, &found);
-                if (marked < 0) {
-                    return -1;
-                }
-                if (marked) {
+                if (found) {
+                    if (update_marks_doom(marks, iter.index, entry) < 0) {
+                        return -1;
+                    }
+                } else {
+                    if (_md_update_claim(marks, iter.index) < 0) {
+                        return -1;
+                    }
+                    found = true;
                     PyObject* old_key = entry->key;
                     replace_compact_key(entry, Py_NewRef(key));
                     if (_md_update_store(
@@ -196,11 +199,15 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
                 added = true;
                 continue;
             }
-            int marked = _md_update_mark(marks, entry, iter.index, &found);
-            if (marked < 0) {
-                return -1;
-            }
-            if (marked) {
+            if (found) {
+                if (update_marks_doom(marks, iter.index, entry) < 0) {
+                    return -1;
+                }
+            } else {
+                if (_md_update_claim(marks, iter.index) < 0) {
+                    return -1;
+                }
+                found = true;
                 PyObject* old_key = entry->key;
                 replace_anystr_key(as_anystr(entry), Py_NewRef(key));
                 if (_md_update_store(
