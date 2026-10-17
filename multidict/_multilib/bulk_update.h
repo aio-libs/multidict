@@ -499,17 +499,21 @@ static int
 _md_update_key(md_update_state_t* st, PyObject* key, PyObject* value)
 {
     MultiDictObject* md = st->md;
-    PyObject* identity = md_identity_or_new(md, key);
-    if (identity == NULL) {
+    stored_key_t stored = md_store_key(md, key);
+    if (stored.key == NULL) {
         return -1;
     }
     int ret = -1;
-    Py_hash_t hash = unicode_hash(identity);
+    Py_hash_t hash = unicode_hash(stored.identity);
     if (hash != -1) {
-        ret = st->action(
-            st, hash, identity, key, value, md_key_fits(md, key, identity));
+        ret = st->action(st,
+                         hash,
+                         stored.identity,
+                         stored.key,
+                         value,
+                         md_key_fits(md, stored.key, stored.identity));
     }
-    md_identity_release(md, key, identity);
+    md_store_key_release(md, key, stored);
     return ret < 0 ? -1 : 0;
 }
 
@@ -533,8 +537,8 @@ md_update_from_ht(md_update_state_t* st, MultiDictObject* other)
     // callers handle md itself: a no-op
     assert(st->md != other);
 
-    /* The keys come materialized as other's: a CIMultiDict's istr keeps
-       other's identity as its canonical, md's is the unlowered key. */
+    /* A key of the other class gets md's identity and md's form: an istr
+       for a CIMultiDict, other's istr as is for a MultiDict. */
     md_item_visitor_t visit = st->md->is_ci == other->is_ci
                                   ? _md_update_visit_own
                                   : _md_update_visit;
@@ -547,22 +551,31 @@ static int
 _md_extend_item(MultiDictObject* md, PyObject* key, PyObject* value,
                 Py_ssize_t slot)
 {
-    bool fits;
-    PyObject* identity = md_calc_identity_fits(md, key, &fits);
-    if (identity == NULL) {
+    stored_key_t stored = md_store_key(md, key);
+    if (stored.key == NULL) {
         goto fail;
     }
-    Py_hash_t hash = unicode_hash(identity);
+    Py_hash_t hash = unicode_hash(stored.identity);
     if (hash == -1) {
-        goto fail_identity;
+        md_store_key_release(md, key, stored);
+        goto fail;
+    }
+    bool fits = md_key_fits(md, stored.key, stored.identity);
+    /* The add takes over a reference to each: the stored key's is ours
+       when it is a new istr, and only a MultiDict's computed identity is
+       a new one. */
+    PyObject* identity = !md->is_ci && stored.identity != stored.key
+                             ? stored.identity
+                             : Py_NewRef(stored.identity);
+    if (stored.key != key) {
+        Py_SETREF(key, stored.key);
     }
     if (md_add_with_hash_steal_refs(
             md, hash, identity, key, value, fits, slot) < 0) {
-        goto fail_identity;
+        Py_DECREF(identity);
+        goto fail;
     }
     return 0;
-fail_identity:
-    Py_DECREF(identity);
 fail:
     Py_DECREF(key);
     Py_DECREF(value);
@@ -641,12 +654,10 @@ md_extend_from_ht(MultiDictObject* md, MultiDictObject* other)
         return -1;
     }
 
-    /* The keys come materialized as other's: a CIMultiDict's istr keeps
-       other's identity as its canonical, md's is the unlowered key. */
+    // as in md_update_from_ht()
     md_item_visitor_t visit = _md_extend_visit;
     /* Keys repeated in other repeat here. Unique ones stay unique in an
-       empty MultiDict; a CIMultiDict's walk can build an istr, which can
-       run a collection whose finalizers add to md. */
+       empty MultiDict. */
     if (md->is_ci == other->is_ci) {
         visit = _md_extend_visit_own;
         if (other->keys->maybe_dups) {

@@ -185,15 +185,6 @@ _key_to_identity_ci(mod_state* state, PyObject* key)
     return _str_to_identity_ci(state, key);
 }
 
-static inline PyObject*
-_arg_to_key_cs(mod_state* state, PyObject* key, PyObject* identity)
-{
-    if (UNLIKELY(!PyUnicode_Check(key))) {
-        return _err_key_type_cs();
-    }
-    return Py_NewRef(key);
-}
-
 /* A str subclass is copied to an exact str first: istr(), like str(), would
    call its __str__, which may spell a different string than the key. */
 static PyObject*
@@ -203,24 +194,9 @@ _subclass_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
     if (UNLIKELY(str == NULL)) {
         return NULL;
     }
-    PyObject* ret = IStr_New(state, str, identity);
+    PyObject* ret = istr_create(state, str, identity);
     Py_DECREF(str);
     return ret;
-}
-
-static inline PyObject*
-_arg_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
-{
-    if (IStr_CheckExact(state, key)) {
-        return Py_NewRef(key);
-    }
-    if (PyUnicode_CheckExact(key)) {
-        return IStr_New(state, key, identity);
-    }
-    if (UNLIKELY(!PyUnicode_Check(key))) {
-        return _err_key_type_ci();
-    }
-    return _subclass_to_key_ci(state, key, identity);
 }
 
 static inline PyObject*
@@ -302,25 +278,6 @@ md_identity_release(MultiDictObject* md, PyObject* key, PyObject* identity)
     }
 }
 
-/* md_calc_identity() that also says whether key fits a compact table (see
-   md_key_fits()): a CIMultiDict's istr test has just run here, so the
-   insert need not repeat it. */
-static inline PyObject*
-md_calc_identity_fits(MultiDictObject* md, PyObject* key, bool* pfits)
-{
-    if (md->is_ci) {
-        if (IStr_CheckExact(md->state, key)) {
-            *pfits = true;
-            return Py_NewRef(istr_canonical(key));
-        }
-        *pfits = false;
-        return _str_to_identity_ci(md->state, key);
-    }
-    PyObject* identity = _key_to_identity_cs(md->state, key);
-    *pfits = identity == key;
-    return identity;
-}
-
 /* Returned by value, like parse2_t: out-parameters would make the caller's
    locals address-taken whenever GCC keeps the helper out of line, and
    -fstack-protector-strong then gives the caller a canary.  identity is
@@ -346,52 +303,161 @@ md_calc_identity_hash(MultiDictObject* md, PyObject* key)
     return ret;
 }
 
-static inline PyObject*
-md_calc_key(MultiDictObject* md, PyObject* key, PyObject* identity)
+#ifndef Py_GIL_DISABLED
+/* The set for a string hash: Fibonacci hashing, since a str hash may have
+   its entropy anywhere. */
+static inline istr_cache_entry_t*
+_istr_cache_set(mod_state* state, Py_hash_t hash)
 {
-    if (md->is_ci) return _arg_to_key_ci(md->state, key, identity);
-    return _arg_to_key_cs(md->state, key, identity);
+    size_t set = (size_t)(((uint64_t)hash * UINT64_C(0x9E3779B97F4A7C15)) >>
+                          (64 - ISTR_CACHE_LOG2_SETS));
+    return &state->istr_cache[set * ISTR_CACHE_WAYS];
+}
+#endif
+
+/* The istr cached for a str equal to the exact str `key`, borrowed, or
+   NULL. Hashing an exact str cannot fail. */
+static inline PyObject*
+_istr_cache_get(mod_state* state, PyObject* key)
+{
+#ifdef Py_GIL_DISABLED
+    return NULL;
+#else
+    Py_hash_t hash = unicode_hash(key);
+    istr_cache_entry_t* set = _istr_cache_set(state, hash);
+    for (int way = 0; way < ISTR_CACHE_WAYS; way++) {
+        if (set[way].str == key) {
+            return set[way].istr;
+        }
+    }
+    for (int way = 0; way < ISTR_CACHE_WAYS; way++) {
+        if (set[way].str != NULL && set[way].hash == hash &&
+            str_cmp(set[way].str, key)) {
+            return set[way].istr;
+        }
+    }
+    return NULL;
+#endif
 }
 
-/* Building the istr allocates, which can run a collection whose finalizers
-   mutate md and free entry, so hold our own refs. Only an exact str is
-   replaced by its istr: releasing one runs no code, where a subclass's
-   __del__ could. */
-COLD static PyObject*
-_md_cache_key_ci(MultiDictObject* md, entry_t* entry)
+/* Builds and caches the istr for the exact str `key`, in the set's first
+   way; the pair there moves to the second, whose pair is released. That
+   runs no Python code: an exact str and an istr. */
+static PyObject*
+_istr_cache_fill(mod_state* state, PyObject* key, PyObject* identity)
 {
-    assert(md->is_ci);
-    uint64_t version = md->version;
-    PyObject* old_key = Py_NewRef(entry->key);
-    PyObject* identity = Py_NewRef(kind_is_compact(md->keys->kind)
-                                       ? compact_key_identity_ci(entry->key)
-                                       : as_anystr(entry)->identity);
-    PyObject* key = _arg_to_key_ci(md->state, old_key, identity);
-    if (key != NULL && md->version == version &&
-        PyUnicode_CheckExact(old_key)) {
-        entry->key = Py_NewRef(key);
-        Py_DECREF(old_key);
+    PyObject* ret = istr_create(state, key, identity);
+#ifndef Py_GIL_DISABLED
+    if (ret != NULL) {
+        Py_hash_t hash = unicode_hash(key);
+        istr_cache_entry_t* set = _istr_cache_set(state, hash);
+        istr_cache_entry_t evicted = set[1];
+        set[1] = set[0];
+        set[0].str = Py_NewRef(key);
+        set[0].istr = Py_NewRef(ret);
+        set[0].hash = hash;
+        Py_XDECREF(evicted.str);
+        Py_XDECREF(evicted.istr);
     }
-    /* These can run __del__ or suspend the critical section, so the caller
-       must not touch entry after this returns. */
-    Py_DECREF(identity);
-    Py_DECREF(old_key);
-    return key;
+#endif
+    return ret;
 }
 
-/* A stored key was checked to be a str when it went in, so only a
-   CIMultiDict's plain str needs work. */
-static inline PyObject*
-md_ensure_key(MultiDictObject* md, entry_t* entry)
+/* Releases every cached pair. Idempotent, as module_clear() may run more
+   than once. */
+static void
+istr_cache_clear(mod_state* state)
 {
-    assert(entry->key != NULL);
-    PyObject* key = entry->key;
-    if (!md->is_ci || IStr_CheckExact(md->state, key)) {
-        // not Py_NewRef(): GCC leaves it out of line on FT builds
-        Py_INCREF(key);
-        return key;
+#ifndef Py_GIL_DISABLED
+    for (int i = 0; i < (1 << ISTR_CACHE_LOG2_SETS) * ISTR_CACHE_WAYS; i++) {
+        Py_CLEAR(state->istr_cache[i].str);
+        Py_CLEAR(state->istr_cache[i].istr);
     }
-    return _md_cache_key_ci(md, entry);
+#else
+    (void)state;
+#endif
+}
+
+/* The istr a CIMultiDict stores for `key`, no exact istr, whose identity
+   is `identity`: a new reference. Its canonical form may be another
+   object equal to `identity`, when the istr comes from the cache. */
+static PyObject*
+_str_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
+{
+    if (PyUnicode_CheckExact(key)) {
+        return _istr_cache_fill(state, key, identity);
+    }
+    return _subclass_to_key_ci(state, key, identity);
+}
+
+static inline PyObject*
+str_to_key_ci(mod_state* state, PyObject* key, PyObject* identity)
+{
+    PyObject* cached =
+        PyUnicode_CheckExact(key) ? _istr_cache_get(state, key) : NULL;
+    if (cached != NULL) {
+        return Py_NewRef(cached);
+    }
+    return _str_to_key_ci(state, key, identity);
+}
+
+/* A key about to be stored: the key md stores and its identity. Returned
+   by value, like identity_hash_t. key is NULL on error. */
+typedef struct {
+    PyObject* key;
+    PyObject* identity;
+} stored_key_t;
+
+/* md_identity_or_new() for a key about to be stored, which also gives the
+   key md stores: `key` itself, borrowed, unless a CIMultiDict stores an
+   istr in its place, a new reference whose canonical form is the
+   identity, borrowed from it. A cached istr also saves computing the
+   identity. md_store_key_release() drops whatever is new. */
+static inline stored_key_t
+md_store_key(MultiDictObject* md, PyObject* key)
+{
+    stored_key_t ret = {key, NULL};
+    if (!md->is_ci) {
+        ret.identity = md_identity_or_new(md, key);
+        if (UNLIKELY(ret.identity == NULL)) {
+            ret.key = NULL;
+        }
+        return ret;
+    }
+    if (IStr_CheckExact(md->state, key)) {
+        ret.identity = istr_canonical(key);
+        return ret;
+    }
+    PyObject* cached =
+        PyUnicode_CheckExact(key) ? _istr_cache_get(md->state, key) : NULL;
+    if (cached != NULL) {
+        ret.key = Py_NewRef(cached);
+    } else {
+        PyObject* identity = _str_identity_or_new_ci(md->state, key);
+        if (UNLIKELY(identity == NULL)) {
+            ret.key = NULL;
+            return ret;
+        }
+        ret.key = _str_to_key_ci(md->state, key, identity);
+        if (identity != key) {
+            Py_DECREF(identity);  // the istr holds it now
+        }
+        if (UNLIKELY(ret.key == NULL)) {
+            return ret;
+        }
+    }
+    ret.identity = istr_canonical(ret.key);
+    return ret;
+}
+
+static inline void
+md_store_key_release(MultiDictObject* md, PyObject* key, stored_key_t stored)
+{
+    if (stored.key != key) {
+        Py_DECREF(stored.key);
+    } else if (!md->is_ci && stored.identity != key) {
+        Py_DECREF(stored.identity);
+    }
 }
 
 #ifdef __cplusplus
