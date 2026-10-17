@@ -111,7 +111,7 @@ _multidict_clone_fast(mod_state* state, MultiDictObject* self, bool is_ci,
                 flush = md_watch_pending(self);
                 Py_END_CRITICAL_SECTION();
             }
-            md_watch_flush_if(self, flush);
+            MD_WATCH_FLUSH_IF(self, flush);
             if (clone_ret < 0) {
                 ret = -1;
                 goto done;
@@ -789,7 +789,7 @@ _multidict_bulk(MultiDictObject* self, PyObject* args, PyObject* kwds,
     if (st != NULL) {
         md_update_state_release(st);
     }
-    md_watch_flush_if(self, flush);
+    MD_WATCH_FLUSH_IF(self, flush);
     if (ret < 0) {
         goto fail;
     }
@@ -874,7 +874,7 @@ multidict_clear(MultiDictObject* self)
     ret = md_clear(self);
     flush = md_watch_pending(self);
     Py_END_CRITICAL_SECTION();
-    md_watch_flush_if(self, flush);
+    MD_WATCH_FLUSH_IF(self, flush);
     if (ret < 0) {
         return NULL;
     }

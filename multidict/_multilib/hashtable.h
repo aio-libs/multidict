@@ -1273,7 +1273,7 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
         ASSERT_CONSISTENT(md);
         flush = md_watch_pending(md);
         Py_END_CRITICAL_SECTION();
-        md_watch_flush_if(md, flush);
+        MD_WATCH_FLUSH_IF(md, flush);
     }
     md_identity_release(md, key, identity);
     return ret;
@@ -1580,7 +1580,7 @@ md_del(MultiDictObject* md, PyObject* key)
     }
     Py_END_CRITICAL_SECTION();
     _removed_pairs_release(&removed);
-    md_watch_flush_if(md, flush);
+    MD_WATCH_FLUSH_IF(md, flush);
     int ret = 0;
     if (found == 0) {
         PyErr_SetObject(PyExc_KeyError, key);
@@ -2060,7 +2060,7 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
     flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
-    md_watch_flush_if(md, flush);
+    MD_WATCH_FLUSH_IF(md, flush);
     return ret;
 }
 
@@ -2163,7 +2163,7 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
     }
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
-    md_watch_flush_if(md, flush);
+    MD_WATCH_FLUSH_IF(md, flush);
     return result;
 }
 
@@ -2402,7 +2402,7 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     Py_END_CRITICAL_SECTION();
     _removed_pairs_release(&removed);
     Py_DECREF(identity);
-    md_watch_flush_if(md, flush);
+    MD_WATCH_FLUSH_IF(md, flush);
     return _md_values_to_list(&values, tmp < 0, ret);
 }
 
@@ -2519,7 +2519,7 @@ md_pop_item(MultiDictObject* md)
     ret = _md_pop_item_locked(md);
     flush = md_watch_pending(md);
     Py_END_CRITICAL_SECTION();
-    md_watch_flush_if(md, flush);
+    MD_WATCH_FLUSH_IF(md, flush);
     return ret;
 }
 
@@ -2897,7 +2897,7 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     if (UNLIKELY(dups != NULL)) {
         _md_replace_free_dups(dups);
     }
-    md_watch_flush_if(md, flush);
+    MD_WATCH_FLUSH_IF(md, flush);
     md_identity_release(md, key, identity);
     return ret;
 }

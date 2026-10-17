@@ -220,7 +220,7 @@ _md_watch_deliver(MultiDictObject* md, watchlog_t* snapshot)
     watchlog_init(snapshot);
 }
 
-/* True when _md_watch_flush() would have something to do. Read under the
+/* True when md_watch_flush() would have something to do. Read under the
    caller's own critical section, so the flush itself needs no atomics. */
 static inline bool
 md_watch_pending(const MultiDictObject* md)
@@ -234,7 +234,7 @@ md_watch_pending(const MultiDictObject* md)
  * fills a fresh log instead of extending the chain being walked; the loop
  * then picks that up on the next pass. */
 COLD static void
-_md_watch_flush(MultiDictObject* md)
+md_watch_flush(MultiDictObject* md)
 {
     /* Several callers flush on their failure path too, so an exception
        can already be in flight here. Park it: otherwise the first
@@ -261,13 +261,12 @@ _md_watch_flush(MultiDictObject* md)
 
 /* Paired with md_watch_pending(), which the caller reads under the lock it
    is about to drop. */
-static inline void
-md_watch_flush_if(MultiDictObject* md, bool pending)
-{
-    if (UNLIKELY(pending)) {
-        _md_watch_flush(md);
-    }
-}
+#define MD_WATCH_FLUSH_IF(md, pending) \
+    do {                               \
+        if (UNLIKELY(pending)) {       \
+            md_watch_flush(md);        \
+        }                              \
+    } while (0)
 
 COLD static void
 md_watch_record(MultiDictObject* md, MultiDict_WatchEvent event,
@@ -349,7 +348,7 @@ md_watch_on_dealloc(MultiDictObject* md)
     PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
 
     /* A non-empty log here means some mutation entry point skipped its
-       _md_watch_flush(); the assert is the cheapest way to catch that. */
+       md_watch_flush(); the assert is the cheapest way to catch that. */
     assert(watchlog_empty(&watch->log));
     watchlog_drain(&watch->log);
 
