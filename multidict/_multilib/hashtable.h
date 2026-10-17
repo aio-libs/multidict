@@ -1445,10 +1445,7 @@ md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
     }
 
     int ret = reflist_push(defer, identity);
-    if (UNLIKELY(reflist_push(defer, key) < 0)) {
-        ret = -1;
-    }
-    if (UNLIKELY(reflist_push(defer, value) < 0)) {
+    if (UNLIKELY(reflist_push2(defer, key, value) < 0)) {
         ret = -1;
     }
     return ret;
@@ -1490,11 +1487,18 @@ _removed_pairs_spill(removed_pairs_t* removed, PyObject* key, PyObject* value)
         reflist_init(&removed->more);
         removed->spilled = true;
     }
-    int ret = reflist_push(&removed->more, key);
-    if (UNLIKELY(reflist_push(&removed->more, value) < 0)) {
-        ret = -1;
+    return reflist_push2(&removed->more, key, value);
+}
+
+/* Holds one more object, such as a KIND_GENERAL identity, in `more`. */
+COLD static int
+_removed_pairs_hold(removed_pairs_t* removed, PyObject* obj)
+{
+    if (!removed->spilled) {
+        reflist_init(&removed->more);
+        removed->spilled = true;
     }
-    return ret;
+    return reflist_push(&removed->more, obj);
 }
 
 static inline int
@@ -1566,7 +1570,7 @@ _md_del_at_held_general(MultiDictObject* md, htkeys_t* keys, size_t slot,
     int ret = _removed_pairs_add(removed, key, value);
     if (identity == key) {
         Py_DECREF(identity);
-    } else if (UNLIKELY(_removed_pairs_add(removed, identity, NULL) < 0)) {
+    } else if (UNLIKELY(_removed_pairs_hold(removed, identity) < 0)) {
         ret = -1;
     }
     return ret;
@@ -2027,16 +2031,7 @@ md_find_key(MultiDictObject* md, PyObject* key, PyObject** pret)
     return result;
 }
 
-/* A lookup's result: -1 on error, 0 if missing, 1 if found, or
-   _MD_NEED_LOCK inside the FT helpers.  value is a new reference when
-   result is 1 and NULL otherwise.  Returned by value for the reason given
-   at identity_hash_t. */
-typedef struct {
-    int result;
-    PyObject* value;
-} lookup_t;
-
-static PyObject*
+static inline PyObject*
 _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
 {
     bool ci = md->is_ci;
@@ -2051,6 +2046,15 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
     }
     return NULL;
 }
+
+/* A lookup's result: -1 on error, 0 if missing, 1 if found, or
+   _MD_NEED_LOCK inside the FT helpers.  value is a new reference when
+   result is 1 and NULL otherwise.  Returned by value for the reason given
+   at identity_hash_t. */
+typedef struct {
+    int result;
+    PyObject* value;
+} lookup_t;
 
 #ifdef Py_GIL_DISABLED
 
@@ -2173,35 +2177,29 @@ md_get_one_miss(MultiDictObject* md, PyObject* key, lookup_t found)
     return found;
 }
 
-/* A key whose identity has to be computed.  Open-codes
-   md_calc_identity_hash(), which GCC calls out of line here, failing its
-   rule in tools/check_inlining.py; keep the two in step. */
-static lookup_t
-_md_get_one_owned(MultiDictObject* md, PyObject* key)
-{
-    lookup_t ret = {-1, NULL};
-    PyObject* identity = md_calc_identity(md, key);
-    if (UNLIKELY(identity == NULL)) {
-        return ret;
-    }
-    if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
-        ret.result = MD_LOOKUP_GENERAL;
-    } else {
-        Py_hash_t hash = unicode_hash(identity);
-        if (hash != -1) {
-            ret = _md_get_one_identity(md, key, identity, hash);
-        }
-    }
-    Py_DECREF(identity);
-    return ret;
-}
-
 static lookup_t
 md_get_one(MultiDictObject* md, PyObject* key)
 {
     PyObject* identity = md_borrow_identity(md, key);
     if (identity == NULL) {
-        return _md_get_one_owned(md, key);
+        /* A key whose identity has to be computed.  Open-codes
+           md_calc_identity_hash(), which GCC calls out of line here, failing
+           its rule in tools/check_inlining.py; keep the two in step. */
+        lookup_t ret = {-1, NULL};
+        identity = md_calc_identity(md, key);
+        if (UNLIKELY(identity == NULL)) {
+            return ret;
+        }
+        if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+            ret.result = MD_LOOKUP_GENERAL;
+        } else {
+            Py_hash_t hash = unicode_hash(identity);
+            if (hash != -1) {
+                ret = _md_get_one_identity(md, key, identity, hash);
+            }
+        }
+        Py_DECREF(identity);
+        return ret;
     }
     Py_hash_t hash = unicode_hash(identity);
     if (UNLIKELY(hash == -1)) {

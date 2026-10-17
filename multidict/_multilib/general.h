@@ -429,11 +429,15 @@ md_update_general(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
                 added = true;
                 continue;
             }
-            int marked = _md_update_mark(marks, entry, iter.index, &found);
-            if (marked < 0) {
-                return -1;
-            }
-            if (marked) {
+            if (found) {
+                if (update_marks_doom(marks, iter.index, entry) < 0) {
+                    return -1;
+                }
+            } else {
+                if (_md_update_claim(marks, iter.index) < 0) {
+                    return -1;
+                }
+                found = true;
                 PyObject* old_key = entry->key;
                 replace_anystr_key(as_anystr(entry), Py_NewRef(key));
                 if (_md_update_store(
