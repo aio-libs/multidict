@@ -1347,11 +1347,7 @@ md_del_at_deferred(MultiDictObject* md, size_t slot, entry_t* entry,
             md, slot, as_anystr(entry), &identity, &key, &value);
     }
 
-    int ret = reflist_push(defer, identity);
-    if (UNLIKELY(reflist_push2(defer, key, value) < 0)) {
-        ret = -1;
-    }
-    return ret;
+    return reflist_push3(defer, key, value, identity);
 }
 
 /* The keys and values of the pairs one call removes, held until it is
