@@ -363,7 +363,10 @@ Iteration
    :class:`~multidict.MultiDict`, the internal lower-cased form for a
    :class:`~multidict.CIMultiDict`. It is what the mapping actually
    looks entries up by, so a visitor can group or compare entries
-   without deriving that form from *key* itself.
+   without deriving that form from *key* itself. Once a key that is no
+   :class:`str` has gone in, every entry of one key shares one
+   *identity* object, which need not be a :class:`str`: the first such
+   entry's.
 
    *hash* is *identity*'s hash, the one the mapping stores alongside
    the entry, so a visitor bucketing entries of its own does not have
@@ -551,12 +554,15 @@ time.
 
    .. c:member:: PyObject *identity
 
-      The canonical form ``multidict`` looks keys up by: always an exact
-      :class:`str`, never an :class:`~multidict.istr`, and the lowercased
-      key for a :class:`~multidict.CIMultiDict`. This is the field to
-      compare against -- matching ``"content-length"`` needs no
-      :meth:`~str.lower` of your own. ``NULL`` for the events that do not
-      concern one key.
+      The canonical form ``multidict`` looks keys up by: for a
+      :class:`str` key an exact :class:`str`, never an
+      :class:`~multidict.istr`, and the lowercased key for a
+      :class:`~multidict.CIMultiDict`. This is the field to compare
+      against -- matching ``"content-length"`` needs no
+      :meth:`~str.lower` of your own. A key of another type is its own
+      identity, though once a multidict holds one, an equal key may
+      report the object of the first entry it matched instead.
+      ``NULL`` for the events that do not concern one key.
 
    .. c:member:: Py_hash_t hash
 

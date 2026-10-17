@@ -62,6 +62,8 @@ _T = TypeVar("_T")
 
 _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
+# MultiDict._resolve()'s "no such key": None is a key like any other
+_ABSENT = object()
 
 _version = itertools.count(1)
 
@@ -240,11 +242,11 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
         key, value = item
         try:
             identity = self._md._identity(key)
+            hash_ = hash(identity) & MAXSIZE
         except TypeError:
             return False
-        hash_ = hash(identity) & MAXSIZE
-        for slot, idx, e in self._md._keys.iter_hash(hash_):
-            if e.identity == identity and value == e.value:
+        for slot, idx, e in self._md._iter_key(hash_, identity):
+            if value == e.value:
                 return True
         return False
 
@@ -313,8 +315,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             hash_, identity, key, value = item
             matches = []
             last = -1
-            for slot, idx, e in self._md._keys.iter_hash(hash_):
-                if idx > last and e.identity == identity:
+            for slot, idx, e in self._md._iter_key(hash_, identity):
+                if idx > last:
                     matches.append((e.key, e.value))
                     last = idx
             for e_key, e_value in matches:
@@ -334,8 +336,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
             if item is None:
                 continue
             hash_, identity, key, value = item
-            for slot, idx, e in self._md._keys.iter_hash(hash_):
-                if e.identity == identity and e.value == value:
+            for slot, idx, e in self._md._iter_key(hash_, identity):
+                if e.value == value:
                     ret.add(arg)
                     break
         return ret
@@ -353,8 +355,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 ret.add(arg)
                 continue
             hash_, identity, key, value = item
-            for slot, idx, e in self._md._keys.iter_hash(hash_):
-                if e.identity == identity and e.value == value:  # pragma: no branch
+            for slot, idx, e in self._md._iter_key(hash_, identity):
+                if e.value == value:  # pragma: no branch
                     break
             else:
                 ret.add(arg)
@@ -402,8 +404,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 continue
 
             hash_, identity, key, value = item
-            for slot, idx, e in self._md._keys.iter_hash(hash_):
-                if e.identity == identity and e.value == value:  # pragma: no branch
+            for slot, idx, e in self._md._iter_key(hash_, identity):
+                if e.value == value:  # pragma: no branch
                     break
             else:
                 ret.add(arg)
@@ -429,8 +431,8 @@ class _ItemsView(_ViewBase[_V], ItemsView[str, _V]):
                 continue
 
             hash_, identity, key, value = item
-            for slot, idx, e in self._md._keys.iter_hash(hash_):
-                if e.identity == identity and e.value == value:  # pragma: no branch
+            for slot, idx, e in self._md._iter_key(hash_, identity):
+                if e.value == value:  # pragma: no branch
                     return False
         return True
 
@@ -481,13 +483,10 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 
     @_locked_md
     def __contains__(self, key: object) -> bool:
-        if not isinstance(key, str):
-            return False
         identity = self._md._identity(key)
         hash_ = hash(identity) & MAXSIZE
-        for slot, idx, e in self._md._keys.iter_hash(hash_):
-            if e.identity == identity:  # pragma: no branch
-                return True
+        for slot, idx, e in self._md._iter_key(hash_, identity):
+            return True
         return False
 
     def __iter__(self) -> _Iter[str]:
@@ -532,29 +531,24 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         except TypeError:
             return NotImplemented
         for key in it:
-            if not isinstance(key, str):
-                continue
             identity = self._md._identity(key)
             hash_ = hash(identity) & MAXSIZE
-            for slot, idx, e in self._md._keys.iter_hash(hash_):
-                if e.identity == identity:  # pragma: no branch
-                    ret.add(e.key)
-                    break
+            for slot, idx, e in self._md._iter_key(hash_, identity):
+                ret.add(e.key)
+                break
         return ret
 
     @_locked_md_pair
     def __rand__(self, other: Iterable[_T]) -> set[_T]:
-        ret = set()
+        ret: set[_T] = set()
         try:
             it = iter(other)
         except TypeError:
             return NotImplemented
         for key in it:
-            if not isinstance(key, str):
-                continue
             if key in self._md:
                 ret.add(key)
-        return cast(set[_T], ret)
+        return ret
 
     @_locked_md_pair
     def __or__(self, other: Iterable[_T]) -> set[str | _T]:
@@ -564,9 +558,6 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         except TypeError:
             return NotImplemented
         for key in it:
-            if not isinstance(key, str):
-                ret.add(key)
-                continue
             if key not in self._md:
                 ret.add(key)
         return ret
@@ -580,8 +571,6 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
 
         tmp = set()
         for key in ret:
-            if not isinstance(key, str):
-                continue
             identity = self._md._identity(key)
             tmp.add(identity)
 
@@ -598,14 +587,11 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         except TypeError:
             return NotImplemented
         for key in it:
-            if not isinstance(key, str):
-                continue
             identity = self._md._identity(key)
             hash_ = hash(identity) & MAXSIZE
-            for slot, idx, e in self._md._keys.iter_hash(hash_):
-                if e.identity == identity:  # pragma: no branch
-                    ret.discard(e.key)
-                    break
+            for slot, idx, e in self._md._iter_key(hash_, identity):
+                ret.discard(e.key)
+                break
         return ret
 
     @_locked_md_pair
@@ -615,8 +601,6 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
         except TypeError:
             return NotImplemented
         for key in other:
-            if not isinstance(key, str):
-                continue
             if key in self._md:
                 ret.discard(key)
         return ret
@@ -636,8 +620,6 @@ class _KeysView(_ViewBase[_V], KeysView[str]):
     @_locked_md_pair
     def isdisjoint(self, other: Iterable[object]) -> bool:
         for key in other:
-            if not isinstance(key, str):
-                continue
             if key in self._md:
                 return False
         return True
@@ -649,12 +631,13 @@ class _CSMixin:
     def _key(self, key: str) -> str:
         return key
 
-    def _identity(self, key: str) -> str:
+    def _identity(self, key: object) -> str:
         if type(key) is str:
             return key
         if isinstance(key, str):
             return str.__str__(key)
-        raise TypeError("MultiDict keys should be either str or subclasses of str")
+        # any other key is its own identity
+        return cast(str, key)
 
 
 class _CIMixin:
@@ -663,13 +646,14 @@ class _CIMixin:
     def _key(self, key: str) -> str:
         if type(key) is str:
             return istr(key)
-        if type(key) is istr:
+        if type(key) is istr or not isinstance(key, str):
+            # any key but a str one comes back as stored
             return key
         # istr(key) would call a subclass's own __str__, which may spell a
         # different string than the key
         return istr(str.__str__(key))
 
-    def _identity(self, key: str) -> str:
+    def _identity(self, key: object) -> str:
         if isinstance(key, istr):
             ret = key.__istr_identity__
             if ret is None:
@@ -679,8 +663,8 @@ class _CIMixin:
         if isinstance(key, str):
             # never a subclass's own lower()
             return str.lower(key)
-        else:
-            raise TypeError("MultiDict keys should be either str or subclasses of str")
+        # any other key is its own identity
+        return cast(str, key)
 
 
 def estimate_log2_keysize(n: int) -> int:
@@ -718,6 +702,9 @@ class _HtKeys(Generic[_V]):
     # set once an insert finds an equal hash on its probe chain, so two
     # entries may share an identity; never cleared, only carried
     maybe_dups: bool = False
+    # set by the first key that is no str: from then on every entry of one
+    # key holds the same identity object, matched by `is` alone
+    general: bool = False
 
     @functools.cached_property
     def nslots(self) -> int:
@@ -769,7 +756,17 @@ class _HtKeys(Generic[_V]):
             indices=self.indices.__copy__(),
             entries=entries,
             maybe_dups=self.maybe_dups,
+            general=self.general,
         )
+
+    def make_general(self) -> None:
+        # Equal str identities so far are distinct objects; the first one,
+        # in insertion order, becomes the one they share.
+        first: dict[str, str] = {}
+        for e in self.entries:
+            if e is not None:
+                e.identity = first.setdefault(e.identity, e.identity)
+        self.general = True
 
     def build_indices(self) -> None:
         mask = self.mask
@@ -864,6 +861,21 @@ class _HtKeys(Generic[_V]):
             i = (i * 5 + perturb + 1) & mask
             ix = indices[i]
 
+    def iter_identity(
+        self, hash_: int, identity: object
+    ) -> Iterator[tuple[int, int, _Entry[_V]]]:
+        # `identity` is the one the table holds, as MultiDict._resolve()
+        # leaves it
+        if self.general:
+            for item in self.iter_hash(hash_):
+                if item[2].identity is identity:
+                    yield item
+        else:
+            for item in self.iter_hash(hash_):
+                other = item[2].identity
+                if other is identity or other == identity:
+                    yield item
+
     def del_idx(self, hash_: int, idx: int) -> None:
         mask = self.mask
         indices = self.indices
@@ -897,9 +909,7 @@ class _HtKeys(Generic[_V]):
             for idx in range(len(entries) - 1, -1, -1):
                 entry = entries[idx]
                 if entry is not None and idx == next(
-                    ix
-                    for _, ix, e2 in self.iter_hash(entry.hash)
-                    if e2.identity == entry.identity
+                    ix for _, ix, _ in self.iter_identity(entry.hash, entry.identity)
                 ):
                     yield entry
 
@@ -981,8 +991,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # Equal keys are first reached in insertion order; see
         # md_walk_with_hash() in _multilib/walk.h.
         last = -1
-        for slot, idx, e in self._keys.iter_hash(hash_):
-            if idx > last and e.identity == identity:
+        for slot, idx, e in self._iter_key(hash_, identity):
+            if idx > last:
                 res.append(e.value)
                 last = idx
                 if not self._keys.maybe_dups:
@@ -1006,9 +1016,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
-        for slot, idx, e in self._keys.iter_hash(hash_):
-            if e.identity == identity:  # pragma: no branch
-                return e.value
+        for slot, idx, e in self._iter_key(hash_, identity):
+            return e.value
         if default is not sentinel:
             return default
         raise KeyError(f"Key not found: {key!r}")
@@ -1059,7 +1068,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             if self._used != other._used:
                 return False
             for e1, e2 in zip(lft.iter_entries(), rht.iter_entries()):
-                if e1.identity != e2.identity or e1.value != e2.value:
+                if (
+                    e1.identity is not e2.identity and e1.identity != e2.identity
+                ) or e1.value != e2.value:
                     return False
             return True
         if self._used != len(other):
@@ -1072,13 +1083,10 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     @_locked
     def __contains__(self, key: object) -> bool:
-        if not isinstance(key, str):
-            return False
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
-        for slot, idx, e in self._keys.iter_hash(hash_):
-            if e.identity == identity:  # pragma: no branch
-                return True
+        for slot, idx, e in self._iter_key(hash_, identity):
+            return True
         return False
 
     @reprlib.recursive_repr()
@@ -1161,7 +1169,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                     key_func = arg._key
                     for e in arg._keys.iter_entries():
                         key = key_func(e.key)
-                        if key is not e.key:
+                        if key is not e.key and type(e.identity) is str:
                             # a fresh istr keeps the source's identity
                             key.__istr_identity__ = e.identity  # type: ignore[attr-defined]
                         identity = identity_func(key)
@@ -1234,20 +1242,19 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # See __delitem__()
         removed: list[object] = []
 
-        for slot, idx, e in self._keys.iter_hash(hash_):
-            if e.identity == identity:  # pragma: no branch
-                if not found:
-                    removed.append((e.key, e.value))
-                    e.key = key
-                    e.value = value
-                    e.hash = hash_ | HASH_MARK
-                    found = True
-                    self._incr_version()
-                elif not (e.hash & HASH_MARK):  # pragma: no branch
-                    self._del_at(slot, idx)
-                    removed.append(e)
-                if not self._keys.maybe_dups:
-                    break  # the key's only entry
+        for slot, idx, e in self._iter_key(hash_, identity):
+            if not found:
+                removed.append((e.key, e.value))
+                e.key = key
+                e.value = value
+                e.hash = hash_ | HASH_MARK
+                found = True
+                self._incr_version()
+            elif not (e.hash & HASH_MARK):  # pragma: no branch
+                self._del_at(slot, idx)
+                removed.append(e)
+            if not self._keys.maybe_dups:
+                break  # the key's only entry
 
         if not found:
             self._add_with_hash(_Entry(hash_, identity, key, value), absent=True)
@@ -1261,12 +1268,11 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # Holds the removed pairs until every match is gone: their
         # finalizers must not run, and add a match, mid-scan.
         removed = []
-        for slot, idx, e in self._keys.iter_hash(hash_):
-            if e.identity == identity:  # pragma: no branch
-                self._del_at(slot, idx)
-                removed.append(e)
-                if not self._keys.maybe_dups:
-                    break  # the key's only entry
+        for slot, idx, e in self._iter_key(hash_, identity):
+            self._del_at(slot, idx)
+            removed.append(e)
+            if not self._keys.maybe_dups:
+                break  # the key's only entry
         if not removed:
             raise KeyError(key)
         else:
@@ -1283,9 +1289,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """Return value for key, set value to default if key is not present."""
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
-        for slot, idx, e in self._keys.iter_hash(hash_):
-            if e.identity == identity:  # pragma: no branch
-                return e.value
+        for slot, idx, e in self._iter_key(hash_, identity):
+            return e.value
         self._add_with_hash(
             _Entry(hash_, identity, key, default),  # type: ignore[arg-type]
             absent=True,
@@ -1307,12 +1312,11 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         """
         identity = self._identity(key)
         hash_ = hash(identity) & MAXSIZE
-        for slot, idx, e in self._keys.iter_hash(hash_):
-            if e.identity == identity:  # pragma: no branch
-                value = e.value
-                self._del_at(slot, idx)
-                self._incr_version()
-                return value
+        for slot, idx, e in self._iter_key(hash_, identity):
+            value = e.value
+            self._del_at(slot, idx)
+            self._incr_version()
+            return value
         if default is sentinel:
             raise KeyError(key)
         else:
@@ -1339,13 +1343,12 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         hash_ = hash(identity) & MAXSIZE
         # See __delitem__()
         removed = []
-        for slot, idx, e in self._keys.iter_hash(hash_):
-            if e.identity == identity:  # pragma: no branch
-                removed.append(e)
-                self._del_at(slot, idx)
-                self._incr_version()
-                if not self._keys.maybe_dups:
-                    break  # the key's only entry
+        for slot, idx, e in self._iter_key(hash_, identity):
+            removed.append(e)
+            self._del_at(slot, idx)
+            self._incr_version()
+            if not self._keys.maybe_dups:
+                break  # the key's only entry
 
         if not removed:
             if default is sentinel:
@@ -1410,10 +1413,9 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     ) -> None:
         for entry in items:
             found = False
-            identity = entry.identity
-            for slot, idx, e in self._keys.iter_hash(entry.hash):
+            for slot, idx, e in self._iter_key(entry.hash, entry.identity):
                 eid = id(e)
-                if e.identity != identity or eid in updated:
+                if eid in updated:
                     continue
                 if not found:
                     found = True
@@ -1466,9 +1468,8 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         # See update()
         added: dict[int, _Entry[_V]] = {}
         for entry in items:
-            identity = entry.identity
-            for slot, idx, e in self._keys.iter_hash(entry.hash):
-                if e.identity == identity and id(e) not in added:
+            for slot, idx, e in self._iter_key(entry.hash, entry.identity):
+                if id(e) not in added:
                     break
             else:
                 if reserve:
@@ -1512,11 +1513,69 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
             entries = [e for e in oldkeys.entries if e is not None]
         newkeys: _HtKeys[_V] = _HtKeys.new(log2_newsize, entries)
         newkeys.maybe_dups = oldkeys.maybe_dups
+        newkeys.general = oldkeys.general
         newkeys.usable -= newentries
         newkeys.build_indices()
         self._keys = newkeys
 
+    def _resolve(self, identity: str, hash_: int) -> object:
+        # The identity the table holds for a key equal to one whose identity
+        # is `identity`, _ABSENT if there is none.  A general table matches by
+        # `is`, so its entries of one key share one identity object; the
+        # others hold str only, matched as they are.  == runs Python code,
+        # which can change the table: the walk then starts over.
+        if type(identity) is str and not self._keys.general:
+            return identity
+        while True:
+            keys = self._keys
+            version = self._version
+            if keys.general:
+                for _, _, e in keys.iter_hash(hash_):
+                    if e.identity is identity:
+                        return identity
+            for _, _, e in keys.iter_hash(hash_):
+                other = e.identity
+                if other is identity:
+                    return other
+                if type(other) is str and type(identity) is str:
+                    if other == identity:
+                        return other
+                    continue
+                eq = other == identity
+                if self._keys is not keys or self._version != version:
+                    break
+                if eq:
+                    return other
+            else:
+                return _ABSENT
+
+    def _iter_key(
+        self, hash_: int, identity: str
+    ) -> Iterator[tuple[int, int, _Entry[_V]]]:
+        found = self._resolve(identity, hash_)
+        if found is _ABSENT:
+            return iter(())
+        return self._keys.iter_identity(hash_, found)
+
+    def _intern(self, entry: _Entry[_V]) -> bool:
+        # Gives a general table's new entry the identity object of the key
+        # equal to it, if any, making the table general first for a key
+        # that is no str.  Says whether there was one.
+        while True:
+            if not self._keys.general:
+                self._keys.make_general()
+            found = self._resolve(entry.identity, entry.hash)
+            if self._keys.general:
+                break
+        if found is _ABSENT:
+            return False
+        entry.identity = cast(str, found)
+        return True
+
     def _add_with_hash(self, entry: _Entry[_V], absent: bool = False) -> None:
+        if self._keys.general or type(entry.identity) is not str:
+            if self._intern(entry):
+                absent = False
         if self._keys.usable <= 0:
             self._resize((self._used * 3 | _HtKeys.MINSIZE - 1).bit_length())
         keys = self._keys

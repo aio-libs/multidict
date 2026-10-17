@@ -65,6 +65,7 @@ github
 google
 Gunicorn
 gunicorn
+hashable
 i686
 incref
 increfs
@@ -159,6 +160,7 @@ tuples
 typedef
 un
 uncompiled
+unhashable
 unparseable
 unraisable
 unwatch
