@@ -267,7 +267,7 @@ KNOWN_CPYTHON_COPIES = (
     KnownCopy(
         "Py_XINCREF",
         (FT,),
-        "called from cold code only: _md_watch_record()",
+        "called from cold code only: md_watch_record()",
     ),
     KnownCopy(
         "PyIter_NextItem",

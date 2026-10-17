@@ -1,0 +1,3 @@
+Renamed the C extension's lowercase function-like macros to upper
+case, and dropped the leading underscore from the watcher record
+function that the macro calls from other headers -- by :user:`asvetlov`.

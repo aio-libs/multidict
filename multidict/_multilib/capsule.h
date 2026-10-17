@@ -230,7 +230,7 @@ MultiDict_Clear(void* state_, PyObject* self)
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(self);
     if (md_len((MultiDictObject*)self) != 0) {
-        md_watch_record_simple((MultiDictObject*)self,
+        MD_WATCH_RECORD_SIMPLE((MultiDictObject*)self,
                                MultiDict_EVENT_CLEARED);
     }
     ret = md_clear((MultiDictObject*)self);

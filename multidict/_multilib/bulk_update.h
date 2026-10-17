@@ -77,7 +77,7 @@ _md_update_store(md_update_state_t* st, entry_t* entry, PyObject* old_key,
     // old_key/old_value decref deferred: see reflist_t
     PyObject* old_value = load_value(entry);
     publish_value(entry, Py_NewRef(value));
-    md_watch_record(st->md,
+    MD_WATCH_RECORD(st->md,
                     MultiDict_EVENT_REPLACED,
                     identity,
                     hash,
@@ -327,7 +327,7 @@ _md_post_update_delete(md_update_state_t* st, htkeys_t* keys, Py_ssize_t pos,
         assert(iter.index != DKIX_EMPTY);
         HTKEYSITER_NEXT(&iter);
     }
-    md_watch_record(md,
+    MD_WATCH_RECORD(md,
                     MultiDict_EVENT_DELETED,
                     identity,
                     hash,
@@ -460,7 +460,7 @@ md_post_update(md_update_state_t* st)
     }
     update_marks_end(md);
     bump_version(md);
-    md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+    MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_END);
     ASSERT_CONSISTENT(md);
     return ret;
 }
@@ -928,7 +928,7 @@ _md_seq_next(seq_iter_t* it, Py_ssize_t i, seq_item_t* out)
                 return 0;
             }
             item = list_getitem_ref(it->obj, i);
-            if (_list_item_gone(item)) {
+            if (LIST_ITEM_GONE(item)) {
                 return -1;
             }
             break;

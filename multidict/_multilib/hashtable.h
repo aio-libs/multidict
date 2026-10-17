@@ -760,7 +760,7 @@ _md_install_keys(MultiDictObject* md, htkeys_t* keys, Py_ssize_t used,
         md->is_ci = is_ci;
     }
     store_keys(md, keys);
-    md_watch_record_simple(md, event);
+    MD_WATCH_RECORD_SIMPLE(md, event);
     ASSERT_CONSISTENT(md);
     if (old_keys != NULL) {
         update_marks_moved(md);
@@ -1177,7 +1177,7 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
     add_used(md, 1);
     keys->usable -= 1;
     keys->nentries += 1;
-    md_watch_record(
+    MD_WATCH_RECORD(
         md, MultiDict_EVENT_ADDED, identity, hash, key, value, NULL);
     return 0;
 }
@@ -1240,7 +1240,7 @@ md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     add_used(md, 1);
     keys->usable -= 1;
     keys->nentries += 1;
-    md_watch_record(
+    MD_WATCH_RECORD(
         md, MultiDict_EVENT_ADDED, identity, hash, key, value, NULL);
     return 0;
 fail:
@@ -1451,9 +1451,9 @@ _md_del_record(MultiDictObject* md, entry_t* entry, PyObject* identity,
 {
     if (watched) {
         if (first) {
-            md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
+            MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_BEGIN);
         }
-        md_watch_record(md,
+        MD_WATCH_RECORD(md,
                         MultiDict_EVENT_DELETED,
                         identity,
                         hash,
@@ -1533,7 +1533,7 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     if (found) {
         bump_version(md);
         if (watched) {
-            md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+            MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_END);
         }
         if (ret == 0) {
             ret = 1;
@@ -2072,7 +2072,7 @@ _md_pop_one_record(MultiDictObject* md, entry_t* entry, PyObject* identity,
 {
     PyObject* value = Py_NewRef(entry->value);
     if (watched) {
-        md_watch_record(md,
+        MD_WATCH_RECORD(md,
                         MultiDict_EVENT_DELETED,
                         identity,
                         hash,
@@ -2287,9 +2287,9 @@ _md_pop_all_record(MultiDictObject* md, entry_t* entry, PyObject* identity,
     bump_version(md);
     if (!*pbegun) {
         *pbegun = true;
-        md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
+        MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_BEGIN);
     }
-    md_watch_record(md,
+    MD_WATCH_RECORD(md,
                     MultiDict_EVENT_DELETED,
                     identity,
                     hash,
@@ -2375,7 +2375,7 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     }
 
     if (begun) {
-        md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+        MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_END);
     }
     ASSERT_CONSISTENT(md);
     return ret;
@@ -2454,7 +2454,7 @@ _md_pop_item_locked(MultiDictObject* md)
 
     for (; iter.index != pos; HTKEYSITER_NEXT(&iter)) {
     }
-    md_watch_record(md,
+    MD_WATCH_RECORD(md,
                     MultiDict_EVENT_DELETED,
                     !kind_is_compact(kind) ? as_anystr(entry)->identity
                     : ci ? compact_key_identity_ci(entry->key)
@@ -2540,7 +2540,7 @@ _md_replace_del_dup(MultiDictObject* md, size_t slot, entry_t* entry,
         reflist_init(*dups);
     }
     if (watched) {
-        md_watch_record(md,
+        MD_WATCH_RECORD(md,
                         MultiDict_EVENT_DELETED,
                         identity,
                         hash,
@@ -2605,7 +2605,7 @@ _md_replace_matched(MultiDictObject* md, size_t slot, entry_t* entry,
         PyObject* old_value = load_value(entry);
         publish_value(entry, Py_NewRef(value));
         if (watched) {
-            md_watch_record(md,
+            MD_WATCH_RECORD(md,
                             MultiDict_EVENT_REPLACED,
                             identity,
                             hash,
@@ -2841,13 +2841,13 @@ _md_replace_watched(MultiDictObject* md, PyObject* key, PyObject* value,
                     PyObject* identity, Py_hash_t hash, PyObject** old_key,
                     PyObject** old_value, reflist_t** dups)
 {
-    md_watch_record_simple(md, MultiDict_EVENT_BATCH_BEGIN);
+    MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_BEGIN);
     int ret = _md_replace_locked(
         md, key, value, identity, hash, old_key, old_value, dups, true);
     if (ret > 0) {
         ret = _md_add_after_replace(md, hash, identity, key, value);
     }
-    md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+    MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_END);
     return ret;
 }
 

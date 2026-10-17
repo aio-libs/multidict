@@ -660,9 +660,9 @@ _multidict_bulk_locked(MultiDictObject* self, bool reinit, bulk_source source,
     if (st != NULL) {
         ret = md_reserve_batch(self, size, kwds != NULL, true);
         update_marks_init(&st->marks, self, size);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_BATCH_BEGIN);
     } else {
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_BATCH_BEGIN);
         if (!reinit) {
             ret = md_reserve_batch(self, size, kwds != NULL, false);
         } else if (from_self) {
@@ -715,7 +715,7 @@ _multidict_bulk_locked(MultiDictObject* self, bool reinit, bulk_source source,
             ret = -1;
         }
     } else {
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_BATCH_END);
     }
     return ret;
 }
@@ -869,7 +869,7 @@ multidict_clear(MultiDictObject* self)
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(self);
     if (md_len(self) != 0) {
-        md_watch_record_simple(self, MultiDict_EVENT_CLEARED);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_CLEARED);
     }
     ret = md_clear(self);
     flush = md_watch_pending(self);
