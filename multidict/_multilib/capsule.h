@@ -233,13 +233,13 @@ MultiDict_Clear(void* state_, PyObject* self)
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(self);
     if (md_len((MultiDictObject*)self) != 0) {
-        md_watch_record_simple((MultiDictObject*)self,
+        MD_WATCH_RECORD_SIMPLE((MultiDictObject*)self,
                                MultiDict_EVENT_CLEARED);
     }
     ret = md_clear((MultiDictObject*)self);
     flush = md_watch_pending((MultiDictObject*)self);
     Py_END_CRITICAL_SECTION();
-    md_watch_flush_if((MultiDictObject*)self, flush);
+    MD_WATCH_FLUSH_IF((MultiDictObject*)self, flush);
     return ret;
 }
 

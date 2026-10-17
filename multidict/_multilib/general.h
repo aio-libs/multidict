@@ -206,7 +206,7 @@ md_del_general(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     if (found) {
         bump_version(md);
         if (watched) {
-            md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+            MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_END);
         }
         if (ret == 0) {
             ret = 1;
@@ -691,7 +691,7 @@ md_pop_all_general(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     }
 
     if (begun) {
-        md_watch_record_simple(md, MultiDict_EVENT_BATCH_END);
+        MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_END);
     }
     ASSERT_CONSISTENT(md);
     return ret;
