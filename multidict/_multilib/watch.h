@@ -284,21 +284,17 @@ _md_watch_record(MultiDictObject* md, MultiDict_WatchEvent event,
 
 /* The only thing an unwatched multidict pays: one pointer test per
    mutation, off a field in the same cache line as `keys`. */
-static inline void
-md_watch_record(MultiDictObject* md, MultiDict_WatchEvent event,
-                PyObject* identity, Py_hash_t hash, PyObject* key,
-                PyObject* value, PyObject* old_value)
-{
-    if (UNLIKELY(md->watch != NULL)) {
-        _md_watch_record(md, event, identity, hash, key, value, old_value);
-    }
-}
+#define md_watch_record(md, event, identity, hash, key, value, old_value) \
+    do {                                                                  \
+        MultiDictObject* _md_rec = (md);                                  \
+        if (UNLIKELY(_md_rec->watch != NULL)) {                           \
+            _md_watch_record(                                             \
+                _md_rec, event, identity, hash, key, value, old_value);   \
+        }                                                                 \
+    } while (0)
 
-static inline void
-md_watch_record_simple(MultiDictObject* md, MultiDict_WatchEvent event)
-{
-    md_watch_record(md, event, NULL, -1, NULL, NULL, NULL);
-}
+#define md_watch_record_simple(md, event) \
+    md_watch_record(md, event, NULL, -1, NULL, NULL, NULL)
 
 COLD static int
 md_watch_attach(MultiDictObject* md, int watcher_id, void* user_data,
