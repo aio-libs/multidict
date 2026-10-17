@@ -1860,7 +1860,7 @@ md_find_key(MultiDictObject* md, PyObject* key, PyObject** pret)
     return result;
 }
 
-static PyObject*
+static inline PyObject*
 _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
 {
     bool ci = md->is_ci;
@@ -1973,31 +1973,25 @@ _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
 
 #endif /* Py_GIL_DISABLED */
 
-/* A key whose identity has to be computed.  Open-codes
-   md_calc_identity_hash(), which GCC calls out of line here, failing its
-   rule in tools/check_inlining.py; keep the two in step. */
-static lookup_t
-_md_get_one_owned(MultiDictObject* md, PyObject* key)
-{
-    lookup_t ret = {-1, NULL};
-    PyObject* identity = md_calc_identity(md, key);
-    if (UNLIKELY(identity == NULL)) {
-        return ret;
-    }
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash != -1) {
-        ret = _md_get_one_identity(md, key, identity, hash);
-    }
-    Py_DECREF(identity);
-    return ret;
-}
-
 static lookup_t
 md_get_one(MultiDictObject* md, PyObject* key)
 {
     PyObject* identity = md_borrow_identity(md, key);
     if (identity == NULL) {
-        return _md_get_one_owned(md, key);
+        /* A key whose identity has to be computed.  Open-codes
+           md_calc_identity_hash(), which GCC calls out of line here, failing
+           its rule in tools/check_inlining.py; keep the two in step. */
+        lookup_t ret = {-1, NULL};
+        identity = md_calc_identity(md, key);
+        if (UNLIKELY(identity == NULL)) {
+            return ret;
+        }
+        Py_hash_t hash = unicode_hash(identity);
+        if (hash != -1) {
+            ret = _md_get_one_identity(md, key, identity, hash);
+        }
+        Py_DECREF(identity);
+        return ret;
     }
     Py_hash_t hash = unicode_hash(identity);
     if (UNLIKELY(hash == -1)) {
