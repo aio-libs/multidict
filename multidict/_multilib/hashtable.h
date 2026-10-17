@@ -1271,7 +1271,7 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
         ret = md_add_with_hash(
             md, hash, identity, key, value, fits, MD_SLOT_CHECK);
         ASSERT_CONSISTENT(md);
-        flush = md_watch_pending(md);
+        flush = MD_WATCH_PENDING(md);
         Py_END_CRITICAL_SECTION();
         MD_WATCH_FLUSH_IF(md, flush);
     }
@@ -1574,7 +1574,7 @@ md_del(MultiDictObject* md, PyObject* key)
     Py_BEGIN_CRITICAL_SECTION(md);
     if (UNLIKELY(md->watch != NULL)) {
         found = _md_del_locked_watched(md, identity, hash, &removed);
-        flush = md_watch_pending(md);
+        flush = MD_WATCH_PENDING(md);
     } else {
         found = _md_del_locked(md, identity, hash, &removed, false);
     }
@@ -2057,7 +2057,7 @@ md_set_default(MultiDictObject* md, PyObject* key, PyObject* value,
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
     ret = _md_set_default_locked(md, identity, hash, key, value, result);
-    flush = md_watch_pending(md);
+    flush = MD_WATCH_PENDING(md);
     Py_END_CRITICAL_SECTION();
     Py_DECREF(identity);
     MD_WATCH_FLUSH_IF(md, flush);
@@ -2157,7 +2157,7 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
     Py_BEGIN_CRITICAL_SECTION(md);
     if (UNLIKELY(md->watch != NULL)) {
         result = _md_pop_one_locked_watched(md, identity, hash, ret);
-        flush = md_watch_pending(md);
+        flush = MD_WATCH_PENDING(md);
     } else {
         result = _md_pop_one_locked(md, identity, hash, ret, false);
     }
@@ -2398,7 +2398,7 @@ md_pop_all(MultiDictObject* md, PyObject* key, PyObject** ret)
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
     tmp = _md_pop_all_locked(md, identity, hash, &values, &removed);
-    flush = md_watch_pending(md);
+    flush = MD_WATCH_PENDING(md);
     Py_END_CRITICAL_SECTION();
     _removed_pairs_release(&removed);
     Py_DECREF(identity);
@@ -2517,7 +2517,7 @@ md_pop_item(MultiDictObject* md)
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
     ret = _md_pop_item_locked(md);
-    flush = md_watch_pending(md);
+    flush = MD_WATCH_PENDING(md);
     Py_END_CRITICAL_SECTION();
     MD_WATCH_FLUSH_IF(md, flush);
     return ret;
@@ -2875,7 +2875,7 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     if (UNLIKELY(md->watch != NULL)) {
         ret = _md_replace_watched(
             md, key, value, identity, hash, &old_key, &old_value, &dups);
-        flush = md_watch_pending(md);
+        flush = MD_WATCH_PENDING(md);
     } else {
         ret = _md_replace_locked(md,
                                  key,

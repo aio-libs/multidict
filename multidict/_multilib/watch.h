@@ -222,11 +222,8 @@ _md_watch_deliver(MultiDictObject* md, watchlog_t* snapshot)
 
 /* True when md_watch_flush() would have something to do. Read under the
    caller's own critical section, so the flush itself needs no atomics. */
-static inline bool
-md_watch_pending(const MultiDictObject* md)
-{
-    return UNLIKELY(md->watch != NULL) && !watchlog_empty(&md->watch->log);
-}
+#define MD_WATCH_PENDING(md) \
+    (UNLIKELY((md)->watch != NULL) && !watchlog_empty(&(md)->watch->log))
 
 /* Delivers everything recorded during the operation that just finished.
  * Must be called with no lock on `md` held. The log is swapped out under
@@ -259,7 +256,7 @@ md_watch_flush(MultiDictObject* md)
     PyErr_Restore(exc_type, exc_value, exc_tb);
 }
 
-/* Paired with md_watch_pending(), which the caller reads under the lock it
+/* Paired with MD_WATCH_PENDING(), which the caller reads under the lock it
    is about to drop. */
 #define MD_WATCH_FLUSH_IF(md, pending) \
     do {                               \
