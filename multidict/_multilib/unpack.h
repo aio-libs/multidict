@@ -31,10 +31,10 @@ list_getitem_ref(PyObject* list, Py_ssize_t i)
     }
     return item;
 }
-#define _list_item_gone(item) ((item) == NULL)
+#define LIST_ITEM_GONE(item) ((item) == NULL)
 #else
 #define list_getitem_ref(list, i) Py_NewRef(PyList_GET_ITEM((list), (i)))
-#define _list_item_gone(item) (0)
+#define LIST_ITEM_GONE(item) (0)
 #endif
 
 typedef enum {
@@ -70,11 +70,11 @@ unpack_pair(PyObject* obj, PyObject** pkey, PyObject** pvalue,
             return UNPACK_LENGTH;
         }
         *pkey = list_getitem_ref(obj, 0);
-        if (_list_item_gone(*pkey)) {
+        if (LIST_ITEM_GONE(*pkey)) {
             return UNPACK_ERROR;
         }
         *pvalue = list_getitem_ref(obj, 1);
-        if (_list_item_gone(*pvalue)) {
+        if (LIST_ITEM_GONE(*pvalue)) {
             Py_CLEAR(*pkey);
             return UNPACK_ERROR;
         }

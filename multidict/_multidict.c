@@ -111,7 +111,7 @@ _multidict_clone_fast(mod_state* state, MultiDictObject* self, bool is_ci,
                 flush = md_watch_pending(self);
                 Py_END_CRITICAL_SECTION();
             }
-            md_watch_flush_if(self, flush);
+            MD_WATCH_FLUSH_IF(self, flush);
             if (clone_ret < 0) {
                 ret = -1;
                 goto done;
@@ -660,9 +660,9 @@ _multidict_bulk_locked(MultiDictObject* self, bool reinit, bulk_source source,
     if (st != NULL) {
         ret = md_reserve_batch(self, size, kwds != NULL, true);
         update_marks_init(&st->marks, self, size);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_BATCH_BEGIN);
     } else {
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_BATCH_BEGIN);
         if (!reinit) {
             ret = md_reserve_batch(self, size, kwds != NULL, false);
         } else if (from_self) {
@@ -715,7 +715,7 @@ _multidict_bulk_locked(MultiDictObject* self, bool reinit, bulk_source source,
             ret = -1;
         }
     } else {
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_BATCH_END);
     }
     return ret;
 }
@@ -789,7 +789,7 @@ _multidict_bulk(MultiDictObject* self, PyObject* args, PyObject* kwds,
     if (st != NULL) {
         md_update_state_release(st);
     }
-    md_watch_flush_if(self, flush);
+    MD_WATCH_FLUSH_IF(self, flush);
     if (ret < 0) {
         goto fail;
     }
@@ -869,12 +869,12 @@ multidict_clear(MultiDictObject* self)
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(self);
     if (md_len(self) != 0) {
-        md_watch_record_simple(self, MultiDict_EVENT_CLEARED);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_CLEARED);
     }
     ret = md_clear(self);
     flush = md_watch_pending(self);
     Py_END_CRITICAL_SECTION();
-    md_watch_flush_if(self, flush);
+    MD_WATCH_FLUSH_IF(self, flush);
     if (ret < 0) {
         return NULL;
     }
