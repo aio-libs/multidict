@@ -1,0 +1,3 @@
+Added a helper to the C extension that deferred the release of a
+deleted key, value and identity with one capacity check instead of two
+-- by :user:`asvetlov`.
