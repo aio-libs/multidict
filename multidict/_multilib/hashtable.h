@@ -1354,11 +1354,7 @@ md_del_at_deferred_anystr(MultiDictObject* md, size_t slot,
     PyObject* key;
     PyObject* value;
     _md_unlink_at_anystr(md, slot, entry, &identity, &key, &value);
-    int ret = reflist_push(defer, identity);
-    if (UNLIKELY(reflist_push2(defer, key, value) < 0)) {
-        ret = -1;
-    }
-    return ret;
+    return reflist_push3(defer, key, value, identity);
 }
 
 /* The keys and values of the pairs one call removes, held until it is
