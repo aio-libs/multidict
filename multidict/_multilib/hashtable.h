@@ -1546,13 +1546,6 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     return ret;
 }
 
-static int
-_md_del_locked_watched(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
-                       removed_pairs_t* removed)
-{
-    return _md_del_locked(md, identity, hash, removed, true);
-}
-
 /* The caller's reference to key keeps a borrowed identity alive through
    the finalizers that releasing the removed pairs can run. */
 static int
@@ -1576,7 +1569,7 @@ md_del(MultiDictObject* md, PyObject* key)
     bool flush = false;
     Py_BEGIN_CRITICAL_SECTION(md);
     if (UNLIKELY(md->watch != NULL)) {
-        found = _md_del_locked_watched(md, identity, hash, &removed);
+        found = _md_del_locked(md, identity, hash, &removed, true);
         flush = MD_WATCH_PENDING(md);
     } else {
         found = _md_del_locked(md, identity, hash, &removed, false);
@@ -2139,13 +2132,6 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
 }
 
 static int
-_md_pop_one_locked_watched(MultiDictObject* md, PyObject* identity,
-                           Py_hash_t hash, PyObject** ret)
-{
-    return _md_pop_one_locked(md, identity, hash, ret, true);
-}
-
-static int
 md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
     identity_hash_t ih = md_calc_identity_hash(md, key);
@@ -2159,7 +2145,7 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
     bool flush = false;
     Py_BEGIN_CRITICAL_SECTION(md);
     if (UNLIKELY(md->watch != NULL)) {
-        result = _md_pop_one_locked_watched(md, identity, hash, ret);
+        result = _md_pop_one_locked(md, identity, hash, ret, true);
         flush = MD_WATCH_PENDING(md);
     } else {
         result = _md_pop_one_locked(md, identity, hash, ret, false);
@@ -2825,13 +2811,17 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
     return *pfound ? 0 : 1;
 }
 
-/* Returns 1 when `key` isn't there, leaving the add to the caller.
- * `watched` is a constant at both call sites; see _md_del_locked(). */
+/* Adds `key` when it isn't there. The fit is checked only on that add,
+ * not carried from the identity: kept live across the replace loop, it
+ * cost d[key] = v up to 4%. */
 static int
 _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
                    PyObject* identity, Py_hash_t hash, PyObject** old_key_out,
                    PyObject** old_value_out, reflist_t** dups, bool watched)
 {
+    if (watched) {
+        MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_BEGIN);
+    }
     bool found = false;
     int ret;
     /* Retries on a concurrent resize (Py_GIL_DISABLED only), or after
@@ -2851,42 +2841,22 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
     } while (ret == _MD_REPLACE_STALE);
     if (ret == 0) {
         bump_version(md);
+    } else if (ret > 0) {
+        ret = md_add_with_hash(md,
+                               hash,
+                               identity,
+                               key,
+                               value,
+                               md_key_fits(md, key, identity),
+                               MD_SLOT_FIND);
+    }
+    if (watched) {
+        MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_END);
     }
     return ret;
 }
 
 #undef _MD_REPLACE_STALE
-
-/* The fit is checked only here, where a key is stored, not carried from
-   the identity: kept live across the replace loop, it cost d[key] = v up
-   to 4%. */
-static inline int
-_md_add_after_replace(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-                      PyObject* key, PyObject* value)
-{
-    return md_add_with_hash(md,
-                            hash,
-                            identity,
-                            key,
-                            value,
-                            md_key_fits(md, key, identity),
-                            MD_SLOT_FIND);
-}
-
-COLD static int
-_md_replace_watched(MultiDictObject* md, PyObject* key, PyObject* value,
-                    PyObject* identity, Py_hash_t hash, PyObject** old_key,
-                    PyObject** old_value, reflist_t** dups)
-{
-    MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_BEGIN);
-    int ret = _md_replace_locked(
-        md, key, value, identity, hash, old_key, old_value, dups, true);
-    if (ret > 0) {
-        ret = _md_add_after_replace(md, hash, identity, key, value);
-    }
-    MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_END);
-    return ret;
-}
 
 // See md_del() on the borrowed identity.
 static int
@@ -2906,27 +2876,18 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     PyObject* old_value = NULL;
     reflist_t* dups = NULL;
     int ret;
-    // see md_del()
-    bool flush = false;
+    bool flush;
     Py_BEGIN_CRITICAL_SECTION(md);
-    if (UNLIKELY(md->watch != NULL)) {
-        ret = _md_replace_watched(
-            md, key, value, identity, hash, &old_key, &old_value, &dups);
-        flush = MD_WATCH_PENDING(md);
-    } else {
-        ret = _md_replace_locked(md,
-                                 key,
-                                 value,
-                                 identity,
-                                 hash,
-                                 &old_key,
-                                 &old_value,
-                                 &dups,
-                                 false);
-        if (ret > 0) {
-            ret = _md_add_after_replace(md, hash, identity, key, value);
-        }
-    }
+    ret = _md_replace_locked(md,
+                             key,
+                             value,
+                             identity,
+                             hash,
+                             &old_key,
+                             &old_value,
+                             &dups,
+                             md->watch != NULL);
+    flush = MD_WATCH_PENDING(md);
     ASSERT_CONSISTENT(md);
     Py_END_CRITICAL_SECTION();
     Py_XDECREF(old_key);
