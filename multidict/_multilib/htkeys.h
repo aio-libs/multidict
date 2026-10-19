@@ -245,7 +245,7 @@ entry_is_hole(const entry_t* entry)
 /* The hash of a compact entry's identity, read from the key itself: a
    str's cached hash, or the canonical form's hash an istr keeps, set
    before the istr is shared. A lock-free reader holds a reference to the
-   key first; see _compact_entry_matches_cs(). */
+   key first; see _COMPACT_ENTRY_MATCHES(). */
 static inline Py_hash_t
 compact_key_hash_cs(PyObject* key)
 {
@@ -1038,6 +1038,19 @@ typedef struct _htkeysiter {
                 break;                                                       \
             }                                                                \
         }                                                                    \
+    } while (0)
+
+/* The first match in a table of any kind, for a lookup that needs no
+   other; `ci_` is true for a CIMultiDict's table. */
+#define HTKEYSITER_FIND_FIRST(iter_, ci_, identity_, hash_, entry_)      \
+    do {                                                                 \
+        if (kind_is_compact((iter_)->keys->kind) && (ci_)) {             \
+            HTKEYSITER_FIND_COMPACT_CI(iter_, identity_, hash_, entry_); \
+        } else if (kind_is_compact((iter_)->keys->kind)) {               \
+            HTKEYSITER_FIND_COMPACT_CS(iter_, identity_, hash_, entry_); \
+        } else {                                                         \
+            HTKEYSITER_FIND_ANYSTR(iter_, identity_, hash_, entry_);     \
+        }                                                                \
     } while (0)
 
 #ifdef __cplusplus

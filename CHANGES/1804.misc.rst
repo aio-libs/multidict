@@ -1,0 +1,4 @@
+Moved the choice between overwriting and dropping each entry of a
+repeated key out of the C extension's update helper and into its
+per-kind loops, which already knew which one applied
+-- by :user:`asvetlov`.

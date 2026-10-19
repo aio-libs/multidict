@@ -196,23 +196,10 @@ RULES = (
         "MultiDict(items) item on FT",
     ),
     Rule(
-        "_compact_entry_matches_cs",
-        "*",
-        (FT,),
-        "#1653: out of line, MultiDict d[key] +6.9% and CIMultiDict "
-        "key in d +6.5% on FT",
-    ),
-    Rule(
-        "_compact_entry_matches_ci",
-        "*",
-        (FT,),
-        "#1653: the CIMultiDict half of _compact_entry_matches_cs",
-    ),
-    Rule(
         "_full_entry_matches",
         "*",
         (FT,),
-        "#1653: pinned with _compact_entry_matches_cs, its twin for the "
+        "#1653: pinned with _COMPACT_ENTRY_MATCHES(), its twin for the "
         "full layout in the same lock-free probe loops",
     ),
     Rule(
@@ -252,6 +239,7 @@ class KnownCopy:
     name: str
     builds: tuple[str, ...]
     why: str
+    gcc: int | None = None  # only with this GCC major version
 
 
 # Out-of-line copies of CPython inlines that GCC makes today, until the
@@ -279,13 +267,20 @@ KNOWN_CPYTHON_COPIES = (
     KnownCopy(
         "Py_XINCREF",
         (FT,),
-        "called from cold code only: _md_watch_record()",
+        "called from cold code only: md_watch_record()",
     ),
     KnownCopy(
         "PyIter_NextItem",
         (GIL,),
         "the pythoncapi_compat.h shim before 3.14; called from the view "
         "set operations and isdisjoint()",
+    ),
+    KnownCopy(
+        "_PyUnicode_DATA",
+        BOTH,
+        "#1800: str_cmp() inlined everywhere crowds it out; "
+        "GCC 14 and 15 keep it inline",
+        gcc=13,
     ),
 )
 
@@ -366,7 +361,16 @@ def build_object(root, python, cc, out):
     if result.returncode:
         print(result.stdout, end="", file=sys.stderr)
         sys.exit(f"build failed with {python}")
-    return ft, include
+    return ft, include, gcc_major([*(shlex.split(cc) if cc else default_cc)])
+
+
+def gcc_major(cc):
+    """The GCC major version of `cc`, or None for another compiler."""
+    macros = run([*cc, "-dM", "-E", "-x", "c", "/dev/null"])
+    if "__clang__" in macros:
+        return None
+    match = re.search(r"^#define __GNUC__ (\d+)$", macros, re.MULTILINE)
+    return int(match.group(1)) if match else None
 
 
 def cpython_inlines(root, include):
@@ -468,11 +472,15 @@ def check(root, graph, build):
     return failures
 
 
-def check_cpython_inlines(graph, build, inlines):
+def check_cpython_inlines(graph, build, gcc, inlines):
     """Return the failures and the notes for CPython inline copies."""
     failures = []
     notes = []
-    known = {k.name for k in KNOWN_CPYTHON_COPIES if build in k.builds}
+    known = {
+        k.name
+        for k in KNOWN_CPYTHON_COPIES
+        if build in k.builds and k.gcc in (None, gcc)
+    }
     copies = {base_name(s) for s in graph if not is_cold(s)} & inlines
     for name in sorted(copies - known):
         callers = sorted(
@@ -537,7 +545,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="check-inlining-") as tmp:
         for python in args.python or [sys.executable]:
             obj = Path(tmp) / "_multidict.o"
-            ft, include = build_object(root, python, args.cc, obj)
+            ft, include, gcc = build_object(root, python, args.cc, obj)
             build = FT if ft else GIL
             graph = call_graph(obj)
             print(f"{python} ({build.upper()}):")
@@ -547,7 +555,7 @@ def main():
                 continue
             failures = check(root, graph, build)
             more, notes = check_cpython_inlines(
-                graph, build, cpython_inlines(root, include)
+                graph, build, gcc, cpython_inlines(root, include)
             )
             failures += more
             for note in notes:

@@ -103,15 +103,15 @@ _multidict_clone_fast(mod_state* state, MultiDictObject* self, bool is_ci,
             if (other != self) {
                 Py_BEGIN_CRITICAL_SECTION2(self, other);
                 clone_ret = md_clone_from_ht(self, other);
-                flush = md_watch_pending(self);
+                flush = MD_WATCH_PENDING(self);
                 Py_END_CRITICAL_SECTION2();
             } else {
                 Py_BEGIN_CRITICAL_SECTION(self);
                 clone_ret = md_clone_from_ht(self, other);
-                flush = md_watch_pending(self);
+                flush = MD_WATCH_PENDING(self);
                 Py_END_CRITICAL_SECTION();
             }
-            md_watch_flush_if(self, flush);
+            MD_WATCH_FLUSH_IF(self, flush);
             if (clone_ret < 0) {
                 ret = -1;
                 goto done;
@@ -265,20 +265,43 @@ multidict_to_dict(MultiDictObject* self)
 
 /******************** Base Methods ********************/
 
+/* Binds the (key, default=<missing>) arguments of getall(), getone(),
+   get(), setdefault(), popone(), pop() and popall(). */
+static inline int
+_multidict_parse_key_default(MultiDictObject* self, const char* fname,
+                             PyObject* const* args, Py_ssize_t nargs,
+                             PyObject* kwnames, PyObject** key,
+                             PyObject** _default)
+{
+    return parse2(fname,
+                  args,
+                  nargs,
+                  kwnames,
+                  1,
+                  self->state->str_key,
+                  key,
+                  self->state->str_default,
+                  _default);
+}
+
+// The missing-key result of getall(), getone(), popone(), pop() and popall().
+static PyObject*
+_multidict_default_or_raise(PyObject* key, PyObject* _default)
+{
+    if (_default != NULL) {
+        return Py_NewRef(_default);
+    }
+    PyErr_SetObject(PyExc_KeyError, key);
+    return NULL;
+}
+
 static PyObject*
 multidict_getall(MultiDictObject* self, PyObject* const* args,
                  Py_ssize_t nargs, PyObject* kwnames)
 {
     PyObject *key = NULL, *_default = NULL;
-    if (parse2("getall",
-               args,
-               nargs,
-               kwnames,
-               1,
-               self->state->str_key,
-               &key,
-               self->state->str_default,
-               &_default) < 0) {
+    if (_multidict_parse_key_default(
+            self, "getall", args, nargs, kwnames, &key, &_default) < 0) {
         return NULL;
     }
     PyObject* list = NULL;
@@ -287,11 +310,7 @@ multidict_getall(MultiDictObject* self, PyObject* const* args,
     }
 
     if (list == NULL) {
-        if (_default != NULL) {
-            return Py_NewRef(_default);
-        }
-        PyErr_SetObject(PyExc_KeyError, key);
-        return NULL;
+        return _multidict_default_or_raise(key, _default);
     }
     return list;
 }
@@ -301,15 +320,8 @@ multidict_getone(MultiDictObject* self, PyObject* const* args,
                  Py_ssize_t nargs, PyObject* kwnames)
 {
     PyObject *key = NULL, *_default = NULL;
-    if (parse2("getone",
-               args,
-               nargs,
-               kwnames,
-               1,
-               self->state->str_key,
-               &key,
-               self->state->str_default,
-               &_default) < 0) {
+    if (_multidict_parse_key_default(
+            self, "getone", args, nargs, kwnames, &key, &_default) < 0) {
         return NULL;
     }
     lookup_t found = md_get_one(self, key);
@@ -318,11 +330,7 @@ multidict_getone(MultiDictObject* self, PyObject* const* args,
     }
     PyObject* val = found.value;
     if (val == NULL) {
-        if (_default != NULL) {
-            return Py_NewRef(_default);
-        }
-        PyErr_SetObject(PyExc_KeyError, key);
-        return NULL;
+        return _multidict_default_or_raise(key, _default);
     }
     return val;
 }
@@ -332,15 +340,8 @@ multidict_get(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
               PyObject* kwnames)
 {
     PyObject *key = NULL, *_default = NULL;
-    if (parse2("get",
-               args,
-               nargs,
-               kwnames,
-               1,
-               self->state->str_key,
-               &key,
-               self->state->str_default,
-               &_default) < 0) {
+    if (_multidict_parse_key_default(
+            self, "get", args, nargs, kwnames, &key, &_default) < 0) {
         return NULL;
     }
     lookup_t found = md_get_one(self, key);
@@ -576,9 +577,9 @@ _multidict_bulk_locked(MultiDictObject* self, bool reinit, bulk_source source,
     if (st != NULL) {
         ret = md_reserve_batch(self, size, true);
         update_marks_init(&st->marks, self, size);
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_BATCH_BEGIN);
     } else {
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_BEGIN);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_BATCH_BEGIN);
         if (!reinit) {
             ret = md_reserve_batch(self, size, false);
         } else if (from_self) {
@@ -623,7 +624,7 @@ _multidict_bulk_locked(MultiDictObject* self, bool reinit, bulk_source source,
             ret = -1;
         }
     } else {
-        md_watch_record_simple(self, MultiDict_EVENT_BATCH_END);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_BATCH_END);
     }
     return ret;
 }
@@ -679,25 +680,25 @@ _multidict_bulk(MultiDictObject* self, PyObject* args, PyObject* kwds,
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = _multidict_bulk_locked(
             self, reinit, BULK_FROM_HT, arg, other, kwds, size, is_ci, st);
-        flush = md_watch_pending(self);
+        flush = MD_WATCH_PENDING(self);
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = _multidict_bulk_locked(
             self, reinit, BULK_FROM_DICT, arg, NULL, kwds, size, is_ci, st);
-        flush = md_watch_pending(self);
+        flush = MD_WATCH_PENDING(self);
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
         ret = _multidict_bulk_locked(
             self, reinit, BULK_FROM_SEQ, arg, other, kwds, size, is_ci, st);
-        flush = md_watch_pending(self);
+        flush = MD_WATCH_PENDING(self);
         Py_END_CRITICAL_SECTION();
     }
     if (st != NULL) {
         md_update_state_release(st);
     }
-    md_watch_flush_if(self, flush);
+    MD_WATCH_FLUSH_IF(self, flush);
     if (ret < 0) {
         goto fail;
     }
@@ -777,12 +778,12 @@ multidict_clear(MultiDictObject* self)
     bool flush;
     Py_BEGIN_CRITICAL_SECTION(self);
     if (md_len(self) != 0) {
-        md_watch_record_simple(self, MultiDict_EVENT_CLEARED);
+        MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_CLEARED);
     }
     ret = md_clear(self);
-    flush = md_watch_pending(self);
+    flush = MD_WATCH_PENDING(self);
     Py_END_CRITICAL_SECTION();
-    md_watch_flush_if(self, flush);
+    MD_WATCH_FLUSH_IF(self, flush);
     if (ret < 0) {
         return NULL;
     }
@@ -795,15 +796,8 @@ multidict_setdefault(MultiDictObject* self, PyObject* const* args,
                      Py_ssize_t nargs, PyObject* kwnames)
 {
     PyObject *key = NULL, *_default = NULL;
-    if (parse2("setdefault",
-               args,
-               nargs,
-               kwnames,
-               1,
-               self->state->str_key,
-               &key,
-               self->state->str_default,
-               &_default) < 0) {
+    if (_multidict_parse_key_default(
+            self, "setdefault", args, nargs, kwnames, &key, &_default) < 0) {
         return NULL;
     }
     PyObject* ret = NULL;
@@ -824,11 +818,7 @@ _multidict_pop(MultiDictObject* self, PyObject* key, PyObject* _default)
     }
 
     if (ret_val == NULL) {
-        if (_default != NULL) {
-            return Py_NewRef(_default);
-        }
-        PyErr_SetObject(PyExc_KeyError, key);
-        return NULL;
+        return _multidict_default_or_raise(key, _default);
     }
     return ret_val;
 }
@@ -838,15 +828,8 @@ multidict_popone(MultiDictObject* self, PyObject* const* args,
                  Py_ssize_t nargs, PyObject* kwnames)
 {
     PyObject *key = NULL, *_default = NULL;
-    if (parse2("popone",
-               args,
-               nargs,
-               kwnames,
-               1,
-               self->state->str_key,
-               &key,
-               self->state->str_default,
-               &_default) < 0) {
+    if (_multidict_parse_key_default(
+            self, "popone", args, nargs, kwnames, &key, &_default) < 0) {
         return NULL;
     }
     return _multidict_pop(self, key, _default);
@@ -857,15 +840,8 @@ multidict_pop(MultiDictObject* self, PyObject* const* args, Py_ssize_t nargs,
               PyObject* kwnames)
 {
     PyObject *key = NULL, *_default = NULL;
-    if (parse2("pop",
-               args,
-               nargs,
-               kwnames,
-               1,
-               self->state->str_key,
-               &key,
-               self->state->str_default,
-               &_default) < 0) {
+    if (_multidict_parse_key_default(
+            self, "pop", args, nargs, kwnames, &key, &_default) < 0) {
         return NULL;
     }
     return _multidict_pop(self, key, _default);
@@ -877,15 +853,8 @@ multidict_popall(MultiDictObject* self, PyObject* const* args,
 {
     PyObject *key = NULL, *_default = NULL, *ret_val = NULL;
 
-    if (parse2("popall",
-               args,
-               nargs,
-               kwnames,
-               1,
-               self->state->str_key,
-               &key,
-               self->state->str_default,
-               &_default) < 0) {
+    if (_multidict_parse_key_default(
+            self, "popall", args, nargs, kwnames, &key, &_default) < 0) {
         return NULL;
     }
     if (md_pop_all(self, key, &ret_val) < 0) {
@@ -893,11 +862,7 @@ multidict_popall(MultiDictObject* self, PyObject* const* args,
     }
 
     if (ret_val == NULL) {
-        if (_default != NULL) {
-            return Py_NewRef(_default);
-        }
-        PyErr_SetObject(PyExc_KeyError, key);
-        return NULL;
+        return _multidict_default_or_raise(key, _default);
     }
     return ret_val;
 }

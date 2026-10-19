@@ -96,6 +96,67 @@ reflist_push(reflist_t* lst, PyObject* obj)
     return 0;
 }
 
+/* The pair straddles a storage boundary: push one at a time, so every
+   block but the newest stays full. */
+COLD static int
+_reflist_push2_slow(reflist_t* lst, PyObject* key, PyObject* value)
+{
+    int ret = reflist_push(lst, key);
+    if (UNLIKELY(reflist_push(lst, value) < 0)) {
+        ret = -1;
+    }
+    return ret;
+}
+
+/* reflist_push() for a key and a value at once; both are stolen and must
+   not be NULL. On failure each one that did not fit is decref'd. */
+static inline int
+reflist_push2(reflist_t* lst, PyObject* key, PyObject* value)
+{
+    assert(key != NULL && value != NULL);
+    if (UNLIKELY(lst->capacity - lst->count < 2)) {
+        return _reflist_push2_slow(lst, key, value);
+    }
+    lst->slots[lst->count] = key;
+    lst->slots[lst->count + 1] = value;
+    lst->count += 2;
+    return 0;
+}
+
+/* The triple straddles a storage boundary: push one at a time, so every
+   block but the newest stays full. */
+COLD static int
+_reflist_push3_slow(reflist_t* lst, PyObject* key, PyObject* value,
+                    PyObject* identity)
+{
+    int ret = reflist_push(lst, key);
+    if (UNLIKELY(reflist_push(lst, value) < 0)) {
+        ret = -1;
+    }
+    if (UNLIKELY(reflist_push(lst, identity) < 0)) {
+        ret = -1;
+    }
+    return ret;
+}
+
+/* reflist_push2() plus an `identity` that may be NULL, all stolen. A NULL
+   identity is stored past the end and not counted, so there is no branch
+   on it. On failure each one that did not fit is decref'd. */
+static inline int
+reflist_push3(reflist_t* lst, PyObject* key, PyObject* value,
+              PyObject* identity)
+{
+    assert(key != NULL && value != NULL);
+    if (UNLIKELY(lst->capacity - lst->count < 3)) {
+        return _reflist_push3_slow(lst, key, value, identity);
+    }
+    lst->slots[lst->count] = key;
+    lst->slots[lst->count + 1] = value;
+    lst->slots[lst->count + 2] = identity;
+    lst->count += 2 + (identity != NULL);
+    return 0;
+}
+
 static inline bool
 reflist_empty(const reflist_t* lst)
 {

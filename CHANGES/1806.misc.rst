@@ -1,0 +1,4 @@
+Turned the C extension's watcher record helpers into macros, so that
+a multidict without watchers skipped evaluating the event arguments
+altogether. The instruction counts stayed within 1% on every
+benchmarked operation -- by :user:`asvetlov`.

@@ -69,7 +69,7 @@ _watch_ctz(uint32_t bits)
 #endif
 }
 
-static const char*
+NOINLINE static const char*
 _md_watch_event_name(MultiDict_WatchEvent event)
 {
     switch (event) {
@@ -220,13 +220,10 @@ _md_watch_deliver(MultiDictObject* md, watchlog_t* snapshot)
     watchlog_init(snapshot);
 }
 
-/* True when _md_watch_flush() would have something to do. Read under the
+/* True when md_watch_flush() would have something to do. Read under the
    caller's own critical section, so the flush itself needs no atomics. */
-static inline bool
-md_watch_pending(const MultiDictObject* md)
-{
-    return UNLIKELY(md->watch != NULL) && !watchlog_empty(&md->watch->log);
-}
+#define MD_WATCH_PENDING(md) \
+    (UNLIKELY((md)->watch != NULL) && !watchlog_empty(&(md)->watch->log))
 
 /* Delivers everything recorded during the operation that just finished.
  * Must be called with no lock on `md` held. The log is swapped out under
@@ -234,7 +231,7 @@ md_watch_pending(const MultiDictObject* md)
  * fills a fresh log instead of extending the chain being walked; the loop
  * then picks that up on the next pass. */
 COLD static void
-_md_watch_flush(MultiDictObject* md)
+md_watch_flush(MultiDictObject* md)
 {
     /* Several callers flush on their failure path too, so an exception
        can already be in flight here. Park it: otherwise the first
@@ -259,20 +256,19 @@ _md_watch_flush(MultiDictObject* md)
     PyErr_Restore(exc_type, exc_value, exc_tb);
 }
 
-/* Paired with md_watch_pending(), which the caller reads under the lock it
+/* Paired with MD_WATCH_PENDING(), which the caller reads under the lock it
    is about to drop. */
-static inline void
-md_watch_flush_if(MultiDictObject* md, bool pending)
-{
-    if (UNLIKELY(pending)) {
-        _md_watch_flush(md);
-    }
-}
+#define MD_WATCH_FLUSH_IF(md, pending) \
+    do {                               \
+        if (UNLIKELY(pending)) {       \
+            md_watch_flush(md);        \
+        }                              \
+    } while (0)
 
 COLD static void
-_md_watch_record(MultiDictObject* md, MultiDict_WatchEvent event,
-                 PyObject* identity, Py_hash_t hash, PyObject* key,
-                 PyObject* value, PyObject* old_value)
+md_watch_record(MultiDictObject* md, MultiDict_WatchEvent event,
+                PyObject* identity, Py_hash_t hash, PyObject* key,
+                PyObject* value, PyObject* old_value)
 {
     if (md->watch->bits == 0) {
         // every watcher unwatched; the record itself lives until dealloc
@@ -284,21 +280,17 @@ _md_watch_record(MultiDictObject* md, MultiDict_WatchEvent event,
 
 /* The only thing an unwatched multidict pays: one pointer test per
    mutation, off a field in the same cache line as `keys`. */
-static inline void
-md_watch_record(MultiDictObject* md, MultiDict_WatchEvent event,
-                PyObject* identity, Py_hash_t hash, PyObject* key,
-                PyObject* value, PyObject* old_value)
-{
-    if (UNLIKELY(md->watch != NULL)) {
-        _md_watch_record(md, event, identity, hash, key, value, old_value);
-    }
-}
+#define MD_WATCH_RECORD(md, event, identity, hash, key, value, old_value) \
+    do {                                                                  \
+        MultiDictObject* _md_rec = (md);                                  \
+        if (UNLIKELY(_md_rec->watch != NULL)) {                           \
+            md_watch_record(                                              \
+                _md_rec, event, identity, hash, key, value, old_value);   \
+        }                                                                 \
+    } while (0)
 
-static inline void
-md_watch_record_simple(MultiDictObject* md, MultiDict_WatchEvent event)
-{
-    md_watch_record(md, event, NULL, -1, NULL, NULL, NULL);
-}
+#define MD_WATCH_RECORD_SIMPLE(md, event) \
+    MD_WATCH_RECORD(md, event, NULL, -1, NULL, NULL, NULL)
 
 COLD static int
 md_watch_attach(MultiDictObject* md, int watcher_id, void* user_data,
@@ -353,7 +345,7 @@ md_watch_on_dealloc(MultiDictObject* md)
     PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
 
     /* A non-empty log here means some mutation entry point skipped its
-       _md_watch_flush(); the assert is the cheapest way to catch that. */
+       md_watch_flush(); the assert is the cheapest way to catch that. */
     assert(watchlog_empty(&watch->log));
     watchlog_drain(&watch->log);
 
