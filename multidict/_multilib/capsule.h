@@ -234,7 +234,7 @@ MultiDict_Clear(void* state_, PyObject* self)
                                MultiDict_EVENT_CLEARED);
     }
     ret = md_clear((MultiDictObject*)self);
-    flush = md_watch_pending((MultiDictObject*)self);
+    flush = MD_WATCH_PENDING((MultiDictObject*)self);
     Py_END_CRITICAL_SECTION();
     MD_WATCH_FLUSH_IF((MultiDictObject*)self, flush);
     return ret;
