@@ -312,15 +312,12 @@ _md_post_update_take(update_marks_t* marks, htkeys_t* keys, Py_ssize_t i)
     return pos;
 }
 
-/* Deletes the live doomed entry at `pos` of md's table `keys`: 0 on
-   success, -1 if the delete failed,
-   _MD_POST_UPDATE_RESTART if it failed and moved the table. */
-static inline int
-_md_post_update_delete(md_update_state_t* st, htkeys_t* keys, Py_ssize_t pos,
-                       entry_t* entry, PyObject* identity, Py_hash_t hash,
-                       uint64_t version)
+/* The slot of the live doomed entry at `pos` of md's table `keys`, its
+   delete recorded for the watchers. */
+static inline size_t
+_md_post_update_slot(MultiDictObject* md, htkeys_t* keys, Py_ssize_t pos,
+                     entry_t* entry, PyObject* identity, Py_hash_t hash)
 {
-    MultiDictObject* md = st->md;
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, keys, hash);
     while (iter.index != pos) {
@@ -334,45 +331,50 @@ _md_post_update_delete(md_update_state_t* st, htkeys_t* keys, Py_ssize_t pos,
                     entry->key,
                     entry->value,
                     NULL);
-    if (UNLIKELY(md_del_at_deferred(md, iter.slot, entry, &st->defer) < 0)) {
-        if (md->keys != keys || md->version != version) {
-            return _MD_POST_UPDATE_RESTART;
-        }
-        return -1;
+    return iter.slot;
+}
+
+/* After a failed delete: -1, or _MD_POST_UPDATE_RESTART if it moved the
+   table. */
+static inline int
+_md_post_update_failed(MultiDictObject* md, htkeys_t* keys, uint64_t version)
+{
+    if (md->keys != keys || md->version != version) {
+        return _MD_POST_UPDATE_RESTART;
     }
-    return 0;
+    return -1;
 }
 
 /* _md_post_update_pass()'s loop over a KIND_COMPACT table, `sfx` being cs
    or ci as for compact_key_identity_cs(). */
-#define _MD_POST_UPDATE_COMPACT_LOOP(sfx)                          \
-    do {                                                           \
-        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);           \
-        for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {          \
-            Py_ssize_t pos = _md_post_update_take(marks, keys, i); \
-            if (pos < 0) {                                         \
-                continue;                                          \
-            }                                                      \
-            entry_t* entry = entries + pos;                        \
-            if (entry_is_hole(entry) ||                            \
-                load_value(entry) != marks->doomed[i].value) {     \
-                continue;                                          \
-            }                                                      \
-            int del = _md_post_update_delete(                      \
-                st,                                                \
-                keys,                                              \
-                pos,                                               \
-                entry,                                             \
-                compact_key_identity_##sfx(entry->key),            \
-                compact_key_hash_##sfx(entry->key),                \
-                version);                                          \
-            if (del == _MD_POST_UPDATE_RESTART) {                  \
-                return del;                                        \
-            }                                                      \
-            if (UNLIKELY(del < 0)) {                               \
-                ret = -1;                                          \
-            }                                                      \
-        }                                                          \
+#define _MD_POST_UPDATE_COMPACT_LOOP(sfx)                                    \
+    do {                                                                     \
+        entry_t* entries = HTKEYS_COMPACT_ENTRIES(keys);                     \
+        for (Py_ssize_t i = 0; i < marks->ndoomed; i++) {                    \
+            Py_ssize_t pos = _md_post_update_take(marks, keys, i);           \
+            if (pos < 0) {                                                   \
+                continue;                                                    \
+            }                                                                \
+            entry_t* entry = entries + pos;                                  \
+            if (entry_is_hole(entry) ||                                      \
+                load_value(entry) != marks->doomed[i].value) {               \
+                continue;                                                    \
+            }                                                                \
+            size_t slot =                                                    \
+                _md_post_update_slot(md,                                     \
+                                     keys,                                   \
+                                     pos,                                    \
+                                     entry,                                  \
+                                     compact_key_identity_##sfx(entry->key), \
+                                     compact_key_hash_##sfx(entry->key));    \
+            if (UNLIKELY(md_del_at_deferred_compact(                         \
+                             md, slot, entry, &st->defer) < 0)) {            \
+                ret = _md_post_update_failed(md, keys, version);             \
+                if (ret == _MD_POST_UPDATE_RESTART) {                        \
+                    return ret;                                              \
+                }                                                            \
+            }                                                                \
+        }                                                                    \
     } while (0)
 
 /* One pass of _md_post_update_deleted() over md's table, one loop per
@@ -406,18 +408,14 @@ _md_post_update_pass(md_update_state_t* st)
             load_value(&entry->base) != marks->doomed[i].value) {
             continue;
         }
-        int del = _md_post_update_delete(st,
-                                         keys,
-                                         pos,
-                                         &entry->base,
-                                         entry->identity,
-                                         entry->hash,
-                                         version);
-        if (del == _MD_POST_UPDATE_RESTART) {
-            return del;
-        }
-        if (UNLIKELY(del < 0)) {
-            ret = -1;
+        size_t slot = _md_post_update_slot(
+            md, keys, pos, &entry->base, entry->identity, entry->hash);
+        if (UNLIKELY(md_del_at_deferred_anystr(md, slot, entry, &st->defer) <
+                     0)) {
+            ret = _md_post_update_failed(md, keys, version);
+            if (ret == _MD_POST_UPDATE_RESTART) {
+                return ret;
+            }
         }
     }
     return ret;
@@ -426,9 +424,9 @@ _md_post_update_pass(md_update_state_t* st)
 #undef _MD_POST_UPDATE_COMPACT_LOOP
 
 /* Removes the entries update() doomed and nothing has written since. Only
-   an out-of-memory fallback decref in md_del_at_deferred() can run Python
-   here; the walk then starts over, which each record leaving the set as it
-   goes makes safe. */
+   an out-of-memory fallback decref in md_del_at_deferred_compact() or
+   md_del_at_deferred_anystr() can run Python here; the walk then starts
+   over, which each record leaving the set as it goes makes safe. */
 COLD static int
 _md_post_update_deleted(md_update_state_t* st)
 {
