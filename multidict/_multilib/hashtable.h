@@ -78,7 +78,7 @@ in the left and right arguments.
 `.copy()` and constuction from multidict is super fast.
 */
 
-/* _growth_rate(). Growth rate upon hitting maximum load.
+/* GROWTH_RATE(). Growth rate upon hitting maximum load.
  * Currently set to used*3.
  * This means that dicts double in size when growing without deletions,
  * but have more head room when the number of deletions is on a par with the
@@ -88,11 +88,7 @@ in the left and right arguments.
  * GROWTH_RATE was set to used*2 in version 3.3.0
  * GROWTH_RATE was set to used*2 + capacity/2 in 3.4.0-3.6.0.
  */
-static inline Py_ssize_t
-_growth_rate(const MultiDictObject* md)
-{
-    return md->used * 3;
-}
+#define GROWTH_RATE(md) ((md)->used * 3)
 
 /* Frees a table no longer published, releasing the references its
    entries still hold: only md_clear()'s and _md_install_keys()'s
@@ -1109,7 +1105,7 @@ _md_prepare_add(MultiDictObject* md, bool fits)
 {
     htkeys_t* keys = md->keys;
     if (keys->usable <= 0 || keys == &empty_htkeys) {
-        uint8_t log2_newsize = calculate_log2_keysize(_growth_rate(md));
+        uint8_t log2_newsize = calculate_log2_keysize(GROWTH_RATE(md));
         if (UNLIKELY(_md_grow_for_add(md, log2_newsize, fits) < 0)) {
             return -1;
         }

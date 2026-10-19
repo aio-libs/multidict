@@ -1,0 +1,2 @@
+Replaced the C extension's ``_growth_rate()`` helper with a
+``GROWTH_RATE()`` macro -- by :user:`asvetlov`.
