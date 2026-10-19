@@ -104,12 +104,12 @@ _multidict_clone_fast(mod_state* state, MultiDictObject* self, bool is_ci,
             if (other != self) {
                 Py_BEGIN_CRITICAL_SECTION2(self, other);
                 clone_ret = md_clone_from_ht(self, other);
-                flush = md_watch_pending(self);
+                flush = MD_WATCH_PENDING(self);
                 Py_END_CRITICAL_SECTION2();
             } else {
                 Py_BEGIN_CRITICAL_SECTION(self);
                 clone_ret = md_clone_from_ht(self, other);
-                flush = md_watch_pending(self);
+                flush = MD_WATCH_PENDING(self);
                 Py_END_CRITICAL_SECTION();
             }
             MD_WATCH_FLUSH_IF(self, flush);
@@ -783,19 +783,19 @@ _multidict_bulk(MultiDictObject* self, PyObject* args, PyObject* kwds,
         Py_BEGIN_CRITICAL_SECTION2(self, other);
         ret = _multidict_bulk_locked(
             self, reinit, BULK_FROM_HT, arg, other, kwds, size, is_ci, st);
-        flush = md_watch_pending(self);
+        flush = MD_WATCH_PENDING(self);
         Py_END_CRITICAL_SECTION2();
     } else if (arg_is_dict) {
         Py_BEGIN_CRITICAL_SECTION2(self, arg);
         ret = _multidict_bulk_locked(
             self, reinit, BULK_FROM_DICT, arg, NULL, kwds, size, is_ci, st);
-        flush = md_watch_pending(self);
+        flush = MD_WATCH_PENDING(self);
         Py_END_CRITICAL_SECTION2();
     } else {
         Py_BEGIN_CRITICAL_SECTION(self);
         ret = _multidict_bulk_locked(
             self, reinit, BULK_FROM_SEQ, arg, other, kwds, size, is_ci, st);
-        flush = md_watch_pending(self);
+        flush = MD_WATCH_PENDING(self);
         Py_END_CRITICAL_SECTION();
     }
     if (st != NULL) {
@@ -884,7 +884,7 @@ multidict_clear(MultiDictObject* self)
         MD_WATCH_RECORD_SIMPLE(self, MultiDict_EVENT_CLEARED);
     }
     ret = md_clear(self);
-    flush = md_watch_pending(self);
+    flush = MD_WATCH_PENDING(self);
     Py_END_CRITICAL_SECTION();
     MD_WATCH_FLUSH_IF(self, flush);
     if (ret < 0) {

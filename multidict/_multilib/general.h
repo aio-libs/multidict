@@ -294,6 +294,7 @@ _md_replace_pass_general(MultiDictObject* md, PyObject* key, PyObject* value,
                                   old_value_out,
                                   dups,
                                   watched,
+                                  false,
                                   pfound);
         if (!md->keys->maybe_dups) {
             break;  // the key's only entry
