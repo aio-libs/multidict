@@ -608,7 +608,7 @@ htkeys_sizeof(const htkeys_t* keys)
    every byte and must write the header before anything reads it.
    `size` is the byte count, taken as an argument for the sake of a
    caller that already has it off an existing table. */
-static inline htkeys_t*
+static htkeys_t*
 htkeys_alloc_sized(pool_t* pools, uint8_t log2_size, uint8_t kind, size_t size)
 {
     assert(log2_size >= HT_LOG_MINSIZE);
@@ -673,7 +673,7 @@ htkeys_new_unfilled(pool_t* pools, uint8_t log2_size, uint8_t kind)
     return keys;
 }
 
-static inline htkeys_t*
+static htkeys_t*
 htkeys_new(pool_t* pools, uint8_t log2_size, uint8_t kind)
 {
     htkeys_t* keys = htkeys_new_unfilled(pools, log2_size, kind);
@@ -683,7 +683,7 @@ htkeys_new(pool_t* pools, uint8_t log2_size, uint8_t kind)
     return keys;
 }
 
-static inline void
+static void
 htkeys_free(pool_t* pools, htkeys_t* dk)
 {
     /* Always released, never pooled with the block: a pooled block must
@@ -780,7 +780,7 @@ _htkeys_find_empty_slot_resume(htkeys_t* keys, size_t i)
 
 /* Indexes the first `n` entries of a KIND_COMPACT table being built,
    leaving the holes among them unindexed when `skip_holes`. */
-static inline void
+static void
 htkeys_build_compact_indices(htkeys_t* keys, bool ci, Py_ssize_t n,
                              bool skip_holes)
 {
@@ -812,7 +812,7 @@ htkeys_build_compact_indices(htkeys_t* keys, bool ci, Py_ssize_t n,
 }
 
 // htkeys_build_compact_indices() for a KIND_ANYSTR table.
-static inline void
+static void
 htkeys_build_anystr_indices(htkeys_t* keys, Py_ssize_t n, bool skip_holes)
 {
     const uint8_t log2size = keys->log2_size;

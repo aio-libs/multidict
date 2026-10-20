@@ -335,7 +335,7 @@ _md_drain_retired(MultiDictObject* md)
     _md_drain_retired_slow(md);
 }
 
-static inline void
+static void
 _md_retire(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys == &empty_htkeys) {
@@ -359,7 +359,7 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
 
 /* Drops a table md no longer publishes: at once on GIL builds, once no
    lock-free reader can still reach it on free-threaded ones. */
-static inline void
+static void
 _md_release_keys(MultiDictObject* md, htkeys_t* keys)
 {
 #ifdef Py_GIL_DISABLED
@@ -371,7 +371,7 @@ _md_release_keys(MultiDictObject* md, htkeys_t* keys)
 #endif
 }
 
-static inline Py_hash_t
+static Py_hash_t
 _compact_entry_hash(const entry_t* entry, bool ci)
 {
     return ci ? compact_key_hash_ci(entry->key)
@@ -403,7 +403,7 @@ _md_has_equal_hashes_compact(htkeys_t* keys, bool ci)
 }
 
 /* The same for a KIND_ANYSTR table. */
-static inline bool
+static bool
 _md_has_equal_hashes_anystr(htkeys_t* keys)
 {
     anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
@@ -540,7 +540,7 @@ _md_new_keys_after_holes(MultiDictObject* md, Py_ssize_t extra, uint8_t kind)
 /* Copies the live entries of `src` to the front of `dst`, a table of its
    kind, returning how many. One copy per kind, so each steps by a
    constant entry size. */
-static inline Py_ssize_t
+static Py_ssize_t
 _md_copy_live(htkeys_t* dst, const htkeys_t* src)
 {
     Py_ssize_t n = src->nentries;
@@ -570,7 +570,7 @@ _md_copy_live(htkeys_t* dst, const htkeys_t* src)
 
 /* Publishes newkeys, a KIND_COMPACT table whose first `filled` entries
    hold all of md's and nothing else. */
-static inline void
+static void
 _md_publish_compacted_compact(MultiDictObject* md, htkeys_t* oldkeys,
                               htkeys_t* newkeys, Py_ssize_t filled)
 {
@@ -587,7 +587,7 @@ _md_publish_compacted_compact(MultiDictObject* md, htkeys_t* oldkeys,
 }
 
 /* The same for a KIND_ANYSTR table. */
-static inline void
+static void
 _md_publish_compacted_anystr(MultiDictObject* md, htkeys_t* oldkeys,
                              htkeys_t* newkeys, Py_ssize_t filled)
 {
@@ -747,7 +747,7 @@ md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs,
    decrefs can run a __del__ that reads or mutates md: publishing first
    means that code finds md already holding its new contents, and what
    it adds stays in md rather than being overwritten. */
-static inline void
+static void
 _md_install_keys(MultiDictObject* md, htkeys_t* keys, Py_ssize_t used,
                  bool is_ci, MultiDict_WatchEvent event)
 {
