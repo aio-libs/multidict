@@ -1,0 +1,2 @@
+Dropped the ``inline`` hint from the C extension helpers that only
+rebuild, build or free a table's keys -- by :user:`asvetlov`.

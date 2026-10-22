@@ -7,6 +7,7 @@ keys keep their own rules, case folded in a CIMultiDict.
 
 import gc
 import pickle
+import sys
 import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -313,6 +314,40 @@ def test_eq_mutating_the_multidict(
     # still consistent: every key is found
     for k, v in list(d.items()):
         assert v in d.getall(k)
+
+
+class MutateThenRaise:
+    """Equal after changing the multidict it is in, then raising."""
+
+    target: Any = None
+    calls = 0
+
+    def __hash__(self) -> int:
+        return 3
+
+    def __eq__(self, other: object) -> bool:
+        MutateThenRaise.calls += 1
+        if MutateThenRaise.calls > 1:
+            raise RuntimeError("boom")
+        MutateThenRaise.target.add("x", 1)
+        return True
+
+
+def test_add_failing_after_the_key_matched(any_multidict_class: _Class) -> None:
+    # The add takes the stored key's identity, starts over on the change
+    # and then fails; the probe keeps its references.
+    d = any_multidict_class([(MutateThenRaise(), 0), (1, 1)])
+    MutateThenRaise.target = d
+    MutateThenRaise.calls = 0
+    probe = MutateThenRaise()
+    refs = sys.getrefcount(probe)
+    with pytest.raises(RuntimeError, match="boom"):
+        d.add(probe, "v")
+    MutateThenRaise.target = None
+    gc.collect()
+    assert MutateThenRaise.calls == 2
+    assert sys.getrefcount(probe) == refs
+    assert len(d) == 3
 
 
 @pytest.mark.threaded

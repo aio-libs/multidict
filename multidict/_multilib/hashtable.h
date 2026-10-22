@@ -94,7 +94,7 @@ in the left and right arguments.
 `.copy()` and constuction from multidict is super fast.
 */
 
-/* _growth_rate(). Growth rate upon hitting maximum load.
+/* GROWTH_RATE(). Growth rate upon hitting maximum load.
  * Currently set to used*3.
  * This means that dicts double in size when growing without deletions,
  * but have more head room when the number of deletions is on a par with the
@@ -104,11 +104,7 @@ in the left and right arguments.
  * GROWTH_RATE was set to used*2 in version 3.3.0
  * GROWTH_RATE was set to used*2 + capacity/2 in 3.4.0-3.6.0.
  */
-static inline Py_ssize_t
-_growth_rate(const MultiDictObject* md)
-{
-    return md->used * 3;
-}
+#define GROWTH_RATE(md) ((md)->used * 3)
 
 /* Frees a table no longer published, releasing the references its
    entries still hold: only md_clear()'s and _md_install_keys()'s
@@ -351,7 +347,7 @@ _md_drain_retired(MultiDictObject* md)
     _md_drain_retired_slow(md);
 }
 
-static inline void
+static void
 _md_retire(MultiDictObject* md, htkeys_t* keys)
 {
     if (keys == &empty_htkeys) {
@@ -375,7 +371,7 @@ _md_retire(MultiDictObject* md, htkeys_t* keys)
 
 /* Drops a table md no longer publishes: at once on GIL builds, once no
    lock-free reader can still reach it on free-threaded ones. */
-static inline void
+static void
 _md_release_keys(MultiDictObject* md, htkeys_t* keys)
 {
 #ifdef Py_GIL_DISABLED
@@ -387,7 +383,7 @@ _md_release_keys(MultiDictObject* md, htkeys_t* keys)
 #endif
 }
 
-static inline Py_hash_t
+static Py_hash_t
 _compact_entry_hash(const entry_t* entry, bool ci)
 {
     return ci ? compact_key_hash_ci(entry->key)
@@ -419,7 +415,7 @@ _md_has_equal_hashes_compact(htkeys_t* keys, bool ci)
 }
 
 /* The same for a KIND_ANYSTR table. */
-static inline bool
+static bool
 _md_has_equal_hashes_anystr(htkeys_t* keys)
 {
     anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
@@ -556,7 +552,7 @@ _md_new_keys_after_holes(MultiDictObject* md, Py_ssize_t extra, uint8_t kind)
 /* Copies the live entries of `src` to the front of `dst`, a table of its
    kind, returning how many. One copy per kind, so each steps by a
    constant entry size. */
-static inline Py_ssize_t
+static Py_ssize_t
 _md_copy_live(htkeys_t* dst, const htkeys_t* src)
 {
     Py_ssize_t n = src->nentries;
@@ -594,7 +590,7 @@ htkeys_intern(htkeys_t* keys, bool dups);
 
 /* Publishes newkeys, a KIND_COMPACT table whose first `filled` entries
    hold all of md's and nothing else. */
-static inline void
+static void
 _md_publish_compacted_compact(MultiDictObject* md, htkeys_t* oldkeys,
                               htkeys_t* newkeys, Py_ssize_t filled)
 {
@@ -612,7 +608,7 @@ _md_publish_compacted_compact(MultiDictObject* md, htkeys_t* oldkeys,
 
 /* The same for a KIND_ANYSTR or KIND_GENERAL table; `intern` when the
    entries came from a table of another kind (see htkeys_intern()). */
-static inline void
+static void
 _md_publish_compacted_anystr(MultiDictObject* md, htkeys_t* oldkeys,
                              htkeys_t* newkeys, Py_ssize_t filled, bool intern)
 {
@@ -725,7 +721,16 @@ _md_rebuild_to_kind(MultiDictObject* md, uint8_t log2_newsize, uint8_t kind)
             _MD_REBUILD_TO_ANYSTR_LOOP(cs);
         }
     } else {
-        filled = _md_copy_live(newkeys, oldkeys);
+        /* Not through _md_copy_live(), which a second caller would keep
+           out of line in _md_rebuild(). */
+        anystr_entry_t* out = HTKEYS_ANYSTR_ENTRIES(newkeys);
+        anystr_entry_t* ep = HTKEYS_ANYSTR_ENTRIES(oldkeys);
+        for (anystr_entry_t* end = ep + oldkeys->nentries; ep < end; ep++) {
+            if (!entry_is_hole((const entry_t*)ep)) {
+                *out++ = *ep;
+            }
+        }
+        filled = out - HTKEYS_ANYSTR_ENTRIES(newkeys);
     }
     _md_publish_compacted_anystr(
         md, oldkeys, newkeys, filled, kind == KIND_GENERAL);
@@ -780,7 +785,7 @@ md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs,
    decrefs can run a __del__ that reads or mutates md: publishing first
    means that code finds md already holding its new contents, and what
    it adds stays in md rather than being overwritten. */
-static inline void
+static void
 _md_install_keys(MultiDictObject* md, htkeys_t* keys, Py_ssize_t used,
                  bool is_ci, MultiDict_WatchEvent event)
 {
@@ -1171,38 +1176,53 @@ COLD static prepared_t
 _md_prepare_add(MultiDictObject* md, uint8_t need, PyObject* identity,
                 Py_hash_t hash, Py_ssize_t slot)
 {
+    PyObject* passed = identity;
     prepared_t ret = {identity, MD_SLOT_ERROR};
     for (;;) {
         htkeys_t* keys = md->keys;
         if (keys->usable <= 0 || keys == &empty_htkeys) {
-            uint8_t log2_newsize = calculate_log2_keysize(_growth_rate(md));
+            uint8_t log2_newsize = calculate_log2_keysize(GROWTH_RATE(md));
             if (UNLIKELY(_md_grow_for_add(md, log2_newsize, need) < 0)) {
-                return ret;
+                break;
             }
         }
         if (md->keys->kind < need && UNLIKELY(md_to_kind(md, need) < 0)) {
-            return ret;
+            break;
         }
         if (md->keys->kind != KIND_GENERAL) {
             ret.slot = slot;
-            return ret;
+            break;
         }
         uint64_t version = md->version;
         bool err = false;
-        PyObject* found = md_resolve(md, ret.identity, hash, &err);
+        PyObject* found = md_resolve(md, passed, hash, &err);
         if (UNLIKELY(err)) {
-            return ret;
+            break;
         }
-        if (found != NULL && found != ret.identity) {
-            /* The key holds the old one if it is no str, and a str one is
-               exact: either way freeing it runs no code. */
-            Py_SETREF(ret.identity, Py_NewRef(found));
+        PyObject* held = found != NULL ? found : passed;
+        if (held != ret.identity) {
+            if (ret.identity != passed) {
+                Py_DECREF(ret.identity);
+            }
+            ret.identity = held == passed ? passed : Py_NewRef(held);
         }
         if (md->version == version) {
             ret.slot = MD_SLOT_CHECK;
-            return ret;
+            break;
         }
     }
+    /* The identity passed in gives way only on success, so a failure
+       leaves the caller's reference as it was. The key holds it if it is
+       no str, and a str one is exact: freeing it runs no code. */
+    if (ret.identity != passed) {
+        if (ret.slot == MD_SLOT_ERROR) {
+            Py_DECREF(ret.identity);
+            ret.identity = passed;
+        } else {
+            Py_DECREF(passed);
+        }
+    }
+    return ret;
 }
 
 /* Stores a new entry at the end of md's table, which _md_prepare_add()
@@ -1246,6 +1266,22 @@ _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return keys;
 }
 
+/* Stores the new entry once md's table has room for it: all an add does
+   after its last chance to fail. */
+static inline void
+_md_add_stored(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
+               PyObject* key, PyObject* value, Py_ssize_t slot)
+{
+    htkeys_t* keys = _md_store_new_entry(md, hash, identity, key, value, slot);
+
+    bump_version(md);
+    add_used(md, 1);
+    keys->usable -= 1;
+    keys->nentries += 1;
+    MD_WATCH_RECORD(
+        md, MultiDict_EVENT_ADDED, identity, hash, key, value, NULL);
+}
+
 static int
 md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
                             PyObject* identity, PyObject* key, PyObject* value,
@@ -1259,14 +1295,7 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
         identity = prepared.identity;
         slot = prepared.slot;
     }
-    htkeys_t* keys = _md_store_new_entry(md, hash, identity, key, value, slot);
-
-    bump_version(md);
-    add_used(md, 1);
-    keys->usable -= 1;
-    keys->nentries += 1;
-    MD_WATCH_RECORD(
-        md, MultiDict_EVENT_ADDED, identity, hash, key, value, NULL);
+    _md_add_stored(md, hash, identity, key, value, slot);
     return 0;
 }
 
@@ -1275,15 +1304,16 @@ md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                  PyObject* key, PyObject* value, uint8_t need, Py_ssize_t slot)
 {
     Py_INCREF(identity);
-    Py_INCREF(key);
-    Py_INCREF(value);
-    if (UNLIKELY(md_add_with_hash_steal_refs(
-                     md, hash, identity, key, value, need, slot) < 0)) {
-        Py_DECREF(identity);
-        Py_DECREF(key);
-        Py_DECREF(value);
-        return -1;
+    if (_md_add_needs_new_table(md, 0, need)) {
+        prepared_t prepared = _md_prepare_add(md, need, identity, hash, slot);
+        if (UNLIKELY(prepared.slot == MD_SLOT_ERROR)) {
+            Py_DECREF(identity);
+            return -1;
+        }
+        identity = prepared.identity;
+        slot = prepared.slot;
     }
+    _md_add_stored(md, hash, identity, Py_NewRef(key), Py_NewRef(value), slot);
     return 0;
 }
 
@@ -1959,7 +1989,12 @@ _md_contains_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
         result = _md_contains_retry_locked(md, identity, hash);
     }
 #else
-    result = _md_contains_locked(md, identity, hash, NULL);
+    htkeysiter_t iter;
+    HTKEYSITER_INIT(&iter, md->keys, hash);
+    entry_t* entry = NULL;
+    HTKEYSITER_FIND_FIRST(
+        &iter, md->is_ci, identity, hash, entry, return MD_LOOKUP_GENERAL);
+    result = entry != NULL;
 #endif
     return result;
 }
