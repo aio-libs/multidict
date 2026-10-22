@@ -1157,6 +1157,22 @@ _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
     return keys;
 }
 
+/* Stores the new entry once md's table has room for it: all an add does
+   after its last chance to fail. */
+static inline void
+_md_add_stored(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
+               PyObject* key, PyObject* value, Py_ssize_t slot)
+{
+    htkeys_t* keys = _md_store_new_entry(md, hash, identity, key, value, slot);
+
+    bump_version(md);
+    add_used(md, 1);
+    keys->usable -= 1;
+    keys->nentries += 1;
+    MD_WATCH_RECORD(
+        md, MultiDict_EVENT_ADDED, identity, hash, key, value, NULL);
+}
+
 static int
 md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
                             PyObject* identity, PyObject* key, PyObject* value,
@@ -1167,14 +1183,7 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
         UNLIKELY(_md_prepare_add(md, fits) < 0)) {
         return -1;
     }
-    htkeys_t* keys = _md_store_new_entry(md, hash, identity, key, value, slot);
-
-    bump_version(md);
-    add_used(md, 1);
-    keys->usable -= 1;
-    keys->nentries += 1;
-    MD_WATCH_RECORD(
-        md, MultiDict_EVENT_ADDED, identity, hash, key, value, NULL);
+    _md_add_stored(md, hash, identity, key, value, slot);
     return 0;
 }
 
@@ -1182,16 +1191,13 @@ static int
 md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                  PyObject* key, PyObject* value, bool fits, Py_ssize_t slot)
 {
-    Py_INCREF(identity);
-    Py_INCREF(key);
-    Py_INCREF(value);
-    if (UNLIKELY(md_add_with_hash_steal_refs(
-                     md, hash, identity, key, value, fits, slot) < 0)) {
-        Py_DECREF(identity);
-        Py_DECREF(key);
-        Py_DECREF(value);
+    assert(fits == md_key_fits(md, key, identity));
+    if (_md_add_needs_new_table(md, 0, fits) &&
+        UNLIKELY(_md_prepare_add(md, fits) < 0)) {
         return -1;
     }
+    _md_add_stored(
+        md, hash, Py_NewRef(identity), Py_NewRef(key), Py_NewRef(value), slot);
     return 0;
 }
 
@@ -1790,7 +1796,11 @@ _md_contains_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
         result = _md_contains_retry_locked(md, identity, hash);
     }
 #else
-    result = _md_contains_locked(md, identity, hash, NULL);
+    htkeysiter_t iter;
+    HTKEYSITER_INIT(&iter, md->keys, hash);
+    entry_t* entry = NULL;
+    HTKEYSITER_FIND_FIRST(&iter, md->is_ci, identity, hash, entry);
+    result = entry != NULL;
 #endif
     return result;
 }
