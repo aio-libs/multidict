@@ -87,7 +87,7 @@ Results
 
 .. code-block:: text
 
-   multidict   7.1.1.dev0 (cdbdc5af)
+   multidict   7.1.1.dev0 (edfc84d0)
    CPython     3.14.7, GIL and free-threaded builds
    valgrind    3.26.0, callgrind, client-request bracketing
    CPU         Intel(R) Core(TM) Ultra 7 155H
@@ -105,8 +105,8 @@ Results
      - ``CIMultiDict`` vs ``dict``
    * - ``cls(items)``
      - 91,506
-     - 42,878
-     - 60,435
+     - 42,668
+     - 60,025
      - 0.66x
    * - ``cls()``
      - 676
@@ -115,9 +115,9 @@ Results
      - 1.11x
    * - ``cls(items)``, 20 items
      - 9,347
-     - 4,802
-     - 6,058
-     - 0.65x
+     - 4,679
+     - 5,915
+     - 0.63x
    * - ``d.copy()``
      - 9,796
      - 9,923
@@ -140,9 +140,9 @@ Results
      - 0.97x
    * - ``key in d``
      - 174
-     - 144
-     - 191
-     - 1.09x
+     - 128
+     - 173
+     - 0.99x
    * - ``d[key] = v``, existing key
      - 252
      - 261
@@ -150,13 +150,13 @@ Results
      - 1.29x
    * - ``d[key] = v``, new key
      - 389
-     - 406
-     - 486
-     - 1.25x
+     - 403
+     - 483
+     - 1.24x
    * - ``d.setdefault(key, v)``, new key
      - 585
-     - 544
-     - 626
+     - 540
+     - 623
      - 1.07x
    * - ``del d[key]``
      - 295
@@ -329,12 +329,12 @@ Results
      - 1.40x
      - ``d.clear()``
    * - ``MultiDict``
-     - 1.41x
+     - 1.42x
      - 1.11x
      - 1.73x
      - ``for k in d``
    * - ``CIMultiDict``
-     - 1.32x
+     - 1.33x
      - 1.07x
      - 1.69x
      - ``for k in d``
@@ -360,7 +360,7 @@ Results
    * - ``cls(items)``
      - 2,521,674
      - 2,786,802
-     - 58.81x
+     - 59.10x
    * - ``cls()``
      - 63,748
      - 63,777
@@ -368,7 +368,7 @@ Results
    * - ``cls(items)``, 20 items
      - 356,792
      - 382,534
-     - 74.30x
+     - 76.25x
    * - ``d.copy()``
      - 451,394
      - 456,492
@@ -388,7 +388,7 @@ Results
    * - ``key in d``
      - 7,706
      - 9,086
-     - 53.66x
+     - 60.06x
    * - ``d[key] = v``, existing key
      - 22,718
      - 24,150
@@ -396,11 +396,11 @@ Results
    * - ``d[key] = v``, new key
      - 26,715
      - 27,888
-     - 65.82x
+     - 66.34x
    * - ``d.setdefault(key, v)``, new key
      - 26,753
      - 27,925
-     - 49.20x
+     - 49.50x
    * - ``del d[key]``
      - 15,778
      - 17,142
