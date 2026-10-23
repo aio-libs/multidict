@@ -1,4 +1,0 @@
-Renamed the C extension's lowercase function-like macros to upper
-case, turned the watcher flush helper into a macro, and dropped the
-leading underscore from the watcher record and flush functions that
-the macros call from other headers -- by :user:`asvetlov`.

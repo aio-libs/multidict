@@ -14,6 +14,206 @@ Changelog
 
 .. towncrier release notes start
 
+7.2.0
+=====
+
+*(2026-10-23)*
+
+7.2.0 drops Python 3.10, fixes a crash in a proxy built without
+``__init__()`` and a :exc:`MemoryError` from a huge ``__length_hint__()``,
+and is otherwise a performance release for the C extension: lookups,
+adds, updates and deletes each needed a few percent fewer instructions.
+
+
+Bug fixes
+---------
+
+- Stopped a huge ``__length_hint__()`` from raising :exc:`MemoryError` in
+  :meth:`~multidict.MultiDict.extend`, :meth:`~multidict.MultiDict.update`
+  and :meth:`~multidict.MultiDict.merge`; the C extension capped the room
+  it reserved for the hint at the largest table the constructor allocates
+  up front -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1767`.
+
+- Fixed a segmentation fault when using a :class:`~multidict.MultiDictProxy`
+  or :class:`~multidict.CIMultiDictProxy` built by ``__new__()`` without
+  ``__init__()``; ``__new__()`` started requiring the proxied multidict, the
+  same argument as the constructor -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1782`.
+
+
+Features
+--------
+
+- Sped up reading a multidict in the C extension. ``md[key]``,
+  :meth:`~multidict.MultiDict.get` and :meth:`~multidict.MultiDict.getone`
+  became up to 7% faster by returning the lookup's result by value instead
+  of through a pointer to the caller's local, which had made
+  ``-fstack-protector-strong`` add a stack canary to every call. On the GIL
+  build a :meth:`~multidict.MultiDict.get` miss became 5% faster and
+  ``key in md`` inlined its hash table lookup. On the free-threaded build
+  :meth:`~multidict.MultiDict.getall` stopped taking the multidict's lock
+  for a multidict without repeated keys, the way
+  :meth:`~multidict.MultiDict.get` already avoided it. ``len(md.keys())``
+  and iterating over the keys of a multidict that holds a key more than
+  once became 4% to 13% faster -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1775`, :issue:`1776`, :issue:`1781`, :issue:`1800`, :issue:`1817`.
+
+- Sped up building and updating a multidict in the C extension. On the GIL
+  build, constructing a multidict from a sequence of pairs needed 8% to 10%
+  fewer instructions and :meth:`~multidict.MultiDict.update` 3.5% to 4.5%
+  fewer. On the free-threaded build, building a
+  :class:`~multidict.MultiDict` became up to 14% faster, since a table that
+  is both full and unable to hold the new key in its compact form was grown
+  and moved in one rebuild, and :meth:`~multidict.MultiDict.add`,
+  ``md[key] = value`` for a new key and
+  :meth:`~multidict.MultiDict.setdefault` needed 2% to 3% fewer
+  instructions, about 1% fewer on the GIL build. Updating a multidict with
+  existing keys needed 1.5% to 2.9% fewer instructions, while adding a new
+  key needed about 0.5% more on the GIL build -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1763`, :issue:`1774`, :issue:`1780`, :issue:`1785`, :issue:`1802`.
+
+- Sped up replacing and removing items in the C extension.
+  :meth:`~multidict.MultiDict.add`, :meth:`~multidict.MultiDict.getall`,
+  ``md[key] = value`` and ``del md[key]`` stopped computing the identity
+  of a key that, or whose :class:`~multidict.istr` canonical form, already
+  serves as one, as ``md[key]`` did, and checked a
+  :class:`~multidict.CIMultiDict` key holding uppercase letters only once.
+  On the GIL build ``del md[key]`` needed 4% to 5% fewer instructions,
+  ``md[key] = value`` about 2% fewer and :meth:`~multidict.MultiDict.pop`
+  1% fewer. Replacing a key that had duplicates needed 0.8% to 1.7% fewer
+  instructions, and :meth:`~multidict.MultiDict.clear` became 6% faster on
+  the free-threaded build -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1769`, :issue:`1770`, :issue:`1779`, :issue:`1796`, :issue:`1809`.
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Dropped support for Python 3.10 as it has reached end of life
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1777`.
+
+
+Improved documentation
+----------------------
+
+- Refreshed the instruction-count tables in the benchmarking reference
+  against the current tree -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1816`, :issue:`1818`.
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Added the CPython 3.15 trove classifier and started testing the
+  GIL and free-threaded 3.15 builds in CI -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1766`.
+
+
+Contributor-facing changes
+--------------------------
+
+- Split the release publishing and signing across four parallel jobs, so
+  that each one finishes well within the lifetime of its short-lived PyPI
+  upload token -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1768`.
+
+- Changed the ``clear()`` benchmarks to clear a thousand prebuilt
+  multidicts of 0 to 99 items each, copied outside the measured region,
+  since the copy inside the timed loop and the single small table it
+  measured made the result swing by up to 19% between runs of the same
+  commit -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1784`.
+
+- Pinned Hypothesis in the MyPy pre-commit hooks and dropped a
+  ``type: ignore`` comment from the Hypothesis tests that became unused
+  once Hypothesis annotated ``run_state_machine_as_test()``, which failed
+  the MyPy lint job -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1820`.
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Split the C extension's helpers per table kind, so that the lookup
+  loops of ``pop()``, ``popall()``, item replacement and ``update()``, the
+  table rebuild and the deferred delete of an entry call the helper for
+  their own kind instead of testing it again, and moved the choice between
+  overwriting and dropping each entry of a repeated key into the per-kind
+  loops of ``update()``. Folded helpers with a single caller into that
+  caller: choosing the kind of a new table, reading a compact entry's
+  identity and hash, filling a new entry, replacing a key's values,
+  deleting a key and looking up the first value of a key that needs a
+  computed identity. Merged the two per-kind checks for a deleted entry
+  into one, and removed the separate watched copies of delete, pop and
+  replace, folding the add that follows a missed replace into the replace
+  itself -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1771`, :issue:`1772`, :issue:`1773`, :issue:`1786`, :issue:`1788`,
+  :issue:`1789`, :issue:`1790`, :issue:`1792`, :issue:`1804`, :issue:`1805`,
+  :issue:`1810`, :issue:`1811`.
+
+- Removed duplicated code from the C extension: the ``(key, default)``
+  methods shared their argument parsing and missing-key result, and one
+  macro each replaced the copies of the lock-free compact entry match on
+  the free-threaded build and of the per-kind dispatch of a single key
+  lookup. Turned the watcher record, flush and pending check helpers and
+  ``_growth_rate()`` into macros, so that a multidict without watchers
+  skipped evaluating the event arguments, renamed the lowercase
+  function-like macros to upper case, and dropped the leading underscore
+  from the watcher functions that the macros call from other headers
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1793`, :issue:`1794`, :issue:`1795`, :issue:`1806`, :issue:`1807`,
+  :issue:`1808`, :issue:`1812`.
+
+- Adjusted how the C extension spends GCC's inlining budget: marked most
+  checks that lead to a raised exception as unlikely, so the compiler
+  moves the error paths out of the hot code, kept the event name lookup of
+  a failing watcher callback report and the cleanup of a dropped watcher
+  event log out of line, and dropped the ``inline`` hint from the helpers
+  that compute a table's size and that rebuild, build or free a table's
+  keys -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1783`, :issue:`1791`, :issue:`1801`, :issue:`1815`.
+
+- Moved the C extension's ``repr()`` of multidicts, proxies and views and
+  its equality comparison out of the hash table header, each into a header
+  of its own -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1778`, :issue:`1787`.
+
+
+----
+
+
 7.1.0
 =====
 

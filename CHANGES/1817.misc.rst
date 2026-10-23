@@ -1,3 +1,0 @@
-Inlined the hash table lookup of ``key in d`` on the GIL build, and
-changed adding a new key to take its references only once the table has
-room for it -- by :user:`asvetlov`.

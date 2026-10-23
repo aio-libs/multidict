@@ -1,2 +1,0 @@
-Folded the C extension helper that replaced a key's values into its one
-caller -- by :user:`asvetlov`.

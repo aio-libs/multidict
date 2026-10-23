@@ -1,3 +1,0 @@
-Forced inlining of the string comparison helper in the C extension,
-which sped up :meth:`~multidict.MultiDict.get` misses by 5% on the GIL
-build -- by :user:`asvetlov`.

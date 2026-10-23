@@ -1,4 +1,0 @@
-Added a helper to the C extension that deferred the release of a
-deleted key, value and identity with one capacity check instead of two.
-Replacing a key that had duplicates needed 0.8% to 1.7% fewer
-instructions -- by :user:`asvetlov`.

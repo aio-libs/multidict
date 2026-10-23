@@ -1,2 +1,0 @@
-Split the C extension helper that deleted a matched entry into one per
-table kind -- by :user:`asvetlov`.

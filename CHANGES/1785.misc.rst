@@ -1,5 +1,0 @@
-Merged the check for a full table and the check for a key that does not
-fit a compact one into a single step before an add, so a table that needs
-both is grown and moved in one rebuild; this sped up building a
-:class:`~multidict.MultiDict` on the FT build by up to 14%
--- by :user:`asvetlov`.

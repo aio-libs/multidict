@@ -1,3 +1,0 @@
-Split the C extension's deferred delete of an entry by table kind, so
-that a compact table no longer checked the kind on every delete or
-pushed its empty identity -- by :user:`asvetlov`.

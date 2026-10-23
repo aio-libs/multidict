@@ -1,3 +1,0 @@
-Folded the C extension helper that looked up the first value of a key
-needing a computed identity into its one caller, and marked the locked
-lookup helper as inline -- by :user:`asvetlov`.

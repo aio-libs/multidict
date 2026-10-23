@@ -1,3 +1,0 @@
-Removed the C extension's separate watched copies of delete, pop and
-replace, and folded the add that follows a missed replace into the
-replace itself -- by :user:`asvetlov`.

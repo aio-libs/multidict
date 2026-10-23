@@ -1,5 +1,0 @@
-Added a helper to the C extension that deferred the release of a
-replaced key and value with one capacity check instead of two. Updating
-a multidict with existing keys needed 1.5% to 2.9% fewer instructions,
-while adding a new key needed about 0.5% more on the GIL build
--- by :user:`asvetlov`.

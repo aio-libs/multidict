@@ -1,3 +1,0 @@
-Marked most of the checks that lead to a raised exception in the C
-extension, such as a failed ``unicode_hash()``, as unlikely, so the
-compiler moves the error paths out of the hot code -- by :user:`asvetlov`.

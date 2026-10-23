@@ -1,4 +1,0 @@
-Split more C extension helpers per table kind, so that the lookup loops
-of ``pop()``, ``popall()``, item replacement and ``update()``, and the
-table rebuild, call the helper for their own kind instead of testing it
-again -- by :user:`asvetlov`.

@@ -1,3 +1,0 @@
-Turned the C extension's watcher pending check into the
-``MD_WATCH_PENDING()`` macro, matching ``MD_WATCH_FLUSH_IF()`` that it
-pairs with -- by :user:`asvetlov`.

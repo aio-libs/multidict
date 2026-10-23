@@ -1,3 +1,0 @@
-Kept the event name lookup of a failing watcher callback report and the
-cleanup of a dropped watcher event log out of line in the C extension --
-by :user:`asvetlov`.
