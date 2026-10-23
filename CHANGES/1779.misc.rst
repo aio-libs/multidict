@@ -1,4 +1,0 @@
-Folded three C extension helpers that each had a single caller into
-that caller, and dropped a redundant hash check; on the GIL build
-:meth:`~multidict.MultiDict.pop` needed 1% fewer instructions
--- by :user:`asvetlov`.

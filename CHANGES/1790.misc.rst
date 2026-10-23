@@ -1,2 +1,0 @@
-Folded the C extension helper that deleted a key into its one caller
--- by :user:`asvetlov`.

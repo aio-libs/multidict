@@ -1,2 +1,0 @@
-Refreshed the instruction-count tables in the benchmarking reference
-against the current tree -- by :user:`asvetlov`.

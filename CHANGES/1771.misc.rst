@@ -1,2 +1,0 @@
-Folded the helpers choosing the kind of a new hash table into their
-callers -- by :user:`asvetlov`.

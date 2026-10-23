@@ -1,2 +1,0 @@
-Replaced the three copies of the per-kind dispatch of a single key
-lookup in the C extension with one macro -- by :user:`asvetlov`.

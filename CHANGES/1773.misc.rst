@@ -1,2 +1,0 @@
-Folded the helpers reading the identity and the hash of a compact
-hash table entry into their callers -- by :user:`asvetlov`.

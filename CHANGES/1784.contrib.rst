@@ -1,5 +1,0 @@
-Changed the ``clear()`` benchmarks to clear a thousand prebuilt
-multidicts of 0 to 99 items each, copied outside the measured region,
-since the copy inside the timed loop and the single small table it
-measured made the result swing by up to 19% between runs of the same
-commit -- by :user:`asvetlov`.

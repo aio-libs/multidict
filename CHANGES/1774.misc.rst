@@ -1,7 +1,0 @@
-Changed the C extension to read a table's size once per probe loop
-when looking for a free slot, rather than once per probed slot: on
-the free-threaded build :meth:`~multidict.MultiDict.add`,
-``md[key] = value`` for a new key and
-:meth:`~multidict.MultiDict.setdefault` needed 2% to 3% fewer
-instructions, and about 1% fewer on the GIL build
--- by :user:`asvetlov`.

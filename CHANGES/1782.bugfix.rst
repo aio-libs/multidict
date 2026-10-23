@@ -1,4 +1,0 @@
-Fixed a segmentation fault when using a :class:`~multidict.MultiDictProxy`
-or :class:`~multidict.CIMultiDictProxy` built by ``__new__()`` without
-``__init__()``; ``__new__()`` started requiring the proxied multidict, the
-same argument as the constructor -- by :user:`asvetlov`.
