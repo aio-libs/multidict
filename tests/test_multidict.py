@@ -3871,7 +3871,7 @@ def test_overflowing_length_hint_plus_kwargs_is_ignored(method: str) -> None:
 @pytest.mark.parametrize("method", ("extend", "update", "merge"))
 @pytest.mark.parametrize(
     "hint",
-    (sys.maxsize // 3 - 1, sys.maxsize // 8, 2**40),
+    (sys.maxsize // 3 - 1, sys.maxsize // 8, min(2**40, sys.maxsize)),
     ids=("largest", "eighth", "unallocatable"),
 )
 def test_huge_length_hint_is_capped(method: str, hint: int) -> None:

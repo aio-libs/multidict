@@ -154,6 +154,13 @@ Contributor-facing changes
   *Related issues and pull requests on GitHub:*
   :issue:`1820`.
 
+- Fixed a test of a huge ``__length_hint__()`` failing on 32-bit builds,
+  where its ``2**40`` hint did not fit a ``Py_ssize_t``
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1821`.
+
 
 Miscellaneous internal changes
 ------------------------------
