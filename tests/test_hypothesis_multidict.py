@@ -170,7 +170,7 @@ def test_stateful_multidict(
 ) -> None:
     is_ci = any_multidict_class_name == "CIMultiDict"
     machine_cls = _make_state_machine(any_multidict_class, is_ci)
-    run_state_machine_as_test(  # type: ignore[no-untyped-call]
+    run_state_machine_as_test(
         machine_cls,
         settings=settings(max_examples=20, stateful_step_count=25),
     )

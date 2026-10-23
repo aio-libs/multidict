@@ -1,0 +1,3 @@
+Dropped a ``type: ignore`` comment from the Hypothesis tests that
+became unused once Hypothesis annotated ``run_state_machine_as_test()``,
+which failed the MyPy lint job -- by :user:`asvetlov`.
