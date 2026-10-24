@@ -220,6 +220,56 @@ def test_new_multidict_proxy_without_init(
         assert "missing" not in proxy
 
 
+@pytest.mark.parametrize(
+    ("dict_class_name", "proxy_class_name"),
+    (("MultiDict", "MultiDictProxy"), ("CIMultiDict", "CIMultiDictProxy")),
+)
+def test_multidict_proxy_subclass_converts_arg_in_init(
+    multidict_module: types.ModuleType,
+    dict_class_name: str,
+    proxy_class_name: str,
+) -> None:
+    dict_class = getattr(multidict_module, dict_class_name)
+    proxy_class = getattr(multidict_module, proxy_class_name)
+
+    class Sub(proxy_class):  # type: ignore[valid-type, misc]
+        def __init__(self, items: list[tuple[str, str]]) -> None:
+            super().__init__(dict_class(items))
+
+    proxy = Sub([("k", "1"), ("k", "2")])
+    assert list(proxy.items()) == [("k", "1"), ("k", "2")]
+    assert type(proxy.copy()) is dict_class
+
+
+@pytest.mark.parametrize(
+    ("dict_class_name", "proxy_class_name"),
+    (("MultiDict", "MultiDictProxy"), ("CIMultiDict", "CIMultiDictProxy")),
+)
+@pytest.mark.parametrize(
+    ("args", "kwargs"),
+    (((), {}), (({},), {}), ((), {"arg": None})),
+)
+def test_multidict_proxy_subclass_skips_super_init(
+    multidict_module: types.ModuleType,
+    dict_class_name: str,
+    proxy_class_name: str,
+    args: tuple[object, ...],
+    kwargs: dict[str, object],
+) -> None:
+    """A subclass whose __init__() never sets a target gets an empty one."""
+    proxy_class = getattr(multidict_module, proxy_class_name)
+
+    class Sub(proxy_class):  # type: ignore[valid-type, misc]
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+    proxy = Sub(*args, **kwargs)
+    assert len(proxy) == 0
+    assert "k" not in proxy
+    assert proxy.get("k") is None
+    assert type(proxy.copy()) is getattr(multidict_module, dict_class_name)
+
+
 @pytest.mark.c_extension
 @pytest.mark.parametrize("proxy_class_name", ("MultiDictProxy", "CIMultiDictProxy"))
 def test_create_multidict_proxy_rejects_kwargs(proxy_class_name: str) -> None:

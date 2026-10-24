@@ -1281,28 +1281,51 @@ multidict_proxy_tp_init(MultiDictProxyObject* self, PyObject* args,
 }
 
 /* Takes the target too, so that a proxy built by __new__() alone, without
-   __init__(), never forwards to a NULL multidict.  Cold: the proxy types
-   themselves are constructed through tp_vectorcall. */
+   __init__(), never forwards to a NULL multidict.  A subclass that overrides
+   __init__() may convert its arguments there, so it gets an empty multidict
+   instead of an error until its __init__() sets the target.  Cold: the
+   proxy types themselves are constructed through tp_vectorcall. */
 COLD static PyObject*
 _multidict_proxy_new(PyTypeObject* type, PyObject* args, PyObject* kwds,
-                     initproc init)
+                     initproc init, bool is_ci)
 {
     PyObject* self = type->tp_alloc(type, 0);
     if (self == NULL) {
         return NULL;
     }
-    if (init(self, args, kwds) < 0) {
-        Py_DECREF(self);
-        return NULL;
+    if (type->tp_init == init) {
+        if (init(self, args, kwds) < 0) {
+            goto fail;
+        }
+        return self;
     }
+    mod_state* state = get_mod_state_by_def(self);
+    PyObject* md = NULL;
+    if (PyTuple_GET_SIZE(args) == 1 && kwds == NULL) {
+        md = (PyObject*)multidict_proxy_target(
+            state, PyTuple_GET_ITEM(args, 0), is_ci);
+    }
+    if (md != NULL) {
+        Py_INCREF(md);
+    } else {
+        md = PyObject_CallNoArgs((PyObject*)(is_ci ? state->CIMultiDictType
+                                                   : state->MultiDictType));
+        if (md == NULL) {
+            goto fail;
+        }
+    }
+    ((MultiDictProxyObject*)self)->md = (MultiDictObject*)md;
     return self;
+fail:
+    Py_DECREF(self);
+    return NULL;
 }
 
 static PyObject*
 multidict_proxy_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     return _multidict_proxy_new(
-        type, args, kwds, (initproc)multidict_proxy_tp_init);
+        type, args, kwds, (initproc)multidict_proxy_tp_init, false);
 }
 
 /* tp_vectorcall is never inherited: `type` is MultiDictProxy or
@@ -1590,7 +1613,7 @@ static PyObject*
 cimultidict_proxy_tp_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     return _multidict_proxy_new(
-        type, args, kwds, (initproc)cimultidict_proxy_tp_init);
+        type, args, kwds, (initproc)cimultidict_proxy_tp_init, true);
 }
 
 PyDoc_STRVAR(cimultidict_proxy_doc,
