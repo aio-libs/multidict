@@ -14,6 +14,29 @@ Changelog
 
 .. towncrier release notes start
 
+7.2.1
+=====
+
+*(2026-10-24)*
+
+
+Bug fixes
+---------
+
+- Fixed a regression in 7.2.0 where a subclass of
+  :class:`~multidict.MultiDictProxy` or :class:`~multidict.CIMultiDictProxy`
+  that converted its argument in its own ``__init__()`` raised
+  :exc:`TypeError` before that ``__init__()`` ran; such a subclass got an
+  empty multidict until its ``__init__()`` set the proxied one
+  -- by :user:`asvetlov`.
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1824`, :issue:`1825`.
+
+
+----
+
+
 7.2.0
 =====
 
