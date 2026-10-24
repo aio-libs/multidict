@@ -135,7 +135,7 @@ Contributor-facing changes
   upload token -- by :user:`asvetlov`.
 
   *Related issues and pull requests on GitHub:*
-  :issue:`1768`.
+  :issue:`1768`, :issue:`1822`.
 
 - Changed the ``clear()`` benchmarks to clear a thousand prebuilt
   multidicts of 0 to 99 items each, copied outside the measured region,

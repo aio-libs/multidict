@@ -1199,7 +1199,8 @@ jobs:
         path: dist
     - name: Select this group's distributions
       # A byte-order sort puts every dist in the same group on each run, so
-      # re-running one group only ever touches its own share.
+      # re-running one group only ever touches its own share. The sdist
+      # goes first: the first group makes the Release, which reads it.
       id: group
       shell: bash
       env:
@@ -1210,7 +1211,8 @@ jobs:
         count=${GROUP##* of }
         shopt -s nullglob
         mapfile -t all < <(
-          printf '%s\n' dist/*.whl dist/*.tar.gz | LC_ALL=C sort
+          for f in dist/*.tar.gz; do echo "${f}"; done | LC_ALL=C sort
+          for f in dist/*.whl; do echo "${f}"; done | LC_ALL=C sort
         )
         i=0
         inputs=()
