@@ -1266,7 +1266,7 @@ _multidict_proxy_init(MultiDictProxyObject* self, PyObject* args,
     if (!PyArg_UnpackTuple(args, name, 0, 1, &arg)) {
         return -1;
     }
-    if (arg == NULL || kwds != NULL) {
+    if (arg == NULL || (kwds != NULL && PyDict_GET_SIZE(kwds) != 0)) {
         return _err_proxy_init_args(arg == NULL);
     }
     return _multidict_proxy_set_target(state, self, is_ci, arg);
@@ -1301,7 +1301,8 @@ _multidict_proxy_new(PyTypeObject* type, PyObject* args, PyObject* kwds,
     }
     mod_state* state = get_mod_state_by_def(self);
     PyObject* md = NULL;
-    if (PyTuple_GET_SIZE(args) == 1 && kwds == NULL) {
+    if (PyTuple_GET_SIZE(args) == 1 &&
+        (kwds == NULL || PyDict_GET_SIZE(kwds) == 0)) {
         md = (PyObject*)multidict_proxy_target(
             state, PyTuple_GET_ITEM(args, 0), is_ci);
     }

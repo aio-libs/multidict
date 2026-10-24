@@ -221,6 +221,29 @@ def test_new_multidict_proxy_without_init(
         assert "missing" not in proxy
 
 
+@pytest.mark.parametrize(
+    "override_init",
+    (
+        pytest.param(False, id="inherited-init"),
+        pytest.param(True, id="noop-init"),
+    ),
+)
+def test_multidict_proxy_subclass_empty_kwargs(
+    any_multidict_class: type[MultiDict[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+    override_init: bool,
+) -> None:
+    class Sub(any_multidict_proxy_class):  # type: ignore[valid-type, misc]
+        if override_init:
+
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                pass
+
+    d = any_multidict_class([("k", "1"), ("k", "2")])
+    proxy = Sub(d, **{})
+    assert list(proxy.items()) == [("k", "1"), ("k", "2")]
+
+
 def test_multidict_proxy_subclass_converts_arg_in_init(
     any_multidict_class: type[MultiDict[str]],
     any_multidict_proxy_class: type[MultiDictProxy[str]],
