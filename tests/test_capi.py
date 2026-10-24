@@ -261,7 +261,7 @@ def test_proxy_new_without_init(
     proxy_cls: type[multidict.MultiDictProxy[str]],
 ) -> None:
     with pytest.raises(TypeError, match="missing 1 required positional argument"):
-        proxy_cls.__new__(proxy_cls)  # type: ignore[call-arg]
+        proxy_cls.__new__(proxy_cls)
     md = dict_cls([("key", "value1"), ("key", "value2")])
     proxy = proxy_cls.__new__(proxy_cls, md)
     assert api.md_size(proxy) == 2

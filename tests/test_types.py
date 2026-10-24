@@ -5,6 +5,7 @@ import types
 import pytest
 
 import multidict
+from multidict import MultiDict, MultiDictProxy
 
 FREETHREADED = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
@@ -218,6 +219,69 @@ def test_new_multidict_proxy_without_init(
         assert list(proxy.items()) == [("k", "1"), ("k", "2")]
         assert "k" in proxy
         assert "missing" not in proxy
+
+
+@pytest.mark.parametrize(
+    "override_init",
+    (
+        pytest.param(False, id="inherited-init"),
+        pytest.param(True, id="noop-init"),
+    ),
+)
+def test_multidict_proxy_subclass_empty_kwargs(
+    any_multidict_class: type[MultiDict[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+    override_init: bool,
+) -> None:
+    class Sub(any_multidict_proxy_class):  # type: ignore[valid-type, misc]
+        if override_init:
+
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                pass
+
+    d = any_multidict_class([("k", "1"), ("k", "2")])
+    proxy = Sub(d, **{})
+    assert list(proxy.items()) == [("k", "1"), ("k", "2")]
+
+
+def test_multidict_proxy_subclass_converts_arg_in_init(
+    any_multidict_class: type[MultiDict[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+) -> None:
+    class Sub(any_multidict_proxy_class):  # type: ignore[valid-type, misc]
+        def __init__(self, items: list[tuple[str, str]]) -> None:
+            super().__init__(any_multidict_class(items))
+
+    proxy = Sub([("k", "1"), ("k", "2")])
+    assert list(proxy.items()) == [("k", "1"), ("k", "2")]
+    assert type(proxy.copy()) is any_multidict_class
+
+
+@pytest.mark.parametrize(
+    ("args", "kwargs"),
+    (
+        pytest.param((), {}, id="no-args"),
+        pytest.param(({},), {}, id="not-a-multidict"),
+        pytest.param((), {"arg": None}, id="kwarg"),
+    ),
+)
+def test_multidict_proxy_subclass_skips_super_init(
+    any_multidict_class: type[MultiDict[str]],
+    any_multidict_proxy_class: type[MultiDictProxy[str]],
+    args: tuple[object, ...],
+    kwargs: dict[str, object],
+) -> None:
+    """A subclass whose __init__() never sets a target gets an empty one."""
+
+    class Sub(any_multidict_proxy_class):  # type: ignore[valid-type, misc]
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+    proxy = Sub(*args, **kwargs)
+    assert len(proxy) == 0
+    assert "k" not in proxy
+    assert proxy.get("k") is None
+    assert type(proxy.copy()) is any_multidict_class
 
 
 @pytest.mark.c_extension
