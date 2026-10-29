@@ -159,14 +159,14 @@ jobs:
         - macos-latest
         tag:
         - ''
-        - 'musllinux'
+        - musllinux
         exclude:
         - runner-vm-os: windows-latest
-          tag: 'musllinux'
+          tag: musllinux
         - runner-vm-os: windows-11-arm
-          tag: 'musllinux'
+          tag: musllinux
         - runner-vm-os: macos-latest
-          tag: 'musllinux'
+          tag: musllinux
         # manylinux wheels are built by ``build-linux-wheels`` instead.
         - runner-vm-os: ubuntu-latest
           tag: ''
@@ -247,8 +247,8 @@ jobs:
         - 3.13
         - 3.12
         - 3.11
-        no-extensions: ['', 'Y']
-        debug: ['', 'Y']
+        no-extensions: ['', Y]
+        debug: ['', Y]
         exclude:
         - no-extensions: Y
           debug: Y
