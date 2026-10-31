@@ -52,9 +52,9 @@ These are the rules agents most often violate. Treat them as mandatory.
 
 ### 1. Use the aio-libs pull request template
 
-`multidict` follows the standard `aio-libs` PR template. Even though
-this repo does not ship its own `.github/PULL_REQUEST_TEMPLATE.md`,
-maintainers expect every PR body to follow the structure below.
+`multidict` follows the standard `aio-libs` PR template, shipped in
+[`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
+Maintainers expect every PR body to follow the structure below.
 Do not invent your own `## What / ## Why / ## How / ## Testing`
 layout; that is the marker that the PR was written by an agent
 without reading the conventions.
