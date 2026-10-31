@@ -76,6 +76,10 @@ body:
       1. Have certain environment
       2. Run given code snippet in a certain way
       3. See some behavior described
+
+      The chances of someone looking at your issue are *vastly*
+      improved if you provide complete code that can be copy/pasted
+      and executed directly in Python.
   validations:
     required: true
 
