@@ -324,8 +324,9 @@ def test_lookups_with_every_key_sort(compact: bool) -> None:
         assert probe in md
         assert md.get(probe) == 3
     assert md.get("K3") is None
+    assert ci.get(1) is None
     with pytest.raises(TypeError):
-        ci.get(1)
+        ci.get([1])
 
 
 def test_ci_lookups_race_a_move() -> None:

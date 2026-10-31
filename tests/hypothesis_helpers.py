@@ -84,7 +84,7 @@ class MultiDictModel:
 
     def __init__(
         self,
-        fold: Callable[[str], str],
+        fold: Callable[[object], object],
         pairs: Iterable[_Pair] = (),
     ) -> None:
         self._fold = fold
@@ -150,13 +150,13 @@ class MultiDictModel:
         return default
 
     def update(self, pairs: Iterable[_Pair]) -> None:
-        available: dict[str, deque[int]] = {}
+        available: dict[object, deque[int]] = {}
         for i, (k, _v) in enumerate(self.entries):
             available.setdefault(self._fold(k), deque()).append(i)
 
         overwritten: dict[int, _Pair] = {}
         appended: list[_Pair] = []
-        touched: set[str] = set()
+        touched: set[object] = set()
         for k, v in pairs:
             folded = self._fold(k)
             touched.add(folded)

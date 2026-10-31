@@ -461,6 +461,40 @@ CIMultiDictProxy
    The class is inherited from :class:`MultiDictProxy`.
 
 
+Keys of other types
+===================
+
+A key does not have to be a :class:`str`: any hashable object is
+accepted, and it matches the keys equal to it, compared by
+:meth:`~object.__hash__` and :meth:`~object.__eq__` the way a
+:class:`dict` key is::
+
+   >>> d = MultiDict([(1, 'int'), ('1', 'str')])
+   >>> d.add(1.0, 'float')
+   >>> d.getall(1)
+   ['int', 'float']
+
+:class:`CIMultiDict` folds the case of :class:`str` keys only; any other
+key, :class:`bytes` among them, is compared as it is::
+
+   >>> d = CIMultiDict([('Key', 'str'), (b'Key', 'bytes')])
+   >>> d['KEY'], d[b'Key']
+   ('str', 'bytes')
+   >>> b'KEY' in d
+   False
+
+An unhashable key raises :exc:`TypeError`, as it does for a :class:`dict`.
+
+Lookups are fastest while every key is a :class:`str`: the first key of
+another type moves the multidict to a slower table, which it keeps until
+:meth:`~MultiDict.clear` empties it.
+
+.. versionchanged:: 7.2
+
+   Keys of types other than :class:`str` are accepted; they used to
+   raise :exc:`TypeError`.
+
+
 Version
 =======
 
@@ -606,7 +640,8 @@ by default.
 :class:`CIMultiDictProxy` are *generic* types; please use the corresponding notation for
 multidict value types, e.g. ``md: MultiDict[str] = MultiDict()``.
 
-The type of multidict keys is always :class:`str` or a class derived from a string.
+The annotations describe :class:`str` keys only, though a key can be any
+hashable object at run time; see `Keys of other types`_.
 
 .. versionadded:: 3.7
 

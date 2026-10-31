@@ -309,6 +309,10 @@ _multidict_itemsview_parse_item(_Multidict_ViewObject* self, PyObject* arg,
 
     *pidentity = md_calc_identity(self->md, key);
     Py_DECREF(key);
+    // an unhashable key is no item of md, as in the pure Python version
+    if (*pidentity != NULL && UNLIKELY(identity_hash(*pidentity) == -1)) {
+        Py_CLEAR(*pidentity);
+    }
     if (UNLIKELY(*pidentity == NULL)) {
         if (pkey != NULL) {
             Py_CLEAR(*pkey);
@@ -706,6 +710,10 @@ _multidict_itemsview_contains_impl(_Multidict_ViewObject* self, PyObject* obj)
     }
 
     identity = md_calc_identity(self->md, key);
+    // an unhashable key is no item of md, as in the pure Python version
+    if (identity != NULL && UNLIKELY(identity_hash(identity) == -1)) {
+        Py_CLEAR(identity);
+    }
     if (UNLIKELY(identity == NULL)) {
         if (!PyErr_ExceptionMatches(PyExc_TypeError)) {
             ret = -1;  // propagate MemoryError / KeyboardInterrupt / etc.
@@ -880,10 +888,6 @@ _keysview_filter(_Multidict_ViewObject* self, PyObject* other, bool reflected,
         goto fail;
     }
     while ((st = PyIter_NextItem(iter, &key)) > 0) {
-        if (!PyUnicode_Check(key)) {
-            Py_DECREF(key);
-            continue;
-        }
         int found = reflected ? _keysview_has(self->md, key)
                               : md_find_key(self->md, key, &own);
         if (UNLIKELY(found < 0)) {
@@ -940,7 +944,6 @@ _keysview_or_lft(_Multidict_ViewObject* self, PyObject* other)
         goto fail;
     }
     while ((st = PyIter_NextItem(iter, &key)) > 0) {
-        // _keysview_has() answers 0 for a key that is not a str
         int tmp = _keysview_has(self->md, key);
         if (UNLIKELY(tmp < 0)) {
             goto fail;
@@ -1007,10 +1010,6 @@ _keysview_or_rht(_Multidict_ViewObject* self, PyObject* other)
         goto fail;
     }
     while ((st = PyIter_NextItem(iter, &key)) > 0) {
-        if (!PyUnicode_Check(key)) {
-            Py_DECREF(key);
-            continue;
-        }
         identity = md_calc_identity(self->md, key);
         if (UNLIKELY(identity == NULL)) {
             goto fail;
