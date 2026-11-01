@@ -385,8 +385,16 @@ class TestMutableMultiDict:
         case_sensitive_multidict_class: type[MultiDict[str]],
     ) -> None:
         d = case_sensitive_multidict_class()
+        d[1] = "val"  # type: ignore[index]
+        assert d[1] == "val"  # type: ignore[index]
+
+    def test_unhashable_key(
+        self,
+        case_sensitive_multidict_class: type[MultiDict[str]],
+    ) -> None:
+        d = case_sensitive_multidict_class()
         with pytest.raises(TypeError):
-            d[1] = "val"  # type: ignore[index]
+            d[[1]] = "val"  # type: ignore[index]
 
     def test_istr_key(
         self,
@@ -1055,7 +1063,7 @@ class TestCIMutableMultiDict:
     ) -> None:
         d = case_insensitive_multidict_class([("a", "a"), ("b", "b")])
         with pytest.raises(TypeError):
-            lst = [("c", "c"), ("a", "a2"), (1, "b2")]
+            lst = [("c", "c"), ("a", "a2"), ([1], "b2")]
             d.update(lst)  # type: ignore[arg-type]
 
         assert [("a", "a2"), ("b", "b"), ("c", "c")] == list(d.items())

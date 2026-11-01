@@ -22,6 +22,7 @@ extern "C" {
 #include "identity.h"
 #include "istr.h"
 #include "reflist.h"
+#include "resolve.h"
 #include "state.h"
 #include "str_cmp.h"
 #include "update_marks.h"
@@ -30,18 +31,33 @@ extern "C" {
 
 #define MD_POOLS(md) ((md)->state->htkeys_pools)
 
-/* Whether a compact table of md can hold `key`: a MultiDict's key must be
-   its own identity, a CIMultiDict's an exact istr, whose identity is then
-   its canonical form. */
+/* Whether a compact table of md can hold `key`, a str: a MultiDict's key
+   must be its own identity, a CIMultiDict's an exact istr, whose identity
+   is then its canonical form. */
 static inline bool
 md_key_fits(const MultiDictObject* md, PyObject* key, PyObject* identity)
 {
     if (md->is_ci) {
-        assert(!IStr_CheckExact(md->state, key) ||
-               istr_canonical(key) == identity);
         return IStr_CheckExact(md->state, key);
     }
     return key == identity;
+}
+
+/* The first kind of table that can hold `key`, whose identity, computed
+   from it, is `identity`: a compact one a MultiDict's exact str, its own
+   identity, or a CIMultiDict's exact istr, whose identity is then its
+   canonical form; KIND_ANYSTR any other str; KIND_GENERAL anything. */
+static inline uint8_t
+md_key_need(const MultiDictObject* md, PyObject* key, PyObject* identity)
+{
+    if (md->is_ci) {
+        if (IStr_CheckExact(md->state, key)) {
+            return KIND_COMPACT;
+        }
+    } else if (key == identity) {
+        return PyUnicode_CheckExact(key) ? KIND_COMPACT : KIND_GENERAL;
+    }
+    return PyUnicode_Check(key) ? KIND_ANYSTR : KIND_GENERAL;
 }
 
 /*
@@ -564,6 +580,14 @@ _md_copy_live(htkeys_t* dst, const htkeys_t* src)
     return out - first;
 }
 
+/* Gives every live entry of `keys`, a KIND_GENERAL table just built from
+   a table of str identities and indexed, the identity object of the first
+   entry equal to it, as the kind requires. Those identities are exact
+   str, so nothing here runs Python code; `dups` is the source table's
+   maybe_dups, without which no two of them are equal. */
+COLD static void
+htkeys_intern(htkeys_t* keys, bool dups);
+
 /* Publishes newkeys, a KIND_COMPACT table whose first `filled` entries
    hold all of md's and nothing else. */
 static void
@@ -582,10 +606,11 @@ _md_publish_compacted_compact(MultiDictObject* md, htkeys_t* oldkeys,
     _md_publish_rebuilt(md, oldkeys, newkeys);
 }
 
-/* The same for a KIND_ANYSTR table. */
+/* The same for a KIND_ANYSTR or KIND_GENERAL table; `intern` when the
+   entries came from a table of another kind (see htkeys_intern()). */
 static void
 _md_publish_compacted_anystr(MultiDictObject* md, htkeys_t* oldkeys,
-                             htkeys_t* newkeys, Py_ssize_t filled)
+                             htkeys_t* newkeys, Py_ssize_t filled, bool intern)
 {
     assert(filled == md->used);
     assert(!kind_is_compact(newkeys->kind));
@@ -593,6 +618,9 @@ _md_publish_compacted_anystr(MultiDictObject* md, htkeys_t* oldkeys,
     htkeys_build_anystr_indices(newkeys, filled, false);
     newkeys->usable -= filled;
     newkeys->nentries = filled;
+    if (UNLIKELY(intern)) {
+        htkeys_intern(newkeys, oldkeys->maybe_dups);
+    }
     _md_publish_rebuilt(md, oldkeys, newkeys);
 }
 
@@ -632,7 +660,7 @@ _md_rebuild(MultiDictObject* md, uint8_t log2_newsize)
     if (kind_is_compact(kind)) {
         _md_publish_compacted_compact(md, oldkeys, newkeys, filled);
     } else {
-        _md_publish_compacted_anystr(md, oldkeys, newkeys, filled);
+        _md_publish_compacted_anystr(md, oldkeys, newkeys, filled, false);
     }
     return 0;
 }
@@ -664,50 +692,64 @@ md_reserve(MultiDictObject* md, Py_ssize_t extra_size)
         dst->base.value = src->value;                               \
     }
 
-/* md_reserve() into a KIND_ANYSTR table: grows and moves a compact table
-   in one rebuild, where md_reserve() and then md_to_anystr() would copy
-   it twice. Holes are dropped, so with a batch in flight there must be
+/* md_reserve() into a table of a later `kind`: grows and moves md's table
+   in one rebuild, where md_reserve() and then md_to_kind() would copy it
+   twice. Holes are dropped, so with a batch in flight there must be
    none. */
 static int
-_md_rebuild_to_anystr(MultiDictObject* md, uint8_t log2_newsize)
+_md_rebuild_to_kind(MultiDictObject* md, uint8_t log2_newsize, uint8_t kind)
 {
     htkeys_t* oldkeys = md->keys;
     assert(md->batches == 0 || oldkeys->nentries == md->used);
-    assert(kind_is_compact(oldkeys->kind) || oldkeys->nentries == 0);
+    assert(kind != KIND_COMPACT);
+    assert(oldkeys->kind < kind || oldkeys->nentries == 0);
     if (UNLIKELY(!htkeys_size_fits(log2_newsize))) {
         PyErr_NoMemory();
         return -1;
     }
-    htkeys_t* newkeys =
-        htkeys_new_unfilled(MD_POOLS(md), log2_newsize, KIND_ANYSTR);
+    htkeys_t* newkeys = htkeys_new_unfilled(MD_POOLS(md), log2_newsize, kind);
     if (UNLIKELY(newkeys == NULL)) {
         return -1;
     }
-    entry_t* oldentries = HTKEYS_COMPACT_ENTRIES(oldkeys);
-    anystr_entry_t* newentries = HTKEYS_ANYSTR_ENTRIES(newkeys);
     Py_ssize_t filled = 0;
-    if (md->is_ci) {
-        _MD_REBUILD_TO_ANYSTR_LOOP(ci);
+    if (kind_is_compact(oldkeys->kind)) {
+        entry_t* oldentries = HTKEYS_COMPACT_ENTRIES(oldkeys);
+        anystr_entry_t* newentries = HTKEYS_ANYSTR_ENTRIES(newkeys);
+        if (md->is_ci) {
+            _MD_REBUILD_TO_ANYSTR_LOOP(ci);
+        } else {
+            _MD_REBUILD_TO_ANYSTR_LOOP(cs);
+        }
     } else {
-        _MD_REBUILD_TO_ANYSTR_LOOP(cs);
+        /* Not through _md_copy_live(), which a second caller would keep
+           out of line in _md_rebuild(). */
+        anystr_entry_t* out = HTKEYS_ANYSTR_ENTRIES(newkeys);
+        anystr_entry_t* ep = HTKEYS_ANYSTR_ENTRIES(oldkeys);
+        for (anystr_entry_t* end = ep + oldkeys->nentries; ep < end; ep++) {
+            if (!entry_is_hole((const entry_t*)ep)) {
+                *out++ = *ep;
+            }
+        }
+        filled = out - HTKEYS_ANYSTR_ENTRIES(newkeys);
     }
-    _md_publish_compacted_anystr(md, oldkeys, newkeys, filled);
+    _md_publish_compacted_anystr(
+        md, oldkeys, newkeys, filled, kind == KIND_GENERAL);
     return 0;
 }
 
 #undef _MD_REBUILD_TO_ANYSTR_LOOP
 
-/* _md_rebuild() for an add of a key that fits a compact table or not:
-   one that does not moves md to KIND_ANYSTR in the same rebuild. A table
-   with no entries counts as compact, since _md_rebuild() would restart
-   it so. */
+/* _md_rebuild() for an add of a key that needs a table of kind `need`
+   (see md_key_need()): one md's does not have moves md to it in the same
+   rebuild. A table with no entries counts as compact, since _md_rebuild()
+   would restart it so. */
 static int
-_md_grow_for_add(MultiDictObject* md, uint8_t log2_newsize, bool fits)
+_md_grow_for_add(MultiDictObject* md, uint8_t log2_newsize, uint8_t need)
 {
     htkeys_t* keys = md->keys;
-    if (!fits && (keys->nentries == 0 || kind_is_compact(keys->kind)) &&
+    if (need != KIND_COMPACT && (keys->nentries == 0 || keys->kind < need) &&
         (md->batches == 0 || keys->nentries == md->used)) {
-        return _md_rebuild_to_anystr(md, log2_newsize);
+        return _md_rebuild_to_kind(md, log2_newsize, need);
     }
     return _md_rebuild(md, log2_newsize);
 }
@@ -728,8 +770,8 @@ md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs,
 {
     if (UNLIKELY(kwargs) && md->is_ci && kind_is_compact(md->keys->kind) &&
         md->used > 0 && md->batches == 0) {
-        return _md_rebuild_to_anystr(
-            md, estimate_log2_keysize(extra_size + md->used));
+        return _md_rebuild_to_kind(
+            md, estimate_log2_keysize(extra_size + md->used), KIND_ANYSTR);
     }
     if (overlap && md->keys->nentries == md->used &&
         md->keys->nentries + md->keys->usable >= extra_size) {
@@ -806,8 +848,10 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused, uint8_t kind)
 static uint8_t
 md_ci_kind_for_first_key(mod_state* state, PyObject* key)
 {
-    return key == NULL || IStr_CheckExact(state, key) ? KIND_COMPACT
-                                                      : KIND_ANYSTR;
+    if (key == NULL || IStr_CheckExact(state, key)) {
+        return KIND_COMPACT;
+    }
+    return PyUnicode_Check(key) ? KIND_ANYSTR : KIND_GENERAL;
 }
 
 /* md_clone_from_ht() while an update() or merge() on md is in flight:
@@ -816,13 +860,16 @@ COLD static int
 _md_clone_after_holes(MultiDictObject* md, MultiDictObject* other)
 {
     bool other_ci = other->is_ci;
+    htkeys_t* src_keys = other->keys;
     // the holes keep md's entries' indices; other's entries may need more
-    htkeys_t* keys = _md_new_keys_after_holes(md, other->used, KIND_ANYSTR);
+    htkeys_t* keys = _md_new_keys_after_holes(
+        md,
+        other->used,
+        src_keys->kind == KIND_GENERAL ? KIND_GENERAL : KIND_ANYSTR);
     if (UNLIKELY(keys == NULL)) {
         return -1;
     }
     anystr_entry_t* dst = HTKEYS_ANYSTR_ENTRIES(keys) + keys->nentries;
-    htkeys_t* src_keys = other->keys;
     if (kind_is_compact(src_keys->kind) && other_ci) {
         entry_t* src = HTKEYS_COMPACT_ENTRIES(src_keys);
         for (entry_t* end = src + src_keys->nentries; src < end; src++) {
@@ -941,6 +988,8 @@ _md_is_first_key_probe(htkeys_t* keys, bool ci, Py_hash_t hash,
                        PyObject* identity, Py_ssize_t index, Py_ssize_t first)
 {
     bool compact = kind_is_compact(keys->kind);
+    // a KIND_GENERAL table's equal keys share their identity object
+    bool general = keys->kind == KIND_GENERAL;
     htkeysiter_t iter = {.keys = keys,
                          .mask = (size_t)_htkeys_mask(keys),
                          .perturb = (size_t)hash,
@@ -965,7 +1014,7 @@ _md_is_first_key_probe(htkeys_t* keys, bool ci, Py_hash_t hash,
             other = e->identity;
         }
         if (other_hash == hash &&
-            (other == identity || str_cmp(identity, other))) {
+            (other == identity || (!general && str_cmp(identity, other)))) {
             return false;
         }
     }
@@ -1047,28 +1096,32 @@ md_keys_len(MultiDictObject* md)
         }                                                               \
     }
 
-/* Moves md to a KIND_ANYSTR table of the same size, for a key that does
-   not fit a compact one (see md_key_fits()). Every entry keeps its index,
-   so iterators and an update()'s marks stay valid. */
+/* Moves md to a table of the same size of a later `kind`, for a key that
+   md's does not hold (see md_key_need()). Every entry keeps its index, so
+   iterators and an update()'s marks stay valid. */
 COLD static int
-md_to_anystr(MultiDictObject* md)
+md_to_kind(MultiDictObject* md, uint8_t kind)
 {
     htkeys_t* oldkeys = md->keys;
-    assert(kind_is_compact(oldkeys->kind) && oldkeys != &empty_htkeys);
+    assert(oldkeys->kind < kind && oldkeys != &empty_htkeys);
     htkeys_t* newkeys =
-        htkeys_new_unfilled(MD_POOLS(md), oldkeys->log2_size, KIND_ANYSTR);
+        htkeys_new_unfilled(MD_POOLS(md), oldkeys->log2_size, kind);
     if (UNLIKELY(newkeys == NULL)) {
         return -1;
     }
     memcpy(newkeys->indices,
            oldkeys->indices,
            (size_t)1 << oldkeys->log2_index_bytes);
-    entry_t* oldentries = HTKEYS_COMPACT_ENTRIES(oldkeys);
-    anystr_entry_t* newentries = HTKEYS_ANYSTR_ENTRIES(newkeys);
-    if (md->is_ci) {
-        _MD_TO_ANYSTR_LOOP(ci);
+    if (kind_is_compact(oldkeys->kind)) {
+        entry_t* oldentries = HTKEYS_COMPACT_ENTRIES(oldkeys);
+        anystr_entry_t* newentries = HTKEYS_ANYSTR_ENTRIES(newkeys);
+        if (md->is_ci) {
+            _MD_TO_ANYSTR_LOOP(ci);
+        } else {
+            _MD_TO_ANYSTR_LOOP(cs);
+        }
     } else {
-        _MD_TO_ANYSTR_LOOP(cs);
+        htkeys_entries_copy(newkeys, oldkeys, oldkeys->nentries);
     }
     htkeys_zero_entries(newkeys, oldkeys->nentries);
     newkeys->nentries = oldkeys->nentries;
@@ -1076,6 +1129,9 @@ md_to_anystr(MultiDictObject* md)
     /* Kept, not checked again: an insert can run this after noting that
        its own, not yet stored, entry repeats a key. */
     uint8_t maybe_dups = oldkeys->maybe_dups;
+    if (kind == KIND_GENERAL) {
+        htkeys_intern(newkeys, maybe_dups);
+    }
     _md_publish_rebuilt(md, oldkeys, newkeys);
     newkeys->maybe_dups = maybe_dups;
     return 0;
@@ -1088,32 +1144,85 @@ md_to_anystr(MultiDictObject* md)
 #define MD_SLOT_CHECK ((Py_ssize_t) - 1)
 #define MD_SLOT_FIND ((Py_ssize_t) - 2)
 
-/* Whether md's table must change before an add: it is full, or it is
-   compact and the key does not fit. */
+/* Whether md's table must change before an add: it is full, or it cannot
+   hold the key, which needs a table of kind `need`, or it is KIND_GENERAL,
+   whose new entries take the identity object of an equal key's. */
 static inline bool
-_md_add_needs_new_table(MultiDictObject* md, Py_ssize_t room, bool fits)
+_md_add_needs_new_table(MultiDictObject* md, Py_ssize_t room, uint8_t need)
 {
     htkeys_t* keys = md->keys;
     return keys->usable <= room || keys == &empty_htkeys ||
-           (UNLIKELY(!fits) && kind_is_compact(keys->kind));
+           UNLIKELY(keys->kind < need) || UNLIKELY(keys->kind == KIND_GENERAL);
 }
 
-/* Makes room in md's table for one more entry, of a key that fits a
-   compact table or not, in one rebuild where both are due. */
-COLD static int
-_md_prepare_add(MultiDictObject* md, bool fits)
+/* What _md_prepare_add() leaves an add with, by value so the caller's
+   identity stays in a register: the identity to store, which takes over
+   the reference passed in, and the insert's slot, MD_SLOT_ERROR on
+   error, when the identity is still the one passed in. */
+typedef struct {
+    PyObject* identity;
+    Py_ssize_t slot;
+} prepared_t;
+
+#define MD_SLOT_ERROR ((Py_ssize_t) - 4)
+
+/* Makes room in md's table for one more entry, of a key that needs a
+   table of kind `need`, in one rebuild where both are due. A KIND_GENERAL
+   table then has `identity`, a new reference, swapped for the identity it
+   holds for an equal key, if any, which runs __eq__ and so starts over
+   when that changes md; its insert notes duplicates whatever the caller
+   found. */
+COLD static prepared_t
+_md_prepare_add(MultiDictObject* md, uint8_t need, PyObject* identity,
+                Py_hash_t hash, Py_ssize_t slot)
 {
-    htkeys_t* keys = md->keys;
-    if (keys->usable <= 0 || keys == &empty_htkeys) {
-        uint8_t log2_newsize = calculate_log2_keysize(GROWTH_RATE(md));
-        if (UNLIKELY(_md_grow_for_add(md, log2_newsize, fits) < 0)) {
-            return -1;
+    PyObject* passed = identity;
+    prepared_t ret = {identity, MD_SLOT_ERROR};
+    for (;;) {
+        htkeys_t* keys = md->keys;
+        if (keys->usable <= 0 || keys == &empty_htkeys) {
+            uint8_t log2_newsize = calculate_log2_keysize(GROWTH_RATE(md));
+            if (UNLIKELY(_md_grow_for_add(md, log2_newsize, need) < 0)) {
+                break;
+            }
+        }
+        if (md->keys->kind < need && UNLIKELY(md_to_kind(md, need) < 0)) {
+            break;
+        }
+        if (md->keys->kind != KIND_GENERAL) {
+            ret.slot = slot;
+            break;
+        }
+        uint64_t version = md->version;
+        bool err = false;
+        PyObject* found = md_resolve(md, passed, hash, &err);
+        if (UNLIKELY(err)) {
+            break;
+        }
+        PyObject* held = found != NULL ? found : passed;
+        if (held != ret.identity) {
+            if (ret.identity != passed) {
+                Py_DECREF(ret.identity);
+            }
+            ret.identity = held == passed ? passed : Py_NewRef(held);
+        }
+        if (md->version == version) {
+            ret.slot = MD_SLOT_CHECK;
+            break;
         }
     }
-    if (!fits && kind_is_compact(md->keys->kind)) {
-        return md_to_anystr(md);
+    /* The identity passed in gives way only on success, so a failure
+       leaves the caller's reference as it was. The key holds it if it is
+       no str, and a str one is exact: freeing it runs no code. */
+    if (ret.identity != passed) {
+        if (ret.slot == MD_SLOT_ERROR) {
+            Py_DECREF(ret.identity);
+            ret.identity = passed;
+        } else {
+            Py_DECREF(passed);
+        }
     }
-    return 0;
+    return ret;
 }
 
 /* Stores a new entry at the end of md's table, which _md_prepare_add()
@@ -1133,8 +1242,8 @@ _md_store_new_entry(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
         slot == MD_SLOT_CHECK
             ? htkeys_find_empty_slot_noting_dups(keys, hash, md->is_ci)
             : htkeys_find_empty_slot(keys, hash);
+    assert(keys->kind >= md_key_need(md, key, identity));
     if (kind_is_compact(keys->kind)) {
-        assert(md_key_fits(md, key, identity));
         entry_t* entry = HTKEYS_COMPACT_ENTRIES(keys) + keys->nentries;
         assert(entry->key == NULL && entry->value == NULL);
         mark_shared(key);
@@ -1176,12 +1285,15 @@ _md_add_stored(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
 static int
 md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
                             PyObject* identity, PyObject* key, PyObject* value,
-                            bool fits, Py_ssize_t slot)
+                            uint8_t need, Py_ssize_t slot)
 {
-    assert(fits == md_key_fits(md, key, identity));
-    if (_md_add_needs_new_table(md, 0, fits) &&
-        UNLIKELY(_md_prepare_add(md, fits) < 0)) {
-        return -1;
+    if (_md_add_needs_new_table(md, 0, need)) {
+        prepared_t prepared = _md_prepare_add(md, need, identity, hash, slot);
+        if (UNLIKELY(prepared.slot == MD_SLOT_ERROR)) {
+            return -1;
+        }
+        identity = prepared.identity;
+        slot = prepared.slot;
     }
     _md_add_stored(md, hash, identity, key, value, slot);
     return 0;
@@ -1189,49 +1301,62 @@ md_add_with_hash_steal_refs(MultiDictObject* md, Py_hash_t hash,
 
 static int
 md_add_with_hash(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
-                 PyObject* key, PyObject* value, bool fits, Py_ssize_t slot)
+                 PyObject* key, PyObject* value, uint8_t need, Py_ssize_t slot)
 {
-    assert(fits == md_key_fits(md, key, identity));
-    if (_md_add_needs_new_table(md, 0, fits) &&
-        UNLIKELY(_md_prepare_add(md, fits) < 0)) {
-        return -1;
+    Py_INCREF(identity);
+    if (_md_add_needs_new_table(md, 0, need)) {
+        prepared_t prepared = _md_prepare_add(md, need, identity, hash, slot);
+        if (UNLIKELY(prepared.slot == MD_SLOT_ERROR)) {
+            Py_DECREF(identity);
+            return -1;
+        }
+        identity = prepared.identity;
+        slot = prepared.slot;
     }
-    _md_add_stored(
-        md, hash, Py_NewRef(identity), Py_NewRef(key), Py_NewRef(value), slot);
+    _md_add_stored(md, hash, identity, Py_NewRef(key), Py_NewRef(value), slot);
     return 0;
 }
 
 /* _md_prepare_add() for a batch's add: on the first add that is short of
    the room update_marks_init() asked for, all of it. */
-static int
-_md_prepare_add_for_upd(MultiDictObject* md, update_marks_t* marks, bool fits)
+static prepared_t
+_md_prepare_add_for_upd(MultiDictObject* md, update_marks_t* marks,
+                        uint8_t need, PyObject* identity, Py_hash_t hash,
+                        Py_ssize_t slot)
 {
     Py_ssize_t extra = marks->reserve;
     marks->reserve = 0;
     if (extra > 0 && md->keys->usable < extra &&
         UNLIKELY(_md_grow_for_add(
-                     md, estimate_log2_keysize(extra + md->used), fits) < 0)) {
-        return -1;
+                     md, estimate_log2_keysize(extra + md->used), need) < 0)) {
+        prepared_t ret = {identity, MD_SLOT_ERROR};
+        return ret;
     }
-    if (UNLIKELY(_md_prepare_add(md, fits) < 0)) {
-        return -1;
+    prepared_t ret = _md_prepare_add(md, need, identity, hash, slot);
+    if (ret.slot != MD_SLOT_ERROR &&
+        UNLIKELY(update_marks_sync(marks, md) < 0)) {
+        ret.slot = MD_SLOT_ERROR;
     }
-    return update_marks_sync(marks, md);
+    return ret;
 }
 
 static int
 md_add_for_upd(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
                PyObject* key, PyObject* value, update_marks_t* marks,
-               bool fits, Py_ssize_t slot)
+               uint8_t need, Py_ssize_t slot)
 {
-    assert(fits == md_key_fits(md, key, identity));
     Py_INCREF(identity);
     Py_INCREF(key);
     Py_INCREF(value);
     // a reserve still pending is no more than the room left
-    if (_md_add_needs_new_table(md, marks->reserve, fits) &&
-        UNLIKELY(_md_prepare_add_for_upd(md, marks, fits) < 0)) {
-        goto fail;
+    if (_md_add_needs_new_table(md, marks->reserve, need)) {
+        prepared_t prepared =
+            _md_prepare_add_for_upd(md, marks, need, identity, hash, slot);
+        identity = prepared.identity;
+        slot = prepared.slot;
+        if (UNLIKELY(slot == MD_SLOT_ERROR)) {
+            goto fail;
+        }
     }
     if (UNLIKELY(bitmap_set(&marks->updated, md->keys->nentries) < 0)) {
         goto fail;
@@ -1265,13 +1390,13 @@ md_add(MultiDictObject* md, PyObject* key, PyObject* value)
         return -1;
     }
     int ret = -1;
-    Py_hash_t hash = unicode_hash(identity);
+    Py_hash_t hash = identity_hash(identity);
     if (hash != -1) {
-        bool fits = md_key_fits(md, key, identity);
+        uint8_t need = md_key_need(md, key, identity);
         bool flush;
         Py_BEGIN_CRITICAL_SECTION(md);
         ret = md_add_with_hash(
-            md, hash, identity, key, value, fits, MD_SLOT_CHECK);
+            md, hash, identity, key, value, need, MD_SLOT_CHECK);
         ASSERT_CONSISTENT(md);
         flush = MD_WATCH_PENDING(md);
         Py_END_CRITICAL_SECTION();
@@ -1398,6 +1523,17 @@ _removed_pairs_spill(removed_pairs_t* removed, PyObject* key, PyObject* value)
     return reflist_push2(&removed->more, key, value);
 }
 
+/* Holds one more object, such as a KIND_GENERAL identity, in `more`. */
+COLD static int
+_removed_pairs_hold(removed_pairs_t* removed, PyObject* obj)
+{
+    if (!removed->spilled) {
+        reflist_init(&removed->more);
+        removed->spilled = true;
+    }
+    return reflist_push(&removed->more, obj);
+}
+
 static inline int
 _removed_pairs_add(removed_pairs_t* removed, PyObject* key, PyObject* value)
 {
@@ -1447,6 +1583,32 @@ _md_del_at_held_anystr(MultiDictObject* md, htkeys_t* keys, size_t slot,
     return _removed_pairs_add(removed, key, value);
 }
 
+/* The same for a KIND_GENERAL table, whose identity can be any object
+   other entries share, so it is released with the pair unless the key is
+   what holds it. */
+static inline int
+_md_del_at_held_general(MultiDictObject* md, htkeys_t* keys, size_t slot,
+                        anystr_entry_t* entry, removed_pairs_t* removed)
+{
+    assert(keys == md->keys && keys->kind == KIND_GENERAL);
+    PyObject* identity = load_anystr_identity(entry);
+    PyObject* key = entry->base.key;
+    reset_anystr_identity(entry);
+    entry->base.key = NULL;
+    PyObject* value = load_value(&entry->base);
+    reset_value(&entry->base);
+    HTKEYS_SET_INDEX(keys, keys->log2_size, (Py_ssize_t)slot, DKIX_DUMMY);
+    add_used(md, -1);
+
+    int ret = _removed_pairs_add(removed, key, value);
+    if (identity == key) {
+        Py_DECREF(identity);
+    } else if (UNLIKELY(_removed_pairs_hold(removed, identity) < 0)) {
+        ret = -1;
+    }
+    return ret;
+}
+
 /* Tells the watcher of the match of _md_del_locked() in `entry`; `first`
    is whether it is the first one. The watcher hears of it under the
    probe's identity, equal to the entry's. */
@@ -1467,6 +1629,10 @@ _md_del_record(MultiDictObject* md, entry_t* entry, PyObject* identity,
                         NULL);
     }
 }
+
+COLD static int
+md_del_general(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+               removed_pairs_t* removed, bool watched);
 
 /* Caller holds md's critical section. Returns 1 if anything was removed,
  * 0 if not, -1 on error; md_del() raises the KeyError outside the section.
@@ -1518,7 +1684,7 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                 }
             }
         }
-    } else {
+    } else if (keys->kind == KIND_ANYSTR) {
         entry_t* entry = NULL;
         for (;;) {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
@@ -1533,6 +1699,8 @@ _md_del_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                 break;  // on error, or past the key's only entry
             }
         }
+    } else {
+        return md_del_general(md, identity, hash, removed, watched);
     }
 
     if (found) {
@@ -1557,7 +1725,7 @@ md_del(MultiDictObject* md, PyObject* key)
     if (UNLIKELY(identity == NULL)) {
         return -1;
     }
-    Py_hash_t hash = unicode_hash(identity);
+    Py_hash_t hash = identity_hash(identity);
     if (UNLIKELY(hash == -1)) {
         md_identity_release(md, key, identity);
         return -1;
@@ -1570,7 +1738,11 @@ md_del(MultiDictObject* md, PyObject* key)
        flush; a mutation that __del__ makes flushes its own records. */
     bool flush = false;
     Py_BEGIN_CRITICAL_SECTION(md);
-    if (UNLIKELY(md->watch != NULL)) {
+    if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+        found =
+            md_del_general(md, identity, hash, &removed, md->watch != NULL);
+        flush = MD_WATCH_PENDING(md);
+    } else if (UNLIKELY(md->watch != NULL)) {
         found = _md_del_locked(md, identity, hash, &removed, true);
         flush = MD_WATCH_PENDING(md);
     } else {
@@ -1590,6 +1762,11 @@ md_del(MultiDictObject* md, PyObject* key)
     return ret;
 }
 
+/* What a lookup returns, with no value, that must be done again by its
+   md_*_general() function: in a KIND_GENERAL table, or for a key that is
+   no str. */
+#define MD_LOOKUP_GENERAL 3
+
 static int
 _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                     PyObject** pret)
@@ -1599,7 +1776,8 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
+    HTKEYSITER_FIND_FIRST(
+        &iter, ci, identity, hash, entry, return MD_LOOKUP_GENERAL);
     if (entry != NULL) {
         if (pret != NULL) {
             *pret = md_ensure_key(md, entry);
@@ -1614,6 +1792,16 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     }
     return 0;
 }
+
+/* md_find_key() for a KIND_GENERAL table, or a key that is no str, with
+   its identity and hash computed. */
+COLD static int
+md_contains_general(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                    PyObject** pret);
+
+// md_contains() for the same
+COLD static int
+md_contains_general_key(MultiDictObject* md, PyObject* key);
 
 #ifdef Py_GIL_DISABLED
 
@@ -1741,11 +1929,16 @@ _md_lockfree_find_anystr(htkeysiter_t* iter, PyObject* identity,
     return 0;
 }
 
+/* -1, so the lock, for a KIND_GENERAL table, whose probe must be resolved
+   first; `identity` is an exact str. */
 static inline int
 _md_lockfree_find(htkeysiter_t* iter, bool ci, PyObject* probe,
                   PyObject* identity, Py_hash_t hash, entry_t** pentry)
 {
     if (!kind_is_compact(iter->keys->kind)) {
+        if (UNLIKELY(iter->keys->kind == KIND_GENERAL)) {
+            return -1;
+        }
         return _md_lockfree_find_anystr(iter, identity, hash, pentry);
     }
     if (ci) {
@@ -1799,7 +1992,8 @@ _md_contains_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
     entry_t* entry = NULL;
-    HTKEYSITER_FIND_FIRST(&iter, md->is_ci, identity, hash, entry);
+    HTKEYSITER_FIND_FIRST(
+        &iter, md->is_ci, identity, hash, entry, return MD_LOOKUP_GENERAL);
     result = entry != NULL;
 #endif
     return result;
@@ -1815,7 +2009,9 @@ _md_contains_owned(MultiDictObject* md, PyObject* key)
     if (UNLIKELY(identity == NULL)) {
         return -1;
     }
-    int result = _md_contains_identity(md, key, identity, hash);
+    int result = UNLIKELY(!PyUnicode_CheckExact(identity))
+                     ? MD_LOOKUP_GENERAL
+                     : _md_contains_identity(md, key, identity, hash);
     Py_DECREF(identity);
     return result;
 }
@@ -1823,18 +2019,21 @@ _md_contains_owned(MultiDictObject* md, PyObject* key)
 static int
 md_contains(MultiDictObject* md, PyObject* key)
 {
-    if (!PyUnicode_Check(key)) {
-        return 0;
-    }
+    int result;
     PyObject* identity = md_borrow_identity(md, key);
     if (identity == NULL) {
-        return _md_contains_owned(md, key);
+        result = _md_contains_owned(md, key);
+    } else {
+        Py_hash_t hash = unicode_hash(identity);
+        if (UNLIKELY(hash == -1)) {
+            return -1;
+        }
+        result = _md_contains_identity(md, key, identity, hash);
     }
-    Py_hash_t hash = unicode_hash(identity);
-    if (UNLIKELY(hash == -1)) {
-        return -1;
+    if (UNLIKELY(result == MD_LOOKUP_GENERAL)) {
+        result = md_contains_general_key(md, key);
     }
-    return _md_contains_identity(md, key, identity, hash);
+    return result;
 }
 
 /* md_contains() that also returns the stored key in *pret.  Only the view
@@ -1843,10 +2042,6 @@ static int
 md_find_key(MultiDictObject* md, PyObject* key, PyObject** pret)
 {
     *pret = NULL;
-    if (!PyUnicode_Check(key)) {
-        return 0;
-    }
-
     identity_hash_t ih = md_calc_identity_hash(md, key);
     PyObject* identity = ih.identity;
     Py_hash_t hash = ih.hash;
@@ -1854,10 +2049,15 @@ md_find_key(MultiDictObject* md, PyObject* key, PyObject** pret)
         return -1;
     }
 
-    int result;
-    Py_BEGIN_CRITICAL_SECTION(md);
-    result = _md_contains_locked(md, identity, hash, pret);
-    Py_END_CRITICAL_SECTION();
+    int result = MD_LOOKUP_GENERAL;
+    if (PyUnicode_CheckExact(identity)) {
+        Py_BEGIN_CRITICAL_SECTION(md);
+        result = _md_contains_locked(md, identity, hash, pret);
+        Py_END_CRITICAL_SECTION();
+    }
+    if (UNLIKELY(result == MD_LOOKUP_GENERAL)) {
+        result = md_contains_general(md, identity, hash, pret);
+    }
     Py_DECREF(identity);
     return result;
 }
@@ -1870,7 +2070,8 @@ _md_get_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash)
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
+    // a miss, which md_lookup_is_general() then tells apart
+    HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry, return NULL);
     if (entry != NULL) {
         return Py_NewRef(entry->value);
     }
@@ -1923,13 +2124,16 @@ _md_get_one_lockfree(MultiDictObject* md, PyObject* probe, PyObject* identity,
 
 /* COLD keeps the critical section's state, and so a stack canary, out of
    every lookup that never needs the lock. */
-COLD static PyObject*
+COLD static lookup_t
 _md_get_one_retry_locked(MultiDictObject* md, PyObject* identity,
                          Py_hash_t hash)
 {
-    PyObject* ret;
+    lookup_t ret;
     Py_BEGIN_CRITICAL_SECTION(md);
-    ret = _md_get_one_locked(md, identity, hash);
+    ret.value = _md_get_one_locked(md, identity, hash);
+    ret.result = ret.value != NULL                ? 1
+                 : md->keys->kind == KIND_GENERAL ? MD_LOOKUP_GENERAL
+                                                  : 0;
     Py_END_CRITICAL_SECTION();
     return ret;
 }
@@ -1940,8 +2144,7 @@ _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
 {
     lookup_t ret = _md_get_one_lockfree(md, probe, identity, hash);
     if (ret.result == _MD_NEED_LOCK) {
-        ret.value = _md_get_one_retry_locked(md, identity, hash);
-        ret.result = ret.value != NULL;
+        ret = _md_get_one_retry_locked(md, identity, hash);
     }
     return ret;
 }
@@ -1975,6 +2178,36 @@ _md_get_one_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
 
 #endif /* Py_GIL_DISABLED */
 
+/* md_get_one() for a KIND_GENERAL table, or a key that is no str. */
+COLD static lookup_t
+md_get_one_general(MultiDictObject* md, PyObject* key);
+
+/* Whether a lookup that found no value must be done again by its
+   md_*_general() function. A KIND_GENERAL table's lock-free walk takes
+   the lock, which tells it apart; a GIL build tells it here, off the
+   path of a hit. */
+static inline bool
+md_lookup_is_general(MultiDictObject* md, lookup_t found)
+{
+#ifdef Py_GIL_DISABLED
+    return found.result == MD_LOOKUP_GENERAL;
+#else
+    return found.result == MD_LOOKUP_GENERAL ||
+           (found.result == 0 && md->keys->kind == KIND_GENERAL);
+#endif
+}
+
+/* md_get_one()'s result once a lookup that found no value is done again
+   where it must be; the caller tests the value first. */
+static inline lookup_t
+md_get_one_miss(MultiDictObject* md, PyObject* key, lookup_t found)
+{
+    if (UNLIKELY(md_lookup_is_general(md, found))) {
+        return md_get_one_general(md, key);
+    }
+    return found;
+}
+
 static lookup_t
 md_get_one(MultiDictObject* md, PyObject* key)
 {
@@ -1988,9 +2221,13 @@ md_get_one(MultiDictObject* md, PyObject* key)
         if (UNLIKELY(identity == NULL)) {
             return ret;
         }
-        Py_hash_t hash = unicode_hash(identity);
-        if (hash != -1) {
-            ret = _md_get_one_identity(md, key, identity, hash);
+        if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+            ret.result = MD_LOOKUP_GENERAL;
+        } else {
+            Py_hash_t hash = unicode_hash(identity);
+            if (hash != -1) {
+                ret = _md_get_one_identity(md, key, identity, hash);
+            }
         }
         Py_DECREF(identity);
         return ret;
@@ -2003,6 +2240,12 @@ md_get_one(MultiDictObject* md, PyObject* key)
     return _md_get_one_identity(md, key, identity, hash);
 }
 
+/* _md_set_default_locked() for a KIND_GENERAL table, or a key that is no
+   str. */
+COLD static int
+md_set_default_general(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                       PyObject* key, PyObject* value, PyObject** result);
+
 // Caller holds md's critical section
 static int
 _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
@@ -2011,11 +2254,20 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     bool ci = md->is_ci;
     ASSERT_CONSISTENT(md);
 
+    if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+        return md_set_default_general(md, identity, hash, key, value, result);
+    }
     htkeysiter_t iter;
     HTKEYSITER_INIT(&iter, md->keys, hash);
 
     entry_t* entry = NULL;
-    HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
+    HTKEYSITER_FIND_FIRST(
+        &iter,
+        ci,
+        identity,
+        hash,
+        entry,
+        return md_set_default_general(md, identity, hash, key, value, result));
     if (entry != NULL) {
         ASSERT_CONSISTENT(md);
         *result = Py_NewRef(entry->value);
@@ -2027,7 +2279,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                                   identity,
                                   key,
                                   value,
-                                  md_key_fits(md, key, identity),
+                                  md_key_need(md, key, identity),
                                   MD_SLOT_FIND) < 0)) {
         return -1;
     }
@@ -2085,6 +2337,16 @@ _md_pop_one_record(MultiDictObject* md, entry_t* entry, PyObject* identity,
     return value;
 }
 
+static int
+_md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                   PyObject** ret, bool watched);
+
+/* _md_pop_one_locked() for a KIND_GENERAL table, or a probe whose identity
+   is no exact str: resolved first, which can run __eq__. */
+COLD static int
+md_pop_one_general(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                   PyObject** ret, bool watched);
+
 /* Caller holds md's critical section. `watched` is a constant at both
  * call sites; see _md_del_locked(). */
 static int
@@ -2114,6 +2376,9 @@ _md_pop_one_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         _md_unlink_at_compact(
             md, iter.slot, entry, &old_identity, &old_key, &old_value);
     } else {
+        if (UNLIKELY(iter.keys->kind == KIND_GENERAL)) {
+            return md_pop_one_general(md, identity, hash, ret, watched);
+        }
         entry_t* entry = NULL;
         HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
         if (entry == NULL) {
@@ -2150,7 +2415,11 @@ md_pop_one(MultiDictObject* md, PyObject* key, PyObject** ret)
     // see md_del()
     bool flush = false;
     Py_BEGIN_CRITICAL_SECTION(md);
-    if (UNLIKELY(md->watch != NULL)) {
+    if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+        result =
+            md_pop_one_general(md, identity, hash, ret, md->watch != NULL);
+        flush = MD_WATCH_PENDING(md);
+    } else if (UNLIKELY(md->watch != NULL)) {
         result = _md_pop_one_locked(md, identity, hash, ret, true);
         flush = MD_WATCH_PENDING(md);
     } else {
@@ -2214,7 +2483,9 @@ _md_get_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     PyObject* value = NULL;
     int single = -1;
     Py_BEGIN_CRITICAL_SECTION(md);
-    if (!md->keys->maybe_dups) {
+    /* md_walk_with_hash() finds the key in a KIND_GENERAL table, which a
+       plain lookup leaves to md_get_one_general() */
+    if (!md->keys->maybe_dups && md->keys->kind != KIND_GENERAL) {
         // at most one entry: a plain lookup, without the walk's seen set
         value = _md_get_one_locked(md, identity, hash);
         single = value != NULL;
@@ -2252,6 +2523,10 @@ _md_get_all_identity(MultiDictObject* md, PyObject* probe, PyObject* identity,
 
 #undef _MD_NEED_LOCK
 
+/* md_get_all() of a key that is no str, its identity. */
+COLD static int
+md_get_all_general(MultiDictObject* md, PyObject* identity, PyObject** ret);
+
 static int
 md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
 {
@@ -2261,9 +2536,13 @@ md_get_all(MultiDictObject* md, PyObject* key, PyObject** ret)
         return -1;
     }
     int found = -1;
-    Py_hash_t hash = unicode_hash(identity);
-    if (hash != -1) {
-        found = _md_get_all_identity(md, key, identity, hash, ret);
+    if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+        found = md_get_all_general(md, identity, ret);
+    } else {
+        Py_hash_t hash = unicode_hash(identity);
+        if (hash != -1) {
+            found = _md_get_all_identity(md, key, identity, hash, ret);
+        }
     }
     md_identity_release(md, key, identity);
     return found;
@@ -2294,6 +2573,12 @@ _md_pop_all_record(MultiDictObject* md, entry_t* entry, PyObject* identity,
     return 0;
 }
 
+/* _md_pop_all_locked() for a KIND_GENERAL table, or a probe whose identity
+   is no exact str: resolved first, which can run __eq__. */
+COLD static int
+md_pop_all_general(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                   reflist_t* values, removed_pairs_t* removed);
+
 /* Caller holds md's critical section. The removed pairs go to `removed`,
  * as in _md_del_locked(); `values` collects the result. */
 COLD static int
@@ -2305,6 +2590,10 @@ _md_pop_all_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         return 0;
     }
 
+    if (UNLIKELY(!PyUnicode_CheckExact(identity)) ||
+        UNLIKELY(md->keys->kind == KIND_GENERAL)) {
+        return md_pop_all_general(md, identity, hash, values, removed);
+    }
     bool begun = false;
     int ret = 0;
     htkeys_t* keys = md->keys;
@@ -2487,7 +2776,10 @@ _md_pop_item_locked(MultiDictObject* md)
 
     // a compact table's key is already what md_calc_key() would return
     if (identity != NULL) {
-        Py_SETREF(key, md_calc_key(md, key, identity));
+        Py_SETREF(key,
+                  PyUnicode_CheckExact(identity)
+                      ? md_calc_key(md, key, identity)
+                      : md_calc_key_general(md, key));
         Py_DECREF(identity);
         if (UNLIKELY(key == NULL)) {
             Py_DECREF(value);
@@ -2577,7 +2869,9 @@ _md_replace_free_dups(reflist_t* dups)
     PyMem_Free(dups);
 }
 
-#define _MD_REPLACE_STALE 2
+#define MD_REPLACE_STALE 2
+// a KIND_GENERAL table, which md_replace_general() walks
+#define MD_REPLACE_GENERAL 3
 
 /* Stores `key` into the first match of _md_replace_pass() in a
    KIND_COMPACT table, handing the old key to *old_key_out. The same key
@@ -2606,7 +2900,7 @@ _md_replace_key_anystr(anystr_entry_t* entry, PyObject* key,
 /* A match of _md_replace_pass() at `slot`, past the one to keep: the
    first gets the new value, its key already stored by the caller, the
    rest are deleted; *pfound tells which. `compact` is a constant at each
-   call site. 0 on success, -1 on error, _MD_REPLACE_STALE when md's table
+   call site. 0 on success, -1 on error, MD_REPLACE_STALE when md's table
    moved under it. */
 static inline int
 _md_replace_matched(MultiDictObject* md, size_t slot, entry_t* entry,
@@ -2652,14 +2946,14 @@ _md_replace_matched(MultiDictObject* md, size_t slot, entry_t* entry,
        miss the change. Every mutation bumps md->version, including ones
        that don't otherwise touch md->keys, so compare both. */
     if (md->keys != keys_before || md->version != version_before) {
-        return _MD_REPLACE_STALE;
+        return MD_REPLACE_STALE;
     }
 #endif
     return 0;
 }
 
 /* One attempt of _md_replace_locked(), one loop per kind: 1 if `key`
-   isn't there, 0 once it is replaced, -1 on error, _MD_REPLACE_STALE when
+   isn't there, 0 once it is replaced, -1 on error, MD_REPLACE_STALE when
    md's table moved under it. *pfound carries over to the next attempt.
 
    `replaced` is the one entry to keep. Later matches are deleted, which
@@ -2698,10 +2992,10 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
                        by definition. */
                     if (!skip_first && key != entry->key &&
                         UNLIKELY(!md_key_fits(md, key, identity))) {
-                        if (UNLIKELY(md_to_anystr(md) < 0)) {
+                        if (UNLIKELY(md_to_kind(md, KIND_ANYSTR) < 0)) {
                             return -1;
                         }
-                        return _MD_REPLACE_STALE;  // entry is in the old table
+                        return MD_REPLACE_STALE;  // entry is in the old table
                     }
                     replaced = iter.index;
                     if (skip_first) {
@@ -2743,10 +3037,10 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
                        by definition. */
                     if (!skip_first && key != entry->key &&
                         UNLIKELY(!md_key_fits(md, key, identity))) {
-                        if (UNLIKELY(md_to_anystr(md) < 0)) {
+                        if (UNLIKELY(md_to_kind(md, KIND_ANYSTR) < 0)) {
                             return -1;
                         }
-                        return _MD_REPLACE_STALE;  // entry is in the old table
+                        return MD_REPLACE_STALE;  // entry is in the old table
                     }
                     replaced = iter.index;
                     if (skip_first) {
@@ -2774,7 +3068,7 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
                 }
             }
         }
-    } else {
+    } else if (md->keys->kind == KIND_ANYSTR) {
         entry_t* entry = NULL;
         while (ret == 0) {
             HTKEYSITER_FIND_ANYSTR(&iter, identity, hash, entry);
@@ -2810,12 +3104,23 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
                 break;  // the key's only entry
             }
         }
+    } else {
+        return MD_REPLACE_GENERAL;
     }
     if (ret != 0) {
         return ret;
     }
     return *pfound ? 0 : 1;
 }
+
+/* _md_replace_locked() for a KIND_GENERAL table, or a key that is no str:
+   its probe resolved first, which can run __eq__. Storing a key that is
+   no str needs a KIND_GENERAL table. */
+COLD static int
+md_replace_general(MultiDictObject* md, PyObject* key, PyObject* value,
+                   PyObject* identity, Py_hash_t hash, PyObject** old_key_out,
+                   PyObject** old_value_out, reflist_t** dups, bool watched,
+                   bool found);
 
 /* Adds `key` when it isn't there. The fit is checked only on that add,
  * not carried from the identity: kept live across the replace loop, it
@@ -2831,29 +3136,54 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
     bool found = false;
     int ret;
     /* Retries on a concurrent resize (Py_GIL_DISABLED only), or after
-     * md_to_anystr(); deferred decrefs mean nothing here can trigger a
+     * md_to_kind(); deferred decrefs mean nothing here can trigger a
      * resize, so this shouldn't loop more than once. */
-    do {
-        ret = _md_replace_pass(md,
-                               key,
-                               value,
-                               identity,
-                               hash,
-                               old_key_out,
-                               old_value_out,
-                               dups,
-                               watched,
-                               &found);
-    } while (ret == _MD_REPLACE_STALE);
-    if (ret == 0) {
-        bump_version(md);
-    } else if (ret > 0) {
+    if (UNLIKELY(!PyUnicode_CheckExact(identity))) {
+        ret = md_replace_general(md,
+                                 key,
+                                 value,
+                                 identity,
+                                 hash,
+                                 old_key_out,
+                                 old_value_out,
+                                 dups,
+                                 watched,
+                                 false);
+    } else {
+        do {
+            ret = _md_replace_pass(md,
+                                   key,
+                                   value,
+                                   identity,
+                                   hash,
+                                   old_key_out,
+                                   old_value_out,
+                                   dups,
+                                   watched,
+                                   &found);
+        } while (ret == MD_REPLACE_STALE);
+        if (ret == 0) {
+            bump_version(md);
+        } else if (UNLIKELY(ret == MD_REPLACE_GENERAL)) {
+            ret = md_replace_general(md,
+                                     key,
+                                     value,
+                                     identity,
+                                     hash,
+                                     old_key_out,
+                                     old_value_out,
+                                     dups,
+                                     watched,
+                                     found);
+        }
+    }
+    if (ret > 0) {
         ret = md_add_with_hash(md,
                                hash,
                                identity,
                                key,
                                value,
-                               md_key_fits(md, key, identity),
+                               md_key_need(md, key, identity),
                                MD_SLOT_FIND);
     }
     if (watched) {
@@ -2861,8 +3191,6 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
     }
     return ret;
 }
-
-#undef _MD_REPLACE_STALE
 
 // See md_del() on the borrowed identity.
 static int
@@ -2872,7 +3200,7 @@ md_replace(MultiDictObject* md, PyObject* key, PyObject* value)
     if (UNLIKELY(identity == NULL)) {
         return -1;
     }
-    Py_hash_t hash = unicode_hash(identity);
+    Py_hash_t hash = identity_hash(identity);
     if (UNLIKELY(hash == -1)) {
         md_identity_release(md, key, identity);
         return -1;
@@ -2920,12 +3248,17 @@ _md_traverse_entries(htkeys_t* keys, visitproc visit, void* arg)
             }
         }
     } else {
+        // a KIND_GENERAL identity can be an object no key holds
+        bool general = keys->kind == KIND_GENERAL;
         anystr_entry_t* entry = HTKEYS_ANYSTR_ENTRIES(keys);
         for (anystr_entry_t* end = entry + keys->nentries; entry < end;
              entry++) {
             if (!entry_is_hole((const entry_t*)entry)) {
                 Py_VISIT(entry->base.key);
                 Py_VISIT(entry->base.value);
+                if (general && entry->identity != entry->base.key) {
+                    Py_VISIT(entry->identity);
+                }
             }
         }
     }
