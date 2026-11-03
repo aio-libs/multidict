@@ -1,0 +1,1 @@
+Corrected the key type error raised by the pure-Python backend to name the class the key was rejected for, so that :class:`CIMultiDict` no longer reports itself as a :class:`MultiDict` and both backends agree -- by :user:`simpleqt`.
