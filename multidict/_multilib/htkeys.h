@@ -17,10 +17,11 @@ extern "C" {
 #include "str_cmp.h"
 
 /* Implementation note.
-identity always has exact PyUnicode_Type type, not a subclass.
-It guarantees that identity hashing and comparison never calls
-Python code back, and these operations has no weird side effects,
-e.g. deletion the key from multidict.
+In a KIND_COMPACT or KIND_ANYSTR table, identity always has exact
+PyUnicode_Type type, not a subclass. It guarantees that identity hashing
+and comparison never calls Python code back, and these operations has no
+weird side effects, e.g. deletion the key from multidict. A KIND_GENERAL
+table compares identities by address alone; see md_resolve().
 
 Taking into account the fact that all multidict operations except
 repr(md), repr(md_proxy), or repr(view) never access to the key
@@ -35,7 +36,8 @@ typedef struct entry {
     PyObject* value;
 } entry_t;
 
-/* A KIND_ANYSTR entry: the shared fields, then the identity and its hash. */
+/* A KIND_ANYSTR or KIND_GENERAL entry: the shared fields, then the
+   identity and its hash. */
 typedef struct anystr_entry {
     entry_t base;
     PyObject* identity;
@@ -52,13 +54,23 @@ as_anystr(entry_t* entry)
    KIND_COMPACT stores only the key and the value, and the class decides
    what the identity is: in a MultiDict every key is an exact str that is
    its own identity, in a CIMultiDict an exact istr whose canonical form is.
-   Either way the hash is the one the identity caches. */
+   Either way the hash is the one the identity caches.
+
+   KIND_GENERAL holds keys of any type, in KIND_ANYSTR's layout. Every
+   entry of one key shares one identity object, the first such entry's,
+   so its walks match by address and never call __eq__.
+
+   Ordered by what a table can hold: a key a table of one kind cannot hold
+   needs a later kind. */
 typedef enum {
-    KIND_ANYSTR = 0,
-    KIND_COMPACT = 1,
+    KIND_COMPACT = 0,
+    KIND_ANYSTR = 1,
+    KIND_GENERAL = 2,
 } htkeys_kind_t;
 
-#define HTKEYS_KINDS 2
+#define HTKEYS_KINDS 3
+/* Entry layouts, and so pool ladders: KIND_GENERAL shares KIND_ANYSTR's. */
+#define HTKEYS_LAYOUTS 2
 
 #define DKIX_EMPTY (-1) /* empty (never used) slot */
 #define DKIX_DUMMY (-2) /* deleted slot */
@@ -83,8 +95,8 @@ typedef enum {
 #define HTKEYS_POOL_MIN_LOG2 HT_LOG_MINSIZE
 #define HTKEYS_POOL_MAX_LOG2 8
 #define HTKEYS_POOL_CLASSES (HTKEYS_POOL_MAX_LOG2 - HTKEYS_POOL_MIN_LOG2 + 1)
-// one ladder per kind: a block fits only its own kind's entry size
-#define HTKEYS_POOLS (HTKEYS_KINDS * HTKEYS_POOL_CLASSES)
+// one ladder per layout: a block fits only its own entry size
+#define HTKEYS_POOLS (HTKEYS_LAYOUTS * HTKEYS_POOL_CLASSES)
 
 static void
 htkeys_pools_init(pool_t* pools)
@@ -115,7 +127,8 @@ _htkeys_pool(pool_t* pools, uint8_t log2_size, uint8_t kind)
     if (log2_size > HTKEYS_POOL_MAX_LOG2) {
         return NULL;
     }
-    return pools + kind * HTKEYS_POOL_CLASSES +
+    uint8_t layout = kind == KIND_COMPACT ? 0 : 1;
+    return pools + layout * HTKEYS_POOL_CLASSES +
            (log2_size - HTKEYS_POOL_MIN_LOG2);
 }
 
@@ -226,8 +239,9 @@ static inline size_t
 _htkeys_entry_size(uint8_t kind)
 {
     static const size_t sizes[HTKEYS_KINDS] = {
-        [KIND_ANYSTR] = sizeof(anystr_entry_t),
         [KIND_COMPACT] = sizeof(entry_t),
+        [KIND_ANYSTR] = sizeof(anystr_entry_t),
+        [KIND_GENERAL] = sizeof(anystr_entry_t),
     };
     assert(kind < HTKEYS_KINDS);
     return sizes[kind];
@@ -263,11 +277,12 @@ compact_key_hash_ci(PyObject* key)
     return ((istrobject*)key)->canonical_hash;
 }
 
-// Copies the first n entries of src, a table of dst's kind.
+// Copies the first n entries of src, a table of dst's entry layout.
 static inline void
 htkeys_entries_copy(htkeys_t* dst, const htkeys_t* src, Py_ssize_t n)
 {
-    assert(n == 0 || dst->kind == src->kind);
+    assert(n == 0 ||
+           _htkeys_entry_size(dst->kind) == _htkeys_entry_size(src->kind));
     memcpy(_HTKEYS_ENTRIES(dst),
            _HTKEYS_ENTRIES(src),
            (size_t)n * _htkeys_entry_size(src->kind));
@@ -716,6 +731,17 @@ unicode_hash(PyObject* o)
     return hash;
 }
 
+/* unicode_hash() for an identity that may be no str: a KIND_GENERAL
+   table's, or a probe's. */
+static inline Py_hash_t
+identity_hash(PyObject* o)
+{
+    if (UNLIKELY(!PyUnicode_CheckExact(o))) {
+        return PyObject_Hash(o);
+    }
+    return unicode_hash(o);
+}
+
 /* Values for the same key share a probe sequence, so without resume slots the
    n-th one walks past the n - 1 before it. Called once perturb is 0 and
    slot i is next to probe. Resume slots are only allocated once a probe here
@@ -1040,16 +1066,46 @@ typedef struct _htkeysiter {
         }                                                                    \
     } while (0)
 
+/* _HTKEYSITER_FIND_COMPACT() for a KIND_GENERAL table, whose entries of
+   one key share one identity object: `identity_` must be that object,
+   as md_resolve() finds it. */
+#define HTKEYSITER_FIND_GENERAL(iter_, identity_, hash_, entry_)             \
+    do {                                                                     \
+        htkeysiter_t* _hf_iter = (iter_);                                    \
+        PyObject* _hf_identity = (identity_);                                \
+        anystr_entry_t* _hf_entries = HTKEYS_ANYSTR_ENTRIES(_hf_iter->keys); \
+        (void)(hash_);                                                       \
+        if ((entry_) != NULL) {                                              \
+            HTKEYSITER_NEXT(_hf_iter);                                       \
+        }                                                                    \
+        (entry_) = NULL;                                                     \
+        for (; _hf_iter->index != DKIX_EMPTY; HTKEYSITER_NEXT(_hf_iter)) {   \
+            if (UNLIKELY(_hf_iter->index < 0)) {                             \
+                continue;                                                    \
+            }                                                                \
+            anystr_entry_t* _hf_e = _hf_entries + _hf_iter->index;           \
+            if (_hf_e->identity == _hf_identity) {                           \
+                (entry_) = &_hf_e->base;                                     \
+                break;                                                       \
+            }                                                                \
+        }                                                                    \
+    } while (0)
+
 /* The first match in a table of any kind, for a lookup that needs no
-   other; `ci_` is true for a CIMultiDict's table. */
-#define HTKEYSITER_FIND_FIRST(iter_, ci_, identity_, hash_, entry_)      \
+   other; `ci_` is true for a CIMultiDict's table. A KIND_GENERAL table
+   runs `on_general_` instead, as its probe must be resolved first (see
+   md_find_first_general()). */
+#define HTKEYSITER_FIND_FIRST(                                           \
+    iter_, ci_, identity_, hash_, entry_, on_general_)                   \
     do {                                                                 \
         if (kind_is_compact((iter_)->keys->kind) && (ci_)) {             \
             HTKEYSITER_FIND_COMPACT_CI(iter_, identity_, hash_, entry_); \
         } else if (kind_is_compact((iter_)->keys->kind)) {               \
             HTKEYSITER_FIND_COMPACT_CS(iter_, identity_, hash_, entry_); \
-        } else {                                                         \
+        } else if ((iter_)->keys->kind == KIND_ANYSTR) {                 \
             HTKEYSITER_FIND_ANYSTR(iter_, identity_, hash_, entry_);     \
+        } else {                                                         \
+            on_general_;                                                 \
         }                                                                \
     } while (0)
 
