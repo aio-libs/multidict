@@ -65,6 +65,8 @@ _METHODS: dict[str, Callable[[Any, Callable[..., object]], object]] = {
 _QUIET = {"add", "setdefault", "copy"}
 # Methods that hand a removed value back to the caller, which keeps it.
 _RETURN_VALUE = {"pop", "popone", "popall", "popitem"}
+# Methods that consume finalizer-bearing pairs.
+_PAIRS = {"extend", "update", "merge", "init"}
 
 
 def _fires(cls_name: str, side: str, method: str) -> bool:
@@ -72,8 +74,11 @@ def _fires(cls_name: str, side: str, method: str) -> bool:
     return not (
         method in _QUIET
         or (side == "value" and method in _RETURN_VALUE)
-        # a MultiDict hands back the popped key itself, a CIMultiDict a copy
+        # a MultiDict hands back the popped key itself
         or (side == "key" and method == "popitem" and cls_name == "MultiDict")
+        # a CIMultiDict stores an istr copy, never the key itself, so only
+        # the pairs a method consumes drop one
+        or (side == "key" and cls_name == "CIMultiDict" and method not in _PAIRS)
     )
 
 
