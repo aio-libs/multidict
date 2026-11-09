@@ -1,0 +1,6 @@
+Changed :class:`~multidict.MultiDict` and :class:`~multidict.CIMultiDict`
+to accept keys of any hashable type, not only :class:`str`. A key of
+another type matches the keys equal to it, as a :class:`dict` key does,
+and :class:`~multidict.CIMultiDict` still folds the case of :class:`str`
+keys only. The type annotations still describe :class:`str` keys
+-- by :user:`asvetlov`.
