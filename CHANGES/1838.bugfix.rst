@@ -1,0 +1,5 @@
+Fixed :py:meth:`~multidict.MultiDict.update` of the C extension taking
+time quadratic in the number of entries a key had when it removed them,
+so updating a key repeated thousands of times took hundreds of
+milliseconds; it became linear, as in the pure-Python implementation
+-- by :user:`aarav989`.
