@@ -122,7 +122,8 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
                     continue;
                 }
                 if (found) {
-                    if (UNLIKELY(update_marks_doom(marks, iter.index, entry) <
+                    if (UNLIKELY(update_marks_doom(
+                                     marks, iter.index, iter.slot, entry) <
                                  0)) {
                         return -1;
                     }
@@ -158,7 +159,8 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
                     continue;
                 }
                 if (found) {
-                    if (update_marks_doom(marks, iter.index, entry) < 0) {
+                    if (update_marks_doom(
+                            marks, iter.index, iter.slot, entry) < 0) {
                         return -1;
                     }
                 } else {
@@ -191,7 +193,8 @@ _md_update(md_update_state_t* st, Py_hash_t hash, PyObject* identity,
                 continue;
             }
             if (found) {
-                if (update_marks_doom(marks, iter.index, entry) < 0) {
+                if (update_marks_doom(marks, iter.index, iter.slot, entry) <
+                    0) {
                     return -1;
                 }
             } else {
@@ -313,16 +316,23 @@ _md_post_update_take(update_marks_t* marks, htkeys_t* keys, Py_ssize_t i)
 }
 
 /* The slot of the live doomed entry at `pos` of md's table `keys`, its
-   delete recorded for the watchers. */
+   delete recorded for the watchers. `hint` is the slot it was doomed in
+   (see doomed_entry_t), taken if it still holds `pos`. */
 static inline size_t
 _md_post_update_slot(MultiDictObject* md, htkeys_t* keys, Py_ssize_t pos,
-                     entry_t* entry, PyObject* identity, Py_hash_t hash)
+                     size_t hint, entry_t* entry, PyObject* identity,
+                     Py_hash_t hash)
 {
-    htkeysiter_t iter;
-    HTKEYSITER_INIT(&iter, keys, hash);
-    while (iter.index != pos) {
-        assert(iter.index != DKIX_EMPTY);
-        HTKEYSITER_NEXT(&iter);
+    size_t slot = hint;
+    if (slot >= (size_t)htkeys_nslots(keys) ||
+        HTKEYS_GET_INDEX(keys, keys->log2_size, (Py_ssize_t)slot) != pos) {
+        htkeysiter_t iter;
+        HTKEYSITER_INIT(&iter, keys, hash);
+        while (iter.index != pos) {
+            assert(iter.index != DKIX_EMPTY);
+            HTKEYSITER_NEXT(&iter);
+        }
+        slot = iter.slot;
     }
     MD_WATCH_RECORD(md,
                     MultiDict_EVENT_DELETED,
@@ -331,7 +341,7 @@ _md_post_update_slot(MultiDictObject* md, htkeys_t* keys, Py_ssize_t pos,
                     entry->key,
                     entry->value,
                     NULL);
-    return iter.slot;
+    return slot;
 }
 
 /* After a failed delete: -1, or _MD_POST_UPDATE_RESTART if it moved the
@@ -364,6 +374,7 @@ _md_post_update_failed(MultiDictObject* md, htkeys_t* keys, uint64_t version)
                 _md_post_update_slot(md,                                     \
                                      keys,                                   \
                                      pos,                                    \
+                                     marks->doomed[i].slot,                  \
                                      entry,                                  \
                                      compact_key_identity_##sfx(entry->key), \
                                      compact_key_hash_##sfx(entry->key));    \
@@ -408,8 +419,13 @@ _md_post_update_pass(md_update_state_t* st)
             load_value(&entry->base) != marks->doomed[i].value) {
             continue;
         }
-        size_t slot = _md_post_update_slot(
-            md, keys, pos, &entry->base, entry->identity, entry->hash);
+        size_t slot = _md_post_update_slot(md,
+                                           keys,
+                                           pos,
+                                           marks->doomed[i].slot,
+                                           &entry->base,
+                                           entry->identity,
+                                           entry->hash);
         if (UNLIKELY(md_del_at_deferred_anystr(md, slot, entry, &st->defer) <
                      0)) {
             ret = _md_post_update_failed(md, keys, version);

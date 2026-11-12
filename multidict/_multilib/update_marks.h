@@ -41,9 +41,15 @@ extern "C" {
    is recorded with its value, referenced to keep the address from being
    reused meanwhile, and md_post_update() removes only the entries that
    still hold it. The key is no guide: reading a CIMultiDict's key swaps
-   the stored str for its istr. */
+   the stored str for its istr.
+
+   `slot` is where the entry was found. md_post_update() takes it as is
+   while it still holds `index`, which a new table need not keep: probing
+   for each entry from its chain's start instead costs as many steps as
+   the key has entries before it, quadratic over a key's duplicates. */
 typedef struct _doomed_entry {
     Py_ssize_t index;
+    size_t slot;
     PyObject* value;
 } doomed_entry_t;
 
@@ -122,9 +128,11 @@ _update_marks_grow_doomed(update_marks_t* marks)
     return 0;
 }
 
-/* Dooms `entry`, at `index`; a no-op if the batch already has. */
+/* Dooms `entry`, at `index` and found in `slot`; a no-op if the batch
+   already has. */
 static int
-update_marks_doom(update_marks_t* marks, Py_ssize_t index, entry_t* entry)
+update_marks_doom(update_marks_t* marks, Py_ssize_t index, size_t slot,
+                  entry_t* entry)
 {
     int seen = bitmap_test_and_set(&marks->deleted, index);
     if (seen != 0) {
@@ -137,6 +145,7 @@ update_marks_doom(update_marks_t* marks, Py_ssize_t index, entry_t* entry)
     }
     doomed_entry_t* doomed = marks->doomed + marks->ndoomed++;
     doomed->index = index;
+    doomed->slot = slot;
     doomed->value = Py_NewRef(load_value(entry));
     return 0;
 }

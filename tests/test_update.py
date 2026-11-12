@@ -330,6 +330,20 @@ def test_update_marks_outgrow_the_table(
     assert list(d.items()) == [("a", 1), ("a", 2)] + items[1:-1]
 
 
+@pytest.mark.parametrize("grow", [False, True])
+def test_update_removes_many_duplicates(
+    any_multidict_class: type[MultiDict[object]], grow: bool
+) -> None:
+    # Every "a" but the first is doomed on one long probe chain. With grow,
+    # the table is rebuilt before they are removed, so the slots they were
+    # found in no longer hold them.
+    d = any_multidict_class([("a", i) for i in range(1000)] + [("b", 0)])
+    new = [(f"k{i}", i) for i in range(2000)] if grow else []
+    d.update(iter([("a", -1)] + new))
+    assert list(d.items()) == [("a", -1), ("b", 0)] + new
+    assert d.getall("a") == [-1]
+
+
 _SOURCES: dict[str, Callable[[list[tuple[str, int]]], object]] = {
     "dict": dict,
     "list": list,
