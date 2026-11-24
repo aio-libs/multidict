@@ -539,3 +539,18 @@ def test_bulk_methods_do_not_test_arg_truth(
 def test_init_does_not_test_arg_truth(any_multidict_class: _MD_Classes) -> None:
     d = any_multidict_class(_NoTruthValue())
     assert list(d.items()) == [("a", 1), ("b", 2)]
+
+
+@pytest.mark.parametrize("method_name", ("extend", "update", "merge"))
+def test_bulk_methods_take_arg_as_a_keyword(
+    any_multidict_class: _MD_Classes,
+    method_name: str,
+) -> None:
+    d = any_multidict_class()
+    getattr(d, method_name)(arg=1)
+    assert list(d.items()) == [("arg", 1)]
+
+
+def test_init_takes_arg_as_a_keyword(any_multidict_class: _MD_Classes) -> None:
+    d = any_multidict_class(arg=1)
+    assert list(d.items()) == [("arg", 1)]

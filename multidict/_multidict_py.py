@@ -146,7 +146,7 @@ def _locked_pair_always(fn: _F) -> _F:
     for the same reason `_locked_pair` does."""
 
     @functools.wraps(fn)
-    def wrapper(self: Any, arg: Any = sentinel, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+    def wrapper(self: Any, arg: Any = sentinel, /, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
         with _PairLock(self._lock, _other_lock(arg)):
             return fn(self, arg, *args, **kwargs)
 

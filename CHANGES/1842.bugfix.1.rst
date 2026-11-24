@@ -1,0 +1,7 @@
+Fixed the pure-Python implementation taking an ``arg`` keyword argument
+for the positional argument of the :class:`~multidict.MultiDict` and
+:class:`~multidict.CIMultiDict` constructors,
+:meth:`~multidict.MultiDict.extend`, :meth:`~multidict.MultiDict.update`
+and :meth:`~multidict.MultiDict.merge`, a regression in 6.9.0;
+``MultiDict(arg=1)`` created the key ``arg`` again, as the C extension
+did -- by :user:`provos`.
