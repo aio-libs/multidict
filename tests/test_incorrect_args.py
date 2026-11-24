@@ -207,3 +207,43 @@ def test_getall_too_many_args_reports_a_range(
         match=r"takes from \d+ to \d+ positional arguments",
     ):
         multidict_object.getall("a", "b", "c")
+
+
+class _FalsyNonIterable:
+    """Neither a mapping nor an iterable, but false in a boolean context."""
+
+    def __len__(self) -> int:
+        return 0
+
+
+_FALSY_NON_ITERABLES = pytest.mark.parametrize(
+    "arg",
+    (None, 0, False, 0.0, 0j, _FalsyNonIterable()),
+    ids=("None", "int", "bool", "float", "complex", "len_zero"),
+)
+
+
+@_FALSY_NON_ITERABLES
+def test_init_rejects_falsy_non_iterable(
+    any_multidict_class: type[MultiDict[int]],
+    arg: object,
+) -> None:
+    """A falsy argument is not taken for a missing one."""
+    with pytest.raises(TypeError, match="not iterable"):
+        any_multidict_class(arg)
+    with pytest.raises(TypeError, match="not iterable"):
+        any_multidict_class(arg, a=1)
+
+
+@_FALSY_NON_ITERABLES
+@pytest.mark.parametrize("method_name", ("extend", "update", "merge"))
+def test_bulk_methods_reject_falsy_non_iterable(
+    any_multidict_class: type[MultiDict[int]],
+    method_name: str,
+    arg: object,
+) -> None:
+    """A falsy argument is not taken for a missing one."""
+    d = any_multidict_class([("a", 1)])
+    with pytest.raises(TypeError, match="not iterable"):
+        getattr(d, method_name)(arg)
+    assert list(d.items()) == [("a", 1)]

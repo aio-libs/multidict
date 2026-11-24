@@ -22,7 +22,7 @@ class SupportsIKeys(Protocol[_V_co]):
     def __getitem__(self, key: istr, /) -> _V_co: ...
 
 
-MDArg = SupportsKeys[_V] | SupportsIKeys[_V] | Iterable[tuple[str, _V]] | None
+MDArg = SupportsKeys[_V] | SupportsIKeys[_V] | Iterable[tuple[str, _V]]
 
 
 class MultiMapping(Mapping[str, _V_co]):
@@ -68,11 +68,11 @@ class MutableMultiMapping(MultiMapping[_V], MutableMapping[str, _V]):
         """Add value to list."""
 
     @abc.abstractmethod
-    def extend(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
+    def extend(self, arg: MDArg[_V] = ..., /, **kwargs: _V) -> None:
         """Add everything from arg and kwargs to the mapping."""
 
     @abc.abstractmethod
-    def merge(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
+    def merge(self, arg: MDArg[_V] = ..., /, **kwargs: _V) -> None:
         """Merge into the mapping, adding non-existing keys."""
 
     @overload

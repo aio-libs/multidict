@@ -514,3 +514,28 @@ def test_str_subclass_keys_from_dict_keep_refcounts(
     assert d["foo"] is value
     d.clear()
     assert (sys.getrefcount(key), sys.getrefcount(value)) == before
+
+
+class _NoTruthValue:
+    """Pairs whose truth value is undefined, like a NumPy array's."""
+
+    def __iter__(self) -> Iterator[tuple[str, int]]:
+        return iter([("a", 1), ("b", 2)])
+
+    def __bool__(self) -> bool:
+        raise ValueError("truth value is ambiguous")
+
+
+@pytest.mark.parametrize("method_name", ("extend", "update", "merge"))
+def test_bulk_methods_do_not_test_arg_truth(
+    any_multidict_class: _MD_Classes,
+    method_name: str,
+) -> None:
+    d = any_multidict_class()
+    getattr(d, method_name)(_NoTruthValue())
+    assert list(d.items()) == [("a", 1), ("b", 2)]
+
+
+def test_init_does_not_test_arg_truth(any_multidict_class: _MD_Classes) -> None:
+    d = any_multidict_class(_NoTruthValue())
+    assert list(d.items()) == [("a", 1), ("b", 2)]
