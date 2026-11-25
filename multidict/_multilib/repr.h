@@ -56,7 +56,7 @@ _md_repr_visit(void* user_data, PyObject* identity, Py_hash_t hash,
          * backslashes, or non-printable characters so the output stays
          * a valid Python string literal. */
         int fast = 0;
-        if (PyUnicode_IS_ASCII(key)) {
+        if (PyUnicode_Check(key) && PyUnicode_IS_ASCII(key)) {
             Py_ssize_t klen = PyUnicode_GET_LENGTH(key);
             const unsigned char* kdata =
                 (const unsigned char*)PyUnicode_DATA(key);

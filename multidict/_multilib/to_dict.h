@@ -134,6 +134,32 @@ _md_to_dict_single(MultiDictObject* md, PyObject* dict, entry_t* entry,
         }                                                                  \
     } while (0)
 
+/* The same over a KIND_ANYSTR or KIND_GENERAL table, `find` being its
+   HTKEYSITER_FIND_ANYSTR() or _GENERAL(). */
+#define _MD_TO_DICT_ANYSTR_LOOP(find)                                     \
+    do {                                                                  \
+        anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);            \
+        for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {           \
+            anystr_entry_t* entry = entries + pos;                        \
+            if (entry_is_hole((const entry_t*)entry) ||                   \
+                bitmap_test(&collected, pos)) {                           \
+                continue; /* deleted, or collected under its first key */ \
+            }                                                             \
+            _MD_TO_DICT_COLLECT(find, entry->identity, entry->hash, pos); \
+            int stored =                                                  \
+                _md_to_dict_store(md, dict, &entry->base, lst, version);  \
+            lst = NULL;                                                   \
+            if (UNLIKELY(stored < 0)) {                                   \
+                goto fail;                                                \
+            }                                                             \
+        }                                                                 \
+    } while (0)
+
+/* _md_to_dict_locked() for a KIND_GENERAL table that may hold a key
+   twice. */
+COLD static int
+md_to_dict_general(MultiDictObject* md, PyObject** ret);
+
 /* Walks the entries in insertion order, so every key is collected at its
    first spelling; a hash chain walk is not insertion-ordered. Equal keys
    sit on one hash chain in insertion order. One loop per kind; the
@@ -141,6 +167,9 @@ _md_to_dict_single(MultiDictObject* md, PyObject* dict, entry_t* entry,
 COLD static int
 _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
 {
+    if (md->keys->kind == KIND_GENERAL && md->keys->maybe_dups) {
+        return md_to_dict_general(md, ret);
+    }
     PyObject* dict = PyDict_New();
     if (UNLIKELY(dict == NULL)) {
         return -1;
@@ -184,22 +213,7 @@ _md_to_dict_locked(MultiDictObject* md, PyObject** ret)
             _MD_TO_DICT_COMPACT_LOOP(cs, HTKEYSITER_FIND_COMPACT_CS);
         }
     } else {
-        anystr_entry_t* entries = HTKEYS_ANYSTR_ENTRIES(keys);
-        for (Py_ssize_t pos = 0; pos < keys->nentries; pos++) {
-            anystr_entry_t* entry = entries + pos;
-            if (entry_is_hole((const entry_t*)entry) ||
-                bitmap_test(&collected, pos)) {
-                continue;  // deleted, or collected under its first key
-            }
-            _MD_TO_DICT_COLLECT(
-                HTKEYSITER_FIND_ANYSTR, entry->identity, entry->hash, pos);
-            int stored =
-                _md_to_dict_store(md, dict, &entry->base, lst, version);
-            lst = NULL;
-            if (UNLIKELY(stored < 0)) {
-                goto fail;
-            }
-        }
+        _MD_TO_DICT_ANYSTR_LOOP(HTKEYSITER_FIND_ANYSTR);
     }
 
     bitmap_release(&collected);
@@ -212,8 +226,7 @@ fail:
     return -1;
 }
 
-#undef _MD_TO_DICT_COMPACT_LOOP
-#undef _MD_TO_DICT_COLLECT
+// md_to_dict_general() in general.h uses them
 
 static int
 md_to_dict(MultiDictObject* md, PyObject** ret)

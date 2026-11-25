@@ -16,6 +16,7 @@ extern "C" {
 #include "dict.h"
 #include "htkeys.h"
 #include "identity.h"
+#include "resolve.h"
 #include "str_cmp.h"
 
 /* Visitor for md_walk().
@@ -166,6 +167,12 @@ _md_walk_matched(MultiDictObject* md, entry_t* entry, PyObject* identity,
     return ret == 0 ? 0 : 1;
 }
 
+/* md_walk_with_hash() for a KIND_GENERAL table, or a probe whose identity
+   is no exact str: resolved first, which can run __eq__. */
+COLD static Py_ssize_t
+md_walk_general(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
+                bool with_keys, md_item_visitor_t visitor, void* user_data);
+
 /* Calls `visitor` once for every entry whose identity is `identity`, in
    insertion order; `hash` is that identity's hash. Returns how many entries
    were visited, or -1 with an exception set. The caller holds md's critical
@@ -190,6 +197,11 @@ static Py_ssize_t
 md_walk_with_hash(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
                   bool with_keys, md_item_visitor_t visitor, void* user_data)
 {
+    if (UNLIKELY(!PyUnicode_CheckExact(identity)) ||
+        UNLIKELY(md->keys->kind == KIND_GENERAL)) {
+        return md_walk_general(
+            md, identity, hash, with_keys, visitor, user_data);
+    }
     bool ci = md->is_ci;
     uint64_t version = md->version;
     htkeysiter_t iter;
@@ -282,7 +294,7 @@ static Py_ssize_t
 md_walk(MultiDictObject* md, PyObject* identity, bool with_keys,
         md_item_visitor_t visitor, void* user_data)
 {
-    Py_hash_t hash = unicode_hash(identity);
+    Py_hash_t hash = identity_hash(identity);
     if (UNLIKELY(hash == -1)) {
         return -1;
     }
