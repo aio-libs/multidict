@@ -1,0 +1,4 @@
+Fixed a use-after-free in the C extension when a value's ``__eq__()`` or
+``__repr__()`` called ``__init__()`` again on the proxy being compared or
+printed, releasing the last reference to the multidict it proxied
+-- by :user:`aarav989`.

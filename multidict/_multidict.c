@@ -562,9 +562,13 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
         other_md = ((MultiDictProxyObject*)other)->md;
     }
     if (other_md != NULL) {
+        /* A value's __eq__() can re-run the other proxy's __init__(),
+           dropping what may be the last reference to other_md. */
+        Py_INCREF(other_md);
         Py_BEGIN_CRITICAL_SECTION2(self, other_md);
         cmp = md_eq(self, other_md);
         Py_END_CRITICAL_SECTION2();
+        Py_DECREF(other_md);
     } else {
         bool fits = false;
         fits = PyDict_Check(other);
@@ -1465,7 +1469,11 @@ static PyObject*
 multidict_proxy_tp_richcompare(MultiDictProxyObject* self, PyObject* other,
                                int op)
 {
-    return multidict_tp_richcompare(self->md, other, op);
+    /* Held across user code that can re-run this proxy's __init__(). */
+    MultiDictObject* md = (MultiDictObject*)Py_NewRef(self->md);
+    PyObject* ret = multidict_tp_richcompare(md, other, op);
+    Py_DECREF(md);
+    return ret;
 }
 
 static void
@@ -1504,7 +1512,10 @@ multidict_proxy_tp_clear(MultiDictProxyObject* self)
 static PyObject*
 multidict_proxy_tp_repr(MultiDictProxyObject* self)
 {
-    return md_repr(self->md, (PyObject*)self, true, true);
+    MultiDictObject* md = (MultiDictObject*)Py_NewRef(self->md);
+    PyObject* ret = md_repr(md, (PyObject*)self, true, true);
+    Py_DECREF(md);
+    return ret;
 }
 
 static PyMethodDef multidict_proxy_methods[] = {

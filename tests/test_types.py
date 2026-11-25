@@ -1,6 +1,8 @@
 import sys
 import sysconfig
 import types
+import weakref
+from collections.abc import Callable
 
 import pytest
 
@@ -100,6 +102,49 @@ def test_proxy_reinitialization_releases_old_target(
     proxy.__init__(replacement)
 
     assert sys.getrefcount(original) == original_refcount - 1
+
+
+@pytest.mark.parametrize(
+    "operation",
+    (
+        lambda proxy, other: proxy == other,
+        lambda proxy, other: other == proxy,
+        lambda proxy, other: proxy == dict(other),
+        lambda proxy, other: repr(proxy),
+    ),
+    ids=("proxy-eq", "reflected-eq", "eq-mapping", "repr"),
+)
+def test_proxy_reinitialized_by_value_keeps_old_target_alive(
+    multidict_module: types.ModuleType,
+    operation: Callable[[object, object], object],
+) -> None:
+    class Target(multidict_module.MultiDict):  # type: ignore[name-defined,misc]
+        pass
+
+    alive: list[bool] = []
+
+    class Value:
+        __hash__ = None  # type: ignore[assignment]
+
+        def __eq__(self, other: object) -> bool:
+            proxy.__init__(multidict_module.MultiDict())
+            alive.append(ref() is not None)
+            return True
+
+        def __repr__(self) -> str:
+            proxy.__init__(multidict_module.MultiDict())
+            alive.append(ref() is not None)
+            return "value"
+
+    target = Target(a=Value(), b=1)
+    ref = weakref.ref(target)
+    proxy = multidict_module.MultiDictProxy(target)
+    del target
+
+    operation(proxy, multidict_module.MultiDict(a=0, b=1))
+
+    assert alive == [True]
+    assert ref() is None
 
 
 def test_create_cimultidict_proxy_from_nonmultidict(
