@@ -565,27 +565,20 @@ multidict_tp_richcompare(MultiDictObject* self, PyObject* other, int op)
         Py_BEGIN_CRITICAL_SECTION2(self, other_md);
         cmp = md_eq(self, other_md);
         Py_END_CRITICAL_SECTION2();
+    } else if (PyDict_Check(other)) {
+        cmp = md_eq_to_mapping(self, other);
     } else {
-        bool fits = false;
-        fits = PyDict_Check(other);
-        if (!fits) {
-            PyObject* keys = PyMapping_Keys(other);
-            if (keys != NULL) {
-                Py_DECREF(keys);
-                fits = true;
-            } else if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
-                // other is not a mapping (no keys()); treat as not equal
-                PyErr_Clear();
-            } else {
-                // propagate MemoryError / KeyboardInterrupt / etc.
-                return NULL;
-            }
+        int is_mapping =
+            PyObject_IsInstance(other, state->collections_abc_mapping);
+        if (is_mapping < 0) {
+            return NULL;
         }
-        if (fits) {
-            cmp = md_eq_to_mapping(self, other);
-        } else {
-            cmp = 0;  // e.g., multidict is not equal to a list
+        if (!is_mapping) {
+            // Match the pure-Python __eq__, which returns NotImplemented
+            // for anything that is not a Mapping.
+            Py_RETURN_NOTIMPLEMENTED;
         }
+        cmp = md_eq_to_mapping(self, other);
     }
     if (cmp < 0) {
         return NULL;
@@ -1686,6 +1679,7 @@ module_traverse(PyObject* mod, visitproc visit, void* arg)
     Py_VISIT(state->str_default);
     Py_VISIT(state->str_value);
     Py_VISIT(state->none);
+    Py_VISIT(state->collections_abc_mapping);
 
     return 0;
 }
@@ -1780,6 +1774,7 @@ module_clear(PyObject* mod)
     Py_CLEAR(state->str_default);
     Py_CLEAR(state->str_value);
     Py_CLEAR(state->none);
+    Py_CLEAR(state->collections_abc_mapping);
 
     /* Plain function and context pointers, so a memset rather than a
        decref loop. No live multidict can reach a freed slot table anyway:
@@ -1858,6 +1853,17 @@ module_exec(PyObject* mod)
     }
     state->none = Py_GetConstant(Py_CONSTANT_NONE);
     if (state->none == NULL) {
+        return -1;
+    }
+
+    PyObject* collections_abc = PyImport_ImportModule("collections.abc");
+    if (collections_abc == NULL) {
+        return -1;
+    }
+    state->collections_abc_mapping =
+        PyObject_GetAttrString(collections_abc, "Mapping");
+    Py_DECREF(collections_abc);
+    if (state->collections_abc_mapping == NULL) {
         return -1;
     }
 

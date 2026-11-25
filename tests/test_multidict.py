@@ -12,8 +12,9 @@ import weakref
 from collections import Counter, deque
 from collections.abc import Callable, Iterable, Iterator, KeysView, Mapping
 from concurrent.futures import ThreadPoolExecutor
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any, TypeVar, cast
+from unittest.mock import ANY, Mock
 
 import pytest
 
@@ -545,6 +546,66 @@ class BaseMultiDictTest:
         d2 = BadMapping()
         with pytest.raises(ZeroDivisionError):
             d1 == d2
+
+    @pytest.mark.parametrize(
+        "other",
+        [
+            pytest.param(SimpleNamespace(keys=[]), id="keys-attribute"),
+            pytest.param(SimpleNamespace(keys=lambda: []), id="keys-method"),
+            pytest.param(Mock(), id="mock"),
+        ],
+    )
+    def test_eq_non_mapping_with_keys(
+        self,
+        cls: type[MultiDict[int]] | type[CIMultiDict[int]],
+        other: object,
+    ) -> None:
+        d = cls(a=1)
+
+        assert (d == other) is False
+        assert (d != other) is True
+        assert (other == d) is False
+        assert (other != d) is True
+
+    def test_eq_duck_typed_mapping_not_equal(
+        self, cls: type[MultiDict[int]] | type[CIMultiDict[int]]
+    ) -> None:
+        class Duck:
+            def keys(self) -> list[str]:
+                return ["a"]
+
+            def __getitem__(self, key: str) -> int:
+                return 1
+
+        duck = Duck()
+        assert duck.keys() == ["a"]
+        assert duck["a"] == 1
+
+        d = cls(a=1)
+
+        assert (d == duck) is False
+        assert (d != duck) is True
+
+    def test_eq_instancecheck_error_propagates(
+        self, cls: type[MultiDict[int]] | type[CIMultiDict[int]]
+    ) -> None:
+        class BadClass:
+            @property  # type: ignore[misc]
+            def __class__(self) -> type:
+                raise RuntimeError("class boom")
+
+        d = cls(a=1)
+
+        with pytest.raises(RuntimeError, match="class boom"):
+            d == BadClass()
+
+    def test_eq_any(self, cls: type[MultiDict[int]] | type[CIMultiDict[int]]) -> None:
+        d = cls(a=1)
+
+        assert (d == ANY) is True
+        assert (d != ANY) is False
+        assert (ANY == d) is True
+        assert (ANY != d) is False
 
     def test_ne(self, cls: type[MultiDict[str]]) -> None:
         d = cls([("key", "value1")])

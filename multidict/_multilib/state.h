@@ -44,6 +44,10 @@ typedef struct {
     // not build one per invocation.
     PyObject* none;
 
+    // collections.abc.Mapping, so comparison matches the pure-Python
+    // isinstance() check without importing on every call.
+    PyObject* collections_abc_mapping;
+
 #ifndef Py_GIL_DISABLED
     uint64_t global_version;
 #endif
