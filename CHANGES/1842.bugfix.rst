@@ -1,0 +1,9 @@
+Fixed the pure-Python implementation taking ``None`` or another false
+argument, such as ``0`` or ``False``, for no argument in the
+:class:`~multidict.MultiDict` and :class:`~multidict.CIMultiDict`
+constructors, :meth:`~multidict.MultiDict.extend`,
+:meth:`~multidict.MultiDict.update` and :meth:`~multidict.MultiDict.merge`,
+a regression in 6.2.0; it raised :exc:`TypeError` again, as the C extension
+did, and stopped testing the argument's truth value, which had rejected an
+iterable whose ``__bool__()`` raised. The type hints of these methods
+stopped accepting ``None`` -- by :user:`provos`.

@@ -146,7 +146,7 @@ def _locked_pair_always(fn: _F) -> _F:
     for the same reason `_locked_pair` does."""
 
     @functools.wraps(fn)
-    def wrapper(self: Any, arg: Any = None, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+    def wrapper(self: Any, arg: Any = sentinel, /, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
         with _PairLock(self._lock, _other_lock(arg)):
             return fn(self, arg, *args, **kwargs)
 
@@ -938,7 +938,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         return self
 
     @_locked_pair_always
-    def __init__(self, arg: MDArg[_V] = None, /, **kwargs: _V):
+    def __init__(self, arg: MDArg[_V] | _SENTINEL = sentinel, /, **kwargs: _V):
         self._incr_version()
         if not kwargs:
             md = None
@@ -1132,7 +1132,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
     __copy__ = copy
 
     @_locked_pair_always
-    def extend(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
+    def extend(self, arg: MDArg[_V] | _SENTINEL = sentinel, /, **kwargs: _V) -> None:
         """Extend current MultiDict with more values.
 
         This method must be used instead of update.
@@ -1143,7 +1143,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
 
     def _parse_args(
         self,
-        arg: MDArg[_V],
+        arg: MDArg[_V] | _SENTINEL,
         kwargs: Mapping[str, _V],
     ) -> Iterator[int | _Entry[_V]]:
         identity_func = self._identity
@@ -1152,7 +1152,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
                 arg = [(e.key, e.value) for e in self._keys.iter_entries()]
         elif arg is self:
             arg = [(e.key, e.value) for e in self._keys.iter_entries()]
-        if arg:
+        if arg is not sentinel:
             if isinstance(arg, MultiDictProxy):
                 arg = arg._md
             if isinstance(arg, MultiDict):
@@ -1383,7 +1383,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         return self._key(entry.key), entry.value
 
     @_locked_pair_always
-    def update(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
+    def update(self, arg: MDArg[_V] | _SENTINEL = sentinel, /, **kwargs: _V) -> None:
         """Update the dictionary, overwriting existing keys."""
         it = self._parse_args(arg, kwargs)
         reserve = self._reserve_batch(cast(int, next(it)))
@@ -1453,7 +1453,7 @@ class MultiDict(_CSMixin, MutableMultiMapping[_V]):
         self._incr_version()
 
     @_locked_pair_always
-    def merge(self, arg: MDArg[_V] = None, /, **kwargs: _V) -> None:
+    def merge(self, arg: MDArg[_V] | _SENTINEL = sentinel, /, **kwargs: _V) -> None:
         """Merge into the dictionary, adding non-existing keys."""
         it = self._parse_args(arg, kwargs)
         reserve = self._reserve_batch(cast(int, next(it)))
