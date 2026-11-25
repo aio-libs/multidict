@@ -65,7 +65,7 @@ IStr_FromUnicode(void* state_, PyObject* str)
     if (UNLIKELY(canonical == NULL)) {
         return NULL;
     }
-    PyObject* ret = IStr_New(state, str, canonical);
+    PyObject* ret = istr_create(state, str, canonical);
     Py_DECREF(canonical);
     return ret;
 }
@@ -120,7 +120,7 @@ _md_new(mod_state* state, PyTypeObject* tp, bool is_ci,
     if (UNLIKELY(md == NULL)) {
         return NULL;
     }
-    if (UNLIKELY(md_init(md, is_ci, prealloc_size, KIND_COMPACT) < 0)) {
+    if (UNLIKELY(md_init(md, is_ci, prealloc_size) < 0)) {
         Py_DECREF(md);
         return NULL;
     }

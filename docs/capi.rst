@@ -567,12 +567,10 @@ time.
 
    .. c:member:: PyObject *key
 
-      The key as stored. On a :class:`~multidict.CIMultiDict` this may be
-      a plain :class:`str` where :meth:`~multidict.MultiDict.keys` would
-      yield an :class:`~multidict.istr`: building the
-      :class:`~multidict.istr` can run Python code, which recording an
-      event must not do. Branch on :c:member:`~MultiDict_WatchInfo.identity`,
-      not on this. ``NULL`` where *identity* is.
+      The key as stored, always an :class:`~multidict.istr` on a
+      :class:`~multidict.CIMultiDict`. Branch on
+      :c:member:`~MultiDict_WatchInfo.identity`, not on this. ``NULL``
+      where *identity* is.
 
    .. c:member:: PyObject *value
 

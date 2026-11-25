@@ -42,18 +42,14 @@ _md_to_dict_append(MultiDictObject* md, PyObject** plst, entry_t* e,
 }
 
 /* Stores `lst`, the values of `entry`'s key, under that key; steals `lst`.
-   Both calls below can run a str subclass's own __hash__, __eq__ or
+   Setting the item can run a str subclass's own __hash__, __eq__ or
    __del__, which may mutate this multidict. That is refused the way the
    iterators refuse one, before the table is trusted again. */
 static inline int
 _md_to_dict_store(MultiDictObject* md, PyObject* dict, entry_t* entry,
                   PyObject* lst, uint64_t version)
 {
-    PyObject* key = md_ensure_key(md, entry);
-    if (UNLIKELY(key == NULL)) {
-        Py_DECREF(lst);
-        return -1;
-    }
+    PyObject* key = Py_NewRef(entry->key);
     int ret = PyDict_SetItem(dict, key, lst);
     Py_DECREF(key);
     Py_DECREF(lst);

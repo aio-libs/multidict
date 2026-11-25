@@ -31,15 +31,15 @@ extern "C" {
 #define MD_POOLS(md) ((md)->state->htkeys_pools)
 
 /* Whether a compact table of md can hold `key`: a MultiDict's key must be
-   its own identity, a CIMultiDict's an exact istr, whose identity is then
-   its canonical form. */
+   its own identity. A CIMultiDict stores only exact istr, whose identity
+   is their canonical form, so its keys always fit. */
 static inline bool
 md_key_fits(const MultiDictObject* md, PyObject* key, PyObject* identity)
 {
     if (md->is_ci) {
-        assert(!IStr_CheckExact(md->state, key) ||
-               istr_canonical(key) == identity);
-        return IStr_CheckExact(md->state, key);
+        assert(IStr_CheckExact(md->state, key) &&
+               str_cmp(istr_canonical(key), identity));
+        return true;
     }
     return key == identity;
 }
@@ -713,24 +713,14 @@ _md_grow_for_add(MultiDictObject* md, uint8_t log2_newsize, bool fits)
 }
 
 /* md_reserve() for extend(), update() or merge(), before their batch
-   starts. Keyword names are plain str, which never fit a CIMultiDict's
-   compact table, so with any the table is moved while it grows; moved
-   later, it cost update(istr_items, **kwargs) a second copy, 18%.
-
-   update() and merge() often find their keys there already, so, like
+   starts. update() and merge() often find their keys there already, so, like
    dict.update(), they grow only a table that could not hold `extra_size`
    entries even empty. Any other growth waits for the batch's first add,
    which then makes room for them all, unless deletions left holes: those
    the batch would have to keep. */
 static int
-md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool kwargs,
-                 bool overlap)
+md_reserve_batch(MultiDictObject* md, Py_ssize_t extra_size, bool overlap)
 {
-    if (UNLIKELY(kwargs) && md->is_ci && kind_is_compact(md->keys->kind) &&
-        md->used > 0 && md->batches == 0) {
-        return _md_rebuild_to_anystr(
-            md, estimate_log2_keysize(extra_size + md->used));
-    }
     if (overlap && md->keys->nentries == md->used &&
         md->keys->nentries + md->keys->usable >= extra_size) {
         return 0;
@@ -765,8 +755,9 @@ _md_install_keys(MultiDictObject* md, htkeys_t* keys, Py_ssize_t used,
 }
 
 static inline int
-md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused, uint8_t kind)
+md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused)
 {
+    uint8_t kind = KIND_COMPACT;
     assert(md->state != NULL);
     htkeys_t* new_keys = (htkeys_t*)&empty_htkeys;
 
@@ -789,25 +780,10 @@ md_init(MultiDictObject* md, bool is_ci, Py_ssize_t minused, uint8_t kind)
 
         new_keys = htkeys_new(MD_POOLS(md), log2_newsize, kind);
         if (UNLIKELY(new_keys == NULL)) return -1;
-    } else if (minused > 0 && kind != KIND_COMPACT) {
-        /* The first insert would allocate this table anyway, but compact,
-           only to move it at once. */
-        new_keys = htkeys_new(MD_POOLS(md), HT_LOG_MINSIZE, kind);
-        if (UNLIKELY(new_keys == NULL)) return -1;
     }
 
     _md_install_keys(md, new_keys, 0, is_ci, MultiDict_EVENT_CLEARED);
     return 0;
-}
-
-/* The kind a CIMultiDict's table starts with when `key` (borrowed, or NULL
-   if unknown) is the first key it will get: pre-sizing a compact table
-   for a str key would only have it rebuilt at once. */
-static uint8_t
-md_ci_kind_for_first_key(mod_state* state, PyObject* key)
-{
-    return key == NULL || IStr_CheckExact(state, key) ? KIND_COMPACT
-                                                      : KIND_ANYSTR;
 }
 
 /* md_clone_from_ht() while an update() or merge() on md is in flight:
@@ -1254,30 +1230,28 @@ fail:
     return -1;
 }
 
-/* A borrowed identity is the key itself, which fits a compact table only
-   in a MultiDict, or an istr's canonical, which always does. A key whose
-   identity has to be computed fits none. */
+// See md_store_key() on the borrowed key and identity.
 static int
 md_add(MultiDictObject* md, PyObject* key, PyObject* value)
 {
-    PyObject* identity = md_identity_or_new(md, key);
-    if (UNLIKELY(identity == NULL)) {
+    stored_key_t stored = md_store_key(md, key);
+    if (UNLIKELY(stored.key == NULL)) {
         return -1;
     }
     int ret = -1;
-    Py_hash_t hash = unicode_hash(identity);
+    Py_hash_t hash = unicode_hash(stored.identity);
     if (hash != -1) {
-        bool fits = md_key_fits(md, key, identity);
+        bool fits = md_key_fits(md, stored.key, stored.identity);
         bool flush;
         Py_BEGIN_CRITICAL_SECTION(md);
         ret = md_add_with_hash(
-            md, hash, identity, key, value, fits, MD_SLOT_CHECK);
+            md, hash, stored.identity, stored.key, value, fits, MD_SLOT_CHECK);
         ASSERT_CONSISTENT(md);
         flush = MD_WATCH_PENDING(md);
         Py_END_CRITICAL_SECTION();
         MD_WATCH_FLUSH_IF(md, flush);
     }
-    md_identity_release(md, key, identity);
+    md_store_key_release(md, key, stored);
     return ret;
 }
 
@@ -1602,10 +1576,7 @@ _md_contains_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
     HTKEYSITER_FIND_FIRST(&iter, ci, identity, hash, entry);
     if (entry != NULL) {
         if (pret != NULL) {
-            *pret = md_ensure_key(md, entry);
-            if (UNLIKELY(*pret == NULL)) {
-                return -1;
-            }
+            *pret = Py_NewRef(entry->key);
         }
         return 1;
     }
@@ -2003,6 +1974,34 @@ md_get_one(MultiDictObject* md, PyObject* key)
     return _md_get_one_identity(md, key, identity, hash);
 }
 
+/* Adds a key that is not in md yet, as md stores it: a CIMultiDict's
+   becomes an istr, built only now that it is known to be missing.
+   Building it runs no Python code. The fit is checked only here, not
+   carried from the identity: kept live across the replace loop, it cost
+   d[key] = v up to 4%. */
+static inline int
+_md_add_new_key(MultiDictObject* md, Py_hash_t hash, PyObject* identity,
+                PyObject* key, PyObject* value)
+{
+    if (md->is_ci && !IStr_CheckExact(md->state, key)) {
+        PyObject* stored = str_to_key_ci(md->state, key, identity);
+        if (UNLIKELY(stored == NULL)) {
+            return -1;
+        }
+        int ret = md_add_with_hash(
+            md, hash, identity, stored, value, true, MD_SLOT_FIND);
+        Py_DECREF(stored);
+        return ret;
+    }
+    return md_add_with_hash(md,
+                            hash,
+                            identity,
+                            key,
+                            value,
+                            md_key_fits(md, key, identity),
+                            MD_SLOT_FIND);
+}
+
 // Caller holds md's critical section
 static int
 _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
@@ -2022,13 +2021,7 @@ _md_set_default_locked(MultiDictObject* md, PyObject* identity, Py_hash_t hash,
         return 1;
     }
 
-    if (UNLIKELY(md_add_with_hash(md,
-                                  hash,
-                                  identity,
-                                  key,
-                                  value,
-                                  md_key_fits(md, key, identity),
-                                  MD_SLOT_FIND) < 0)) {
+    if (UNLIKELY(_md_add_new_key(md, hash, identity, key, value) < 0)) {
         return -1;
     }
 
@@ -2470,9 +2463,8 @@ _md_pop_item_locked(MultiDictObject* md)
         keys->nentries = pos;
     }
     /* The entry's refs, taken over: building the result below can run
-       Python code that mutates md (an istr key's __str__, or on 3.11 a
-       collection the tuple triggers), so it runs once the pair is
-       gone. */
+       Python code that mutates md (on 3.11 a collection the tuple
+       triggers), so it runs once the pair is gone. */
     PyObject* identity;
     PyObject* key;
     PyObject* value;
@@ -2485,15 +2477,7 @@ _md_pop_item_locked(MultiDictObject* md)
     bump_version(md);
     ASSERT_CONSISTENT(md);
 
-    // a compact table's key is already what md_calc_key() would return
-    if (identity != NULL) {
-        Py_SETREF(key, md_calc_key(md, key, identity));
-        Py_DECREF(identity);
-        if (UNLIKELY(key == NULL)) {
-            Py_DECREF(value);
-            return NULL;
-        }
-    }
+    Py_XDECREF(identity);
     PyObject* ret = PyTuple_New(2);
     if (UNLIKELY(ret == NULL)) {
         Py_DECREF(key);
@@ -2629,7 +2613,7 @@ _md_replace_matched(MultiDictObject* md, size_t slot, entry_t* entry,
                             MultiDict_EVENT_REPLACED,
                             identity,
                             hash,
-                            key,
+                            entry->key,
                             value,
                             old_value);
         }
@@ -2693,24 +2677,25 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
                     continue;
                 }
                 if (skip_first || !*pfound) {
-                    /* Checked only where the key gets stored: a miss leaves
-                       it to md_add_with_hash(), and the same key object fits
-                       by definition. */
-                    if (!skip_first && key != entry->key &&
-                        UNLIKELY(!md_key_fits(md, key, identity))) {
-                        if (UNLIKELY(md_to_anystr(md) < 0)) {
-                            return -1;
-                        }
-                        return _MD_REPLACE_STALE;  // entry is in the old table
-                    }
                     replaced = iter.index;
                     if (skip_first) {
                         skip_first = false;
                         continue;
                     }
                 }
-                if (!*pfound) {
-                    _md_replace_key_compact(entry, key, old_key_out);
+                /* A key spelled the same keeps the stored istr; any other
+                   is stored as an istr, which always fits. */
+                if (!*pfound && key != entry->key &&
+                    !str_cmp(key, entry->key)) {
+                    PyObject* stored =
+                        IStr_CheckExact(md->state, key)
+                            ? Py_NewRef(key)
+                            : str_to_key_ci(md->state, key, identity);
+                    if (UNLIKELY(stored == NULL)) {
+                        return -1;
+                    }
+                    _md_replace_key_compact(entry, stored, old_key_out);
+                    Py_DECREF(stored);
                 }
                 ret = _md_replace_matched(md,
                                           iter.slot,
@@ -2739,7 +2724,7 @@ _md_replace_pass(MultiDictObject* md, PyObject* key, PyObject* value,
                 }
                 if (skip_first || !*pfound) {
                     /* Checked only where the key gets stored: a miss leaves
-                       it to md_add_with_hash(), and the same key object fits
+                       it to _md_add_new_key(), and the same key object fits
                        by definition. */
                     if (!skip_first && key != entry->key &&
                         UNLIKELY(!md_key_fits(md, key, identity))) {
@@ -2848,13 +2833,7 @@ _md_replace_locked(MultiDictObject* md, PyObject* key, PyObject* value,
     if (ret == 0) {
         bump_version(md);
     } else if (ret > 0) {
-        ret = md_add_with_hash(md,
-                               hash,
-                               identity,
-                               key,
-                               value,
-                               md_key_fits(md, key, identity),
-                               MD_SLOT_FIND);
+        ret = _md_add_new_key(md, hash, identity, key, value);
     }
     if (watched) {
         MD_WATCH_RECORD_SIMPLE(md, MultiDict_EVENT_BATCH_END);

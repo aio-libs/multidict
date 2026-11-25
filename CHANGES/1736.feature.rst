@@ -1,0 +1,5 @@
+Changed :class:`~multidict.CIMultiDict` to store every key as an
+:class:`~multidict.istr`, built when the key is stored rather than when it
+is first read back, so a case-insensitive table always uses the compact
+layout and a watcher's ``key`` is always an :class:`~multidict.istr`
+-- by :user:`asvetlov`.
