@@ -26,6 +26,7 @@ changelog
 charset
 charsetdetect
 cibuildwheel
+CIMultiDict
 codecov
 codspeed
 CPython

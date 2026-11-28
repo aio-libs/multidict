@@ -654,7 +654,9 @@ class _CSMixin:
             return key
         if isinstance(key, str):
             return str.__str__(key)
-        raise TypeError("MultiDict keys should be either str or subclasses of str")
+        raise TypeError(
+            f"{type(self).__name__} keys should be either str or subclasses of str"
+        )
 
 
 class _CIMixin:
@@ -680,7 +682,9 @@ class _CIMixin:
             # never a subclass's own lower()
             return str.lower(key)
         else:
-            raise TypeError("MultiDict keys should be either str or subclasses of str")
+            raise TypeError(
+                f"{type(self).__name__} keys should be either str or subclasses of str"
+            )
 
 
 def estimate_log2_keysize(n: int) -> int:

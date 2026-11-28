@@ -4,6 +4,7 @@ import contextlib
 import gc
 import operator
 import platform
+import re
 import subprocess
 import sys
 import threading
@@ -159,6 +160,28 @@ def test_multidict_proxy_subclass_init_is_called(
 
     assert calls == ["init"]
     assert p == md
+
+
+# Every key-taking method on a multidict rejects a non-str key, and the
+# error has to name the class it was called on rather than the base one.
+_NON_STR_KEYS: dict[str, object] = {
+    "int": 1,
+    "bytes": b"key",
+    "none": None,
+}
+
+_NON_STR_KEY_OPS: dict[str, Callable[[object, object], object]] = {
+    "get": lambda md, key: md.get(key),  # type: ignore[attr-defined]
+    "getall": lambda md, key: md.getall(key),  # type: ignore[attr-defined]
+    "getitem": lambda md, key: md[key],  # type: ignore[index]
+    "setitem": lambda md, key: md.__setitem__(key, "x"),  # type: ignore[index]
+    "add": lambda md, key: md.add(key, "x"),  # type: ignore[attr-defined]
+    "pop": lambda md, key: md.pop(key),  # type: ignore[attr-defined]
+    "popone": lambda md, key: md.popone(key),  # type: ignore[attr-defined]
+    "setdefault": lambda md, key: md.setdefault(key, "x"),  # type: ignore[attr-defined]
+    "popall": lambda md, key: md.popall(key),  # type: ignore[attr-defined]
+    "update": lambda md, key: md.update({key: "x"}),  # type: ignore[attr-defined]
+}
 
 
 class BaseMultiDictTest:
@@ -842,6 +865,37 @@ class BaseMultiDictTest:
         obj = cls(expected)
         for k, v in expected:
             assert obj[k] == v
+
+    @pytest.mark.parametrize(
+        ("op", "key_name"),
+        [
+            ("get", "int"),
+            ("get", "bytes"),
+            ("get", "none"),
+            ("getall", "int"),
+            ("getitem", "int"),
+            ("setitem", "int"),
+            ("add", "int"),
+            ("pop", "int"),
+            ("popone", "int"),
+            ("setdefault", "int"),
+            ("popall", "int"),
+            ("update", "int"),
+        ],
+    )
+    def test_non_str_key_error_names_the_class(
+        self,
+        any_multidict_class: type[MultiDict[object]],
+        op: str,
+        key_name: str,
+    ) -> None:
+        md = any_multidict_class({"key": "value"})
+        msg = (
+            f"{any_multidict_class.__name__} keys should be either str "
+            "or subclasses of str"
+        )
+        with pytest.raises(TypeError, match=re.escape(msg)):
+            _NON_STR_KEY_OPS[op](md, _NON_STR_KEYS[key_name])
 
 
 class TestMultiDict(BaseMultiDictTest):
